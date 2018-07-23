@@ -1,0 +1,65 @@
+{
+	"ImportPath": "github.com/CMSgov/bcda-app",
+	"GoVersion": "go1.10",
+	"GodepVersion": "v80",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/bgentry/que-go",
+			"Comment": "v1.0.1",
+			"Rev": "04623be4201ec7abb8d6cd0f172a4c612e216cc4"
+		},
+		{
+			"ImportPath": "github.com/go-chi/chi",
+			"Comment": "v3.3.2-5-gcca4135",
+			"Rev": "cca4135d8dddff765463feaf1118047a9e506b4a"
+		},
+		{
+			"ImportPath": "github.com/jackc/pgx",
+			"Comment": "v3.1.0-51-g39bbc98",
+			"Rev": "39bbc98d99d7b666759f84514859becf8067128f"
+		},
+		{
+			"ImportPath": "github.com/jackc/pgx/chunkreader",
+			"Comment": "v3.1.0-51-g39bbc98",
+			"Rev": "39bbc98d99d7b666759f84514859becf8067128f"
+		},
+		{
+			"ImportPath": "github.com/jackc/pgx/internal/sanitize",
+			"Comment": "v3.1.0-51-g39bbc98",
+			"Rev": "39bbc98d99d7b666759f84514859becf8067128f"
+		},
+		{
+			"ImportPath": "github.com/jackc/pgx/pgio",
+			"Comment": "v3.1.0-51-g39bbc98",
+			"Rev": "39bbc98d99d7b666759f84514859becf8067128f"
+		},
+		{
+			"ImportPath": "github.com/jackc/pgx/pgproto3",
+			"Comment": "v3.1.0-51-g39bbc98",
+			"Rev": "39bbc98d99d7b666759f84514859becf8067128f"
+		},
+		{
+			"ImportPath": "github.com/jackc/pgx/pgtype",
+			"Comment": "v3.1.0-51-g39bbc98",
+			"Rev": "39bbc98d99d7b666759f84514859becf8067128f"
+		},
+		{
+			"ImportPath": "github.com/lib/pq",
+			"Comment": "go1.0-cutoff-212-g90697d6",
+			"Rev": "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+		},
+		{
+			"ImportPath": "github.com/lib/pq/oid",
+			"Comment": "go1.0-cutoff-212-g90697d6",
+			"Rev": "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+		},
+		{
+			"ImportPath": "github.com/pkg/errors",
+			"Comment": "v0.8.0-12-g816c908",
+			"Rev": "816c9085562cd7ee03e7f8188a1cfd942858cded"
+		}
+	]
+}

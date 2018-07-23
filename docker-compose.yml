@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  queue:
+    image: postgres
+    environment:
+      - POSTGRES_DB=bcda_queue
+      - POSTGRES_PASSWORD=toor
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db/worker.sql:/docker-entrypoint-initdb.d/schema.sql
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=bcda
+      - POSTGRES_PASSWORD=toor
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/api.sql:/docker-entrypoint-initdb.d/init.sql
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.bcda
+    environment:
+      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
+      - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - queue
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.bcdaworker
+    environment:
+      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
+    depends_on:
+      - queue

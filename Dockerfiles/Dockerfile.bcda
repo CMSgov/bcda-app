@@ -1,0 +1,11 @@
+FROM golang:1.10.3
+
+RUN go get github.com/tools/godep
+RUN go get github.com/pilu/fresh
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app
+COPY . .
+RUN godep restore ./...
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
+CMD ["fresh"]
