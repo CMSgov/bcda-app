@@ -8,8 +8,7 @@ language: go
 # updates. Any older versions be considered deprecated. Don't bother testing
 # with them.
 go:
-  - 1.9.x
-  - 1.x
+  - 1.10.x
 
 # Only clone the most recent commit.
 git:
@@ -31,6 +30,8 @@ notifications:
 #   required = ["github.com/golangci/golangci-lint/cmd/golangci-lint"]
 before_script:
   - go get ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint
+  - go get github.com/tools/godep
+  - go get ./models
 
 # script always runs to completion (set +e). If we have linter issues AND a
 # failing test, we want to see both. Configure golangci-lint with a
