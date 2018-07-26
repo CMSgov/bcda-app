@@ -22,43 +22,43 @@ func processJob(j *que.Job) error {
 }
 
 func waitForSig() {
-	signal_chan := make(chan os.Signal, 1)
-	defer close(signal_chan)
+	signalChan := make(chan os.Signal, 1)
+	defer close(signalChan)
 
-	signal.Notify(signal_chan,
+	signal.Notify(signalChan,
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	exit_chan := make(chan int)
-	defer close(exit_chan)
+	exitChan := make(chan int)
+	defer close(exitChan)
 
 	go func() {
 		for {
-			s := <-signal_chan
+			s := <-signalChan
 			switch s {
 			case syscall.SIGINT:
 				fmt.Println("interrupt")
-				exit_chan <- 0
+				exitChan <- 0
 			case syscall.SIGTERM:
 				fmt.Println("force stop")
-				exit_chan <- 0
+				exitChan <- 0
 			case syscall.SIGQUIT:
 				fmt.Println("stop and core dump")
-				exit_chan <- 0
+				exitChan <- 0
 			}
 		}
 	}()
 
-	code := <-exit_chan
+	code := <-exitChan
 	os.Exit(code)
 }
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
 
-	queueDatabaseUrl := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseUrl)
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
