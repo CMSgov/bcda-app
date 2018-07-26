@@ -16,7 +16,7 @@ git:
 
 # Skip the install step. Don't `go get` dependencies. Only build with the code
 # in vendor/
-#install: true
+install: true
 
 # Don't email me the results of the test runs.
 notifications:
@@ -31,12 +31,12 @@ notifications:
 before_script:
   - go get ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint
   - go get github.com/tools/godep
-  - go get ./models
 
 # script always runs to completion (set +e). If we have linter issues AND a
 # failing test, we want to see both. Configure golangci-lint with a
 # .golangci.yml file at the top level of your repo.
 script:
   - godep restore ./...
+  - ln -s $HOME/gopath/src/github.com/CMSgov $HOME/gopath/src/github.com/mattmck
   - golangci-lint run       # run a bunch of code checkers/linters in parallel
   - go test -v -race ./...  # Run all the tests with the race detector enabled
