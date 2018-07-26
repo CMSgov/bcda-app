@@ -36,9 +36,6 @@ before_script:
 # failing test, we want to see both. Configure golangci-lint with a
 # .golangci.yml file at the top level of your repo.
 script:
-  - ln -s $HOME/gopath/src/github.com/mattmck $HOME/gopath/src/github.com/CMSgov
-  - ls -al $HOME/gopath/src/github.com/mattmck
-  - ls -alL $HOME/gopath/src/github.com/CMSgov
   - go get github.com/stretchr/testify/assert
   - go get github.com/stretchr/testify/suite
   - godep restore ./...
