@@ -39,6 +39,8 @@ script:
   - ln -s $HOME/gopath/src/github.com/mattmck $HOME/gopath/src/github.com/CMSgov
   - ls -al $HOME/gopath/src/github.com/mattmck
   - ls -alL $HOME/gopath/src/github.com/CMSgov
+  - go get github.com/stretchr/testify/assert
+  - go get github.com/stretchr/testify/suite
   - godep restore ./...
   - go install ./...
   - golangci-lint run       # run a bunch of code checkers/linters in parallel
