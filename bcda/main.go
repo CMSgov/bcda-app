@@ -110,16 +110,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// URL router config
-	r := chi.NewRouter()
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello world!"))
-	})
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/claims/{acoId}", bulkRequest)
-		r.Get("/job/{jobId}", jobStatus)
-	})
-
 	fmt.Println("Starting bcda...")
-	http.ListenAndServe(":3000", r)
+	http.ListenAndServe(":3000", NewRouter())
 }
