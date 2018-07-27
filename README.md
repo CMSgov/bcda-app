@@ -1,5 +1,7 @@
 ## Beneficiary Claims Data API
 
+[![Build Status](https://travis-ci.org/CMSgov/bcda-app.svg?branch=master)](https://travis-ci.org/CMSgov/bcda-app)
+
 ### Local development
 
 To get started:
