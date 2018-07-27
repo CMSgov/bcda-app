@@ -23,13 +23,13 @@ var (
 )
 
 type jobEnqueueArgs struct {
-	AcoId int
+	AcoID int
 }
 
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
-	acoId := chi.URLParam(r, "acoId")
+	acoID := chi.URLParam(r, "acoId")
 
-	i, err := strconv.Atoi(fmt.Sprintf("%s", acoId))
+	i, err := strconv.Atoi(acoID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	args, err := json.Marshal(jobEnqueueArgs{AcoId: newJob.AcoID})
+	args, err := json.Marshal(jobEnqueueArgs{AcoID: newJob.AcoID})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		Type: "ProcessJob",
 		Args: args,
 	}
-	if err := qc.Enqueue(j); err != nil {
+	if err = qc.Enqueue(j); err != nil {
 		log.Fatal(err)
 	}
 
@@ -60,13 +60,16 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	w.Write([]byte(jsonData))
+	_, err = w.Write([]byte(jsonData))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
-	jobId := chi.URLParam(r, "jobId")
+	jobID := chi.URLParam(r, "jobId")
 
-	i, err := strconv.Atoi(fmt.Sprintf("%s", jobId))
+	i, err := strconv.Atoi(jobID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,13 +83,16 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	w.Write([]byte(jsonData))
+	_, err = w.Write([]byte(jsonData))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
 	// Worker queue connection
-	queueDatabaseUrl := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseUrl)
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -103,13 +109,16 @@ func main() {
 	qc = que.NewClient(pgxpool)
 
 	// API db connection
-	databaseUrl := os.Getenv("DATABASE_URL")
-	db, err = sql.Open("postgres", databaseUrl)
-	defer db.Close()
+	databaseURL := os.Getenv("DATABASE_URL")
+	db, err = sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 
 	fmt.Println("Starting bcda...")
-	http.ListenAndServe(":3000", NewRouter())
+	err = http.ListenAndServe(":3000", NewRouter())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
