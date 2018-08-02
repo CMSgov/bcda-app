@@ -10,7 +10,6 @@ create table users (
   name text not null,
   email text not null unique,
   aco_id uuid not null,
-  encrypted_password text not null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   foreign key (aco_id) references acos (uuid)

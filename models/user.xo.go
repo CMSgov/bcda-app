@@ -12,13 +12,12 @@ import (
 
 // User represents a row from 'public.users'.
 type User struct {
-	UUID              uuid.UUID `json:"uuid"`               // uuid
-	Name              string    `json:"name"`               // name
-	Email             string    `json:"email"`              // email
-	AcoID             uuid.UUID `json:"aco_id"`             // aco_id
-	EncryptedPassword string    `json:"encrypted_password"` // encrypted_password
-	CreatedAt         time.Time `json:"created_at"`         // created_at
-	UpdatedAt         time.Time `json:"updated_at"`         // updated_at
+	UUID      uuid.UUID `json:"uuid"`       // uuid
+	Name      string    `json:"name"`       // name
+	Email     string    `json:"email"`      // email
+	AcoID     uuid.UUID `json:"aco_id"`     // aco_id
+	CreatedAt time.Time `json:"created_at"` // created_at
+	UpdatedAt time.Time `json:"updated_at"` // updated_at
 
 	// xo fields
 	_exists, _deleted bool
@@ -45,14 +44,14 @@ func (u *User) Insert(db XODB) error {
 
 	// sql insert query, primary key must be provided
 	const sqlstr = `INSERT INTO public.users (` +
-		`uuid, name, email, aco_id, encrypted_password, created_at, updated_at` +
+		`uuid, name, email, aco_id, created_at, updated_at` +
 		`) VALUES (` +
-		`$1, $2, $3, $4, $5, $6, $7` +
+		`$1, $2, $3, $4, $5, $6` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.EncryptedPassword, u.CreatedAt, u.UpdatedAt)
-	err = db.QueryRow(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.EncryptedPassword, u.CreatedAt, u.UpdatedAt).Scan(&u.UUID)
+	XOLog(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.CreatedAt, u.UpdatedAt)
+	err = db.QueryRow(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.CreatedAt, u.UpdatedAt).Scan(&u.UUID)
 	if err != nil {
 		return err
 	}
@@ -79,14 +78,14 @@ func (u *User) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = `UPDATE public.users SET (` +
-		`name, email, aco_id, encrypted_password, created_at, updated_at` +
+		`name, email, aco_id, created_at, updated_at` +
 		`) = ( ` +
-		`$1, $2, $3, $4, $5, $6` +
-		`) WHERE uuid = $7`
+		`$1, $2, $3, $4, $5` +
+		`) WHERE uuid = $6`
 
 	// run query
-	XOLog(sqlstr, u.Name, u.Email, u.AcoID, u.EncryptedPassword, u.CreatedAt, u.UpdatedAt, u.UUID)
-	_, err = db.Exec(sqlstr, u.Name, u.Email, u.AcoID, u.EncryptedPassword, u.CreatedAt, u.UpdatedAt, u.UUID)
+	XOLog(sqlstr, u.Name, u.Email, u.AcoID, u.CreatedAt, u.UpdatedAt, u.UUID)
+	_, err = db.Exec(sqlstr, u.Name, u.Email, u.AcoID, u.CreatedAt, u.UpdatedAt, u.UUID)
 	return err
 }
 
@@ -112,18 +111,18 @@ func (u *User) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.users (` +
-		`uuid, name, email, aco_id, encrypted_password, created_at, updated_at` +
+		`uuid, name, email, aco_id, created_at, updated_at` +
 		`) VALUES (` +
-		`$1, $2, $3, $4, $5, $6, $7` +
+		`$1, $2, $3, $4, $5, $6` +
 		`) ON CONFLICT (uuid) DO UPDATE SET (` +
-		`uuid, name, email, aco_id, encrypted_password, created_at, updated_at` +
+		`uuid, name, email, aco_id, created_at, updated_at` +
 		`) = (` +
-		`EXCLUDED.uuid, EXCLUDED.name, EXCLUDED.email, EXCLUDED.aco_id, EXCLUDED.encrypted_password, EXCLUDED.created_at, EXCLUDED.updated_at` +
+		`EXCLUDED.uuid, EXCLUDED.name, EXCLUDED.email, EXCLUDED.aco_id, EXCLUDED.created_at, EXCLUDED.updated_at` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.EncryptedPassword, u.CreatedAt, u.UpdatedAt)
-	_, err = db.Exec(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.EncryptedPassword, u.CreatedAt, u.UpdatedAt)
+	XOLog(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.CreatedAt, u.UpdatedAt)
+	_, err = db.Exec(sqlstr, u.UUID, u.Name, u.Email, u.AcoID, u.CreatedAt, u.UpdatedAt)
 	if err != nil {
 		return err
 	}
@@ -179,7 +178,7 @@ func UserByEmail(db XODB, email string) (*User, error) {
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`uuid, name, email, aco_id, encrypted_password, created_at, updated_at ` +
+		`uuid, name, email, aco_id, created_at, updated_at ` +
 		`FROM public.users ` +
 		`WHERE email = $1`
 
@@ -189,7 +188,7 @@ func UserByEmail(db XODB, email string) (*User, error) {
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, email).Scan(&u.UUID, &u.Name, &u.Email, &u.AcoID, &u.EncryptedPassword, &u.CreatedAt, &u.UpdatedAt)
+	err = db.QueryRow(sqlstr, email).Scan(&u.UUID, &u.Name, &u.Email, &u.AcoID, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +204,7 @@ func UserByUUID(db XODB, uuid uuid.UUID) (*User, error) {
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`uuid, name, email, aco_id, encrypted_password, created_at, updated_at ` +
+		`uuid, name, email, aco_id, created_at, updated_at ` +
 		`FROM public.users ` +
 		`WHERE uuid = $1`
 
@@ -215,7 +214,7 @@ func UserByUUID(db XODB, uuid uuid.UUID) (*User, error) {
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, uuid).Scan(&u.UUID, &u.Name, &u.Email, &u.AcoID, &u.EncryptedPassword, &u.CreatedAt, &u.UpdatedAt)
+	err = db.QueryRow(sqlstr, uuid).Scan(&u.UUID, &u.Name, &u.Email, &u.AcoID, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
