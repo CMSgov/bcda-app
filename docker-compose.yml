@@ -26,6 +26,9 @@ services:
     environment:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
+      - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
+      - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
+      - DEBUG=true
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     ports:
