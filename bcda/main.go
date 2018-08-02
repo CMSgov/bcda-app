@@ -3,14 +3,18 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/models"
+
 	"github.com/bgentry/que-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
 
@@ -26,10 +30,30 @@ type jobEnqueueArgs struct {
 	AcoID int
 }
 
-func bulkRequest(w http.ResponseWriter, r *http.Request) {
-	acoID := chi.URLParam(r, "acoId")
+func acoIdFromSubject(token *jwt.Token) (string, error) {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		if acoId, ok := claims["sub"].(string); ok {
+			return acoId, nil
+		}
+	}
+	return "", errors.New("Error determining token subject")
+}
 
-	i, err := strconv.Atoi(acoID)
+func bulkRequest(w http.ResponseWriter, r *http.Request) {
+	var (
+		acoId string
+		err   error
+	)
+
+	t := r.Context().Value("token")
+	if token, ok := t.(*jwt.Token); ok && token.Valid {
+		acoId, err = acoIdFromSubject(token)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	i, err := strconv.Atoi(acoId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,7 +63,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		Location: "",
 		Status:   "started",
 	}
-	if err = newJob.Insert(db); err != nil {
+	if err := newJob.Insert(db); err != nil {
 		log.Fatal(err)
 	}
 
@@ -84,6 +108,18 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	_, err = w.Write([]byte(jsonData))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getToken(w http.ResponseWriter, r *http.Request) {
+	authBackend := auth.InitAuthBackend()
+	token, err := authBackend.GenerateToken("1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = w.Write([]byte(token))
 	if err != nil {
 		log.Fatal(err)
 	}
