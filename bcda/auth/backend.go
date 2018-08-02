@@ -34,12 +34,13 @@ func InitAuthBackend() *JWTAuthenticationBackend {
 	return authBackendInstance
 }
 
-func (backend *JWTAuthenticationBackend) GenerateToken(userUUID string) (string, error) {
+func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID string) (string, error) {
 	token := jwt.New(jwt.SigningMethodRS512)
 	token.Claims = jwt.MapClaims{
 		"exp": time.Now().Add(time.Hour * time.Duration(jwtExpirationDelta)).Unix(),
 		"iat": time.Now().Unix(),
-		"sub": userUUID,
+		"sub": userID,
+		"aco": acoID,
 	}
 	tokenString, err := token.SignedString(backend.privateKey)
 	if err != nil {

@@ -17,6 +17,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
+	"github.com/pborman/uuid"
 
 	_ "github.com/lib/pq"
 )
@@ -27,39 +28,37 @@ var (
 )
 
 type jobEnqueueArgs struct {
-	AcoID int
+	AcoID  string
+	UserID string
 }
 
-func acoIdFromSubject(token *jwt.Token) (string, error) {
+func claimsFromToken(token *jwt.Token) (jwt.MapClaims, error) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		if acoId, ok := claims["sub"].(string); ok {
-			return acoId, nil
-		}
+		return claims, nil
 	}
-	return "", errors.New("Error determining token subject")
+	return jwt.MapClaims{}, errors.New("Error determining token claims")
 }
 
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	var (
-		acoId string
-		err   error
+		claims jwt.MapClaims
+		err    error
 	)
 
 	t := r.Context().Value("token")
 	if token, ok := t.(*jwt.Token); ok && token.Valid {
-		acoId, err = acoIdFromSubject(token)
+		claims, err = claimsFromToken(token)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	i, err := strconv.Atoi(acoId)
-	if err != nil {
-		log.Fatal(err)
-	}
+	acoId, _ := claims["aco"].(string)
+	userId, _ := claims["sub"].(string)
 
 	newJob := models.Job{
-		AcoID:    i,
+		AcoID:    uuid.Parse(acoId),
+		UserID:   uuid.Parse(userId),
 		Location: "",
 		Status:   "started",
 	}
@@ -67,7 +66,10 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	args, err := json.Marshal(jobEnqueueArgs{AcoID: newJob.AcoID})
+	args, err := json.Marshal(jobEnqueueArgs{
+		AcoID:  acoId,
+		UserID: userId,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,6 +86,9 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 	_, err = w.Write([]byte(jsonData))
 	if err != nil {
 		log.Fatal(err)
@@ -107,6 +112,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 	_, err = w.Write([]byte(jsonData))
 	if err != nil {
 		log.Fatal(err)
@@ -115,7 +123,12 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 func getToken(w http.ResponseWriter, r *http.Request) {
 	authBackend := auth.InitAuthBackend()
-	token, err := authBackend.GenerateToken("1")
+
+	// Generates a token for fake user and ACO combination
+	token, err := authBackend.GenerateToken(
+		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
+		"DBBD1CE1-AE24-435C-807D-ED45953077D3",
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

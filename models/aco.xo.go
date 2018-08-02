@@ -6,15 +6,16 @@ package models
 import (
 	"errors"
 	"time"
+
+	"github.com/pborman/uuid"
 )
 
 // Aco represents a row from 'public.acos'.
 type Aco struct {
-	ID                int       `json:"id"`                 // id
-	Name              string    `json:"name"`               // name
-	EncryptedPassword string    `json:"encrypted_password"` // encrypted_password
-	CreatedAt         time.Time `json:"created_at"`         // created_at
-	UpdatedAt         time.Time `json:"updated_at"`         // updated_at
+	UUID      uuid.UUID `json:"uuid"`       // uuid
+	Name      string    `json:"name"`       // name
+	CreatedAt time.Time `json:"created_at"` // created_at
+	UpdatedAt time.Time `json:"updated_at"` // updated_at
 
 	// xo fields
 	_exists, _deleted bool
@@ -39,16 +40,16 @@ func (a *Aco) Insert(db XODB) error {
 		return errors.New("insert failed: already exists")
 	}
 
-	// sql insert query, primary key provided by sequence
+	// sql insert query, primary key must be provided
 	const sqlstr = `INSERT INTO public.acos (` +
-		`name, encrypted_password, created_at, updated_at` +
+		`uuid, name, created_at, updated_at` +
 		`) VALUES (` +
 		`$1, $2, $3, $4` +
-		`) RETURNING id`
+		`)`
 
 	// run query
-	XOLog(sqlstr, a.Name, a.EncryptedPassword, a.CreatedAt, a.UpdatedAt)
-	err = db.QueryRow(sqlstr, a.Name, a.EncryptedPassword, a.CreatedAt, a.UpdatedAt).Scan(&a.ID)
+	XOLog(sqlstr, a.UUID, a.Name, a.CreatedAt, a.UpdatedAt)
+	err = db.QueryRow(sqlstr, a.UUID, a.Name, a.CreatedAt, a.UpdatedAt).Scan(&a.UUID)
 	if err != nil {
 		return err
 	}
@@ -75,14 +76,14 @@ func (a *Aco) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = `UPDATE public.acos SET (` +
-		`name, encrypted_password, created_at, updated_at` +
+		`name, created_at, updated_at` +
 		`) = ( ` +
-		`$1, $2, $3, $4` +
-		`) WHERE id = $5`
+		`$1, $2, $3` +
+		`) WHERE uuid = $4`
 
 	// run query
-	XOLog(sqlstr, a.Name, a.EncryptedPassword, a.CreatedAt, a.UpdatedAt, a.ID)
-	_, err = db.Exec(sqlstr, a.Name, a.EncryptedPassword, a.CreatedAt, a.UpdatedAt, a.ID)
+	XOLog(sqlstr, a.Name, a.CreatedAt, a.UpdatedAt, a.UUID)
+	_, err = db.Exec(sqlstr, a.Name, a.CreatedAt, a.UpdatedAt, a.UUID)
 	return err
 }
 
@@ -108,18 +109,18 @@ func (a *Aco) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.acos (` +
-		`id, name, encrypted_password, created_at, updated_at` +
+		`uuid, name, created_at, updated_at` +
 		`) VALUES (` +
-		`$1, $2, $3, $4, $5` +
-		`) ON CONFLICT (id) DO UPDATE SET (` +
-		`id, name, encrypted_password, created_at, updated_at` +
+		`$1, $2, $3, $4` +
+		`) ON CONFLICT (uuid) DO UPDATE SET (` +
+		`uuid, name, created_at, updated_at` +
 		`) = (` +
-		`EXCLUDED.id, EXCLUDED.name, EXCLUDED.encrypted_password, EXCLUDED.created_at, EXCLUDED.updated_at` +
+		`EXCLUDED.uuid, EXCLUDED.name, EXCLUDED.created_at, EXCLUDED.updated_at` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, a.ID, a.Name, a.EncryptedPassword, a.CreatedAt, a.UpdatedAt)
-	_, err = db.Exec(sqlstr, a.ID, a.Name, a.EncryptedPassword, a.CreatedAt, a.UpdatedAt)
+	XOLog(sqlstr, a.UUID, a.Name, a.CreatedAt, a.UpdatedAt)
+	_, err = db.Exec(sqlstr, a.UUID, a.Name, a.CreatedAt, a.UpdatedAt)
 	if err != nil {
 		return err
 	}
@@ -145,11 +146,11 @@ func (a *Aco) Delete(db XODB) error {
 	}
 
 	// sql query
-	const sqlstr = `DELETE FROM public.acos WHERE id = $1`
+	const sqlstr = `DELETE FROM public.acos WHERE uuid = $1`
 
 	// run query
-	XOLog(sqlstr, a.ID)
-	_, err = db.Exec(sqlstr, a.ID)
+	XOLog(sqlstr, a.UUID)
+	_, err = db.Exec(sqlstr, a.UUID)
 	if err != nil {
 		return err
 	}
@@ -160,25 +161,25 @@ func (a *Aco) Delete(db XODB) error {
 	return nil
 }
 
-// AcoByID retrieves a row from 'public.acos' as a Aco.
+// AcoByUUID retrieves a row from 'public.acos' as a Aco.
 //
 // Generated from index 'acos_pkey'.
-func AcoByID(db XODB, id int) (*Aco, error) {
+func AcoByUUID(db XODB, uuid uuid.UUID) (*Aco, error) {
 	var err error
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`id, name, encrypted_password, created_at, updated_at ` +
+		`uuid, name, created_at, updated_at ` +
 		`FROM public.acos ` +
-		`WHERE id = $1`
+		`WHERE uuid = $1`
 
 	// run query
-	XOLog(sqlstr, id)
+	XOLog(sqlstr, uuid)
 	a := Aco{
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, id).Scan(&a.ID, &a.Name, &a.EncryptedPassword, &a.CreatedAt, &a.UpdatedAt)
+	err = db.QueryRow(sqlstr, uuid).Scan(&a.UUID, &a.Name, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
