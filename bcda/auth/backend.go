@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"log"
 	"os"
 	"time"
 
@@ -17,8 +18,6 @@ type JWTAuthenticationBackend struct {
 }
 
 const (
-	tokenDuration      = 72
-	expireOffset       = 3600
 	jwtExpirationDelta = 72
 )
 
@@ -45,7 +44,6 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userUUID string) (string,
 	tokenString, err := token.SignedString(backend.privateKey)
 	if err != nil {
 		panic(err)
-		return "", err
 	}
 	return tokenString, nil
 }
@@ -62,6 +60,9 @@ func getPrivateKey() *rsa.PrivateKey {
 
 	buffer := bufio.NewReader(privateKeyFile)
 	_, err = buffer.Read(pembytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	data, _ := pem.Decode([]byte(pembytes))
 
@@ -88,6 +89,9 @@ func getPublicKey() *rsa.PublicKey {
 
 	buffer := bufio.NewReader(publicKeyFile)
 	_, err = buffer.Read(pembytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	data, _ := pem.Decode([]byte(pembytes))
 
