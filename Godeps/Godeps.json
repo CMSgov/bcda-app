@@ -12,6 +12,21 @@
 			"Rev": "04623be4201ec7abb8d6cd0f172a4c612e216cc4"
 		},
 		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Comment": "v1.1.0",
+			"Rev": "346938d642f2ec3594ed81d874461961cd0faa76"
+		},
+		{
+			"ImportPath": "github.com/dgrijalva/jwt-go",
+			"Comment": "v3.2.0-2-g0b96aaa",
+			"Rev": "0b96aaa707760d6ab28d9b9d1913ff5993328bae"
+		},
+		{
+			"ImportPath": "github.com/dgrijalva/jwt-go/request",
+			"Comment": "v3.2.0-2-g0b96aaa",
+			"Rev": "0b96aaa707760d6ab28d9b9d1913ff5993328bae"
+		},
+		{
 			"ImportPath": "github.com/go-chi/chi",
 			"Comment": "v3.3.2-5-gcca4135",
 			"Rev": "cca4135d8dddff765463feaf1118047a9e506b4a"
@@ -57,9 +72,42 @@
 			"Rev": "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 		},
 		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Comment": "v1.1-6-gc65b2f8",
+			"Rev": "c65b2f87fee37d1c7854c9164a450713c28d50cd"
+		},
+		{
 			"ImportPath": "github.com/pkg/errors",
 			"Comment": "v0.8.0-12-g816c908",
 			"Rev": "816c9085562cd7ee03e7f8188a1cfd942858cded"
+		},
+		{
+			"ImportPath": "github.com/pmezard/go-difflib/difflib",
+			"Comment": "v1.0.0",
+			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Comment": "v1.1.4-27-g4d4bfba",
+			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/require",
+			"Comment": "v1.1.4-27-g4d4bfba",
+			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/suite",
+			"Comment": "v1.1.4-27-g4d4bfba",
+			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/bcrypt",
+			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 		}
 	]
 }
