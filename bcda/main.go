@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/models"
 
 	"github.com/bgentry/que-go"
@@ -18,13 +18,10 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
-
-	_ "github.com/lib/pq"
 )
 
 var (
 	qc *que.Client
-	db *sql.DB
 )
 
 type jobEnqueueArgs struct {
@@ -44,6 +41,9 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		claims jwt.MapClaims
 		err    error
 	)
+
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	t := r.Context().Value("token")
 	if token, ok := t.(*jwt.Token); ok && token.Valid {
@@ -97,6 +97,8 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobId")
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	i, err := strconv.Atoi(jobID)
 	if err != nil {
@@ -156,14 +158,6 @@ func main() {
 	defer pgxpool.Close()
 
 	qc = que.NewClient(pgxpool)
-
-	// API db connection
-	databaseURL := os.Getenv("DATABASE_URL")
-	db, err = sql.Open("postgres", databaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
 
 	fmt.Println("Starting bcda...")
 	err = http.ListenAndServe(":3000", NewRouter())
