@@ -20,7 +20,7 @@ func NewRouter() http.Handler {
 	})
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth).Post("/claims", bulkRequest)
-		r.With(auth.RequireTokenAuth).Get("/job/{jobId}", jobStatus)
+		r.With(auth.RequireTokenAuth).Get("/jobs/{jobId}", jobStatus)
 
 		if os.Getenv("DEBUG") == "true" {
 			r.Get("/token", getToken)
