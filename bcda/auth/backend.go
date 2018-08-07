@@ -13,8 +13,8 @@ import (
 )
 
 type JWTAuthenticationBackend struct {
-	privateKey *rsa.PrivateKey
-	publicKey  *rsa.PublicKey
+	PrivateKey *rsa.PrivateKey
+	PublicKey  *rsa.PublicKey
 }
 
 const (
@@ -26,8 +26,8 @@ var authBackendInstance *JWTAuthenticationBackend = nil
 func InitAuthBackend() *JWTAuthenticationBackend {
 	if authBackendInstance == nil {
 		authBackendInstance = &JWTAuthenticationBackend{
-			privateKey: getPrivateKey(),
-			publicKey:  getPublicKey(),
+			PrivateKey: getPrivateKey(),
+			PublicKey:  getPublicKey(),
 		}
 	}
 
@@ -42,7 +42,7 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID stri
 		"sub": userID,
 		"aco": acoID,
 	}
-	tokenString, err := token.SignedString(backend.privateKey)
+	tokenString, err := token.SignedString(backend.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
