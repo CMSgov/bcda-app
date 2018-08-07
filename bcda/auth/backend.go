@@ -9,11 +9,17 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/models"
 	"github.com/dgrijalva/jwt-go"
+)
+
+var (
+	jwtExpirationDelta  string                    = os.Getenv("JWT_EXPIRATION_DELTA")
+	authBackendInstance *JWTAuthenticationBackend = nil
 )
 
 type Hash struct{}
@@ -32,12 +38,6 @@ type JWTAuthenticationBackend struct {
 	PublicKey  *rsa.PublicKey
 }
 
-const (
-	jwtExpirationDelta = 72
-)
-
-var authBackendInstance *JWTAuthenticationBackend = nil
-
 func InitAuthBackend() *JWTAuthenticationBackend {
 	if authBackendInstance == nil {
 		authBackendInstance = &JWTAuthenticationBackend{
@@ -50,9 +50,14 @@ func InitAuthBackend() *JWTAuthenticationBackend {
 }
 
 func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID string) (string, error) {
+	expirationDelta, err := strconv.Atoi(jwtExpirationDelta)
+	if err != nil {
+		expirationDelta = 72
+	}
+
 	token := jwt.New(jwt.SigningMethodRS512)
 	token.Claims = jwt.MapClaims{
-		"exp": time.Now().Add(time.Hour * time.Duration(jwtExpirationDelta)).Unix(),
+		"exp": time.Now().Add(time.Hour * time.Duration(expirationDelta)).Unix(),
 		"iat": time.Now().Unix(),
 		"sub": userID,
 		"aco": acoID,
