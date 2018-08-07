@@ -40,8 +40,8 @@ env:
 #   required = ["github.com/golangci/golangci-lint/cmd/golangci-lint"]
 before_script:
   - psql -c 'create database bcda_test;' -U postgres
-  - psql -f db/api.sql -U postgres
-  - psql -f db/fixtures.sql -U postgres
+  - psql -f db/api.sql -U postgres bcda_test
+  - psql -f db/fixtures.sql -U postgres bcda_test
   - go get ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint
   - go get github.com/tools/godep
 
