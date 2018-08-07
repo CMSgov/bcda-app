@@ -31,6 +31,8 @@ func (s *BackendTestSuite) TestGenerateToken() {
 	assert.NotNil(s.T(), token)
 }
 
+func (s *BackendTestSuite) TestIsBlacklisted() {}
+
 func TestBackendTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendTestSuite))
 }

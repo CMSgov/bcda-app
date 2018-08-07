@@ -3,14 +3,29 @@ package auth
 import (
 	"bufio"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/models"
 	"github.com/dgrijalva/jwt-go"
 )
+
+type Hash struct{}
+
+func (c *Hash) Generate(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return fmt.Sprintf("%x", sum)
+}
+
+func (c *Hash) Compare(hash string, s string) bool {
+	return hash == c.Generate(s)
+}
 
 type JWTAuthenticationBackend struct {
 	PrivateKey *rsa.PrivateKey
@@ -47,6 +62,40 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID stri
 		panic(err)
 	}
 	return tokenString, nil
+}
+
+func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
+	var (
+		err  error
+		hash Hash = Hash{}
+	)
+
+	claims, _ := token.Claims.(jwt.MapClaims)
+
+	db := database.GetDbConnection()
+	defer db.Close()
+
+	const sqlstr = `SELECT value ` +
+		`FROM public.tokens ` +
+		`WHERE user_id = $1 ` +
+		`AND active = false`
+
+	rows, err := db.Query(sqlstr, claims["sub"])
+	defer rows.Close()
+
+	for rows.Next() {
+		t := models.Token{}
+		err = rows.Scan(&t.Value)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if match := hash.Compare(t.Value, token.Raw); match == true {
+			return true
+		}
+	}
+
+	return false
 }
 
 func getPrivateKey() *rsa.PrivateKey {

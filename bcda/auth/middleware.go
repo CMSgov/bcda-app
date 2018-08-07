@@ -23,8 +23,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 		token, err := request.ParseFromRequest(r, request.OAuth2Extractor, keyFunc)
 
-		// TODO(rnagle): check to see if token has been invalidated/blacklisted
-		if err == nil && token.Valid {
+		if err == nil && token.Valid && !authBackend.IsBlacklisted(token) {
 			ctx := context.WithValue(r.Context(), "token", token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
