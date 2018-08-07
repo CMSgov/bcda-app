@@ -1,5 +1,8 @@
 FROM golang:1.10.3
 
+RUN openssl genrsa -out /var/local/private.pem 2048
+RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
+
 RUN go get github.com/tools/godep
 RUN go get github.com/pilu/fresh
 

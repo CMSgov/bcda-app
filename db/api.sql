@@ -1,15 +1,32 @@
 create table acos (
-      id serial not null primary key,
-      name text not null,
-      encrypted_password text not null,
-      created_at timestamp with time zone not null default now(),
-      updated_at timestamp with time zone not null default now()
+  uuid uuid not null primary key,
+  name text not null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now()
+);
+
+create table users (
+  uuid uuid not null primary key,
+  name text not null,
+  email text not null unique,
+  aco_id uuid not null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  foreign key (aco_id) references acos (uuid)
 );
 
 create table jobs (
-      id serial not null primary key,
-      aco_id integer not null references acos,
-      location text not null,
-      status text not null,
-      created_at timestamp with time zone not null default now()
+  id serial not null primary key,
+  aco_id uuid not null references acos,
+  user_id uuid not null references users,
+  location text not null,
+  status text not null,
+  created_at timestamp with time zone not null default now()
+);
+
+create table tokens (
+  id serial not null primary key,
+  user_id uuid not null references users,
+  value text not null,
+  active boolean not null default false
 );

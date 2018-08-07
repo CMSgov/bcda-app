@@ -25,6 +25,13 @@ install: true
 notifications:
   email: false
 
+services:
+  - postgresql
+
+env:
+  global:
+    - DATABASE_URL="postgresql://postgres@localhost/bcda_test?sslmode=disable"
+
 # Anything in before_script that returns a nonzero exit code will flunk the
 # build and immediately stop. It's sorta like having set -e enabled in bash.
 # Make sure golangci-lint is vendored by running
@@ -32,6 +39,9 @@ notifications:
 # ...and adding this to your Gopkg.toml file.
 #   required = ["github.com/golangci/golangci-lint/cmd/golangci-lint"]
 before_script:
+  - psql -c 'create database bcda_test;' -U postgres
+  - psql -f db/api.sql -U postgres bcda_test
+  - psql -f db/fixtures.sql -U postgres bcda_test
   - go get ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint
   - go get github.com/tools/godep
 
