@@ -81,6 +81,9 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
 		`AND active = false`
 
 	rows, err := db.Query(sqlstr, claims["sub"])
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer rows.Close()
 
 	for rows.Next() {
@@ -90,7 +93,7 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
 			log.Fatal(err)
 		}
 
-		if match := hash.Compare(t.Value, token.Raw); match == true {
+		if match := hash.Compare(t.Value, token.Raw); match {
 			return true
 		}
 	}

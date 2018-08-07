@@ -24,7 +24,8 @@ func (s *BackendTestSuite) TestInitAuthBackend() {
 }
 
 func (s *BackendTestSuite) TestGenerateToken() {
-	token, err := s.authBackend.GenerateToken("fake-user-id", "fake-aco-id")
+	token, err := s.authBackend.GenerateToken(
+		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F", "DBBD1CE1-AE24-435C-807D-ED45953077D3")
 
 	// No errors, token is not nil
 	assert.Nil(s.T(), err)
