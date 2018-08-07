@@ -23,3 +23,10 @@ create table jobs (
   status text not null,
   created_at timestamp with time zone not null default now()
 );
+
+create table tokens (
+  id serial not null primary key,
+  user_id uuid not null references users,
+  value text not null,
+  active boolean not null default false
+);
