@@ -15,7 +15,6 @@ Usage: GITHUB_ACCESS_TOKEN=<gh_access_token> $(basename "$0") [-ch] [-t previous
 Options:
   -h    print this help text and exit
   -t    manually specify tags
-  -p    automatically push new tags to $ORIGIN.
 EOF
 }
 
