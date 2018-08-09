@@ -42,7 +42,7 @@ before_script:
   - psql -c 'create database bcda_test;' -U postgres
   - psql -f db/api.sql -U postgres bcda_test
   - psql -f db/fixtures.sql -U postgres bcda_test
-  - go get ./vendor/github.com/golangci/golangci-lint/cmd/golangci-lint
+  - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
   - go get github.com/tools/godep
 
 # script always runs to completion (set +e). If we have linter issues AND a

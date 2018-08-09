@@ -12,6 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/models"
+	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
 	"github.com/dgrijalva/jwt-go"
@@ -141,26 +142,63 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Worker queue connection
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	app := cli.NewApp()
+	app.Name = "bcda"
+	app.Usage = "Beneficiary Claims Data API CLI"
+	app.Commands = []cli.Command{
+		{
+			Name:  "start-api",
+			Usage: "Start the API",
+			Action: func(c *cli.Context) error {
+				// Worker queue connection
+				queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+				pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+				if err != nil {
+					return err
+				}
+
+				pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+					ConnConfig:   pgxcfg,
+					AfterConnect: que.PrepareStatements,
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer pgxpool.Close()
+
+				qc = que.NewClient(pgxpool)
+
+				fmt.Println("Starting bcda...")
+				err = http.ListenAndServe(":3000", NewRouter())
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			Name:  "create-token",
+			Usage: "Create an access token",
+			Action: func(c *cli.Context) error {
+				fmt.Println("Create token... ", c.Args().First())
+				return nil
+			},
+		},
+		{
+			Name:  "revoke-token",
+			Usage: "Revoke an access token",
+			Action: func(c *cli.Context) error {
+				fmt.Println("Revoke token... ", c.Args().First())
+				return nil
+			},
+		},
+	}
+
+	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer pgxpool.Close()
-
-	qc = que.NewClient(pgxpool)
-
-	fmt.Println("Starting bcda...")
-	err = http.ListenAndServe(":3000", NewRouter())
 	if err != nil {
 		log.Fatal(err)
 	}
