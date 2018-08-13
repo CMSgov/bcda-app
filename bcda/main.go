@@ -129,8 +129,8 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 
 	// Generates a token for fake user and ACO combination
 	token, err := authBackend.GenerateToken(
-		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
-		"DBBD1CE1-AE24-435C-807D-ED45953077D3",
+		uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -145,6 +145,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "bcda"
 	app.Usage = "Beneficiary Claims Data API CLI"
+	var acoID, userID, accessToken string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -177,18 +178,39 @@ func main() {
 			},
 		},
 		{
-			Name:  "create-token",
-			Usage: "Create an access token",
+			Name:     "create-token",
+			Category: "Authentication tools",
+			Usage:    "Create an access token",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "aco-id",
+					Usage:       "UUID of ACO",
+					Destination: &acoID,
+				},
+				cli.StringFlag{
+					Name:        "user-id",
+					Usage:       "UUID of user",
+					Destination: &userID,
+				},
+			},
 			Action: func(c *cli.Context) error {
-				fmt.Println("Create token... ", c.Args().First())
+				fmt.Println(acoID, userID, createAccessToken(acoID, userID))
 				return nil
 			},
 		},
 		{
-			Name:  "revoke-token",
-			Usage: "Revoke an access token",
+			Name:     "revoke-token",
+			Category: "Authentication tools",
+			Usage:    "Revoke an access token",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "access-token",
+					Usage:       "Access token",
+					Destination: &accessToken,
+				},
+			},
 			Action: func(c *cli.Context) error {
-				fmt.Println("Revoke token... ", c.Args().First())
+				revokeAccessToken(accessToken)
 				return nil
 			},
 		},
@@ -201,5 +223,50 @@ func main() {
 
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func createAccessToken(acoID, userID string) string {
+	errMsgs := []string{}
+	var acoUUID, userUUID uuid.UUID
+
+	if acoID == "" {
+		errMsgs = append(errMsgs, "ACO ID (--aco-id) must be provided")
+	} else {
+		acoUUID = uuid.Parse(acoID)
+		if acoUUID == nil {
+			errMsgs = append(errMsgs, "ACO ID must be a UUID")
+		}
+	}
+	if userID == "" {
+		errMsgs = append(errMsgs, "User ID (--user-id) must be provided")
+	} else {
+		userUUID = uuid.Parse(userID)
+		if userUUID == nil {
+			errMsgs = append(errMsgs, "User ID must be a UUID")
+		}
+	}
+
+	if len(errMsgs) > 0 {
+		for _, errMsg := range errMsgs {
+			fmt.Println(errMsg)
+		}
+		return ""
+	}
+
+	authBackend := auth.InitAuthBackend()
+
+	token, err := authBackend.GenerateToken(userUUID, acoUUID)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	return token
+}
+
+func revokeAccessToken(accessToken string) {
+	if accessToken == "" {
+		fmt.Println("Access token (--access-token) must be provided")
 	}
 }
