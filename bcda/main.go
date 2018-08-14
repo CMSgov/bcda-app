@@ -194,7 +194,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				fmt.Println(acoID, userID, createAccessToken(acoID, userID))
+				fmt.Println(createAccessToken(acoID, userID))
 				return nil
 			},
 		},
@@ -268,5 +268,10 @@ func createAccessToken(acoID, userID string) string {
 func revokeAccessToken(accessToken string) {
 	if accessToken == "" {
 		fmt.Println("Access token (--access-token) must be provided")
+		return
 	}
+
+	authBackend := auth.InitAuthBackend()
+
+	authBackend.RevokeToken(accessToken)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/models"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/pborman/uuid"
 )
 
 var (
@@ -67,6 +68,32 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID stri
 		panic(err)
 	}
 	return tokenString, nil
+}
+
+func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) bool {
+	claims := getJWTClaims(backend, tokenString)
+
+	if claims == nil {
+		panic("Could not read token claims")
+	}
+
+	userID := claims["sub"].(string)
+
+	token := models.Token{
+		UserID: uuid.Parse(userID),
+		Value:  tokenString,
+		Active: false,
+	}
+
+	db := database.GetDbConnection()
+	defer db.Close()
+
+	err := token.Insert(db)
+	if err != nil {
+		panic(err)
+	}
+
+	return true
 }
 
 func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
@@ -168,4 +195,24 @@ func getPublicKey() *rsa.PublicKey {
 	}
 
 	return rsaPub
+}
+
+func getJWTClaims(backend *JWTAuthenticationBackend, tokenString string) jwt.MapClaims {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return backend.PublicKey, nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	if !token.Valid {
+		return nil
+	}
+
+	return token.Claims.(jwt.MapClaims)
 }
