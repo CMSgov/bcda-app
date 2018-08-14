@@ -10,7 +10,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/go-chi/chi"
-	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -39,8 +38,7 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 func (s *MiddlewareTestSuite) SetupTest() {
 	s.SetupAuthBackend()
 	token, err := s.authBackend.GenerateToken(
-		uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"), uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-	)
+		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F", "DBBD1CE1-AE24-435C-807D-ED45953077D3")
 	if err != nil {
 		log.Fatal(err)
 	}

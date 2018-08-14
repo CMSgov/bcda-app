@@ -129,8 +129,8 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 
 	// Generates a token for fake user and ACO combination
 	token, err := authBackend.GenerateToken(
-		uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
+		"DBBD1CE1-AE24-435C-807D-ED45953077D3",
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -256,7 +256,7 @@ func createAccessToken(acoID, userID string) string {
 
 	authBackend := auth.InitAuthBackend()
 
-	token, err := authBackend.GenerateToken(userUUID, acoUUID)
+	token, err := authBackend.GenerateToken(userID, acoID)
 	if err != nil {
 		fmt.Println(err)
 		return ""

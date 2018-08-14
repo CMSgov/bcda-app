@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -16,7 +15,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/models"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/pborman/uuid"
 )
 
 var (
@@ -38,7 +36,6 @@ func (c *Hash) Compare(hash string, s string) bool {
 type JWTAuthenticationBackend struct {
 	PrivateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
-	db         *sql.DB
 }
 
 func InitAuthBackend() *JWTAuthenticationBackend {
@@ -46,44 +43,29 @@ func InitAuthBackend() *JWTAuthenticationBackend {
 		authBackendInstance = &JWTAuthenticationBackend{
 			PrivateKey: getPrivateKey(),
 			PublicKey:  getPublicKey(),
-			db:         database.GetDbConnection(),
 		}
 	}
 
 	return authBackendInstance
 }
 
-func (backend *JWTAuthenticationBackend) GenerateToken(userID uuid.UUID, acoID uuid.UUID) (string, error) {
+func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID string) (string, error) {
 	expirationDelta, err := strconv.Atoi(jwtExpirationDelta)
 	if err != nil {
 		expirationDelta = 72
 	}
 
-	tokenJwt := jwt.New(jwt.SigningMethodRS512)
-	tokenJwt.Claims = jwt.MapClaims{
+	token := jwt.New(jwt.SigningMethodRS512)
+	token.Claims = jwt.MapClaims{
 		"exp": time.Now().Add(time.Hour * time.Duration(expirationDelta)).Unix(),
 		"iat": time.Now().Unix(),
 		"sub": userID,
 		"aco": acoID,
 	}
-	tokenString, err := tokenJwt.SignedString(backend.PrivateKey)
+	tokenString, err := token.SignedString(backend.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
-
-	var hash = Hash{}
-	var token = models.Token{
-		UserID: userID,
-		Value:  hash.Generate(tokenString),
-		Active: true,
-	}
-
-	err = token.Insert(backend.db)
-
-	if err != nil {
-		panic(err)
-	}
-
 	return tokenString, nil
 }
 
@@ -95,12 +77,15 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
 
 	claims, _ := token.Claims.(jwt.MapClaims)
 
+	db := database.GetDbConnection()
+	defer db.Close()
+
 	const sqlstr = `SELECT value ` +
 		`FROM public.tokens ` +
 		`WHERE user_id = $1 ` +
 		`AND active = false`
 
-	rows, err := backend.db.Query(sqlstr, claims["sub"])
+	rows, err := db.Query(sqlstr, claims["sub"])
 	if err != nil {
 		log.Fatal(err)
 	}
