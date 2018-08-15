@@ -145,7 +145,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "bcda"
 	app.Usage = "Beneficiary Claims Data API CLI"
-	var acoID, userID, accessToken string
+	var acoName, acoID, userName, userEmail, userID, accessToken string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -174,6 +174,48 @@ func main() {
 				if err != nil {
 					return err
 				}
+				return nil
+			},
+		},
+		{
+			Name:     "create-aco",
+			Category: "Authentication tools",
+			Usage:    "Create an ACO",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "name",
+					Usage:       "Name of ACO",
+					Destination: &acoName,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				fmt.Println(createACO(acoName))
+				return nil
+			},
+		},
+		{
+			Name:     "create-user",
+			Category: "Authentication tools",
+			Usage:    "Create a user",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "aco-id",
+					Usage:       "UUID of user's ACO",
+					Destination: &acoID,
+				},
+				cli.StringFlag{
+					Name:        "name",
+					Usage:       "Name of user",
+					Destination: &userName,
+				},
+				cli.StringFlag{
+					Name:        "email",
+					Usage:       "Email address of user",
+					Destination: &userEmail,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				createUser(acoID, userName, userEmail)
 				return nil
 			},
 		},
@@ -224,6 +266,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func createACO(name string) string {
+	if name == "" {
+		fmt.Println("ACO name (--name) must be provided")
+		return ""
+	}
+
+	authBackend := auth.InitAuthBackend()
+	acoID, err := authBackend.CreateACO(name)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	return acoID.String()
+}
+
+func createUser(acoID, name, email string) string {
+	return ""
 }
 
 func createAccessToken(acoID, userID string) string {

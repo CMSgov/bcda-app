@@ -50,6 +50,28 @@ func InitAuthBackend() *JWTAuthenticationBackend {
 	return authBackendInstance
 }
 
+func (backend *JWTAuthenticationBackend) CreateACO(name string) (uuid.UUID, error) {
+	db := database.GetDbConnection()
+	defer db.Close()
+
+	const sqlstr = `INSERT INTO public.acos (` +
+		`uuid, name, created_at, updated_at` +
+		`) VALUES (` +
+		`$1, $2, $3, $3` +
+		`)`
+
+	acoUUID := uuid.NewUUID()
+	now := time.Now()
+
+	_, err := db.Exec(sqlstr, acoUUID, name, now)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return acoUUID, nil
+}
+
 func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID string) (string, error) {
 	expirationDelta, err := strconv.Atoi(jwtExpirationDelta)
 	if err != nil {

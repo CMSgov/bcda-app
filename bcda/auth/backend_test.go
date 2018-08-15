@@ -23,6 +23,13 @@ func (s *BackendTestSuite) TestInitAuthBackend() {
 	assert.IsType(s.T(), &rsa.PublicKey{}, s.authBackend.PublicKey)
 }
 
+func (s *BackendTestSuite) TestCreateACO() {
+	acoUUID, err := s.authBackend.CreateACO("ACO Name")
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), acoUUID)
+}
+
 func (s *BackendTestSuite) TestGenerateToken() {
 	token, err := s.authBackend.GenerateToken(
 		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F", "DBBD1CE1-AE24-435C-807D-ED45953077D3")
