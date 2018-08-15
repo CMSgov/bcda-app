@@ -215,7 +215,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				createUser(acoID, userName, userEmail)
+				fmt.Println(createUser(acoID, userName, userEmail))
 				return nil
 			},
 		},
@@ -275,17 +275,49 @@ func createACO(name string) string {
 	}
 
 	authBackend := auth.InitAuthBackend()
-	acoID, err := authBackend.CreateACO(name)
+	acoUUID, err := authBackend.CreateACO(name)
 	if err != nil {
 		fmt.Println(err)
 		return ""
 	}
 
-	return acoID.String()
+	return acoUUID.String()
 }
 
 func createUser(acoID, name, email string) string {
-	return ""
+	errMsgs := []string{}
+	var acoUUID uuid.UUID
+
+	if acoID == "" {
+		errMsgs = append(errMsgs, "ACO ID (--aco-id) must be provided")
+	} else {
+		acoUUID = uuid.Parse(acoID)
+		if acoUUID == nil {
+			errMsgs = append(errMsgs, "ACO ID must be a UUID")
+		}
+	}
+	if name == "" {
+		errMsgs = append(errMsgs, "Name (--name) must be provided")
+	}
+	if email == "" {
+		errMsgs = append(errMsgs, "Email address (--email) must be provided")
+	}
+
+	if len(errMsgs) > 0 {
+		for _, errMsg := range errMsgs {
+			fmt.Println(errMsg)
+		}
+		return ""
+	}
+
+	authBackend := auth.InitAuthBackend()
+	userUUID, err := authBackend.CreateUser(name, email, acoUUID)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	return userUUID.String()
 }
 
 func createAccessToken(acoID, userID string) string {

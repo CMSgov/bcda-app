@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -28,6 +29,13 @@ func (s *BackendTestSuite) TestCreateACO() {
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), acoUUID)
+}
+
+func (s *BackendTestSuite) TestCreateUser() {
+	userUUID, err := s.authBackend.CreateUser("First Last", "firstlast@example.com", uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"))
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), userUUID)
 }
 
 func (s *BackendTestSuite) TestGenerateToken() {
