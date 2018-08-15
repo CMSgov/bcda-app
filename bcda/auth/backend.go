@@ -123,9 +123,11 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) bool {
 
 	userID := claims["sub"].(string)
 
+	hash := Hash{}
+
 	token := models.Token{
 		UserID: uuid.Parse(userID),
-		Value:  tokenString,
+		Value:  hash.Generate(tokenString),
 		Active: false,
 	}
 
