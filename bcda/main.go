@@ -367,5 +367,8 @@ func revokeAccessToken(accessToken string) {
 
 	authBackend := auth.InitAuthBackend()
 
-	authBackend.RevokeToken(accessToken)
+	success := authBackend.RevokeToken(accessToken)
+	if success {
+		fmt.Println("Access token has been deactivated")
+	}
 }
