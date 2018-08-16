@@ -50,8 +50,8 @@ func (s *BackendTestSuite) TestGenerateToken() {
 func (s *BackendTestSuite) TestRevokeToken() {
 	token, _ := s.authBackend.GenerateToken(
 		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F", "DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	success := s.authBackend.RevokeToken(token)
-	assert.True(s.T(), success)
+	err := s.authBackend.RevokeToken(token)
+	assert.Nil(s.T(), err)
 }
 
 func (s *BackendTestSuite) TestIsBlacklisted() {}

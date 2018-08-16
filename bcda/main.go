@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -189,7 +190,11 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				fmt.Println(createACO(acoName))
+				acoUUID, err := createACO(acoName)
+				if err != nil {
+					return err
+				}
+				fmt.Println(acoUUID)
 				return nil
 			},
 		},
@@ -215,7 +220,11 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				fmt.Println(createUser(acoID, userName, userEmail))
+				userUUID, err := createUser(acoID, userName, userEmail)
+				if err != nil {
+					return err
+				}
+				fmt.Println(userUUID)
 				return nil
 			},
 		},
@@ -236,7 +245,11 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				fmt.Println(createAccessToken(acoID, userID))
+				accessToken, err := createAccessToken(acoID, userID)
+				if err != nil {
+					return err
+				}
+				fmt.Println(accessToken)
 				return nil
 			},
 		},
@@ -252,7 +265,11 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				revokeAccessToken(accessToken)
+				err := revokeAccessToken(accessToken)
+				if err != nil {
+					return err
+				}
+				fmt.Println("Access token has been deactivated")
 				return nil
 			},
 		},
@@ -268,23 +285,21 @@ func main() {
 	}
 }
 
-func createACO(name string) string {
+func createACO(name string) (string, error) {
 	if name == "" {
-		fmt.Println("ACO name (--name) must be provided")
-		return ""
+		return "", errors.New("ACO name (--name) must be provided")
 	}
 
 	authBackend := auth.InitAuthBackend()
 	acoUUID, err := authBackend.CreateACO(name)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return "", err
 	}
 
-	return acoUUID.String()
+	return acoUUID.String(), nil
 }
 
-func createUser(acoID, name, email string) string {
+func createUser(acoID, name, email string) (string, error) {
 	errMsgs := []string{}
 	var acoUUID uuid.UUID
 
@@ -304,23 +319,19 @@ func createUser(acoID, name, email string) string {
 	}
 
 	if len(errMsgs) > 0 {
-		for _, errMsg := range errMsgs {
-			fmt.Println(errMsg)
-		}
-		return ""
+		return "", errors.New(strings.Join(errMsgs, "\n"))
 	}
 
 	authBackend := auth.InitAuthBackend()
 	userUUID, err := authBackend.CreateUser(name, email, acoUUID)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return "", err
 	}
 
-	return userUUID.String()
+	return userUUID.String(), nil
 }
 
-func createAccessToken(acoID, userID string) string {
+func createAccessToken(acoID, userID string) (string, error) {
 	errMsgs := []string{}
 	var acoUUID, userUUID uuid.UUID
 
@@ -342,33 +353,25 @@ func createAccessToken(acoID, userID string) string {
 	}
 
 	if len(errMsgs) > 0 {
-		for _, errMsg := range errMsgs {
-			fmt.Println(errMsg)
-		}
-		return ""
+		return "", errors.New(strings.Join(errMsgs, "\n"))
 	}
 
 	authBackend := auth.InitAuthBackend()
 
 	token, err := authBackend.GenerateToken(userID, acoID)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return "", err
 	}
 
-	return token
+	return token, nil
 }
 
-func revokeAccessToken(accessToken string) {
+func revokeAccessToken(accessToken string) error {
 	if accessToken == "" {
-		fmt.Println("Access token (--access-token) must be provided")
-		return
+		return errors.New("Access token (--access-token) must be provided")
 	}
 
 	authBackend := auth.InitAuthBackend()
 
-	success := authBackend.RevokeToken(accessToken)
-	if success {
-		fmt.Println("Access token has been deactivated")
-	}
+	return authBackend.RevokeToken(accessToken)
 }

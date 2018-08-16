@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -114,11 +115,11 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID stri
 	return tokenString, nil
 }
 
-func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) bool {
+func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 	claims := getJWTClaims(backend, tokenString)
 
 	if claims == nil {
-		panic("Could not read token claims")
+		return errors.New("Could not read token claims")
 	}
 
 	userID := claims["sub"].(string)
@@ -136,10 +137,10 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) bool {
 
 	err := token.Insert(db)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	return true
+	return nil
 }
 
 func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
