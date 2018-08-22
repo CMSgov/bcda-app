@@ -104,12 +104,16 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 	i, err := strconv.Atoi(jobID)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		http.Error(w, http.StatusText(400), 400)
+		return
 	}
 
 	job, err := models.JobByID(db, i)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		http.Error(w, http.StatusText(404), 404)
+		return
 	}
 
 	jsonData, err := json.Marshal(job)
