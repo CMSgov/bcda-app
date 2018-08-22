@@ -15,7 +15,7 @@ import (
 func NewStructuredLogger() func(next http.Handler) http.Handler {
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
-	return middleware.RequestLogger(&StructuredLogger{logger})
+	return middleware.RequestLogger(&StructuredLogger{Logger: logger})
 }
 
 type StructuredLogger struct {
@@ -51,6 +51,11 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 		claims := token.Claims.(jwt.MapClaims)
 		logFields["aco"] = claims["aco"]
 		logFields["sub"] = claims["sub"]
+	}
+
+	hashedToken := r.Context().Value("hashedToken")
+	if hashedToken != nil {
+		logFields["token"] = hashedToken.(string)
 	}
 
 	entry.Logger = entry.Logger.WithFields(logFields)

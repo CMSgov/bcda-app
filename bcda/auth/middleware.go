@@ -24,7 +24,10 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := request.ParseFromRequest(r, request.OAuth2Extractor, keyFunc)
 
 		if err == nil {
+			hash := Hash{}
+			hashedToken := hash.Generate(token.Raw)
 			ctx := context.WithValue(r.Context(), "token", token)
+			ctx = context.WithValue(ctx, "hashedToken", hashedToken)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			next.ServeHTTP(w, r)
@@ -35,7 +38,14 @@ func ParseToken(next http.Handler) http.Handler {
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authBackend := InitAuthBackend()
-		token := r.Context().Value("token").(*jwt.Token)
+		tokenValue := r.Context().Value("token")
+
+		if tokenValue == nil {
+			http.Error(w, http.StatusText(401), 401)
+			return
+		}
+
+		token := tokenValue.(*jwt.Token)
 
 		if token.Valid && !authBackend.IsBlacklisted(token) {
 			ctx := context.WithValue(r.Context(), "token", token)
