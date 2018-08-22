@@ -9,7 +9,7 @@ import (
 	"github.com/dgrijalva/jwt-go/request"
 )
 
-func RequireTokenAuth(next http.Handler) http.Handler {
+func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authBackend := InitAuthBackend()
 
@@ -23,7 +23,21 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 		token, err := request.ParseFromRequest(r, request.OAuth2Extractor, keyFunc)
 
-		if err == nil && token.Valid && !authBackend.IsBlacklisted(token) {
+		if err == nil {
+			ctx := context.WithValue(r.Context(), "token", token)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
+}
+
+func RequireTokenAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authBackend := InitAuthBackend()
+		token := r.Context().Value("token").(*jwt.Token)
+
+		if token.Valid && !authBackend.IsBlacklisted(token) {
 			ctx := context.WithValue(r.Context(), "token", token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {

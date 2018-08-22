@@ -6,12 +6,15 @@ import (
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/go-chi/chi"
 )
 
 //NewRouter provides a router with all the required... routes
 func NewRouter() http.Handler {
 	r := chi.NewRouter()
+	r.Use(auth.ParseToken)
+	r.Use(logging.NewStructuredLogger())
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Hello world!"))
 		if err != nil {

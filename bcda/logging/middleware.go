@@ -45,12 +45,13 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 
 	logFields["uri"] = fmt.Sprintf("%s://%s%s", scheme, r.Host, r.RequestURI)
 
-	token := r.Context().Value("token").(*jwt.Token)
-
-	claims := token.Claims.(jwt.MapClaims)
-
-	logFields["aco"] = claims["aco"]
-	logFields["sub"] = claims["sub"]
+	token := r.Context().Value("token")
+	if token != nil {
+		token := token.(*jwt.Token)
+		claims := token.Claims.(jwt.MapClaims)
+		logFields["aco"] = claims["aco"]
+		logFields["sub"] = claims["sub"]
+	}
 
 	entry.Logger = entry.Logger.WithFields(logFields)
 
