@@ -172,10 +172,10 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
 
 	const sqlstr = `SELECT value ` +
 		`FROM public.tokens ` +
-		`WHERE user_id = $1 ` +
+		`WHERE uuid = $1 ` +
 		`AND active = false`
 
-	rows, err := db.Query(sqlstr, claims["sub"])
+	rows, err := db.Query(sqlstr, claims["id"])
 	if err != nil {
 		log.Fatal(err)
 	}
