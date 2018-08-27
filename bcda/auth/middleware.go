@@ -9,8 +9,15 @@ import (
 	"github.com/dgrijalva/jwt-go/request"
 )
 
-func RequireTokenAuth(next http.Handler) http.Handler {
+func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+
+		if authHeader == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		authBackend := InitAuthBackend()
 
 		var keyFunc jwt.Keyfunc = func(token *jwt.Token) (interface{}, error) {
@@ -23,7 +30,28 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 		token, err := request.ParseFromRequest(r, request.OAuth2Extractor, keyFunc)
 
-		if err == nil && token.Valid && !authBackend.IsBlacklisted(token) {
+		if err == nil {
+			ctx := context.WithValue(r.Context(), "token", token)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
+}
+
+func RequireTokenAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authBackend := InitAuthBackend()
+		tokenValue := r.Context().Value("token")
+
+		if tokenValue == nil {
+			http.Error(w, http.StatusText(401), 401)
+			return
+		}
+
+		token := tokenValue.(*jwt.Token)
+
+		if token.Valid && !authBackend.IsBlacklisted(token) {
 			ctx := context.WithValue(r.Context(), "token", token)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
