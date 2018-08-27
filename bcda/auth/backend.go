@@ -107,6 +107,7 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID stri
 		"iat": time.Now().Unix(),
 		"sub": userID,
 		"aco": acoID,
+		"id":  uuid.NewUUID(),
 	}
 	tokenString, err := token.SignedString(backend.PrivateKey)
 	if err != nil {
@@ -122,11 +123,13 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 		return errors.New("Could not read token claims")
 	}
 
+	tokenID := claims["id"].(string)
 	userID := claims["sub"].(string)
 
 	hash := Hash{}
 
 	token := models.Token{
+		UUID:   uuid.Parse(tokenID),
 		UserID: uuid.Parse(userID),
 		Value:  hash.Generate(tokenString),
 		Active: false,
@@ -135,11 +138,24 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 	db := database.GetDbConnection()
 	defer db.Close()
 
-	err := token.Insert(db)
+	var err error
+
+	if token.Exists() {
+		err = token.Update(db)
+	} else {
+
+		const sqlstr = `INSERT INTO public.tokens (` +
+			`uuid, user_id, value, active` +
+			`) VALUES (` +
+			`$1, $2, $3, $4` +
+			`)`
+
+		_, err = db.Exec(sqlstr, token.UUID, token.UserID, token.Value, false)
+	}
+
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -156,10 +172,10 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
 
 	const sqlstr = `SELECT value ` +
 		`FROM public.tokens ` +
-		`WHERE user_id = $1 ` +
+		`WHERE uuid = $1 ` +
 		`AND active = false`
 
-	rows, err := db.Query(sqlstr, claims["sub"])
+	rows, err := db.Query(sqlstr, claims["id"])
 	if err != nil {
 		log.Fatal(err)
 	}

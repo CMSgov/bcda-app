@@ -11,7 +11,7 @@ import (
 
 // Token represents a row from 'public.tokens'.
 type Token struct {
-	ID     int       `json:"id"`      // id
+	UUID   uuid.UUID `json:"uuid"`    // uuid
 	UserID uuid.UUID `json:"user_id"` // user_id
 	Value  string    `json:"value"`   // value
 	Active bool      `json:"active"`  // active
@@ -39,16 +39,16 @@ func (t *Token) Insert(db XODB) error {
 		return errors.New("insert failed: already exists")
 	}
 
-	// sql insert query, primary key provided by sequence
+	// sql insert query, primary key must be provided
 	const sqlstr = `INSERT INTO public.tokens (` +
-		`user_id, value, active` +
+		`uuid, user_id, value, active` +
 		`) VALUES (` +
-		`$1, $2, $3` +
-		`) RETURNING id`
+		`$1, $2, $3, $4` +
+		`)`
 
 	// run query
-	XOLog(sqlstr, t.UserID, t.Value, t.Active)
-	err = db.QueryRow(sqlstr, t.UserID, t.Value, t.Active).Scan(&t.ID)
+	XOLog(sqlstr, t.UUID, t.UserID, t.Value, t.Active)
+	err = db.QueryRow(sqlstr, t.UUID, t.UserID, t.Value, t.Active).Scan(&t.UUID)
 	if err != nil {
 		return err
 	}
@@ -78,11 +78,11 @@ func (t *Token) Update(db XODB) error {
 		`user_id, value, active` +
 		`) = ( ` +
 		`$1, $2, $3` +
-		`) WHERE id = $4`
+		`) WHERE uuid = $4`
 
 	// run query
-	XOLog(sqlstr, t.UserID, t.Value, t.Active, t.ID)
-	_, err = db.Exec(sqlstr, t.UserID, t.Value, t.Active, t.ID)
+	XOLog(sqlstr, t.UserID, t.Value, t.Active, t.UUID)
+	_, err = db.Exec(sqlstr, t.UserID, t.Value, t.Active, t.UUID)
 	return err
 }
 
@@ -108,18 +108,18 @@ func (t *Token) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.tokens (` +
-		`id, user_id, value, active` +
+		`uuid, user_id, value, active` +
 		`) VALUES (` +
 		`$1, $2, $3, $4` +
-		`) ON CONFLICT (id) DO UPDATE SET (` +
-		`id, user_id, value, active` +
+		`) ON CONFLICT (uuid) DO UPDATE SET (` +
+		`uuid, user_id, value, active` +
 		`) = (` +
-		`EXCLUDED.id, EXCLUDED.user_id, EXCLUDED.value, EXCLUDED.active` +
+		`EXCLUDED.uuid, EXCLUDED.user_id, EXCLUDED.value, EXCLUDED.active` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, t.ID, t.UserID, t.Value, t.Active)
-	_, err = db.Exec(sqlstr, t.ID, t.UserID, t.Value, t.Active)
+	XOLog(sqlstr, t.UUID, t.UserID, t.Value, t.Active)
+	_, err = db.Exec(sqlstr, t.UUID, t.UserID, t.Value, t.Active)
 	if err != nil {
 		return err
 	}
@@ -145,11 +145,11 @@ func (t *Token) Delete(db XODB) error {
 	}
 
 	// sql query
-	const sqlstr = `DELETE FROM public.tokens WHERE id = $1`
+	const sqlstr = `DELETE FROM public.tokens WHERE uuid = $1`
 
 	// run query
-	XOLog(sqlstr, t.ID)
-	_, err = db.Exec(sqlstr, t.ID)
+	XOLog(sqlstr, t.UUID)
+	_, err = db.Exec(sqlstr, t.UUID)
 	if err != nil {
 		return err
 	}
@@ -167,25 +167,25 @@ func (t *Token) User(db XODB) (*User, error) {
 	return UserByUUID(db, t.UserID)
 }
 
-// TokenByID retrieves a row from 'public.tokens' as a Token.
+// TokenByUUID retrieves a row from 'public.tokens' as a Token.
 //
 // Generated from index 'tokens_pkey'.
-func TokenByID(db XODB, id int) (*Token, error) {
+func TokenByUUID(db XODB, uuid uuid.UUID) (*Token, error) {
 	var err error
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`id, user_id, value, active ` +
+		`uuid, user_id, value, active ` +
 		`FROM public.tokens ` +
-		`WHERE id = $1`
+		`WHERE uuid = $1`
 
 	// run query
-	XOLog(sqlstr, id)
+	XOLog(sqlstr, uuid)
 	t := Token{
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, id).Scan(&t.ID, &t.UserID, &t.Value, &t.Active)
+	err = db.QueryRow(sqlstr, uuid).Scan(&t.UUID, &t.UserID, &t.Value, &t.Active)
 	if err != nil {
 		return nil, err
 	}
