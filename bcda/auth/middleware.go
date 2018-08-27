@@ -31,10 +31,7 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := request.ParseFromRequest(r, request.OAuth2Extractor, keyFunc)
 
 		if err == nil {
-			hash := Hash{}
-			hashedToken := hash.Generate(token.Raw)
 			ctx := context.WithValue(r.Context(), "token", token)
-			ctx = context.WithValue(ctx, "hashedToken", hashedToken)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			next.ServeHTTP(w, r)

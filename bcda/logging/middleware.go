@@ -51,11 +51,7 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 		claims := token.Claims.(jwt.MapClaims)
 		logFields["aco"] = claims["aco"]
 		logFields["sub"] = claims["sub"]
-	}
-
-	hashedToken := r.Context().Value("hashedToken")
-	if hashedToken != nil {
-		logFields["token"] = hashedToken.(string)
+		logFields["token_id"] = claims["id"]
 	}
 
 	entry.Logger = entry.Logger.WithFields(logFields)
