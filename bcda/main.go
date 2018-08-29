@@ -68,7 +68,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		AcoID:    uuid.Parse(acoId),
 		UserID:   uuid.Parse(userId),
 		Location: "",
-		Status:   "started",
+		Status:   "in progress",
 	}
 	if err := newJob.Insert(db); err != nil {
 		log.Fatal(err)
@@ -143,17 +143,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(job)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	_, err = w.Write([]byte(jsonData))
-	if err != nil {
-		log.Fatal(err)
-	}
+	w.Header().Set("X-Progress", job.Status)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
