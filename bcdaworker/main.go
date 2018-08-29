@@ -7,7 +7,10 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/models"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 )
@@ -18,6 +21,29 @@ var (
 
 func processJob(j *que.Job) error {
 	fmt.Printf("Worker started processing job (ID: %d, Args: %s)\n", j.ID, j.Args)
+
+	db := database.GetDbConnection()
+	defer db.Close()
+
+	exportJob, err := models.JobByID(db, int(j.ID))
+	if err != nil {
+		return err
+	}
+
+	exportJob.Status = "In Progress"
+	err = exportJob.Update(db)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(time.Minute)
+
+	exportJob.Status = "Completed"
+	err = exportJob.Update(db)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

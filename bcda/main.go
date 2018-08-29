@@ -68,7 +68,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		AcoID:    uuid.Parse(acoId),
 		UserID:   uuid.Parse(userId),
 		Location: "",
-		Status:   "in progress",
+		Status:   "Pending",
 	}
 	if err := newJob.Insert(db); err != nil {
 		log.Fatal(err)
