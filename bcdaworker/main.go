@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -19,13 +20,25 @@ var (
 	qc *que.Client
 )
 
+type jobEnqueueArgs struct {
+	ID     int
+	AcoID  string
+	UserID string
+}
+
 func processJob(j *que.Job) error {
 	fmt.Printf("Worker started processing job (ID: %d, Args: %s)\n", j.ID, j.Args)
 
 	db := database.GetDbConnection()
 	defer db.Close()
 
-	exportJob, err := models.JobByID(db, int(j.ID))
+	jobArgs := jobEnqueueArgs{}
+	err := json.Unmarshal(j.Args, &jobArgs)
+	if err != nil {
+		return err
+	}
+
+	exportJob, err := models.JobByID(db, jobArgs.ID)
 	if err != nil {
 		return err
 	}
@@ -36,7 +49,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	time.Sleep(time.Minute)
+	time.Sleep(30 * time.Second)
 
 	exportJob.Status = "Completed"
 	err = exportJob.Update(db)
