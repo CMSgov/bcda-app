@@ -78,10 +78,15 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	acoId, _ := claims["aco"].(string)
 	userId, _ := claims["sub"].(string)
 
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+
 	newJob := models.Job{
 		AcoID:      uuid.Parse(acoId),
 		UserID:     uuid.Parse(userId),
-		RequestURL: r.URL.String(),
+		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
 	if err := newJob.Insert(db); err != nil {
@@ -103,11 +108,6 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = qc.Enqueue(j); err != nil {
 		log.Fatal(err)
-	}
-
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
 	}
 
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
