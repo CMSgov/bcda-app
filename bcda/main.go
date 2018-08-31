@@ -70,12 +70,6 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = validateBulkRequestHeaders(r.Header)
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
 	acoId, _ := claims["aco"].(string)
 	userId, _ := claims["sub"].(string)
 
@@ -113,31 +107,6 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
-}
-
-func validateBulkRequestHeaders(h http.Header) error {
-	acceptHeader := h.Get("Accept")
-	preferHeader := h.Get("Prefer")
-
-	var errMsgs = []string{}
-
-	if acceptHeader == "" {
-		errMsgs = append(errMsgs, "Accept header is required")
-	} else if acceptHeader != "application/fhir+json" {
-		errMsgs = append(errMsgs, "application/fhir+json is the only supported response format")
-	}
-
-	if preferHeader == "" {
-		errMsgs = append(errMsgs, "Prefer header is required")
-	} else if preferHeader != "respond-async" {
-		errMsgs = append(errMsgs, "Only asynchronous responses are supported")
-	}
-
-	if len(errMsgs) > 0 {
-		return errors.New(strings.Join(errMsgs, "\n"))
-	}
-
-	return nil
 }
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
