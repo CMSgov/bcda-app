@@ -43,6 +43,7 @@ type bulkResponseBody struct {
 	RequestURL          string     `json:"request"`
 	RequiresAccessToken bool       `json:"requiresAccessToken"`
 	Files               []fileItem `json:"output"`
+	Errors              []fileItem `json:"error"`
 }
 
 func claimsFromToken(token *jwt.Token) (jwt.MapClaims, error) {
@@ -179,6 +180,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
 			Files:               []fileItem{fi},
+			Errors:              []fileItem{},
 		}
 
 		jsonData, err := json.Marshal(rb)
