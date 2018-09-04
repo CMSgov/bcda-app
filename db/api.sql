@@ -19,7 +19,7 @@ create table jobs (
   id serial not null primary key,
   aco_id uuid not null references acos,
   user_id uuid not null references users,
-  location text not null,
+  request_url text not null,
   status text not null,
   created_at timestamp with time zone not null default now()
 );

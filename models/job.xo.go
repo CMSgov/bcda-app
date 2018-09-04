@@ -12,12 +12,12 @@ import (
 
 // Job represents a row from 'public.jobs'.
 type Job struct {
-	ID        int       `json:"id"`         // id
-	AcoID     uuid.UUID `json:"aco_id"`     // aco_id
-	UserID    uuid.UUID `json:"user_id"`    // user_id
-	Location  string    `json:"location"`   // location
-	Status    string    `json:"status"`     // status
-	CreatedAt time.Time `json:"created_at"` // created_at
+	ID         int       `json:"id"`          // id
+	AcoID      uuid.UUID `json:"aco_id"`      // aco_id
+	UserID     uuid.UUID `json:"user_id"`     // user_id
+	RequestURL string    `json:"request_url"` // request_url
+	Status     string    `json:"status"`      // status
+	CreatedAt  time.Time `json:"created_at"`  // created_at
 
 	// xo fields
 	_exists, _deleted bool
@@ -44,14 +44,14 @@ func (j *Job) Insert(db XODB) error {
 
 	// sql insert query, primary key provided by sequence
 	const sqlstr = `INSERT INTO public.jobs (` +
-		`aco_id, user_id, location, status, created_at` +
+		`aco_id, user_id, request_url, status, created_at` +
 		`) VALUES (` +
 		`$1, $2, $3, $4, $5` +
 		`) RETURNING id`
 
 	// run query
-	XOLog(sqlstr, j.AcoID, j.UserID, j.Location, j.Status, j.CreatedAt)
-	err = db.QueryRow(sqlstr, j.AcoID, j.UserID, j.Location, j.Status, j.CreatedAt).Scan(&j.ID)
+	XOLog(sqlstr, j.AcoID, j.UserID, j.RequestURL, j.Status, j.CreatedAt)
+	err = db.QueryRow(sqlstr, j.AcoID, j.UserID, j.RequestURL, j.Status, j.CreatedAt).Scan(&j.ID)
 	if err != nil {
 		return err
 	}
@@ -78,14 +78,14 @@ func (j *Job) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = `UPDATE public.jobs SET (` +
-		`aco_id, user_id, location, status, created_at` +
+		`aco_id, user_id, request_url, status, created_at` +
 		`) = ( ` +
 		`$1, $2, $3, $4, $5` +
 		`) WHERE id = $6`
 
 	// run query
-	XOLog(sqlstr, j.AcoID, j.UserID, j.Location, j.Status, j.CreatedAt, j.ID)
-	_, err = db.Exec(sqlstr, j.AcoID, j.UserID, j.Location, j.Status, j.CreatedAt, j.ID)
+	XOLog(sqlstr, j.AcoID, j.UserID, j.RequestURL, j.Status, j.CreatedAt, j.ID)
+	_, err = db.Exec(sqlstr, j.AcoID, j.UserID, j.RequestURL, j.Status, j.CreatedAt, j.ID)
 	return err
 }
 
@@ -111,18 +111,18 @@ func (j *Job) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.jobs (` +
-		`id, aco_id, user_id, location, status, created_at` +
+		`id, aco_id, user_id, request_url, status, created_at` +
 		`) VALUES (` +
 		`$1, $2, $3, $4, $5, $6` +
 		`) ON CONFLICT (id) DO UPDATE SET (` +
-		`id, aco_id, user_id, location, status, created_at` +
+		`id, aco_id, user_id, request_url, status, created_at` +
 		`) = (` +
-		`EXCLUDED.id, EXCLUDED.aco_id, EXCLUDED.user_id, EXCLUDED.location, EXCLUDED.status, EXCLUDED.created_at` +
+		`EXCLUDED.id, EXCLUDED.aco_id, EXCLUDED.user_id, EXCLUDED.request_url, EXCLUDED.status, EXCLUDED.created_at` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, j.ID, j.AcoID, j.UserID, j.Location, j.Status, j.CreatedAt)
-	_, err = db.Exec(sqlstr, j.ID, j.AcoID, j.UserID, j.Location, j.Status, j.CreatedAt)
+	XOLog(sqlstr, j.ID, j.AcoID, j.UserID, j.RequestURL, j.Status, j.CreatedAt)
+	_, err = db.Exec(sqlstr, j.ID, j.AcoID, j.UserID, j.RequestURL, j.Status, j.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func JobByID(db XODB, id int) (*Job, error) {
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`id, aco_id, user_id, location, status, created_at ` +
+		`id, aco_id, user_id, request_url, status, created_at ` +
 		`FROM public.jobs ` +
 		`WHERE id = $1`
 
@@ -195,7 +195,7 @@ func JobByID(db XODB, id int) (*Job, error) {
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, id).Scan(&j.ID, &j.AcoID, &j.UserID, &j.Location, &j.Status, &j.CreatedAt)
+	err = db.QueryRow(sqlstr, id).Scan(&j.ID, &j.AcoID, &j.UserID, &j.RequestURL, &j.Status, &j.CreatedAt)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -27,8 +28,22 @@ var (
 )
 
 type jobEnqueueArgs struct {
+	ID     int
 	AcoID  string
 	UserID string
+}
+
+type fileItem struct {
+	Type string `json:"type"`
+	URL  string `json:"url"`
+}
+
+type bulkResponseBody struct {
+	TransactionTime     time.Time  `json:"transactionTime"`
+	RequestURL          string     `json:"request"`
+	RequiresAccessToken bool       `json:"requiresAccessToken"`
+	Files               []fileItem `json:"output"`
+	Errors              []fileItem `json:"error"`
 }
 
 func claimsFromToken(token *jwt.Token) (jwt.MapClaims, error) {
@@ -58,17 +73,23 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	acoId, _ := claims["aco"].(string)
 	userId, _ := claims["sub"].(string)
 
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+
 	newJob := models.Job{
-		AcoID:    uuid.Parse(acoId),
-		UserID:   uuid.Parse(userId),
-		Location: "",
-		Status:   "started",
+		AcoID:      uuid.Parse(acoId),
+		UserID:     uuid.Parse(userId),
+		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
+		Status:     "Pending",
 	}
 	if err := newJob.Insert(db); err != nil {
 		log.Fatal(err)
 	}
 
 	args, err := json.Marshal(jobEnqueueArgs{
+		ID:     newJob.ID,
 		AcoID:  acoId,
 		UserID: userId,
 	})
@@ -84,17 +105,8 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	jsonData, err := json.Marshal(newJob)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	_, err = w.Write([]byte(jsonData))
-	if err != nil {
-		log.Fatal(err)
-	}
+	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
@@ -116,16 +128,43 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(job)
-	if err != nil {
-		log.Fatal(err)
-	}
+	switch job.Status {
+	case "Pending":
+		fallthrough
+	case "In Progress":
+		w.Header().Set("X-Progress", job.Status)
+		w.WriteHeader(http.StatusAccepted)
+	case "Failed":
+		http.Error(w, http.StatusText(500), 500)
+	case "Completed":
+		w.Header().Set("Content-Type", "application/json")
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fi := fileItem{
+			Type: "Patient",
+			URL:  "http://serverpath2/patient_file_1.ndjson",
+		}
 
-	_, err = w.Write([]byte(jsonData))
-	if err != nil {
-		log.Fatal(err)
+		rb := bulkResponseBody{
+			TransactionTime:     time.Now(),
+			RequestURL:          job.RequestURL,
+			RequiresAccessToken: true,
+			Files:               []fileItem{fi},
+			Errors:              []fileItem{},
+		}
+
+		jsonData, err := json.Marshal(rb)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+
+		_, err = w.Write([]byte(jsonData))
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 	}
 }
 
