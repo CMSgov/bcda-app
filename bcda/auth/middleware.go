@@ -2,11 +2,15 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
+	"github.com/pborman/uuid"
 )
 
 func ParseToken(next http.Handler) http.Handler {
@@ -59,4 +63,41 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			return
 		}
 	})
+}
+
+func RequireTokenACOMatch(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenValue := r.Context().Value("token")
+
+		if tokenValue == nil {
+			http.Error(w, http.StatusText(401), 401)
+			return
+		}
+
+		if token, ok := tokenValue.(*jwt.Token); ok && token.Valid {
+			claims, err := ClaimsFromToken(token)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			aco, _ := claims["aco"].(string)
+
+			re := regexp.MustCompile("/([a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}).ndjson")
+			urlUUID := re.FindStringSubmatch(r.URL.String())[1]
+
+			if uuid.Equal(uuid.Parse(aco), uuid.Parse(string(urlUUID))) {
+				next.ServeHTTP(w, r)
+			} else {
+				http.Error(w, http.StatusText(404), 404)
+				return
+			}
+		}
+	})
+}
+
+func ClaimsFromToken(token *jwt.Token) (jwt.MapClaims, error) {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		return claims, nil
+	}
+	return jwt.MapClaims{}, errors.New("Error determining token claims")
 }

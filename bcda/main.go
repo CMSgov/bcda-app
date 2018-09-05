@@ -13,7 +13,6 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 )
@@ -39,13 +38,6 @@ type bulkResponseBody struct {
 	RequiresAccessToken bool       `json:"requiresAccessToken"`
 	Files               []fileItem `json:"output"`
 	Errors              []fileItem `json:"error"`
-}
-
-func claimsFromToken(token *jwt.Token) (jwt.MapClaims, error) {
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		return claims, nil
-	}
-	return jwt.MapClaims{}, errors.New("Error determining token claims")
 }
 
 func main() {

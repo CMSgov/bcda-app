@@ -28,7 +28,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 
 	t := r.Context().Value("token")
 	if token, ok := t.(*jwt.Token); ok && token.Valid {
-		claims, err = claimsFromToken(token)
+		claims, err = auth.ClaimsFromToken(token)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -109,7 +109,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fi := fileItem{
-			Type: "Patient",
+			Type: "ExplanationOfBenefit",
 			URL:  fmt.Sprintf("%s://%s/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", scheme, r.Host),
 		}
 

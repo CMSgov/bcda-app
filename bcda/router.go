@@ -31,7 +31,7 @@ func NewRouter() http.Handler {
 	})
 	r.Route("/data", func(r chi.Router) {
 		// With auth to check ACO ID of requested file against token
-		r.Get("/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", serveData)
+		r.With(auth.RequireTokenAuth).With(auth.RequireTokenACOMatch).Get("/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", serveData)
 	})
 	return r
 }
