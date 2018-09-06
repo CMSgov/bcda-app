@@ -29,5 +29,8 @@ func NewRouter() http.Handler {
 			r.Get("/token", getToken)
 		}
 	})
+	r.Route("/data", func(r chi.Router) {
+		r.With(auth.RequireTokenAuth).With(auth.RequireTokenACOMatch).Get("/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", serveData)
+	})
 	return r
 }
