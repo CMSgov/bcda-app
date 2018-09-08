@@ -1,0 +1,16 @@
+FROM golang:1.10.3
+
+RUN openssl genrsa -out /var/local/private.pem 2048
+RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
+
+RUN go get github.com/tools/godep
+RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+RUN go get -u github.com/xo/usql
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app
+COPY . .
+
+RUN godep restore ./...
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app
+CMD ["sh", "unit_test.sh"]
