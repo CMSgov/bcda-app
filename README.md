@@ -6,10 +6,23 @@
 
 To get started:
 
-1. Install [Docker](https://docs.docker.com/install/) and [Docker Compose](https://docs.docker.com/compose/install/)
-1. From the root of the project repository run:
-
+1. Install [Go](https://golang.org/doc/install)
+2. Install [Docker](https://docs.docker.com/install/)
+3. Install [Docker Compose](https://docs.docker.com/compose/install/)
+4. Install [xo](https://github.com/xo/xo)
+5. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
+6. Build and start the app by running the following:
 ```sh
 make docker-bootstrap
 docker-compose up
+```
+
+To interact with the app:
+1) Get a token: `http://localhost:3000/api/v1/token`
+2) POST to `http://localhost:3000/api/v1/claims` with `Authorization: Bearer <token>`
+
+
+To run tests:
+```
+make test
 ```

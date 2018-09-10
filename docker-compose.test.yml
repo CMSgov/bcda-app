@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  unit_test:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.unit_test
+    environment:
+      - DB_HOST_URL=postgresql://postgres:toor@db:5432?sslmode=disable
+      - TEST_DB_URL=postgresql://postgres:toor@db:5432/bcda_test?sslmode=disable
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
