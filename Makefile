@@ -12,7 +12,7 @@ load-fixtures:
 	docker-compose up -d db
 	echo "Wait for db to be ready..."
 	sleep 5
-	docker-compose run -v $(shell pwd)/db:/tmp/db db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /tmp/db/fixtures.sql
+	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 
 docker-build:
 	docker-compose build
