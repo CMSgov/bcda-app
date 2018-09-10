@@ -10,8 +10,8 @@ To get started:
 2. Install [Docker](https://docs.docker.com/install/)
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
 4. Install [xo](https://github.com/xo/xo)
-5. Install [usql](https://github.com/xo/usql) by running command ``` go get -u github.com/xo/usql ```
-6. From the root of the project repository run:
+5. Install [usql](https://github.com/xo/usql)
+6. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
 ```sh
 make docker-bootstrap
