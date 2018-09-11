@@ -6,7 +6,7 @@ models:
 
 test:
 	docker-compose up -d db
-	docker-compose -f docker-compose.test.yml up
+	docker-compose -f docker-compose.test.yml up --force-recreate
 
 load-fixtures:
 	docker-compose up -d db
