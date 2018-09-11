@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/urfave/cli"

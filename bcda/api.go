@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,6 +14,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,11 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	if token, ok := t.(*jwt.Token); ok && token.Valid {
 		claims, err = auth.ClaimsFromToken(token)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			writeErrorWithOperationOutcome(models.OperationOutcome{
+				Issue: models.OperationOutcomeIssue{},
+			}, w)
+			return
 		}
 	}
 
@@ -49,7 +53,11 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		Status:     "Pending",
 	}
 	if err := newJob.Insert(db); err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		writeErrorWithOperationOutcome(models.OperationOutcome{
+			Issue: models.OperationOutcomeIssue{},
+		}, w)
+		return
 	}
 
 	args, err := json.Marshal(jobEnqueueArgs{
@@ -58,7 +66,10 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		UserID: userId,
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		writeErrorWithOperationOutcome(models.OperationOutcome{
+			Issue: models.OperationOutcomeIssue{},
+		}, w)
 	}
 
 	j := &que.Job{
@@ -66,7 +77,11 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		Args: args,
 	}
 	if err = qc.Enqueue(j); err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		writeErrorWithOperationOutcome(models.OperationOutcome{
+			Issue: models.OperationOutcomeIssue{},
+		}, w)
+		return
 	}
 
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
@@ -99,7 +114,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Progress", job.Status)
 		w.WriteHeader(http.StatusAccepted)
 	case "Failed":
-		http.Error(w, http.StatusText(500), 500)
+		writeErrorWithOperationOutcome(models.OperationOutcome{
+			Issue: models.OperationOutcomeIssue{},
+		}, w)
 	case "Completed":
 		w.Header().Set("Content-Type", "application/json")
 
@@ -150,10 +167,23 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		"DBBD1CE1-AE24-435C-807D-ED45953077D3",
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
 	}
 	_, err = w.Write([]byte(token))
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		http.Error(w, "Failed to write token response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func writeErrorWithOperationOutcome(outcome models.OperationOutcome, w http.ResponseWriter) {
+	outcomeJSON, _ := json.Marshal(outcome)
+	w.WriteHeader(http.StatusInternalServerError)
+	_, err := w.Write(outcomeJSON)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
