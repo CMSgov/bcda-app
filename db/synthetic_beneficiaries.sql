@@ -1,7 +1,7 @@
 create table beneficiaries (
   beneficiary_id serial not null primary key,
   patient_id text not null,
-  aco_id uuid not null
+  aco_id uuid not null references acos
 );
 
 insert into beneficiaries values (default,'19990000002901','3461C774-B48F-11E8-96F8-529269fb1459'),
