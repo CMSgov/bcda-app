@@ -21,6 +21,7 @@ Build the images and start the containers:
 1. Build the images
 ```sh
 make docker-bootstrap
+```
 2. Start the containers
 ```sh
 docker-compose up
