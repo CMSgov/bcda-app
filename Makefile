@@ -6,13 +6,13 @@ models:
 
 test:
 	docker-compose up -d db
-	docker-compose -f docker-compose.test.yml up
+	docker-compose -f docker-compose.test.yml up --force-recreate
 
 load-fixtures:
 	docker-compose up -d db
 	echo "Wait for db to be ready..."
 	sleep 5
-	usql "postgres://postgres:toor@localhost:5432/bcda?sslmode=disable" -f db/fixtures.sql
+	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 
 docker-build:
 	docker-compose build

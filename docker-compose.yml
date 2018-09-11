@@ -19,6 +19,7 @@ services:
       - "5432:5432"
     volumes:
       - ./db/api.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db:/var/db
   api:
     build:
       context: .
