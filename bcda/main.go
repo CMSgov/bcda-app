@@ -41,6 +41,15 @@ type bulkResponseBody struct {
 	Errors              []fileItem `json:"error"`
 }
 
+func init() {
+	file, err := os.OpenFile("/var/log/bcda.log", os.O_CREATE|os.O_WRONLY, 0666)
+	if err == nil {
+		log.SetOutput(file)
+	} else {
+		log.Info("Failed to log to file, using default stderr")
+	}
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "bcda"
