@@ -178,10 +178,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func createACO(name string) (string, error) {

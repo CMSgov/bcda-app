@@ -8,10 +8,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/models"
@@ -159,7 +160,7 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 	return nil
 }
 
-func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
+func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) (bool, error) {
 	var (
 		err  error
 		hash Hash = Hash{}
@@ -177,7 +178,7 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
 
 	rows, err := db.Query(sqlstr, claims["id"])
 	if err != nil {
-		log.Fatal(err)
+		return true, err
 	}
 	defer rows.Close()
 
@@ -185,15 +186,15 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) bool {
 		t := models.Token{}
 		err = rows.Scan(&t.Value)
 		if err != nil {
-			log.Fatal(err)
+			return true, err
 		}
 
 		if match := hash.Compare(t.Value, token.Raw); match {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 func getPrivateKey() *rsa.PrivateKey {
