@@ -36,12 +36,12 @@ debug-api:
 	docker-compose start db queue worker
 	@echo "Starting debugger. This may take a while..."
 	@-bash -c "trap 'docker-compose stop' EXIT; \
-		docker-compose run --no-deps -T --rm -p 3000:3000 -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app api dlv debug -- start-api"
+		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -p 3000:3000 -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app api dlv debug -- start-api"
 
 debug-worker:
 	docker-compose start db queue api
 	@echo "Starting debugger. This may take a while..."
 	@-bash -c "trap 'docker-compose stop' EXIT: \
-		docker-compose run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
+		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
 .PHONY: models docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell

@@ -36,8 +36,6 @@ services:
       - "3000:3000"
     depends_on:
       - queue
-    security_opt:
-      - seccomp:unconfined
   worker:
     build:
       context: .
@@ -49,5 +47,3 @@ services:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
       - queue
-    security_opt:
-      - seccomp:unconfined
