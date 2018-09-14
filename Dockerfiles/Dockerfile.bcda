@@ -11,5 +11,8 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 RUN godep restore ./...
 
+ENV BCDA_ERROR_LOG /var/log/bcda-error.log
+ENV BCDA_REQUEST_LOG /var/log/bcda-request.log
+
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 CMD ["fresh", "-r", "start-api"]

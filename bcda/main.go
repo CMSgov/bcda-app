@@ -42,11 +42,12 @@ type bulkResponseBody struct {
 }
 
 func init() {
-	file, err := os.OpenFile("/var/log/bcda.log", os.O_CREATE|os.O_WRONLY, 0666)
+	filePath := os.Getenv("BCDA_ERROR_LOG")
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err == nil {
 		log.SetOutput(file)
 	} else {
-		log.Info("Failed to log to file, using default stderr")
+		log.Info("Failed to log to file; using default stderr")
 	}
 }
 

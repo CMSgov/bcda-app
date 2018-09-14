@@ -16,11 +16,12 @@ import (
 func NewStructuredLogger() func(next http.Handler) http.Handler {
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
-	file, err := os.OpenFile("/var/log/bcda-request.log", os.O_CREATE|os.O_WRONLY, 0666)
+	filePath := os.Getenv("BCDA_REQUEST_LOG")
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err == nil {
 		logger.SetOutput(file)
 	} else {
-		logger.Info("Failed to log to file, using default stderr")
+		logger.Info("Failed to log to file; using default stderr")
 	}
 	return middleware.RequestLogger(&StructuredLogger{Logger: logger})
 }
