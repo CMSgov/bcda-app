@@ -12,6 +12,7 @@ import (
 	"github.com/CMSgov/bcda-app/models"
 	que "github.com/bgentry/que-go"
 	jwt "github.com/dgrijalva/jwt-go"
+	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -31,9 +32,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		claims, err = auth.ClaimsFromToken(token)
 		if err != nil {
 			log.Error(err)
-			writeErrorWithOperationOutcome(models.OperationOutcome{
-				Issue: models.OperationOutcomeIssue{},
-			}, w)
+			writeError(fhirmodels.OperationOutcome{}, w)
 			return
 		}
 	}
@@ -54,9 +53,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := newJob.Insert(db); err != nil {
 		log.Error(err)
-		writeErrorWithOperationOutcome(models.OperationOutcome{
-			Issue: models.OperationOutcomeIssue{},
-		}, w)
+		writeError(fhirmodels.OperationOutcome{}, w)
 		return
 	}
 
@@ -67,9 +64,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Error(err)
-		writeErrorWithOperationOutcome(models.OperationOutcome{
-			Issue: models.OperationOutcomeIssue{},
-		}, w)
+		writeError(fhirmodels.OperationOutcome{}, w)
 	}
 
 	j := &que.Job{
@@ -78,9 +73,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = qc.Enqueue(j); err != nil {
 		log.Error(err)
-		writeErrorWithOperationOutcome(models.OperationOutcome{
-			Issue: models.OperationOutcomeIssue{},
-		}, w)
+		writeError(fhirmodels.OperationOutcome{}, w)
 		return
 	}
 
@@ -114,9 +107,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Progress", job.Status)
 		w.WriteHeader(http.StatusAccepted)
 	case "Failed":
-		writeErrorWithOperationOutcome(models.OperationOutcome{
-			Issue: models.OperationOutcomeIssue{},
-		}, w)
+		writeError(fhirmodels.OperationOutcome{}, w)
 	case "Completed":
 		w.Header().Set("Content-Type", "application/json")
 
@@ -179,7 +170,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func writeErrorWithOperationOutcome(outcome models.OperationOutcome, w http.ResponseWriter) {
+func writeError(outcome fhirmodels.OperationOutcome, w http.ResponseWriter) {
 	outcomeJSON, _ := json.Marshal(outcome)
 	w.WriteHeader(http.StatusInternalServerError)
 	_, err := w.Write(outcomeJSON)

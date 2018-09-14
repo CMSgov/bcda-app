@@ -27,7 +27,22 @@
 			"Rev": "0b96aaa707760d6ab28d9b9d1913ff5993328bae"
 		},
 		{
+			"ImportPath": "github.com/eug48/fhir/models",
+			"Comment": "DSTU1-383-g8014496",
+			"Rev": "80144968c1019660c3756f38ba233c4a31f6c65c"
+		},
+		{
+			"ImportPath": "github.com/eug48/fhir/utils",
+			"Comment": "DSTU1-383-g8014496",
+			"Rev": "80144968c1019660c3756f38ba233c4a31f6c65c"
+		},
+		{
 			"ImportPath": "github.com/go-chi/chi",
+			"Comment": "v3.3.2-5-gcca4135",
+			"Rev": "cca4135d8dddff765463feaf1118047a9e506b4a"
+		},
+		{
+			"ImportPath": "github.com/go-chi/chi/middleware",
 			"Comment": "v3.3.2-5-gcca4135",
 			"Rev": "cca4135d8dddff765463feaf1118047a9e506b4a"
 		},
@@ -87,6 +102,11 @@
 			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
 		},
 		{
+			"ImportPath": "github.com/sirupsen/logrus",
+			"Comment": "v1.0.6-11-gd329d24",
+			"Rev": "d329d24db4313262a3b0a24d8aeb1dc4bd294fb0"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Comment": "v1.1.4-27-g4d4bfba",
 			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
@@ -113,6 +133,28 @@
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
 			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "904bdc257025c7b3f43c19360ad3ab85783fad78"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/windows",
+			"Rev": "904bdc257025c7b3f43c19360ad3ab85783fad78"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/bson",
+			"Comment": "r2016.08.01-7-g9856a29",
+			"Rev": "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/internal/json",
+			"Comment": "r2016.08.01-7-g9856a29",
+			"Rev": "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
 		}
 	]
 }
