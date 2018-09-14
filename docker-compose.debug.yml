@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  api:
+    security_opt:
+      - seccomp:unconfined
+  worker:
+    security_opt:
+      - seccomp:unconfined
