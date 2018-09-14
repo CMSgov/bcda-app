@@ -65,6 +65,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error(err)
 		writeError(fhirmodels.OperationOutcome{}, w)
+		return
 	}
 
 	j := &que.Job{
@@ -172,6 +173,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 
 func writeError(outcome fhirmodels.OperationOutcome, w http.ResponseWriter) {
 	outcomeJSON, _ := json.Marshal(outcome)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
 	_, err := w.Write(outcomeJSON)
 	if err != nil {
