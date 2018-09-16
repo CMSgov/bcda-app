@@ -123,18 +123,55 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
+			errorStatus := createOperationOutcome("marshalling error")
+			_, err = w.Write([]byte(errorStatus))
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
+			errorStatus := createOperationOutcome("writing error")
+			_, err = w.Write([]byte(errorStatus))
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
 			http.Error(w, http.StatusText(500), 500)
 			return
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
 	}
+}
+
+func createOperationOutcome(outcome string) []byte {
+	is := issue {
+		Severity: "",
+		Code: "",
+		Details: codeableConcept{nil,""},
+		Diagnostics: "",
+		Location: nil,
+		Expression: nil,
+	}
+
+	oo := operationOutcomeBody{
+		ResourceType: "OperationOutcome",
+		Id: outcome,
+		Text: "",
+		Issue: []issue{is},
+	}
+
+	jsonData, err := json.Marshal(oo)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+	return jsonData
 }
 
 func serveData(w http.ResponseWriter, r *http.Request) {
