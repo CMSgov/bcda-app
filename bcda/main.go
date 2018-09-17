@@ -221,12 +221,12 @@ func createUser(acoID, name, email string) (string, error) {
 	}
 
 	authBackend := auth.InitAuthBackend()
-	userUUID, err := authBackend.CreateUser(name, email, acoUUID)
+	user, err := authBackend.CreateUser(name, email, acoUUID)
 	if err != nil {
 		return "", err
 	}
 
-	return userUUID.String(), nil
+	return user.UUID.String(), nil
 }
 
 func createAccessToken(acoID, userID string) (string, error) {
@@ -256,7 +256,7 @@ func createAccessToken(acoID, userID string) (string, error) {
 
 	authBackend := auth.InitAuthBackend()
 
-	token, err := authBackend.GenerateToken(userID, acoID)
+	token, err := authBackend.GenerateTokenString(userID, acoID)
 	if err != nil {
 		return "", err
 	}

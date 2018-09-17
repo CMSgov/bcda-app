@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcdagorm"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/models"
 	que "github.com/bgentry/que-go"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
@@ -23,7 +23,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		err    error
 	)
 
-	db := database.GetDbConnection()
+	db := database.GetGORMDbConnection()
 	defer db.Close()
 
 	t := r.Context().Value("token")
@@ -42,18 +42,18 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		scheme = "https"
 	}
 
-	newJob := models.Job{
+	newJob := bcdagorm.Job{
 		AcoID:      uuid.Parse(acoId),
 		UserID:     uuid.Parse(userId),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
-	if err := newJob.Insert(db); err != nil {
+	if err := db.Save(newJob); err != nil {
 		log.Fatal(err)
 	}
 
 	args, err := json.Marshal(jobEnqueueArgs{
-		ID:     newJob.ID,
+		ID:     int(newJob.ID),
 		AcoID:  acoId,
 		UserID: userId,
 	})
@@ -75,7 +75,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobId")
-	db := database.GetDbConnection()
+	db := database.GetGORMDbConnection()
 	defer db.Close()
 
 	i, err := strconv.Atoi(jobID)
@@ -84,8 +84,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(400), 400)
 		return
 	}
-
-	job, err := models.JobByID(db, i)
+	var job bcdagorm.Job
+	err = db.First(&job, i).Error
 	if err != nil {
 		log.Print(err)
 		http.Error(w, http.StatusText(404), 404)
@@ -145,7 +145,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	authBackend := auth.InitAuthBackend()
 
 	// Generates a token for fake user and ACO combination
-	token, err := authBackend.GenerateToken(
+	token, err := authBackend.GenerateTokenString(
 		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
 		"DBBD1CE1-AE24-435C-807D-ED45953077D3",
 	)
