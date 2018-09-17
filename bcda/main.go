@@ -40,6 +40,28 @@ type bulkResponseBody struct {
 	Errors              []fileItem `json:"error"`
 }
 
+type codeableConcept struct {
+	Coding  []string `json:"coding"`
+	Text    string   `json:"text"`
+}
+
+type issue struct {
+	Severity    string           `json:"severity"`
+	Code        string           `json:"code"`
+	Details     codeableConcept  `json:"details"`
+	Diagnostics string           `json:"diagnostics"`
+	Location    []string         `json:"location"`
+	Expression  []string         `json:"expression"`
+}
+
+type operationOutcomeBody struct {
+    ResourceType  string     `json:"resourceType"`
+    Id            string     `json:"id"`
+    Text          string     `json:"text"`
+    Issue         []issue    `json:"issue"`
+}
+
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "bcda"
