@@ -22,6 +22,7 @@ type BackendTestSuite struct {
 }
 
 func (s *BackendTestSuite) SetupTest() {
+	bcdagorm.Initialize()
 	s.SetupAuthBackend()
 }
 
