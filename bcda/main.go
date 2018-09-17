@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/urfave/cli"
@@ -38,6 +39,17 @@ type bulkResponseBody struct {
 	RequiresAccessToken bool       `json:"requiresAccessToken"`
 	Files               []fileItem `json:"output"`
 	Errors              []fileItem `json:"error"`
+}
+
+func init() {
+	log.SetFormatter(&log.JSONFormatter{})
+	filePath := os.Getenv("BCDA_ERROR_LOG")
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+	if err == nil {
+		log.SetOutput(file)
+	} else {
+		log.Info("Failed to log to file; using default stderr")
+	}
 }
 
 func main() {
@@ -174,10 +186,6 @@ func main() {
 	}
 
 	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	if err != nil {
 		log.Fatal(err)
 	}

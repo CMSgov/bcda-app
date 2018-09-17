@@ -63,12 +63,14 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 		return s.authBackend.PublicKey, nil
 	})
 
-	blacklisted := s.authBackend.IsBlacklisted(token)
+	blacklisted, err := s.authBackend.IsBlacklisted(token)
+	assert.Nil(s.T(), err)
 	assert.False(s.T(), blacklisted)
 
 	_ = s.authBackend.RevokeToken(tokenString)
 
-	blacklisted = s.authBackend.IsBlacklisted(token)
+	blacklisted, err = s.authBackend.IsBlacklisted(token)
+	assert.Nil(s.T(), err)
 	assert.True(s.T(), blacklisted)
 }
 
