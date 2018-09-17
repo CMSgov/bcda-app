@@ -1,11 +1,9 @@
 {
 	"ImportPath": "github.com/CMSgov/bcda-app",
-	"GoVersion": "go1.10",
+	"GoVersion": "go1.11",
 	"GodepVersion": "v80",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
+
 		{
 			"ImportPath": "github.com/bgentry/que-go",
 			"Comment": "v1.0.1",
@@ -28,6 +26,11 @@
 		},
 		{
 			"ImportPath": "github.com/go-chi/chi",
+			"Comment": "v3.3.2-5-gcca4135",
+			"Rev": "cca4135d8dddff765463feaf1118047a9e506b4a"
+		},
+		{
+			"ImportPath": "github.com/go-chi/chi/middleware",
 			"Comment": "v3.3.2-5-gcca4135",
 			"Rev": "cca4135d8dddff765463feaf1118047a9e506b4a"
 		},
@@ -62,13 +65,29 @@
 			"Rev": "39bbc98d99d7b666759f84514859becf8067128f"
 		},
 		{
+			"ImportPath": "github.com/jinzhu/gorm",
+			"Comment": "v1.9.1-29-g123d4f5",
+			"Rev": "123d4f50ef8a8209ee8434daa41c6045a9111864"
+		},
+		{
+			"ImportPath": "github.com/jinzhu/gorm/dialects/postgres",
+			"Comment": "v1.9.1-29-g123d4f5",
+			"Rev": "123d4f50ef8a8209ee8434daa41c6045a9111864"
+		},
+		{
+			"ImportPath": "github.com/jinzhu/inflection",
+			"Rev": "04140366298a54a039076d798123ffa108fff46c"
+		},
+		{
 			"ImportPath": "github.com/lib/pq",
-			"Comment": "go1.0-cutoff-212-g90697d6",
+			"Rev": "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+		},
+		{
+			"ImportPath": "github.com/lib/pq/hstore",
 			"Rev": "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 		},
 		{
 			"ImportPath": "github.com/lib/pq/oid",
-			"Comment": "go1.0-cutoff-212-g90697d6",
 			"Rev": "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 		},
 		{
@@ -85,6 +104,11 @@
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
 			"Comment": "v1.0.0",
 			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
+		},
+		{
+			"ImportPath": "github.com/sirupsen/logrus",
+			"Comment": "v1.0.6-58-gf3df9ae",
+			"Rev": "f3df9aeffda7c12bd9f5a03f9251d75d35993165"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
@@ -107,12 +131,16 @@
 			"Rev": "8e01ec4cd3e2d84ab2fe90d8210528ffbb06d8ff"
 		},
 		{
-			"ImportPath": "golang.org/x/crypto/bcrypt",
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
 			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 		},
 		{
-			"ImportPath": "golang.org/x/crypto/blowfish",
-			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "d0be0721c37eeb5299f245a996a483160fc36940"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/windows",
+			"Rev": "d0be0721c37eeb5299f245a996a483160fc36940"
 		}
 	]
 }
