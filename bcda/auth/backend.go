@@ -61,7 +61,7 @@ func (backend *JWTAuthenticationBackend) CreateACO(name string) (uuid.UUID, erro
 		`$1, $2, $3, $3` +
 		`)`
 
-	acoUUID := uuid.NewUUID()
+	acoUUID := uuid.NewRandom()
 	now := time.Now()
 
 	_, err := db.Exec(sqlstr, acoUUID, name, now)
@@ -83,7 +83,7 @@ func (backend *JWTAuthenticationBackend) CreateUser(name string, email string, a
 		`$1, $2, $3, $4, $5, $5` +
 		`)`
 
-	userUUID := uuid.NewUUID()
+	userUUID := uuid.NewRandom()
 	now := time.Now()
 
 	_, err := db.Exec(sqlstr, userUUID, name, email, acoUUID, now)
@@ -107,7 +107,7 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID stri
 		"iat": time.Now().Unix(),
 		"sub": userID,
 		"aco": acoID,
-		"id":  uuid.NewUUID(),
+		"id":  uuid.NewRandom(),
 	}
 	tokenString, err := token.SignedString(backend.PrivateKey)
 	if err != nil {
