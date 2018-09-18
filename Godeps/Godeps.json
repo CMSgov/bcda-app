@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/CMSgov/bcda-app",
-	"GoVersion": "go1.10",
+	"GoVersion": "go1.11",
 	"GodepVersion": "v80",
 	"Packages": [
 		"./..."
@@ -123,11 +123,6 @@
 			"Rev": "d329d24db4313262a3b0a24d8aeb1dc4bd294fb0"
 		},
 		{
-			"ImportPath": "github.com/sirupsen/logrus",
-			"Comment": "v1.0.6-58-gf3df9ae",
-			"Rev": "f3df9aeffda7c12bd9f5a03f9251d75d35993165"
-		},
-		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Comment": "v1.1.4-27-g4d4bfba",
 			"Rev": "4d4bfba8f1d1027c4fdbe371823030df51419987"
@@ -152,14 +147,6 @@
 			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 		},
 		{
-			"ImportPath": "golang.org/x/crypto/blowfish",
-			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/ssh/terminal",
-			"Rev": "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
-		},
-		{
 			"ImportPath": "golang.org/x/sys/unix",
 			"Rev": "904bdc257025c7b3f43c19360ad3ab85783fad78"
 		},
@@ -176,12 +163,6 @@
 			"ImportPath": "gopkg.in/mgo.v2/internal/json",
 			"Comment": "r2016.08.01-7-g9856a29",
 			"Rev": "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
-			"ImportPath": "golang.org/x/sys/unix",
-			"Rev": "d0be0721c37eeb5299f245a996a483160fc36940"
-		},
-		{
-			"ImportPath": "golang.org/x/sys/windows",
-			"Rev": "d0be0721c37eeb5299f245a996a483160fc36940"
 		}
 	]
 }
