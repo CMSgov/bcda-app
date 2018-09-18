@@ -5,3 +5,4 @@ bcda/debug
 bcdaworker/bcdaworker
 bcdaworker/debug
 test_results/*
+.idea

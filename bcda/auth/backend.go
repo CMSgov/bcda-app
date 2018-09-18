@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcdagorm"
 	"github.com/jinzhu/gorm"
-	"log"
 	"os"
 	"strconv"
 	"time"

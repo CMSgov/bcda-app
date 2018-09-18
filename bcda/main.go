@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcdagorm"
-	"log"
 	"net/http"
 	"os"
 	"strings"

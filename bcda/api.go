@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcdagorm"
-	"log"
 	"net/http"
 	"strconv"
 	"time"

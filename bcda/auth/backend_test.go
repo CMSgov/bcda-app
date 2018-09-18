@@ -267,7 +267,6 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	_ = s.authBackend.RevokeToken(token.Value)
 
 	blacklisted = s.authBackend.IsBlacklisted(jwtToken)
-	blacklisted, err = s.authBackend.IsBlacklisted(token)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), blacklisted)
 }
