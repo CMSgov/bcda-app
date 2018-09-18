@@ -2,8 +2,10 @@
 	"ImportPath": "github.com/CMSgov/bcda-app",
 	"GoVersion": "go1.11",
 	"GodepVersion": "v80",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
-
 		{
 			"ImportPath": "github.com/bgentry/que-go",
 			"Comment": "v1.0.1",

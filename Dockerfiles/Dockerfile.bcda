@@ -6,7 +6,7 @@ RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/
 RUN go get github.com/tools/godep
 RUN go get github.com/pressly/fresh
 RUN go get -u github.com/derekparker/delve/cmd/dlv
-RUN go get -u github.com/jinzhu/gorm
+
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .

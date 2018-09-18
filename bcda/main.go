@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcdagorm"
 	"log"
 	"net/http"
 	"os"
@@ -44,6 +45,8 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "bcda"
 	app.Usage = "Beneficiary Claims Data API CLI"
+	// Initialize models to get the database in the right spot
+	bcdagorm.Initialize()
 	var acoName, acoID, userName, userEmail, userID, accessToken string
 	app.Commands = []cli.Command{
 		{
