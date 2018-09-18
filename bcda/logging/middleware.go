@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -15,6 +16,13 @@ import (
 func NewStructuredLogger() func(next http.Handler) http.Handler {
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
+	filePath := os.Getenv("BCDA_REQUEST_LOG")
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+	if err == nil {
+		logger.SetOutput(file)
+	} else {
+		logger.Info("Failed to log to file; using default stderr")
+	}
 	return middleware.RequestLogger(&StructuredLogger{Logger: logger})
 }
 

@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"

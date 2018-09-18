@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
@@ -55,13 +56,20 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 		token := tokenValue.(*jwt.Token)
 
-		if token.Valid && !authBackend.IsBlacklisted(token) {
-			ctx := context.WithValue(r.Context(), "token", token)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		} else {
-			http.Error(w, http.StatusText(401), 401)
-			return
+		if token.Valid {
+			blacklisted, err := authBackend.IsBlacklisted(token)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			if !blacklisted {
+				ctx := context.WithValue(r.Context(), "token", token)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 		}
+
+		http.Error(w, http.StatusText(401), 401)
 	})
 }
 
@@ -70,14 +78,16 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 		tokenValue := r.Context().Value("token")
 
 		if tokenValue == nil {
-			http.Error(w, http.StatusText(401), 401)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
 		if token, ok := tokenValue.(*jwt.Token); ok && token.Valid {
 			claims, err := ClaimsFromToken(token)
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
 			}
 
 			aco, _ := claims["aco"].(string)
@@ -88,7 +98,7 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 			if uuid.Equal(uuid.Parse(aco), uuid.Parse(string(urlUUID))) {
 				next.ServeHTTP(w, r)
 			} else {
-				http.Error(w, http.StatusText(404), 404)
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 				return
 			}
 		}
