@@ -34,6 +34,9 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 			writeError(fhirmodels.OperationOutcome{}, w)
 			return
 		}
+	} else {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
 	}
 
 	acoId, _ := claims["aco"].(string)
