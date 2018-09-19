@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"errors"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcdagorm"
 	"github.com/jinzhu/gorm"
 
 	//"strings"
@@ -22,7 +21,7 @@ type BackendTestSuite struct {
 }
 
 func (s *BackendTestSuite) SetupTest() {
-	bcdagorm.Initialize()
+	auth.InitializeGormModels()
 	s.SetupAuthBackend()
 }
 
@@ -73,11 +72,11 @@ func (s *BackendTestSuite) TestGenerateToken() {
 func (s *BackendTestSuite) TestCreateToken() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	db := database.GetGORMDbConnection()
-	var user bcdagorm.User
+	var user auth.User
 	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to locate user"))
 	}
-	token, err := s.authBackend.CreateToken(user)
+	token, _, err := s.authBackend.CreateToken(user)
 	assert.NotNil(s.T(), token.UUID)
 	assert.Nil(s.T(), err)
 }
@@ -85,22 +84,23 @@ func (s *BackendTestSuite) TestCreateToken() {
 func (s *BackendTestSuite) TestRevokeToken() {
 	db := database.GetGORMDbConnection()
 	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	var user bcdagorm.User
+	var user auth.User
 	db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID)
 	// Good Revoke test
-	token, _ := s.authBackend.CreateToken(user)
-	err := s.authBackend.RevokeToken(token.Value)
+	_, tokenString, _ := s.authBackend.CreateToken(user)
+
+	err := s.authBackend.RevokeToken(tokenString)
 	assert.Nil(s.T(), err)
-	jwtToken, err := s.authBackend.GetJWTToken(token.Value)
+	jwtToken, err := s.authBackend.GetJWTToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), s.authBackend.IsBlacklisted(jwtToken))
 
 	// Revoke the token again, you can't
-	err = s.authBackend.RevokeToken(token.Value)
+	err = s.authBackend.RevokeToken(tokenString)
 	assert.NotNil(s.T(), err)
 
 	// Revoke a token that doesn't exist
-	tokenString, _ := s.authBackend.GenerateTokenString(uuid.NewRandom().String(), acoID)
+	tokenString, _ = s.authBackend.GenerateTokenString(uuid.NewRandom().String(), acoID)
 	err = s.authBackend.RevokeToken(tokenString)
 	assert.NotNil(s.T(), err)
 	assert.True(s.T(), gorm.IsRecordNotFoundError(err))
@@ -112,7 +112,7 @@ func (s *BackendTestSuite) TestRevokeUserTokens() {
 
 	db := database.GetGORMDbConnection()
 	// Get the User
-	var revokedUser, validUser bcdagorm.User
+	var revokedUser, validUser auth.User
 	if db.First(&revokedUser, "Email = ?", revokedEmail).RecordNotFound() {
 		// If this user doesn't exist the test has failed
 		assert.NotNil(s.T(), errors.New("unable to find User"))
@@ -122,24 +122,24 @@ func (s *BackendTestSuite) TestRevokeUserTokens() {
 		assert.NotNil(s.T(), errors.New("unable to find User"))
 	}
 	// make 2 valid tokens for this user to be revoked later
-	revokedToken, err := s.authBackend.CreateToken(revokedUser)
-	revokedJWTToken, _ := s.authBackend.GetJWTToken(revokedToken.Value)
+	_, revokedTokenString, err := s.authBackend.CreateToken(revokedUser)
+	revokedJWTToken, _ := s.authBackend.GetJWTToken(revokedTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(revokedJWTToken))
 
-	otherRevokedToken, err := s.authBackend.CreateToken(revokedUser)
-	otherRevokedJWTToken, _ := s.authBackend.GetJWTToken(otherRevokedToken.Value)
+	_, otherRevokedTokenString, err := s.authBackend.CreateToken(revokedUser)
+	otherRevokedJWTToken, _ := s.authBackend.GetJWTToken(otherRevokedTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(otherRevokedJWTToken))
 
 	// Make 2 valid tokens for this user that won't be revoked
-	validToken, err := s.authBackend.CreateToken(validUser)
-	validJWTToken, _ := s.authBackend.GetJWTToken(validToken.Value)
+	_, validTokenString, err := s.authBackend.CreateToken(validUser)
+	validJWTToken, _ := s.authBackend.GetJWTToken(validTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(validJWTToken))
 
-	otherValidToken, err := s.authBackend.CreateToken(validUser)
-	otherValidJWTToken, _ := s.authBackend.GetJWTToken(otherValidToken.Value)
+	_, otherValidTokenString, err := s.authBackend.CreateToken(validUser)
+	otherValidJWTToken, _ := s.authBackend.GetJWTToken(otherValidTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(otherValidJWTToken))
 
@@ -160,7 +160,7 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 	db := database.GetGORMDbConnection()
 
 	// Get the ACO's
-	var revokedACO, validACO bcdagorm.ACO
+	var revokedACO, validACO auth.ACO
 	if db.First(&revokedACO, "UUID = ?", revokedACOUUID).RecordNotFound() {
 		// If this user doesn't exist the test has failed
 		assert.NotNil(s.T(), errors.New("unable to find ACO"))
@@ -170,7 +170,7 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 		assert.NotNil(s.T(), errors.New("unable to find ACO"))
 	}
 
-	users := []bcdagorm.User{}
+	users := []auth.User{}
 
 	// Make a token for each user in the aco and then verify they have a valid token
 	if db.Find(&users, "aco_id = ?", revokedACOUUID).RecordNotFound() {
@@ -178,9 +178,9 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 	}
 	for _, user := range users {
 		// Make sure we create a token for this user
-		_, err := s.authBackend.CreateToken(user)
+		_, _, err := s.authBackend.CreateToken(user)
 		assert.Nil(s.T(), err)
-		tokens := []bcdagorm.Token{}
+		tokens := []auth.Token{}
 		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
 		// Must have one or more tokens here
 		numValidTokens := len(tokens)
@@ -194,9 +194,9 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 	}
 	for _, user := range users {
 		// Make sure we create a token for this user
-		_, err := s.authBackend.CreateToken(user)
+		_, _, err := s.authBackend.CreateToken(user)
 		assert.Nil(s.T(), err)
-		tokens := []bcdagorm.Token{}
+		tokens := []auth.Token{}
 		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
 		// Must have one or more tokens here
 		numValidTokens := len(tokens)
@@ -213,7 +213,7 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 	}
 	// Make sure none of them have a valid token
 	for _, user := range users {
-		tokens := []bcdagorm.Token{}
+		tokens := []auth.Token{}
 		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
 		// Should be no valid tokens here
 		numValidTokens := len(tokens)
@@ -229,7 +229,7 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 	}
 	// Make sure none of them have a valid token
 	for _, user := range users {
-		tokens := []bcdagorm.Token{}
+		tokens := []auth.Token{}
 		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
 		// Should be valid tokens here
 		numValidTokens := len(tokens)
@@ -247,8 +247,8 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 
 	db := database.GetGORMDbConnection()
 
-	var aco bcdagorm.ACO
-	var user bcdagorm.User
+	var aco auth.ACO
+	var user auth.User
 	// Bad test if we can't find the ACO
 	if db.Find(&aco, "UUID = ?", acoID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to find ACO"))
@@ -257,14 +257,16 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	if db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to find User"))
 	}
-	token, err := s.authBackend.CreateToken(user)
+	_, tokenString, err := s.authBackend.CreateToken(user)
 	assert.Nil(s.T(), err)
-	jwtToken, err := s.authBackend.GetJWTToken(token.Value)
+	// Convert tokenString to a jwtToken
+	jwtToken, err := s.authBackend.GetJWTToken(tokenString)
 	assert.Nil(s.T(), err)
+	// Test to see if this is blacklisted
 	blacklisted := s.authBackend.IsBlacklisted(jwtToken)
 	assert.False(s.T(), blacklisted)
 
-	_ = s.authBackend.RevokeToken(token.Value)
+	_ = s.authBackend.RevokeToken(tokenString)
 
 	blacklisted = s.authBackend.IsBlacklisted(jwtToken)
 	assert.Nil(s.T(), err)

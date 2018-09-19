@@ -3,17 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcdagorm"
+	"github.com/CMSgov/bcda-app/bcda/bcda"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/bgentry/que-go"
+	"github.com/jackc/pgx"
 	"log"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
 )
 
 var (
@@ -38,7 +37,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	var exportJob bcdagorm.Job
+	var exportJob bcda.Job
 	err = db.First(&exportJob, "ID = ?", jobArgs.ID).Error
 	if err != nil {
 		return err

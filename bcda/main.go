@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcdagorm"
+	"github.com/CMSgov/bcda-app/bcda/bcda"
 	"net/http"
 	"os"
 	"strings"
@@ -191,7 +191,8 @@ func main() {
 			Action: func(c *cli.Context) error {
 				fmt.Println("Initializing Database")
 				// Initialize models to get the database in the right spot
-				bcdagorm.Initialize()
+				bcda.InitializeGormModels()
+				auth.InitializeGormModels()
 				fmt.Println("Completed Database Initialization")
 				return nil
 			},

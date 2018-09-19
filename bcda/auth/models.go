@@ -1,4 +1,4 @@
-package bcdagorm
+package auth
 
 import (
 	"github.com/jinzhu/gorm"
@@ -8,7 +8,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 )
 
-func Initialize() *gorm.DB {
+func InitializeGormModels() *gorm.DB {
 	db := database.GetGORMDbConnection()
 
 	defer db.Close()
@@ -17,7 +17,6 @@ func Initialize() *gorm.DB {
 	// Add your new models here
 	db.AutoMigrate(
 		&ACO{},
-		&Job{},
 		&Token{},
 		&User{},
 	)
@@ -49,6 +48,26 @@ type Token struct {
 	Value  string    `gorm:"type:varchar(511); unique" json:"value"` // value
 	Active bool      `json:"active"`                                 // active
 
+}
+
+func (token *Token) BeforeSave() error {
+	backend := InitAuthBackend()
+	// Parse the value into a token.  If this works, it needs to be hashed before saving
+	jwtToken, err := backend.GetJWTToken(token.Value)
+	// If the parse to jwtToken fails then the value is already hashed (or not valid for other reasons) and no need to rehash it
+	if err != nil {
+		return nil
+	}
+	hash := Hash{}
+	// If the token is valid hash it. If not, mark it inactive and clear out the value
+	if jwtToken.Valid {
+		token.Value = hash.Generate(token.Value)
+	} else {
+		token.Value = hash.Generate("INVALID")
+		token.Active = false
+	}
+
+	return nil
 }
 
 type User struct {

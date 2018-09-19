@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcdagorm"
 	"github.com/jinzhu/gorm"
 	"os"
 	"strconv"
@@ -56,24 +55,24 @@ func InitAuthBackend() *JWTAuthenticationBackend {
 func (backend *JWTAuthenticationBackend) CreateACO(name string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	aco := bcdagorm.ACO{Name: name, UUID: uuid.NewRandom()}
+	aco := ACO{Name: name, UUID: uuid.NewRandom()}
 	db.Create(&aco)
 
 	return aco.UUID, db.Error
 }
 
-func (backend *JWTAuthenticationBackend) CreateUser(name string, email string, acoUUID uuid.UUID) (bcdagorm.User, error) {
+func (backend *JWTAuthenticationBackend) CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	var aco bcdagorm.ACO
-	var user bcdagorm.User
+	var aco ACO
+	var user User
 	// If we don't find the ACO return a blank user and an error
 	if db.First(&aco, "UUID = ?", acoUUID).RecordNotFound() {
 		return user, fmt.Errorf("unable to locate ACO with id of %v", acoUUID)
 	}
 	// check for duplicate email addresses and only make one if it isn't found
 	if db.First(&user, "email = ?", email).RecordNotFound() {
-		user = bcdagorm.User{UUID: uuid.NewRandom(), Name: name, Email: email, AcoID: aco.UUID}
+		user = User{UUID: uuid.NewRandom(), Name: name, Email: email, AcoID: aco.UUID}
 		db.Create(&user)
 		return user, nil
 	} else {
@@ -83,7 +82,7 @@ func (backend *JWTAuthenticationBackend) CreateUser(name string, email string, a
 
 }
 
-func (backend *JWTAuthenticationBackend) GenerateTokenString(userID string, acoID string) (string, error) {
+func (backend *JWTAuthenticationBackend) GenerateTokenString(userID, acoID string) (string, error) {
 	expirationDelta, err := strconv.Atoi(jwtExpirationDelta)
 	if err != nil {
 		expirationDelta = 72
@@ -115,8 +114,9 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 	tokenID := claims["id"].(string)
 	//userID := claims["sub"].(string)
 
-	var token bcdagorm.Token
-	if db.First(&token, "value = ? and UUID = ? and active = ?", tokenString, tokenID, true).RecordNotFound() {
+	var token Token
+	hash := Hash{}
+	if db.First(&token, "value = ? and UUID = ? and active = ?", hash.Generate(tokenString), tokenID, true).RecordNotFound() {
 		return gorm.ErrRecordNotFound
 	} else {
 		token.Active = false
@@ -127,16 +127,16 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 
 }
 
-func (backend *JWTAuthenticationBackend) RevokeUserTokens(user bcdagorm.User) error {
+func (backend *JWTAuthenticationBackend) RevokeUserTokens(user User) error {
 	db := database.GetGORMDbConnection()
-	var token bcdagorm.Token
+	var token Token
 	db.Model(&token).Where("active = ? and User_id = ?", true, user.UUID).Update("active", false)
 	return db.Error
 }
 
-func (backend *JWTAuthenticationBackend) RevokeACOTokens(aco bcdagorm.ACO) error {
+func (backend *JWTAuthenticationBackend) RevokeACOTokens(aco ACO) error {
 	db := database.GetGORMDbConnection()
-	users := []bcdagorm.User{} // a slice
+	users := []User{} // a slice of users
 	db.Find(&users, "aco_id = ?", aco.UUID)
 	for _, user := range users {
 		if err := backend.RevokeUserTokens(user); err != nil {
@@ -152,7 +152,7 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(jwtToken *jwt.Token) bool
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	var token bcdagorm.Token
+	var token Token
 	// Look for the token, if found, it must be blacklisted, if not it should be fine.
 	if db.Find(&token, "UUID = ? AND active = ?", claims["id"], false).RecordNotFound() {
 		return false
@@ -253,15 +253,18 @@ func (backend *JWTAuthenticationBackend) GetJWTToken(tokenString string) (*jwt.T
 }
 
 // Save a token to the DB for a user
-func (backend *JWTAuthenticationBackend) CreateToken(user bcdagorm.User) (bcdagorm.Token, error) {
+func (backend *JWTAuthenticationBackend) CreateToken(user User) (Token, string, error) {
 	db := database.GetGORMDbConnection()
-	tokenString, err := backend.GenerateTokenString(user.UUID.String(), user.Aco.UUID.String())
+	tokenString, err := backend.GenerateTokenString(
+		user.UUID.String(),
+		user.AcoID.String(),
+	)
 	if err != nil {
 		panic(err)
 	}
 	// Get the claims of the token to find the token ID that was created
 	claims := backend.GetJWTClaims(tokenString)
-	token := bcdagorm.Token{
+	token := Token{
 		UUID:   uuid.Parse(claims["id"].(string)),
 		UserID: user.UUID,
 		Value:  tokenString,
@@ -269,5 +272,5 @@ func (backend *JWTAuthenticationBackend) CreateToken(user bcdagorm.User) (bcdago
 	}
 	db.Create(&token)
 
-	return token, err
+	return token, tokenString, err
 }
