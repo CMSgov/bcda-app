@@ -57,8 +57,6 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "bcda"
 	app.Usage = "Beneficiary Claims Data API CLI"
-	// Initialize models to get the database in the right spot
-	bcdagorm.Initialize()
 	var acoName, acoID, userName, userEmail, userID, accessToken string
 	app.Commands = []cli.Command{
 		{
@@ -183,6 +181,18 @@ func main() {
 					return err
 				}
 				fmt.Println("Access token has been deactivated")
+				return nil
+			},
+		},
+		{
+			Name:     "sqlMigrate",
+			Category: "Database tools",
+			Usage:    "Migrate GORM schema changes to the DB",
+			Action: func(c *cli.Context) error {
+				fmt.Println("Initializing Database")
+				// Initialize models to get the database in the right spot
+				bcdagorm.Initialize()
+				fmt.Println("Completed Database Initialization")
 				return nil
 			},
 		},

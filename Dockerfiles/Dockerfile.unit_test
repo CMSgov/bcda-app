@@ -7,7 +7,6 @@ RUN go get github.com/tools/godep
 RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 RUN go get -u github.com/xo/usql
 
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
