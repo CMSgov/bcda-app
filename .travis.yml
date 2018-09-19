@@ -43,7 +43,7 @@ before_script:
   - psql -f db/api.sql -U postgres bcda_test
   - psql -f db/fixtures.sql -U postgres bcda_test
   - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
-  - go get github.com/tools/godep
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 # script always runs to completion (set +e). If we have linter issues AND a
 # failing test, we want to see both. Configure golangci-lint with a
@@ -51,7 +51,7 @@ before_script:
 script:
   - go get github.com/stretchr/testify/assert
   - go get github.com/stretchr/testify/suite
-  - godep restore ./...
+  - dep ensure
   - go install ./...
   - golangci-lint run       # run a bunch of code checkers/linters in parallel
   - go test -v -race ./...  # Run all the tests with the race detector enabled
