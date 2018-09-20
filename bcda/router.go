@@ -29,6 +29,7 @@ func NewRouter() http.Handler {
 
 		if os.Getenv("DEBUG") == "true" {
 			r.Get("/token", getToken)
+			r.Get("/bb_metadata", getBlueButtonMetadata)
 		}
 	})
 	r.Route("/data", func(r chi.Router) {

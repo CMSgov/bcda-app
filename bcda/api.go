@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 	"net/http"
 	"strconv"
+
+	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -171,6 +172,10 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to write token response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func getBlueButtonMetadata(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Coming soon to an API near you", http.StatusNotImplemented)
 }
 
 func writeError(outcome fhirmodels.OperationOutcome, w http.ResponseWriter) {
