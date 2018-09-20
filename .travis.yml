@@ -26,11 +26,7 @@ notifications:
   email: false
 
 services:
-  - postgresql
-
-env:
-  global:
-    - DATABASE_URL="postgresql://postgres@localhost/bcda_test?sslmode=disable"
+  - docker
 
 # Anything in before_script that returns a nonzero exit code will flunk the
 # build and immediately stop. It's sorta like having set -e enabled in bash.
@@ -39,19 +35,12 @@ env:
 # ...and adding this to your Gopkg.toml file.
 #   required = ["github.com/golangci/golangci-lint/cmd/golangci-lint"]
 before_script:
-  - psql -c 'create database bcda_test;' -U postgres
-  - psql -f db/api.sql -U postgres bcda_test
-  - psql -f db/fixtures.sql -U postgres bcda_test
-  - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
-  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+  # Disable services enabled by default to avoid port clashing
+  - sudo /etc/init.d/mysql stop
+  - sudo /etc/init.d/postgresql stop
 
 # script always runs to completion (set +e). If we have linter issues AND a
 # failing test, we want to see both. Configure golangci-lint with a
 # .golangci.yml file at the top level of your repo.
 script:
-  - go get github.com/stretchr/testify/assert
-  - go get github.com/stretchr/testify/suite
-  - dep ensure
-  - go install ./...
-  - golangci-lint run       # run a bunch of code checkers/linters in parallel
-  - go test -v -race ./...  # Run all the tests with the race detector enabled
+  - make test
