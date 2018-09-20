@@ -57,11 +57,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		token := tokenValue.(*jwt.Token)
 
 		if token.Valid {
-			blacklisted, err := authBackend.IsBlacklisted(token)
-			if err != nil {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
+			blacklisted := authBackend.IsBlacklisted(token)
 			if !blacklisted {
 				ctx := context.WithValue(r.Context(), "token", token)
 				next.ServeHTTP(w, r.WithContext(ctx))

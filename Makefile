@@ -1,9 +1,3 @@
-models:
-	docker-compose up -d db
-	echo "Waiting for db to be ready..."
-	sleep 5
-	PGSSLMODE=disable xo postgresql://postgres:toor@localhost:5432/bcda -o models
-
 test:
 	docker-compose up -d db
 	docker-compose -f docker-compose.test.yml up --force-recreate
@@ -44,4 +38,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: models docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell

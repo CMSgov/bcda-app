@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"os"
 	"strconv"
 	"time"
@@ -15,7 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/models"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 )
@@ -53,50 +53,36 @@ func InitAuthBackend() *JWTAuthenticationBackend {
 }
 
 func (backend *JWTAuthenticationBackend) CreateACO(name string) (uuid.UUID, error) {
-	db := database.GetDbConnection()
+	db := database.GetGORMDbConnection()
 	defer db.Close()
+	aco := ACO{Name: name, UUID: uuid.NewRandom()}
+	db.Create(&aco)
 
-	const sqlstr = `INSERT INTO public.acos (` +
-		`uuid, name, created_at, updated_at` +
-		`) VALUES (` +
-		`$1, $2, $3, $3` +
-		`)`
-
-	acoUUID := uuid.NewRandom()
-	now := time.Now()
-
-	_, err := db.Exec(sqlstr, acoUUID, name, now)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return acoUUID, nil
+	return aco.UUID, db.Error
 }
 
-func (backend *JWTAuthenticationBackend) CreateUser(name string, email string, acoUUID uuid.UUID) (uuid.UUID, error) {
-	db := database.GetDbConnection()
+func (backend *JWTAuthenticationBackend) CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
+	db := database.GetGORMDbConnection()
 	defer db.Close()
+	var aco ACO
+	var user User
+	// If we don't find the ACO return a blank user and an error
+	if db.First(&aco, "UUID = ?", acoUUID).RecordNotFound() {
+		return user, fmt.Errorf("unable to locate ACO with id of %v", acoUUID)
+	}
+	// check for duplicate email addresses and only make one if it isn't found
+	if db.First(&user, "email = ?", email).RecordNotFound() {
+		user = User{UUID: uuid.NewRandom(), Name: name, Email: email, AcoID: aco.UUID}
+		db.Create(&user)
+		return user, nil
+	} else {
 
-	const sqlstr = `INSERT INTO public.users (` +
-		`uuid, name, email, aco_id, created_at, updated_at` +
-		`) VALUES (` +
-		`$1, $2, $3, $4, $5, $5` +
-		`)`
-
-	userUUID := uuid.NewRandom()
-	now := time.Now()
-
-	_, err := db.Exec(sqlstr, userUUID, name, email, acoUUID, now)
-
-	if err != nil {
-		return nil, err
+		return user, fmt.Errorf("unable to create user for %v because a user with that Email address already exists", email)
 	}
 
-	return userUUID, nil
 }
 
-func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID string) (string, error) {
+func (backend *JWTAuthenticationBackend) GenerateTokenString(userID, acoID string) (string, error) {
 	expirationDelta, err := strconv.Atoi(jwtExpirationDelta)
 	if err != nil {
 		expirationDelta = 72
@@ -118,83 +104,62 @@ func (backend *JWTAuthenticationBackend) GenerateToken(userID string, acoID stri
 }
 
 func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
-	claims := getJWTClaims(backend, tokenString)
+	db := database.GetGORMDbConnection()
+	claims := backend.GetJWTClaims(tokenString)
 
 	if claims == nil {
 		return errors.New("Could not read token claims")
 	}
 
 	tokenID := claims["id"].(string)
-	userID := claims["sub"].(string)
+	//userID := claims["sub"].(string)
 
+	var token Token
 	hash := Hash{}
-
-	token := models.Token{
-		UUID:   uuid.Parse(tokenID),
-		UserID: uuid.Parse(userID),
-		Value:  hash.Generate(tokenString),
-		Active: false,
-	}
-
-	db := database.GetDbConnection()
-	defer db.Close()
-
-	var err error
-
-	if token.Exists() {
-		err = token.Update(db)
+	if db.First(&token, "value = ? and UUID = ? and active = ?", hash.Generate(tokenString), tokenID, true).RecordNotFound() {
+		return gorm.ErrRecordNotFound
 	} else {
-
-		const sqlstr = `INSERT INTO public.tokens (` +
-			`uuid, user_id, value, active` +
-			`) VALUES (` +
-			`$1, $2, $3, $4` +
-			`)`
-
-		_, err = db.Exec(sqlstr, token.UUID, token.UserID, token.Value, false)
+		token.Active = false
+		db.Save(&token)
 	}
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return db.Error
+
 }
 
-func (backend *JWTAuthenticationBackend) IsBlacklisted(token *jwt.Token) (bool, error) {
-	var (
-		err  error
-		hash Hash = Hash{}
-	)
+func (backend *JWTAuthenticationBackend) RevokeUserTokens(user User) error {
+	db := database.GetGORMDbConnection()
+	var token Token
+	db.Model(&token).Where("active = ? and User_id = ?", true, user.UUID).Update("active", false)
+	return db.Error
+}
 
-	claims, _ := token.Claims.(jwt.MapClaims)
+func (backend *JWTAuthenticationBackend) RevokeACOTokens(aco ACO) error {
+	db := database.GetGORMDbConnection()
+	users := []User{} // a slice of users
+	db.Find(&users, "aco_id = ?", aco.UUID)
+	for _, user := range users {
+		if err := backend.RevokeUserTokens(user); err != nil {
+			return err
+		}
 
-	db := database.GetDbConnection()
+	}
+	return db.Error
+}
+
+func (backend *JWTAuthenticationBackend) IsBlacklisted(jwtToken *jwt.Token) bool {
+	claims, _ := jwtToken.Claims.(jwt.MapClaims)
+	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	const sqlstr = `SELECT value ` +
-		`FROM public.tokens ` +
-		`WHERE uuid = $1 ` +
-		`AND active = false`
-
-	rows, err := db.Query(sqlstr, claims["id"])
-	if err != nil {
-		return true, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		t := models.Token{}
-		err = rows.Scan(&t.Value)
-		if err != nil {
-			return true, err
-		}
-
-		if match := hash.Compare(t.Value, token.Raw); match {
-			return true, nil
-		}
+	var token Token
+	// Look for the token, if found, it must be blacklisted, if not it should be fine.
+	if db.Find(&token, "UUID = ? AND active = ?", claims["id"], false).RecordNotFound() {
+		return false
+	} else {
+		return true
 	}
 
-	return false, nil
 }
 
 func getPrivateKey() *rsa.PrivateKey {
@@ -261,14 +226,8 @@ func getPublicKey() *rsa.PublicKey {
 	return rsaPub
 }
 
-func getJWTClaims(backend *JWTAuthenticationBackend, tokenString string) jwt.MapClaims {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return backend.PublicKey, nil
-	})
+func (backend *JWTAuthenticationBackend) GetJWTClaims(tokenString string) jwt.MapClaims {
+	token, err := backend.GetJWToken(tokenString)
 
 	if err != nil {
 		panic(err)
@@ -279,4 +238,39 @@ func getJWTClaims(backend *JWTAuthenticationBackend, tokenString string) jwt.Map
 	}
 
 	return token.Claims.(jwt.MapClaims)
+}
+
+func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.Token, error) {
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return backend.PublicKey, nil
+	})
+	return token, err
+}
+
+// Save a token to the DB for a user
+func (backend *JWTAuthenticationBackend) CreateToken(user User) (Token, string, error) {
+	db := database.GetGORMDbConnection()
+	tokenString, err := backend.GenerateTokenString(
+		user.UUID.String(),
+		user.AcoID.String(),
+	)
+	if err != nil {
+		panic(err)
+	}
+	// Get the claims of the token to find the token ID that was created
+	claims := backend.GetJWTClaims(tokenString)
+	token := Token{
+		UUID:   uuid.Parse(claims["id"].(string)),
+		UserID: user.UUID,
+		Value:  tokenString,
+		Active: true,
+	}
+	db.Create(&token)
+
+	return token, tokenString, err
 }

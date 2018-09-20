@@ -3,17 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/bgentry/que-go"
+	"github.com/jackc/pgx"
 	"log"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/models"
-	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
 )
 
 var (
@@ -29,7 +28,7 @@ type jobEnqueueArgs struct {
 func processJob(j *que.Job) error {
 	fmt.Printf("Worker started processing job (ID: %d, Args: %s)\n", j.ID, j.Args)
 
-	db := database.GetDbConnection()
+	db := database.GetGORMDbConnection()
 	defer db.Close()
 
 	jobArgs := jobEnqueueArgs{}
@@ -38,13 +37,14 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	exportJob, err := models.JobByID(db, jobArgs.ID)
+	var exportJob bcdaModels.Job
+	err = db.First(&exportJob, "ID = ?", jobArgs.ID).Error
 	if err != nil {
 		return err
 	}
 
 	exportJob.Status = "In Progress"
-	err = exportJob.Update(db)
+	err = db.Save(exportJob).Error
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func processJob(j *que.Job) error {
 	time.Sleep(30 * time.Second)
 
 	exportJob.Status = "Completed"
-	err = exportJob.Update(db)
+	err = db.Save(exportJob).Error
 	if err != nil {
 		return err
 	}
