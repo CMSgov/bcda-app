@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/bcda"
+	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 	"net/http"
 	"strconv"
 	"time"
@@ -45,7 +45,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		scheme = "https"
 	}
 
-	newJob := bcda.Job{
+	newJob := bcdaModels.Job{
 		AcoID:      uuid.Parse(acoId),
 		UserID:     uuid.Parse(userId),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
@@ -93,7 +93,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(400), 400)
 		return
 	}
-	var job bcda.Job
+	var job bcdaModels.Job
 	err = db.First(&job, i).Error
 	if err != nil {
 		log.Print(err)
