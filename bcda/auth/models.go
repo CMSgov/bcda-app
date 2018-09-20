@@ -53,7 +53,7 @@ type Token struct {
 func (token *Token) BeforeSave() error {
 	backend := InitAuthBackend()
 	// Parse the value into a token.  If this works, it needs to be hashed before saving
-	jwtToken, err := backend.GetJWTToken(token.Value)
+	jwtToken, err := backend.GetJWToken(token.Value)
 	// If the parse to jwtToken fails then the value is already hashed (or not valid for other reasons) and no need to rehash it
 	if err != nil {
 		return nil

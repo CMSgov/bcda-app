@@ -227,7 +227,7 @@ func getPublicKey() *rsa.PublicKey {
 }
 
 func (backend *JWTAuthenticationBackend) GetJWTClaims(tokenString string) jwt.MapClaims {
-	token, err := backend.GetJWTToken(tokenString)
+	token, err := backend.GetJWToken(tokenString)
 
 	if err != nil {
 		panic(err)
@@ -240,7 +240,7 @@ func (backend *JWTAuthenticationBackend) GetJWTClaims(tokenString string) jwt.Ma
 	return token.Claims.(jwt.MapClaims)
 }
 
-func (backend *JWTAuthenticationBackend) GetJWTToken(tokenString string) (*jwt.Token, error) {
+func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.Token, error) {
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {

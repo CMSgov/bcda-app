@@ -91,7 +91,7 @@ func (s *BackendTestSuite) TestRevokeToken() {
 
 	err := s.authBackend.RevokeToken(tokenString)
 	assert.Nil(s.T(), err)
-	jwtToken, err := s.authBackend.GetJWTToken(tokenString)
+	jwtToken, err := s.authBackend.GetJWToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), s.authBackend.IsBlacklisted(jwtToken))
 
@@ -123,23 +123,23 @@ func (s *BackendTestSuite) TestRevokeUserTokens() {
 	}
 	// make 2 valid tokens for this user to be revoked later
 	_, revokedTokenString, err := s.authBackend.CreateToken(revokedUser)
-	revokedJWTToken, _ := s.authBackend.GetJWTToken(revokedTokenString)
+	revokedJWTToken, _ := s.authBackend.GetJWToken(revokedTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(revokedJWTToken))
 
 	_, otherRevokedTokenString, err := s.authBackend.CreateToken(revokedUser)
-	otherRevokedJWTToken, _ := s.authBackend.GetJWTToken(otherRevokedTokenString)
+	otherRevokedJWTToken, _ := s.authBackend.GetJWToken(otherRevokedTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(otherRevokedJWTToken))
 
 	// Make 2 valid tokens for this user that won't be revoked
 	_, validTokenString, err := s.authBackend.CreateToken(validUser)
-	validJWTToken, _ := s.authBackend.GetJWTToken(validTokenString)
+	validJWTToken, _ := s.authBackend.GetJWToken(validTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(validJWTToken))
 
 	_, otherValidTokenString, err := s.authBackend.CreateToken(validUser)
-	otherValidJWTToken, _ := s.authBackend.GetJWTToken(otherValidTokenString)
+	otherValidJWTToken, _ := s.authBackend.GetJWToken(otherValidTokenString)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), s.authBackend.IsBlacklisted(otherValidJWTToken))
 
@@ -260,7 +260,7 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	_, tokenString, err := s.authBackend.CreateToken(user)
 	assert.Nil(s.T(), err)
 	// Convert tokenString to a jwtToken
-	jwtToken, err := s.authBackend.GetJWTToken(tokenString)
+	jwtToken, err := s.authBackend.GetJWToken(tokenString)
 	assert.Nil(s.T(), err)
 	// Test to see if this is blacklisted
 	blacklisted := s.authBackend.IsBlacklisted(jwtToken)
