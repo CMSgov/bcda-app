@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 	"net/http"
 	"os"
 	"strings"
@@ -183,6 +184,19 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:     "sqlMigrate",
+			Category: "Database tools",
+			Usage:    "Migrate GORM schema changes to the DB",
+			Action: func(c *cli.Context) error {
+				fmt.Println("Initializing Database")
+				// Initialize models to get the database in the right spot
+				bcdaModels.InitializeGormModels()
+				auth.InitializeGormModels()
+				fmt.Println("Completed Database Initialization")
+				return nil
+			},
+		},
 	}
 
 	err := app.Run(os.Args)
@@ -229,12 +243,12 @@ func createUser(acoID, name, email string) (string, error) {
 	}
 
 	authBackend := auth.InitAuthBackend()
-	userUUID, err := authBackend.CreateUser(name, email, acoUUID)
+	user, err := authBackend.CreateUser(name, email, acoUUID)
 	if err != nil {
 		return "", err
 	}
 
-	return userUUID.String(), nil
+	return user.UUID.String(), nil
 }
 
 func createAccessToken(acoID, userID string) (string, error) {
@@ -264,7 +278,7 @@ func createAccessToken(acoID, userID string) (string, error) {
 
 	authBackend := auth.InitAuthBackend()
 
-	token, err := authBackend.GenerateToken(userID, acoID)
+	token, err := authBackend.GenerateTokenString(userID, acoID)
 	if err != nil {
 		return "", err
 	}

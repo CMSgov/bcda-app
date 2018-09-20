@@ -10,8 +10,7 @@ To get started, install some dependencies:
 1. Install [Go](https://golang.org/doc/install)
 2. Install [Docker](https://docs.docker.com/install/)
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
-4. Install [xo](https://github.com/xo/xo)
-5. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
+4. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
 
 ### Build / Start
