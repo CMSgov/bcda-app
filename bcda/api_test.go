@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/go-chi/chi"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
@@ -24,7 +24,7 @@ type APITestSuite struct {
 }
 
 func (s *APITestSuite) SetupTest() {
-	bcdaModels.InitializeGormModels()
+	models.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 
 	s.rr = httptest.NewRecorder()
@@ -43,7 +43,7 @@ func (s *APITestSuite) TestBulkRequestMissingToken() {
 }
 
 func (s *APITestSuite) TestJobStatusPending() {
-	j := bcdaModels.Job{
+	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
@@ -70,7 +70,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 }
 
 func (s *APITestSuite) TestJobStatusInProgress() {
-	j := bcdaModels.Job{
+	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
@@ -97,7 +97,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 }
 
 func (s *APITestSuite) TestJobStatusFailed() {
-	j := bcdaModels.Job{
+	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
@@ -124,7 +124,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 }
 
 func (s *APITestSuite) TestJobStatusCompleted() {
-	j := bcdaModels.Job{
+	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
