@@ -53,7 +53,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
-	if err := db.Save(newJob); err != nil {
+	if result := db.Save(&newJob); result.Error != nil {
 		log.Error(err)
 		writeError(fhirmodels.OperationOutcome{}, w)
 		return
