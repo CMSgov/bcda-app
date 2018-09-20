@@ -6,7 +6,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -35,6 +34,9 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 			writeError(fhirmodels.OperationOutcome{}, w)
 			return
 		}
+	} else {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
 	}
 
 	acoId, _ := claims["aco"].(string)
@@ -123,7 +125,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		rb := bulkResponseBody{
-			TransactionTime:     time.Now(),
+			TransactionTime:     job.CreatedAt,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
 			Files:               []fileItem{fi},
