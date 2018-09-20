@@ -66,7 +66,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 	assert.Equal(s.T(), "Pending", rr.Header().Get("X-Progress"))
 
-	s.db.Unscoped().Delete(&j)
+	s.db.Delete(&j)
 }
 
 func (s *APITestSuite) TestJobStatusInProgress() {
@@ -92,6 +92,8 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 
 	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 	assert.Equal(s.T(), "In Progress", rr.Header().Get("X-Progress"))
+
+	s.db.Delete(&j)
 }
 
 func (s *APITestSuite) TestJobStatusFailed() {
