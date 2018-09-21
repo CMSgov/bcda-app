@@ -8,13 +8,23 @@ import (
 	"os"
 )
 
-var bbServer string
-
-func init() {
-	bbServer = fmt.Sprintf("https://%s", os.Getenv("BB_SERVER_HOST"))
+func GetBlueButtonPatientData() (string, error) {
+	return getBlueButtonData("/baseDstu3/Patient/?_id={}&_format=application%2Ffhir%2Bjson")
 }
 
-func GetBlueButtonData() (string, error) {
+func GetBlueButtonCoverageData() (string, error) {
+	return getBlueButtonData("/baseDstu3/Coverage/?beneficiary={}&_format=application%2Ffhir%2Bjson")
+}
+
+func GetBlueButtonExplanationOfBenefitData() (string, error) {
+	return getBlueButtonData("/baseDstu3/ExplanationOfBenefit/?patient={}&_format=application%2Ffhir%2Bjson")
+}
+
+func GetBlueButtonMetadata() (string, error) {
+	return getBlueButtonData("/baseDstu3/metadata/?_format=application%2Ffhir%2Bjson")
+}
+
+func getBlueButtonData(path string) (string, error) {
 	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 
@@ -27,15 +37,17 @@ func GetBlueButtonData() (string, error) {
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
 	}
+
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
+	bbServer := fmt.Sprintf("https://%s", os.Getenv("BB_SERVER_HOST"))
 
-	path := "/baseDstu3/Patient/?_id={}&_format=application%2Fjson%2Bfhir"
 	resp, err := client.Get(bbServer + path)
 	if err != nil {
 		return "", err
 	}
+
 	defer resp.Body.Close()
 
 	data, err := ioutil.ReadAll(resp.Body)
