@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	que "github.com/bgentry/que-go"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -143,9 +143,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
 			return
-		} else {
-			w.WriteHeader(http.StatusOK)
 		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -175,7 +175,19 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBlueButtonMetadata(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Coming soon to an API near you", http.StatusNotImplemented)
+	bbData, err := client.GetBlueButtonData()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotImplemented)
+		return
+	}
+
+	_, err = w.Write([]byte(bbData))
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func writeError(outcome fhirmodels.OperationOutcome, w http.ResponseWriter) {
