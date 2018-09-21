@@ -177,7 +177,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 	bbData, err := client.GetBlueButtonMetadata()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotImplemented)
+		http.Error(w, http.StatusText(500), 500)
 		return
 	}
 

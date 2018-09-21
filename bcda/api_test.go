@@ -169,11 +169,11 @@ func (s *APITestSuite) TestServeData() {
 
 func (s *APITestSuite) TestGetToken() {}
 
-func (s *APITestSuite) TestGetBlueButtonMetadata() {
+func (s *APITestSuite) TestBlueButtonMetadata() {
 	req, err := http.NewRequest("GET", "/api/v1/bb_metadata", nil)
 	assert.Nil(s.T(), err)
 
-	handler := http.HandlerFunc(getBlueButtonMetadata)
+	handler := http.HandlerFunc(blueButtonMetadata)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
