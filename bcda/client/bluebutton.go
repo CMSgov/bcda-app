@@ -5,27 +5,39 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
 
-func GetBlueButtonPatientData() (string, error) {
-	return getBlueButtonData("/baseDstu3/Patient/?_id={19990000002901}&_format=application%2Ffhir%2Bjson")
+func GetBlueButtonPatientData(patientID string) (string, error) {
+	params := url.Values{}
+	params.Set("_id", patientID)
+	params.Set("_format", "application/fhir+json")
+	return getBlueButtonData("/baseDstu3/Patient/", params)
 }
 
-func GetBlueButtonCoverageData() (string, error) {
-	return getBlueButtonData("/baseDstu3/Coverage/?beneficiary={}&_format=application%2Ffhir%2Bjson")
+func GetBlueButtonCoverageData(beneficiaryID string) (string, error) {
+	params := url.Values{}
+	params.Set("beneficiary", beneficiaryID)
+	params.Set("_format", "application/fhir+json")
+	return getBlueButtonData("/baseDstu3/Coverage/", params)
 }
 
-func GetBlueButtonExplanationOfBenefitData() (string, error) {
-	return getBlueButtonData("/baseDstu3/ExplanationOfBenefit/?patient={}&_format=application%2Ffhir%2Bjson")
+func GetBlueButtonExplanationOfBenefitData(patientID string) (string, error) {
+	params := url.Values{}
+	params.Set("patient", patientID)
+	params.Set("_format", "application/fhir+json")
+	return getBlueButtonData("/baseDstu3/ExplanationOfBenefit/", params)
 }
 
 func GetBlueButtonMetadata() (string, error) {
-	return getBlueButtonData("/baseDstu3/metadata/?_format=application%2Ffhir%2Bjson")
+	params := url.Values{}
+	params.Set("_format", "application/fhir+json")
+	return getBlueButtonData("/baseDstu3/metadata/", params)
 }
 
-func getBlueButtonData(path string) (string, error) {
+func getBlueButtonData(path string, params url.Values) (string, error) {
 	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 
@@ -45,11 +57,11 @@ func getBlueButtonData(path string) (string, error) {
 	bbServer := fmt.Sprintf("https://%s", os.Getenv("BB_SERVER_HOST"))
 
 	req, err := http.NewRequest("GET", bbServer+path, nil)
-
 	if err != nil {
 		return "", err
 	}
 
+	req.URL.RawQuery = params.Encode()
 	addRequestHeaders(req)
 
 	resp, err := client.Do(req)
