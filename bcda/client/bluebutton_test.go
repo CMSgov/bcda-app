@@ -1,13 +1,64 @@
 package client_test
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestGetBlueButtonPatientData(t *testing.T) {}
+type BBTestSuite struct {
+	suite.Suite
+	bbClient *client.BlueButtonClient
+	ts       *httptest.Server
+}
 
-func TestGetBlueButtonCoverageData(t *testing.T) {}
+func (s *BBTestSuite) SetupTest() {
+	s.ts = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/fhir+json")
+		fmt.Fprint(w, `{ "test": "ok" }`)
+	}))
 
-func TestGetBlueButtonExplanationOfBenefitData(t *testing.T) {}
+	os.Setenv("BB_SERVER_LOCATION", s.ts.URL)
+	os.Setenv("BB_CLIENT_CERT_FILE", "test-cert.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "test-key.pem")
 
-func TestGetBlueButtonMetadata(t *testing.T) {}
+	s.bbClient = client.NewBlueButtonClient()
+}
+
+func (s *BBTestSuite) TestGetBlueButtonPatientData() {
+	p, err := s.bbClient.GetPatientData("012345")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), `{ "test": "ok" }`, p)
+}
+
+func (s *BBTestSuite) TestGetBlueButtonCoverageData() {
+	c, err := s.bbClient.GetCoverageData("012345")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), `{ "test": "ok" }`, c)
+}
+
+func (s *BBTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
+	e, err := s.bbClient.GetExplanationOfBenefitData("012345")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), `{ "test": "ok" }`, e)
+}
+
+func (s *BBTestSuite) TestGetBlueButtonMetadata() {
+	m, err := s.bbClient.GetMetadata()
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), `{ "test": "ok" }`, m)
+}
+
+func (s *BBTestSuite) TearDownTest() {
+	s.ts.Close()
+}
+
+func TestBBTestSuite(t *testing.T) {
+	suite.Run(t, new(BBTestSuite))
+}

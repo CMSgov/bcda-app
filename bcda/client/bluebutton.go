@@ -2,48 +2,24 @@ package client
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
 )
 
-func GetBlueButtonPatientData(patientID string) (string, error) {
-	params := url.Values{}
-	params.Set("_id", patientID)
-	params.Set("_format", "application/fhir+json")
-	return getBlueButtonData("/baseDstu3/Patient/", params)
+type BlueButtonClient struct {
+	httpClient http.Client
 }
 
-func GetBlueButtonCoverageData(beneficiaryID string) (string, error) {
-	params := url.Values{}
-	params.Set("beneficiary", beneficiaryID)
-	params.Set("_format", "application/fhir+json")
-	return getBlueButtonData("/baseDstu3/Coverage/", params)
-}
-
-func GetBlueButtonExplanationOfBenefitData(patientID string) (string, error) {
-	params := url.Values{}
-	params.Set("patient", patientID)
-	params.Set("_format", "application/fhir+json")
-	return getBlueButtonData("/baseDstu3/ExplanationOfBenefit/", params)
-}
-
-func GetBlueButtonMetadata() (string, error) {
-	params := url.Values{}
-	params.Set("_format", "application/fhir+json")
-	return getBlueButtonData("/baseDstu3/metadata/", params)
-}
-
-func getBlueButtonData(path string, params url.Values) (string, error) {
+func NewBlueButtonClient() *BlueButtonClient {
 	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
-
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		return "", err
+		log.Fatal(err)
 	}
 
 	tlsConfig := &tls.Config{
@@ -54,7 +30,39 @@ func getBlueButtonData(path string, params url.Values) (string, error) {
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
-	bbServer := fmt.Sprintf("https://%s", os.Getenv("BB_SERVER_HOST"))
+
+	return &BlueButtonClient{*client}
+}
+
+func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
+	params := url.Values{}
+	params.Set("_id", patientID)
+	params.Set("_format", "application/fhir+json")
+	return bbc.getData("/baseDstu3/Patient/", params)
+}
+
+func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID string) (string, error) {
+	params := url.Values{}
+	params.Set("beneficiary", beneficiaryID)
+	params.Set("_format", "application/fhir+json")
+	return bbc.getData("/baseDstu3/Coverage/", params)
+}
+
+func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
+	params := url.Values{}
+	params.Set("patient", patientID)
+	params.Set("_format", "application/fhir+json")
+	return bbc.getData("/baseDstu3/ExplanationOfBenefit/", params)
+}
+
+func (bbc *BlueButtonClient) GetMetadata() (string, error) {
+	params := url.Values{}
+	params.Set("_format", "application/fhir+json")
+	return bbc.getData("/baseDstu3/metadata/", params)
+}
+
+func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, error) {
+	bbServer := os.Getenv("BB_SERVER_LOCATION")
 
 	req, err := http.NewRequest("GET", bbServer+path, nil)
 	if err != nil {
@@ -64,7 +72,7 @@ func getBlueButtonData(path string, params url.Values) (string, error) {
 	req.URL.RawQuery = params.Encode()
 	addRequestHeaders(req)
 
-	resp, err := client.Do(req)
+	resp, err := bbc.httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
