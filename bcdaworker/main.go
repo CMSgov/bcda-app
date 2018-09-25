@@ -50,7 +50,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 	syntheticIds := jobArgs.SyntheticIDs
-	fmt.Printf("synthetic patient ids: ", syntheticIds)
+	fmt.Print("synthetic patient ids: ", syntheticIds)
 
 	time.Sleep(30 * time.Second)
 
