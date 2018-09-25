@@ -3,15 +3,32 @@ package client
 import (
 	"crypto/tls"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/pborman/uuid"
 )
+
+var logger *logrus.Logger
 
 type BlueButtonClient struct {
 	httpClient http.Client
+}
+
+func init() {
+	logger = logrus.New()
+	logger.Formatter = &logrus.JSONFormatter{}
+	filePath := os.Getenv("BCDA_BB_LOG")
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+	if err == nil {
+		logger.SetOutput(file)
+	} else {
+		logger.Info("Failed to log to file; using default stderr")
+	}
 }
 
 func NewBlueButtonClient() *BlueButtonClient {
@@ -19,7 +36,7 @@ func NewBlueButtonClient() *BlueButtonClient {
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	tlsConfig := &tls.Config{
@@ -62,6 +79,8 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 }
 
 func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, error) {
+	reqID := uuid.NewRandom()
+
 	bbServer := os.Getenv("BB_SERVER_LOCATION")
 
 	req, err := http.NewRequest("GET", bbServer+path, nil)
@@ -70,7 +89,10 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, er
 	}
 
 	req.URL.RawQuery = params.Encode()
-	addRequestHeaders(req)
+
+	addRequestHeaders(req, reqID)
+
+	logRequest(req)
 
 	resp, err := bbc.httpClient.Do(req)
 	if err != nil {
@@ -87,24 +109,27 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, er
 	return string(data), nil
 }
 
-func addRequestHeaders(req *http.Request) {
+func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	// https://github.com/CMSgov/bluebutton-web-server/blob/master/apps/fhir/bluebutton/utils.py#L224-L231
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
-	req.Header.Add("BlueButton-OriginalQueryId", "1")
+	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
 	req.Header.Add("BlueButton-BeneficiaryId", "")
-	req.Header.Add("BlueButton-UserId", "")
-	req.Header.Add("BlueButton-Application", "")
-	req.Header.Add("BlueButton-ApplicationId", "")
-	req.Header.Add("BlueButton-DeveloperId", "")
-	req.Header.Add("BlueButton-Developer", "")
 	req.Header.Add("BlueButton-OriginatingIpAddress", "")
 
 	req.Header.Add("keep-alive", "")
 	req.Header.Add("X-Forwarded-Proto", "https")
 	req.Header.Add("X-Forwarded-Host", "")
 
-	req.Header.Add("BlueButton-OriginalUrl", "")
-	req.Header.Add("BlueButton-OriginalQuery", "")
+	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
+	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
 	req.Header.Add("BlueButton-BackendCall", "")
+}
+
+func logRequest(req *http.Request) {
+	logger.WithFields(logrus.Fields{
+		"req_id": req.Header.Get("BlueButton-OriginalQueryId"),
+		"ts":     req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+		"uri":    req.Header.Get("BlueButton-OriginalUrl"),
+	}).Infoln("Blue Button request")
 }
