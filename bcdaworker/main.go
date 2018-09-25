@@ -23,6 +23,7 @@ type jobEnqueueArgs struct {
 	ID     int
 	AcoID  string
 	UserID string
+	SyntheticIDs []string
 }
 
 func processJob(j *que.Job) error {
@@ -48,6 +49,8 @@ func processJob(j *que.Job) error {
 	if err != nil {
 		return err
 	}
+	syntheticIds := jobArgs.SyntheticIDs
+	fmt.Printf("synthetic patient ids: ", syntheticIds)
 
 	time.Sleep(30 * time.Second)
 

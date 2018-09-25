@@ -59,10 +59,30 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	syntheticIds := []string{}
+	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?",acoId).Rows()
+	if err != nil {
+		log.Error(err)
+		writeError(fhirmodels.OperationOutcome{}, w)
+		return
+	}
+	defer rows.Close()
+	var id string
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			log.Error(err)
+			writeError(fhirmodels.OperationOutcome{}, w)
+			return
+		}
+		syntheticIds = append(syntheticIds,id)
+	}
+
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:     int(newJob.ID),
 		AcoID:  acoId,
 		UserID: userId,
+		SyntheticIDs: syntheticIds,
 	})
 	if err != nil {
 		log.Error(err)

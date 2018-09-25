@@ -27,6 +27,7 @@ type jobEnqueueArgs struct {
 	ID     int
 	AcoID  string
 	UserID string
+	SyntheticIDs []string
 }
 
 type fileItem struct {
