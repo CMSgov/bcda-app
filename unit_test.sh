@@ -4,6 +4,8 @@
 # The docker-compose file brings forward the env vars: DB
 #
 
+set -e
+
 echo "Running linter..."
 golangci-lint run
 
