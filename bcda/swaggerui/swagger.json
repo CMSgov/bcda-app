@@ -1,0 +1,300 @@
+{
+  "consumes": [
+    "application/json",
+    "application/xml"
+  ],
+  "produces": [
+    "application/json",
+    "application/xml"
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "The purpose of this application is to provide an application that allows for downloading of Beneficiary claims",
+    "title": "BCDA API.",
+    "termsOfService": "there are no TOS at this moment, use at your own risk we take no responsibility",
+    "contact": {
+      "email": "bcapi@cms.hhs.gov"
+    },
+    "license": {
+      "url": "https://github.com/CMSgov/bcda-app/blob/master/LICENSE.md"
+    },
+    "version": "1.0.0"
+  },
+  "host": "localhost",
+  "basePath": "/v2",
+  "paths": {
+    "/api/v1/Patient/$export": {
+      "get": {
+        "description": "bulkRequest initiates a job to collect data from the Blue Button API for your ACO",
+        "consumes": [
+          "application/JSON"
+        ],
+        "produces": [
+          "application/JSON"
+        ],
+        "schemes": [
+          "http",
+          "https"
+        ],
+        "tags": [
+          "bulkData"
+        ],
+        "operationId": "bulkRequest",
+        "responses": {
+          "202": {
+            "$ref": "#/responses/BulkRequestResponse"
+          },
+          "400": {
+            "$ref": "#/responses/ErrorModel"
+          },
+          "500": {
+            "$ref": "#/responses/FHIRResponse"
+          },
+          "default": {
+            "$ref": "#/responses/BulkRequestResponse"
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{jobid}": {
+      "get": {
+        "security": [
+          {
+            "api_key": []
+          }
+        ],
+        "consumes": [
+          "application/JSON"
+        ],
+        "produces": [
+          "application/JSON"
+        ],
+        "schemes": [
+          "http",
+          "https"
+        ],
+        "tags": [
+          "bulkData"
+        ],
+        "summary": "jobStatus is the current status of a requested job.",
+        "operationId": "jobStatus",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "x-go-name": "JobID",
+            "description": "The ID of the job",
+            "name": "jobid",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/bulkResponseBody"
+          },
+          "202": {
+            "$ref": "#/responses/JobStatus"
+          },
+          "400": {
+            "$ref": "#/responses/ErrorModel"
+          },
+          "404": {
+            "$ref": "#/responses/ErrorModel"
+          },
+          "500": {
+            "$ref": "#/responses/FHIRResponse"
+          },
+          "default": {
+            "$ref": "#/responses/bulkResponseBody"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "bulkResponseBody": {
+      "description": "Bulk Response Body for a completed Bulk Status Request",
+      "type": "object",
+      "properties": {
+        "error": {
+          "description": "Errors encountered during processing\ncollection format: csv",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fileItem"
+          },
+          "x-go-name": "Errors"
+        },
+        "output": {
+          "description": "Files included in the payload\ncollection format: csv",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fileItem"
+          },
+          "x-go-name": "Files"
+        },
+        "request": {
+          "description": "The URL of the Response",
+          "type": "string",
+          "x-go-name": "RequestURL"
+        },
+        "requiresAccessToken": {
+          "description": "Is a token required for this response",
+          "type": "boolean",
+          "x-go-name": "RequiresAccessToken"
+        },
+        "transactionTime": {
+          "description": "The Time of the Transaction Request",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "TransactionTime"
+        }
+      },
+      "x-go-package": "github.com/CMSgov/bcda-app/bcda"
+    },
+    "fileItem": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "KNOLL the type of File returned",
+          "type": "string",
+          "x-go-name": "Type"
+        },
+        "url": {
+          "description": "The URL of the file",
+          "type": "string",
+          "x-go-name": "URL"
+        }
+      },
+      "x-go-package": "github.com/CMSgov/bcda-app/bcda"
+    }
+  },
+  "responses": {
+    "BulkRequestResponse": {
+      "description": "BulkRequestResponse is the return from a request to initiate a bulk data collection process",
+      "headers": {
+        "Content-Location": {
+          "type": "string",
+          "description": "The location where the job status can be checked"
+        }
+      }
+    },
+    "ErrorModel": {
+      "description": "A generic HTTP error Model.  Should only be used for well documented error types such as 404",
+      "headers": {
+        "Message": {
+          "type": "string",
+          "description": "Message contains additional information about this error"
+        }
+      }
+    },
+    "FHIRResponse": {
+      "description": "Operation Outcome follows HL7 FHIR Spec https://www.hl7.org/fhir/operationoutcome.html",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "Issue": {
+            "type": "object",
+            "required": [
+              "Severity",
+              "Code",
+              "Details",
+              "Diagnostics",
+              "Location",
+              "Expression"
+            ],
+            "properties": {
+              "Code": {
+                "description": "Error or warning code",
+                "type": "string"
+              },
+              "Details": {
+                "description": "Additional details about the error",
+                "type": "string"
+              },
+              "Diagnostics": {
+                "description": "Additional diagnostic information about the issue",
+                "type": "string"
+              },
+              "Expression": {
+                "description": "FHIRPath of element(s) related to issue",
+                "type": "string"
+              },
+              "Location": {
+                "description": "Path of element(s) related to issue",
+                "type": "string"
+              },
+              "Severity": {
+                "description": "Severity of the outcome: fatal | error | warning | information",
+                "type": "string"
+              }
+            }
+          },
+          "ResourceType": {
+            "description": "OperationOutcome",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "JobStatus": {
+      "description": "JobStatus defines the status of a specific Job defined by the ID",
+      "headers": {
+        "X-Progress": {
+          "type": "string",
+          "description": "The status of the job progress"
+        }
+      }
+    },
+    "bulkResponseBody": {
+      "description": "Bulk Response Body for a completed Bulk Status Request",
+      "headers": {
+        "error": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fileItem"
+          },
+          "collectionFormat": "csv",
+          "description": "Errors encountered during processing"
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fileItem"
+          },
+          "collectionFormat": "csv",
+          "description": "Files included in the payload"
+        },
+        "request": {
+          "type": "string",
+          "description": "The URL of the Response"
+        },
+        "requiresAccessToken": {
+          "type": "boolean",
+          "description": "Is a token required for this response"
+        },
+        "transactionTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The Time of the Transaction Request"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "api_key": []
+    }
+  ]
+}
