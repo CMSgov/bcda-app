@@ -20,7 +20,6 @@ func GetDbConnection() *sql.DB {
 }
 
 func GetGORMDbConnection() *gorm.DB {
-
 	databaseURL := os.Getenv("DATABASE_URL")
 	db, err := gorm.Open("postgres", databaseURL)
 	if err != nil {

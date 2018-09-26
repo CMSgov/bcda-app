@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"log"
@@ -37,7 +37,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	var exportJob bcdaModels.Job
+	var exportJob models.Job
 	err = db.First(&exportJob, "ID = ?", jobArgs.ID).Error
 	if err != nil {
 		return err

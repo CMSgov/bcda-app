@@ -1,4 +1,4 @@
-package bcdaModels
+package models
 
 import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -9,7 +9,6 @@ import (
 
 func InitializeGormModels() *gorm.DB {
 	db := database.GetGORMDbConnection()
-
 	defer db.Close()
 
 	// Migrate the schema

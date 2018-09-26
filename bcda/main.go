@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/bcdaModels"
 	"net/http"
 	"os"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
@@ -97,10 +97,15 @@ func main() {
 				qc = que.NewClient(pgxpool)
 
 				fmt.Println("Starting bcda...")
+				if os.Getenv("DEBUG") == "true" {
+					autoMigrate()
+				}
+
 				err = http.ListenAndServe(":3000", NewRouter())
 				if err != nil {
 					return err
 				}
+
 				return nil
 			},
 		},
@@ -200,15 +205,11 @@ func main() {
 			},
 		},
 		{
-			Name:     "sqlMigrate",
+			Name:     "sql-migrate",
 			Category: "Database tools",
 			Usage:    "Migrate GORM schema changes to the DB",
 			Action: func(c *cli.Context) error {
-				fmt.Println("Initializing Database")
-				// Initialize models to get the database in the right spot
-				bcdaModels.InitializeGormModels()
-				auth.InitializeGormModels()
-				fmt.Println("Completed Database Initialization")
+				autoMigrate()
 				return nil
 			},
 		},
@@ -218,6 +219,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func autoMigrate() {
+	fmt.Println("Initializing Database")
+	models.InitializeGormModels()
+	auth.InitializeGormModels()
+	fmt.Println("Completed Database Initialization")
 }
 
 func createACO(name string) (string, error) {
