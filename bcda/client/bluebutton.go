@@ -104,9 +104,8 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, er
 
 	addRequestHeaders(req, reqID)
 
-	logRequest(req)
-
 	resp, err := bbc.httpClient.Do(req)
+	logRequest(req, resp)
 	if err != nil {
 		return "", err
 	}
@@ -122,7 +121,8 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, er
 }
 
 func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
-	// https://github.com/CMSgov/bluebutton-web-server/blob/master/apps/fhir/bluebutton/utils.py#L224-L231
+	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
+	// Populating header values: https://jira.cms.gov/browse/BCDA-334
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
@@ -138,10 +138,20 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	req.Header.Add("BlueButton-BackendCall", "")
 }
 
-func logRequest(req *http.Request) {
+func logRequest(req *http.Request, resp *http.Response) {
 	logger.WithFields(logrus.Fields{
-		"req_id": req.Header.Get("BlueButton-OriginalQueryId"),
-		"ts":     req.Header.Get("BlueButton-OriginalQueryTimestamp"),
-		"uri":    req.Header.Get("BlueButton-OriginalUrl"),
+		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
+		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
 	}).Infoln("Blue Button request")
+
+	if resp != nil {
+		logger.WithFields(logrus.Fields{
+			"resp_code":      resp.StatusCode,
+			"bb_query_id":    resp.Header.Get("BlueButton-OriginalQueryId"),
+			"bb_query_ts":    resp.Header.Get("BlueButton-OriginalQueryTimestamp"),
+			"bb_uri":         resp.Header.Get("BlueButton-OriginalUrl"),
+			"content_length": resp.ContentLength,
+		}).Infoln("Blue Button response")
+	}
 }
