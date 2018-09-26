@@ -1,12 +1,6 @@
 version: '3'
 
 services:
-  documentation:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.documentation
-    volumes:
-    - .:/go/src/github.com/CMSgov/bcda-app
   unit_test:
     build:
       context: .
@@ -15,5 +9,3 @@ services:
       - DB=postgresql://postgres:toor@db:5432
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-    depends_on:
-      - documentation

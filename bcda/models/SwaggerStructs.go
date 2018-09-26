@@ -1,4 +1,4 @@
-package bcdaModels
+package models
 
 // BulkRequestResponse is the return from a request to initiate a bulk data collection process
 // swagger:response BulkRequestResponse
