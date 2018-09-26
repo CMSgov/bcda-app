@@ -175,15 +175,23 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
-	bbClient := client.NewBlueButtonClient()
+	bbClient, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
 	bbData, err := bbClient.GetMetadata()
 	if err != nil {
+		log.Error(err)
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
 
 	_, err = w.Write([]byte(bbData))
 	if err != nil {
+		log.Error(err)
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}

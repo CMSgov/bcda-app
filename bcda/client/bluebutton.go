@@ -2,6 +2,7 @@ package client
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -31,24 +32,35 @@ func init() {
 	}
 }
 
-func NewBlueButtonClient() *BlueButtonClient {
+func NewBlueButtonClient() (*BlueButtonClient, error) {
 	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		logger.Fatal(err)
+		return nil, err
 	}
 
-	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: true,
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+
+	// TODO Fix when Blue Button has a static cert: https://jira.cms.gov/browse/BLUEBUTTON-484
+	if os.Getenv("BB_SERVER_LOCATION") != "https://fhir.backend.bluebutton.hhsdevcloud.us" {
+		caFile := os.Getenv("BB_CLIENT_CA_FILE")
+		caCert, err := ioutil.ReadFile(caFile)
+		if err != nil {
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		tlsConfig.RootCAs = caCertPool
+	} else {
+		tlsConfig.InsecureSkipVerify = true
 	}
 
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	client := &http.Client{Transport: transport}
 
-	return &BlueButtonClient{*client}
+	return &BlueButtonClient{*client}, nil
 }
 
 func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
