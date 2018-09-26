@@ -59,7 +59,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	syntheticIds := []string{}
+	beneficiaryIds := []string{}
 	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?",acoId).Rows()
 	if err != nil {
 		log.Error(err)
@@ -75,14 +75,14 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 			writeError(fhirmodels.OperationOutcome{}, w)
 			return
 		}
-		syntheticIds = append(syntheticIds,id)
+		beneficiaryIds = append(beneficiaryIds,id)
 	}
 
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:     int(newJob.ID),
 		AcoID:  acoId,
 		UserID: userId,
-		SyntheticIDs: syntheticIds,
+		BeneficiaryIDs: beneficiaryIds,
 	})
 	if err != nil {
 		log.Error(err)

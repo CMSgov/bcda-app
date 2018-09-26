@@ -27,7 +27,7 @@ type jobEnqueueArgs struct {
 	ID     int
 	AcoID  string
 	UserID string
-	SyntheticIDs []string
+	BeneficiaryIDs []string
 }
 
 type fileItem struct {
