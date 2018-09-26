@@ -60,7 +60,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	beneficiaryIds := []string{}
-	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?",acoId).Rows()
+	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
 	if err != nil {
 		log.Error(err)
 		writeError(fhirmodels.OperationOutcome{}, w)
@@ -75,13 +75,13 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 			writeError(fhirmodels.OperationOutcome{}, w)
 			return
 		}
-		beneficiaryIds = append(beneficiaryIds,id)
+		beneficiaryIds = append(beneficiaryIds, id)
 	}
 
 	args, err := json.Marshal(jobEnqueueArgs{
-		ID:     int(newJob.ID),
-		AcoID:  acoId,
-		UserID: userId,
+		ID:             int(newJob.ID),
+		AcoID:          acoId,
+		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
 	})
 	if err != nil {
@@ -178,7 +178,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	// Generates a token for fake user and ACO combination
 	token, err := authBackend.GenerateTokenString(
 		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
-		"DBBD1CE1-AE24-435C-807D-ED45953077D3",
+		"3461c774-b48f-11e8-96f8-529269fb1459",
 	)
 	if err != nil {
 		log.Error(err)
