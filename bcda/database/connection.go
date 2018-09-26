@@ -2,11 +2,11 @@ package database
 
 import (
 	"database/sql"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/lib/pq"
 	"log"
 	"os"
-	"github.com/jinzhu/gorm"
-        _ "github.com/jinzhu/gorm/dialects/postgres"
-        _ "github.com/lib/pq"
 )
 
 // Variable substitution to support testing.
