@@ -31,6 +31,7 @@ func NewRouter() http.Handler {
 		r.With(auth.RequireTokenAuth).Get("/jobs/{jobId}", jobStatus)
 		if os.Getenv("DEBUG") == "true" {
 			r.Get("/token", getToken)
+			r.Get("/bb_metadata", blueButtonMetadata)
 		}
 	})
 	r.Route("/data", func(r chi.Router) {

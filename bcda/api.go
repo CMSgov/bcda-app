@@ -41,6 +41,7 @@ import (
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	que "github.com/bgentry/que-go"
@@ -109,10 +110,30 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	beneficiaryIds := []string{}
+	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
+	if err != nil {
+		log.Error(err)
+		writeError(fhirmodels.OperationOutcome{}, w)
+		return
+	}
+	defer rows.Close()
+	var id string
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			log.Error(err)
+			writeError(fhirmodels.OperationOutcome{}, w)
+			return
+		}
+		beneficiaryIds = append(beneficiaryIds, id)
+	}
+
 	args, err := json.Marshal(jobEnqueueArgs{
-		ID:     int(newJob.ID),
-		AcoID:  acoId,
-		UserID: userId,
+		ID:             int(newJob.ID),
+		AcoID:          acoId,
+		UserID:         userId,
+		BeneficiaryIDs: beneficiaryIds,
 	})
 	if err != nil {
 		log.Error(err)
@@ -211,9 +232,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
 			return
-		} else {
-			w.WriteHeader(http.StatusOK)
 		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -227,7 +248,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	// Generates a token for fake user and ACO combination
 	token, err := authBackend.GenerateTokenString(
 		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
-		"DBBD1CE1-AE24-435C-807D-ED45953077D3",
+		"3461c774-b48f-11e8-96f8-529269fb1459",
 	)
 	if err != nil {
 		log.Error(err)
@@ -240,6 +261,31 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to write token response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
+	bbClient, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	bbData, err := bbClient.GetMetadata()
+	if err != nil {
+		log.Error(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	_, err = w.Write([]byte(bbData))
+	if err != nil {
+		log.Error(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func writeError(outcome fhirmodels.OperationOutcome, w http.ResponseWriter) {

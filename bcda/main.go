@@ -28,6 +28,7 @@ type jobEnqueueArgs struct {
 	ID     int
 	AcoID  string
 	UserID string
+	BeneficiaryIDs []string
 }
 
 // swagger:model fileItem
