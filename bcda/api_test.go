@@ -34,12 +34,10 @@ func (s *APITestSuite) TestBulkRequestMissingToken() {
 	req, err := http.NewRequest("GET", "/api/v1/Patient/$export", nil)
 	assert.Nil(s.T(), err)
 
-	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(bulkRequest)
+	handler.ServeHTTP(s.rr, req)
 
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(s.T(), http.StatusBadRequest, rr.Code)
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
 func (s *APITestSuite) TestJobStatusPending() {
@@ -54,17 +52,16 @@ func (s *APITestSuite) TestJobStatusPending() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-	handler.ServeHTTP(rr, req)
+	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
-	assert.Equal(s.T(), "Pending", rr.Header().Get("X-Progress"))
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	assert.Equal(s.T(), "Pending", s.rr.Header().Get("X-Progress"))
 
 	s.db.Delete(&j)
 }
@@ -81,17 +78,16 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-	handler.ServeHTTP(rr, req)
+	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
-	assert.Equal(s.T(), "In Progress", rr.Header().Get("X-Progress"))
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	assert.Equal(s.T(), "In Progress", s.rr.Header().Get("X-Progress"))
 
 	s.db.Delete(&j)
 }
@@ -109,16 +105,15 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-	handler.ServeHTTP(rr, req)
+	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusInternalServerError, rr.Code)
+	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 
 	s.db.Delete(&j)
 }
@@ -135,20 +130,19 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-	handler.ServeHTTP(rr, req)
+	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusOK, rr.Code)
-	assert.Equal(s.T(), "application/json", rr.Header().Get("Content-Type"))
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 
 	var rb bulkResponseBody
-	err = json.Unmarshal(rr.Body.Bytes(), &rb)
+	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.Error(err)
 	}
@@ -166,16 +160,25 @@ func (s *APITestSuite) TestServeData() {
 	req, err := http.NewRequest("GET", "/api/v1/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", nil)
 	assert.Nil(s.T(), err)
 
-	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(serveData)
+	handler.ServeHTTP(s.rr, req)
 
-	handler.ServeHTTP(rr, req)
-
-	assert.Equal(s.T(), http.StatusOK, rr.Code)
-	assert.Contains(s.T(), rr.Body.String(), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	assert.Contains(s.T(), s.rr.Body.String(), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
 }
 
 func (s *APITestSuite) TestGetToken() {}
+
+func (s *APITestSuite) TestBlueButtonMetadata() {
+	// TODO
+	req, err := http.NewRequest("GET", "/api/v1/bb_metadata", nil)
+	assert.Nil(s.T(), err)
+
+	handler := http.HandlerFunc(blueButtonMetadata)
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
+}
 
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
