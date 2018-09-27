@@ -6,3 +6,4 @@ bcdaworker/bcdaworker
 bcdaworker/debug
 test_results/*
 .idea
+bcda/swaggerui/swagger.json

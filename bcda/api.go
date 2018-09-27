@@ -1,3 +1,37 @@
+/*
+ Package main BCDA API.
+
+ The purpose of this application is to provide an application that allows for downloading of Beneficiary claims
+
+ Terms Of Service:
+
+ there are no TOS at this moment, use at your own risk we take no responsibility
+
+	Schemes: http, https
+     Host: localhost
+     BasePath: /v2
+     Version: 1.0.0
+     License: https://github.com/CMSgov/bcda-app/blob/master/LICENSE.md
+     Contact: bcapi@cms.hhs.gov
+
+     Consumes:
+     - application/json
+     - application/xml
+
+     Produces:
+     - application/json
+     - application/xml
+
+     Security:
+     - api_key:
+
+     SecurityDefinitions:
+     api_key:
+          type: apiKey
+          name: Authorization
+          in: header
+ swagger:meta
+*/
 package main
 
 import (
@@ -18,6 +52,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+/*
+	swagger:route GET  /api/v1/Patient/$export bulkData bulkRequest
+	bulkRequest initiates a job to collect data from the Blue Button API for your ACO
+	Consumes:
+	- application/JSON
+	Produces:
+	- application/JSON
+	Schemes: http, https
+	Security:
+		api_key
+	Responses:
+		default: BulkRequestResponse
+		202:BulkRequestResponse
+		400:ErrorModel
+		500:FHIRResponse
+*/
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	var (
 		claims jwt.MapClaims
@@ -104,6 +154,25 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
 }
+
+/*
+	swagger:route GET /api/v1/jobs/{jobid} bulkData jobStatus
+	jobStatus is the current status of a requested job.
+	Consumes:
+	- application/JSON
+	Produces:
+	- application/JSON
+	Schemes: http, https
+	Security:
+		api_key:
+	Responses:
+		default: bulkResponseBody
+		202:JobStatus
+		200:bulkResponseBody
+		400:ErrorModel
+        404:ErrorModel
+		500:FHIRResponse
+*/
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobId")
