@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	que "github.com/bgentry/que-go"
@@ -142,9 +143,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
 			return
-		} else {
-			w.WriteHeader(http.StatusOK)
 		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -171,6 +172,31 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to write token response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
+	bbClient, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	bbData, err := bbClient.GetMetadata()
+	if err != nil {
+		log.Error(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	_, err = w.Write([]byte(bbData))
+	if err != nil {
+		log.Error(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func writeError(outcome fhirmodels.OperationOutcome, w http.ResponseWriter) {
