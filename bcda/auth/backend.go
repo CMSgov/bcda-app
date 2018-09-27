@@ -52,6 +52,15 @@ func InitAuthBackend() *JWTAuthenticationBackend {
 	return authBackendInstance
 }
 
+// For testing.  Probably no real use case.
+func (backend *JWTAuthenticationBackend) ResetAuthBackend() {
+
+	authBackendInstance = &JWTAuthenticationBackend{
+		PrivateKey: getPrivateKey(),
+		PublicKey:  getPublicKey(),
+	}
+}
+
 func (backend *JWTAuthenticationBackend) CreateACO(name string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -96,11 +105,7 @@ func (backend *JWTAuthenticationBackend) GenerateTokenString(userID, acoID strin
 		"aco": acoID,
 		"id":  uuid.NewRandom(),
 	}
-	tokenString, err := token.SignedString(backend.PrivateKey)
-	if err != nil {
-		panic(err)
-	}
-	return tokenString, nil
+	return token.SignedString(backend.PrivateKey)
 }
 
 func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
@@ -165,9 +170,8 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(jwtToken *jwt.Token) bool
 func getPrivateKey() *rsa.PrivateKey {
 	privateKeyFile, err := os.Open(os.Getenv("JWT_PRIVATE_KEY_FILE"))
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
-
 	pemfileinfo, _ := privateKeyFile.Stat()
 	var size int64 = pemfileinfo.Size()
 	pembytes := make([]byte, size)
@@ -175,22 +179,24 @@ func getPrivateKey() *rsa.PrivateKey {
 	buffer := bufio.NewReader(privateKeyFile)
 	_, err = buffer.Read(pembytes)
 	if err != nil {
-		log.Fatal(err)
+		// Above buffer.Read succeeded on a blank file Not Sure how to reach this
+		log.Panic(err)
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
-
 	privateKeyFile.Close()
 
 	privateKeyImported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
-
 	if err != nil {
-		panic(err)
+		// Above function panicked when receiving a bad and blank key file.  This may be unreachable
+		log.Panic(err)
 	}
 
 	return privateKeyImported
 }
 
+// THis method gets the private key from the file system and environment variables.  It accesses external resources
+// so it may panic and bubble up an error if the file is not present or otherwise corrupted
 func getPublicKey() *rsa.PublicKey {
 	publicKeyFile, err := os.Open(os.Getenv("JWT_PUBLIC_KEY_FILE"))
 	if err != nil {
@@ -229,11 +235,8 @@ func getPublicKey() *rsa.PublicKey {
 func (backend *JWTAuthenticationBackend) GetJWTClaims(tokenString string) jwt.MapClaims {
 	token, err := backend.GetJWToken(tokenString)
 
+	// err is returned if anything goes wrong, including expired token
 	if err != nil {
-		panic(err)
-	}
-
-	if !token.Valid {
 		return nil
 	}
 
