@@ -13,5 +13,4 @@ COPY . .
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
-RUN chmod u+x unit_test.sh
 CMD ["sh", "unit_test.sh"]
