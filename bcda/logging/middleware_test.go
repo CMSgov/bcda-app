@@ -27,9 +27,27 @@ type LoggingMiddlewareTestSuite struct {
 func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
+	r.Use(contextToken)
 	r.Use(logging.NewStructuredLogger())
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {})
 	return r
+}
+
+func contextToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		acoID := "dbbd1ce1-ae24-435c-807d-ed45953077d3"
+		subID := "82503a18-bf3b-436d-ba7b-bae09b7ffdff"
+		tokenID := "665341c9-7d0c-4844-b66f-5910d9d0822f"
+
+		token := jwt.New(jwt.SigningMethodRS512)
+		token.Claims = jwt.MapClaims{
+			"sub": subID,
+			"aco": acoID,
+			"id":  tokenID,
+		}
+		ctx := context.WithValue(req.Context(), "token", token)
+		next.ServeHTTP(w, req.WithContext(ctx))
+	})
 }
 
 func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
@@ -43,19 +61,7 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 		s.Fail("Request error", err)
 	}
 
-	acoID := "dbbd1ce1-ae24-435c-807d-ed45953077d3"
-	subID := "82503a18-bf3b-436d-ba7b-bae09b7ffdff"
-	tokenID := "665341c9-7d0c-4844-b66f-5910d9d0822f"
-
-	token := jwt.New(jwt.SigningMethodRS512)
-	token.Claims = jwt.MapClaims{
-		"sub": subID,
-		"aco": acoID,
-		"id":  tokenID,
-	}
-	ctx := context.WithValue(req.Context(), "token", token)
-
-	resp, err := client.Do(req.WithContext(ctx))
+	resp, err := client.Do(req)
 	if err != nil {
 		s.Fail("Request error", err)
 	}
@@ -83,9 +89,9 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 		assert.NotEmpty(s.T(), logFields["remote_addr"])
 		assert.NotEmpty(s.T(), logFields["user_agent"])
 		assert.Equal(s.T(), server.URL+"/", logFields["uri"])
-		// assert.Equal(s.T(), acoID, logFields["aco"])
-		// assert.Equal(s.T(), subID, logFields["sub"])
-		// assert.Equal(s.T(), tokenID, logFields["token_id"])
+		assert.Equal(s.T(), "dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco"])
+		assert.Equal(s.T(), "82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["sub"])
+		assert.Equal(s.T(), "665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"])
 	}
 
 	os.Remove("bcda-req-test.log")
