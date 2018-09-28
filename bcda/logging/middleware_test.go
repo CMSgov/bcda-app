@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -55,7 +54,7 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 		"id":  tokenID,
 	}
 	ctx := context.WithValue(req.Context(), "token", token)
-	fmt.Println(req.WithContext(ctx).Context())
+
 	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		s.Fail("Request error", err)
