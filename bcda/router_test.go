@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-chi/chi"
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,10 +16,13 @@ import (
 type RouterTestSuite struct {
 	suite.Suite
 	server *httptest.Server
+	rr     *httptest.ResponseRecorder
 }
 
 func (suite *RouterTestSuite) SetupTest() {
+	os.Setenv("DEBUG", "true")
 	suite.server = httptest.NewServer(NewRouter())
+	suite.rr = httptest.NewRecorder()
 }
 
 func (suite *RouterTestSuite) TearDownTest() {
@@ -44,6 +50,21 @@ func (suite *RouterTestSuite) TestDefaultRoute() {
 	assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
 }
 
+func (suite *RouterTestSuite) TestDataRoute() {
+	_, err := suite.GetStringBody(suite.server.URL + "/data")
+	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting data route: %s", err))
+	//assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
+}
+func (suite *RouterTestSuite) TestFileServerRoute() {
+	_, err := suite.GetStringBody(suite.server.URL + "/api/v1/swagger")
+	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting swagger route: %s", err))
+	r := chi.NewRouter()
+	// Set up a bad route.  DON'T do this in real life
+	assert.Panics(suite.T(), func() {
+		FileServer(r, "/api/v1/swagger{}", http.Dir("./swaggerui"))
+	})
+
+}
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))
 }
