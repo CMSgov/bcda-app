@@ -1,18 +1,21 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
-	"log"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
-	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/bgentry/que-go"
+	"github.com/jackc/pgx"
 )
 
 var (
@@ -20,14 +23,14 @@ var (
 )
 
 type jobEnqueueArgs struct {
-	ID     int
-	AcoID  string
-	UserID string
+	ID             int
+	AcoID          string
+	UserID         string
 	BeneficiaryIDs []string
 }
 
 func processJob(j *que.Job) error {
-	fmt.Printf("Worker started processing job (ID: %d, Args: %s)\n", j.ID, j.Args)
+	log.Info("Worker started processing job ID ", j.ID)
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -50,9 +53,33 @@ func processJob(j *que.Job) error {
 		return err
 	}
 	beneficiaryIds := jobArgs.BeneficiaryIDs
-	fmt.Print("beneficiary patient ids: ", beneficiaryIds)
 
-	time.Sleep(30 * time.Second)
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	f, err := os.Create(fmt.Sprintf("data/%s.ndjson", jobArgs.AcoID))
+	if err != nil {
+		log.Error(err)
+	}
+
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+
+	pData, err := bb.GetExplanationOfBenefitData(beneficiaryIds[0])
+	if err != nil {
+		log.Error(err)
+	} else {
+		_, err := w.WriteString(pData + "\n")
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
+	w.Flush()
 
 	exportJob.Status = "Completed"
 	err = db.Save(exportJob).Error
