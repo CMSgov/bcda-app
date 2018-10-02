@@ -13,11 +13,6 @@ load-fixtures:
 	echo "Wait for db to be ready..."
 	sleep 5
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
-
-load-beneficiaries:
-	docker-compose up -d db
-	echo "Wait for db to be ready..."
-	sleep 5
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_beneficiaries.sql
 
 docker-build:

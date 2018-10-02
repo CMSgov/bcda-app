@@ -10,6 +10,8 @@ services:
       - "5433:5432"
     volumes:
       - ./db/worker.sql:/docker-entrypoint-initdb.d/schema.sql
+    depends_on:
+      - documentation
   db:
     image: postgres
     environment:
@@ -31,7 +33,7 @@ services:
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
       - DEBUG=true
     volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
+     - .:/go/src/github.com/CMSgov/bcda-app
     ports:
       - "3000:3000"
     depends_on:
@@ -47,3 +49,9 @@ services:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
       - queue
+  documentation:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.documentation
+    volumes:
+    - .:/go/src/github.com/CMSgov/bcda-app
