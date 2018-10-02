@@ -1,3 +1,9 @@
+package:
+	# This target should be executed by passing in an argument reprsenting the version of the artifacts we are packaging
+	# For example: make package version=r1
+	docker build -t packaging -f Dockerfiles/Dockerfile.package .
+	docker run -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version) 
+
 test:
 	docker-compose up -d db
 	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test
@@ -33,4 +39,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package
