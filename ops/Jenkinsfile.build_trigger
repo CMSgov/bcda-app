@@ -41,7 +41,7 @@ pipeline {
     stage('') {
      steps {
         build job: 'BCDA - Build and Package', 
-        parameters: [string(name: 'BCDA_GIT_VERSION', value: "${env.BRANCH_NAME}"), string(name: 'DEPLOY', value: 'dev'), 
+        parameters: [string(name: 'BCDA_GIT_VERSION', value: "${env.BRANCH_NAME}"), string(name: 'DEPLOY', value: 'dev')], 
         wait: true,
         propagate: true
      }
