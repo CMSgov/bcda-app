@@ -1,0 +1,51 @@
+pipeline {
+  agent {
+    node {
+      label ''
+      customWorkspace 'workspace/bcda-build_trigger'
+    }
+  }
+  triggers {
+     pollSCM 'H/* * * * *'
+  }
+
+  stages {
+
+    stage('Clear the working dir') {
+      steps {
+        script {
+          dir('bcda-build_trigger') {
+            deleteDir()
+          }
+        }
+      }
+    }
+
+    stage('Checkout') {
+      steps {
+        checkout([
+          $class: 'GitSCM',
+          doGenerateSubmoduleConfigurations: false,
+          extensions: [[
+            $class: 'RelativeTargetDirectory',
+            relativeTargetDir: 'bcda-app'
+          ]],
+          userRemoteConfigs: [[
+            url: 'git@github.com:CMSgov/bcda-app.git'
+          ]]
+        ])
+         }
+        }
+      }
+
+    stage('') {
+     steps {
+        build job: 'BCDA - Build and Package', 
+        parameters: [string(name: 'BCDA_GIT_VERSION', value: "${env.BRANCH_NAME}"), string(name: 'DEPLOY', value: 'dev'), 
+        wait: true,
+        propagate: true
+     }
+    }
+  }
+}
+
