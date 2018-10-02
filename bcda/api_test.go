@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -157,6 +158,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 }
 
 func (s *APITestSuite) TestServeData() {
+	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
 	req, err := http.NewRequest("GET", "/data/test.ndjson", nil)
 	assert.Nil(s.T(), err)
 

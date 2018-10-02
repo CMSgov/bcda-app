@@ -38,6 +38,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -239,8 +240,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveData(w http.ResponseWriter, r *http.Request) {
+	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	acoID := chi.URLParam(r, "acoID")
-	http.ServeFile(w, r, fmt.Sprintf("../bcdaworker/data/%s.ndjson", acoID))
+	http.ServeFile(w, r, fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {

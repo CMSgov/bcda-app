@@ -91,7 +91,8 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 		return err
 	}
 
-	f, err := os.Create(fmt.Sprintf("data/%s.ndjson", acoID))
+	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
+	f, err := os.Create(fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
 	if err != nil {
 		log.Error(err)
 		return err
