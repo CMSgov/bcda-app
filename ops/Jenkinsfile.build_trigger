@@ -1,3 +1,5 @@
+DEPLOY = 'Do Not Deploy'
+
 pipeline {
   agent {
     node {
@@ -37,7 +39,12 @@ pipeline {
             url: 'git@github.com:CMSgov/bcda-app.git'
           ]]
         ])
-         }
+        script {
+	  if (env.BRANCH_NAME == "master") {
+            DEPLOY='dev'
+	  }
+	} 
+      }
      }
 
     stage('') {
