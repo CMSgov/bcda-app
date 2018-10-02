@@ -103,6 +103,7 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 
 	pData, err := bb.GetExplanationOfBenefitData(beneficiaryIDs[0])
 	if err != nil {
+		// TODO: Store errors in NDJSON file of OperationOutcomes
 		log.Error(err)
 	} else {
 		// Append newline because we'll be writing multiple entries per file later
