@@ -52,7 +52,6 @@ func processJob(j *que.Job) error {
 	if err != nil {
 		return err
 	}
-	beneficiaryIds := jobArgs.BeneficiaryIDs
 
 	bb, err := client.NewBlueButtonClient()
 	if err != nil {
@@ -60,19 +59,38 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	f, err := os.Create(fmt.Sprintf("data/%s.ndjson", jobArgs.AcoID))
+	err = writeEOBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs)
+
+	if err != nil {
+		exportJob.Status = "Failed"
+	} else {
+		exportJob.Status = "Completed"
+	}
+
+	err = db.Save(exportJob).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string) error {
+	f, err := os.Create(fmt.Sprintf("data/%s.ndjson", acoID))
 	if err != nil {
 		log.Error(err)
+		return err
 	}
 
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
 
-	pData, err := bb.GetExplanationOfBenefitData(beneficiaryIds[0])
+	pData, err := bb.GetExplanationOfBenefitData(beneficiaryIDs[0])
 	if err != nil {
 		log.Error(err)
 	} else {
+		// Append newline because we'll be writing multiple entries per file later
 		_, err := w.WriteString(pData + "\n")
 		if err != nil {
 			log.Error(err)
@@ -80,12 +98,6 @@ func processJob(j *que.Job) error {
 	}
 
 	w.Flush()
-
-	exportJob.Status = "Completed"
-	err = db.Save(exportJob).Error
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
