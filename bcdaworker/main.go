@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"syscall"
 
@@ -76,6 +78,19 @@ func processJob(j *que.Job) error {
 }
 
 func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string) error {
+	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
+	if !re.Match([]byte(acoID)) {
+		err := errors.New("Invalid ACO ID")
+		log.Error(err)
+		return err
+	}
+
+	if bb == nil {
+		err := errors.New("Blue Button client is required")
+		log.Error(err)
+		return err
+	}
+
 	f, err := os.Create(fmt.Sprintf("data/%s.ndjson", acoID))
 	if err != nil {
 		log.Error(err)

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,12 +36,29 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		t.Fail()
 	}
 
-	fData, err := ioutil.ReadFile(fmt.Sprintf("data/%s.ndjson", acoID))
+	filePath := fmt.Sprintf("data/%s.ndjson", acoID)
+	fData, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		t.Fail()
 	}
 
 	assert.Equal(t, eobData+"\n", string(fData))
+
+	os.Remove(filePath)
+}
+
+func TestWriteEOBDataToFileNoClient(t *testing.T) {
+	err := writeEOBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"})
+	assert.NotNil(t, err)
+}
+
+func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
+	bbc := MockBlueButtonClient{}
+	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
+	beneficiaryIDs := []string{"10000", "11000"}
+
+	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs)
+	assert.NotNil(t, err)
 }
 
 func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
