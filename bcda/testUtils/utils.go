@@ -1,24 +1,27 @@
-package auth_test
+package testUtils
 
 import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"os"
-
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/stretchr/testify/suite"
 )
 
 type AuthTestSuite struct {
 	suite.Suite
-	authBackend *auth.JWTAuthenticationBackend
-	tmpFiles    []string
+	AuthBackend *auth.JWTAuthenticationBackend
+	TmpFiles    []string
 }
 
+func PrintSeparator() {
+	fmt.Println("**********************************************************************************")
+}
 func (s *AuthTestSuite) CreateTempFile() (*os.File, error) {
 	tmpfile, err := ioutil.TempFile("", "bcda_backend_test_")
 	if err != nil {
@@ -73,7 +76,7 @@ func (s *AuthTestSuite) SetupAuthBackend() {
 	}
 
 	os.Setenv("JWT_PRIVATE_KEY_FILE", privKeyFile.Name())
-	s.tmpFiles = append(s.tmpFiles, privKeyFile.Name())
+	s.TmpFiles = append(s.TmpFiles, privKeyFile.Name())
 	s.SavePrivateKey(privKeyFile, key)
 	defer privKeyFile.Close()
 
@@ -83,15 +86,9 @@ func (s *AuthTestSuite) SetupAuthBackend() {
 	}
 
 	os.Setenv("JWT_PUBLIC_KEY_FILE", pubKeyFile.Name())
-	s.tmpFiles = append(s.tmpFiles, pubKeyFile.Name())
+	s.TmpFiles = append(s.TmpFiles, pubKeyFile.Name())
 	s.SavePubKey(pubKeyFile, publicKey)
 	defer pubKeyFile.Close()
 
-	s.authBackend = auth.InitAuthBackend()
-}
-
-func (s *AuthTestSuite) TearDownTest() {
-	for _, f := range s.tmpFiles {
-		os.Remove(f)
-	}
+	s.AuthBackend = auth.InitAuthBackend()
 }

@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +18,7 @@ import (
 var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
 
 type MiddlewareTestSuite struct {
-	AuthTestSuite
+	testUtils.AuthTestSuite
 	server *httptest.Server
 	token  string
 }
@@ -37,7 +38,7 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 
 func (s *MiddlewareTestSuite) SetupTest() {
 	s.SetupAuthBackend()
-	token, err := s.authBackend.GenerateTokenString(
+	token, err := s.AuthBackend.GenerateTokenString(
 		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F", "DBBD1CE1-AE24-435C-807D-ED45953077D3")
 	if err != nil {
 		log.Fatal(err)
@@ -47,7 +48,7 @@ func (s *MiddlewareTestSuite) SetupTest() {
 }
 
 func (s *MiddlewareTestSuite) TearDownTest() {
-	for _, f := range s.tmpFiles {
+	for _, f := range s.TmpFiles {
 		os.Remove(f)
 	}
 	s.server.Close()
