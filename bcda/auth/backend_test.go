@@ -5,8 +5,9 @@ import (
 	"crypto/rsa"
 	"errors"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
-
+	"os"
 	//"strings"
 	"testing"
 
@@ -31,6 +32,14 @@ func (s *BackendTestSuite) TestInitAuthBackend() {
 	assert.IsType(s.T(), &rsa.PublicKey{}, s.authBackend.PublicKey)
 }
 
+func (s *BackendTestSuite) TestHashCompare() {
+	uuidString := uuid.NewRandom().String()
+	hash := auth.Hash{}
+	hashString := hash.Generate(uuidString)
+	assert.True(s.T(), hash.Compare(hashString, uuidString))
+	assert.False(s.T(), hash.Compare(hashString, uuid.NewRandom().String()))
+}
+
 func (s *BackendTestSuite) TestCreateACO() {
 	acoUUID, err := s.authBackend.CreateACO("ACO Name")
 
@@ -39,7 +48,7 @@ func (s *BackendTestSuite) TestCreateACO() {
 }
 
 func (s *BackendTestSuite) TestCreateUser() {
-	name, email, sampleUUID := "First Last", "firstlast@exaple.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	name, email, sampleUUID, duplicateName := "First Last", "firstlast@exaple.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3", "Duplicate Name"
 
 	// Make a user for an ACO that doesn't exist
 	badACOUser, err := s.authBackend.CreateUser(name, email, uuid.NewRandom())
@@ -55,8 +64,9 @@ func (s *BackendTestSuite) TestCreateUser() {
 	assert.NotNil(s.T(), user.ID)
 
 	// Try making a duplicate user for the same E-mail address
-	duplicateUser, err := s.authBackend.CreateUser(name, email, uuid.NewRandom())
-	assert.True(s.T(), duplicateUser.ID == 0)
+	duplicateUser, err := s.authBackend.CreateUser(duplicateName, email, uuid.Parse(sampleUUID))
+	// Got a user, not the one that was requested
+	assert.True(s.T(), duplicateUser.Name == name)
 	assert.NotNil(s.T(), err)
 }
 
@@ -67,6 +77,12 @@ func (s *BackendTestSuite) TestGenerateToken() {
 	// No errors, token is not nil
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
+
+	// Wipe the keys
+	s.authBackend.PrivateKey = nil
+	s.authBackend.PublicKey = nil
+	defer s.authBackend.ResetAuthBackend()
+	assert.Panics(s.T(), func() { _, _ = s.authBackend.GenerateTokenString(userUUIDString, acoUUIDString) })
 }
 
 func (s *BackendTestSuite) TestCreateToken() {
@@ -79,6 +95,38 @@ func (s *BackendTestSuite) TestCreateToken() {
 	token, _, err := s.authBackend.CreateToken(user)
 	assert.NotNil(s.T(), token.UUID)
 	assert.Nil(s.T(), err)
+
+	// Wipe the keys
+	s.authBackend.PrivateKey = nil
+	s.authBackend.PublicKey = nil
+	defer s.authBackend.ResetAuthBackend()
+	assert.Panics(s.T(), func() { _, _, _ = s.authBackend.CreateToken(user) })
+}
+
+func (s *BackendTestSuite) TestGetJWClaims() {
+	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	goodToken, err := s.authBackend.GenerateTokenString(acoID, userID)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), s.authBackend.GetJWTClaims(goodToken))
+
+	// Check an expired token
+	expiredToken := jwt.New(jwt.SigningMethodRS512)
+	expiredToken.Claims = jwt.MapClaims{
+		"exp": 12345,
+		"iat": 123,
+		"sub": userID,
+		"aco": acoID,
+		"id":  uuid.NewRandom(),
+	}
+	expiredTokenString, err := expiredToken.SignedString(s.authBackend.PrivateKey)
+	assert.Nil(s.T(), err)
+	invalidClaims := s.authBackend.GetJWTClaims(expiredTokenString)
+	assert.Nil(s.T(), invalidClaims)
+
+	// Check an incorrectly signed token.
+	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
+	badClaims := s.authBackend.GetJWTClaims(badToken)
+	assert.Nil(s.T(), badClaims)
 }
 
 func (s *BackendTestSuite) TestRevokeToken() {
@@ -89,7 +137,9 @@ func (s *BackendTestSuite) TestRevokeToken() {
 	// Good Revoke test
 	_, tokenString, _ := s.authBackend.CreateToken(user)
 
-	err := s.authBackend.RevokeToken(tokenString)
+	err := s.authBackend.RevokeToken(userID)
+	assert.NotNil(s.T(), err)
+	err = s.authBackend.RevokeToken(tokenString)
 	assert.Nil(s.T(), err)
 	jwtToken, err := s.authBackend.GetJWToken(tokenString)
 	assert.Nil(s.T(), err)
@@ -271,6 +321,50 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	blacklisted = s.authBackend.IsBlacklisted(jwtToken)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), blacklisted)
+}
+
+func (s *BackendTestSuite) TestPrivateKey() {
+	privateKey := s.authBackend.PrivateKey
+	assert.NotNil(s.T(), privateKey)
+	// get the real Key File location
+	actualPrivateKeyFile := os.Getenv("JWT_PRIVATE_KEY_FILE")
+	defer func() { os.Setenv("JWT_PRIVATE_KEY_FILE", actualPrivateKeyFile) }()
+
+	// set the Private Key File to a bogus value to test negative scenarios
+	// File does not exist
+	os.Setenv("JWT_PRIVATE_KEY_FILE", "/static/thisDoesNotExist.pem")
+	assert.Panics(s.T(), s.authBackend.ResetAuthBackend)
+
+	// Empty file
+	os.Setenv("JWT_PRIVATE_KEY_FILE", "../static/emptyFile.pem")
+	assert.Panics(s.T(), s.authBackend.ResetAuthBackend)
+
+	// File contains not a key
+	os.Setenv("JWT_PRIVATE_KEY_FILE", "../static/badPrivate.pem")
+	assert.Panics(s.T(), s.authBackend.ResetAuthBackend)
+
+}
+
+func (s *BackendTestSuite) TestPublicKey() {
+	privateKey := s.authBackend.PublicKey
+	assert.NotNil(s.T(), privateKey)
+	// get the real Key File location
+	actualPublicKeyFile := os.Getenv("JWT_PUBLIC_KEY_FILE")
+	defer func() { os.Setenv("JWT_PUBLIC_KEY_FILE", actualPublicKeyFile) }()
+
+	// set the Private Key File to a bogus value to test negative scenarios
+	// File does not exist
+	os.Setenv("JWT_PUBLIC_KEY_FILE", "/static/thisDoesNotExist.pem")
+	assert.Panics(s.T(), s.authBackend.ResetAuthBackend)
+
+	// Empty file
+	os.Setenv("JWT_PUBLIC_KEY_FILE", "../static/emptyFile.pem")
+	assert.Panics(s.T(), s.authBackend.ResetAuthBackend)
+
+	// File contains not a key
+	os.Setenv("JWT_PUBLIC_KEY_FILE", "../static/badPublic.pem")
+	assert.Panics(s.T(), s.authBackend.ResetAuthBackend)
+
 }
 
 func TestBackendTestSuite(t *testing.T) {

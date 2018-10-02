@@ -23,23 +23,39 @@ var (
 	qc *que.Client
 )
 
+// swagger:ignore
 type jobEnqueueArgs struct {
 	ID     int
 	AcoID  string
 	UserID string
+	BeneficiaryIDs []string
 }
 
+// swagger:model fileItem
 type fileItem struct {
+	// KNOLL the type of File returned
 	Type string `json:"type"`
-	URL  string `json:"url"`
+	// The URL of the file
+	URL string `json:"url"`
 }
 
+/*
+Bulk Response Body for a completed Bulk Status Request
+swagger:response bulkResponseBody
+*/
 type bulkResponseBody struct {
-	TransactionTime     time.Time  `json:"transactionTime"`
-	RequestURL          string     `json:"request"`
-	RequiresAccessToken bool       `json:"requiresAccessToken"`
-	Files               []fileItem `json:"output"`
-	Errors              []fileItem `json:"error"`
+	// The Time of the Transaction Request
+	TransactionTime time.Time `json:"transactionTime"`
+	// The URL of the Response
+	RequestURL string `json:"request"`
+	// Is a token required for this response
+	RequiresAccessToken bool `json:"requiresAccessToken"`
+	// Files included in the payload
+	// collection format: csv
+	Files []fileItem `json:"output"`
+	// Errors encountered during processing
+	// collection format: csv
+	Errors []fileItem `json:"error"`
 }
 
 func init() {
