@@ -64,10 +64,30 @@
   revision = "39bbc98d99d7b666759f84514859becf8067128f"
 
 [[projects]]
-  digest = "1:37ce7d7d80531b227023331002c0d42b4b4b291a96798c82a049d03a54ba79e4"
+  digest = "1:6895fbe5a10c5aebd1965cac6f6905dcdb21bee01e08912d3ba6a805c2485f6a"
+  name = "github.com/jinzhu/gorm"
+  packages = [
+    ".",
+    "dialects/postgres",
+  ]
+  pruneopts = "UT"
+  revision = "6ed508ec6a4ecb3531899a69cbc746ccf65a4166"
+  version = "v1.9.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:fd97437fbb6b7dce04132cf06775bd258cce305c44add58eb55ca86c6c325160"
+  name = "github.com/jinzhu/inflection"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "04140366298a54a039076d798123ffa108fff46c"
+
+[[projects]]
+  digest = "1:2d370ad7a48d3523291ad53a04b9b1510c182880927f800b46221cc465427800"
   name = "github.com/lib/pq"
   packages = [
     ".",
+    "hstore",
     "oid",
   ]
   pruneopts = "UT"
@@ -104,15 +124,25 @@
   revision = "d329d24db4313262a3b0a24d8aeb1dc4bd294fb0"
 
 [[projects]]
-  digest = "1:1ea3b236e68d72d981fd955ff2b987f7bb14b1df2a2287d246c34073d0fbc5f8"
+  digest = "1:ac83cf90d08b63ad5f7e020ef480d319ae890c208f8524622a2f3136e2686b02"
+  name = "github.com/stretchr/objx"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "477a77ecc69700c7cdeb1fa9e129548e1c1c393c"
+  version = "v0.1.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:b047f9861fd35de3735cf422402833a635534bb7d0641afa0449e73572152558"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
+    "mock",
     "require",
     "suite",
   ]
   pruneopts = "UT"
-  revision = "4d4bfba8f1d1027c4fdbe371823030df51419987"
+  revision = "2db35c88b92a1631e987089b5485a95e68bc5d3a"
 
 [[projects]]
   digest = "1:189a0e6e9c657bb662bafc41a796360d11c88eed7614b1b6f003b8fbc8847e5e"
@@ -160,10 +190,13 @@
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
     "github.com/jackc/pgx",
+    "github.com/jinzhu/gorm",
+    "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
     "github.com/pborman/uuid",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/mock",
     "github.com/stretchr/testify/suite",
     "github.com/urfave/cli",
   ]
