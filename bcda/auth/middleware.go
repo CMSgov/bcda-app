@@ -100,7 +100,7 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 			} else {
 				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-				responseutils.WriteError(oo, w, http.StatusUnauthorized)
+				responseutils.WriteError(oo, w, http.StatusNotFound)
 				return
 			}
 		}

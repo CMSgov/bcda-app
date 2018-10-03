@@ -199,7 +199,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Print(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		responseutils.WriteError(oo, w, http.StatusNotFound)
 		return
 	}
 
@@ -210,7 +210,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Progress", job.Status)
 		w.WriteHeader(http.StatusAccepted)
 	case "Failed":
-		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusOK)
+		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Completed":
 		w.Header().Set("Content-Type", "application/json")
 
