@@ -9,36 +9,11 @@ import (
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"os"
-	"testing"
-)
-
-type MainTestSuite struct {
-	testUtils.AuthTestSuite
-}
-
-func (s *MainTestSuite) SetupTest() {
-
-}
-
-func (s *MainTestSuite) TearDownTest() {
-	testUtils.PrintSeparator()
-}
-
-func TestMainTestSuite(t *testing.T) {
-	suite.Run(t, new(MainTestSuite))
-}
-package main
-
-import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 var eobData = `{
@@ -55,6 +30,22 @@ var eobData = `{
 
 type MockBlueButtonClient struct {
 	mock.Mock
+}
+
+type MainTestSuite struct {
+	testUtils.AuthTestSuite
+}
+
+func (s *MainTestSuite) SetupTest() {
+
+}
+
+func (s *MainTestSuite) TearDownTest() {
+	testUtils.PrintSeparator()
+}
+
+func TestMainTestSuite(t *testing.T) {
+	suite.Run(t, new(MainTestSuite))
 }
 
 func TestWriteEOBDataToFile(t *testing.T) {
@@ -96,6 +87,7 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
 	return eobData, nil
 }
+
 func (s *MainTestSuite) TestProcessJob() {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
