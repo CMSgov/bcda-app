@@ -132,7 +132,8 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:9922c2fc63458a0c64135f12b6e4f5303c9f08f83683e60d7790aa4d94fabd75"
+  branch = "master"
+  digest = "1:b047f9861fd35de3735cf422402833a635534bb7d0641afa0449e73572152558"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -141,7 +142,7 @@
     "suite",
   ]
   pruneopts = "UT"
-  revision = "4d4bfba8f1d1027c4fdbe371823030df51419987"
+  revision = "2db35c88b92a1631e987089b5485a95e68bc5d3a"
 
 [[projects]]
   digest = "1:189a0e6e9c657bb662bafc41a796360d11c88eed7614b1b6f003b8fbc8847e5e"
