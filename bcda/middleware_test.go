@@ -56,6 +56,7 @@ func (s *MiddlewareTestSuite) TestValidateBulkRequestHeadersInvalidAccept() {
 	}
 
 	req.Header.Add("Accept", "")
+	req.Header.Add("Prefer", "respond-async")
 
 	resp, err := client.Do(req)
 	if err != nil {
