@@ -19,15 +19,20 @@ import (
 	"github.com/pborman/uuid"
 )
 
+// App Name and usage.  Edit them here to prevent breaking tests
+const Name = "bcda"
+const Usage = "Beneficiary Claims Data API CLI"
+const CreateACO = "create-aco"
+
 var (
 	qc *que.Client
 )
 
 // swagger:ignore
 type jobEnqueueArgs struct {
-	ID     int
-	AcoID  string
-	UserID string
+	ID             int
+	AcoID          string
+	UserID         string
 	BeneficiaryIDs []string
 }
 
@@ -70,9 +75,17 @@ func init() {
 }
 
 func main() {
+	app := setUpApp()
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func setUpApp() *cli.App {
 	app := cli.NewApp()
-	app.Name = "bcda"
-	app.Usage = "Beneficiary Claims Data API CLI"
+	app.Name = Name
+	app.Usage = Usage
 	var acoName, acoID, userName, userEmail, userID, accessToken string
 	app.Commands = []cli.Command{
 		{
@@ -111,7 +124,7 @@ func main() {
 			},
 		},
 		{
-			Name:     "create-aco",
+			Name:     CreateACO,
 			Category: "Authentication tools",
 			Usage:    "Create an ACO",
 			Flags: []cli.Flag{
@@ -215,11 +228,7 @@ func main() {
 			},
 		},
 	}
-
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return app
 }
 
 func autoMigrate() {
@@ -246,6 +255,7 @@ func createACO(name string) (string, error) {
 func createUser(acoID, name, email string) (string, error) {
 	errMsgs := []string{}
 	var acoUUID uuid.UUID
+	var userUUID string
 
 	if acoID == "" {
 		errMsgs = append(errMsgs, "ACO ID (--aco-id) must be provided")
@@ -263,13 +273,13 @@ func createUser(acoID, name, email string) (string, error) {
 	}
 
 	if len(errMsgs) > 0 {
-		return "", errors.New(strings.Join(errMsgs, "\n"))
+		return userUUID, errors.New(strings.Join(errMsgs, "\n"))
 	}
 
 	authBackend := auth.InitAuthBackend()
 	user, err := authBackend.CreateUser(name, email, acoUUID)
 	if err != nil {
-		return "", err
+		return userUUID, err
 	}
 
 	return user.UUID.String(), nil
@@ -301,7 +311,7 @@ func createAccessToken(acoID, userID string) (string, error) {
 	}
 
 	authBackend := auth.InitAuthBackend()
-
+	// !todo  This does the wrong thing.  A valid token string is created but not persisted to the db and can't then be reused
 	token, err := authBackend.GenerateTokenString(userID, acoID)
 	if err != nil {
 		return "", err
