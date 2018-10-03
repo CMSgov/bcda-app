@@ -38,6 +38,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -221,7 +222,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 		fi := fileItem{
 			Type: "ExplanationOfBenefit",
-			URL:  fmt.Sprintf("%s://%s/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", scheme, r.Host),
+			URL:  fmt.Sprintf("%s://%s/data/%s.ndjson", scheme, r.Host, job.AcoID),
 		}
 
 		rb := bulkResponseBody{
@@ -251,7 +252,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveData(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "./static/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson")
+	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
+	acoID := chi.URLParam(r, "acoID")
+	http.ServeFile(w, r, fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {

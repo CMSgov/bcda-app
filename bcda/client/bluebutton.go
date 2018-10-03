@@ -16,6 +16,10 @@ import (
 
 var logger *logrus.Logger
 
+type APIClient interface {
+	GetExplanationOfBenefitData(patientID string) (string, error)
+}
+
 type BlueButtonClient struct {
 	httpClient http.Client
 }

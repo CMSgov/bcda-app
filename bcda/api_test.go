@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -150,15 +151,20 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), "http:///data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", rb.Files[0].URL)
+	assert.Equal(s.T(), "http:///data/dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson", rb.Files[0].URL)
 	assert.Empty(s.T(), rb.Errors)
 
 	s.db.Delete(&j)
 }
 
 func (s *APITestSuite) TestServeData() {
-	req, err := http.NewRequest("GET", "/api/v1/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", nil)
+	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	req, err := http.NewRequest("GET", "/data/test.ndjson", nil)
 	assert.Nil(s.T(), err)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("acoID", "test")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler := http.HandlerFunc(serveData)
 	handler.ServeHTTP(s.rr, req)
