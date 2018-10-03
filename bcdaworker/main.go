@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"log"
@@ -20,9 +21,9 @@ var (
 )
 
 type jobEnqueueArgs struct {
-	ID     int
-	AcoID  string
-	UserID string
+	ID             int
+	AcoID          string
+	UserID         string
 	BeneficiaryIDs []string
 }
 
@@ -50,9 +51,9 @@ func processJob(j *que.Job) error {
 		return err
 	}
 	beneficiaryIds := jobArgs.BeneficiaryIDs
-	fmt.Print("beneficiary patient ids: ", beneficiaryIds)
+	fmt.Println("beneficiary patient ids: ", beneficiaryIds)
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	exportJob.Status = "Completed"
 	err = db.Save(exportJob).Error
@@ -96,10 +97,11 @@ func waitForSig() {
 	os.Exit(code)
 }
 
-func main() {
-	fmt.Println("Starting bcdaworker...")
-
+func setupQueue() {
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	testUtils.PrintSeparator()
+	fmt.Println(queueDatabaseURL)
+	testUtils.PrintSeparator()
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -131,6 +133,12 @@ func main() {
 
 	workers := que.NewWorkerPool(qc, wm, workerPoolSize)
 	go workers.Start()
+
+}
+func main() {
+	fmt.Println("Starting bcdaworker...")
+
+	setupQueue()
 
 	waitForSig()
 }

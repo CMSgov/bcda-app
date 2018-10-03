@@ -5,7 +5,7 @@ package:
 	docker run -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version) 
 
 test:
-	docker-compose up -d db
+	docker-compose up -d db queue
 	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test
 
 load-fixtures:
