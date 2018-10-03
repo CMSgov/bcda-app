@@ -1,19 +1,23 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
-	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"syscall"
-	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/bgentry/que-go"
+	"github.com/jackc/pgx"
 )
 
 var (
@@ -28,7 +32,7 @@ type jobEnqueueArgs struct {
 }
 
 func processJob(j *que.Job) error {
-	fmt.Printf("Worker started processing job (ID: %d, Args: %s)\n", j.ID, j.Args)
+	log.Info("Worker started processing job ID ", j.ID)
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -50,16 +54,67 @@ func processJob(j *que.Job) error {
 	if err != nil {
 		return err
 	}
-	beneficiaryIds := jobArgs.BeneficiaryIDs
-	fmt.Println("beneficiary patient ids: ", beneficiaryIds)
 
-	time.Sleep(3 * time.Second)
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 
-	exportJob.Status = "Completed"
+	err = writeEOBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs)
+
+	if err != nil {
+		exportJob.Status = "Failed"
+	} else {
+		exportJob.Status = "Completed"
+	}
+
 	err = db.Save(exportJob).Error
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string) error {
+	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
+	if !re.Match([]byte(acoID)) {
+		err := errors.New("Invalid ACO ID")
+		log.Error(err)
+		return err
+	}
+
+	if bb == nil {
+		err := errors.New("Blue Button client is required")
+		log.Error(err)
+		return err
+	}
+
+	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
+	f, err := os.Create(fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+
+	pData, err := bb.GetExplanationOfBenefitData(beneficiaryIDs[0])
+	if err != nil {
+		// TODO: Store errors in NDJSON file of OperationOutcomes
+		log.Error(err)
+	} else {
+		// Append newline because we'll be writing multiple entries per file later
+		_, err := w.WriteString(pData + "\n")
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
+	w.Flush()
 
 	return nil
 }
@@ -97,11 +152,10 @@ func waitForSig() {
 	os.Exit(code)
 }
 
-func setupQueue() {
+func main() {
+	fmt.Println("Starting bcdaworker...")
+
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	testUtils.PrintSeparator()
-	fmt.Println(queueDatabaseURL)
-	testUtils.PrintSeparator()
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -133,12 +187,6 @@ func setupQueue() {
 
 	workers := que.NewWorkerPool(qc, wm, workerPoolSize)
 	go workers.Start()
-
-}
-func main() {
-	fmt.Println("Starting bcdaworker...")
-
-	setupQueue()
 
 	waitForSig()
 }

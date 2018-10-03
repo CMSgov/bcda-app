@@ -17,7 +17,28 @@ var DefaultTableNameHandler = func(db *DB, defaultTableName string) string {
 	return defaultTableName
 }
 
-var modelStructsMap sync.Map
+type safeModelStructsMap struct {
+	m map[reflect.Type]*ModelStruct
+	l *sync.RWMutex
+}
+
+func (s *safeModelStructsMap) Set(key reflect.Type, value *ModelStruct) {
+	s.l.Lock()
+	defer s.l.Unlock()
+	s.m[key] = value
+}
+
+func (s *safeModelStructsMap) Get(key reflect.Type) *ModelStruct {
+	s.l.RLock()
+	defer s.l.RUnlock()
+	return s.m[key]
+}
+
+func newModelStructsMap() *safeModelStructsMap {
+	return &safeModelStructsMap{l: new(sync.RWMutex), m: make(map[reflect.Type]*ModelStruct)}
+}
+
+var modelStructsMap = newModelStructsMap()
 
 // ModelStruct model definition
 type ModelStruct struct {
@@ -27,14 +48,14 @@ type ModelStruct struct {
 	defaultTableName string
 }
 
-// TableName returns model's table name
+// TableName get model's table name
 func (s *ModelStruct) TableName(db *DB) string {
 	if s.defaultTableName == "" && db != nil && s.ModelType != nil {
 		// Set default table name
 		if tabler, ok := reflect.New(s.ModelType).Interface().(tabler); ok {
 			s.defaultTableName = tabler.TableName()
 		} else {
-			tableName := ToTableName(s.ModelType.Name())
+			tableName := ToDBName(s.ModelType.Name())
 			if db == nil || !db.parent.singularTable {
 				tableName = inflection.Plural(tableName)
 			}
@@ -60,30 +81,6 @@ type StructField struct {
 	Struct          reflect.StructField
 	IsForeignKey    bool
 	Relationship    *Relationship
-
-	tagSettingsLock sync.RWMutex
-}
-
-// TagSettingsSet Sets a tag in the tag settings map
-func (s *StructField) TagSettingsSet(key, val string) {
-	s.tagSettingsLock.Lock()
-	defer s.tagSettingsLock.Unlock()
-	s.TagSettings[key] = val
-}
-
-// TagSettingsGet returns a tag from the tag settings
-func (s *StructField) TagSettingsGet(key string) (string, bool) {
-	s.tagSettingsLock.RLock()
-	defer s.tagSettingsLock.RUnlock()
-	val, ok := s.TagSettings[key]
-	return val, ok
-}
-
-// TagSettingsDelete deletes a tag
-func (s *StructField) TagSettingsDelete(key string) {
-	s.tagSettingsLock.Lock()
-	defer s.tagSettingsLock.Unlock()
-	delete(s.TagSettings, key)
 }
 
 func (structField *StructField) clone() *StructField {
@@ -107,9 +104,6 @@ func (structField *StructField) clone() *StructField {
 		clone.Relationship = &relationship
 	}
 
-	// copy the struct field tagSettings, they should be read-locked while they are copied
-	structField.tagSettingsLock.Lock()
-	defer structField.tagSettingsLock.Unlock()
 	for key, value := range structField.TagSettings {
 		clone.TagSettings[key] = value
 	}
@@ -132,7 +126,7 @@ type Relationship struct {
 
 func getForeignField(column string, fields []*StructField) *StructField {
 	for _, field := range fields {
-		if field.Name == column || field.DBName == column || field.DBName == ToColumnName(column) {
+		if field.Name == column || field.DBName == column || field.DBName == ToDBName(column) {
 			return field
 		}
 	}
@@ -158,8 +152,8 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 	}
 
 	// Get Cached model struct
-	if value, ok := modelStructsMap.Load(reflectType); ok && value != nil {
-		return value.(*ModelStruct)
+	if value := modelStructsMap.Get(reflectType); value != nil {
+		return value
 	}
 
 	modelStruct.ModelType = reflectType
@@ -176,19 +170,19 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 			}
 
 			// is ignored field
-			if _, ok := field.TagSettingsGet("-"); ok {
+			if _, ok := field.TagSettings["-"]; ok {
 				field.IsIgnored = true
 			} else {
-				if _, ok := field.TagSettingsGet("PRIMARY_KEY"); ok {
+				if _, ok := field.TagSettings["PRIMARY_KEY"]; ok {
 					field.IsPrimaryKey = true
 					modelStruct.PrimaryFields = append(modelStruct.PrimaryFields, field)
 				}
 
-				if _, ok := field.TagSettingsGet("DEFAULT"); ok {
+				if _, ok := field.TagSettings["DEFAULT"]; ok {
 					field.HasDefaultValue = true
 				}
 
-				if _, ok := field.TagSettingsGet("AUTO_INCREMENT"); ok && !field.IsPrimaryKey {
+				if _, ok := field.TagSettings["AUTO_INCREMENT"]; ok && !field.IsPrimaryKey {
 					field.HasDefaultValue = true
 				}
 
@@ -204,8 +198,8 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 					if indirectType.Kind() == reflect.Struct {
 						for i := 0; i < indirectType.NumField(); i++ {
 							for key, value := range parseTagSetting(indirectType.Field(i).Tag) {
-								if _, ok := field.TagSettingsGet(key); !ok {
-									field.TagSettingsSet(key, value)
+								if _, ok := field.TagSettings[key]; !ok {
+									field.TagSettings[key] = value
 								}
 							}
 						}
@@ -213,17 +207,17 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 				} else if _, isTime := fieldValue.(*time.Time); isTime {
 					// is time
 					field.IsNormal = true
-				} else if _, ok := field.TagSettingsGet("EMBEDDED"); ok || fieldStruct.Anonymous {
+				} else if _, ok := field.TagSettings["EMBEDDED"]; ok || fieldStruct.Anonymous {
 					// is embedded struct
 					for _, subField := range scope.New(fieldValue).GetModelStruct().StructFields {
 						subField = subField.clone()
 						subField.Names = append([]string{fieldStruct.Name}, subField.Names...)
-						if prefix, ok := field.TagSettingsGet("EMBEDDED_PREFIX"); ok {
+						if prefix, ok := field.TagSettings["EMBEDDED_PREFIX"]; ok {
 							subField.DBName = prefix + subField.DBName
 						}
 
 						if subField.IsPrimaryKey {
-							if _, ok := subField.TagSettingsGet("PRIMARY_KEY"); ok {
+							if _, ok := subField.TagSettings["PRIMARY_KEY"]; ok {
 								modelStruct.PrimaryFields = append(modelStruct.PrimaryFields, subField)
 							} else {
 								subField.IsPrimaryKey = false
@@ -254,13 +248,13 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 								elemType               = field.Struct.Type
 							)
 
-							if foreignKey, _ := field.TagSettingsGet("FOREIGNKEY"); foreignKey != "" {
+							if foreignKey := field.TagSettings["FOREIGNKEY"]; foreignKey != "" {
 								foreignKeys = strings.Split(foreignKey, ",")
 							}
 
-							if foreignKey, _ := field.TagSettingsGet("ASSOCIATION_FOREIGNKEY"); foreignKey != "" {
+							if foreignKey := field.TagSettings["ASSOCIATION_FOREIGNKEY"]; foreignKey != "" {
 								associationForeignKeys = strings.Split(foreignKey, ",")
-							} else if foreignKey, _ := field.TagSettingsGet("ASSOCIATIONFOREIGNKEY"); foreignKey != "" {
+							} else if foreignKey := field.TagSettings["ASSOCIATIONFOREIGNKEY"]; foreignKey != "" {
 								associationForeignKeys = strings.Split(foreignKey, ",")
 							}
 
@@ -269,13 +263,13 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 							}
 
 							if elemType.Kind() == reflect.Struct {
-								if many2many, _ := field.TagSettingsGet("MANY2MANY"); many2many != "" {
+								if many2many := field.TagSettings["MANY2MANY"]; many2many != "" {
 									relationship.Kind = "many_to_many"
 
 									{ // Foreign Keys for Source
 										joinTableDBNames := []string{}
 
-										if foreignKey, _ := field.TagSettingsGet("JOINTABLE_FOREIGNKEY"); foreignKey != "" {
+										if foreignKey := field.TagSettings["JOINTABLE_FOREIGNKEY"]; foreignKey != "" {
 											joinTableDBNames = strings.Split(foreignKey, ",")
 										}
 
@@ -296,7 +290,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 													// if defined join table's foreign key
 													relationship.ForeignDBNames = append(relationship.ForeignDBNames, joinTableDBNames[idx])
 												} else {
-													defaultJointableForeignKey := ToColumnName(reflectType.Name()) + "_" + foreignField.DBName
+													defaultJointableForeignKey := ToDBName(reflectType.Name()) + "_" + foreignField.DBName
 													relationship.ForeignDBNames = append(relationship.ForeignDBNames, defaultJointableForeignKey)
 												}
 											}
@@ -306,7 +300,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 									{ // Foreign Keys for Association (Destination)
 										associationJoinTableDBNames := []string{}
 
-										if foreignKey, _ := field.TagSettingsGet("ASSOCIATION_JOINTABLE_FOREIGNKEY"); foreignKey != "" {
+										if foreignKey := field.TagSettings["ASSOCIATION_JOINTABLE_FOREIGNKEY"]; foreignKey != "" {
 											associationJoinTableDBNames = strings.Split(foreignKey, ",")
 										}
 
@@ -327,7 +321,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 													relationship.AssociationForeignDBNames = append(relationship.AssociationForeignDBNames, associationJoinTableDBNames[idx])
 												} else {
 													// join table foreign keys for association
-													joinTableDBName := ToColumnName(elemType.Name()) + "_" + field.DBName
+													joinTableDBName := ToDBName(elemType.Name()) + "_" + field.DBName
 													relationship.AssociationForeignDBNames = append(relationship.AssociationForeignDBNames, joinTableDBName)
 												}
 											}
@@ -335,7 +329,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 									}
 
 									joinTableHandler := JoinTableHandler{}
-									joinTableHandler.Setup(relationship, ToTableName(many2many), reflectType, elemType)
+									joinTableHandler.Setup(relationship, many2many, reflectType, elemType)
 									relationship.JoinTableHandler = &joinTableHandler
 									field.Relationship = relationship
 								} else {
@@ -344,7 +338,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 									var toFields = toScope.GetStructFields()
 									relationship.Kind = "has_many"
 
-									if polymorphic, _ := field.TagSettingsGet("POLYMORPHIC"); polymorphic != "" {
+									if polymorphic := field.TagSettings["POLYMORPHIC"]; polymorphic != "" {
 										// Dog has many toys, tag polymorphic is Owner, then associationType is Owner
 										// Toy use OwnerID, OwnerType ('dogs') as foreign key
 										if polymorphicType := getForeignField(polymorphic+"Type", toFields); polymorphicType != nil {
@@ -352,7 +346,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 											relationship.PolymorphicType = polymorphicType.Name
 											relationship.PolymorphicDBName = polymorphicType.DBName
 											// if Dog has multiple set of toys set name of the set (instead of default 'dogs')
-											if value, ok := field.TagSettingsGet("POLYMORPHIC_VALUE"); ok {
+											if value, ok := field.TagSettings["POLYMORPHIC_VALUE"]; ok {
 												relationship.PolymorphicValue = value
 											} else {
 												relationship.PolymorphicValue = scope.TableName()
@@ -434,17 +428,17 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 								tagAssociationForeignKeys []string
 							)
 
-							if foreignKey, _ := field.TagSettingsGet("FOREIGNKEY"); foreignKey != "" {
+							if foreignKey := field.TagSettings["FOREIGNKEY"]; foreignKey != "" {
 								tagForeignKeys = strings.Split(foreignKey, ",")
 							}
 
-							if foreignKey, _ := field.TagSettingsGet("ASSOCIATION_FOREIGNKEY"); foreignKey != "" {
+							if foreignKey := field.TagSettings["ASSOCIATION_FOREIGNKEY"]; foreignKey != "" {
 								tagAssociationForeignKeys = strings.Split(foreignKey, ",")
-							} else if foreignKey, _ := field.TagSettingsGet("ASSOCIATIONFOREIGNKEY"); foreignKey != "" {
+							} else if foreignKey := field.TagSettings["ASSOCIATIONFOREIGNKEY"]; foreignKey != "" {
 								tagAssociationForeignKeys = strings.Split(foreignKey, ",")
 							}
 
-							if polymorphic, _ := field.TagSettingsGet("POLYMORPHIC"); polymorphic != "" {
+							if polymorphic := field.TagSettings["POLYMORPHIC"]; polymorphic != "" {
 								// Cat has one toy, tag polymorphic is Owner, then associationType is Owner
 								// Toy use OwnerID, OwnerType ('cats') as foreign key
 								if polymorphicType := getForeignField(polymorphic+"Type", toFields); polymorphicType != nil {
@@ -452,7 +446,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 									relationship.PolymorphicType = polymorphicType.Name
 									relationship.PolymorphicDBName = polymorphicType.DBName
 									// if Cat has several different types of toys set name for each (instead of default 'cats')
-									if value, ok := field.TagSettingsGet("POLYMORPHIC_VALUE"); ok {
+									if value, ok := field.TagSettings["POLYMORPHIC_VALUE"]; ok {
 										relationship.PolymorphicValue = value
 									} else {
 										relationship.PolymorphicValue = scope.TableName()
@@ -590,10 +584,10 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 			}
 
 			// Even it is ignored, also possible to decode db value into the field
-			if value, ok := field.TagSettingsGet("COLUMN"); ok {
+			if value, ok := field.TagSettings["COLUMN"]; ok {
 				field.DBName = value
 			} else {
-				field.DBName = ToColumnName(fieldStruct.Name)
+				field.DBName = ToDBName(fieldStruct.Name)
 			}
 
 			modelStruct.StructFields = append(modelStruct.StructFields, field)
@@ -607,7 +601,7 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 		}
 	}
 
-	modelStructsMap.Store(reflectType, &modelStruct)
+	modelStructsMap.Set(reflectType, &modelStruct)
 
 	return &modelStruct
 }
