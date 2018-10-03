@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -22,7 +21,7 @@ type DB struct {
 	logMode           int
 	logger            logger
 	search            *search
-	values            sync.Map
+	values            map[string]interface{}
 
 	// global db
 	parent        *DB
@@ -49,7 +48,6 @@ func Open(dialect string, args ...interface{}) (db *DB, err error) {
 	}
 	var source string
 	var dbSQL SQLCommon
-	var ownDbSQL bool
 
 	switch value := args[0].(type) {
 	case string:
@@ -61,17 +59,14 @@ func Open(dialect string, args ...interface{}) (db *DB, err error) {
 			source = args[1].(string)
 		}
 		dbSQL, err = sql.Open(driver, source)
-		ownDbSQL = true
 	case SQLCommon:
 		dbSQL = value
-		ownDbSQL = false
-	default:
-		return nil, fmt.Errorf("invalid database source: %v is not a valid type", value)
 	}
 
 	db = &DB{
 		db:        dbSQL,
 		logger:    defaultLogger,
+		values:    map[string]interface{}{},
 		callbacks: DefaultCallback,
 		dialect:   newDialect(dialect, dbSQL),
 	}
@@ -81,7 +76,7 @@ func Open(dialect string, args ...interface{}) (db *DB, err error) {
 	}
 	// Send a ping to make sure the database connection is alive.
 	if d, ok := dbSQL.(*sql.DB); ok {
-		if err = d.Ping(); err != nil && ownDbSQL {
+		if err = d.Ping(); err != nil {
 			d.Close()
 		}
 	}
@@ -122,7 +117,7 @@ func (s *DB) CommonDB() SQLCommon {
 
 // Dialect get dialect
 func (s *DB) Dialect() Dialect {
-	return s.dialect
+	return s.parent.dialect
 }
 
 // Callback return `Callbacks` container, you could add/change/delete callbacks with it
@@ -162,7 +157,7 @@ func (s *DB) HasBlockGlobalUpdate() bool {
 
 // SingularTable use singular table by default
 func (s *DB) SingularTable(enable bool) {
-	modelStructsMap = sync.Map{}
+	modelStructsMap = newModelStructsMap()
 	s.parent.singularTable = enable
 }
 
@@ -312,11 +307,6 @@ func (s *DB) Last(out interface{}, where ...interface{}) *DB {
 // Find find records that match given conditions
 func (s *DB) Find(out interface{}, where ...interface{}) *DB {
 	return s.NewScope(out).inlineCondition(where...).callCallbacks(s.parent.callbacks.queries).db
-}
-
-//Preloads preloads relations, don`t touch out
-func (s *DB) Preloads(out interface{}) *DB {
-	return s.NewScope(out).InstanceSet("gorm:only_preload", 1).callCallbacks(s.parent.callbacks.queries).db
 }
 
 // Scan scan value to a struct
@@ -492,8 +482,6 @@ func (s *DB) Begin() *DB {
 	if db, ok := c.db.(sqlDb); ok && db != nil {
 		tx, err := db.Begin()
 		c.db = interface{}(tx).(SQLCommon)
-
-		c.dialect.SetDB(c.db)
 		c.AddError(err)
 	} else {
 		c.AddError(ErrCantStartTransaction)
@@ -503,8 +491,7 @@ func (s *DB) Begin() *DB {
 
 // Commit commit a transaction
 func (s *DB) Commit() *DB {
-	var emptySQLTx *sql.Tx
-	if db, ok := s.db.(sqlTx); ok && db != nil && db != emptySQLTx {
+	if db, ok := s.db.(sqlTx); ok && db != nil {
 		s.AddError(db.Commit())
 	} else {
 		s.AddError(ErrInvalidTransaction)
@@ -514,8 +501,7 @@ func (s *DB) Commit() *DB {
 
 // Rollback rollback a transaction
 func (s *DB) Rollback() *DB {
-	var emptySQLTx *sql.Tx
-	if db, ok := s.db.(sqlTx); ok && db != nil && db != emptySQLTx {
+	if db, ok := s.db.(sqlTx); ok && db != nil {
 		s.AddError(db.Rollback())
 	} else {
 		s.AddError(ErrInvalidTransaction)
@@ -684,13 +670,13 @@ func (s *DB) Set(name string, value interface{}) *DB {
 
 // InstantSet instant set setting, will affect current db
 func (s *DB) InstantSet(name string, value interface{}) *DB {
-	s.values.Store(name, value)
+	s.values[name] = value
 	return s
 }
 
 // Get get setting by name
 func (s *DB) Get(name string) (value interface{}, ok bool) {
-	value, ok = s.values.Load(name)
+	value, ok = s.values[name]
 	return
 }
 
@@ -699,7 +685,7 @@ func (s *DB) SetJoinTableHandler(source interface{}, column string, handler Join
 	scope := s.NewScope(source)
 	for _, field := range scope.GetModelStruct().StructFields {
 		if field.Name == column || field.DBName == column {
-			if many2many, _ := field.TagSettingsGet("MANY2MANY"); many2many != "" {
+			if many2many := field.TagSettings["MANY2MANY"]; many2many != "" {
 				source := (&Scope{Value: source}).GetModelStruct().ModelType
 				destination := (&Scope{Value: reflect.New(field.Struct.Type).Interface()}).GetModelStruct().ModelType
 				handler.Setup(field.Relationship, many2many, source, destination)
@@ -754,16 +740,15 @@ func (s *DB) clone() *DB {
 		parent:            s.parent,
 		logger:            s.logger,
 		logMode:           s.logMode,
+		values:            map[string]interface{}{},
 		Value:             s.Value,
 		Error:             s.Error,
 		blockGlobalUpdate: s.blockGlobalUpdate,
-		dialect:           newDialect(s.dialect.GetName(), s.db),
 	}
 
-	s.values.Range(func(k, v interface{}) bool {
-		db.values.Store(k, v)
-		return true
-	})
+	for key, value := range s.values {
+		db.values[key] = value
+	}
 
 	if s.search == nil {
 		db.search = &search{limit: -1, offset: -1}
