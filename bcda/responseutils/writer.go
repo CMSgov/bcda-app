@@ -24,7 +24,7 @@ func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, cod
 }
 
 func CreateCapabilityStatement(reldate time.Time, relversion string) *fhirmodels.CapabilityStatement {
-	usecoors := true
+	usecors := true
 	baseurl := "<host>"
 	statement := &fhirmodels.CapabilityStatement{
 		Status:       "active",
@@ -48,7 +48,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion string) *fhirmodels
 			{
 				Mode: "server",
 				Security: &fhirmodels.CapabilityStatementRestSecurityComponent{
-					Cors: &usecoors,
+					Cors: &usecors,
 					Service: []fhirmodels.CodeableConcept{
 						{
 							Coding: []fhirmodels.Coding{
