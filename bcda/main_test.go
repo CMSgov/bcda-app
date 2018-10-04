@@ -80,42 +80,42 @@ func (s *MainTestSuite) TestCreateACO() {
 	// Blank UUID
 	badUserUUID, err := createUser("", name, email)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badUserUUID)
+	assert.Equal(s.T(), "", badUserUUID)
 
 	// Blank UUID
 	badUserUUID, err = createUser(BADUUID, name, email)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badUserUUID)
+	assert.Equal(s.T(), "", badUserUUID)
 
 	// Blank Name
 	badUserUUID, err = createUser(acoUUID, "", email)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badUserUUID)
+	assert.Equal(s.T(), "", badUserUUID)
 
 	// Blank E-mail address
 	badUserUUID, err = createUser(acoUUID, name, "")
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badUserUUID)
+	assert.Equal(s.T(), "", badUserUUID)
 
 	// Blank ACO UUID
 	badAccessTokenString, err := createAccessToken("", userUUID)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badAccessTokenString)
+	assert.Equal(s.T(), "", badAccessTokenString)
 
 	// Bad ACO UUID
 	badAccessTokenString, err = createAccessToken(BADUUID, userUUID)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badAccessTokenString)
+	assert.Equal(s.T(), "", badAccessTokenString)
 
 	// Blank User UUID
 	badAccessTokenString, err = createAccessToken(acoUUID, "")
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badAccessTokenString)
+	assert.Equal(s.T(), "", badAccessTokenString)
 
 	// Bad User UUID
 	badAccessTokenString, err = createAccessToken(acoUUID, BADUUID)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), badAccessTokenString)
+	assert.Equal(s.T(), "", badAccessTokenString)
 
 }
 
