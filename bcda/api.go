@@ -311,6 +311,12 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 
 func metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
-	statement := responseutils.CreateCapabilityStatement(dt, "0.1")
+
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	host := fmt.Sprintf("%s://%s", scheme, r.Host)
+	statement := responseutils.CreateCapabilityStatement(dt, "0.1", host)
 	responseutils.WriteCapabilityStatement(statement, w)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	fhirmodels "github.com/eug48/fhir/models"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -23,15 +24,15 @@ func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, cod
 	}
 }
 
-func CreateCapabilityStatement(reldate time.Time, relversion string) *fhirmodels.CapabilityStatement {
+func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodels.CapabilityStatement {
 	usecors := true
-	baseurl := "<host>"
+	bbServer := os.Getenv("BB_SERVER_LOCATION")
 	statement := &fhirmodels.CapabilityStatement{
 		Status:       "active",
 		Date:         &fhirmodels.FHIRDateTime{Time: reldate, Precision: fhirmodels.Date},
 		Publisher:    "Centers for Medicare & Medicaid Services",
 		Kind:         "capability",
-		Instantiates: []string{"https://api.bluebutton.cms.gov/v1/fhir/metadata"},
+		Instantiates: []string{bbServer + "/baseDstu3/metadata/"},
 		Software: &fhirmodels.CapabilityStatementSoftwareComponent{
 			Name:        "Beneficiary Claims Data API",
 			Version:     relversion,
@@ -84,20 +85,6 @@ func CreateCapabilityStatement(reldate time.Time, relversion string) *fhirmodels
 						Name: "jobs",
 						Definition: &fhirmodels.Reference{
 							Reference: baseurl + "/api/v1/jobs/{jobId}",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "token",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/token",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "bb_metadata",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/bb_metadata",
 							Type:      "Endpoint",
 						},
 					},
