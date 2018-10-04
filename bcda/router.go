@@ -32,6 +32,7 @@ func NewRouter() http.Handler {
 		if os.Getenv("DEBUG") == "true" {
 			r.Get("/token", getToken)
 			r.Get("/bb_metadata", blueButtonMetadata)
+			r.Get("/metadata", metadata)
 		}
 	})
 	r.With(auth.RequireTokenAuth).With(auth.RequireTokenACOMatch).Get("/data/{acoID}.ndjson", serveData)

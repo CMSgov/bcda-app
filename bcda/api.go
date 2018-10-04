@@ -307,3 +307,8 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func metadata(w http.ResponseWriter, r *http.Request) {
+	statement := responseutils.CreateCapabilityStatement()
+	responseutils.WriteCapabilityStatement(statement, w)
+}
