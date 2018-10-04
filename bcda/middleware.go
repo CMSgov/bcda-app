@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"net/http"
 )
 
@@ -12,18 +13,26 @@ func ValidateBulkRequestHeaders(next http.Handler) http.Handler {
 		preferHeader := h.Get("Prefer")
 
 		if acceptHeader == "" {
-			http.Error(w, "Accept header is required", 400)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
+			oo.Issue[0].Diagnostics = "Accept header is required"
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		} else if acceptHeader != "application/fhir+json" {
-			http.Error(w, "application/fhir+json is the only supported response format", 400)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
+			oo.Issue[0].Diagnostics = "application/fhir+json is the only supported response format"
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		}
 
 		if preferHeader == "" {
-			http.Error(w, "Prefer header is required", 400)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
+			oo.Issue[0].Diagnostics = "Prefer header is required"
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		} else if preferHeader != "respond-async" {
-			http.Error(w, "Only asynchronous responses are supported", 400)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
+			oo.Issue[0].Diagnostics = "Only asynchronous responses are supported"
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		}
 

@@ -45,8 +45,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	que "github.com/bgentry/que-go"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/bgentry/que-go"
+	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -83,11 +84,13 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		claims, err = auth.ClaimsFromToken(token)
 		if err != nil {
 			log.Error(err)
-			writeError(fhirmodels.OperationOutcome{}, w)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+			responseutils.WriteError(oo, w, http.StatusUnauthorized)
 			return
 		}
 	} else {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
 	}
 
@@ -107,7 +110,8 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	if result := db.Save(&newJob); result.Error != nil {
 		log.Error(err)
-		writeError(fhirmodels.OperationOutcome{}, w)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
@@ -115,7 +119,8 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
 	if err != nil {
 		log.Error(err)
-		writeError(fhirmodels.OperationOutcome{}, w)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -124,7 +129,8 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&id)
 		if err != nil {
 			log.Error(err)
-			writeError(fhirmodels.OperationOutcome{}, w)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 		beneficiaryIds = append(beneficiaryIds, id)
@@ -138,7 +144,8 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Error(err)
-		writeError(fhirmodels.OperationOutcome{}, w)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
@@ -148,7 +155,8 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = qc.Enqueue(j); err != nil {
 		log.Error(err)
-		writeError(fhirmodels.OperationOutcome{}, w)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
@@ -183,14 +191,16 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	i, err := strconv.Atoi(jobID)
 	if err != nil {
 		log.Print(err)
-		http.Error(w, http.StatusText(400), 400)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
 	var job models.Job
 	err = db.First(&job, i).Error
 	if err != nil {
 		log.Print(err)
-		http.Error(w, http.StatusText(404), 404)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusNotFound)
 		return
 	}
 
@@ -201,7 +211,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Progress", job.Status)
 		w.WriteHeader(http.StatusAccepted)
 	case "Failed":
-		writeError(fhirmodels.OperationOutcome{}, w)
+		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Completed":
 		w.Header().Set("Content-Type", "application/json")
 
@@ -225,13 +235,15 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
@@ -255,13 +267,15 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 	_, err = w.Write([]byte(token))
 	if err != nil {
 		log.Error(err)
-		http.Error(w, "Failed to write token response", http.StatusInternalServerError)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 }
@@ -270,33 +284,26 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 	bbClient, err := client.NewBlueButtonClient()
 	if err != nil {
 		log.Error(err)
-		http.Error(w, http.StatusText(500), 500)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
 	bbData, err := bbClient.GetMetadata()
 	if err != nil {
 		log.Error(err)
-		http.Error(w, http.StatusText(500), 500)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
 	_, err = w.Write([]byte(bbData))
 	if err != nil {
 		log.Error(err)
-		http.Error(w, http.StatusText(500), 500)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func writeError(outcome fhirmodels.OperationOutcome, w http.ResponseWriter) {
-	outcomeJSON, _ := json.Marshal(outcome)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
-	_, err := w.Write(outcomeJSON)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
 }

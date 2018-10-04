@@ -3,8 +3,8 @@
 # This script is intended to be run from within the Docker "unit_test" container
 # The docker-compose file brings forward the env vars: DB
 #
-
 set -e
+set -o pipefail
 
 echo "Running linter..."
 golangci-lint run
@@ -28,6 +28,5 @@ go tool cover -func test_results/${timestamp}/testcoverage.out > test_results/${
 echo TOTAL COVERAGE:  $(tail -1 test_results/${timestamp}/testcov_byfunc.out | head -1)
 go tool cover -html=test_results/${timestamp}/testcoverage.out -o test_results/${timestamp}/testcoverage.html
 cp test_results/${timestamp}/* test_results/latest
-
 echo "Cleaning up test DB (bcda_test)..."
 usql $DB_HOST_URL -c 'drop database bcda_test;'

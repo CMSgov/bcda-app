@@ -9,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/pborman/uuid"
@@ -50,7 +51,8 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		tokenValue := r.Context().Value("token")
 
 		if tokenValue == nil {
-			http.Error(w, http.StatusText(401), 401)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+			responseutils.WriteError(oo, w, http.StatusUnauthorized)
 			return
 		}
 
@@ -65,7 +67,8 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			}
 		}
 
-		http.Error(w, http.StatusText(401), 401)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 	})
 }
 
@@ -74,7 +77,8 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 		tokenValue := r.Context().Value("token")
 
 		if tokenValue == nil {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+			responseutils.WriteError(oo, w, http.StatusUnauthorized)
 			return
 		}
 
@@ -82,7 +86,8 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 			claims, err := ClaimsFromToken(token)
 			if err != nil {
 				log.Error(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+				responseutils.WriteError(oo, w, http.StatusInternalServerError)
 				return
 			}
 
@@ -94,7 +99,8 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 			if uuid.Equal(uuid.Parse(aco), uuid.Parse(string(urlUUID))) {
 				next.ServeHTTP(w, r)
 			} else {
-				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+				responseutils.WriteError(oo, w, http.StatusNotFound)
 				return
 			}
 		}
