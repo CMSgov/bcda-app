@@ -40,6 +40,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -309,6 +310,7 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 }
 
 func metadata(w http.ResponseWriter, r *http.Request) {
-	statement := responseutils.CreateCapabilityStatement()
+	dt := time.Now()
+	statement := responseutils.CreateCapabilityStatement(dt, "0.1")
 	responseutils.WriteCapabilityStatement(statement, w)
 }
