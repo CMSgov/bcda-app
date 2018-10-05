@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	fhirmodels "github.com/eug48/fhir/models"
 	"net/http"
+	"os"
+	"time"
 )
 
 func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
@@ -22,4 +24,91 @@ func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, cod
 	}
 }
 
-func WriteCapabilityStatement() {}
+func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodels.CapabilityStatement {
+	usecors := true
+	bbServer := os.Getenv("BB_SERVER_LOCATION")
+	statement := &fhirmodels.CapabilityStatement{
+		Status:       "active",
+		Date:         &fhirmodels.FHIRDateTime{Time: reldate, Precision: fhirmodels.Date},
+		Publisher:    "Centers for Medicare & Medicaid Services",
+		Kind:         "capability",
+		Instantiates: []string{bbServer + "/baseDstu3/metadata/"},
+		Software: &fhirmodels.CapabilityStatementSoftwareComponent{
+			Name:        "Beneficiary Claims Data API",
+			Version:     relversion,
+			ReleaseDate: &fhirmodels.FHIRDateTime{Time: reldate, Precision: fhirmodels.Date},
+		},
+		Implementation: &fhirmodels.CapabilityStatementImplementationComponent{
+			Description: "",
+			Url:         baseurl,
+		},
+		FhirVersion:   "3.0.1",
+		AcceptUnknown: "extensions",
+		Format:        []string{"application/json", "application/fhir+json"},
+		Rest: []fhirmodels.CapabilityStatementRestComponent{
+			{
+				Mode: "server",
+				Security: &fhirmodels.CapabilityStatementRestSecurityComponent{
+					Cors: &usecors,
+					Service: []fhirmodels.CodeableConcept{
+						{
+							Coding: []fhirmodels.Coding{
+								{Display: "OAuth", Code: "OAuth", System: "http://hl7.org/fhir/ValueSet/restful-security-service"},
+							},
+							Text: "OAuth",
+						},
+						{
+							Coding: []fhirmodels.Coding{
+								{Display: "SMART-on-FHIR", Code: "SMART-on-FHIR", System: "http://hl7.org/fhir/ValueSet/restful-security-service"},
+							},
+							Text: "SMART-on-FHIR",
+						},
+					},
+				},
+				Interaction: []fhirmodels.CapabilityStatementSystemInteractionComponent{
+					{
+						Code: "batch",
+					},
+					{
+						Code: "search-system",
+					},
+				},
+				Operation: []fhirmodels.CapabilityStatementRestOperationComponent{
+					{
+						Name: "export",
+						Definition: &fhirmodels.Reference{
+							Reference: baseurl + "/api/v1/Patient/$export",
+							Type:      "Endpoint",
+						},
+					},
+					{
+						Name: "jobs",
+						Definition: &fhirmodels.Reference{
+							Reference: baseurl + "/api/v1/jobs/{jobId}",
+							Type:      "Endpoint",
+						},
+					},
+					{
+						Name: "metadata",
+						Definition: &fhirmodels.Reference{
+							Reference: baseurl + "/api/v1/metadata",
+							Type:      "Endpoint",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return statement
+}
+
+func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
+	statementJSON, _ := json.Marshal(statement)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write(statementJSON)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}

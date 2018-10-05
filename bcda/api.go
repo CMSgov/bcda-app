@@ -40,6 +40,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -306,4 +307,16 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func metadata(w http.ResponseWriter, r *http.Request) {
+	dt := time.Now()
+
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	host := fmt.Sprintf("%s://%s", scheme, r.Host)
+	statement := responseutils.CreateCapabilityStatement(dt, "0.1", host)
+	responseutils.WriteCapabilityStatement(statement, w)
 }
