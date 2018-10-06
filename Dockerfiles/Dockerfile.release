@@ -7,9 +7,6 @@ RUN apk add --no-cache bash git gnupg
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
-RUN git config user.email "bcda-ci@adhocteam.us"
-RUN git config user.name "BCDA CI"
-
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
