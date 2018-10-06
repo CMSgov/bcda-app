@@ -1,7 +1,8 @@
 FROM python:3.7-alpine3.8
 
+ARG GITHUB_ACCESS_TOKEN
 RUN apk update
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash git openssh openssl
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .

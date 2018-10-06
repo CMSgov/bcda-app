@@ -2,7 +2,7 @@ release:
 	# This target should be executed by passing in an argument representing the name of the tag for the release
         # For example: make package previous_tag=r1 new_tag=r2
 	docker build -t release -f Dockerfiles/Dockerfile.release .
-	docker run -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release $(previous_tag) $(new_tag)
+	docker run -e GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN} -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release $(previous_tag) $(new_tag)
 
 package:
 	# This target should be executed by passing in an argument reprsenting the version of the artifacts we are packaging
