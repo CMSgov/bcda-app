@@ -63,12 +63,13 @@ fi
 
 # fetch tags before any tag lookups so we have the most up-to-date list
 # and generate the correct next release number
-git fetch --tags
+git fetch https://${GITHUB_ACCESS_TOKEN}@github.com/CMSgov/bcda-app --tags
 
 if [ -n "$MANUAL_TAGS" ]; then
   PREVTAG="$1"
   NEWTAG="$2"
   PREVRELEASENUM=${PREVTAG//^r/}
+  echo ${PREVRELEASENUM}
   NEWRELEASENUM=${NEWTAG//^r/}
 else
   PREVTAG=$(git tag | sort -n | tail -1)
@@ -96,7 +97,6 @@ echo "================" >> $TMPFILE
 echo "" >> $TMPFILE
 echo "$commits" >> $TMPFILE
 echo "" >> $TMPFILE
-
 git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
 python ./ops/github_release.py --release $NEWTAG --release-file $TMPFILE

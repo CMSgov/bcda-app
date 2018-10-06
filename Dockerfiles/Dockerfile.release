@@ -2,7 +2,7 @@ FROM python:3.7-alpine3.8
 
 ARG GITHUB_ACCESS_TOKEN
 RUN apk update
-RUN apk add --no-cache bash git openssh openssl
+RUN apk add --no-cache bash git gnupg
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
@@ -10,5 +10,5 @@ COPY . .
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
-ENTRYPOINT ["bash", "ops/release.sh", "-t"]
+ENTRYPOINT ["bash", "ops/release.sh"]
 CMD []
