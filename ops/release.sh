@@ -61,6 +61,14 @@ then
   exit 1
 fi
 
+# initialize git configuration if env vars are set
+if [ ! -z "$GITHUB_USER" ] && [ ! -z "$GITHUB_EMAIL" ] && [ ! -z "$GITHUB_GPG_KEY_FILE" ]
+then
+  git config user.name "$GITHUB_USER"
+  git config user.email "$GITHUB_EMAIL"
+  gpg --import $GITHUB_GPG_KEY_FILE
+fi
+
 # fetch tags before any tag lookups so we have the most up-to-date list
 # and generate the correct next release number
 git fetch https://${GITHUB_ACCESS_TOKEN}@github.com/CMSgov/bcda-app --tags
@@ -97,6 +105,7 @@ echo "================" >> $TMPFILE
 echo "" >> $TMPFILE
 echo "$commits" >> $TMPFILE
 echo "" >> $TMPFILE
+
 git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
 python ./ops/github_release.py --release $NEWTAG --release-file $TMPFILE
