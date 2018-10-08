@@ -79,7 +79,6 @@ if [ -n "$MANUAL_TAGS" ]; then
   PREVTAG="$1"
   NEWTAG="$2"
   PREVRELEASENUM=${PREVTAG//^r/}
-  echo ${PREVRELEASENUM}
   NEWRELEASENUM=${NEWTAG//^r/}
 else
   PREVTAG=$(git tag | sort -n | tail -1)
