@@ -62,7 +62,7 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	client := &http.Client{Transport: transport}
+	client := &http.Client{Transport: transport, Timeout: 500 * time.Millisecond}
 
 	return &BlueButtonClient{*client}, nil
 }

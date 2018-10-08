@@ -62,6 +62,25 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestAppendErrorToFile(t *testing.T) {
+	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
+
+	appendErrorToFile(acoID, "", "", "")
+
+	filePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID)
+	fData, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		t.Fail()
+	}
+
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error"}]}`
+
+	assert.Equal(t, ooResp+"\n", string(fData))
+
+	os.Remove(filePath)
+}
+
 func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
 	return eobData, nil
 }
