@@ -12,6 +12,8 @@ Start a new $PROJECT_NAME release.
 
 Usage: GITHUB_ACCESS_TOKEN=<gh_access_token> $(basename "$0") [-ch] [-t previous-tag new-tag]
 
+Optionally, GITHUB_USER, GITHUB_EMAIL, and GITHUB_GPG_KEY_FILE environment variables can be set prior to running this script, to identify and verify who is creating the release.  This is primarily necessary when the release process is run from a Docker container (i.e., from Jenkins).
+
 Options:
   -h    print this help text and exit
   -t    manually specify tags
