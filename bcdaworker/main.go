@@ -115,10 +115,12 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 
 	w := bufio.NewWriter(f)
 
-	pData, err := bb.GetExplanationOfBenefitData(beneficiaryIDs[0])
+	// TODO: Multiple beneficiaries
+	beneficiaryID := beneficiaryIDs[0]
+	pData, err := bb.GetExplanationOfBenefitData(beneficiaryID)
 	if err != nil {
 		log.Error(err)
-		appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, "Error retrieving ExplanationOfBenefit")
+		appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
 	} else {
 		// Append newline because we'll be writing multiple entries per file later
 		_, err := w.WriteString(pData + "\n")
