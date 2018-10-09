@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -62,7 +63,12 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	client := &http.Client{Transport: transport, Timeout: 500 * time.Millisecond}
+	var timeout int
+	if timeout, err = strconv.Atoi(os.Getenv("BB_TIMEOUT_MS")); err != nil {
+		logger.Info("Could not get Blue Button timeout from environment variable; using default value of 500.")
+		timeout = 500
+	}
+	client := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
 
 	return &BlueButtonClient{*client}, nil
 }
