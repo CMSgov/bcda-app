@@ -12,6 +12,8 @@ Start a new $PROJECT_NAME release.
 
 Usage: GITHUB_ACCESS_TOKEN=<gh_access_token> $(basename "$0") [-ch] [-t previous-tag new-tag]
 
+Optionally, GITHUB_USER, GITHUB_EMAIL, and GITHUB_GPG_KEY_FILE environment variables can be set prior to running this script, to identify and verify who is creating the release.  This is primarily necessary when the release process is run from a Docker container (i.e., from Jenkins).
+
 Options:
   -h    print this help text and exit
   -t    manually specify tags
@@ -61,9 +63,17 @@ then
   exit 1
 fi
 
+# initialize git configuration if env vars are set
+if [ ! -z "$GITHUB_USER" ] && [ ! -z "$GITHUB_EMAIL" ] && [ ! -z "$GITHUB_GPG_KEY_FILE" ]
+then
+  git config user.name "$GITHUB_USER"
+  git config user.email "$GITHUB_EMAIL"
+  gpg --import $GITHUB_GPG_KEY_FILE
+fi
+
 # fetch tags before any tag lookups so we have the most up-to-date list
 # and generate the correct next release number
-git fetch --tags
+git fetch https://${GITHUB_ACCESS_TOKEN}@github.com/CMSgov/bcda-app --tags
 
 if [ -n "$MANUAL_TAGS" ]; then
   PREVTAG="$1"
