@@ -1,6 +1,6 @@
 release:
 	docker build -t release -f Dockerfiles/Dockerfile.release .
-	docker run -e GITHUB_ACCESS_TOKEN='${GITHUB_ACCESS_TOKEN}' -e GITHUB_USER='${GITHUB_USER}' -e GITHUB_EMAIL='${GITHUB_EMAIL}' -e GITHUB_GPG_KEY_FILE='${GITHUB_GPG_KEY_FILE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release
+	docker run --rm -e GITHUB_ACCESS_TOKEN='${GITHUB_ACCESS_TOKEN}' -e GITHUB_USER='${GITHUB_USER}' -e GITHUB_EMAIL='${GITHUB_EMAIL}' -e GITHUB_GPG_KEY_FILE='${GITHUB_GPG_KEY_FILE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release
 
 package:
 	# This target should be executed by passing in an argument reprsenting the version of the artifacts we are packaging
