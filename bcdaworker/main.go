@@ -45,7 +45,7 @@ func init() {
 }
 
 func processJob(j *que.Job) error {
-	log.Info("Worker started processing job ID ", j.ID)
+	log.Info("Worker started processing job ", j.ID)
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -87,6 +87,8 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
+	log.Info("Worker finished processing job ", j.ID)
+
 	return nil
 }
 
@@ -115,17 +117,17 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 
 	w := bufio.NewWriter(f)
 
-	// TODO: Multiple beneficiaries
-	beneficiaryID := beneficiaryIDs[0]
-	pData, err := bb.GetExplanationOfBenefitData(beneficiaryID)
-	if err != nil {
-		log.Error(err)
-		appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
-	} else {
-		// Append newline because we'll be writing multiple entries per file later
-		_, err := w.WriteString(pData + "\n")
+	for _, beneficiaryID := range beneficiaryIDs {
+		pData, err := bb.GetExplanationOfBenefitData(beneficiaryID)
 		if err != nil {
 			log.Error(err)
+			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
+		} else {
+			// Append newline because we'll be writing multiple entries per file later
+			_, err := w.WriteString(pData + "\n")
+			if err != nil {
+				log.Error(err)
+			}
 		}
 	}
 

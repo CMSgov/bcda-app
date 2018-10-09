@@ -48,7 +48,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		t.Fail()
 	}
 
-	assert.Equal(t, eobData+"\n", string(fData))
+	assert.Equal(t, eobData+"\n"+eobData+"\n", string(fData))
 
 	os.Remove(filePath)
 }
