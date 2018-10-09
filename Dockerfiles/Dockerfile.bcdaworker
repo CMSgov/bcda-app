@@ -8,11 +8,13 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 RUN dep ensure
 
+ENV BCDA_WORKER_ERROR_LOG /var/log/bcda-worker-error.log
 ENV BCDA_BB_LOG /var/log/bcda-bb-request.log
 ENV BB_CLIENT_CERT_FILE ../bcda/client/bb-dev-test-cert.pem
 ENV BB_CLIENT_KEY_FILE ../bcda/client/bb-dev-test-key.pem
 ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
 ENV FHIR_PAYLOAD_DIR data
+ENV BB_TIMEOUT_MS 500
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 CMD ["fresh"]

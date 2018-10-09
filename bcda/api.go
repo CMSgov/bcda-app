@@ -234,6 +234,15 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			Errors:              []fileItem{},
 		}
 
+		errFilePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), job.AcoID)
+		if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
+			errFI := fileItem{
+				Type: "OperationOutcome",
+				URL:  fmt.Sprintf("%s://%s/data/%s-error.ndjson", scheme, r.Host, job.AcoID),
+			}
+			rb.Errors = append(rb.Errors, errFI)
+		}
+
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
