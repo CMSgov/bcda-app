@@ -84,7 +84,8 @@ func TestWriteEOBDataToFileWithError(t *testing.T) {
 		t.Fail()
 	}
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}}]}`
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}}]}`
 	assert.Equal(t, ooResp+"\n", string(fData))
 
 	os.Remove(filePath)
