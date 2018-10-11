@@ -13,9 +13,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	que "github.com/bgentry/que-go"
 	jwt "github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
+	"github.com/jackc/pgx"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +43,7 @@ func (s *APITestSuite) TestBulkRequest() {
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	user, err := s.AuthBackend.CreateUser("Test User", "testuser@example.com", uuid.Parse(acoID))
 	if err != nil {
-		s.T().Error()
+		s.T().Error(err)
 	}
 
 	token := jwt.New(jwt.SigningMethodRS512)
@@ -55,10 +57,29 @@ func (s *APITestSuite) TestBulkRequest() {
 	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		s.T().Error(err)
+	}
+	defer pgxpool.Close()
+
+	qc = que.NewClient(pgxpool)
+
 	handler := http.HandlerFunc(bulkRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusInternalServerError /*OK*/, s.rr.Code)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+
+	s.db.Delete(&user)
 }
 
 func (s *APITestSuite) TestBulkRequestInvalidUser() {
@@ -195,7 +216,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	var rb bulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
-		s.Error(err)
+		s.T().Error(err)
 	}
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
@@ -244,7 +265,7 @@ func (s *APITestSuite) TestBlueButtonMetadata() {
 	var respCS fhirmodels.CapabilityStatement
 	err := json.Unmarshal(s.rr.Body.Bytes(), &respCS)
 	if err != nil {
-		s.T().Error()
+		s.T().Error(err)
 	}
 
 }
@@ -263,7 +284,7 @@ func (s *APITestSuite) TestBlueButtonMetadataClientError() {
 	var respOO fhirmodels.OperationOutcome
 	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
 	if err != nil {
-		s.T().Error()
+		s.T().Error(err)
 	}
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
