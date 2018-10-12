@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -41,7 +43,7 @@ func (s *APITestSuite) TestBulkRequest() {
 	s.SetupAuthBackend()
 
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
-	user, err := s.AuthBackend.CreateUser("Test User", "testuser@example.com", uuid.Parse(acoID))
+	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -78,8 +80,67 @@ func (s *APITestSuite) TestBulkRequest() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
+	s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
+}
 
-	s.db.Delete(&user)
+func (s *APITestSuite) TestBulkRequestNoBeneficiariesInACO() {
+	s.SetupAuthBackend()
+
+	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+
+	token := jwt.New(jwt.SigningMethodRS512)
+	token.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+	}
+	token.Valid = true
+
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
+
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		s.T().Error(err)
+	}
+	defer pgxpool.Close()
+
+	qc = que.NewClient(pgxpool)
+
+	handler := http.HandlerFunc(bulkRequest)
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+}
+
+func (s *APITestSuite) TestBulkRequestMissingToken() {
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+
+	handler := http.HandlerFunc(bulkRequest)
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+
+	var respOO fhirmodels.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
 func (s *APITestSuite) TestBulkRequestInvalidUser() {
@@ -104,15 +165,54 @@ func (s *APITestSuite) TestBulkRequestInvalidUser() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
+
+	var respOO fhirmodels.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
-func (s *APITestSuite) TestBulkRequestMissingToken() {
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+func (s *APITestSuite) TestBulkRequestNoQueue() {
+	qc = nil
+	s.SetupAuthBackend()
 
+	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkrequestnoqueue@example.com", uuid.Parse(acoID))
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	token := jwt.New(jwt.SigningMethodRS512)
+	token.Claims = jwt.MapClaims{
+		"sub": user.UUID.String(),
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+	}
+	token.Valid = true
+
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 	handler := http.HandlerFunc(bulkRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
+
+	var respOO fhirmodels.OperationOutcome
+	err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
+
+	s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
 }
 
 func (s *APITestSuite) TestJobStatusPending() {
@@ -201,6 +301,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	s.db.Save(&j)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+	req.TLS = &tls.ConnectionState{}
 
 	handler := http.HandlerFunc(jobStatus)
 
@@ -222,7 +323,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), "http://example.com/data/dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson", rb.Files[0].URL)
+	assert.Equal(s.T(), "https://example.com/data/dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson", rb.Files[0].URL)
 	assert.Empty(s.T(), rb.Errors)
 
 	s.db.Delete(&j)
@@ -296,6 +397,7 @@ func (s *APITestSuite) TestBlueButtonMetadataClientError() {
 
 func (s *APITestSuite) TestMetadata() {
 	req := httptest.NewRequest("GET", "/api/v1/metadata", nil)
+	req.TLS = &tls.ConnectionState{}
 
 	handler := http.HandlerFunc(metadata)
 	handler.ServeHTTP(s.rr, req)
