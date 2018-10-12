@@ -143,7 +143,7 @@ func (s *APITestSuite) TestBulkRequestMissingToken() {
 	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
-func (s *APITestSuite) TestBulkRequestInvalidUser() {
+func (s *APITestSuite) TestBulkRequestUserDoesNotExist() {
 	s.SetupAuthBackend()
 
 	acoID := "dbbd1ce1-ae24-435c-807d-ed45953077d3"
@@ -213,6 +213,51 @@ func (s *APITestSuite) TestBulkRequestNoQueue() {
 	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
 
 	s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
+}
+
+func (s *APITestSuite) TestJobStatusInvalidJobID() {
+	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", "test"), nil)
+
+	handler := http.HandlerFunc(jobStatus)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobId", "test")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler.ServeHTTP(s.rr, req)
+
+	var respOO fhirmodels.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
+}
+
+func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
+	jobID := "1234"
+	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", jobID), nil)
+
+	handler := http.HandlerFunc(jobStatus)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobId", jobID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler.ServeHTTP(s.rr, req)
+
+	var respOO fhirmodels.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
 func (s *APITestSuite) TestJobStatusPending() {
@@ -327,6 +372,52 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Empty(s.T(), rb.Errors)
 
 	s.db.Delete(&j)
+}
+
+func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
+	j := models.Job{
+		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Completed",
+	}
+	s.db.Save(&j)
+
+	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+	req.TLS = &tls.ConnectionState{}
+
+	handler := http.HandlerFunc(jobStatus)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	errFilePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), j.AcoID)
+	_, err := os.Create(errFilePath)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
+
+	var rb bulkResponseBody
+	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
+	assert.Equal(s.T(), true, rb.RequiresAccessToken)
+	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
+	assert.Equal(s.T(), "https://example.com/data/dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson", rb.Files[0].URL)
+	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
+	assert.Equal(s.T(), "https://example.com/data/dbbd1ce1-ae24-435c-807d-ed45953077d3-error.ndjson", rb.Errors[0].URL)
+
+	s.db.Delete(&j)
+	os.Remove(errFilePath)
 }
 
 func (s *APITestSuite) TestServeData() {
