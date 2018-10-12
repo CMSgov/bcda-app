@@ -126,6 +126,7 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 			_, err := w.WriteString(pData + "\n")
 			if err != nil {
 				log.Error(err)
+				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing ExplanationOfBenefit to file for beneficiary %s in ACO %s", beneficiaryID, acoID))
 			}
 		}
 	}
