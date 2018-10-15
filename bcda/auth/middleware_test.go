@@ -75,7 +75,7 @@ func (s *MiddlewareTestSuite) TestParseTokenInvalidSigning() {
 
 	fmt.Println(resp.StatusCode)
 	assert.Equal(s.T(), 401, resp.StatusCode)
-	assert.Nil(s.T(), err) //TODO think about this later
+	assert.Nil(s.T(), err)
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalid() {
@@ -184,7 +184,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchEqual() {
 	assert.Equal(s.T(), 200, s.rr.Code)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoToken() {
+func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
