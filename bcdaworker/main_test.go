@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"encoding/json"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -14,6 +15,9 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var eobData = `{
@@ -29,6 +33,10 @@ var eobData = `{
 }`
 
 type MockBlueButtonClient struct {
+	mock.Mock
+}
+
+type MockBlueButtonClientWithError struct {
 	mock.Mock
 }
 
@@ -50,6 +58,7 @@ func TestMainTestSuite(t *testing.T) {
 }
 
 func TestWriteEOBDataToFile(t *testing.T) {
+	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
 	bbc := MockBlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}
@@ -65,7 +74,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		t.Fail()
 	}
 
-	assert.Equal(t, eobData+"\n", string(fData))
+	assert.Equal(t, eobData+"\n"+eobData+"\n", string(fData))
 
 	os.Remove(filePath)
 }
@@ -84,8 +93,55 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestWriteEOBDataToFileWithError(t *testing.T) {
+	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	bbc := MockBlueButtonClientWithError{}
+	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
+	beneficiaryIDs := []string{"10000", "11000"}
+
+	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs)
+	if err != nil {
+		t.Fail()
+	}
+
+	filePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID)
+	fData, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		t.Fail()
+	}
+
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 9c05c1f8-349d-400f-9b69-7963f2262b07"}}]}`
+	assert.Equal(t, ooResp+"\n", string(fData))
+
+	os.Remove(filePath)
+}
+
+func TestAppendErrorToFile(t *testing.T) {
+	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
+
+	appendErrorToFile(acoID, "", "", "")
+
+	filePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID)
+	fData, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		t.Fail()
+	}
+
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error"}]}`
+
+	assert.Equal(t, ooResp+"\n", string(fData))
+
+	os.Remove(filePath)
+}
+
 func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
 	return eobData, nil
+}
+
+func (bbc *MockBlueButtonClientWithError) GetExplanationOfBenefitData(patientID string) (string, error) {
+	return "", errors.New("Error")
 }
 
 func (s *MainTestSuite) TestProcessJob() {

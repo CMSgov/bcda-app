@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -32,8 +34,19 @@ type jobEnqueueArgs struct {
 	BeneficiaryIDs []string
 }
 
+func init() {
+	log.SetFormatter(&log.JSONFormatter{})
+	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err == nil {
+		log.SetOutput(file)
+	} else {
+		log.Info("Failed to log to file; using default stderr")
+	}
+}
+
 func processJob(j *que.Job) error {
-	log.Info("Worker started processing job ID ", j.ID)
+	log.Info("Worker started processing job ", j.ID)
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -75,6 +88,8 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
+	log.Info("Worker finished processing job ", j.ID)
+
 	return nil
 }
 
@@ -106,21 +121,45 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 
 	w := bufio.NewWriter(f)
 
-	pData, err := bb.GetExplanationOfBenefitData(beneficiaryIDs[0])
-	if err != nil {
-		// TODO: Store errors in NDJSON file of OperationOutcomes
-		log.Error(err)
-	} else {
-		// Append newline because we'll be writing multiple entries per file later
-		_, err := w.WriteString(pData + "\n")
+	for _, beneficiaryID := range beneficiaryIDs {
+		pData, err := bb.GetExplanationOfBenefitData(beneficiaryID)
 		if err != nil {
 			log.Error(err)
+			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
+		} else {
+			_, err := w.WriteString(pData + "\n")
+			if err != nil {
+				log.Error(err)
+				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing ExplanationOfBenefit to file for beneficiary %s in ACO %s", beneficiaryID, acoID))
+			}
 		}
 	}
 
 	w.Flush()
 
 	return nil
+}
+
+func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string) {
+	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
+
+	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
+	fileName := fmt.Sprintf("%s/%s-error.ndjson", dataDir, acoID)
+	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Error(err)
+	}
+
+	defer f.Close()
+
+	ooBytes, err := json.Marshal(oo)
+	if err != nil {
+		log.Error(err)
+	}
+
+	if _, err = f.WriteString(string(ooBytes) + "\n"); err != nil {
+		log.Error(err)
+	}
 }
 
 func waitForSig() {

@@ -93,7 +93,7 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 
 			aco, _ := claims["aco"].(string)
 
-			re := regexp.MustCompile("/([a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}).ndjson")
+			re := regexp.MustCompile("/([a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12})(?:-error)?.ndjson")
 			urlUUID := re.FindStringSubmatch(r.URL.String())[1]
 
 			if uuid.Equal(uuid.Parse(aco), uuid.Parse(string(urlUUID))) {

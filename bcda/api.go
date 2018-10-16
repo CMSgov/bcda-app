@@ -40,6 +40,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -153,7 +154,13 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		Type: "ProcessJob",
 		Args: args,
 	}
-	if err = qc.Enqueue(j); err != nil {
+
+	if qc == nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	} else if err = qc.Enqueue(j); err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -233,6 +240,15 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			Errors:              []fileItem{},
 		}
 
+		errFilePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), job.AcoID)
+		if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
+			errFI := fileItem{
+				Type: "OperationOutcome",
+				URL:  fmt.Sprintf("%s://%s/data/%s-error.ndjson", scheme, r.Host, job.AcoID),
+			}
+			rb.Errors = append(rb.Errors, errFI)
+		}
+
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -306,4 +322,16 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func metadata(w http.ResponseWriter, r *http.Request) {
+	dt := time.Now()
+
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	host := fmt.Sprintf("%s://%s", scheme, r.Host)
+	statement := responseutils.CreateCapabilityStatement(dt, "0.1", host)
+	responseutils.WriteCapabilityStatement(statement, w)
 }
