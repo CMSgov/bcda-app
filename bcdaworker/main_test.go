@@ -37,7 +37,8 @@ type MainTestSuite struct {
 }
 
 func (s *MainTestSuite) SetupTest() {
-
+	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	models.InitializeGormModels()
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -49,7 +50,6 @@ func TestMainTestSuite(t *testing.T) {
 }
 
 func TestWriteEOBDataToFile(t *testing.T) {
-	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
 	bbc := MockBlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}
@@ -104,7 +104,7 @@ func (s *MainTestSuite) TestProcessJob() {
 	jobArgs.ID = int(j.ID)
 	jobArgs.AcoID = j.AcoID.String()
 	jobArgs.UserID = j.UserID.String()
-	jobArgs.BeneficiaryIDs = []string{"foo", "bar", "baz"}
+	jobArgs.BeneficiaryIDs = []string{"10000", "11000"}
 	args, _ := json.Marshal(jobArgs)
 
 	job := &que.Job{
@@ -117,7 +117,7 @@ func (s *MainTestSuite) TestProcessJob() {
 	var completedJob models.Job
 	err = db.First(&completedJob, "ID = ?", jobArgs.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), completedJob.Status, "Completed")
+	assert.Equal(s.T(), "Completed", completedJob.Status)
 }
 
 func (s *MainTestSuite) TestSetupQueue() {
