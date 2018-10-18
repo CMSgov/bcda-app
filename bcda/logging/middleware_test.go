@@ -26,10 +26,11 @@ type LoggingMiddlewareTestSuite struct {
 
 func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(contextToken)
-	r.Use(logging.NewStructuredLogger())
+	r.Use(middleware.RequestID, contextToken, logging.NewStructuredLogger(), middleware.Recoverer)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {})
+	r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
+		panic("Test")
+	})
 	return r
 }
 
@@ -51,6 +52,7 @@ func contextToken(next http.Handler) http.Handler {
 }
 
 func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
+	reqLogPathOrig := os.Getenv("BCDA_REQUEST_LOG")
 	os.Setenv("BCDA_REQUEST_LOG", "bcda-req-test.log")
 
 	server := httptest.NewTLSServer(s.CreateRouter())
@@ -95,10 +97,12 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	}
 
 	os.Remove("bcda-req-test.log")
+	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
 func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
-	os.Clearenv()
+	reqLogPathOrig := os.Getenv("BCDA_REQUEST_LOG")
+	os.Setenv("BCDA_REQUEST_LOG", "")
 	server := httptest.NewServer(s.CreateRouter())
 	client := server.Client()
 
@@ -114,6 +118,63 @@ func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
 	assert.Equal(s.T(), 200, resp.StatusCode)
 
 	server.Close()
+	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
+}
+
+func (s *LoggingMiddlewareTestSuite) TestPanic() {
+	reqLogPathOrig := os.Getenv("BCDA_REQUEST_LOG")
+	os.Setenv("BCDA_REQUEST_LOG", "bcda-req-test.log")
+
+	server := httptest.NewTLSServer(s.CreateRouter())
+	client := server.Client()
+
+	req, err := http.NewRequest("GET", server.URL+"/panic", nil)
+	if err != nil {
+		s.Fail("Request error", err.Error())
+	}
+
+	_, err = client.Do(req)
+	if err != nil {
+		s.Fail("Request error", err.Error())
+	}
+
+	server.Close()
+
+	logFile, err := os.OpenFile(os.Getenv("BCDA_REQUEST_LOG"), os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		s.Fail("File read error")
+	}
+	defer logFile.Close()
+
+	sc := bufio.NewScanner(logFile)
+	lineNum := 0
+	for sc.Scan() {
+		lineNum++
+		var logFields log.Fields
+		err = json.Unmarshal(sc.Bytes(), &logFields)
+		if err != nil {
+			s.Fail("JSON unmarshal error", err)
+		}
+
+		assert.NotEmpty(s.T(), logFields["ts"])
+		assert.Equal(s.T(), "https", logFields["http_scheme"])
+		assert.Equal(s.T(), "HTTP/1.1", logFields["http_proto"])
+		assert.Equal(s.T(), "GET", logFields["http_method"])
+		assert.NotEmpty(s.T(), logFields["remote_addr"])
+		assert.NotEmpty(s.T(), logFields["user_agent"])
+		assert.Equal(s.T(), server.URL+"/panic", logFields["uri"])
+		assert.Equal(s.T(), "dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco"])
+		assert.Equal(s.T(), "82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["sub"])
+		assert.Equal(s.T(), "665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"])
+		if lineNum == 2 {
+			assert.Equal(s.T(), "Test", logFields["panic"])
+			assert.NotEmpty(s.T(), logFields["stack"])
+		}
+	}
+
+	server.Close()
+	os.Remove("bcda-req-test.log")
+	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
 func TestLoggingMiddlewareTestSuite(t *testing.T) {
