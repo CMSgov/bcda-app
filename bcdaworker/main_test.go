@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -15,9 +15,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 var eobData = `{
@@ -46,6 +43,9 @@ type MainTestSuite struct {
 
 func (s *MainTestSuite) SetupTest() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/bb-dev-test-cert.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
+	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/test-server-cert.pem")
 	models.InitializeGormModels()
 }
 
