@@ -3,7 +3,6 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -43,10 +42,8 @@ func init() {
 func NewBlueButtonClient() (*BlueButtonClient, error) {
 	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
-	fmt.Println("Opening the keys.  STAND BACK!")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		fmt.Println("Failed to open keys")
 		return nil, err
 	}
 
