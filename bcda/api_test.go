@@ -397,7 +397,6 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	if err != nil {
 		s.T().Error(err)
 	}
-	fmt.Println(errFilePath)
 
 	handler.ServeHTTP(s.rr, req)
 
