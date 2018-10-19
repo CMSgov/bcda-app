@@ -56,7 +56,7 @@ func (s *APITestSuite) TestBulkRequest() {
 	}
 	token.Valid = true
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
@@ -98,7 +98,7 @@ func (s *APITestSuite) TestBulkRequestNoBeneficiariesInACO() {
 	}
 	token.Valid = true
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
@@ -125,7 +125,7 @@ func (s *APITestSuite) TestBulkRequestNoBeneficiariesInACO() {
 }
 
 func (s *APITestSuite) TestBulkRequestMissingToken() {
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 
 	handler := http.HandlerFunc(bulkRequest)
 	handler.ServeHTTP(s.rr, req)
@@ -158,7 +158,7 @@ func (s *APITestSuite) TestBulkRequestUserDoesNotExist() {
 	}
 	token.Valid = true
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler := http.HandlerFunc(bulkRequest)
@@ -195,7 +195,7 @@ func (s *APITestSuite) TestBulkRequestNoQueue() {
 	}
 	token.Valid = true
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 	handler := http.HandlerFunc(bulkRequest)
 	handler.ServeHTTP(s.rr, req)
@@ -264,7 +264,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/Patient/$export",
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
 	}
 	s.db.Save(&j)
@@ -290,7 +290,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/Patient/$export",
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "In Progress",
 	}
 	s.db.Save(&j)
@@ -315,7 +315,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/Patient/$export",
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Failed",
 	}
 
@@ -340,7 +340,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/Patient/$export",
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
@@ -378,7 +378,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/Patient/$export",
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
