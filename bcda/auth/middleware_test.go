@@ -1,13 +1,17 @@
 package auth_test
 
 import (
+	"context"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/go-chi/chi"
@@ -20,6 +24,7 @@ var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) 
 type MiddlewareTestSuite struct {
 	testUtils.AuthTestSuite
 	server *httptest.Server
+	rr     *httptest.ResponseRecorder
 	token  string
 }
 
@@ -45,6 +50,7 @@ func (s *MiddlewareTestSuite) SetupTest() {
 	}
 	s.token = token
 	s.server = httptest.NewServer(s.CreateRouter())
+	s.rr = httptest.NewRecorder()
 }
 
 func (s *MiddlewareTestSuite) TearDownTest() {
@@ -54,12 +60,49 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 	s.server.Close()
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthReturnVal() {
-	result := auth.RequireTokenAuth(mockHandler)
-	assert.IsType(s.T(), result, mockHandler)
+func (s *MiddlewareTestSuite) TestParseTokenInvalidSigning() {
+	client := s.server.Client()
+	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
+	s.token = badToken
+
+	req, err := http.NewRequest("GET", s.server.URL, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.token))
+	resp, err := client.Do(req)
+
+	fmt.Println(resp.StatusCode)
+	assert.Equal(s.T(), 401, resp.StatusCode)
+	assert.Nil(s.T(), err)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthValidToken() {
+func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalid() {
+	req, err := http.NewRequest("GET", s.server.URL, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := auth.RequireTokenAuth(mockHandler)
+
+	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	assert.Nil(s.T(), err)
+
+	token, err := s.AuthBackend.GetJWToken(tokenString)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+	token.Valid = false
+
+	ctx := req.Context()
+	ctx = context.WithValue(ctx, "token", token)
+	req = req.WithContext(ctx)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), 401, s.rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestRequireTokenAuthValid() {
 	client := s.server.Client()
 
 	// Valid token should return a 200 response
@@ -69,6 +112,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthValidToken() {
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.token))
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
@@ -76,21 +120,125 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthValidToken() {
 	assert.Equal(s.T(), 200, resp.StatusCode)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalidToken() {
+func (s *MiddlewareTestSuite) TestRequireTokenAuthEmpty() {
 	client := s.server.Client()
 
-	// Invalid token should result in 401 Unauthorized response
+	// Valid token should return a 200 response
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", "invalidtoken")
+	req.Header.Add("Authorization", "")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
 	assert.Equal(s.T(), 401, resp.StatusCode)
+}
+
+func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNotEqual() {
+	req, err := http.NewRequest("GET", s.server.URL+"/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := auth.RequireTokenACOMatch(mockHandler)
+
+	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	assert.Nil(s.T(), err)
+
+	token, err := s.AuthBackend.GetJWToken(tokenString)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+
+	ctx := req.Context()
+	ctx = context.WithValue(ctx, "token", token)
+	req = req.WithContext(ctx)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), 404, s.rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestRequireTokenACOMatchEqual() {
+	req, err := http.NewRequest("GET", s.server.URL+"/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := auth.RequireTokenACOMatch(mockHandler)
+
+	acoID, userID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
+	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	assert.Nil(s.T(), err)
+
+	token, err := s.AuthBackend.GetJWToken(tokenString)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+
+	ctx := req.Context()
+	ctx = context.WithValue(ctx, "token", token)
+	req = req.WithContext(ctx)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), 200, s.rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
+	req, err := http.NewRequest("GET", s.server.URL, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := auth.RequireTokenACOMatch(mockHandler)
+
+	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	assert.Nil(s.T(), err)
+
+	token, err := s.AuthBackend.GetJWToken(tokenString)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+	token.Claims = nil
+
+	ctx := req.Context()
+	ctx = context.WithValue(ctx, "token", token)
+	req = req.WithContext(ctx)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), 500, s.rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestRequireTokenACOMatchClaims() {
+	req, err := http.NewRequest("GET", s.server.URL, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := auth.RequireTokenACOMatch(mockHandler)
+
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), 401, s.rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestClaimsFromToken() {
+	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	assert.Nil(s.T(), err)
+
+	token, err := s.AuthBackend.GetJWToken(tokenString)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+
+	// Test good claims
+	claims, err := auth.ClaimsFromToken(token)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), claims)
+
+	// Test invalid claims
+	token.Claims = nil
+	badclaims, err := auth.ClaimsFromToken(token)
+	assert.NotNil(s.T(), err)
+	assert.Equal(s.T(), jwt.MapClaims{}, badclaims)
 }
 
 func TestMiddlewareTestSuite(t *testing.T) {
