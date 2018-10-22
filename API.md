@@ -11,7 +11,7 @@ Not familiar with APIs? Here are some great introductions:
 * [An Intro to APIs](https://www.codenewbie.org/blogs/an-intro-to-apis)
 
 ### Authentication and Authorization
-An access token is required for most requests. The token is presented in API requests in the `Authorization` header as a `Bearer` token. The process of token distribution is to be determined.
+An access token is required for most requests. The token is presented in API requests in the `Authorization` header as a `Bearer` token. Tokens will be securely distributed to partners in our alpha release. For information about participating in user testing, please contact BCAPI@cms.hhs.gov.
 
 ### Environment
 The examples below may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/) or [cURL](https://curl.haxx.se/).
@@ -159,7 +159,7 @@ Using the `Content-Location` header value from the ExplanationOfBenefit data exp
   "error": [
     {
       "type": "OperationOutcome",
-      "url": "https://{host}/data/DBBD1CE1-AE24-435C-807D-ED45953077D3-errors.ndjson"
+      "url": "https://{host}/data/DBBD1CE1-AE24-435C-807D-ED45953077D3-error.ndjson"
     }
   ]
 }
