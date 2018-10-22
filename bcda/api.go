@@ -56,7 +56,7 @@ import (
 )
 
 /*
-	swagger:route GET  /api/v1/Patient/$export bulkData bulkRequest
+	swagger:route GET  /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
 	bulkRequest initiates a job to collect data from the Blue Button API for your ACO
 	Consumes:
 	- application/JSON
