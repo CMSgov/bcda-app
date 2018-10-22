@@ -14,7 +14,7 @@ Not familiar with APIs? Here are some great introductions:
 An access token is required for most requests. The token is presented in API requests in the `Authorization` header as a `Bearer` token. Tokens will be securely distributed to partners in our alpha release. For information about participating in user testing, please contact BCAPI@cms.hhs.gov.
 
 ### Environment
-The examples below may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/) or [cURL](https://curl.haxx.se/).
+The examples below include [cURL](https://curl.haxx.se/) commands, but may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/).
 
 ## Examples
 
@@ -25,6 +25,11 @@ Metadata about the Beneficiary Claims Data API is available as a FHIR [Capabilit
 
 ##### Request
 `GET /api/v1/metadata`
+
+###### cURL command
+```sh
+curl https://{host}/api/v1/metadata
+```
 
 ##### Response
 ```json
@@ -129,6 +134,14 @@ To start an explanation of benefit data export job, a GET request is made to the
 * `Accept: application/fhir+json`
 * `Prefer: respond-async`
 
+###### cURL command
+```sh
+curl -v https://{host}/api/v1/ExplanationOfBenefit/\$export \
+-H 'Authorization: Bearer {token}' \
+-H 'Accept: application/fhir+json' \
+-H 'Prefer: respond-async'
+```
+
 ##### Response
 If the request was successful, a `202 Accepted` response code will be returned and the response will include a `Content-Location` header. The value of this header indicates the location to check for job status and outcome.
 
@@ -141,6 +154,15 @@ If the request was successful, a `202 Accepted` response code will be returned a
 `GET https://{host}/api/v1/jobs/{jobId}`
 
 Using the `Content-Location` header value from the ExplanationOfBenefit data export response, you can check the status of the export job. The status will change from `202 Accepted` to `200 OK` when the export job is complete and the data is ready to be downloaded.
+
+###### Headers
+* `Authorization: Bearer {token}`
+
+###### cURL Command
+```sh
+curl -v https://{host}/api/v1/jobs/{jobId} \
+-H 'Authorization: Bearer {token}'
+```
 
 ##### Responses
 * `202 Accepted` indicates that the job is processing. Headers will include `X-Progress: In Progress`
@@ -174,6 +196,12 @@ To obtain the exported explanation of benefit data, a GET request is made to the
 
 ###### Headers
 * `Authorization: Bearer {token}`
+
+###### cURL command
+```sh
+curl https://{host}/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson \
+-H 'Authorization: Bearer {token}'
+```
 
 ##### Response
 ```json
