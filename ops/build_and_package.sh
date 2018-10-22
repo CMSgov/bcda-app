@@ -17,7 +17,7 @@ fi
 cd ../bcda
 go clean
 echo "Building bcda binary..." 
-go build
+go build -ldflags "-X main.version=$(VERSION)"
 echo "Packaging bcda binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcda bcda
 cd ../bcdaworker

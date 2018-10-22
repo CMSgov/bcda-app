@@ -25,7 +25,8 @@ const Usage = "Beneficiary Claims Data API CLI"
 const CreateACO = "create-aco"
 
 var (
-	qc *que.Client
+	qc      *que.Client
+	version string
 )
 
 // swagger:ignore
@@ -86,6 +87,7 @@ func setUpApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = Name
 	app.Usage = Usage
+	app.Version = version
 	var acoName, acoID, userName, userEmail, userID, accessToken string
 	app.Commands = []cli.Command{
 		{
