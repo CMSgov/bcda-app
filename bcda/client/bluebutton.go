@@ -18,7 +18,7 @@ import (
 var logger *logrus.Logger
 
 type APIClient interface {
-	GetExplanationOfBenefitData(patientID string) (string, error)
+	GetData(path string, params url.Values) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -73,34 +73,34 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	return &BlueButtonClient{*client}, nil
 }
 
-func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
+func GetPatientData(patientID string, bbc APIClient) (string, error) {
 	params := url.Values{}
 	params.Set("_id", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/Patient/", params)
+	return bbc.GetData("/baseDstu3/Patient/", params)
 }
 
-func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID string) (string, error) {
+func GetCoverageData(beneficiaryID string, bbc APIClient) (string, error) {
 	params := url.Values{}
 	params.Set("beneficiary", beneficiaryID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/Coverage/", params)
+	return bbc.GetData("/baseDstu3/Coverage/", params)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
+func GetExplanationOfBenefitData(patientID string, bbc APIClient) (string, error) {
 	params := url.Values{}
 	params.Set("patient", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/ExplanationOfBenefit/", params)
+	return bbc.GetData("/baseDstu3/ExplanationOfBenefit/", params)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	params := url.Values{}
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/metadata/", params)
+	return bbc.GetData("/baseDstu3/metadata/", params)
 }
 
-func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, error) {
+func (bbc *BlueButtonClient) GetData(path string, params url.Values) (string, error) {
 	reqID := uuid.NewRandom()
 
 	bbServer := os.Getenv("BB_SERVER_LOCATION")
