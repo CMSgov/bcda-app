@@ -510,7 +510,7 @@ func (s *APITestSuite) TestGetVersion() {
 		s.T().Error(err.Error())
 	}
 
-	assert.Contains(s.T(), respMap, "version")
+	assert.Equal(s.T(), "latest", respMap["version"])
 }
 
 func TestAPITestSuite(t *testing.T) {

@@ -26,7 +26,7 @@ const CreateACO = "create-aco"
 
 var (
 	qc      *que.Client
-	version string
+	version = "latest"
 )
 
 // swagger:ignore
