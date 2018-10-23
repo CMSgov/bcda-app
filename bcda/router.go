@@ -35,7 +35,7 @@ func NewRouter() http.Handler {
 			r.Get("/bb_metadata", blueButtonMetadata)
 		}
 	})
-	r.With(auth.RequireTokenAuth).With(auth.RequireTokenACOMatch).Get("/data/{acoID}.ndjson", serveData)
+	r.With(auth.RequireTokenAuth).With(auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
 	return r
 }
 

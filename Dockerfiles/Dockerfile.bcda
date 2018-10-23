@@ -18,6 +18,7 @@ ENV BB_CLIENT_CERT_FILE client/bb-dev-test-cert.pem
 ENV BB_CLIENT_KEY_FILE client/bb-dev-test-key.pem
 ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
 ENV FHIR_PAYLOAD_DIR ../bcdaworker/data
+ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 CMD ["fresh", "-r", "start-api"]
