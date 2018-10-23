@@ -29,13 +29,13 @@ func NewRouter() http.Handler {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/ExplanationOfBenefit/$export", bulkRequest)
 		r.With(auth.RequireTokenAuth).Get("/jobs/{jobId}", jobStatus)
 		r.Get("/metadata", metadata)
-		r.Get("/_version", getVersion)
 		if os.Getenv("DEBUG") == "true" {
 			r.Get("/token", getToken)
 			r.Get("/bb_metadata", blueButtonMetadata)
 		}
 	})
 	r.With(auth.RequireTokenAuth, auth.RequireTokenACOMatch).Get("/data/{acoID}.ndjson", serveData)
+	r.Get("/_version", getVersion)
 	return r
 }
 

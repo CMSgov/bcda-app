@@ -497,7 +497,7 @@ func (s *APITestSuite) TestMetadata() {
 }
 
 func (s *APITestSuite) TestGetVersion() {
-	req := httptest.NewRequest("GET", "/api/v1/_version", nil)
+	req := httptest.NewRequest("GET", "/_version", nil)
 
 	handler := http.HandlerFunc(getVersion)
 	handler.ServeHTTP(s.rr, req)
