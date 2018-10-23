@@ -77,7 +77,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					{
 						Name: "export",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/Patient/$export",
+							Reference: baseurl + "/api/v1/ExplanationOfBenefit/$export",
 							Type:      "Endpoint",
 						},
 					},
