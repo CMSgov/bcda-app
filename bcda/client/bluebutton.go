@@ -17,7 +17,7 @@ import (
 
 var logger *logrus.Logger
 
-const blueButtonBasePath = "/v1/fhir/"
+const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
 	GetExplanationOfBenefitData(patientID string) (string, error)
@@ -78,7 +78,7 @@ func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
 	params := url.Values{}
 	params.Set("_id", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData(blueButtonBasePath+"Patient/", params)
+	return bbc.getData(blueButtonBasePath+"/Patient/", params)
 }
 
 func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID string) (string, error) {
@@ -92,13 +92,13 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string) (stri
 	params := url.Values{}
 	params.Set("patient", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData(blueButtonBasePath+"ExplanationOfBenefit/", params)
+	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	params := url.Values{}
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData(blueButtonBasePath+"/v1/fhir/metadata/", params)
+	return bbc.getData(blueButtonBasePath+"/metadata/", params)
 }
 
 func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, error) {
