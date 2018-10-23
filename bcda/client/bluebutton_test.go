@@ -25,9 +25,9 @@ func (s *BBTestSuite) SetupTest() {
 	}))
 
 	os.Setenv("BB_SERVER_LOCATION", s.ts.URL)
-	os.Setenv("BB_CLIENT_CERT_FILE", "bb-dev-test-cert.pem")
-	os.Setenv("BB_CLIENT_KEY_FILE", "bb-dev-test-key.pem")
-	os.Setenv("BB_CLIENT_CA_FILE", "test-server-cert.pem")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/bb-dev-test-cert.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/bb-dev-test-key.pem")
+	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/test-server-cert.pem")
 
 	if bbClient, err := client.NewBlueButtonClient(); err != nil {
 		s.Fail("Failed to create Blue Button client", err)

@@ -7,5 +7,6 @@ services:
       dockerfile: Dockerfiles/Dockerfile.unit_test
     environment:
       - DB=postgresql://postgres:toor@db:5432
+      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
