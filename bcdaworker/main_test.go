@@ -1,19 +1,25 @@
 package main
 
 import (
+
 	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/bgentry/que-go"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 type MockBlueButtonClient struct {
@@ -22,6 +28,26 @@ type MockBlueButtonClient struct {
 
 type MockBlueButtonClientWithError struct {
 	mock.Mock
+}
+
+type MainTestSuite struct {
+	testUtils.AuthTestSuite
+}
+
+func (s *MainTestSuite) SetupTest() {
+	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/bb-dev-test-cert.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
+	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/test-server-cert.pem")
+	models.InitializeGormModels()
+}
+
+func (s *MainTestSuite) TearDownTest() {
+	testUtils.PrintSeparator()
+}
+
+func TestMainTestSuite(t *testing.T) {
+	suite.Run(t, new(MainTestSuite))
 }
 
 func TestWriteEOBDataToFile(t *testing.T) {
@@ -134,4 +160,42 @@ func (bbc *MockBlueButtonClient) GetData(path string, params url.Values) (string
 func (bbc *MockBlueButtonClientWithError) GetData(path string, params url.Values) (string, error) {
 
 	return "", errors.New("Error")
+}
+
+func (s *MainTestSuite) TestProcessJob() {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	j := models.Job{
+		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Pending",
+	}
+	db.Save(&j)
+
+	jobArgs := new(jobEnqueueArgs)
+	jobArgs.ID = int(j.ID)
+	jobArgs.AcoID = j.AcoID.String()
+	jobArgs.UserID = j.UserID.String()
+	jobArgs.BeneficiaryIDs = []string{"10000", "11000"}
+	args, _ := json.Marshal(jobArgs)
+
+	job := &que.Job{
+		Type: "ProcessJob",
+		Args: args,
+	}
+	fmt.Println("About to queue up the job")
+	err := processJob(job)
+	assert.Nil(s.T(), err)
+	var completedJob models.Job
+	err = db.First(&completedJob, "ID = ?", jobArgs.ID).Error
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "Completed", completedJob.Status)
+}
+
+func (s *MainTestSuite) TestSetupQueue() {
+	setupQueue()
+	os.Setenv("WORKER_POOL_SIZE", "7")
+	setupQueue()
 }
