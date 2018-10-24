@@ -191,7 +191,7 @@ func waitForSig() {
 	os.Exit(code)
 }
 
-func setupQueue() {
+func setupQueue() *pgx.ConnPool {
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -205,7 +205,6 @@ func setupQueue() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer pgxpool.Close()
 
 	qc = que.NewClient(pgxpool)
 	wm := que.WorkMap{
@@ -225,10 +224,12 @@ func setupQueue() {
 	workers := que.NewWorkerPool(qc, wm, workerPoolSize)
 	go workers.Start()
 
-	waitForSig()
+	return pgxpool
 }
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	setupQueue()
+	workerPool := setupQueue()
+	defer workerPool.Close()
+	waitForSig()
 }
