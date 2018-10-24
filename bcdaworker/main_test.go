@@ -1,9 +1,9 @@
 package main
 
 import (
-	"errors"
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -15,10 +15,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
-	"net/url"
 	"log"
-    "strings"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 )
 
