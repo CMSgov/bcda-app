@@ -50,6 +50,7 @@ Configure the `bcda` and `bcdaworker` apps by setting the following environment 
 
 ##### bcda
 
+```
 BCDA_ERROR_LOG <file_path>
 BCDA_REQUEST_LOG <file_path>
 BCDA_BB_LOG <file_path>
@@ -58,9 +59,11 @@ BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
 FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
+```
 
 ##### bcdaworker
 
+```
 BCDA_WORKER_ERROR_LOG <file_path>
 BCDA_BB_LOG <file_path>
 BB_CLIENT_CERT_FILE <file_path>
@@ -68,3 +71,4 @@ BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
 FHIR_PAYLOAD_DIR <directory_path>
 BB_TIMEOUT_MS <integer>
+```
