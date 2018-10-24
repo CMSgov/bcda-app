@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx"
 	"os"
 	"os/signal"
 	"regexp"
@@ -19,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
 )
 
 var (
@@ -214,9 +214,7 @@ func waitForSig() {
 	os.Exit(code)
 }
 
-func main() {
-	fmt.Println("Starting bcdaworker...")
-
+func setupQueue() *pgx.ConnPool {
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -230,7 +228,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer pgxpool.Close()
 
 	qc = que.NewClient(pgxpool)
 	wm := que.WorkMap{
@@ -250,5 +247,12 @@ func main() {
 	workers := que.NewWorkerPool(qc, wm, workerPoolSize)
 	go workers.Start()
 
+	return pgxpool
+}
+
+func main() {
+	fmt.Println("Starting bcdaworker...")
+	workerPool := setupQueue()
+	defer workerPool.Close()
 	waitForSig()
 }

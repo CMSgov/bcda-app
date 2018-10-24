@@ -56,7 +56,7 @@ import (
 )
 
 /*
-	swagger:route GET  /api/v1/Patient/$export bulkData bulkRequest
+	swagger:route GET  /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
 	bulkRequest initiates a job to collect data from the Blue Button API for your ACO
 	Consumes:
 	- application/JSON
@@ -332,6 +332,27 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 		scheme = "https"
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
-	statement := responseutils.CreateCapabilityStatement(dt, "0.1", host)
+	statement := responseutils.CreateCapabilityStatement(dt, version, host)
 	responseutils.WriteCapabilityStatement(statement, w)
+}
+
+func getVersion(w http.ResponseWriter, r *http.Request) {
+	respMap := make(map[string]string)
+	respMap["version"] = version
+	respBytes, err := json.Marshal(respMap)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(respBytes)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
 }
