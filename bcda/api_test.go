@@ -496,6 +496,23 @@ func (s *APITestSuite) TestMetadata() {
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 }
 
+func (s *APITestSuite) TestGetVersion() {
+	req := httptest.NewRequest("GET", "/_version", nil)
+
+	handler := http.HandlerFunc(getVersion)
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+
+	respMap := make(map[string]string)
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
+	if err != nil {
+		s.T().Error(err.Error())
+	}
+
+	assert.Equal(s.T(), "latest", respMap["version"])
+}
+
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
 }
