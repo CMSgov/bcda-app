@@ -9,7 +9,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -195,9 +194,7 @@ func (s *MainTestSuite) TestProcessJob() {
 }
 
 func (s *MainTestSuite) TestSetupQueue() {
-	var wp *pgx.ConnPool = setupQueue()
-	wp.Close()
+	setupQueue()
 	os.Setenv("WORKER_POOL_SIZE", "7")
-	wp = setupQueue()
-	wp.Close()
+	setupQueue()
 }
