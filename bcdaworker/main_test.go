@@ -119,7 +119,7 @@ func (bbc *MockBlueButtonClient) GetData(path string, params url.Values) (string
 		identifier = "beneficiary"
 	} else if strings.Contains(path, "Patient") {
 		identifier = "_id"
-	} else if strings.Contains(path, "ExplanationOfBenefits") {
+	} else if strings.Contains(path, "ExplanationOfBenefit") {
 		identifier = "patient"
 	}
 

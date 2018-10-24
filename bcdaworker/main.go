@@ -123,7 +123,7 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 			log.Error(err)
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
 		} else {
-			jsonToNDJSON(w, pData, "ExplanationOfBenefits", beneficiaryID, acoID)
+			fhirBundleToResourceNDJSON(w, pData, "ExplanationOfBenefits", beneficiaryID, acoID)
 		}
 	}
 
@@ -154,7 +154,7 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string) {
 	}
 }
 
-func jsonToNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID string) {
+func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID string) {
 	var jsonOBJ map[string]interface{}
 	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
 	if err != nil {
