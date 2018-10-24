@@ -42,3 +42,29 @@ To interact with the app:
 
 1) Get a token: `http://localhost:3000/api/v1/token`
 2) POST to `http://localhost:3000/api/v1/claims` with `Authorization: Bearer <token>`
+
+
+### Environment variables
+
+Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
+
+##### bcda
+
+BCDA_ERROR_LOG <file_path>
+BCDA_REQUEST_LOG <file_path>
+BCDA_BB_LOG <file_path>
+BB_CLIENT_CERT_FILE <file_path>
+BB_CLIENT_KEY_FILE <file_path>
+BB_SERVER_LOCATION <url>
+FHIR_PAYLOAD_DIR <directory_path>
+JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
+
+##### bcdaworker
+
+BCDA_WORKER_ERROR_LOG <file_path>
+BCDA_BB_LOG <file_path>
+BB_CLIENT_CERT_FILE <file_path>
+BB_CLIENT_KEY_FILE <file_path>
+BB_SERVER_LOCATION <url>
+FHIR_PAYLOAD_DIR <directory_path>
+BB_TIMEOUT_MS <integer>
