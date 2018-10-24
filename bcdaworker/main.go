@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/jackc/pgx"
 	"os"
 	"os/signal"
@@ -108,9 +107,6 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 	}
 
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
-	testUtils.PrintSeparator()
-	fmt.Println(dataDir)
-	testUtils.PrintSeparator()
 	f, err := os.Create(fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
 	if err != nil {
 		log.Error(err)
@@ -195,7 +191,7 @@ func waitForSig() {
 	os.Exit(code)
 }
 
-func setupQueue() {
+func setupQueue() *pgx.ConnPool {
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -209,7 +205,6 @@ func setupQueue() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer pgxpool.Close()
 
 	qc = que.NewClient(pgxpool)
 	wm := que.WorkMap{
@@ -228,12 +223,13 @@ func setupQueue() {
 
 	workers := que.NewWorkerPool(qc, wm, workerPoolSize)
 	go workers.Start()
+
+	return pgxpool
 }
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-
-	setupQueue()
-
+	workerPool := setupQueue()
+	defer workerPool.Close()
 	waitForSig()
 }
