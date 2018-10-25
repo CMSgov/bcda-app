@@ -17,6 +17,8 @@ import (
 
 var logger *logrus.Logger
 
+const blueButtonBasePath = "/v1/fhir"
+
 type APIClient interface {
 	GetExplanationOfBenefitData(patientID string) (string, error)
 }
@@ -46,7 +48,6 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	}
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-
 	// TODO Fix when Blue Button has a static cert: https://jira.cms.gov/browse/BLUEBUTTON-484
 	if os.Getenv("BB_SERVER_LOCATION") != "https://fhir.backend.bluebutton.hhsdevcloud.us" {
 		caFile := os.Getenv("BB_CLIENT_CA_FILE")
@@ -77,27 +78,27 @@ func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
 	params := url.Values{}
 	params.Set("_id", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/Patient/", params)
+	return bbc.getData(blueButtonBasePath+"/Patient/", params)
 }
 
 func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID string) (string, error) {
 	params := url.Values{}
 	params.Set("beneficiary", beneficiaryID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/Coverage/", params)
+	return bbc.getData(blueButtonBasePath+"/Coverage/", params)
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
 	params := url.Values{}
 	params.Set("patient", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/ExplanationOfBenefit/", params)
+	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	params := url.Values{}
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData("/baseDstu3/metadata/", params)
+	return bbc.getData(blueButtonBasePath+"/metadata/", params)
 }
 
 func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, error) {
