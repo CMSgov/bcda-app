@@ -221,6 +221,19 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
+			Name:	  "create-alpha-token",
+			Category: "Alpha tools",
+			Usage:    "Create a disposable alpha participant token",
+			Action:   func(c *cli.Context) error {
+				accessToken, err := createAlphaToken()
+				if err != nil {
+					return err
+				}
+				fmt.Println(accessToken)
+				return nil
+			},
+		},
+		{
 			Name:     "sql-migrate",
 			Category: "Database tools",
 			Usage:    "Migrate GORM schema changes to the DB",
@@ -330,4 +343,11 @@ func revokeAccessToken(accessToken string) error {
 	authBackend := auth.InitAuthBackend()
 
 	return authBackend.RevokeToken(accessToken)
+}
+
+func createAlphaToken() (string, error) {
+	authBackend := auth.InitAuthBackend()
+
+	aco, user, tokenString, err := authBackend.CreateAlphaToken()
+	return fmt.Sprintf("%s\n%s\n%s", aco.Name, user.Name, tokenString), err
 }

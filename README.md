@@ -15,10 +15,11 @@ To get started, install some dependencies:
 
 Build the images and start the containers:
 
-1. Build the images
+1. Build the images and load with fixture data
 ```sh
 make docker-bootstrap
 ```
+
 2. Start the containers
 ```sh
 docker-compose up
@@ -36,6 +37,7 @@ make test
 ### Use the application
 
 See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
+
 
 ### Environment variables
 
@@ -64,4 +66,23 @@ BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
 FHIR_PAYLOAD_DIR <directory_path>
 BB_TIMEOUT_MS <integer>
+```
+
+### Other things you can do
+
+Use docker to look at the api database with psql:
+```sh
+docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
+```
+
+See docker-compose.yml for the password.
+
+Use docker to run the CLI against an API instance
+```
+docker exec -it bcda-app_api_1 bash -c 'tmp/bcda -h'
+```
+
+If you have no data in your database, you can load the fixture data with
+```sh
+make load-fixtures
 ```
