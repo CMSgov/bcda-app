@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -23,10 +23,7 @@ import (
 
 type MockBlueButtonClient struct {
 	mock.Mock
-}
-
-type MockBlueButtonClientWithError struct {
-	mock.Mock
+	client.BlueButtonClient
 }
 
 type MainTestSuite struct {
@@ -55,6 +52,10 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}
 
+	for i := 0; i < len(beneficiaryIDs); i++ {
+		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.getData("ExplanationOfBenefit", beneficiaryIDs[i]))
+	}
+
 	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs)
 	if err != nil {
 		t.Fail()
@@ -74,6 +75,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		assert.NotNil(t, jsonOBJ["fullUrl"])
 		assert.NotNil(t, jsonOBJ["resource"])
 	}
+	bbc.AssertExpectations(t)
 
 	os.Remove(filePath)
 }
@@ -94,7 +96,9 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 
 func TestWriteEOBDataToFileWithError(t *testing.T) {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
-	bbc := MockBlueButtonClientWithError{}
+	bbc := MockBlueButtonClient{}
+	// Set up the mock function to return the expected values
+	bbc.On("GetExplanationOfBenefitData", mock.AnythingOfType("string")).Return("", errors.New("error"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	beneficiaryIDs := []string{"10000", "11000"}
 
@@ -112,6 +116,7 @@ func TestWriteEOBDataToFileWithError(t *testing.T) {
 	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
 {"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
 	assert.Equal(t, ooResp+"\n", string(fData))
+	bbc.AssertExpectations(t)
 
 	os.Remove(fmt.Sprintf("%s/%s.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID))
 	os.Remove(filePath)
@@ -136,29 +141,21 @@ func TestAppendErrorToFile(t *testing.T) {
 	os.Remove(filePath)
 }
 
-// Returns copy of a static json file (From Blue Button Sandbox originally) after replacing the patient ID of 20000000000001 with the requested identifier
-
-func (bbc *MockBlueButtonClient) GetData(path string, params url.Values) (string, error) {
-	var identifier string
-	if strings.Contains(path, "Coverage") {
-		identifier = "beneficiary"
-	} else if strings.Contains(path, "Patient") {
-		identifier = "_id"
-	} else if strings.Contains(path, "ExplanationOfBenefit") {
-		identifier = "patient"
-	}
-
-	fData, err := ioutil.ReadFile("../shared_files" + strings.TrimRight(path, "/"))
-
-	// What other things should we be overwriting?  File creation time?
-	cleanData := strings.Replace(string(fData), "20000000000001", params.Get(identifier), -1)
-
-	return cleanData, err
+func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
+	args := bbc.Called(patientID)
+	return args.String(0), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClientWithError) GetData(path string, params url.Values) (string, error) {
+// Returns copy of a static json file (From Blue Button Sandbox originally) after replacing the patient ID of 20000000000001 with the requested identifier
 
-	return "", errors.New("Error")
+func (bbc *MockBlueButtonClient) getData(endpoint, patientID string) (string, error) {
+
+	fData, err := ioutil.ReadFile("../shared_files/synthetic_beneficiary_data/" + endpoint)
+	if err != nil {
+		return "", err
+	}
+	cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
+	return cleanData, err
 }
 
 func (s *MainTestSuite) TestProcessJob() {

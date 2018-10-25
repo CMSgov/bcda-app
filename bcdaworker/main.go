@@ -118,7 +118,7 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 	w := bufio.NewWriter(f)
 
 	for _, beneficiaryID := range beneficiaryIDs {
-		pData, err := client.GetExplanationOfBenefitData(beneficiaryID, bb)
+		pData, err := bb.GetExplanationOfBenefitData(beneficiaryID)
 		if err != nil {
 			log.Error(err)
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
