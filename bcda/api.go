@@ -46,6 +46,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/bgentry/que-go"
 	"github.com/dgrijalva/jwt-go"
@@ -72,6 +73,10 @@ import (
 		500:FHIRResponse
 */
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
+	txn := m.App.StartTransaction("bulkRequest", w, r)
+	defer monitoring.End(txn)
+
 	var (
 		claims jwt.MapClaims
 		err    error
@@ -191,6 +196,10 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 */
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
+	txn := m.App.StartTransaction("jobStatus", w, r)
+	defer monitoring.End(txn)
+
 	jobID := chi.URLParam(r, "jobId")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -268,12 +277,20 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveData(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
+	txn := m.App.StartTransaction("serveData", w, r)
+	defer monitoring.End(txn)
+
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	acoID := chi.URLParam(r, "acoID")
 	http.ServeFile(w, r, fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
+	txn := m.App.StartTransaction("getToken", w, r)
+	defer monitoring.End(txn)
+
 	authBackend := auth.InitAuthBackend()
 
 	// Generates a token for fake user and ACO combination
