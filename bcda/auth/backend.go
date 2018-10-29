@@ -277,3 +277,73 @@ func (backend *JWTAuthenticationBackend) CreateToken(user User) (Token, string, 
 
 	return token, tokenString, err
 }
+
+// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
+func createAlphaACO(db *gorm.DB) (ACO, error) {
+	var count int
+	db.Table("acos").Count(&count)
+	aco := ACO{Name: fmt.Sprintf("Alpha ACO %d", count), UUID: uuid.NewRandom()}
+	db.Create(&aco)
+
+	return aco, db.Error
+}
+
+// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
+func createAlphaUser(db *gorm.DB, aco ACO) (User, error) {
+	var count int
+	db.Table("users").Count(&count)
+	user := User{UUID: uuid.NewRandom(),
+	Name: fmt.Sprintf("Alpha User%d", count),
+	Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
+	db.Create(&user)
+
+	return user, db.Error
+}
+
+func assignBeneficiaries(db *gorm.DB, aco ACO) error {
+	s := "insert into beneficiaries (patient_id, aco_id) select patient_id, '" + aco.UUID.String() +
+		"' from beneficiaries where aco_id = (select uuid from acos where name = 'ACO Dev')"
+	return db.Exec(s).Error
+}
+
+func (backend *JWTAuthenticationBackend) CreateAlphaToken() (ACO, User, string, error) {
+	var aco ACO
+	var user User
+	var tokenString string
+	var err error
+
+	tx := database.GetGORMDbConnection().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if tx.Error != nil {
+		return aco, user, tokenString, tx.Error
+	}
+
+	if aco, err = createAlphaACO(tx); err != nil {
+		tx.Rollback()
+		return aco, user, tokenString, tx.Error
+	}
+
+	if err = assignBeneficiaries(tx, aco); err != nil {
+		tx.Rollback()
+		return aco, user, tokenString, tx.Error
+	}
+
+	if user, err = createAlphaUser(tx, aco); err != nil {
+		tx.Rollback()
+		return aco, user, tokenString, tx.Error
+	}
+
+	if tx.Commit().Error != nil {
+		tx.Rollback()
+		return aco, user, tokenString, tx.Error
+	}
+
+	_, tokenString, err = backend.CreateToken(user)
+
+	return aco, user, tokenString, err
+}
