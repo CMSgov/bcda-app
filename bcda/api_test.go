@@ -13,7 +13,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	que "github.com/bgentry/que-go"
@@ -37,7 +36,6 @@ func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
-	monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
 }
 
 func (s *APITestSuite) TestBulkRequest() {

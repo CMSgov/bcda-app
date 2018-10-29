@@ -74,7 +74,7 @@ func init() {
 	} else {
 		log.Info("Failed to log to file; using default stderr")
 	}
-	monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
+	monitoring.GetMonitor()
 }
 
 func main() {

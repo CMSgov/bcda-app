@@ -73,9 +73,9 @@ import (
 		500:FHIRResponse
 */
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
-	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
-	txn := m.App.StartTransaction("bulkRequest", w, r)
-	defer monitoring.End(txn)
+	m := monitoring.GetMonitor()
+	txn := m.Start("bulkRequest", w, r)
+	defer m.End(txn)
 
 	var (
 		claims jwt.MapClaims
@@ -196,9 +196,9 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 */
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
-	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
-	txn := m.App.StartTransaction("jobStatus", w, r)
-	defer monitoring.End(txn)
+	m := monitoring.GetMonitor()
+	txn := m.Start("jobStatus", w, r)
+	defer m.End(txn)
 
 	jobID := chi.URLParam(r, "jobId")
 	db := database.GetGORMDbConnection()
@@ -277,9 +277,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveData(w http.ResponseWriter, r *http.Request) {
-	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
-	txn := m.App.StartTransaction("serveData", w, r)
-	defer monitoring.End(txn)
+	m := monitoring.GetMonitor()
+	txn := m.Start("serveData", w, r)
+	defer m.End(txn)
 
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	acoID := chi.URLParam(r, "acoID")
@@ -287,9 +287,9 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
-	m := monitoring.GetMonitor(os.Getenv("ENABLE_MONITORING"))
-	txn := m.App.StartTransaction("getToken", w, r)
-	defer monitoring.End(txn)
+	m := monitoring.GetMonitor()
+	txn := m.Start("getToken", w, r)
+	defer m.End(txn)
 
 	authBackend := auth.InitAuthBackend()
 
