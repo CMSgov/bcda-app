@@ -123,11 +123,7 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 			log.Error(err)
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
 		} else {
-			_, err := w.WriteString(pData + "\n")
-			if err != nil {
-				log.Error(err)
-				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing ExplanationOfBenefit to file for beneficiary %s in ACO %s", beneficiaryID, acoID))
-			}
+			fhirBundleToResourceNDJSON(w, pData, "ExplanationOfBenefits", beneficiaryID, acoID)
 		}
 	}
 
@@ -156,6 +152,38 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string) {
 	if _, err = f.WriteString(string(ooBytes) + "\n"); err != nil {
 		log.Error(err)
 	}
+}
+
+func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID string) {
+	var jsonOBJ map[string]interface{}
+	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
+	if err != nil {
+		log.Error(err)
+		appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error UnMarshaling %s from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID))
+		return
+	}
+
+	entries := jsonOBJ["entry"]
+
+	// There might be no entries.  If this happens we can't iterate over them.
+	if entries != nil {
+
+		for _, entry := range entries.([]interface{}) {
+			entryJSON, err := json.Marshal(entry)
+			// This is unlikely to happen because we just unmarshalled this data a few lines above.
+			if err != nil {
+				log.Error(err)
+				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error Marshaling %s to Json for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID))
+				continue
+			}
+			_, err = w.WriteString(string(entryJSON) + "\n")
+			if err != nil {
+				log.Error(err)
+				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID))
+			}
+		}
+	}
+
 }
 
 func waitForSig() {
