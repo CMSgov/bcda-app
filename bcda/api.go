@@ -250,6 +250,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.AcoID)
+		fmt.Println("IN API.GO:", errFilePath)
+
 		if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 			errFI := fileItem{
 				Type: "OperationOutcome",

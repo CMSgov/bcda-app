@@ -399,6 +399,8 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
+	fmt.Println("IN API_TEST:", errFilePath)
+
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
