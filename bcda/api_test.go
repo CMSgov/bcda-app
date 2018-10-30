@@ -393,13 +393,19 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
+	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
+	if _, err := os.Stat(f); os.IsNotExist(err) {
+		err = os.MkdirAll(f, os.ModePerm)
+		if err != nil {
+			s.T().Error(err)
+		}
+	}
+
 	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), j.AcoID)
 	_, err := os.Create(errFilePath)
 	if err != nil {
 		s.T().Error(err)
 	}
-
-	fmt.Println("IN API_TEST:", errFilePath)
 
 	handler.ServeHTTP(s.rr, req)
 
