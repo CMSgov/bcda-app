@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"regexp"
 	"strconv"
 	"syscall"
+
+	"github.com/jackc/pgx"
 
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 
@@ -74,11 +76,45 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	err = writeEOBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs)
+	jobID := strconv.Itoa(jobArgs.ID)
+	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	data := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
+
+	if _, err := os.Stat(staging); os.IsNotExist(err) {
+		err = os.MkdirAll(staging, os.ModePerm)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+	err = writeEOBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs, jobID)
 
 	if err != nil {
 		exportJob.Status = "Failed"
 	} else {
+		files, err := ioutil.ReadDir(staging)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		for _, f := range files {
+			oldpath := staging + "/" + f.Name()
+			newpath := data + "/" + f.Name()
+			if _, err := os.Stat(data); os.IsNotExist(err) {
+				err = os.Mkdir(data, os.ModePerm)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
+			}
+			err := os.Rename(oldpath, newpath)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+		}
+		os.Remove(staging)
 		exportJob.Status = "Completed"
 	}
 
@@ -92,7 +128,7 @@ func processJob(j *que.Job) error {
 	return nil
 }
 
-func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string) error {
+func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID string) error {
 	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
 	if !re.Match([]byte(acoID)) {
 		err := errors.New("Invalid ACO ID")
@@ -106,8 +142,9 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 		return err
 	}
 
-	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
-	f, err := os.Create(fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
+	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	f, err := os.Create(fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
+	fmt.Println("ERR2", err)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -121,9 +158,9 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 		pData, err := bb.GetExplanationOfBenefitData(beneficiaryID)
 		if err != nil {
 			log.Error(err)
-			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID))
+			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID), jobID)
 		} else {
-			fhirBundleToResourceNDJSON(w, pData, "ExplanationOfBenefits", beneficiaryID, acoID)
+			fhirBundleToResourceNDJSON(w, pData, "ExplanationOfBenefits", beneficiaryID, acoID, jobID)
 		}
 	}
 
@@ -132,11 +169,11 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 	return nil
 }
 
-func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string) {
+func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
-	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
-	fileName := fmt.Sprintf("%s/%s-error.ndjson", dataDir, acoID)
+	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	fileName := fmt.Sprintf("%s/%s/%s-error.ndjson", dataDir, jobID, acoID)
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Error(err)
@@ -154,12 +191,12 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string) {
 	}
 }
 
-func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID string) {
+func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID string, jobID string) {
 	var jsonOBJ map[string]interface{}
 	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
 	if err != nil {
 		log.Error(err)
-		appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error UnMarshaling %s from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID))
+		appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error UnMarshaling %s from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		return
 	}
 
@@ -173,13 +210,13 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 			// This is unlikely to happen because we just unmarshalled this data a few lines above.
 			if err != nil {
 				log.Error(err)
-				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error Marshaling %s to Json for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID))
+				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error Marshaling %s to Json for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 				continue
 			}
 			_, err = w.WriteString(string(entryJSON) + "\n")
 			if err != nil {
 				log.Error(err)
-				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID))
+				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			}
 		}
 	}

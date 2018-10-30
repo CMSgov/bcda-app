@@ -12,6 +12,7 @@ ENV BB_CLIENT_CERT_FILE ../shared_files/bb-dev-test-cert.pem
 ENV BB_CLIENT_KEY_FILE ../shared_files/bb-dev-test-key.pem
 ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
 ENV FHIR_PAYLOAD_DIR data
+ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
 ENV BB_TIMEOUT_MS 500
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
