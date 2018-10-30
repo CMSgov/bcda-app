@@ -37,16 +37,6 @@ func (s *MainTestSuite) SetupTest() {
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/test-server-cert.pem")
 	models.InitializeGormModels()
-
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
-	testdir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), "1")
-
-	if _, err := os.Stat(testdir); os.IsNotExist(err) {
-		err = os.MkdirAll(testdir, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -63,13 +53,13 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}
 	jobID := "1"
+	testUtils.CreateStaging(jobID)
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.getData("ExplanationOfBenefit", beneficiaryIDs[i]))
 	}
 
 	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, jobID)
-	fmt.Println("ERRIS", err)
 	if err != nil {
 		t.Fail()
 	}
@@ -102,9 +92,8 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	bbc := MockBlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
 	beneficiaryIDs := []string{"10000", "11000"}
-	jobID := "1"
 
-	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, jobID)
+	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, "1")
 	assert.NotNil(t, err)
 }
 
@@ -116,6 +105,7 @@ func TestWriteEOBDataToFileWithError(t *testing.T) {
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	beneficiaryIDs := []string{"10000", "11000"}
 	jobID := "1"
+	testUtils.CreateStaging(jobID)
 
 	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, jobID)
 	if err != nil {
@@ -141,6 +131,7 @@ func TestAppendErrorToFile(t *testing.T) {
 	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
 	jobID := "1"
+	testUtils.CreateStaging(jobID)
 	appendErrorToFile(acoID, "", "", "", jobID)
 
 	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
@@ -148,6 +139,7 @@ func TestAppendErrorToFile(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
+
 	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error"}]}`
 
 	assert.Equal(t, ooResp+"\n", string(fData))

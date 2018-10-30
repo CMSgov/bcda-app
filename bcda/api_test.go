@@ -22,7 +22,6 @@ import (
 	"github.com/jackc/pgx"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -366,12 +365,12 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		s.T().Error(err)
 	}
 
-	expected := fmt.Sprintf("%s/%s/%s", "https://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
+	expectedurl := fmt.Sprintf("%s/%s/%s", "https://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), expected, rb.Files[0].URL)
+	assert.Equal(s.T(), expectedurl, rb.Files[0].URL)
 	assert.Empty(s.T(), rb.Errors)
 
 	s.db.Delete(&j)
@@ -394,16 +393,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
-	testdir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), fmt.Sprint(j.ID))
-
-	if _, err := os.Stat(testdir); os.IsNotExist(err) {
-		err = os.MkdirAll(testdir, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+	testUtils.CreateStaging(fmt.Sprint(j.ID))
 
 	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), fmt.Sprint(j.ID), j.AcoID)
 	_, err := os.Create(errFilePath)
@@ -422,12 +412,12 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
-	expected := fmt.Sprintf("%s/%s/%s", "https://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
+	expectedurl := fmt.Sprintf("%s/%s/%s", "https://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), expected, rb.Files[0].URL)
+	assert.Equal(s.T(), expectedurl, rb.Files[0].URL)
 	//assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
 	//assert.Equal(s.T(), "https://example.com/data/dbbd1ce1-ae24-435c-807d-ed45953077d3-error.ndjson", rb.Errors[0].URL)
 

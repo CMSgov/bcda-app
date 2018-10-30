@@ -13,14 +13,12 @@ import (
 	"syscall"
 
 	"github.com/jackc/pgx"
-
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/bgentry/que-go"
 )
 
@@ -144,7 +142,6 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
 	f, err := os.Create(fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
-	fmt.Println("ERR2", err)
 	if err != nil {
 		log.Error(err)
 		return err
