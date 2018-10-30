@@ -35,7 +35,6 @@ type APITestSuite struct {
 func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
-
 	s.rr = httptest.NewRecorder()
 }
 

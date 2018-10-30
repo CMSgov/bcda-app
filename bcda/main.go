@@ -12,6 +12,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
@@ -73,6 +74,7 @@ func init() {
 	} else {
 		log.Info("Failed to log to file; using default stderr")
 	}
+	monitoring.GetMonitor()
 }
 
 func main() {
@@ -221,10 +223,10 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:	  "create-alpha-token",
+			Name:     "create-alpha-token",
 			Category: "Alpha tools",
 			Usage:    "Create a disposable alpha participant token",
-			Action:   func(c *cli.Context) error {
+			Action: func(c *cli.Context) error {
 				accessToken, err := createAlphaToken()
 				if err != nil {
 					return err
