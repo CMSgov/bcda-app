@@ -94,6 +94,22 @@
   revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 
 [[projects]]
+  digest = "1:01f60ec456e70c9be269902c08fa189a9d47056a419c4a91a02f19df5e36ab59"
+  name = "github.com/newrelic/go-agent"
+  packages = [
+    ".",
+    "internal",
+    "internal/cat",
+    "internal/jsonx",
+    "internal/logger",
+    "internal/sysinfo",
+    "internal/utilization",
+  ]
+  pruneopts = "UT"
+  revision = "46d73e6be8b4faeee70850d0df829e4fe00d6819"
+  version = "v2.1.0"
+
+[[projects]]
   digest = "1:8aa28c7fb16a7b9afb08568f21f06aa869f18e3637f6f024413e45c2e211072b"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -193,6 +209,7 @@
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
+    "github.com/newrelic/go-agent",
     "github.com/pborman/uuid",
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
