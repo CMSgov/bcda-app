@@ -392,9 +392,8 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	testUtils.CreateStaging(fmt.Sprint(j.ID))
 
-	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), fmt.Sprint(j.ID), j.AcoID)
+	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), j.AcoID)
 	_, err := os.Create(errFilePath)
 	if err != nil {
 		s.T().Error(err)
@@ -411,14 +410,15 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
-	expectedurl := fmt.Sprintf("%s/%s/%s", "https://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
+	dataurl := fmt.Sprintf("%s/%s/%s", "https://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
+	errorurl := fmt.Sprintf("%s/%s/%s", "https://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3-error.ndjson")
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), expectedurl, rb.Files[0].URL)
-	//assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
-	//assert.Equal(s.T(), "https://example.com/data/dbbd1ce1-ae24-435c-807d-ed45953077d3-error.ndjson", rb.Errors[0].URL)
+	assert.Equal(s.T(), dataurl, rb.Files[0].URL)
+	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
+	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
 
 	s.db.Delete(&j)
 	os.Remove(errFilePath)
