@@ -238,7 +238,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 		fi := fileItem{
 			Type: "ExplanationOfBenefit",
-			URL:  fmt.Sprintf("%s://%s/data/%s.ndjson", scheme, r.Host, job.AcoID),
+			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
 		rb := bulkResponseBody{
@@ -249,11 +249,11 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			Errors:              []fileItem{},
 		}
 
-		errFilePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), job.AcoID)
+		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.AcoID)
 		if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 			errFI := fileItem{
 				Type: "OperationOutcome",
-				URL:  fmt.Sprintf("%s://%s/data/%s-error.ndjson", scheme, r.Host, job.AcoID),
+				URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, job.AcoID),
 			}
 			rb.Errors = append(rb.Errors, errFI)
 		}
@@ -283,7 +283,8 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	acoID := chi.URLParam(r, "acoID")
-	http.ServeFile(w, r, fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
+	jobID := chi.URLParam(r, "jobID")
+	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
