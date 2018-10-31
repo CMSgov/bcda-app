@@ -6,11 +6,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/stretchr/testify/suite"
 )
 
 type AuthTestSuite struct {
@@ -91,4 +92,16 @@ func (s *AuthTestSuite) SetupAuthBackend() {
 	defer pubKeyFile.Close()
 
 	s.AuthBackend = auth.InitAuthBackend()
+}
+
+func CreateStaging(jobID string) {
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
+	testdir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+
+	if _, err := os.Stat(testdir); os.IsNotExist(err) {
+		err = os.MkdirAll(testdir, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }

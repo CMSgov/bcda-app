@@ -5,6 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -14,11 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"io/ioutil"
-	"log"
-	"os"
-	"strings"
-	"testing"
 )
 
 type MockBlueButtonClient struct {
@@ -47,21 +48,23 @@ func TestMainTestSuite(t *testing.T) {
 }
 
 func TestWriteEOBDataToFile(t *testing.T) {
-	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	bbc := MockBlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}
+	jobID := "1"
+	testUtils.CreateStaging(jobID)
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.getData("ExplanationOfBenefit", beneficiaryIDs[i]))
 	}
 
-	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs)
+	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, jobID)
 	if err != nil {
 		t.Fail()
 	}
 
-	filePath := fmt.Sprintf("%s/%s.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID)
+	filePath := fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err)
@@ -81,7 +84,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileNoClient(t *testing.T) {
-	err := writeEOBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"})
+	err := writeEOBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"}, "1")
 	assert.NotNil(t, err)
 }
 
@@ -90,24 +93,26 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
 	beneficiaryIDs := []string{"10000", "11000"}
 
-	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs)
+	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, "1")
 	assert.NotNil(t, err)
 }
 
 func TestWriteEOBDataToFileWithError(t *testing.T) {
-	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	bbc := MockBlueButtonClient{}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefitData", mock.AnythingOfType("string")).Return("", errors.New("error"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	beneficiaryIDs := []string{"10000", "11000"}
+	jobID := "1"
+	testUtils.CreateStaging(jobID)
 
-	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs)
+	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, jobID)
 	if err != nil {
 		t.Fail()
 	}
 
-	filePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID)
+	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
 	fData, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		t.Fail()
@@ -118,17 +123,18 @@ func TestWriteEOBDataToFileWithError(t *testing.T) {
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 
-	os.Remove(fmt.Sprintf("%s/%s.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID))
+	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(filePath)
 }
 
 func TestAppendErrorToFile(t *testing.T) {
-	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
+	jobID := "1"
+	testUtils.CreateStaging(jobID)
+	appendErrorToFile(acoID, "", "", "", jobID)
 
-	appendErrorToFile(acoID, "", "", "")
-
-	filePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), acoID)
+	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
 	fData, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		t.Fail()
