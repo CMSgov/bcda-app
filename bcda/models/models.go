@@ -28,4 +28,17 @@ type Job struct {
 	UserID     uuid.UUID `gorm:"type:char(36)"`
 	RequestURL string    `json:"request_url"` // request_url
 	Status     string    `json:"status"`      // status
+	JobKeys    []JobKey
+}
+
+func (job *Job) FilePath() string {
+	return "data/" + string(job.ID) + "/"
+}
+
+type JobKey struct {
+	gorm.Model
+	Job          Job    `gorm:"foreignkey:jobIID"`
+	JobID        int    `gorm:"primary_key;json:"job_id"`
+	EncryptedKey string `gorm:"type:char(511)"`
+	FileName     string `gorm:"type:char(127)"`
 }

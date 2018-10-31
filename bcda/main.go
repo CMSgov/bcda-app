@@ -60,9 +60,13 @@ type bulkResponseBody struct {
 	// Files included in the payload
 	// collection format: csv
 	Files []fileItem `json:"output"`
+	// Keys created during encryption of the files for this job
+	// These keys are encrypted using the ACO's public key
+	Keys []string `json:"keys""`
 	// Errors encountered during processing
 	// collection format: csv
-	Errors []fileItem `json:"error"`
+	Errors []fileItem        `json:"error"`
+	KeyMap map[string]string `json:"KeyMap"`
 }
 
 func init() {

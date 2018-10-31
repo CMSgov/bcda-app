@@ -293,8 +293,8 @@ func createAlphaUser(db *gorm.DB, aco ACO) (User, error) {
 	var count int
 	db.Table("users").Count(&count)
 	user := User{UUID: uuid.NewRandom(),
-	Name: fmt.Sprintf("Alpha User%d", count),
-	Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
+		Name:  fmt.Sprintf("Alpha User%d", count),
+		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
 	db.Create(&user)
 
 	return user, db.Error

@@ -241,12 +241,21 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
+		var jobKeys []string
+		var keyMap map[string]string
+		for _, jobKey := range job.JobKeys {
+			jobKeys = append(jobKeys, jobKey.EncryptedKey+"|"+jobKey.FileName)
+			keyMap[jobKey.EncryptedKey] = jobKey.FileName
+		}
+
 		rb := bulkResponseBody{
 			TransactionTime:     job.CreatedAt,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
 			Files:               []fileItem{fi},
+			Keys:                jobKeys,
 			Errors:              []fileItem{},
+			KeyMap:              keyMap,
 		}
 
 		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.AcoID)
