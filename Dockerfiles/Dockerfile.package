@@ -1,8 +1,7 @@
-FROM golang:1.10-alpine3.8
+FROM golang:1.10
 
-RUN apk upgrade
-RUN apk update
-RUN apk add --no-cache gcc make ruby ruby-dev rpm libc-dev git
+RUN apt-get update
+RUN apt-get install -y build-essential ruby ruby-dev rpm git
 RUN gem install --no-ri --no-rdoc fpm etc
 RUN go get -u github.com/golang/dep/cmd/dep
 
