@@ -368,6 +368,20 @@ func (s *BackendTestSuite) TestPublicKey() {
 
 }
 
+func (s *BackendTestSuite) TestCreateAlphaToken() {
+	db := database.GetGORMDbConnection()
+	aco, user, tokenString, err := s.AuthBackend.CreateAlphaToken()
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), aco)
+	assert.NotNil(s.T(), user)
+	assert.NotNil(s.T(), tokenString)
+	assert.Equal(s.T(), aco.UUID, user.AcoID)
+	var count int
+	db.Table("beneficiaries").Where("aco_id = ?", aco.UUID.String()).Count(&count)
+	assert.Equal(s.T(), 50, count)
+}
+
+
 func TestBackendTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendTestSuite))
 }

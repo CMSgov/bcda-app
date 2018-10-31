@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/CMSgov/bcda-app.svg?branch=master)](https://travis-ci.org/CMSgov/bcda-app)
 
-
 ### Dependencies
 
 To get started, install some dependencies:
@@ -12,15 +11,15 @@ To get started, install some dependencies:
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
 4. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
-
 ### Build / Start
 
 Build the images and start the containers:
 
-1. Build the images
+1. Build the images and load with fixture data
 ```sh
 make docker-bootstrap
 ```
+
 2. Start the containers
 ```sh
 docker-compose up
@@ -35,10 +34,55 @@ Run tests and produce test metrics:
 make test
 ```
 
-
 ### Use the application
 
-To interact with the app:
+See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
-1) Get a token: `http://localhost:3000/api/v1/token`
-2) POST to `http://localhost:3000/api/v1/claims` with `Authorization: Bearer <token>`
+
+### Environment variables
+
+Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
+
+##### bcda
+
+```
+BCDA_ERROR_LOG <file_path>
+BCDA_REQUEST_LOG <file_path>
+BCDA_BB_LOG <file_path>
+BB_CLIENT_CERT_FILE <file_path>
+BB_CLIENT_KEY_FILE <file_path>
+BB_SERVER_LOCATION <url>
+FHIR_PAYLOAD_DIR <directory_path>
+JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
+```
+
+##### bcdaworker
+
+```
+BCDA_WORKER_ERROR_LOG <file_path>
+BCDA_BB_LOG <file_path>
+BB_CLIENT_CERT_FILE <file_path>
+BB_CLIENT_KEY_FILE <file_path>
+BB_SERVER_LOCATION <url>
+FHIR_PAYLOAD_DIR <directory_path>
+BB_TIMEOUT_MS <integer>
+```
+
+### Other things you can do
+
+Use docker to look at the api database with psql:
+```sh
+docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
+```
+
+See docker-compose.yml for the password.
+
+Use docker to run the CLI against an API instance
+```
+docker exec -it bcda-app_api_1 bash -c 'tmp/bcda -h'
+```
+
+If you have no data in your database, you can load the fixture data with
+```sh
+make load-fixtures
+```

@@ -46,6 +46,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/bgentry/que-go"
 	"github.com/dgrijalva/jwt-go"
@@ -72,6 +73,10 @@ import (
 		500:FHIRResponse
 */
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor()
+	txn := m.Start("bulkRequest", w, r)
+	defer m.End(txn)
+
 	var (
 		claims jwt.MapClaims
 		err    error
@@ -191,6 +196,10 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 */
 
 func jobStatus(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor()
+	txn := m.Start("jobStatus", w, r)
+	defer m.End(txn)
+
 	jobID := chi.URLParam(r, "jobId")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -229,7 +238,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 		fi := fileItem{
 			Type: "ExplanationOfBenefit",
-			URL:  fmt.Sprintf("%s://%s/data/%s.ndjson", scheme, r.Host, job.AcoID),
+			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
 		rb := bulkResponseBody{
@@ -240,11 +249,11 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			Errors:              []fileItem{},
 		}
 
-		errFilePath := fmt.Sprintf("%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), job.AcoID)
+		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.AcoID)
 		if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 			errFI := fileItem{
 				Type: "OperationOutcome",
-				URL:  fmt.Sprintf("%s://%s/data/%s-error.ndjson", scheme, r.Host, job.AcoID),
+				URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, job.AcoID),
 			}
 			rb.Errors = append(rb.Errors, errFI)
 		}
@@ -268,12 +277,21 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveData(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor()
+	txn := m.Start("serveData", w, r)
+	defer m.End(txn)
+
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	acoID := chi.URLParam(r, "acoID")
-	http.ServeFile(w, r, fmt.Sprintf("%s/%s.ndjson", dataDir, acoID))
+	jobID := chi.URLParam(r, "jobID")
+	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
+	m := monitoring.GetMonitor()
+	txn := m.Start("getToken", w, r)
+	defer m.End(txn)
+
 	authBackend := auth.InitAuthBackend()
 
 	// Generates a token for fake user and ACO combination
@@ -332,6 +350,27 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 		scheme = "https"
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
-	statement := responseutils.CreateCapabilityStatement(dt, "0.1", host)
+	statement := responseutils.CreateCapabilityStatement(dt, version, host)
 	responseutils.WriteCapabilityStatement(statement, w)
+}
+
+func getVersion(w http.ResponseWriter, r *http.Request) {
+	respMap := make(map[string]string)
+	respMap["version"] = version
+	respBytes, err := json.Marshal(respMap)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(respBytes)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
@@ -25,7 +26,8 @@ const Usage = "Beneficiary Claims Data API CLI"
 const CreateACO = "create-aco"
 
 var (
-	qc *que.Client
+	qc      *que.Client
+	version = "latest"
 )
 
 // swagger:ignore
@@ -72,6 +74,7 @@ func init() {
 	} else {
 		log.Info("Failed to log to file; using default stderr")
 	}
+	monitoring.GetMonitor()
 }
 
 func main() {
@@ -86,6 +89,7 @@ func setUpApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = Name
 	app.Usage = Usage
+	app.Version = version
 	var acoName, acoID, userName, userEmail, userID, accessToken string
 	app.Commands = []cli.Command{
 		{
@@ -219,6 +223,19 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
+			Name:     "create-alpha-token",
+			Category: "Alpha tools",
+			Usage:    "Create a disposable alpha participant token",
+			Action: func(c *cli.Context) error {
+				accessToken, err := createAlphaToken()
+				if err != nil {
+					return err
+				}
+				fmt.Println(accessToken)
+				return nil
+			},
+		},
+		{
 			Name:     "sql-migrate",
 			Category: "Database tools",
 			Usage:    "Migrate GORM schema changes to the DB",
@@ -328,4 +345,11 @@ func revokeAccessToken(accessToken string) error {
 	authBackend := auth.InitAuthBackend()
 
 	return authBackend.RevokeToken(accessToken)
+}
+
+func createAlphaToken() (string, error) {
+	authBackend := auth.InitAuthBackend()
+
+	aco, user, tokenString, err := authBackend.CreateAlphaToken()
+	return fmt.Sprintf("%s\n%s\n%s", aco.Name, user.Name, tokenString), err
 }

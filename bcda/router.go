@@ -15,8 +15,7 @@ import (
 //NewRouter provides a router with all the required... routes
 func NewRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(auth.ParseToken)
-	r.Use(logging.NewStructuredLogger())
+	r.Use(auth.ParseToken, logging.NewStructuredLogger())
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +26,7 @@ func NewRouter() http.Handler {
 		}
 	})
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth).With(ValidateBulkRequestHeaders).Get("/ExplanationOfBenefit/$export", bulkRequest)
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/ExplanationOfBenefit/$export", bulkRequest)
 		r.With(auth.RequireTokenAuth).Get("/jobs/{jobId}", jobStatus)
 		r.Get("/metadata", metadata)
 		if os.Getenv("DEBUG") == "true" {
@@ -35,7 +34,8 @@ func NewRouter() http.Handler {
 			r.Get("/bb_metadata", blueButtonMetadata)
 		}
 	})
-	r.With(auth.RequireTokenAuth).With(auth.RequireTokenACOMatch).Get("/data/{acoID}.ndjson", serveData)
+	r.With(auth.RequireTokenAuth, auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
+	r.Get("/_version", getVersion)
 	return r
 }
 
