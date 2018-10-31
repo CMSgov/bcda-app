@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	//"fmt"
 	"crypto/rsa"
 	"errors"
 	"github.com/CMSgov/bcda-app/bcda/auth"

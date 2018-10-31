@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"crypto/rsa"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
+	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 )
@@ -27,6 +29,16 @@ type ACO struct {
 	gorm.Model
 	UUID uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
 	Name string    `json:"name"`                                   // name
+}
+
+func (aco *ACO) GetPublicKey() *rsa.PublicKey {
+	if os.Getenv("DEBUG") == "true" {
+		auth := InitAuthBackend()
+		return auth.PublicKey
+	}
+	// todo implement a real thing.  But for now we can use this.
+	return nil
+
 }
 
 type Token struct {
