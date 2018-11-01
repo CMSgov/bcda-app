@@ -25,11 +25,11 @@ go clean
 echo "Building bcda binary..." 
 go build -ldflags "-X main.version=$VERSION"
 echo "Packaging bcda binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda
+fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bcda/bcda swaggerui=/usr/local/bcda/swaggerui
 cd ../bcdaworker
 go clean 
 echo "Building bcdaworker..."
 go build
 echo "Packaging bcdaworker binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker
+fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bcda/bcdaworker
 
