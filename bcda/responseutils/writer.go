@@ -2,10 +2,11 @@ package responseutils
 
 import (
 	"encoding/json"
-	fhirmodels "github.com/eug48/fhir/models"
 	"net/http"
 	"os"
 	"time"
+
+	fhirmodels "github.com/eug48/fhir/models"
 )
 
 func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
@@ -92,6 +93,20 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 						Name: "metadata",
 						Definition: &fhirmodels.Reference{
 							Reference: baseurl + "/api/v1/metadata",
+							Type:      "Endpoint",
+						},
+					},
+					{
+						Name: "version",
+						Definition: &fhirmodels.Reference{
+							Reference: baseurl + "/_version",
+							Type:      "Endpoint",
+						},
+					},
+					{
+						Name: "data",
+						Definition: &fhirmodels.Reference{
+							Reference: baseurl + "/data/{jobID}/{acoID}.ndjson",
 							Type:      "Endpoint",
 						},
 					},
