@@ -3,10 +3,11 @@ release:
 	docker run --rm -e GITHUB_ACCESS_TOKEN='${GITHUB_ACCESS_TOKEN}' -e GITHUB_USER='${GITHUB_USER}' -e GITHUB_EMAIL='${GITHUB_EMAIL}' -e GITHUB_GPG_KEY_FILE='${GITHUB_GPG_KEY_FILE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release
 
 package:
-	# This target should be executed by passing in an argument reprsenting the version of the artifacts we are packaging
+	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
+	docker-compose up -d documentation
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
-	docker run -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version) 
+	docker run --rm -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 test:
 	docker-compose up -d db queue
