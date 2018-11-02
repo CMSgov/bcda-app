@@ -33,6 +33,7 @@ type MainTestSuite struct {
 
 func (s *MainTestSuite) SetupTest() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/bb-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/test-server-cert.pem")
@@ -48,7 +49,6 @@ func TestMainTestSuite(t *testing.T) {
 }
 
 func TestWriteEOBDataToFile(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	bbc := MockBlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}

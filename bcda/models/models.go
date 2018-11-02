@@ -38,7 +38,7 @@ func (job *Job) FilePath() string {
 type JobKey struct {
 	gorm.Model
 	Job          Job    `gorm:"foreignkey:jobIID"`
-	JobID        int    `gorm:"primary_key;json:"job_id"`
+	JobID        uint   `gorm:"primary_key" json:"job_id"`
 	EncryptedKey string `gorm:"type:char(511)"`
 	FileName     string `gorm:"type:char(127)"`
 }

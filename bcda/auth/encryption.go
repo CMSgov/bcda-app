@@ -6,7 +6,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	log "github.com/sirupsen/logrus"
 	"io"
+	"io/ioutil"
+	"os"
 )
 
 // NewEncryptionKey generates a random 256-bit key for Encrypt() and
@@ -46,6 +51,9 @@ func encrypt(plaintext []byte, key *[32]byte) (ciphertext []byte, err error) {
 func EncryptBytes(publicKey *rsa.PublicKey, plaintext []byte, label string) (ciphertext []byte, encryptedKey []byte, err error) {
 	symmetricKey := newEncryptionKey()
 	ciphertext, err = encrypt(plaintext, symmetricKey)
+	if err != nil {
+		return nil, nil, err
+	}
 	encryptedKey, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey, symmetricKey[:], []byte(label))
 
 	if err != nil {
@@ -53,4 +61,28 @@ func EncryptBytes(publicKey *rsa.PublicKey, plaintext []byte, label string) (cip
 	} else {
 		return ciphertext, encryptedKey, nil
 	}
+}
+
+func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID uint) error {
+	// Open and read the file
+	fileBytes, err := ioutil.ReadFile(fromPath + "/" + fileName)
+	// Encrypt the file and get the encrypted key
+	encryptedFile, encryptedKey, err := EncryptBytes(key, fileBytes, fileName)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	// Save the encrypted key before trying anything dangerous
+	db := database.GetGORMDbConnection()
+	db.Create(&models.JobKey{JobID: jobID, EncryptedKey: string(encryptedKey), FileName: fileName})
+
+	// Write out the file to the file system
+	err = ioutil.WriteFile(toPath+"/"+fileName, encryptedFile, os.ModePerm)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }

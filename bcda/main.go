@@ -64,7 +64,7 @@ type bulkResponseBody struct {
 	Files []fileItem `json:"output"`
 	// Keys created during encryption of the files for this job
 	// These keys are encrypted using the ACO's public key
-	Keys []string `json:"keys""`
+	Keys []string `json:"keys"`
 	// Errors encountered during processing
 	// collection format: csv
 	Errors []fileItem        `json:"error"`

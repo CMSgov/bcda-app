@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -33,6 +34,11 @@ type jobEnqueueArgs struct {
 	BeneficiaryIDs []string
 }
 
+func check(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
@@ -106,10 +112,19 @@ func processJob(j *que.Job) error {
 					return err
 				}
 			}
-			err := os.Rename(oldpath, newpath)
-			if err != nil {
-				log.Error(err)
-				return err
+			// Skipping encryption is NOT the default.  This code will be removed before ATO
+			if os.Getenv("DO_ENCRYPTION") == "FALSE" {
+				err := os.Rename(oldpath, newpath)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
+			} else {
+				err := auth.EncryptAndMove(staging, data, f.Name(), exportJob.Aco.GetPublicKey(), exportJob.ID)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
 			}
 		}
 		os.Remove(staging)
