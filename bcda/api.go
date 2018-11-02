@@ -242,7 +242,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var jobKeys []string
-		var keyMap map[string]string
+		keyMap := make(map[string]string)
 		for _, jobKey := range job.JobKeys {
 			jobKeys = append(jobKeys, jobKey.EncryptedKey+"|"+jobKey.FileName)
 			keyMap[jobKey.EncryptedKey] = jobKey.FileName

@@ -14,6 +14,7 @@ ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
 ENV FHIR_PAYLOAD_DIR data
 ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
 ENV BB_TIMEOUT_MS 500
+ENV DO_ENCRYPTION FALSE
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 CMD ["fresh"]
