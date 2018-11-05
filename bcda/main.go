@@ -66,7 +66,7 @@ type bulkResponseBody struct {
 	// Errors encountered during processing
 	// collection format: csv
 	Errors []fileItem        `json:"error"`
-	KeyMap map[string]string `json:"KeyMap"`
+	KeyMap map[string][]byte `json:"KeyMap"`
 }
 
 func init() {
