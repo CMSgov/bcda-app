@@ -4,8 +4,6 @@ RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
 
 RUN go get -u github.com/golang/dep/cmd/dep
-RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
-RUN go get -u github.com/xo/usql
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
@@ -22,4 +20,4 @@ ENV FHIR_PAYLOAD_DIR ../bcdaworker/data
 ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test
-CMD ["go", "run", "bcda_client.go"]
+CMD ["go", "run", "bcda_client.go", "-host=api:3000"]

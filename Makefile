@@ -11,7 +11,7 @@ package:
 
 smoke-test:
 	docker-compose up -d 
-	docker-compose -f docker-compose.test.yml up --force-recreate  --exit-code-from smoke_test smoke_test
+	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from smoke_test smoke_test
 
 test:
 	docker-compose up -d db queue

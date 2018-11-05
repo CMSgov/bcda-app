@@ -11,9 +11,13 @@ services:
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
   smoke_test:
-    network_mode: host
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.smoke_test
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
+
+networks:
+  default:
+    external:
+      name: bcda-app_default
