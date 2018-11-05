@@ -245,10 +245,12 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var jobKeys []string
-		keyMap := make(map[string]string)
-		for _, jobKey := range job.JobKeys {
-			jobKeys = append(jobKeys, jobKey.EncryptedKey+"|"+jobKey.FileName)
-			keyMap[jobKey.EncryptedKey] = jobKey.FileName
+		keyMap := make(map[string][]byte)
+		var jobKeysObj []models.JobKey
+		db.Find(&jobKeysObj, "job_id = ?", job.ID)
+		for _, jobKey := range jobKeysObj {
+			jobKeys = append(jobKeys, string(jobKey.EncryptedKey)+"|"+jobKey.FileName)
+			keyMap[jobKey.FileName] = jobKey.EncryptedKey
 		}
 
 		rb := bulkResponseBody{

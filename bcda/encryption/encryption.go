@@ -1,4 +1,4 @@
-package auth
+package encryption
 
 import (
 	"crypto/aes"
@@ -66,6 +66,10 @@ func EncryptBytes(publicKey *rsa.PublicKey, plaintext []byte, label string) (cip
 func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID uint) error {
 	// Open and read the file
 	fileBytes, err := ioutil.ReadFile(fromPath + "/" + fileName)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	// Encrypt the file and get the encrypted key
 	encryptedFile, encryptedKey, err := EncryptBytes(key, fileBytes, fileName)
 	if err != nil {
@@ -75,8 +79,11 @@ func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID
 
 	// Save the encrypted key before trying anything dangerous
 	db := database.GetGORMDbConnection()
-	db.Create(&models.JobKey{JobID: jobID, EncryptedKey: string(encryptedKey), FileName: fileName})
-
+	err = db.Create(&models.JobKey{JobID: jobID, EncryptedKey: encryptedKey, FileName: fileName}).Error
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 	// Write out the file to the file system
 	err = ioutil.WriteFile(toPath+"/"+fileName, encryptedFile, os.ModePerm)
 	if err != nil {
