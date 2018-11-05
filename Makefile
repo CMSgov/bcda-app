@@ -1,3 +1,7 @@
+COMPOSE_PROJECT_NAME=bcda-app
+
+.EXPORT_ALL_VARIABLES:
+
 release:
 	docker build -t release -f Dockerfiles/Dockerfile.release .
 	docker run --rm -e GITHUB_ACCESS_TOKEN='${GITHUB_ACCESS_TOKEN}' -e GITHUB_USER='${GITHUB_USER}' -e GITHUB_EMAIL='${GITHUB_EMAIL}' -e GITHUB_GPG_KEY_FILE='${GITHUB_GPG_KEY_FILE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release
@@ -48,4 +52,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test
