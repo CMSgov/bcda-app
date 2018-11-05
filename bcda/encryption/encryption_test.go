@@ -115,6 +115,8 @@ func (s *EncryptionTestSuite) TestEncryptAndMove() {
 	// Should be the same as before
 	assert.Equal(s.T(), rawBytes, decryptedBytes)
 
+	os.Remove(toPath + "/" + fileName)
+
 }
 
 func TestBackendTestSuite(t *testing.T) {
