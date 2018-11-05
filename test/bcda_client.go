@@ -27,7 +27,7 @@ func init() {
 	flag.StringVar(&accessToken, "token", "", "access token used to make request to bcda")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
-	flag.IntVar(&timeout, "timeout", 600, "amount of time to wait for file to be ready and downloaded.")
+	flag.IntVar(&timeout, "timeout", 3, "amount of time to wait for file to be ready and downloaded.")
 	flag.Parse()
 
 	if accessToken == "" {
