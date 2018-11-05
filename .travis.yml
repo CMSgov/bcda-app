@@ -44,3 +44,4 @@ before_script:
 # .golangci.yml file at the top level of your repo.
 script:
   - make test
+  - make smoke-test

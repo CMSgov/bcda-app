@@ -9,9 +9,13 @@ package:
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+smoke-test:
+	docker-compose up -d 
+	docker-compose -f docker-compose.test.yml up --force-recreate  --exit-code-from smoke_test smoke_test
+
 test:
 	docker-compose up -d db queue
-	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test
+	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test unit_test
 
 load-fixtures:
 	docker-compose up -d db

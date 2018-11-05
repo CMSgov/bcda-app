@@ -10,3 +10,10 @@ services:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
+  smoke_test:
+    network_mode: host
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.smoke_test
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
