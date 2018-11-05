@@ -12,8 +12,7 @@ import (
 	"github.com/go-chi/chi"
 )
 
-//NewRouter provides a router with all the required... routes
-func NewRouter() http.Handler {
+func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger())
 	// Serve up the swagger ui folder
@@ -34,8 +33,13 @@ func NewRouter() http.Handler {
 			r.Get("/bb_metadata", blueButtonMetadata)
 		}
 	})
-	r.With(auth.RequireTokenAuth, auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
 	r.Get("/_version", getVersion)
+	return r
+}
+
+func NewDataRouter() http.Handler {
+	r := chi.NewRouter()
+	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth, auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
 	return r
 }
 

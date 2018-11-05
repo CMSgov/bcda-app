@@ -119,10 +119,24 @@ func setUpApp() *cli.App {
 					autoMigrate()
 				}
 
-				err = http.ListenAndServe(":3000", NewRouter())
-				if err != nil {
-					return err
+				api := &http.Server{
+					Handler:      NewAPIRouter(),
+					ReadTimeout:  10 * time.Second,
+					WriteTimeout: 20 * time.Second,
+					IdleTimeout:  120 * time.Second,
 				}
+
+				fileserver := &http.Server{
+					Handler:      NewDataRouter(),
+					ReadTimeout:  10 * time.Second,
+					WriteTimeout: 360 * time.Second,
+					IdleTimeout:  120 * time.Second,
+				}
+
+				smux := NewServiceMux(":3000")
+				smux.AddServer(fileserver, "/data")
+				smux.AddServer(api, "")
+				smux.Serve()
 
 				return nil
 			},
