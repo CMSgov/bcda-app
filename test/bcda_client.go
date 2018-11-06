@@ -144,22 +144,35 @@ func main() {
 
 			if status.StatusCode == 200 {
 				fmt.Println("file is ready for download...")
+				
 				defer status.Body.Close()
-
+				
 				var objmap map[string]*json.RawMessage
 				err := json.NewDecoder(status.Body).Decode(&objmap)
 				if err != nil {
 					panic(err)
 				}
 				output := (*json.RawMessage)(objmap["output"])
+				err_output := (*json.RawMessage)(objmap["error"])	
+
 
 				var data OutputCollection
 				if err := json.Unmarshal(*output, &data); err != nil {
 					panic(err)
 				}
 
+				var err_data OutputCollection
+				if err := json.Unmarshal(*err_output, &err_data); err != nil {
+                                        panic(err)
+                                }
+
+				if len(err_data) > 0 {
+					fmt.Printf("Response message contains error file: %s\n", err_data[0].Url)
+					os.Exit(1)
+				}	
+
 				fmt.Printf("fetching: %s\n", data[0].Url)
-				time.Sleep(150 * time.Second)
+				time.Sleep(60 * time.Second)
 				download := getFile(data[0].Url)
 				if download.StatusCode == 200 {
 					fmt.Println("writing download to disk: /tmp/download.json")
