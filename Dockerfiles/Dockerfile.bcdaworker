@@ -14,6 +14,8 @@ ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
 ENV FHIR_PAYLOAD_DIR data
 ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
 ENV BB_TIMEOUT_MS 500
+ENV FHIR_EXPIRED_DIR expired
+ENV EXPIRED_SCHEDULE_HR 1
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 CMD ["fresh"]
