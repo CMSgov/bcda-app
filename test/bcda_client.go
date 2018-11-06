@@ -159,6 +159,7 @@ func main() {
 				}
 
 				fmt.Printf("fetching: %s\n", data[0].Url)
+				time.Sleep(10 * time.Second)
 				download := getFile(data[0].Url)
 				if download.StatusCode == 200 {
 					fmt.Println("writing download to disk: /tmp/download.json")
