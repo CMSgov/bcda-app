@@ -35,14 +35,17 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = tc.SetKeepAlive(true)
 	if err != nil {
 		return nil, err
 	}
+
 	err = tc.SetKeepAlivePeriod(time.Duration(keepAliveInterval) * time.Second)
 	if err != nil {
 		return nil, err
 	}
+
 	return tc, nil
 }
 
@@ -100,5 +103,8 @@ func (sm *ServiceMux) Serve() {
 		}
 	}
 
-	_ = m.Serve()
+	err := m.Serve()
+	if err != nil {
+		panic(err)
+	}
 }
