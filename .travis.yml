@@ -5,9 +5,6 @@
 # runner instead of the slow VM-based runner.
 sudo: false
 
-env: 
-  - COMPOSE_PROJECT_NAME=bcda_app
-
 language: go
 
 # Only the last two Go releases are supported by the Go team with security
