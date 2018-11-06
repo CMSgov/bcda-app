@@ -347,6 +347,9 @@ func expiredScheduler() {
 
 	c := cron.New()
 	expression := fmt.Sprintf("@every %sh", interval)
-	c.AddFunc(expression, func() { updateStatus(24) })
+	err := c.AddFunc(expression, func() { updateStatus(24) })
+	if err != nil {
+		log.Error(err)
+	}
 	c.Start()
 }
