@@ -175,7 +175,7 @@ func main() {
 					}			
 					fmt.Println("done.")
 				} else {
-					fmt.Println("error: unable to request file download.")
+					fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
 					os.Exit(1)
 				}
 

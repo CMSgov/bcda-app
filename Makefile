@@ -1,7 +1,3 @@
-COMPOSE_PROJECT_NAME=bcdaapp
-
-.EXPORT_ALL_VARIABLES:
-
 release:
 	docker build -t release -f Dockerfiles/Dockerfile.release .
 	docker run --rm -e GITHUB_ACCESS_TOKEN='${GITHUB_ACCESS_TOKEN}' -e GITHUB_USER='${GITHUB_USER}' -e GITHUB_EMAIL='${GITHUB_EMAIL}' -e GITHUB_GPG_KEY_FILE='${GITHUB_GPG_KEY_FILE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release

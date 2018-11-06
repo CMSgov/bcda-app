@@ -16,8 +16,3 @@ services:
       dockerfile: Dockerfiles/Dockerfile.smoke_test
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-
-networks:
-  default:
-    external:
-      name: ${COMPOSE_PROJECT_NAME}_default
