@@ -42,7 +42,13 @@ before_script:
 # script always runs to completion (set +e). If we have linter issues AND a
 # failing test, we want to see both. Configure golangci-lint with a
 # .golangci.yml file at the top level of your repo.
+#
+# TODO: when the 404 File Not Found issue is resolved during file download,
+#       then re-enable smoke-test... script section will look like this:
+#   script:
+#    - make docker-bootstrap
+#    - make test
+#    - make smoke-test
+#
 script:
-  - make docker-bootstrap
   - make test
-  - make smoke-test
