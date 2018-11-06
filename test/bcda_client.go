@@ -147,11 +147,6 @@ func main() {
 				
 				defer status.Body.Close()
 				
-				bodyBytes, err2 := ioutil.ReadAll(status.Body)
-				if err2 == nil {
-					fmt.Println(string(bodyBytes))
-				}
-				
 				var objmap map[string]*json.RawMessage
 				err := json.NewDecoder(status.Body).Decode(&objmap)
 				if err != nil {
@@ -165,7 +160,7 @@ func main() {
 				}
 
 				fmt.Printf("fetching: %s\n", data[0].Url)
-				time.Sleep(60 * time.Second)
+				time.Sleep(180 * time.Second)
 				download := getFile(data[0].Url)
 				if download.StatusCode == 200 {
 					fmt.Println("writing download to disk: /tmp/download.json")
