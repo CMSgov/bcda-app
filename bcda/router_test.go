@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-chi/chi"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/go-chi/chi"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -15,22 +16,25 @@ import (
 
 type RouterTestSuite struct {
 	suite.Suite
-	server *httptest.Server
-	rr     *httptest.ResponseRecorder
+	apiServer  *httptest.Server
+	dataServer *httptest.Server
+	rr         *httptest.ResponseRecorder
 }
 
 func (suite *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
-	suite.server = httptest.NewServer(NewRouter())
+	suite.apiServer = httptest.NewServer(NewAPIRouter())
+	suite.dataServer = httptest.NewServer(NewDataRouter())
 	suite.rr = httptest.NewRecorder()
 }
 
 func (suite *RouterTestSuite) TearDownTest() {
-	suite.server.Close()
+	suite.apiServer.Close()
+	suite.dataServer.Close()
 }
 
 func (suite *RouterTestSuite) GetStringBody(url string) (string, error) {
-	client := suite.server.Client()
+	client := suite.apiServer.Client()
 	res, err := client.Get(url)
 	if err != nil {
 		return "", err
@@ -45,18 +49,18 @@ func (suite *RouterTestSuite) GetStringBody(url string) (string, error) {
 }
 
 func (suite *RouterTestSuite) TestDefaultRoute() {
-	r, err := suite.GetStringBody(suite.server.URL)
+	r, err := suite.GetStringBody(suite.apiServer.URL)
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting default route: %s", err))
 	assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
 }
 
 func (suite *RouterTestSuite) TestDataRoute() {
-	_, err := suite.GetStringBody(suite.server.URL + "/data")
+	_, err := suite.GetStringBody(suite.dataServer.URL + "/data")
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting data route: %s", err))
 	//assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
 }
 func (suite *RouterTestSuite) TestFileServerRoute() {
-	_, err := suite.GetStringBody(suite.server.URL + "/api/v1/swagger")
+	_, err := suite.GetStringBody(suite.apiServer.URL + "/api/v1/swagger")
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting swagger route: %s", err))
 	r := chi.NewRouter()
 	// Set up a bad route.  DON'T do this in real life
