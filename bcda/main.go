@@ -263,7 +263,7 @@ func setUpApp() *cli.App {
 		{
 			Name:     "remove-expired-jobs",
 			Category: "Remove expired jobs",
-			Usage:    "Updates job statuses and moves files to inaccessible location",
+			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
 				var threshold int
 				hr := os.Getenv("EXPIRED_THRESHOLD_HR")
@@ -277,7 +277,7 @@ func setUpApp() *cli.App {
 					}
 					threshold = r
 				}
-				updateStatus(threshold)
+				removeExpired(threshold)
 				return nil
 			},
 		},
@@ -402,7 +402,8 @@ func getEnvInt(varName string, defaultVal int) int {
 	return defaultVal
 }
 
-func updateStatus(hrThreshold int) {
+func removeExpired(hrThreshold int) {
+	log.Info("Cleaning up expired jobs...")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -433,6 +434,11 @@ func updateStatus(hrThreshold int) {
 			id := strconv.Itoa(int(j.ID))
 			jobDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), id)
 			expDir = fmt.Sprintf("%s/%s", os.Getenv("FHIR_EXPIRED_DIR"), id)
+
+			_, err = os.Stat(jobDir)
+			if err != nil {
+				return
+			}
 
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
