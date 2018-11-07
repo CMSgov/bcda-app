@@ -140,6 +140,14 @@
   revision = "d329d24db4313262a3b0a24d8aeb1dc4bd294fb0"
 
 [[projects]]
+  digest = "1:30e06e6d62a1d694e3cdbff29d8a9a96022e05a487d0c6eaf0ef898965ef28fb"
+  name = "github.com/soheilhy/cmux"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e09e9389d85d8492d313d73d1469c029e710623f"
+  version = "v0.1.4"
+
+[[projects]]
   digest = "1:ac83cf90d08b63ad5f7e020ef480d319ae890c208f8524622a2f3136e2686b02"
   name = "github.com/stretchr/objx"
   packages = ["."]
@@ -175,6 +183,19 @@
   revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
+  branch = "master"
+  digest = "1:e293a7a3a7c04ddc23fa8d21159a90e7fa7011d793600db10b1159e6a6d62fde"
+  name = "golang.org/x/net"
+  packages = [
+    "http/httpguts",
+    "http2",
+    "http2/hpack",
+    "idna",
+  ]
+  pruneopts = "UT"
+  revision = "c10e9556a7bc0e7c942242b606f0acf024ad5d6a"
+
+[[projects]]
   digest = "1:4d16433c0d2c24761b8a507e8c2e9c8cf9193b497d6b38aaeffca038070bc8f5"
   name = "golang.org/x/sys"
   packages = [
@@ -183,6 +204,29 @@
   ]
   pruneopts = "UT"
   revision = "904bdc257025c7b3f43c19360ad3ab85783fad78"
+
+[[projects]]
+  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
+  name = "golang.org/x/text"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+  ]
+  pruneopts = "UT"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "v2"
@@ -212,6 +256,7 @@
     "github.com/newrelic/go-agent",
     "github.com/pborman/uuid",
     "github.com/sirupsen/logrus",
+    "github.com/soheilhy/cmux",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
     "github.com/stretchr/testify/suite",
