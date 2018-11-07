@@ -61,10 +61,8 @@ type JobStatus struct {
 // JSON object containing a version field
 // swagger:response VersionResponse
 type VersionResponse struct {
-	// Version
 	// in: body
 	Body struct {
-		// Version number
 		// Required: true
 		Version string `json:"version"`
 	}
@@ -81,7 +79,7 @@ type MetadataResponse struct {
 // swagger:response ExplanationOfBenefitNDJSON
 type ExplanationOfBenefitNDJSON struct {
 	// in: body
-	// Minimum items: 1
+	// minimum items: 1
 	Body *[]fhirmodels.ExplanationOfBenefit
 }
 
@@ -103,4 +101,14 @@ type FileParam struct {
 	// in: path
 	// required: true
 	Filename string `json:"filename"`
+}
+
+// swagger:parameters bulkRequest
+type BulkRequestHeaders struct {
+	// required: true
+	// pattern: application/fhir\+json
+	Accept string
+	// required: true
+	// pattern: respond-async
+	Prefer string
 }
