@@ -1,23 +1,10 @@
 FROM golang:1.10.3
 
-RUN openssl genrsa -out /var/local/private.pem 2048
-RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
-
 RUN go get -u github.com/golang/dep/cmd/dep
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
-
 RUN dep ensure
-
-ENV BCDA_ERROR_LOG /var/log/bcda-error.log
-ENV BCDA_REQUEST_LOG /var/log/bcda-request.log
-ENV BCDA_BB_LOG /var/log/bcda-bb-request.log
-ENV BB_CLIENT_CERT_FILE ../shared_files/bb-dev-test-key.pem
-ENV BB_CLIENT_KEY_FILE ../shared_files/bb-dev-test-key.pem
-ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
-ENV FHIR_PAYLOAD_DIR ../bcdaworker/data
-ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test
 CMD ["go", "run", "bcda_client.go", "-host=api:3000"]
