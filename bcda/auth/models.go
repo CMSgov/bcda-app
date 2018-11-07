@@ -2,12 +2,10 @@ package auth
 
 import (
 	"crypto/rsa"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
-	"os"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -32,12 +30,8 @@ type ACO struct {
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {
-	if os.Getenv("DEBUG") == "true" {
-		auth := InitAuthBackend()
-		return auth.PublicKey
-	}
 	// todo implement a real thing.  But for now we can use this.
-	return nil
+	return GetATOPublicKey()
 
 }
 

@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"errors"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -22,28 +23,29 @@ import (
 )
 
 type EncryptionTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	db *gorm.DB
 }
 
 func (s *EncryptionTestSuite) SetupTest() {
 	models.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
-	s.SetupAuthBackend()
+	os.Setenv("ATO_PUBLIC_KEY_FILE", "../../shared_files/ATO_public.pem")
+	os.Setenv("ATO_PRIVATE_KEY_FILE", "../../shared_files/ATO_private.pem")
 }
 
 func (s *EncryptionTestSuite) TestEncryptBytes() {
 	// Make a random String for encrypting
 	testBytes := []byte(uuid.NewRandom().String())
 	// Encrypt the sting and get the key back
-	encryptedBytes, encryptedKey, err := EncryptBytes(s.AuthBackend.PublicKey, testBytes, "TEST")
+	encryptedBytes, encryptedKey, err := EncryptBytes(auth.GetATOPublicKey(), testBytes, "TEST")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), encryptedBytes)
 	assert.NotNil(s.T(), encryptedKey)
 	// Make sure we changed something
 	assert.NotEqual(s.T(), testBytes, encryptedBytes)
 	// Decrypt the Key
-	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, s.AuthBackend.PrivateKey, encryptedKey, []byte("TEST"))
+	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, auth.GetATOPrivateKey(), encryptedKey, []byte("TEST"))
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), decryptedKey)
 	// Decrypted Key can not match the encrypted key
@@ -78,7 +80,7 @@ func (s *EncryptionTestSuite) TestEncryptAndMove() {
 	}
 	s.db.Save(&j)
 	// Do the Encrypt and Move
-	err := EncryptAndMove(fromPath, toPath, fileName, s.AuthBackend.PublicKey, j.ID)
+	err := EncryptAndMove(fromPath, toPath, fileName, auth.GetATOPublicKey(), j.ID)
 	// No Errors
 	assert.Nil(s.T(), err)
 	// Should have some Job Keys
@@ -105,7 +107,7 @@ func (s *EncryptionTestSuite) TestEncryptAndMove() {
 	assert.NotEqual(s.T(), rawBytes, encryptedBytes)
 	// Get the key back from the Job
 
-	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, s.AuthBackend.PrivateKey, jobKey.EncryptedKey, []byte("Coverage"))
+	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, auth.GetATOPrivateKey(), jobKey.EncryptedKey, []byte("Coverage"))
 	assert.Nil(s.T(), err)
 	key := [32]byte{}
 	copy(key[:], decryptedKey[0:32])
@@ -119,7 +121,7 @@ func (s *EncryptionTestSuite) TestEncryptAndMove() {
 
 }
 
-func TestBackendTestSuite(t *testing.T) {
+func TestEncryptionTestSuite(t *testing.T) {
 	suite.Run(t, new(EncryptionTestSuite))
 }
 

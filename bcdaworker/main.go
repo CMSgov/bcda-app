@@ -115,6 +115,11 @@ func processJob(j *que.Job) error {
 					return err
 				}
 			} else {
+				// this will be the only code path after ATO
+				publicKey := exportJob.Aco.GetPublicKey()
+				if publicKey == nil {
+					fmt.Println("NO KEY EXISTS  THIS IS BAD")
+				}
 				err := encryption.EncryptAndMove(staging, data, f.Name(), exportJob.Aco.GetPublicKey(), exportJob.ID)
 				if err != nil {
 					log.Error(err)

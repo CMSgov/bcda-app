@@ -14,6 +14,8 @@ import (
 	"os"
 )
 
+// Code in this file borrows heavily from https://github.com/gtank/cryptopasta
+
 // NewEncryptionKey generates a random 256-bit key for Encrypt() and
 // Decrypt(). It panics if the source of randomness fails.
 func newEncryptionKey() *[32]byte {
@@ -87,6 +89,8 @@ func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID
 	// Write out the file to the file system
 	err = ioutil.WriteFile(toPath+"/"+fileName, encryptedFile, os.ModePerm)
 	if err != nil {
+		// Clean out the keys if we failed to write the file
+		db.Where("JobID = ?", jobID).Delete(models.JobKey{})
 		log.Error(err)
 		return err
 	}
