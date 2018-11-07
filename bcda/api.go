@@ -1,7 +1,7 @@
 /*
- Package main BCDA API.
+ Package main Beneficiary Claims Data API
 
- The purpose of this application is to provide an application that allows for downloading of Beneficiary claims
+ The Beneficiary Claims Data API (BCDA) allows downloading of claims data in accordance with the FHIR Bulk Data Export specification.
 
  Terms Of Service:
 
@@ -9,18 +9,14 @@
 
 	Schemes: http, https
      Host: localhost
-     BasePath: /v2
+     BasePath: /api/v1
      Version: 1.0.0
      License: https://github.com/CMSgov/bcda-app/blob/master/LICENSE.md
      Contact: bcapi@cms.hhs.gov
 
-     Consumes:
-     - application/json
-     - application/xml
-
      Produces:
+     - application/fhir+json
      - application/json
-     - application/xml
 
      Security:
      - api_key:
@@ -57,15 +53,23 @@ import (
 )
 
 /*
-	swagger:route GET  /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
-	bulkRequest initiates a job to collect data from the Blue Button API for your ACO
+	swagger:route GET /ExplanationOfBenefit/$export bulkData bulkRequest
+
+	Start explanation of benefit export
+
+	Initiates a job to collect data from the Blue Button API for your ACO.
+
 	Consumes:
 	- application/JSON
+
 	Produces:
 	- application/JSON
+
 	Schemes: http, https
+
 	Security:
 		api_key
+
 	Responses:
 		default: BulkRequestResponse
 		202:BulkRequestResponse
@@ -177,15 +181,20 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/jobs/{jobid} bulkData jobStatus
-	jobStatus is the current status of a requested job.
-	Consumes:
-	- application/JSON
+	swagger:route GET /jobs/{jobid} bulkData jobStatus
+
+	Get job status
+
+	Returns the current status of an export job.
+
 	Produces:
-	- application/JSON
+	- application/fhir+json
+
 	Schemes: http, https
+
 	Security:
 		api_key:
+
 	Responses:
 		default: bulkResponseBody
 		202:JobStatus
@@ -194,7 +203,6 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
         404:ErrorModel
 		500:FHIRResponse
 */
-
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	m := monitoring.GetMonitor()
 	txn := m.Start("jobStatus", w, r)
@@ -342,6 +350,25 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+/*
+	swagger:route GET /metadata metadata metadata
+
+	Get metadata
+
+	Returns metadata about the API.
+
+	Produces:
+	- application/json
+
+	Schemes: http, https
+
+	Responses:
+		default: FHIRResponse
+		200:FHIRResponse
+		400:ErrorModel
+        404:ErrorModel
+		500:FHIRResponse
+*/
 func metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
 
@@ -354,6 +381,21 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 	responseutils.WriteCapabilityStatement(statement, w)
 }
 
+/*
+	swagger:route GET /_version metadata getVersion
+
+	Get API version
+
+	Returns the version of the API that is currently running. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
+
+	Produces:
+	- application/json
+
+	Schemes: http, https
+
+	Responses:
+		200: VersionResponse
+*/
 func getVersion(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["version"] = version

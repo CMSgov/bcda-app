@@ -12,7 +12,7 @@ type BulkRequestResponse struct {
 type OperationOutcome struct {
 	// A Valid FHIR Response
 	// in:body
-	FHIRREsponse struct {
+	FHIRResponse struct {
 		// OperationOutcome
 		ResourceType string
 		// A single issue associated with the action
@@ -52,6 +52,20 @@ type ErrorModel struct {
 type JobStatus struct {
 	// The status of the job progress
 	XProgress string `json:"X-Progress"`
+}
+
+/*
+	JSON object containing a version field
+	swagger:response VersionResponse
+*/
+type VersionResponse struct {
+	// Version
+	// in:body
+	Body struct {
+		// Version number
+		// Required: true
+		Version string `json:"version"`
+	}
 }
 
 // A JobStatus parameter model.
