@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/bgentry/que-go"
-	"github.com/robfig/cron"
 )
 
 var (
@@ -295,61 +293,5 @@ func main() {
 	fmt.Println("Starting bcdaworker...")
 	workerPool := setupQueue()
 	defer workerPool.Close()
-	expiredScheduler()
 	waitForSig()
-}
-
-func updateStatus(hrThreshold int) {
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-
-	var jobs []models.Job
-	err := db.Find(&jobs, "status = ?", "Completed").Error
-	if err != nil {
-		log.Error(err)
-	}
-
-	expDir := os.Getenv("FHIR_EXPIRED_DIR")
-	if _, err = os.Stat(expDir); os.IsNotExist(err) {
-		err = os.MkdirAll(expDir, os.ModePerm)
-		if err != nil {
-			log.Error(err)
-		}
-	}
-
-	for _, j := range jobs {
-		t := j.CreatedAt
-		elapsed := time.Since(t).Hours()
-		if int(elapsed) >= hrThreshold {
-			j.Status = "Expired"
-			err = db.Save(j).Error
-			if err != nil {
-				log.Error(err)
-			}
-
-			id := strconv.Itoa(int(j.ID))
-			jobDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir = fmt.Sprintf("%s/%s", os.Getenv("FHIR_EXPIRED_DIR"), id)
-
-			err = os.Rename(jobDir, expDir)
-			if err != nil {
-				log.Error(err)
-			}
-		}
-	}
-}
-
-func expiredScheduler() {
-	interval := os.Getenv("EXPIRED_SCHEDULE_HR")
-	if interval == "" {
-		interval = "1"
-	}
-
-	c := cron.New()
-	expression := fmt.Sprintf("@every %sh", interval)
-	err := c.AddFunc(expression, func() { updateStatus(24) })
-	if err != nil {
-		log.Error(err)
-	}
-	c.Start()
 }

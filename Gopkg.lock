@@ -133,14 +133,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:ed615c5430ecabbb0fb7629a182da65ecee6523900ac1ac932520860878ffcad"
-  name = "github.com/robfig/cron"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "b41be1df696709bb6395fe435af20370037c0b4c"
-  version = "v1.1"
-
-[[projects]]
   digest = "1:68ae7a24476fe166c77ab60dace5945a0cd0c97bf714f27dd5cb66e5bde7fb82"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -263,7 +255,6 @@
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
     "github.com/pborman/uuid",
-    "github.com/robfig/cron",
     "github.com/sirupsen/logrus",
     "github.com/soheilhy/cmux",
     "github.com/stretchr/testify/assert",
