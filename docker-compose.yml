@@ -32,6 +32,8 @@ services:
       - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
       - DEBUG=true
+      - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
+      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -45,6 +47,8 @@ services:
     environment:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
+      - ATO_PUBLIC_KEY_FILE=../shared_files/ATO_public.pem
+      - ATO_PRIVATE_KEY_FILE=../shared_files/ATO_private.pem
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:

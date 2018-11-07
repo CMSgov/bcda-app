@@ -20,12 +20,10 @@ import (
 
 type BackendTestSuite struct {
 	testUtils.AuthTestSuite
-	db *gorm.DB
 }
 
 func (s *BackendTestSuite) SetupTest() {
 	auth.InitializeGormModels()
-	s.db = database.GetGORMDbConnection()
 	s.SetupAuthBackend()
 }
 
