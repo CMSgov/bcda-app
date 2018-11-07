@@ -85,7 +85,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					{
 						Name: "jobs",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/jobs/{jobId}",
+							Reference: baseurl + "/api/v1/jobs/[jobId]",
 							Type:      "Endpoint",
 						},
 					},
@@ -106,7 +106,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					{
 						Name: "data",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/data/{jobID}/{acoID}.ndjson",
+							Reference: baseurl + "/data/[jobID]/[acoID].ndjson",
 							Type:      "Endpoint",
 						},
 					},
