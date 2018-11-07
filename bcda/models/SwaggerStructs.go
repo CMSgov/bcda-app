@@ -1,6 +1,8 @@
 package models
 
-import fhirmodels "github.com/eug48/fhir/models"
+import (
+	fhirmodels "github.com/eug48/fhir/models"
+)
 
 // BulkRequestResponse is the return from a request to initiate a bulk data collection process
 // swagger:response BulkRequestResponse
@@ -75,14 +77,30 @@ type MetadataResponse struct {
 	Body fhirmodels.CapabilityStatement `json:"body,omitempty"`
 }
 
+// File of newline-delimited JSON FHIR ExplanationOfBenefit objects
+// swagger:response ExplanationOfBenefitNDJSON
+type ExplanationOfBenefitNDJSON struct {
+	// in: body
+	// Minimum items: 1
+	Body *[]fhirmodels.ExplanationOfBenefit
+}
+
 // A JobStatus parameter model.
 //
 // This is used for operations that want the ID of a job in the path
-// swagger:parameters jobStatus
-type JobStatusParam struct {
-	// The ID of the job
+// swagger:parameters jobStatus serveData
+type JobIDParam struct {
+	// ID of data export job
 	//
 	// in: path
 	// required: true
-	JobID int `json:"jobid"`
+	JobID int `json:"jobId"`
+}
+
+// swagger:parameters serveData
+type FileParam struct {
+	// Name of file to be downloaded
+	// in: path
+	// required: true
+	Filename string `json:"filename"`
 }
