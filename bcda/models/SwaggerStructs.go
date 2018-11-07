@@ -1,5 +1,7 @@
 package models
 
+import fhirmodels "github.com/eug48/fhir/models"
+
 // BulkRequestResponse is the return from a request to initiate a bulk data collection process
 // swagger:response BulkRequestResponse
 type BulkRequestResponse struct {
@@ -54,18 +56,23 @@ type JobStatus struct {
 	XProgress string `json:"X-Progress"`
 }
 
-/*
-	JSON object containing a version field
-	swagger:response VersionResponse
-*/
+// JSON object containing a version field
+// swagger:response VersionResponse
 type VersionResponse struct {
 	// Version
-	// in:body
+	// in: body
 	Body struct {
 		// Version number
 		// Required: true
 		Version string `json:"version"`
 	}
+}
+
+// FHIR CapabilityStatement in JSON format
+// swagger:response MetadataResponse
+type MetadataResponse struct {
+	// in: body
+	Body fhirmodels.CapabilityStatement `json:"body,omitempty"`
 }
 
 // A JobStatus parameter model.

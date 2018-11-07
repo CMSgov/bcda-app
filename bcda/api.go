@@ -59,11 +59,8 @@ import (
 
 	Initiates a job to collect data from the Blue Button API for your ACO.
 
-	Consumes:
-	- application/JSON
-
 	Produces:
-	- application/JSON
+	- application/fhir+json
 
 	Schemes: http, https
 
@@ -358,16 +355,12 @@ func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
 	Returns metadata about the API.
 
 	Produces:
-	- application/json
+	- application/fhir+json
 
 	Schemes: http, https
 
 	Responses:
-		default: FHIRResponse
-		200:FHIRResponse
-		400:ErrorModel
-        404:ErrorModel
-		500:FHIRResponse
+		200: MetadataResponse
 */
 func metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
