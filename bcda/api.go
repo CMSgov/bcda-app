@@ -321,7 +321,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	// Generates a token for fake user and ACO combination
 	token, err := authBackend.GenerateTokenString(
 		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
-		"3461c774-b48f-11e8-96f8-529269fb1459",
+		"0C527D2E-2E8A-4808-B11D-0FA06BAF8254",
 	)
 	if err != nil {
 		log.Error(err)
