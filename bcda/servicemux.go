@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 )
 
@@ -86,6 +89,38 @@ func (sm *ServiceMux) AddServer(s *http.Server, m string) {
 }
 
 func (sm *ServiceMux) Serve() {
+	tlsCertPath := os.Getenv("BCDA_TLS_CERT")
+	tlsKeyPath := os.Getenv("BCDA_TLS_KEY")
+
+	if tlsCertPath != "" && tlsKeyPath != "" {
+		sm.serveHTTPS(tlsCertPath, tlsKeyPath)
+	} else if tlsCertPath != "" {
+		panic("TLS certificate path provided, but no key")
+	} else if tlsKeyPath != "" {
+		panic("TLS key path provided, but no certificate")
+	} else {
+		log.Warn("TLS not enabled")
+		sm.serveHTTP()
+	}
+}
+
+func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
+	certificate, err := tls.LoadX509KeyPair(tlsCertPath, tlsKeyPath)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{certificate},
+		Rand:         rand.Reader,
+	}
+
+	sm.Listener = tls.NewListener(sm.Listener, config)
+
+	sm.serveHTTP()
+}
+
+func (sm *ServiceMux) serveHTTP() {
 	m := cmux.New(tcpKeepAliveListener{sm.Listener.(*net.TCPListener)})
 
 	for _, server := range sm.Servers {
