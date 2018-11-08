@@ -265,18 +265,7 @@ func setUpApp() *cli.App {
 			Category: "Remove expired jobs",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
-				var threshold int
-				hr := os.Getenv("EXPIRED_THRESHOLD_HR")
-
-				if hr == "" {
-					threshold = 24
-				} else {
-					r, err := strconv.Atoi(hr)
-					if err != nil {
-						return err
-					}
-					threshold = r
-				}
+				threshold := getEnvInt("EXPIRED_THRESHOLD_HR", 24)
 				removeExpired(threshold)
 				return nil
 			},
@@ -434,11 +423,6 @@ func removeExpired(hrThreshold int) {
 			id := strconv.Itoa(int(j.ID))
 			jobDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), id)
 			expDir = fmt.Sprintf("%s/%s", os.Getenv("FHIR_EXPIRED_DIR"), id)
-
-			_, err = os.Stat(jobDir)
-			if err != nil {
-				return
-			}
 
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
