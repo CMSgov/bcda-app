@@ -414,17 +414,18 @@ func removeExpired(hrThreshold int) {
 		t := j.CreatedAt
 		elapsed := time.Since(t).Hours()
 		if int(elapsed) >= hrThreshold {
-			j.Status = "Expired"
-			err = db.Save(j).Error
+
+			id := int(j.ID)
+			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_EXPIRED_DIR"), id)
+
+			err = os.Rename(jobDir, expDir)
 			if err != nil {
 				log.Error(err)
 			}
 
-			id := strconv.Itoa(int(j.ID))
-			jobDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir = fmt.Sprintf("%s/%s", os.Getenv("FHIR_EXPIRED_DIR"), id)
-
-			err = os.Rename(jobDir, expDir)
+			j.Status = "Expired"
+			err = db.Save(j).Error
 			if err != nil {
 				log.Error(err)
 			}

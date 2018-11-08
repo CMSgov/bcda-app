@@ -8,3 +8,4 @@ test_results/*
 .idea
 bcda/swaggerui/swagger.json
 bcdaworker/data/*
+bcdaworker/expired/*
