@@ -306,11 +306,20 @@ func assignBeneficiaries(db *gorm.DB, aco ACO) error {
 	return db.Exec(s).Error
 }
 
-func (backend *JWTAuthenticationBackend) CreateAlphaToken() (ACO, User, string, error) {
+func (backend *JWTAuthenticationBackend) CreateAlphaToken(timeToLive string) (string, error) {
 	var aco ACO
 	var user User
 	var tokenString string
 	var err error
+	var originalJwtExpirationDelta = jwtExpirationDelta
+
+	defer func() {
+		jwtExpirationDelta = originalJwtExpirationDelta
+	}()
+
+	if len(timeToLive) > 0 {
+		jwtExpirationDelta = timeToLive
+	}
 
 	tx := database.GetGORMDbConnection().Begin()
 	defer func() {
@@ -320,30 +329,30 @@ func (backend *JWTAuthenticationBackend) CreateAlphaToken() (ACO, User, string, 
 	}()
 
 	if tx.Error != nil {
-		return aco, user, tokenString, tx.Error
+		return "", tx.Error
 	}
 
 	if aco, err = createAlphaACO(tx); err != nil {
 		tx.Rollback()
-		return aco, user, tokenString, tx.Error
+		return "", err
 	}
 
 	if err = assignBeneficiaries(tx, aco); err != nil {
 		tx.Rollback()
-		return aco, user, tokenString, tx.Error
+		return "", err
 	}
 
 	if user, err = createAlphaUser(tx, aco); err != nil {
 		tx.Rollback()
-		return aco, user, tokenString, tx.Error
+		return "", err
 	}
 
 	if tx.Commit().Error != nil {
 		tx.Rollback()
-		return aco, user, tokenString, tx.Error
+		return "", tx.Error
 	}
 
 	_, tokenString, err = backend.CreateToken(user)
 
-	return aco, user, tokenString, err
+	return tokenString, err
 }

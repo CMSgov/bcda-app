@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli"
 	"strings"
 	"testing"
+	"time"
 )
 
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
@@ -125,28 +126,30 @@ func (s *MainTestSuite) TestCreateUser() {
 
 const TOKENHEADER string = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9."
 
-func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
+func checkTokenInfo(s *MainTestSuite, tokenInfo string, ttl string) {
 	assert.NotNil(s.T(), tokenInfo)
 	lines := strings.Split(tokenInfo, "\n")
-
-	assert.Regexp(s.T(), "Alpha ACO [0-9]+", lines[0], "no correctly formatted Alpha ACO name in first line %s", lines[0])
-	assert.Regexp(s.T(), "Alpha User[0-9]+", lines[1], "no correctly formatted Alpha User name in second line %s", lines[1])
+	assert.Equal(s.T(), 3, len(lines))
+	expDate, err := time.Parse(time.RFC850, lines[0])
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), expDate)
+	assert.Regexp(s.T(), "[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}", lines[1], "no correctly formatted token id in second line %s", lines[1])
 	assert.True(s.T(), strings.HasPrefix(lines[2], TOKENHEADER), "incorrect token header %s", lines[2])
 	assert.InDelta(s.T(),500, len(tokenInfo), 100, "encoded token string length should be 500+-100; it is %d\n%s", len(tokenInfo), lines[2])
 }
 
 func (s *MainTestSuite) TestCreateAlphaToken() {
 
-	alphaTokenInfo, err := createAlphaToken()
+	alphaTokenInfo, err := createAlphaToken("")
 	assert.Nil(s.T(), err)
-	checkTokenInfo(s, alphaTokenInfo)
+	checkTokenInfo(s, alphaTokenInfo, "0")
 
-	anotherTokenInfo, err := createAlphaToken()
+	anotherTokenInfo, err := createAlphaToken("720")
 	assert.Nil(s.T(), err)
-	checkTokenInfo(s, anotherTokenInfo)
+	checkTokenInfo(s, anotherTokenInfo, "720")
 
 	l1 := strings.Split(alphaTokenInfo, "\n")
 	l2 := strings.Split(anotherTokenInfo, "\n")
-	assert.NotEqual(s.T(), l1[0], l2[0], "alpha ACO names should be different (%s == %s)", l1[0], l1[0])
-	assert.NotEqual(s.T(), l1[1], l2[1], "alpha ACO names should be different (%s == %s)", l1[1], l1[1])
+	assert.NotEqual(s.T(), l1[0], l2[0], "alpha expiration dates should be different (%s == %s)", l1[0], l2[0])
+	assert.NotEqual(s.T(), l1[1], l2[1], "alpha token uuids should be different (%s == %s)", l1[1], l2[1])
 }
