@@ -14,7 +14,7 @@ import (
 
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger())
+	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
