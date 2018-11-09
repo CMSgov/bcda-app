@@ -422,6 +422,7 @@ func removeExpired(hrThreshold int) {
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
 				log.Error(err)
+				continue
 			}
 
 			j.Status = "Expired"
