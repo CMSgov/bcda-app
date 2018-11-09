@@ -32,10 +32,6 @@ type Job struct {
 	JobKeys    []JobKey
 }
 
-func (job *Job) FilePath() string {
-	return "data/" + string(job.ID) + "/"
-}
-
 type JobKey struct {
 	gorm.Model
 	Job          Job  `gorm:"foreignkey:jobID"`
