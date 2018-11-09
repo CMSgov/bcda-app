@@ -35,6 +35,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -242,12 +243,12 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var jobKeys []string
-		keyMap := make(map[string][]byte)
+		keyMap := make(map[string]string)
 		var jobKeysObj []models.JobKey
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
 			jobKeys = append(jobKeys, string(jobKey.EncryptedKey)+"|"+jobKey.FileName)
-			keyMap[jobKey.FileName] = jobKey.EncryptedKey
+			keyMap[jobKey.FileName] = hex.EncodeToString(jobKey.EncryptedKey)
 		}
 
 		rb := bulkResponseBody{

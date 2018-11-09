@@ -34,6 +34,7 @@ services:
       - DEBUG=true
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
+      - DO_ENCRYPTION=FALSE
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -49,6 +50,7 @@ services:
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
       - ATO_PUBLIC_KEY_FILE=../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../shared_files/ATO_private.pem
+      - DO_ENCRYPTION=FALSE
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
