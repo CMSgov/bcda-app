@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -123,10 +124,24 @@ func setUpApp() *cli.App {
 					autoMigrate()
 				}
 
-				err = http.ListenAndServe(":3000", NewRouter())
-				if err != nil {
-					return err
+				api := &http.Server{
+					Handler:      NewAPIRouter(),
+					ReadTimeout:  time.Duration(getEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(getEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(getEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
 				}
+
+				fileserver := &http.Server{
+					Handler:      NewDataRouter(),
+					ReadTimeout:  time.Duration(getEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(getEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
+					IdleTimeout:  time.Duration(getEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
+				}
+
+				smux := NewServiceMux(":3000")
+				smux.AddServer(fileserver, "/data")
+				smux.AddServer(api, "")
+				smux.Serve()
 
 				return nil
 			},
@@ -356,4 +371,15 @@ func createAlphaToken() (string, error) {
 
 	aco, user, tokenString, err := authBackend.CreateAlphaToken()
 	return fmt.Sprintf("%s\n%s\n%s", aco.Name, user.Name, tokenString), err
+}
+
+func getEnvInt(varName string, defaultVal int) int {
+	v := os.Getenv(varName)
+	if v != "" {
+		i, err := strconv.Atoi(v)
+		if err == nil {
+			return i
+		}
+	}
+	return defaultVal
 }

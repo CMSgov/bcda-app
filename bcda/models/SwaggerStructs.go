@@ -1,5 +1,9 @@
 package models
 
+import (
+	fhirmodels "github.com/eug48/fhir/models"
+)
+
 // BulkRequestResponse is the return from a request to initiate a bulk data collection process
 // swagger:response BulkRequestResponse
 type BulkRequestResponse struct {
@@ -12,7 +16,7 @@ type BulkRequestResponse struct {
 type OperationOutcome struct {
 	// A Valid FHIR Response
 	// in:body
-	FHIRREsponse struct {
+	FHIRResponse struct {
 		// OperationOutcome
 		ResourceType string
 		// A single issue associated with the action
@@ -54,14 +58,57 @@ type JobStatus struct {
 	XProgress string `json:"X-Progress"`
 }
 
+// JSON object containing a version field
+// swagger:response VersionResponse
+type VersionResponse struct {
+	// in: body
+	Body struct {
+		// Required: true
+		Version string `json:"version"`
+	}
+}
+
+// FHIR CapabilityStatement in JSON format
+// swagger:response MetadataResponse
+type MetadataResponse struct {
+	// in: body
+	Body fhirmodels.CapabilityStatement `json:"body,omitempty"`
+}
+
+// File of newline-delimited JSON FHIR ExplanationOfBenefit objects
+// swagger:response ExplanationOfBenefitNDJSON
+type ExplanationOfBenefitNDJSON struct {
+	// in: body
+	// minimum items: 1
+	Body *[]fhirmodels.ExplanationOfBenefit
+}
+
 // A JobStatus parameter model.
 //
 // This is used for operations that want the ID of a job in the path
-// swagger:parameters jobStatus
-type JobStatusParam struct {
-	// The ID of the job
+// swagger:parameters jobStatus serveData
+type JobIDParam struct {
+	// ID of data export job
 	//
 	// in: path
 	// required: true
-	JobID int `json:"jobid"`
+	JobID int `json:"jobId"`
+}
+
+// swagger:parameters serveData
+type FileParam struct {
+	// Name of file to be downloaded
+	// in: path
+	// required: true
+	Filename string `json:"filename"`
+}
+
+// swagger:parameters bulkRequest
+type BulkRequestHeaders struct {
+	// required: true
+	// pattern: application/fhir\+json
+	Accept string
+	// required: true
+	// pattern: respond-async
+	Prefer string
 }
