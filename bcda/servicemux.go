@@ -78,7 +78,7 @@ func NewServiceMux(addr string) *ServiceMux {
 		panic(err)
 	}
 
-	s.Listener = ln
+	s.Listener = tcpKeepAliveListener{ln.(*net.TCPListener)}
 	return s
 }
 
@@ -121,7 +121,7 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 }
 
 func (sm *ServiceMux) serveHTTP() {
-	m := cmux.New(tcpKeepAliveListener{sm.Listener.(*net.TCPListener)})
+	m := cmux.New(sm.Listener)
 
 	for _, server := range sm.Servers {
 		for srv, path := range server {
