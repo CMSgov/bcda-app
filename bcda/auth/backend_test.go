@@ -1,7 +1,6 @@
 package auth_test
 
 import (
-	//"fmt"
 	"crypto/rsa"
 	"errors"
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -9,8 +8,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"os"
-	//"strings"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/pborman/uuid"
@@ -369,18 +368,55 @@ func (s *BackendTestSuite) TestPublicKey() {
 }
 
 func (s *BackendTestSuite) TestCreateAlphaToken() {
-	db := database.GetGORMDbConnection()
-	aco, user, tokenString, err := s.AuthBackend.CreateAlphaToken()
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), aco)
-	assert.NotNil(s.T(), user)
-	assert.NotNil(s.T(), tokenString)
-	assert.Equal(s.T(), aco.UUID, user.AcoID)
-	var count int
-	db.Table("beneficiaries").Where("aco_id = ?", aco.UUID.String()).Count(&count)
-	assert.Equal(s.T(), 50, count)
+	ttl := os.Getenv("")
+	claims := checkStructure(s, ttl)
+	checkTTL(s, claims, ttl)
 }
 
+func (s *BackendTestSuite) TestCreateAlphaTokenWithDefaultTTL() {
+	ttl := os.Getenv("JWT_EXPIRATION_DELTA")
+	claims := checkStructure(s, ttl)
+	checkTTL(s, claims, ttl)
+}
+
+func (s *BackendTestSuite) TestCreateAlphaTokenWithCustomTTL() {
+	const ttl = "720"
+	claims := checkStructure(s, ttl)
+	checkTTL(s, claims, ttl)
+}
+
+func checkTTL(s *BackendTestSuite, claims jwt.MapClaims, ttl string) {
+	iat := time.Unix(int64(claims["iat"].(float64)), 0)
+	exp := time.Unix(int64(claims["exp"].(float64)), 0)
+	assert.NotNil(s.T(), iat)
+	assert.NotNil(s.T(), exp)
+
+	// assumes the hard-coded value in auth/backend.go has not been overridden by an environment variable
+	var delta = 72 * time.Hour
+
+	if ttl != "" {
+		var err error
+		if delta, err = time.ParseDuration(ttl + "h"); err != nil {
+			assert.Fail(s.T(), "Can't parse ttl value of %s", ttl)
+		}
+	}
+	assert.True(s.T(), assert.WithinDuration(s.T(), iat, exp, delta, "expires date %s not within %s hours of issued at", exp.Format(time.RFC850), ttl))
+}
+
+func checkStructure(s *BackendTestSuite, ttl string) (jwt.MapClaims) {
+	db := database.GetGORMDbConnection()
+	tokenString, err := s.AuthBackend.CreateAlphaToken(ttl)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), tokenString)
+	claims := s.AuthBackend.GetJWTClaims(tokenString)
+
+	acoUUID := claims["aco"].(string)
+	assert.NotNil(s.T(), acoUUID)
+	var count int
+	db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
+	assert.Equal(s.T(), 50, count)
+	return claims
+}
 
 func TestBackendTestSuite(t *testing.T) {
 	suite.Run(t, new(BackendTestSuite))
