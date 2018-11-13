@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/urfave/cli"
@@ -266,6 +267,16 @@ func setUpApp() *cli.App {
 				return nil
 			},
 		},
+		{
+			Name:     "remove-expired-jobs",
+			Category: "Remove expired jobs",
+			Usage:    "Updates job statuses and moves files to an inaccessible location",
+			Action: func(c *cli.Context) error {
+				threshold := getEnvInt("EXPIRED_THRESHOLD_HR", 24)
+				removeExpired(threshold)
+				return nil
+			},
+		},
 	}
 	return app
 }
@@ -393,4 +404,47 @@ func getEnvInt(varName string, defaultVal int) int {
 		}
 	}
 	return defaultVal
+}
+
+func removeExpired(hrThreshold int) {
+	log.Info("Cleaning up expired jobs...")
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	var jobs []models.Job
+	err := db.Find(&jobs, "status = ?", "Completed").Error
+	if err != nil {
+		log.Error(err)
+	}
+
+	expDir := os.Getenv("FHIR_EXPIRED_DIR")
+	if _, err = os.Stat(expDir); os.IsNotExist(err) {
+		err = os.MkdirAll(expDir, os.ModePerm)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
+	for _, j := range jobs {
+		t := j.CreatedAt
+		elapsed := time.Since(t).Hours()
+		if int(elapsed) >= hrThreshold {
+
+			id := int(j.ID)
+			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_EXPIRED_DIR"), id)
+
+			err = os.Rename(jobDir, expDir)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			j.Status = "Expired"
+			err = db.Save(j).Error
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
 }
