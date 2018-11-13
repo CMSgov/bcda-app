@@ -92,7 +92,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken string
+	var acoName, acoID, userName, userEmail, userID, accessToken, ttl string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -242,8 +242,15 @@ func setUpApp() *cli.App {
 			Name:     "create-alpha-token",
 			Category: "Alpha tools",
 			Usage:    "Create a disposable alpha participant token",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "ttl",
+					Usage:       "Set custom Time To Live in hours",
+					Destination: &ttl,
+				},
+			},
 			Action: func(c *cli.Context) error {
-				accessToken, err := createAlphaToken()
+				accessToken, err := createAlphaToken(ttl)
 				if err != nil {
 					return err
 				}
@@ -373,11 +380,19 @@ func revokeAccessToken(accessToken string) error {
 	return authBackend.RevokeToken(accessToken)
 }
 
-func createAlphaToken() (string, error) {
+func createAlphaToken(ttl string) (string, error) {
 	authBackend := auth.InitAuthBackend()
+	tokenString, err := authBackend.CreateAlphaToken(ttl)
+	claims := authBackend.GetJWTClaims(tokenString)
 
-	aco, user, tokenString, err := authBackend.CreateAlphaToken()
-	return fmt.Sprintf("%s\n%s\n%s", aco.Name, user.Name, tokenString), err
+	if claims == nil {
+		return "", errors.New("Could not read token claims")
+	}
+
+	expiresOn := time.Unix(int64(claims["exp"].(float64)), 0).Format(time.RFC850)
+	tokenId := claims["id"].(string)
+
+	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, tokenString), err
 }
 
 func getEnvInt(varName string, defaultVal int) int {
