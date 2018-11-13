@@ -324,7 +324,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	var user auth.User
 	err := db.First(&user, "name = ?", "User One").Error
 	if err != nil {
-		log.Print(err)
+		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -333,7 +333,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	var aco auth.ACO
 	err = db.First(&aco, "name = ?", "ACO Dev").Error
 	if err != nil {
-		log.Print(err)
+		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
