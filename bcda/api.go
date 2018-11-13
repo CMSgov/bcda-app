@@ -250,7 +250,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		var jobKeysObj []models.JobKey
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
-			jobKeys = append(jobKeys, string(jobKey.EncryptedKey)+"|"+jobKey.FileName)
+			jobKeys = append(jobKeys, hex.EncodeToString(jobKey.EncryptedKey)+"|"+jobKey.FileName)
 			keyMap[jobKey.FileName] = hex.EncodeToString(jobKey.EncryptedKey)
 		}
 

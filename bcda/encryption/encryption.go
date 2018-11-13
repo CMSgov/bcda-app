@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"errors"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	log "github.com/sirupsen/logrus"
@@ -40,17 +41,21 @@ func encrypt(plaintext []byte, key *[32]byte) (ciphertext []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-
 	nonce := make([]byte, gcm.NonceSize())
 	_, err = io.ReadFull(rand.Reader, nonce)
 	if err != nil {
 		return nil, err
 	}
 
-	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+	ret := gcm.Seal(nonce, nonce, plaintext, nil)
+	return ret, nil
 }
 
 func EncryptBytes(publicKey *rsa.PublicKey, plaintext []byte, label string) (ciphertext []byte, encryptedKey []byte, err error) {
+	// 64GB is the max file size we can do.  64*1024^3 = 64 GB
+	if len(plaintext) > 64*1024*1024*1024 {
+		return nil, nil, errors.New("Max File size of 64 GB exceeded.  Unable to encrypt file.")
+	}
 	symmetricKey := newEncryptionKey()
 	ciphertext, err = encrypt(plaintext, symmetricKey)
 	if err != nil {
