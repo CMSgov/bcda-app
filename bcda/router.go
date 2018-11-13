@@ -14,7 +14,7 @@ import (
 
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger())
+	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +39,8 @@ func NewAPIRouter() http.Handler {
 
 func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
-	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth, auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
+	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth,
+		auth.RequireTokenACOMatch, ConnectionClose).Get("/data/{jobID}/{acoID}.ndjson", serveData)
 	return r
 }
 

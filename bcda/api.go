@@ -318,11 +318,29 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 
 	authBackend := auth.InitAuthBackend()
 
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	var user auth.User
+	err := db.First(&user, "name = ?", "User One").Error
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	var aco auth.ACO
+	err = db.First(&aco, "name = ?", "ACO Dev").Error
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
 	// Generates a token for fake user and ACO combination
-	token, err := authBackend.GenerateTokenString(
-		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
-		"0C527D2E-2E8A-4808-B11D-0FA06BAF8254",
-	)
+	token, err := authBackend.GenerateTokenString(user.UUID.String(), aco.UUID.String())
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
