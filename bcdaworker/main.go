@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -106,10 +107,24 @@ func processJob(j *que.Job) error {
 					return err
 				}
 			}
-			err := os.Rename(oldpath, newpath)
-			if err != nil {
-				log.Error(err)
-				return err
+			// Skipping encryption is NOT the default.  This code will be removed before ATO
+			if os.Getenv("DO_ENCRYPTION") == "FALSE" {
+				err := os.Rename(oldpath, newpath)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
+			} else {
+				// this will be the only code path after ATO
+				publicKey := exportJob.Aco.GetPublicKey()
+				if publicKey == nil {
+					fmt.Println("NO KEY EXISTS  THIS IS BAD")
+				}
+				err := encryption.EncryptAndMove(staging, data, f.Name(), exportJob.Aco.GetPublicKey(), exportJob.ID)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
 			}
 		}
 		os.Remove(staging)
