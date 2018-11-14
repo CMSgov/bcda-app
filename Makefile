@@ -16,7 +16,7 @@ smoke-test:
 
 test:
 	docker-compose up -d db queue
-	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test
+	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test unit_test
 
 load-fixtures:
 	docker-compose up -d db
