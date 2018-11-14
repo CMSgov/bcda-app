@@ -245,6 +245,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
+
 		var jobKeys []string
 		keyMap := make(map[string]string)
 		var jobKeysObj []models.JobKey
@@ -352,7 +353,10 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generates a token for fake user and ACO combination
-	token, err := authBackend.GenerateTokenString(user.UUID.String(), aco.UUID.String())
+	token, err := authBackend.GenerateTokenString(
+		"82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
+		"0C527D2E-2E8A-4808-B11D-0FA06BAF8254",
+	)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)

@@ -38,6 +38,7 @@ services:
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata
       - FHIR_EXPIRED_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/expired
       - EXPIRED_THRESHOLD_HR=24
+      - DO_ENCRYPTION=FALSE
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -53,6 +54,7 @@ services:
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
       - ATO_PUBLIC_KEY_FILE=../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../shared_files/ATO_private.pem
+      - DO_ENCRYPTION=FALSE
       - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata
     volumes:

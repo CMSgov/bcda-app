@@ -41,6 +41,7 @@ func encrypt(plaintext []byte, key *[32]byte) (ciphertext []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
+
 	nonce := make([]byte, gcm.NonceSize())
 	_, err = io.ReadFull(rand.Reader, nonce)
 	if err != nil {
@@ -69,6 +70,7 @@ func EncryptBytes(publicKey *rsa.PublicKey, plaintext []byte, label string) (cip
 		return ciphertext, encryptedKey, nil
 	}
 }
+
 
 func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID uint) error {
 	// Open and read the file

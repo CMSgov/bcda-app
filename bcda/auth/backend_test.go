@@ -9,9 +9,9 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"os"
+	//"strings"
 	"testing"
 	"time"
-
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
