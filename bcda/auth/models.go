@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/rsa"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
@@ -27,6 +28,11 @@ type ACO struct {
 	gorm.Model
 	UUID uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
 	Name string    `json:"name"`                                   // name
+}
+
+func (aco *ACO) GetPublicKey() *rsa.PublicKey {
+	// todo implement a real thing.  But for now we can use this.
+	return GetATOPublicKey()
 }
 
 type Token struct {

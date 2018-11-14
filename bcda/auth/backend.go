@@ -172,12 +172,21 @@ func getPrivateKey() *rsa.PrivateKey {
 	if err != nil {
 		log.Panic(err)
 	}
+	return openPrivateKeyFile(privateKeyFile)
+}
+func GetATOPrivateKey() *rsa.PrivateKey {
+	atoPrivateKeyFile, err := os.Open(os.Getenv("ATO_PRIVATE_KEY_FILE"))
+	if err != nil {
+		panic(err)
+	}
+	return openPrivateKeyFile(atoPrivateKeyFile)
+}
+func openPrivateKeyFile(privateKeyFile *os.File) *rsa.PrivateKey {
 	pemfileinfo, _ := privateKeyFile.Stat()
 	var size int64 = pemfileinfo.Size()
 	pembytes := make([]byte, size)
-
 	buffer := bufio.NewReader(privateKeyFile)
-	_, err = buffer.Read(pembytes)
+	_, err := buffer.Read(pembytes)
 	if err != nil {
 		// Above buffer.Read succeeded on a blank file Not Sure how to reach this
 		log.Panic(err)
@@ -202,13 +211,27 @@ func getPublicKey() *rsa.PublicKey {
 	if err != nil {
 		panic(err)
 	}
+	return openPublicKeyFile(publicKeyFile)
+}
 
+// This exists to provide a known static keys used for ACO's in our alpha tests.
+// This key is not meant to protect anything and both halves will be made available publicly
+func GetATOPublicKey() *rsa.PublicKey {
+	fmt.Println("Looking for a key at:")
+	fmt.Println(os.Getenv("ATO_PUBLIC_KEY_FILE"))
+	atoPublicKeyFile, err := os.Open(os.Getenv("ATO_PUBLIC_KEY_FILE"))
+	if err != nil {
+		fmt.Println("failed to open file")
+		panic(err)
+	}
+	return openPublicKeyFile(atoPublicKeyFile)
+}
+func openPublicKeyFile(publicKeyFile *os.File) *rsa.PublicKey {
 	pemfileinfo, _ := publicKeyFile.Stat()
 	var size int64 = pemfileinfo.Size()
 	pembytes := make([]byte, size)
-
 	buffer := bufio.NewReader(publicKeyFile)
-	_, err = buffer.Read(pembytes)
+	_, err := buffer.Read(pembytes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -228,7 +251,6 @@ func getPublicKey() *rsa.PublicKey {
 	if !ok {
 		panic(err)
 	}
-
 	return rsaPub
 }
 
@@ -293,8 +315,8 @@ func createAlphaUser(db *gorm.DB, aco ACO) (User, error) {
 	var count int
 	db.Table("users").Count(&count)
 	user := User{UUID: uuid.NewRandom(),
-	Name: fmt.Sprintf("Alpha User%d", count),
-	Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
+		Name:  fmt.Sprintf("Alpha User%d", count),
+		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
 	db.Create(&user)
 
 	return user, db.Error
