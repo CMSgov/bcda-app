@@ -132,9 +132,7 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 				match = m.Match(URLPrefixMatcher(path))
 			}
 
-			srv.TLSConfig = &tls.Config{
-				Certificates: []tls.Certificate{certificate},
-			}
+			srv.TLSConfig = config
 
 			//nolint
 			go srv.Serve(match)

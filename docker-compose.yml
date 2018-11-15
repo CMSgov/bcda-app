@@ -39,6 +39,7 @@ services:
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - DO_ENCRYPTION=FALSE
+      - HTTP_ONLY=true
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
