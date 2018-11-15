@@ -111,6 +111,11 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 	config := &tls.Config{
 		Certificates: []tls.Certificate{certificate},
 		Rand:         rand.Reader,
+		PreferServerCipherSuites: true,
+		CurvePreferences: []tls.CurveID{
+			tls.CurveP256,
+			tls.X25519,
+		},
 	}
 
 	sm.Listener = tls.NewListener(sm.Listener, config)
