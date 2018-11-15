@@ -32,6 +32,8 @@ type jobEnqueueArgs struct {
 	AcoID          string
 	UserID         string
 	BeneficiaryIDs []string
+	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+	Encrypt bool
 }
 
 func init() {
@@ -107,8 +109,9 @@ func processJob(j *que.Job) error {
 					return err
 				}
 			}
-			// Skipping encryption is NOT the default.  This code will be removed before ATO
-			if os.Getenv("DO_ENCRYPTION") == "FALSE" {
+
+			// TODO(rnagle): this condition should be removed when file encryption is ready for release
+			if !jobArgs.Encrypt {
 				err := os.Rename(oldpath, newpath)
 				if err != nil {
 					log.Error(err)

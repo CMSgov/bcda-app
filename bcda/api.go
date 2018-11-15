@@ -37,6 +37,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -143,11 +144,22 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		beneficiaryIds = append(beneficiaryIds, id)
 	}
 
+	// TODO(rnagle): this checks for ?encrypt=true appended to the bulk data request URL
+	// This is a temporary addition to allow SCA/ACT auditors to verify encryption of files works properly
+	// without exposing file encryption functionality to BCDA pilot users.
+	var encrypt bool = false
+	param, ok := r.URL.Query()["encrypt"]
+	if ok && strings.ToLower(param[0]) == "true" {
+		encrypt = true
+	}
+
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:             int(newJob.ID),
 		AcoID:          acoId,
 		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
+		// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+		Encrypt: encrypt,
 	})
 	if err != nil {
 		log.Error(err)
