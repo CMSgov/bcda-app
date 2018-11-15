@@ -14,6 +14,7 @@ RUN dep ensure
 ENV BB_CLIENT_CERT_FILE ../shared_files/bb-dev-test-cert.pem
 ENV BB_CLIENT_KEY_FILE ../shared_files/bb-dev-test-key.pem
 ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
+ENV HTTP_ONLY true
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 CMD ["fresh", "-r", "start-api"]
