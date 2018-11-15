@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -343,7 +344,13 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
-
+	// Encrypt something to get a fake key to put in the job key
+	fileName := "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson"
+	_, encryptedKey, err := encryption.EncryptBytes(s.AuthBackend.PublicKey, []byte("FOO"), fileName)
+	assert.Nil(s.T(), err)
+	jobKey := models.JobKey{JobID: j.ID, EncryptedKey: encryptedKey, FileName: fileName}
+	err = s.db.Save(&jobKey).Error
+	assert.Nil(s.T(), err)
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	req.TLS = &tls.ConnectionState{}
 
@@ -359,7 +366,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 
 	var rb bulkResponseBody
-	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
+	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -370,6 +377,8 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
 	assert.Equal(s.T(), expectedurl, rb.Files[0].URL)
+	assert.NotNil(s.T(), rb.KeyMap)
+	assert.NotNil(s.T(), rb.Keys)
 	assert.Empty(s.T(), rb.Errors)
 
 	s.db.Delete(&j)
