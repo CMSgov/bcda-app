@@ -38,7 +38,6 @@ services:
       - EXPIRED_THRESHOLD_HR=24
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
-      - DO_ENCRYPTION=FALSE
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -54,9 +53,8 @@ services:
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
       - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata
-      - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
-      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
-      - DO_ENCRYPTION=FALSE
+      - ATO_PUBLIC_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_public.pem
+      - ATO_PRIVATE_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_private.pem
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:

@@ -38,6 +38,8 @@ type jobEnqueueArgs struct {
 	AcoID          string
 	UserID         string
 	BeneficiaryIDs []string
+	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+	Encrypt bool
 }
 
 // swagger:model fileItem
