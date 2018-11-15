@@ -172,6 +172,10 @@ func (sm *ServiceMux) serveHTTP() {
 }
 
 func IsHTTPS(r *http.Request) bool {
-	srv := r.Context().Value(http.ServerContextKey).(*http.Server)
+	srvCtxKey := r.Context().Value(http.ServerContextKey)
+	if srvCtxKey == nil {
+		return false
+	}
+	srv := srvCtxKey.(*http.Server)
 	return srv.TLSConfig.Certificates != nil
 }
