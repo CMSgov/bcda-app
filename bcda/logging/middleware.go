@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
@@ -41,7 +42,7 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	}
 
 	scheme := "http"
-	if IsHTTPS(r) {
+	if servicemux.IsHTTPS(r) {
 		scheme = "https"
 	}
 	logFields["http_scheme"] = scheme

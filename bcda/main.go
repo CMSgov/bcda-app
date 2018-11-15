@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
@@ -135,7 +136,7 @@ func setUpApp() *cli.App {
 					IdleTimeout:  time.Duration(getEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
-				smux := NewServiceMux(":3000")
+				smux := servicemux.New(":3000")
 				smux.AddServer(fileserver, "/data")
 				smux.AddServer(api, "")
 				smux.Serve()

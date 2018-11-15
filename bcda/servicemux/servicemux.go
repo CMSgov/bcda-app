@@ -1,4 +1,4 @@
-package main
+package servicemux
 
 import (
 	"bufio"
@@ -68,7 +68,7 @@ type ServiceMux struct {
 	Servers  []map[*http.Server]string
 }
 
-func NewServiceMux(addr string) *ServiceMux {
+func New(addr string) *ServiceMux {
 	s := &ServiceMux{
 		Addr: addr,
 	}
@@ -92,15 +92,13 @@ func (sm *ServiceMux) Serve() {
 	tlsCertPath := os.Getenv("BCDA_TLS_CERT")
 	tlsKeyPath := os.Getenv("BCDA_TLS_KEY")
 
-	if tlsCertPath != "" && tlsKeyPath != "" {
-		sm.serveHTTPS(tlsCertPath, tlsKeyPath)
-	} else if tlsCertPath != "" {
-		panic("TLS certificate path provided, but no key")
-	} else if tlsKeyPath != "" {
-		panic("TLS key path provided, but no certificate")
-	} else {
-		log.Warn("TLS not enabled")
+	// If HTTP_ONLY is not set or has any value except true, assume HTTPS
+	if os.Getenv("HTTP_ONLY") == "true" {
 		sm.serveHTTP()
+	} else if tlsCertPath != "" && tlsKeyPath != "" {
+		sm.serveHTTPS(tlsCertPath, tlsKeyPath)
+	} else {
+		panic("TLS certificate and key paths are required unless HTTP_ONLY is true")
 	}
 }
 
@@ -117,7 +115,31 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 
 	sm.Listener = tls.NewListener(sm.Listener, config)
 
-	sm.serveHTTP()
+	m := cmux.New(sm.Listener)
+
+	for _, server := range sm.Servers {
+		for srv, path := range server {
+			var match net.Listener
+
+			if path == "" {
+				match = m.Match(cmux.Any())
+			} else {
+				match = m.Match(URLPrefixMatcher(path))
+			}
+
+			srv.TLSConfig = &tls.Config{
+				Certificates: []tls.Certificate{certificate},
+			}
+
+			//nolint
+			go srv.Serve(match)
+		}
+	}
+
+	err = m.Serve()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (sm *ServiceMux) serveHTTP() {
@@ -142,4 +164,9 @@ func (sm *ServiceMux) serveHTTP() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func IsHTTPS(r *http.Request) bool {
+	srv := r.Context().Value(http.ServerContextKey).(*http.Server)
+	return srv.TLSConfig.Certificates != nil
 }

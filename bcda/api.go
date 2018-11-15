@@ -44,6 +44,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/bgentry/que-go"
 	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
@@ -104,7 +105,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	userId, _ := claims["sub"].(string)
 
 	scheme := "http"
-	if IsHTTPS(r) {
+	if servicemux.IsHTTPS(r) {
 		scheme = "https"
 	}
 
@@ -235,7 +236,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		scheme := "http"
-		if IsHTTPS(r) {
+		if servicemux.IsHTTPS(r) {
 			scheme = "https"
 		}
 
@@ -403,7 +404,7 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
 
 	scheme := "http"
-	if IsHTTPS(r) {
+	if servicemux.IsHTTPS(r) {
 		scheme = "https"
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
@@ -445,9 +446,4 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-}
-
-func IsHTTPS(r *http.Request) bool {
-	srv := r.Context().Value(http.ServerContextKey).(*http.Server)
-	return srv.TLSConfig.Certificates != nil
 }
