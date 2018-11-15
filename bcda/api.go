@@ -104,7 +104,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	userId, _ := claims["sub"].(string)
 
 	scheme := "http"
-	if r.TLS != nil {
+	if IsHTTPS(r) {
 		scheme = "https"
 	}
 
@@ -235,7 +235,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		scheme := "http"
-		if r.TLS != nil {
+		if IsHTTPS(r) {
 			scheme = "https"
 		}
 
@@ -403,7 +403,7 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
 
 	scheme := "http"
-	if r.TLS != nil {
+	if IsHTTPS(r) {
 		scheme = "https"
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
@@ -445,4 +445,9 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
+}
+
+func IsHTTPS(r *http.Request) bool {
+	srv := r.Context().Value(http.ServerContextKey).(*http.Server)
+	return srv.TLSConfig.Certificates != nil
 }

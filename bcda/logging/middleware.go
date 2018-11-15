@@ -41,7 +41,7 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	}
 
 	scheme := "http"
-	if r.TLS != nil {
+	if IsHTTPS(r) {
 		scheme = "https"
 	}
 	logFields["http_scheme"] = scheme
