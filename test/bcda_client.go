@@ -13,7 +13,7 @@ import (
 
 var (
 	accessToken, apiHost, proto string
-	timeout int
+	timeout                     int
 )
 
 type OutputCollection []Output
@@ -40,16 +40,16 @@ func getAccessToken() string {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"GET", fmt.Sprintf("%s://%s/api/v1/token", proto, apiHost), nil)
-        if err != nil {
-                panic(err)
-        }        	
+	if err != nil {
+		panic(err)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}
-	
-  	defer resp.Body.Close()
-	
+
+	defer resp.Body.Close()
+
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
@@ -62,9 +62,9 @@ func startJob() *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"GET", fmt.Sprintf("%s://%s/api/v1/ExplanationOfBenefit/$export", proto, apiHost), nil)
-        if err != nil {
-                panic(err)
-        }
+	if err != nil {
+		panic(err)
+	}
 
 	req.Header.Add("Prefer", "respond-async")
 	req.Header.Add("Accept", "application/fhir+json")
@@ -82,10 +82,10 @@ func checkStatus(location string) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"GET", location, nil)
-        if err != nil {
-                panic(err)
-        }
-	
+	if err != nil {
+		panic(err)
+	}
+
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := client.Do(req)
@@ -100,9 +100,9 @@ func getFile(location string) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"GET", location, nil)
-        if err != nil {
-                panic(err)
-        }
+	if err != nil {
+		panic(err)
+	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
@@ -116,12 +116,13 @@ func getFile(location string) *http.Response {
 
 func writeFile(resp *http.Response) {
 	defer resp.Body.Close()
+	/* #nosec */
 	out, err := os.Create("/tmp/download.json")
 	if err != nil {
 		panic(err)
 	}
 	defer out.Close()
-	num , err := io.Copy(out, resp.Body)
+	num, err := io.Copy(out, resp.Body)
 	if err != nil && num <= 0 {
 		panic(err)
 	}
@@ -129,7 +130,7 @@ func writeFile(resp *http.Response) {
 
 func main() {
 	fmt.Println("making request to start data aggregation job")
-        end := time.Now().Add(time.Duration(timeout) * time.Second)
+	end := time.Now().Add(time.Duration(timeout) * time.Second)
 	if result := startJob(); result.StatusCode == 202 {
 		for {
 			<-time.After(5 * time.Second)
@@ -144,9 +145,9 @@ func main() {
 
 			if status.StatusCode == 200 {
 				fmt.Println("file is ready for download...")
-				
+
 				defer status.Body.Close()
-				
+
 				var objmap map[string]*json.RawMessage
 				err := json.NewDecoder(status.Body).Decode(&objmap)
 				if err != nil {
@@ -173,7 +174,7 @@ func main() {
 					if fi.Size() <= 0 {
 						fmt.Println("Error: file is empty!.")
 						os.Exit(1)
-					}			
+					}
 					fmt.Println("done.")
 				} else {
 					fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
