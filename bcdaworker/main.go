@@ -36,7 +36,7 @@ type jobEnqueueArgs struct {
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err == nil {
 		log.SetOutput(file)
 	} else {

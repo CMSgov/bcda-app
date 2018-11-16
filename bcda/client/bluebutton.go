@@ -31,7 +31,7 @@ func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 	filePath := os.Getenv("BCDA_BB_LOG")
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0600)
 	if err == nil {
 		logger.SetOutput(file)
 	} else {
@@ -51,6 +51,7 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	// TODO Fix when Blue Button has a static cert: https://jira.cms.gov/browse/BLUEBUTTON-484
 	if os.Getenv("BB_SERVER_LOCATION") != "https://fhir.backend.bluebutton.hhsdevcloud.us" {
 		caFile := os.Getenv("BB_CLIENT_CA_FILE")
+		/* #nosec */
 		caCert, err := ioutil.ReadFile(caFile)
 		if err != nil {
 			return nil, err
