@@ -14,7 +14,7 @@ mkdir -p test_results/${timestamp}
 mkdir -p test_results/latest
 
 echo "Running gosec..."
-gosec -fmt=junit-xml -exclude=G104 -out=test_results/latest/gosec_results.xml ./...
+gosec -exclude=G104 ./...
 
 echo "Setting up test DB (bcda_test)..."
 DB_HOST_URL=${DB}?sslmode=disable

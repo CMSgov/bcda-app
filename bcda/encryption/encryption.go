@@ -73,6 +73,7 @@ func EncryptBytes(publicKey *rsa.PublicKey, plaintext []byte, label string) (cip
 
 func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID uint) error {
 	// Open and read the file
+	/*#nosec*/
 	fileBytes, err := ioutil.ReadFile(fromPath + "/" + fileName)
 	if err != nil {
 		log.Error(err)
