@@ -15,6 +15,7 @@ func InitializeGormModels() *gorm.DB {
 	// Add your new models here
 	db.AutoMigrate(
 		&Job{},
+		&JobKey{},
 	)
 
 	return db
@@ -28,4 +29,12 @@ type Job struct {
 	UserID     uuid.UUID `gorm:"type:char(36)"`
 	RequestURL string    `json:"request_url"` // request_url
 	Status     string    `json:"status"`      // status
+	JobKeys    []JobKey
+}
+type JobKey struct {
+	gorm.Model
+	Job          Job  `gorm:"foreignkey:jobID"`
+	JobID        uint `gorm:"primary_key" json:"job_id"`
+	EncryptedKey []byte
+	FileName     string `gorm:"type:char(127)"`
 }

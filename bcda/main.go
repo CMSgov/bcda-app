@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
@@ -38,6 +39,8 @@ type jobEnqueueArgs struct {
 	AcoID          string
 	UserID         string
 	BeneficiaryIDs []string
+	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+	Encrypt bool
 }
 
 // swagger:model fileItem
@@ -62,9 +65,13 @@ type bulkResponseBody struct {
 	// Files included in the payload
 	// collection format: csv
 	Files []fileItem `json:"output"`
+	// Keys created during encryption of the files for this job
+	// These keys are encrypted using the ACO's public key
+	Keys []string `json:"keys"`
 	// Errors encountered during processing
 	// collection format: csv
-	Errors []fileItem `json:"error"`
+	Errors []fileItem        `json:"error"`
+	KeyMap map[string]string `json:"KeyMap"`
 }
 
 func init() {
@@ -135,7 +142,7 @@ func setUpApp() *cli.App {
 					IdleTimeout:  time.Duration(getEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
-				smux := NewServiceMux(":3000")
+				smux := servicemux.New(":3000")
 				smux.AddServer(fileserver, "/data")
 				smux.AddServer(api, "")
 				smux.Serve()

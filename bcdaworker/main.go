@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -31,6 +32,8 @@ type jobEnqueueArgs struct {
 	AcoID          string
 	UserID         string
 	BeneficiaryIDs []string
+	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+	Encrypt bool
 }
 
 func init() {
@@ -106,10 +109,25 @@ func processJob(j *que.Job) error {
 					return err
 				}
 			}
-			err := os.Rename(oldpath, newpath)
-			if err != nil {
-				log.Error(err)
-				return err
+
+			// TODO(rnagle): this condition should be removed when file encryption is ready for release
+			if !jobArgs.Encrypt {
+				err := os.Rename(oldpath, newpath)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
+			} else {
+				// this will be the only code path after ATO
+				publicKey := exportJob.Aco.GetPublicKey()
+				if publicKey == nil {
+					fmt.Println("NO KEY EXISTS  THIS IS BAD")
+				}
+				err := encryption.EncryptAndMove(staging, data, f.Name(), exportJob.Aco.GetPublicKey(), exportJob.ID)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
 			}
 		}
 		os.Remove(staging)

@@ -1,7 +1,9 @@
-package main
+package servicemux
 
 import (
 	"bufio"
+	"crypto/rand"
+	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 )
 
@@ -65,7 +68,7 @@ type ServiceMux struct {
 	Servers  []map[*http.Server]string
 }
 
-func NewServiceMux(addr string) *ServiceMux {
+func New(addr string) *ServiceMux {
 	s := &ServiceMux{
 		Addr: addr,
 	}
@@ -75,7 +78,7 @@ func NewServiceMux(addr string) *ServiceMux {
 		panic(err)
 	}
 
-	s.Listener = ln
+	s.Listener = tcpKeepAliveListener{ln.(*net.TCPListener)}
 	return s
 }
 
@@ -86,7 +89,64 @@ func (sm *ServiceMux) AddServer(s *http.Server, m string) {
 }
 
 func (sm *ServiceMux) Serve() {
-	m := cmux.New(tcpKeepAliveListener{sm.Listener.(*net.TCPListener)})
+	tlsCertPath := os.Getenv("BCDA_TLS_CERT")
+	tlsKeyPath := os.Getenv("BCDA_TLS_KEY")
+
+	// If HTTP_ONLY is not set or has any value except true, assume HTTPS
+	if os.Getenv("HTTP_ONLY") == "true" {
+		sm.serveHTTP()
+	} else if tlsCertPath != "" && tlsKeyPath != "" {
+		sm.serveHTTPS(tlsCertPath, tlsKeyPath)
+	} else {
+		panic("TLS certificate and key paths are required unless HTTP_ONLY is true")
+	}
+}
+
+func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
+	certificate, err := tls.LoadX509KeyPair(tlsCertPath, tlsKeyPath)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{certificate},
+		Rand:         rand.Reader,
+		PreferServerCipherSuites: true,
+		CurvePreferences: []tls.CurveID{
+			tls.CurveP256,
+			tls.X25519,
+		},
+	}
+
+	sm.Listener = tls.NewListener(sm.Listener, config)
+
+	m := cmux.New(sm.Listener)
+
+	for _, server := range sm.Servers {
+		for srv, path := range server {
+			var match net.Listener
+
+			if path == "" {
+				match = m.Match(cmux.Any())
+			} else {
+				match = m.Match(URLPrefixMatcher(path))
+			}
+
+			srv.TLSConfig = config
+
+			//nolint
+			go srv.Serve(match)
+		}
+	}
+
+	err = m.Serve()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (sm *ServiceMux) serveHTTP() {
+	m := cmux.New(sm.Listener)
 
 	for _, server := range sm.Servers {
 		for srv, path := range server {
@@ -107,4 +167,13 @@ func (sm *ServiceMux) Serve() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func IsHTTPS(r *http.Request) bool {
+	srvCtxKey := r.Context().Value(http.ServerContextKey)
+	if srvCtxKey == nil {
+		return false
+	}
+	srv := srvCtxKey.(*http.Server)
+	return srv.TLSConfig.Certificates != nil
 }

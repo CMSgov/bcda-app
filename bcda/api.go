@@ -31,11 +31,13 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -44,6 +46,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/bgentry/que-go"
 	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
@@ -104,7 +107,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	userId, _ := claims["sub"].(string)
 
 	scheme := "http"
-	if r.TLS != nil {
+	if servicemux.IsHTTPS(r) {
 		scheme = "https"
 	}
 
@@ -142,11 +145,22 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		beneficiaryIds = append(beneficiaryIds, id)
 	}
 
+	// TODO(rnagle): this checks for ?encrypt=true appended to the bulk data request URL
+	// This is a temporary addition to allow SCA/ACT auditors to verify encryption of files works properly
+	// without exposing file encryption functionality to BCDA pilot users.
+	var encrypt bool = false
+	param, ok := r.URL.Query()["encrypt"]
+	if ok && strings.ToLower(param[0]) == "true" {
+		encrypt = true
+	}
+
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:             int(newJob.ID),
 		AcoID:          acoId,
 		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
+		// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+		Encrypt: encrypt,
 	})
 	if err != nil {
 		log.Error(err)
@@ -235,7 +249,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		scheme := "http"
-		if r.TLS != nil {
+		if servicemux.IsHTTPS(r) {
 			scheme = "https"
 		}
 
@@ -244,12 +258,23 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
+		var jobKeys []string
+		keyMap := make(map[string]string)
+		var jobKeysObj []models.JobKey
+		db.Find(&jobKeysObj, "job_id = ?", job.ID)
+		for _, jobKey := range jobKeysObj {
+			jobKeys = append(jobKeys, hex.EncodeToString(jobKey.EncryptedKey)+"|"+jobKey.FileName)
+			keyMap[jobKey.FileName] = hex.EncodeToString(jobKey.EncryptedKey)
+		}
+
 		rb := bulkResponseBody{
 			TransactionTime:     job.CreatedAt,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
 			Files:               []fileItem{fi},
+			Keys:                jobKeys,
 			Errors:              []fileItem{},
+			KeyMap:              keyMap,
 		}
 
 		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.AcoID)
@@ -403,7 +428,7 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 	dt := time.Now()
 
 	scheme := "http"
-	if r.TLS != nil {
+	if servicemux.IsHTTPS(r) {
 		scheme = "https"
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
