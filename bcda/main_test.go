@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
-      "time"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -160,7 +160,7 @@ func (s *MainTestSuite) TestCreateAlphaToken() {
 	assert.NotEqual(s.T(), l1[1], l2[1], "alpha token uuids should be different (%s == %s)", l1[1], l2[1])
 }
 
-func (s *MainTestSuite) TestRemoveExpired() {
+func (s *MainTestSuite) TestArchiveExpiring() {
 	autoMigrate()
 	db := database.GetGORMDbConnection()
 
@@ -175,7 +175,7 @@ func (s *MainTestSuite) TestRemoveExpired() {
 	assert.NotNil(s.T(), j.ID)
 
 	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_EXPIRED_DIR", "../bcdaworker/data/test/expired")
+	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 	id := int(j.ID)
 	assert.NotNil(s.T(), id)
 
@@ -194,10 +194,10 @@ func (s *MainTestSuite) TestRemoveExpired() {
 	}
 	defer f.Close()
 
-	removeExpired(0)
+	archiveExpiring(0)
 
-	//check that the file has moved to the expired location
-	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_EXPIRED_DIR"), id)
+	//check that the file has moved to the archive location
+	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 	_, err = ioutil.ReadFile(expPath)
 	if err != nil {
 		s.T().Error(err)
@@ -208,13 +208,13 @@ func (s *MainTestSuite) TestRemoveExpired() {
 	db.First(&testjob, "id = ?", j.ID)
 
 	//check the status of the job
-	assert.Equal(s.T(), "Expired", testjob.Status)
+	assert.Equal(s.T(), "Archived", testjob.Status)
 
 	// clean up
-	os.RemoveAll(os.Getenv("FHIR_EXPIRED_DIR"))
+	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
 }
 
-func (s *MainTestSuite) TestRemoveNotExpired() {
+func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 	autoMigrate()
 	db := database.GetGORMDbConnection()
 
@@ -229,7 +229,7 @@ func (s *MainTestSuite) TestRemoveNotExpired() {
 	assert.NotNil(s.T(), j.ID)
 
 	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_EXPIRED_DIR", "../bcdaworker/data/test/expired")
+	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 	id := int(j.ID)
 	assert.NotNil(s.T(), id)
 
@@ -248,9 +248,9 @@ func (s *MainTestSuite) TestRemoveNotExpired() {
 	}
 	defer f.Close()
 
-	removeExpired(1)
+	archiveExpiring(1)
 
-	//check that the file has not moved to the expired location
+	//check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
 	_, err = ioutil.ReadFile(dataPath)
 	if err != nil {

@@ -34,8 +34,8 @@ services:
       - DEBUG=true
       - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata
-      - FHIR_EXPIRED_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/expired
-      - EXPIRED_THRESHOLD_HR=24
+      - FHIR_ARCHIVE_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/archive
+      - ARCHIVE_THRESHOLD_HR=24
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - HTTP_ONLY=true

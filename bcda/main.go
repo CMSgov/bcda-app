@@ -275,12 +275,12 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "remove-expired-jobs",
-			Category: "Remove expired jobs",
+			Name:     "archive-job-files",
+			Category: "Archive files for jobs that are expiring",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
-				threshold := getEnvInt("EXPIRED_THRESHOLD_HR", 24)
-				removeExpired(threshold)
+				threshold := getEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+				archiveExpiring(threshold)
 				return nil
 			},
 		},
@@ -413,8 +413,8 @@ func getEnvInt(varName string, defaultVal int) int {
 	return defaultVal
 }
 
-func removeExpired(hrThreshold int) {
-	log.Info("Cleaning up expired jobs...")
+func archiveExpiring(hrThreshold int) {
+	log.Info("Archiving expiring job files...")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -424,7 +424,7 @@ func removeExpired(hrThreshold int) {
 		log.Error(err)
 	}
 
-	expDir := os.Getenv("FHIR_EXPIRED_DIR")
+	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
 	if _, err = os.Stat(expDir); os.IsNotExist(err) {
 		err = os.MkdirAll(expDir, os.ModePerm)
 		if err != nil {
@@ -439,7 +439,7 @@ func removeExpired(hrThreshold int) {
 
 			id := int(j.ID)
 			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_EXPIRED_DIR"), id)
+			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
@@ -447,7 +447,7 @@ func removeExpired(hrThreshold int) {
 				continue
 			}
 
-			j.Status = "Expired"
+			j.Status = "Archived"
 			err = db.Save(j).Error
 			if err != nil {
 				log.Error(err)
