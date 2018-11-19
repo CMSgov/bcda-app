@@ -169,6 +169,10 @@ func (sm *ServiceMux) serveHTTP() {
 	}
 }
 
+func (sm *ServiceMux) Close() {
+	sm.Listener.Close()
+}
+
 func IsHTTPS(r *http.Request) bool {
 	srvCtxKey := r.Context().Value(http.ServerContextKey)
 	if srvCtxKey == nil {
