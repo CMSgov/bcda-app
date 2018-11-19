@@ -168,13 +168,42 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
 	// assert.Equal(s.T(), "Test", string(body))
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
+func (s *ServiceMuxTestSuite) TestServe_serveHTTPS_badKeypair() {
 	srv := &http.Server{
 		Handler: testHandler,
 	}
 
 	sm := New("127.0.0.1:0")
 	sm.AddServer(srv, "/test")
+
+	defer sm.Close()
+
+	origTLSCert := os.Getenv("BCDA_TLS_CERT")
+	origTLSKey := os.Getenv("BCDA_TLS_KEY")
+	origHTTPOnly := os.Getenv("HTTP_ONLY")
+
+	defer func() {
+		os.Setenv("BCDA_TLS_CERT", origTLSCert)
+		os.Setenv("BCDA_TLS_KEY", origTLSKey)
+		os.Setenv("HTTP_ONLY", origHTTPOnly)
+	}()
+
+	os.Setenv("BCDA_TLS_CERT", "foo.crt")
+	os.Setenv("BCDA_TLS_KEY", "foo.key")
+	os.Setenv("HTTP_ONLY", "false")
+
+	assert.Panics(s.T(), sm.Serve)
+}
+
+func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
+	srv := &http.Server{
+		Handler: testHandler,
+	}
+
+	sm := New("127.0.0.1:0")
+	sm.AddServer(srv, "")
+	sm.AddServer(srv, "/test")
+
 	go func() {
 		defer sm.Close()
 
@@ -195,18 +224,19 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
 		sm.Serve()
 	}()
 
-	resp, err := http.Get("http://" + sm.Listener.Addr().String() + "/test")
-	if err != nil {
-		s.T().Fatal(err)
-	}
-	defer resp.Body.Close()
+	for _, p := range []string{"", "/test"} {
+		resp, err := http.Get("http://" + sm.Listener.Addr().String() + p)
+		if err != nil {
+			s.T().Fatal(err)
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			s.T().Fatal(err)
+		}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		s.T().Fatal(err)
+		assert.Equal(s.T(), "Test", string(body))
 	}
-
-	assert.Equal(s.T(), "Test", string(body))
 }
 
 func (s *ServiceMuxTestSuite) TestIsHTTPS_false() {
