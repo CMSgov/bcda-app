@@ -267,3 +267,97 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 	// clean up
 	os.Remove(dataPath)
 }
+
+func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	s.SetupAuthBackend()
+	acoUUID, err := createACO("ACO " + email)
+	assert.Nil(s.T(), err);
+
+	userUUID, err := createUser(acoUUID, "Unit Test", email)
+	assert.Nil(s.T(), err);
+
+	// save a job to our db
+	j := models.Job{
+		AcoID:      uuid.Parse(acoUUID),
+		UserID:     uuid.Parse(userUUID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Archived",
+	}
+	db.Save(&j)
+	db.Model(&j).UpdateColumn("updated_at", modified)
+	db.Save(&j)
+	assert.Nil(s.T(), err);
+	assert.NotNil(s.T(), j.ID)
+
+	return int(j.ID)
+}
+
+func setupJobArchiveFile(s *MainTestSuite, email string, modified time.Time, accessed time.Time) (int, *os.File) {
+	// directory structure is FHIR_ARCHIVE_DIR/<JobId>/<datafile>.ndjson
+	// for reference, see main.archiveExpiring() and its companion tests above
+	jobId := setupArchivedJob(s, email, modified)
+	path := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), jobId)
+
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		s.T().Error(err)
+	}
+	jobFile, err := os.Create(fmt.Sprintf("%s/%s", path, "fake.ndjson"))
+	if err != nil {
+		s.T().Error(err)
+	}
+	defer jobFile.Close()
+
+	if err := os.Chtimes(jobFile.Name(), accessed, modified); err != nil {
+		s.T().Error(err)
+	}
+	return jobId, jobFile
+}
+
+func (s *MainTestSuite) TestCleanArchive() {
+	autoMigrate()
+	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	const Threshold = 30
+	now := time.Now()
+
+	// create a file that was last modified before the Threshold, but accessed after it
+	modified := now.Add(-(time.Hour * (Threshold + 1)))
+	accessed := now.Add(-(time.Hour * (Threshold - 1)))
+	beforeJobId, before := setupJobArchiveFile(s, "before@test.com", modified, accessed)
+	defer before.Close()
+
+	// create a file that is clearly after the threshold (unless the threshold is 0)
+	afterJobId, after := setupJobArchiveFile(s, "after@test.com", now, now)
+	defer after.Close()
+
+	// condition: before < Threshold < after <= now
+	// a file created before the Threshold should be deleted; one created after should not
+	// we use last modified as a proxy for created, because these files should not be changed after creation
+	assert.Nil(s.T(), cleanupArchive(Threshold))
+
+	_, err := os.Stat(before.Name())
+
+	if (err == nil) {
+		assert.Fail(s.T(),"%s was not removed; it should have been", before.Name())
+	} else {
+		assert.True(s.T(), os.IsNotExist(err),"%s should have been removed", before.Name())
+	}
+
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	var beforeJob models.Job
+	db.First(&beforeJob, "id = ?", beforeJobId)
+	assert.Equal(s.T(), "Expired", beforeJob.Status)
+
+	assert.FileExists(s.T(), after.Name(), "%s not found; it should have been", after.Name())
+
+	var afterJob models.Job
+	db.First(&afterJob, "id = ?", afterJobId)
+	assert.Equal(s.T(), "Archived", afterJob.Status)
+
+	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
+	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+}
