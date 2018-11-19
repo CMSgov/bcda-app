@@ -287,10 +287,12 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 		Status:     "Archived",
 	}
 	db.Save(&j)
-	db.Model(&j).UpdateColumn("updated_at", modified)
-	db.Save(&j)
+	db.Exec("UPDATE jobs SET updated_at=? WHERE id = ?", modified.Format("2006-01-02 15:04:05"), j.ID)
+	db.First(&j, "id = ?", j.ID)
 	assert.Nil(s.T(), err);
 	assert.NotNil(s.T(), j.ID)
+	// compare times using formatted strings to avoid differences (like nano seconds) that we don't care about
+	assert.Equal(s.T(), modified.Format("2006-01-02 15:04:05"), j.UpdatedAt.Format("2006-01-02 15:04:05"), "UpdatedAt should match %v", modified)
 
 	return int(j.ID)
 }
