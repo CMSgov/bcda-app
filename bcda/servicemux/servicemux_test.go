@@ -1,6 +1,7 @@
 package servicemux
 
 import (
+	"crypto/tls"
 	"io/ioutil"
 	"log"
 	"net"
@@ -150,22 +151,31 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
 			os.Setenv("HTTP_ONLY", origHTTPOnly)
 		}()
 
-		os.Setenv("BCDA_TLS_CERT", "../localhost.crt")
-		os.Setenv("BCDA_TLS_KEY", "../localhost.key")
+		os.Setenv("BCDA_TLS_CERT", "../../shared_files/localhost.crt")
+		os.Setenv("BCDA_TLS_KEY", "../../shared_files/localhost.key")
 		os.Setenv("HTTP_ONLY", "false")
 
 		sm.Serve()
 	}()
 
-	// resp, err := http.Get("https://" + sm.Listener.Addr().String() + "/test")
-	// if err != nil {
-	// 	s.T().Fatal(err)
-	// }
+	// Allow certificate signed by unknown authority
+	http.DefaultClient.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
 
-	// defer resp.Body.Close()
-	// body, err := ioutil.ReadAll(resp.Body)
+	resp, err := http.Get("https://" + sm.Listener.Addr().String() + "/test")
+	if err != nil {
+		s.T().Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		s.T().Fatal(err)
+	}
 
-	// assert.Equal(s.T(), "Test", string(body))
+	assert.Equal(s.T(), "Test", string(body))
 }
 
 func (s *ServiceMuxTestSuite) TestServe_serveHTTPS_badKeypair() {
@@ -205,13 +215,13 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
 	sm.AddServer(srv, "/test")
 
 	go func() {
-		defer sm.Close()
-
 		origTLSCert := os.Getenv("BCDA_TLS_CERT")
 		origTLSKey := os.Getenv("BCDA_TLS_KEY")
 		origHTTPOnly := os.Getenv("HTTP_ONLY")
 
 		defer func() {
+			sm.Close()
+
 			os.Setenv("BCDA_TLS_CERT", origTLSCert)
 			os.Setenv("BCDA_TLS_KEY", origTLSKey)
 			os.Setenv("HTTP_ONLY", origHTTPOnly)
