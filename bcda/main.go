@@ -521,6 +521,7 @@ func cleanupArchive(hrThreshold int) error {
 			log.WithFields(log.Fields{
 				"job_began":     job.CreatedAt,
 				"files_removed": time.Now(),
+				"job_id":        job.ID,
 			}).Info("Files cleaned from archive and job status set to Expired")
 		}
 	}
