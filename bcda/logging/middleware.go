@@ -18,7 +18,7 @@ func NewStructuredLogger() func(next http.Handler) http.Handler {
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 	filePath := os.Getenv("BCDA_REQUEST_LOG")
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0600)
 	if err == nil {
 		logger.SetOutput(file)
 	} else {
