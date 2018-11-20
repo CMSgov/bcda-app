@@ -99,7 +99,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl string
+	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -275,13 +275,32 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "remove-expired-jobs",
-			Category: "Remove expired jobs",
+			Name:     "archive-job-files",
+			Category: "Archive files for jobs that are expiring",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
-				threshold := getEnvInt("EXPIRED_THRESHOLD_HR", 24)
-				removeExpired(threshold)
+				threshold := getEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+				archiveExpiring(threshold)
 				return nil
+			},
+		},
+		{
+			Name:     "cleanup-archive",
+			Category: "Cleanup archive for jobs that have expired",
+			Usage:    "Removes job directory and files from archive and updates job status to Expired",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "threshold",
+					Usage:       "How long files should wait in archive before deletion",
+					Destination: &threshold,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				th, err := strconv.Atoi(threshold)
+				if err != nil {
+					return err
+				}
+				return cleanupArchive(th)
 			},
 		},
 	}
@@ -413,8 +432,8 @@ func getEnvInt(varName string, defaultVal int) int {
 	return defaultVal
 }
 
-func removeExpired(hrThreshold int) {
-	log.Info("Cleaning up expired jobs...")
+func archiveExpiring(hrThreshold int) {
+	log.Info("Archiving expiring job files...")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -424,7 +443,7 @@ func removeExpired(hrThreshold int) {
 		log.Error(err)
 	}
 
-	expDir := os.Getenv("FHIR_EXPIRED_DIR")
+	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
 	if _, err = os.Stat(expDir); os.IsNotExist(err) {
 		err = os.MkdirAll(expDir, os.ModePerm)
 		if err != nil {
@@ -439,7 +458,7 @@ func removeExpired(hrThreshold int) {
 
 			id := int(j.ID)
 			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_EXPIRED_DIR"), id)
+			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
@@ -447,11 +466,65 @@ func removeExpired(hrThreshold int) {
 				continue
 			}
 
-			j.Status = "Expired"
+			j.Status = "Archived"
 			err = db.Save(j).Error
 			if err != nil {
 				log.Error(err)
 			}
 		}
 	}
+}
+
+func cleanupArchive(hrThreshold int) error {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
+	if _, err := os.Stat(expDir); os.IsNotExist(err) {
+		// nothing to do if no base directory exists.
+		return nil
+	}
+
+	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
+
+	var jobs []models.Job
+	err := db.Find(&jobs, "status = ? AND updated_at <= ?", "Archived", maxDate).Error
+	if err != nil {
+		return err
+	}
+
+	if len(jobs) == 0 {
+		log.Info("No archived job files to clean")
+		return nil
+	}
+
+	for _, job := range jobs {
+		t := job.UpdatedAt
+		elapsed := time.Since(t).Hours()
+		if int(elapsed) >= hrThreshold {
+
+			id := int(job.ID)
+			jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+
+			err = os.RemoveAll(jobArchiveDir)
+			if err != nil {
+				log.Error("Unable to remove %s because %s", jobArchiveDir, err)
+				continue
+			}
+
+			job.Status = "Expired"
+			err = db.Save(job).Error
+			if err != nil {
+				return err
+			}
+
+			log.WithFields(log.Fields{
+				"job_began":     job.CreatedAt,
+				"files_removed": time.Now(),
+				"job_id":        job.ID,
+			}).Info("Files cleaned from archive and job status set to Expired")
+		}
+	}
+
+	return nil
 }
