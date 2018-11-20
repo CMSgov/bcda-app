@@ -9,6 +9,11 @@ package:
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+integration-test:
+	docker-compose up -d 
+	sleep 5
+	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from integration_test integration_test
+
 smoke-test:
 	docker-compose up -d 
 	sleep 30
@@ -49,4 +54,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test integration-test

@@ -17,4 +17,10 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.smoke_test
     volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
+      - ./test:/go/src/github.com/CMSgov/bcda-app/test
+  integration_test:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.integration_test
+    volumes:
+      - ./test:/go/src/github.com/CMSgov/bcda-app/test
