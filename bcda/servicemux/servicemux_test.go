@@ -50,15 +50,9 @@ func (s *ServiceMuxTestSuite) TestAddServer() {
 }
 
 func (s *ServiceMuxTestSuite) TestServe_NoCert() {
-	origTLSCert := os.Getenv("BCDA_TLS_CERT")
-	origTLSKey := os.Getenv("BCDA_TLS_KEY")
-	origHTTPOnly := os.Getenv("HTTP_ONLY")
+	origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
-	defer func() {
-		os.Setenv("BCDA_TLS_CERT", origTLSCert)
-		os.Setenv("BCDA_TLS_KEY", origTLSKey)
-		os.Setenv("HTTP_ONLY", origHTTPOnly)
-	}()
+	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
 	os.Setenv("BCDA_TLS_CERT", "")
 	os.Setenv("BCDA_TLS_KEY", "test.key")
@@ -69,15 +63,9 @@ func (s *ServiceMuxTestSuite) TestServe_NoCert() {
 }
 
 func (s *ServiceMuxTestSuite) TestServe_NoKey() {
-	origTLSCert := os.Getenv("BCDA_TLS_CERT")
-	origTLSKey := os.Getenv("BCDA_TLS_KEY")
-	origHTTPOnly := os.Getenv("HTTP_ONLY")
+	origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
-	defer func() {
-		os.Setenv("BCDA_TLS_CERT", origTLSCert)
-		os.Setenv("BCDA_TLS_KEY", origTLSKey)
-		os.Setenv("HTTP_ONLY", origHTTPOnly)
-	}()
+	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
 	os.Setenv("BCDA_TLS_CERT", "test.crt")
 	os.Setenv("BCDA_TLS_KEY", "")
@@ -105,15 +93,9 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
 	go func() {
 		defer sm.Close()
 
-		origTLSCert := os.Getenv("BCDA_TLS_CERT")
-		origTLSKey := os.Getenv("BCDA_TLS_KEY")
-		origHTTPOnly := os.Getenv("HTTP_ONLY")
+		origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
-		defer func() {
-			os.Setenv("BCDA_TLS_CERT", origTLSCert)
-			os.Setenv("BCDA_TLS_KEY", origTLSKey)
-			os.Setenv("HTTP_ONLY", origHTTPOnly)
-		}()
+		defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
 		os.Setenv("BCDA_TLS_CERT", "../../shared_files/localhost.crt")
 		os.Setenv("BCDA_TLS_KEY", "../../shared_files/localhost.key")
@@ -152,15 +134,9 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS_badKeypair() {
 
 	defer sm.Close()
 
-	origTLSCert := os.Getenv("BCDA_TLS_CERT")
-	origTLSKey := os.Getenv("BCDA_TLS_KEY")
-	origHTTPOnly := os.Getenv("HTTP_ONLY")
+	origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
-	defer func() {
-		os.Setenv("BCDA_TLS_CERT", origTLSCert)
-		os.Setenv("BCDA_TLS_KEY", origTLSKey)
-		os.Setenv("HTTP_ONLY", origHTTPOnly)
-	}()
+	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
 	os.Setenv("BCDA_TLS_CERT", "foo.crt")
 	os.Setenv("BCDA_TLS_KEY", "foo.key")
@@ -178,16 +154,11 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
 	sm.AddServer(&srv, "/test")
 
 	go func() {
-		origTLSCert := os.Getenv("BCDA_TLS_CERT")
-		origTLSKey := os.Getenv("BCDA_TLS_KEY")
-		origHTTPOnly := os.Getenv("HTTP_ONLY")
+		origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
 		defer func() {
 			sm.Close()
-
-			os.Setenv("BCDA_TLS_CERT", origTLSCert)
-			os.Setenv("BCDA_TLS_KEY", origTLSKey)
-			os.Setenv("HTTP_ONLY", origHTTPOnly)
+			resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 		}()
 
 		os.Setenv("BCDA_TLS_CERT", "")
@@ -219,16 +190,11 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP_emptyPath() {
 	sm.AddServer(&srv, "")
 
 	go func() {
-		origTLSCert := os.Getenv("BCDA_TLS_CERT")
-		origTLSKey := os.Getenv("BCDA_TLS_KEY")
-		origHTTPOnly := os.Getenv("HTTP_ONLY")
+		origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
 		defer func() {
 			sm.Close()
-
-			os.Setenv("BCDA_TLS_CERT", origTLSCert)
-			os.Setenv("BCDA_TLS_KEY", origTLSKey)
-			os.Setenv("HTTP_ONLY", origHTTPOnly)
+			resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 		}()
 
 		os.Setenv("BCDA_TLS_CERT", "")
@@ -258,4 +224,14 @@ func (s *ServiceMuxTestSuite) TestIsHTTPS_false() {
 
 func TestServiceMuxTestSuite(t *testing.T) {
 	suite.Run(t, new(ServiceMuxTestSuite))
+}
+
+func getOrigVars() (origTLSCert, origTLSKey, origHTTPOnly string) {
+	return os.Getenv("BCDA_TLS_CERT"), os.Getenv("BCDA_TLS_KEY"), os.Getenv("HTTP_ONLY")
+}
+
+func resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly string) {
+	os.Setenv("BCDA_TLS_CERT", origTLSCert)
+	os.Setenv("BCDA_TLS_KEY", origTLSKey)
+	os.Setenv("HTTP_ONLY", origHTTPOnly)
 }
