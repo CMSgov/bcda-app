@@ -63,9 +63,10 @@ func URLPrefixMatcher(prefix string) cmux.Matcher {
 }
 
 type ServiceMux struct {
-	Addr     string
-	Listener net.Listener
-	Servers  []map[*http.Server]string
+	Addr      string
+	Listener  net.Listener
+	Servers   []map[*http.Server]string
+	TLSConfig tls.Config
 }
 
 func New(addr string) *ServiceMux {
@@ -108,7 +109,7 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 		log.Panic(err)
 	}
 
-	config := &tls.Config{
+	sm.TLSConfig = tls.Config{
 		Certificates: []tls.Certificate{certificate},
 		Rand:         rand.Reader,
 		PreferServerCipherSuites: true,
@@ -118,31 +119,9 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 		},
 	}
 
-	sm.Listener = tls.NewListener(sm.Listener, config)
+	sm.Listener = tls.NewListener(sm.Listener, &sm.TLSConfig)
 
-	m := cmux.New(sm.Listener)
-
-	for _, server := range sm.Servers {
-		for srv, path := range server {
-			var match net.Listener
-
-			if path == "" {
-				match = m.Match(cmux.Any())
-			} else {
-				match = m.Match(URLPrefixMatcher(path))
-			}
-
-			srv.TLSConfig = config
-
-			//nolint
-			go srv.Serve(match)
-		}
-	}
-
-	err = m.Serve()
-	if err != nil {
-		panic(err)
-	}
+	sm.serveHTTP()
 }
 
 func (sm *ServiceMux) serveHTTP() {
@@ -158,6 +137,8 @@ func (sm *ServiceMux) serveHTTP() {
 				match = m.Match(URLPrefixMatcher(path))
 			}
 
+			srv.TLSConfig = &sm.TLSConfig
+
 			//nolint
 			go srv.Serve(match)
 		}
@@ -167,6 +148,10 @@ func (sm *ServiceMux) serveHTTP() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (sm *ServiceMux) Close() {
+	sm.Listener.Close()
 }
 
 func IsHTTPS(r *http.Request) bool {
