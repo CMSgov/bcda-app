@@ -16,8 +16,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	que "github.com/bgentry/que-go"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/bgentry/que-go"
+	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -223,6 +223,8 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", "test")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -246,6 +248,8 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", jobID)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -277,6 +281,8 @@ func (s *APITestSuite) TestJobStatusPending() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -302,6 +308,8 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -328,6 +336,8 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -359,6 +369,8 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -401,6 +413,8 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
 	if _, err := os.Stat(f); os.IsNotExist(err) {
@@ -545,7 +559,7 @@ func makeToken(acoId, userId string) *jwt.Token {
 	return token
 }
 
-func (s *APITestSuite) TestWrongACOForJobStatus() {
+func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	j := models.Job{
 		AcoID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
 		UserID:     uuid.Parse("82503a18-bf3b-436d-ba7b-bae09b7ffd2f"),
@@ -562,11 +576,12 @@ func (s *APITestSuite) TestWrongACOForJobStatus() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	req.Header.Add("Bearer", makeToken("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", "82503a18-bf3b-436d-ba7b-bae09b7ffd2f").Raw)
+	token := makeToken("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", "82503a18-bf3b-436d-ba7b-bae09b7ffd2f")
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 
 	s.db.Delete(&j)
 }

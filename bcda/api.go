@@ -220,8 +220,19 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
+
+	var claims jwt.MapClaims
+
+	if claims, err = readTokenClaims(r); err != nil {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
+	acoId := claims["aco"].(string)
+
 	var job models.Job
-	err = db.First(&job, i).Error
+	err = db.Find(&job, "id = ? and aco_id = ?", i, acoId).Error
 	if err != nil {
 		log.Print(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
