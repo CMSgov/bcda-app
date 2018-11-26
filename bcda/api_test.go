@@ -534,6 +534,43 @@ func (s *APITestSuite) TestGetVersion() {
 	assert.Equal(s.T(), "latest", respMap["version"])
 }
 
+func makeToken(acoId, userId string) *jwt.Token {
+	token := jwt.New(jwt.SigningMethodRS512)
+	token.Claims = jwt.MapClaims{
+		"sub": userId,
+		"aco": acoId,
+		"id":  uuid.NewRandom().String(),
+	}
+	token.Valid = true
+	return token
+}
+
+func (s *APITestSuite) TestWrongACOForJobStatus() {
+	j := models.Job{
+		AcoID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
+		UserID:     uuid.Parse("82503a18-bf3b-436d-ba7b-bae09b7ffd2f"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+	assert.Nil(s.T(), err)
+
+	handler := http.HandlerFunc(jobStatus)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req.Header.Add("Bearer", makeToken("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", "82503a18-bf3b-436d-ba7b-bae09b7ffd2f").Raw)
+
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+
+	s.db.Delete(&j)
+}
+
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
 }
