@@ -33,6 +33,7 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -88,16 +89,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	t := r.Context().Value("token")
-	if token, ok := t.(*jwt.Token); ok && token.Valid {
-		claims, err = auth.ClaimsFromToken(token)
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-			responseutils.WriteError(oo, w, http.StatusUnauthorized)
-			return
-		}
-	} else {
+	if claims, err = readTokenClaims(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
@@ -470,4 +462,26 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
+}
+
+func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
+	var (
+		claims jwt.MapClaims
+		err    error
+	)
+
+	t := r.Context().Value("token")
+	if token, ok := t.(*jwt.Token); ok && token.Valid {
+		claims, err = auth.ClaimsFromToken(token)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+	} else {
+		err = errors.New("missing or invalid token")
+		log.Error(err)
+		return nil, err
+	}
+
+	return claims, nil
 }
