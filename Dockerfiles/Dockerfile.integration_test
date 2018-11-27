@@ -1,9 +1,26 @@
 FROM golang:1.10.3
 
+# START WORKAROUND
+#
+# Once the bcda updates become part of master, pull standard repo instead of
+# the forked repo
+#RUN go get -u github.com/whytheplatypus/tester
+#
+# But for now, we have to use this workaround since main.go has imports which
+# reference the project dir structure (the fork breaks this structure)
+#
 RUN go get -u github.com/whytheplatypus/tester
+WORKDIR /go/src/github.com/whytheplatypus/tester
+RUN git remote add fork https://github.com/msnook/tester.git
+RUN git pull fork master
+#
+# END WORKAROUND
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test
 COPY . .
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test/integration_test
-CMD ["tester", "version.toml"]
+
+# Use simple tester command once the fork gets merged to main repo
+# CMD ["tester", "-var", "PROTOCOL=http", "-var", "HOST=api:3000", "version.toml"]
+CMD ["go", "run", "/go/src/github.com/whytheplatypus/tester/main.go", "-var", "PROTOCOL=http", "-var", "HOST=api:3000", "version.toml"]

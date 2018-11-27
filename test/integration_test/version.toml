@@ -1,9 +1,10 @@
 [bcda-version-request-test]
 name = "Version request test"
-uri = "http://api:3000/_version"
+uri = "{{.PROTOCOL}}://{{.HOST}}/_version"
 method = "GET"
 	[bcda-version-request-test.assert]
 		[bcda-version-request-test.assert.code]
 		code = 200
                 [bcda-version-request-test.assert.jsonschema]
 		ref = "./version.json"
+
