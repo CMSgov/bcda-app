@@ -1,0 +1,7 @@
+{
+    "version": {
+        "type": "string"
+    },
+    "required": ["version"]
+}
+

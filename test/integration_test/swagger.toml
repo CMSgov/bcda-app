@@ -1,0 +1,8 @@
+[bcda-swagger-request-test]
+name = "Swagger request test"
+uri = "{{.PROTOCOL}}://{{.HOST}}/api/v1/swagger"
+method = "GET"
+	[bcda-swagger-request-test.assert]
+		[bcda-swagger-request-test.assert.code]
+		code = 200
+
