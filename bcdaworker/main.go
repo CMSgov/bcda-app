@@ -191,9 +191,7 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID st
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
 	fileName := fmt.Sprintf("%s/%s/%s-error.ndjson", dataDir, jobID, acoID)
-
-	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
 	if err != nil {
 		log.Error(err)
