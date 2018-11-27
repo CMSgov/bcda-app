@@ -88,6 +88,8 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
 	}
 
 	sm := New("127.0.0.1:0")
+	addr := sm.Listener.Addr().String()
+
 	sm.AddServer(srv, "/test")
 
 	go func() {
@@ -111,7 +113,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
 		},
 	}
 
-	resp, err := http.Get("https://" + sm.Listener.Addr().String() + "/test")
+	resp, err := http.Get("https://" + addr + "/test")
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -151,6 +153,8 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
 	}
 
 	sm := New("127.0.0.1:0")
+	addr := sm.Listener.Addr().String()
+
 	sm.AddServer(&srv, "/test")
 
 	go func() {
@@ -168,7 +172,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
 		sm.Serve()
 	}()
 
-	resp, err := http.Get("http://" + sm.Listener.Addr().String() + "/test")
+	resp, err := http.Get("http://" + addr + "/test")
 	if err != nil {
 		s.T().Fatal(err)
 	}
@@ -187,6 +191,8 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP_emptyPath() {
 	}
 
 	sm := New("127.0.0.1:0")
+	addr := sm.Listener.Addr().String()
+
 	sm.AddServer(&srv, "")
 
 	go func() {
@@ -204,7 +210,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP_emptyPath() {
 		sm.Serve()
 	}()
 
-	resp, err := http.Get("http://" + sm.Listener.Addr().String() + "/foo")
+	resp, err := http.Get("http://" + addr + "/foo")
 	if err != nil {
 		s.T().Fatal(err)
 	}
