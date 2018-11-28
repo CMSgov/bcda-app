@@ -167,6 +167,7 @@ func logRequest(req *http.Request, resp *http.Response, jobID string) {
 			"bb_query_id":    resp.Header.Get("BlueButton-OriginalQueryId"),
 			"bb_query_ts":    resp.Header.Get("BlueButton-OriginalQueryTimestamp"),
 			"bb_uri":         resp.Header.Get("BlueButton-OriginalUrl"),
+			"job_id":         jobID,
 			"content_length": resp.ContentLength,
 		}).Infoln("Blue Button response")
 	}
