@@ -35,7 +35,7 @@ func (s *MainTestSuite) SetupTest() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
 	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/bb-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
-	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/test-server-cert.pem")
+	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
 	models.InitializeGormModels()
 }
 
