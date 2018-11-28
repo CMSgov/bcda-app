@@ -49,7 +49,7 @@ func (s *BBTestSuite) TestGetBlueButtonCoverageData() {
 }
 
 func (s *BBTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
-	e, err := s.bbClient.GetExplanationOfBenefitData("012345")
+	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), `{ "test": "ok" }`, e)
 }

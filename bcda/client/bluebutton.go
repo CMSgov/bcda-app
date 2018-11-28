@@ -20,7 +20,7 @@ var logger *logrus.Logger
 const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
-	GetExplanationOfBenefitData(patientID string) (string, error)
+	GetExplanationOfBenefitData(patientID string, jobID string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -31,10 +31,10 @@ func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 	filePath := os.Getenv("BCDA_BB_LOG")
-	
+
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0640)
-	
+
 	if err == nil {
 		logger.SetOutput(file)
 	} else {
@@ -82,30 +82,30 @@ func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
 	params := url.Values{}
 	params.Set("_id", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData(blueButtonBasePath+"/Patient/", params)
+	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
 }
 
 func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID string) (string, error) {
 	params := url.Values{}
 	params.Set("beneficiary", beneficiaryID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData(blueButtonBasePath+"/Coverage/", params)
+	return bbc.getData(blueButtonBasePath+"/Coverage/", params, "")
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
 	params := url.Values{}
 	params.Set("patient", patientID)
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params)
+	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	params := url.Values{}
 	params.Set("_format", "application/fhir+json")
-	return bbc.getData(blueButtonBasePath+"/metadata/", params)
+	return bbc.getData(blueButtonBasePath+"/metadata/", params, "")
 }
 
-func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, error) {
+func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID string) (string, error) {
 	reqID := uuid.NewRandom()
 
 	bbServer := os.Getenv("BB_SERVER_LOCATION")
@@ -120,7 +120,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, er
 	addRequestHeaders(req, reqID)
 
 	resp, err := bbc.httpClient.Do(req)
-	logRequest(req, resp)
+	logRequest(req, resp, jobID)
 	if err != nil {
 		return "", err
 	}
@@ -153,11 +153,12 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	req.Header.Add("BlueButton-BackendCall", "")
 }
 
-func logRequest(req *http.Request, resp *http.Response) {
+func logRequest(req *http.Request, resp *http.Response, jobID string) {
 	logger.WithFields(logrus.Fields{
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
+		"job_id":      jobID,
 	}).Infoln("Blue Button request")
 
 	if resp != nil {
