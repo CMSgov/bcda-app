@@ -1,0 +1,9 @@
+[bcda-eob-request-test]
+name = "Explanation of Benefit request test (invalid token)"
+uri = "{{.PROTOCOL}}://{{.HOST}}/api/v1/ExplanationOfBenefit/$export"
+method = "GET"
+	[bcda-eob-request-test.assert]
+		[bcda-eob-request-test.assert.code]
+		code = 401
+                [bcda-eob-request-test.assert.jsonschema]
+                ref = "./eob-notoken.json"

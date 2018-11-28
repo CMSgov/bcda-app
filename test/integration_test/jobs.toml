@@ -1,0 +1,9 @@
+[bcda-jobs-request-test]
+name = "Jobs request test (invalid token)"
+uri = "{{.PROTOCOL}}://{{.HOST}}/api/v1/jobs/1"
+method = "GET"
+	[bcda-jobs-request-test.assert]
+		[bcda-jobs-request-test.assert.code]
+		code = 401
+                [bcda-jobs-request-test.assert.jsonschema]
+                ref = "./jobs-notoken.json"

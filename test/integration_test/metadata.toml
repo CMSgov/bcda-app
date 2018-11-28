@@ -5,6 +5,6 @@ method = "GET"
 	[bcda-metadata-request-test.assert]
 		[bcda-metadata-request-test.assert.code]
 		code = 200
-                [bcda-metdata-request-test.assert.jsonschema]
+                [bcda-metadata-request-test.assert.jsonschema]
 		ref = "./metadata.json"
 

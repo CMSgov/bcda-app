@@ -1,7 +1,4 @@
 {
-    "version": {
-        "type": "string"
-    },
-    "required": ["version"]
+	"required": ["version"]
 }
 

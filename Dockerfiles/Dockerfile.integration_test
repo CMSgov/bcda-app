@@ -22,5 +22,5 @@ COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test/integration_test
 
 # Use simple tester command once the fork gets merged to main repo
-# CMD ["tester", "-var", "PROTOCOL=http", "-var", "HOST=api:3000", "version.toml", "swagger.toml"]
-CMD ["go", "run", "/go/src/github.com/whytheplatypus/tester/main.go", "-var", "PROTOCOL=http", "-var", "HOST=api:3000", "version.toml", "swagger.toml"]
+# CMD ["tester", "-var", "PROTOCOL=http", "-var", "HOST=api:3000", "version.toml", "swagger.toml", "metadata.toml", "jobs.toml", "eob.toml"]
+CMD ["go", "run", "/go/src/github.com/whytheplatypus/tester/main.go", "-var", "PROTOCOL=http", "-var", "HOST=api:3000", "version.toml", "swagger.toml", "metadata.toml", "jobs.toml", "eob.toml"]
