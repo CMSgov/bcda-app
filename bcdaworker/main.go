@@ -39,7 +39,9 @@ type jobEnqueueArgs struct {
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+
+	/* #nosec -- 0640 permissions required for Splunk ingestion */
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
 	if err == nil {
 		log.SetOutput(file)
 	} else {
@@ -190,6 +192,7 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID st
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
 	fileName := fmt.Sprintf("%s/%s/%s-error.ndjson", dataDir, jobID, acoID)
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+
 	if err != nil {
 		log.Error(err)
 	}
