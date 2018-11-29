@@ -46,3 +46,4 @@ script:
   - make docker-bootstrap
   - make test
   - make smoke-test
+  - make integration-test

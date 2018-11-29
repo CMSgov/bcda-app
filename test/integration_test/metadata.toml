@@ -1,0 +1,10 @@
+[bcda-metadata-request-test]
+name = "Metadata request test"
+uri = "{{.PROTOCOL}}://{{.HOST}}/api/v1/metadata"
+method = "GET"
+	[bcda-metadata-request-test.assert]
+		[bcda-metadata-request-test.assert.code]
+		code = 200
+                [bcda-metadata-request-test.assert.jsonschema]
+		ref = "./metadata.json"
+
