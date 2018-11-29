@@ -11,6 +11,8 @@ FROM golang:1.10.3
 #
 RUN go get -u github.com/whytheplatypus/tester
 WORKDIR /go/src/github.com/whytheplatypus/tester
+RUN git config --global user.email "bcda-ops.group@adhocteam.us"
+RUN git config --global user.name "BCDA Ops"
 RUN git remote add fork https://github.com/msnook/tester.git
 RUN git pull fork master
 #
