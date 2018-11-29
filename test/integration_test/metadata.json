@@ -1,0 +1,4 @@
+{
+	"required": ["resourceType", "status", "date", "publisher", "kind", "instantiates", "software", "implementation", "fhirVersion", "acceptUnknown", "format", "rest"]
+}
+
