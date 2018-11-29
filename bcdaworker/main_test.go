@@ -147,7 +147,7 @@ func TestAppendErrorToFile(t *testing.T) {
 	os.Remove(filePath)
 }
 
-func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
+func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
 	args := bbc.Called(patientID)
 	return args.String(0), args.Error(1)
 }

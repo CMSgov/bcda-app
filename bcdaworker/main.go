@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"regexp"
 	"strconv"
 	"syscall"
+
+	"github.com/CMSgov/bcda-app/bcda/encryption"
 
 	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
@@ -172,7 +173,7 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 	w := bufio.NewWriter(f)
 
 	for _, beneficiaryID := range beneficiaryIDs {
-		pData, err := bb.GetExplanationOfBenefitData(beneficiaryID)
+		pData, err := bb.GetExplanationOfBenefitData(beneficiaryID, jobID)
 		if err != nil {
 			log.Error(err)
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID), jobID)
