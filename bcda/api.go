@@ -75,6 +75,13 @@ import (
 		500:FHIRResponse
 */
 func bulkRequest(w http.ResponseWriter, r *http.Request) {
+	t := chi.URLParam(r, "resourceType")
+	if t != "ExplanationOfBenefit" && t != "Patient" {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
+		responseutils.WriteError(oo, w, http.StatusNotFound)
+		return
+	}
+
 	m := monitoring.GetMonitor()
 	txn := m.Start("bulkRequest", w, r)
 	defer m.End(txn)
@@ -149,6 +156,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		AcoID:          acoId,
 		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
+		ResourceType:   t,
 		// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
 		Encrypt: encrypt,
 	})
