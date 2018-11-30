@@ -35,6 +35,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -262,8 +263,11 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			scheme = "https"
 		}
 
+		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient)/\$export`)
+		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
+
 		fi := fileItem{
-			Type: "ExplanationOfBenefit",
+			Type: resourceType,
 			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
