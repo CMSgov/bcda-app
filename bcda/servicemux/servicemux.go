@@ -110,8 +110,8 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 	}
 
 	sm.TLSConfig = tls.Config{
-		Certificates: []tls.Certificate{certificate},
-		Rand:         rand.Reader,
+		Certificates:             []tls.Certificate{certificate},
+		Rand:                     rand.Reader,
 		PreferServerCipherSuites: true,
 		CurvePreferences: []tls.CurveID{
 			tls.CurveP256,
@@ -151,7 +151,10 @@ func (sm *ServiceMux) serveHTTP() {
 }
 
 func (sm *ServiceMux) Close() {
-	sm.Listener.Close()
+	err := sm.Listener.Close()
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 func IsHTTPS(r *http.Request) bool {
