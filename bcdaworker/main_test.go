@@ -59,7 +59,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.getData("ExplanationOfBenefit", beneficiaryIDs[i]))
 	}
 
-	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, jobID)
+	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -84,7 +84,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileNoClient(t *testing.T) {
-	err := writeEOBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"}, "1")
+	err := writeBBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"}, "1", "ExplanationOfBenefit")
 	assert.NotNil(t, err)
 }
 
@@ -93,7 +93,7 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
 	beneficiaryIDs := []string{"10000", "11000"}
 
-	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, "1")
+	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, "1", "ExplanationOfBenefit")
 	assert.NotNil(t, err)
 }
 
@@ -107,7 +107,7 @@ func TestWriteEOBDataToFileWithError(t *testing.T) {
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	err := writeEOBDataToFile(&bbc, acoID, beneficiaryIDs, jobID)
+	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -164,7 +164,7 @@ func (bbc *MockBlueButtonClient) getData(endpoint, patientID string) (string, er
 	return cleanData, err
 }
 
-func (s *MainTestSuite) TestProcessJob() {
+func (s *MainTestSuite) TestProcessJobEOB() {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -176,11 +176,13 @@ func (s *MainTestSuite) TestProcessJob() {
 	}
 	db.Save(&j)
 
-	jobArgs := new(jobEnqueueArgs)
-	jobArgs.ID = int(j.ID)
-	jobArgs.AcoID = j.AcoID.String()
-	jobArgs.UserID = j.UserID.String()
-	jobArgs.BeneficiaryIDs = []string{"10000", "11000"}
+	jobArgs := jobEnqueueArgs{
+		ID:             int(j.ID),
+		AcoID:          j.AcoID.String(),
+		UserID:         j.UserID.String(),
+		BeneficiaryIDs: []string{"10000", "11000"},
+		ResourceType:   "ExplanationOfBenefit",
+	}
 	args, _ := json.Marshal(jobArgs)
 
 	job := &que.Job{

@@ -33,6 +33,7 @@ type jobEnqueueArgs struct {
 	AcoID          string
 	UserID         string
 	BeneficiaryIDs []string
+	ResourceType   string
 	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
 	Encrypt bool
 }
@@ -91,7 +92,8 @@ func processJob(j *que.Job) error {
 			return err
 		}
 	}
-	err = writeEOBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs, jobID)
+
+	err = writeBBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 
 	if err != nil {
 		exportJob.Status = "Failed"
@@ -147,16 +149,29 @@ func processJob(j *que.Job) error {
 	return nil
 }
 
-func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID string) error {
-	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
-	if !re.Match([]byte(acoID)) {
-		err := errors.New("Invalid ACO ID")
+func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) error {
+	if bb == nil {
+		err := errors.New("Blue Button client is required")
 		log.Error(err)
 		return err
 	}
 
-	if bb == nil {
-		err := errors.New("Blue Button client is required")
+	// TODO: Should this error be returned or written to file?
+	var bbFunc client.BeneDataFunc
+	switch t {
+	case "ExplanationOfBenefit":
+		bbFunc = bb.GetExplanationOfBenefitData
+	case "Patient":
+		bbFunc = bb.GetPatientData
+	default:
+		err := fmt.Errorf("Invalid resource type requested: %s", t)
+		log.Error(err)
+		return err
+	}
+
+	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
+	if !re.Match([]byte(acoID)) {
+		err := errors.New("Invalid ACO ID")
 		log.Error(err)
 		return err
 	}
@@ -173,12 +188,12 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 	w := bufio.NewWriter(f)
 
 	for _, beneficiaryID := range beneficiaryIDs {
-		pData, err := bb.GetExplanationOfBenefitData(beneficiaryID, jobID)
+		pData, err := bbFunc(beneficiaryID, jobID)
 		if err != nil {
 			log.Error(err)
-			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving ExplanationOfBenefit for beneficiary %s in ACO %s", beneficiaryID, acoID), jobID)
+			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, beneficiaryID, acoID), jobID)
 		} else {
-			fhirBundleToResourceNDJSON(w, pData, "ExplanationOfBenefits", beneficiaryID, acoID, jobID)
+			fhirBundleToResourceNDJSON(w, pData, t, beneficiaryID, acoID, jobID)
 		}
 	}
 
@@ -210,12 +225,12 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID st
 	}
 }
 
-func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID string, jobID string) {
+func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID, jobID string) {
 	var jsonOBJ map[string]interface{}
 	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
 	if err != nil {
 		log.Error(err)
-		appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error UnMarshaling %s from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+		appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error UnMarshaling %s resources from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		return
 	}
 

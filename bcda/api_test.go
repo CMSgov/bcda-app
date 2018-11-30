@@ -5,11 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/bcda/encryption"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -56,8 +57,12 @@ func (s *APITestSuite) TestBulkRequest() {
 	}
 	token.Valid = true
 
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -101,6 +106,10 @@ func (s *APITestSuite) TestBulkRequestNoBeneficiariesInACO() {
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -126,6 +135,10 @@ func (s *APITestSuite) TestBulkRequestNoBeneficiariesInACO() {
 
 func (s *APITestSuite) TestBulkRequestMissingToken() {
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler := http.HandlerFunc(bulkRequest)
 	handler.ServeHTTP(s.rr, req)
@@ -160,6 +173,10 @@ func (s *APITestSuite) TestBulkRequestUserDoesNotExist() {
 
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler := http.HandlerFunc(bulkRequest)
 	handler.ServeHTTP(s.rr, req)
@@ -197,6 +214,11 @@ func (s *APITestSuite) TestBulkRequestNoQueue() {
 
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
 	handler := http.HandlerFunc(bulkRequest)
 	handler.ServeHTTP(s.rr, req)
 
