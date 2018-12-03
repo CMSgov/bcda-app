@@ -194,7 +194,10 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	}
 	defer f.Close()
 
-	archiveExpiring(0)
+	err = archiveExpiring(0)
+        if err != nil {
+		s.T().Error(err)	
+	}
 
 	//check that the file has moved to the archive location
 	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
@@ -248,7 +251,10 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 	}
 	defer f.Close()
 
-	archiveExpiring(1)
+	err = archiveExpiring(1)
+        if err != nil {
+                s.T().Error(err)
+        }
 
 	//check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
