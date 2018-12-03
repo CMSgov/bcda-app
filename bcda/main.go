@@ -480,7 +480,7 @@ func archiveExpiring(hrThreshold int) error {
 			}
 		}
 	}
-	
+
 	return lastJobError
 }
 
