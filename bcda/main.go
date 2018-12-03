@@ -283,8 +283,7 @@ func setUpApp() *cli.App {
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
 				threshold := getEnvInt("ARCHIVE_THRESHOLD_HR", 24)
-				archiveExpiring(threshold)
-				return nil
+				return archiveExpiring(threshold)
 			},
 		},
 		{
@@ -435,7 +434,7 @@ func getEnvInt(varName string, defaultVal int) int {
 	return defaultVal
 }
 
-func archiveExpiring(hrThreshold int) {
+func archiveExpiring(hrThreshold int) error {
 	log.Info("Archiving expiring job files...")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -444,6 +443,7 @@ func archiveExpiring(hrThreshold int) {
 	err := db.Find(&jobs, "status = ?", "Completed").Error
 	if err != nil {
 		log.Error(err)
+		return err
 	}
 
 	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
@@ -451,9 +451,11 @@ func archiveExpiring(hrThreshold int) {
 		err = os.MkdirAll(expDir, os.ModePerm)
 		if err != nil {
 			log.Error(err)
+			return err
 		}
 	}
 
+	var lastJobError error
 	for _, j := range jobs {
 		t := j.CreatedAt
 		elapsed := time.Since(t).Hours()
@@ -466,6 +468,7 @@ func archiveExpiring(hrThreshold int) {
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
 				log.Error(err)
+				lastJobError = err
 				continue
 			}
 
@@ -473,9 +476,12 @@ func archiveExpiring(hrThreshold int) {
 			err = db.Save(j).Error
 			if err != nil {
 				log.Error(err)
+				lastJobError = err
 			}
 		}
 	}
+	
+	return lastJobError
 }
 
 func cleanupArchive(hrThreshold int) error {
