@@ -20,7 +20,7 @@ func NewStructuredLogger() func(next http.Handler) http.Handler {
 	filePath := os.Getenv("BCDA_REQUEST_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0640)
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
 
 	if err == nil {
 		logger.SetOutput(file)
