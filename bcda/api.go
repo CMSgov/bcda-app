@@ -56,7 +56,11 @@ import (
 )
 
 /*
+<<<<<<< HEAD
 	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
+=======
+	swagger:route GET /ExplanationOfBenefit/$export bulkData bulkEOBRequest
+>>>>>>> Split bulkRequest into two routes and functions to enable Swagger docs
 
 	Start explanation of benefit export
 
@@ -75,14 +79,35 @@ import (
 		400:ErrorModel
 		500:FHIRResponse
 */
-func bulkRequest(w http.ResponseWriter, r *http.Request) {
-	t := chi.URLParam(r, "resourceType")
-	if t != "ExplanationOfBenefit" && t != "Patient" {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
-		responseutils.WriteError(oo, w, http.StatusNotFound)
-		return
-	}
+func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
+	bulkRequest("ExplanationOfBenefit", w, r)
+}
 
+/*
+	swagger:route GET /Patient/$export bulkData bulkPatientRequest
+
+	Start patient data export
+
+	Initiates a job to collect data from the Blue Button API for your ACO.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		api_key
+
+	Responses:
+		202:BulkRequestResponse
+		400:ErrorModel
+		500:FHIRResponse
+*/
+func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	bulkRequest("Patient", w, r)
+}
+
+func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	m := monitoring.GetMonitor()
 	txn := m.Start("bulkRequest", w, r)
 	defer m.End(txn)
