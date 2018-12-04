@@ -76,7 +76,10 @@ func (s *AuthTestSuite) SetupAuthBackend() {
 		log.Fatal(err)
 	}
 
-	os.Setenv("JWT_PRIVATE_KEY_FILE", privKeyFile.Name())
+	err = os.Setenv("JWT_PRIVATE_KEY_FILE", privKeyFile.Name())
+	if err != nil {
+		log.Panic(err)
+	}
 	s.TmpFiles = append(s.TmpFiles, privKeyFile.Name())
 	s.SavePrivateKey(privKeyFile, key)
 	defer privKeyFile.Close()
@@ -86,7 +89,10 @@ func (s *AuthTestSuite) SetupAuthBackend() {
 		log.Fatal(err)
 	}
 
-	os.Setenv("JWT_PUBLIC_KEY_FILE", pubKeyFile.Name())
+	err = os.Setenv("JWT_PUBLIC_KEY_FILE", pubKeyFile.Name())
+	if err != nil {
+		log.Panic(err)
+	}
 	s.TmpFiles = append(s.TmpFiles, pubKeyFile.Name())
 	s.SavePubKey(pubKeyFile, publicKey)
 	defer pubKeyFile.Close()
@@ -95,7 +101,10 @@ func (s *AuthTestSuite) SetupAuthBackend() {
 }
 
 func CreateStaging(jobID string) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
+	err := os.Setenv("FHIR_STAGING_DIR", "data/test")
+	if err != nil {
+		log.Panic(err)
+	}
 	testdir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 
 	if _, err := os.Stat(testdir); os.IsNotExist(err) {
