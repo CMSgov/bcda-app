@@ -44,7 +44,7 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 	s.SetupAuthBackend()
 
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
-	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkrequest@example.com", uuid.Parse(acoID))
+	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -59,10 +59,6 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 
 	req := httptest.NewRequest("GET", "/api/v1/test/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -106,10 +102,6 @@ func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -135,10 +127,6 @@ func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 
 func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler := http.HandlerFunc(bulkEOBRequest)
 	handler.ServeHTTP(s.rr, req)
@@ -174,10 +162,6 @@ func (s *APITestSuite) TestBulkEOBRequestUserDoesNotExist() {
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-
 	handler := http.HandlerFunc(bulkEOBRequest)
 	handler.ServeHTTP(s.rr, req)
 
@@ -203,6 +187,7 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	if err != nil {
 		s.T().Error(err)
 	}
+	defer s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
 
 	token := jwt.New(jwt.SigningMethodRS512)
 	token.Claims = jwt.MapClaims{
@@ -214,10 +199,6 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("resourceType", "ExplanationOfBenefit")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler := http.HandlerFunc(bulkEOBRequest)
 	handler.ServeHTTP(s.rr, req)
@@ -233,8 +214,60 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
+}
 
-	s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
+func (s *APITestSuite) TestBulkPatientRequest() {
+	s.SetupAuthBackend()
+
+	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
+	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
+
+	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkpatientrequest@example.com", uuid.Parse(acoID))
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	defer func() {
+		os.Setenv("ENABLE_PATIENT_EXPORT", origPtExp)
+		s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
+		s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
+	}()
+
+	token := jwt.New(jwt.SigningMethodRS512)
+	token.Claims = jwt.MapClaims{
+		"sub": user.UUID.String(),
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+	}
+	token.Valid = true
+
+	req := httptest.NewRequest("GET", "/api/v1/test/Patient/$export", nil)
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
+
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		s.T().Error(err)
+	}
+	defer pgxpool.Close()
+
+	qc = que.NewClient(pgxpool)
+
+	handler := http.HandlerFunc(bulkPatientRequest)
+	handler.ServeHTTP(s.rr, req)
+
+	fmt.Println("RESPONSE", s.rr.Body.String())
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+
 }
 
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
