@@ -88,6 +88,12 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
+	if t != "ExplanationOfBenefit" && t != "Patient" {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
 	m := monitoring.GetMonitor()
 	txn := m.Start("bulkRequest", w, r)
 	defer m.End(txn)

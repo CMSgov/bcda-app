@@ -265,9 +265,15 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	fmt.Println("RESPONSE", s.rr.Body.String())
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+}
 
+func (s *APITestSuite) TestBulkRequestInvalidType() {
+	req := httptest.NewRequest("GET", "/api/v1/test/Foo/$export", nil)
+
+	bulkRequest("Foo", s.rr, req)
+
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
