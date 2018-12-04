@@ -182,18 +182,24 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 	return openPrivateKeyFile(atoPrivateKeyFile)
 }
 func openPrivateKeyFile(privateKeyFile *os.File) *rsa.PrivateKey {
-	pemfileinfo, _ := privateKeyFile.Stat()
+	pemfileinfo, err := privateKeyFile.Stat()
+	if err != nil {
+		log.Panic(err)
+	}
 	var size int64 = pemfileinfo.Size()
 	pembytes := make([]byte, size)
 	buffer := bufio.NewReader(privateKeyFile)
-	_, err := buffer.Read(pembytes)
+	_, err = buffer.Read(pembytes)
 	if err != nil {
 		// Above buffer.Read succeeded on a blank file Not Sure how to reach this
 		log.Panic(err)
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
-	privateKeyFile.Close()
+	err = privateKeyFile.Close()
+	if err != nil {
+		log.Panic(err)
+	}
 
 	privateKeyImported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
 	if err != nil {
@@ -227,18 +233,24 @@ func GetATOPublicKey() *rsa.PublicKey {
 	return openPublicKeyFile(atoPublicKeyFile)
 }
 func openPublicKeyFile(publicKeyFile *os.File) *rsa.PublicKey {
-	pemfileinfo, _ := publicKeyFile.Stat()
+	pemfileinfo, err := publicKeyFile.Stat()
+	if err != nil {
+		log.Panic(err)
+	}
 	var size int64 = pemfileinfo.Size()
 	pembytes := make([]byte, size)
 	buffer := bufio.NewReader(publicKeyFile)
-	_, err := buffer.Read(pembytes)
+	_, err = buffer.Read(pembytes)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
 
-	publicKeyFile.Close()
+	err = publicKeyFile.Close()
+	if err != nil {
+		log.Panic(err)
+	}
 
 	publicKeyImported, err := x509.ParsePKIXPublicKey(data.Bytes)
 

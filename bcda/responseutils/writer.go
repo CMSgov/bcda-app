@@ -16,10 +16,13 @@ func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmo
 }
 
 func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, code int) {
-	outcomeJSON, _ := json.Marshal(outcome)
+	outcomeJSON, err := json.Marshal(outcome)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_, err := w.Write(outcomeJSON)
+	_, err = w.Write(outcomeJSON)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -119,10 +122,13 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 }
 
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
-	statementJSON, _ := json.Marshal(statement)
+	statementJSON, err := json.Marshal(statement)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write(statementJSON)
+	_, err = w.Write(statementJSON)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}

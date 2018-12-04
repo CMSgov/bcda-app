@@ -106,9 +106,12 @@ type FileParam struct {
 // swagger:parameters bulkRequest
 type BulkRequestHeaders struct {
 	// required: true
-	// pattern: application/fhir\+json
+	// in: header
+	// enum: [application/fhir+json]
 	Accept string
 	// required: true
 	// pattern: respond-async
+	// in: header
+	// enum: [respond-async]
 	Prefer string
 }
