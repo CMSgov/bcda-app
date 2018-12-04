@@ -133,7 +133,11 @@ func processJob(j *que.Job) error {
 				}
 			}
 		}
-		os.Remove(staging)
+		err = os.Remove(staging)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 		exportJob.Status = "Completed"
 	}
 
@@ -182,7 +186,10 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 		}
 	}
 
-	w.Flush()
+	err = w.Flush()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

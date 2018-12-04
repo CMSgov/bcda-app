@@ -14,7 +14,10 @@ var logFatal = log.Fatal
 
 func GetDbConnection() *sql.DB {
 	databaseURL := os.Getenv("DATABASE_URL")
-	db, _ := sql.Open("postgres", databaseURL)
+	db, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		logFatal(err)
+	}
 	pingErr := db.Ping()
 	if pingErr != nil {
 		logFatal(pingErr)
@@ -24,7 +27,10 @@ func GetDbConnection() *sql.DB {
 
 func GetGORMDbConnection() *gorm.DB {
 	databaseURL := os.Getenv("DATABASE_URL")
-	db, _ := gorm.Open("postgres", databaseURL)
+	db, err := gorm.Open("postgres", databaseURL)
+	if err != nil {
+		logFatal(err)
+	}
 	pingErr := db.DB().Ping()
 	if pingErr != nil {
 		logFatal(pingErr)
