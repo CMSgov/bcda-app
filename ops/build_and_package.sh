@@ -7,8 +7,6 @@ set -e
 
 VERSION=$1
 
-BCDA_RPM="bcda/bcda-*.rpm"
-
 #Prevent ioctl errors - gpg: signing failed: Inappropriate ioctl for device
 export GPG_TTY=$(tty)
 
@@ -45,6 +43,7 @@ echo "Packaging bcdaworker binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker
 
 #Sign RPMs
+WORKER_RPM="bcdaworker-*.rpm"
 echo "Importing GPG Key files"
 /usr/bin/gpg --batch --import $GPG_PUB_KEY_FILE
 /usr/bin/gpg --batch --import $GPG_SEC_KEY_FILE
@@ -58,6 +57,7 @@ echo $WORKER_RPM
 echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $WORKER_RPM
 
 cd ../bcda
+BCDA_RPM="bcda-*.rpm"
 echo "%_signature gpg %_gpg_path $PWD %_gpg_name $GPG_RPM_USER %_gpgbin /usr/bin/gpg" > $PWD/.rpmmacros
 echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
 
