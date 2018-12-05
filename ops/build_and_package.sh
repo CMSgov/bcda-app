@@ -6,6 +6,12 @@
 set -e
 
 VERSION=$1
+GPG_RPM_USER="Beneficiary Claims Data API"
+GPG_RPM_EMAIL="bcda-ops.group@adhocteam.us"
+GPG_PUB_KEY_FILE="../ops/RPM-GPG-KEY-bcda"
+GPG_SEC_KEY_FILE="../ops/RPM-GPG-KEY-SECRET-bcda"
+WORKER_RPM="bcdaworker-*.rpm"
+BCDA_RPM="bcda-*.rpm"
 
 #Prevent ioctl errors - gpg: signing failed: Inappropriate ioctl for device
 export GPG_TTY=$(tty)
