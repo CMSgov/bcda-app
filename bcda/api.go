@@ -56,11 +56,7 @@ import (
 )
 
 /*
-<<<<<<< HEAD
-	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
-=======
 	swagger:route GET /ExplanationOfBenefit/$export bulkData bulkEOBRequest
->>>>>>> Split bulkRequest into two routes and functions to enable Swagger docs
 
 	Start explanation of benefit export
 
