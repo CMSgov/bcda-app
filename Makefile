@@ -7,7 +7,7 @@ package:
 	# For example: make package version=r1
 	docker-compose up -d documentation
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
-	docker run --rm -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
+	docker run --rm -e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 integration-test:
 	docker-compose up -d 

@@ -33,3 +33,31 @@ go build
 echo "Packaging bcdaworker binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker
 
+#Sign RPMs
+GPG_RPM_USER="2AFAC6BABEFC07B6"
+GPG_RPM_EMAIL="bcda-ops.group@adhocteam.us"
+GPG_PUB_KEY_FILE="../ops/RPM-GPG-KEY-bcda"
+GPG_SEC_KEY_FILE="../ops/RPM-GPG-KEY-SECRET-bcda"
+WORKER_RPM="bcdaworker-*.rpm"
+
+#Prevent ioctl errors - gpg: signing failed: Inappropriate ioctl for device
+export GPG_TTY=$(tty)
+
+echo "Importing GPG Key files"
+/usr/bin/gpg --batch --import $GPG_PUB_KEY_FILE
+/usr/bin/gpg --batch --import $GPG_SEC_KEY_FILE
+/usr/bin/rpm --import $GPG_PUB_KEY_FILE
+
+echo "%_signature gpg %_gpg_path $PWD %_gpg_name $GPG_RPM_USER %_gpgbin /usr/bin/gpg" > $PWD/.rpmmacros
+echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+
+echo "Signing bcdaworker RPM"
+echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 -v --pinentry-mode loopback --sign $WORKER_RPM
+
+cd ../bcda
+BCDA_RPM="bcda-*.rpm"
+echo "%_signature gpg %_gpg_path $PWD %_gpg_name $GPG_RPM_USER %_gpgbin /usr/bin/gpg" > $PWD/.rpmmacros
+echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+
+echo "Signing bcda RPM"
+echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 -v --pinentry-mode loopback --sign $BCDA_RPM
