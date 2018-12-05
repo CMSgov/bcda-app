@@ -7,7 +7,15 @@ package:
 	# For example: make package version=r1
 	docker-compose up -d documentation
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
-	docker run --rm -e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
+	docker run --rm \
+	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
+	-e GPG_RPM_USER='${GPG_RPM_USER}' \
+	-e GPG_RPM_EMAIL='${GPG_RPM_EMAIL}' \
+	-e GPG_PUB_KEY_FILE='${GPG_PUB_KEY_FILE}' \
+	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
+	-e WORKER_RPM='${WORKER_RPM}' \
+	-e BCDA_RPM='${BCDA_RPM}' \
+	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 integration-test:
 	docker-compose up -d 
