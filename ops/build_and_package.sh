@@ -17,7 +17,7 @@ then
   exit 1
 fi
 
-[  -z "$GPG_RPM_USER" ] && echo "Please enter a Key ID or Username for the GPG Key Signature" || echo "GPG Key user provided" && exit 1
+[  -z "$GPG_RPM_USER" ] && echo "Please enter a Key ID or Username for the GPG Key Signature" `exit 1` || echo "GPG Key user provided"
 [  -z "$GPG_PUB_KEY_FILE" ] && echo "Please select a GPG Public Key File" `exit 1` || echo "GPG Public Key File provided"
 [  -z "$GPG_SEC_KEY_FILE" ] && echo "Please select a GPG Secret Key File" `exit 1` || echo "GPG Secret Key File provided"
 [  -z "$BCDA_GPG_RPM_PASSPHRASE" ] && echo "Please select the Passphrase to sign the RPMs" `exit 1` || echo "GPG Passphrase provided"
