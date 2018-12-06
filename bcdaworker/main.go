@@ -12,20 +12,22 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/CMSgov/bcda-app/bcda/encryption"
-
 	"github.com/jackc/pgx"
+	newrelic "github.com/newrelic/go-agent"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/bgentry/que-go"
 )
 
 var (
-	qc *que.Client
+	qc  *que.Client
+	txn newrelic.Transaction
 )
 
 type jobEnqueueArgs struct {
@@ -51,6 +53,10 @@ func init() {
 }
 
 func processJob(j *que.Job) error {
+	m := monitoring.GetMonitor()
+	txn = m.Start("processJob", nil, nil)
+	defer m.End(txn)
+
 	log.Info("Worker started processing job ", j.ID)
 
 	db := database.GetGORMDbConnection()
@@ -152,6 +158,8 @@ func processJob(j *que.Job) error {
 }
 
 func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID string) error {
+	defer newrelic.StartSegment(txn, "writeEOBDataToFile").End()
+
 	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
 	if !re.Match([]byte(acoID)) {
 		err := errors.New("Invalid ACO ID")
@@ -195,6 +203,8 @@ func writeEOBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []stri
 }
 
 func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {
+	defer newrelic.StartSegment(txn, "appendErrorToFile").End()
+
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
@@ -218,6 +228,8 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID st
 }
 
 func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID string, jobID string) {
+	defer newrelic.StartSegment(txn, "fhirBundleToResourceNDJSON").End()
+
 	var jsonOBJ map[string]interface{}
 	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
 	if err != nil {
