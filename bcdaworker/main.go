@@ -160,7 +160,7 @@ func processJob(j *que.Job) error {
 }
 
 func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) error {
-	defer newrelic.StartSegment(txn, "writeBBDataToFile").End()
+	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
 		err := errors.New("Blue Button client is required")
@@ -214,11 +214,16 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 		return err
 	}
 
+	err = segment.End()
+	if err != nil {
+		log.Error(err)
+	}
+
 	return nil
 }
 
 func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {
-	defer newrelic.StartSegment(txn, "appendErrorToFile").End()
+	segment := newrelic.StartSegment(txn, "appendErrorToFile")
 
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
@@ -240,10 +245,15 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID st
 	if _, err = f.WriteString(string(ooBytes) + "\n"); err != nil {
 		log.Error(err)
 	}
+
+	err = segment.End()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID, jobID string) {
-	defer newrelic.StartSegment(txn, "fhirBundleToResourceNDJSON").End()
+	segment := newrelic.StartSegment(txn, "fhirBundleToResourceNDJSON")
 
 	var jsonOBJ map[string]interface{}
 	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
@@ -274,6 +284,10 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 		}
 	}
 
+	err = segment.End()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func waitForSig() {
