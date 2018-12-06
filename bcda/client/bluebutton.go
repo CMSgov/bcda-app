@@ -20,7 +20,8 @@ var logger *logrus.Logger
 const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
-	GetExplanationOfBenefitData(patientID string, jobID string) (string, error)
+	GetExplanationOfBenefitData(patientID, jobID string) (string, error)
+	GetPatientData(patientID, jobID string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -78,14 +79,16 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	return &BlueButtonClient{*client}, nil
 }
 
-func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
+type BeneDataFunc func(string, string) (string, error)
+
+func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
 	params := url.Values{}
 	params.Set("_id", patientID)
 	params.Set("_format", "application/fhir+json")
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
 }
 
-func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (string, error) {
 	params := url.Values{}
 	params.Set("beneficiary", beneficiaryID)
 	params.Set("_format", "application/fhir+json")
