@@ -1,0 +1,690 @@
+{
+	"info": {
+		"_postman_id": "6071963a-3f7c-4f40-965b-7ebff2e8727b",
+		"name": "Beneficiary Claims Data API Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "ExplanationOfBenefit",
+			"item": [
+				{
+					"name": "Start EOB export, no token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+								"exec": [
+									"pm.test(\"Status code is 401\", function() {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Resource type is OperationOutcome\", function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.resourceType).to.eql(\"OperationOutcome\")",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/ExplanationOfBenefit/$export",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"ExplanationOfBenefit",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start EOB export, valid token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+								"exec": [
+									"pm.test(\"Status code is 202\", function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test(\"Has Content-Location header\", function() {",
+									"    pm.response.to.have.header(\"Content-Location\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/ExplanationOfBenefit/$export",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"ExplanationOfBenefit",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "67428a7f-fcea-4738-ac28-29890ba01fa2",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "d5a2f744-2ecf-401a-9467-21cb005efc96",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Patient",
+			"item": [
+				{
+					"name": "Start Patient export, no token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "32984f41-b285-4cdf-a316-783f43e16896",
+								"exec": [
+									"pm.test(\"Status code is 401\", function() {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"var respJson = pm.response.json();",
+									"",
+									"pm.test(\"Resource type is OperationOutcome\", function() {",
+									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+									"})",
+									"",
+									"pm.test(\"Issue details text is Invalid Token\", function() {",
+									"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid Token\")",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"Patient",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start Patient export, valid token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+								"exec": [
+									"pm.test(\"Status code is 202\", function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test(\"Has Content-Location header\", function() {",
+									"    pm.response.to.have.header(\"Content-Location\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/fhir+json"
+							},
+							{
+								"key": "Prefer",
+								"type": "text",
+								"value": "respond-async"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"Patient",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Job status",
+			"item": [
+				{
+					"name": "Get status, no token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "46e3bcf1-0dde-441a-8eb7-3038188e5314",
+								"exec": [
+									"pm.test(\"Status code is 401\", function() {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Resource type is OperationOutcome\", function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.resourceType).to.eql(\"OperationOutcome\")",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/jobs/{{jobId}}",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"jobs",
+								"{{jobId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get status, valid token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+								"exec": [
+									"pm.test(\"Status code is 202 or 200\", function() {",
+									"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+									"});",
+									"",
+									"if (pm.response.code === 202) {",
+									"    pm.test(\"Has X-Progress header\", function() {",
+									"        pm.response.to.have.header(\"X-Progress\", \"In Progress\");",
+									"    });",
+									"} else if (pm.response.code === 200) {",
+									"    const schema = {",
+									"        \"properties\": {",
+									"            \"transactionTime\": {",
+									"                \"type\": \"string\"",
+									"            },",
+									"            \"request\": {",
+									"                \"type\": \"string\"",
+									"            },",
+									"            \"requiresAccessToken\": {",
+									"                \"type\": \"boolean\"",
+									"            },",
+									"            \"output\": {",
+									"                \"type\": \"array\"",
+									"            },",
+									"            \"error\": {",
+									"                \"type\": \"array\"",
+									"            }",
+									"        }",
+									"    };",
+									"    ",
+									"    pm.test(\"Schema is valid\", function() {",
+									"        pm.expect(tv4.validate(pm.response.json(), schema)).to.be.true;",
+									"    })",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/fhir+json",
+								"disabled": true
+							},
+							{
+								"key": "Prefer",
+								"type": "text",
+								"value": "respond-async",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/jobs/{{jobId}}",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"jobs",
+								"{{jobId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Data",
+			"item": [
+				{
+					"name": "Get data, no token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+								"exec": [
+									"pm.test(\"Status code is 401\", function() {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Resource type is OperationOutcome\", function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.resourceType).to.eql(\"OperationOutcome\")",
+									"})"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"data",
+								"{{jobId}}",
+								"{{acoId}}.ndjson"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get data, valid token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+								"exec": [
+									"pm.test(\"Status code is 200\", function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Content-Type is application/fhir+json\", function() {",
+									"    pm.response.to.have.header(\"Content-Type\", \"application/fhir+json\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"data",
+								"{{jobId}}",
+								"{{acoId}}.ndjson"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get metadata",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "00a9ceb7-a32e-4a21-a689-201af70162bf",
+						"exec": [
+							"pm.test(\"Response time is less than 100 ms\", function() {",
+							"    pm.expect(pm.response.responseTime).to.be.below(100);",
+							"});",
+							"",
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Content-Type is application/json\", function() {",
+							"    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is CapabilityStatement\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"CapabilityStatement\")",
+							"})",
+							"",
+							"const schema = {",
+							"    \"properties\": {",
+							"        \"resourceType\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"status\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"date\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"publisher\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"kind\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"instantiates\": {",
+							"            \"type\": \"array\"",
+							"        },",
+							"        \"software\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"name\": {},",
+							"                \"version\": {},",
+							"                \"releaseDate\": {}",
+							"            }",
+							"        },",
+							"        \"implementation\": {",
+							"            \"type\": \"object\"",
+							"        },",
+							"        \"fhirVersion\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"acceptUnknown\":{",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"format\": {",
+							"            \"type\": \"array\"",
+							"        },",
+							"        \"rest\": {",
+							"            \"type\": \"array\"",
+							"        }",
+							"    }",
+							"};",
+							"pm.test(\"Schema is valid\", function() {",
+							"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"})"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/metadata",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"metadata"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f5145875-0310-4092-a8f3-4891a45e402a",
+						"exec": [
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.globals.set(\"token\", pm.response.text())"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/token",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"token"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
