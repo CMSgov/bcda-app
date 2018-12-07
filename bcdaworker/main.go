@@ -133,6 +133,11 @@ func processJob(j *que.Job) error {
 					log.Error(err)
 					return err
 				}
+				err = os.Remove(oldpath)
+				if err != nil {
+					log.Error(err)
+					return err
+				}
 			}
 		}
 		err = os.Remove(staging)
