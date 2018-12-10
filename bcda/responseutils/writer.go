@@ -117,8 +117,24 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 			},
 		},
 	}
-
+	checkEnv(statement, baseurl)
 	return statement
+}
+
+func checkEnv(statement *fhirmodels.CapabilityStatement, baseUrl string) {
+	if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
+		restComponent := statement.Rest[0].Operation
+
+		element := fhirmodels.CapabilityStatementRestOperationComponent{
+			Name: "export",
+			Definition: &fhirmodels.Reference{
+				Reference: baseUrl + "/api/v1/Patient/$export",
+				Type:      "Endpoint",
+			},
+		}
+		restComponent = append(restComponent, element)
+		statement.Rest[0].Operation = restComponent
+	}
 }
 
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
