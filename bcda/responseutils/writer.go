@@ -117,11 +117,11 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 			},
 		},
 	}
-	checkEnv(statement, baseurl)
+	addPatientEndpointToStatement(statement, baseurl)
 	return statement
 }
 
-func checkEnv(statement *fhirmodels.CapabilityStatement, baseUrl string) {
+func addPatientEndpointToStatement(statement *fhirmodels.CapabilityStatement, baseUrl string) {
 	if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
 		restComponent := statement.Rest[0].Operation
 
