@@ -54,12 +54,6 @@ func (s *BBTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
 	assert.Equal(s.T(), `{ "test": "ok" }`, e)
 }
 
-func (s *BBTestSuite) TestGetBlueButtonMetadata() {
-	m, err := s.bbClient.GetMetadata()
-	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), `{ "test": "ok" }`, m)
-}
-
 func (s *BBTestSuite) TearDownTest() {
 	s.ts.Close()
 }
