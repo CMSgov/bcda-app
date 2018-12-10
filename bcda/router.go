@@ -30,7 +30,6 @@ func NewAPIRouter() http.Handler {
 		r.Get("/metadata", metadata)
 		if os.Getenv("DEBUG") == "true" {
 			r.Get("/token", getToken)
-			r.Get("/bb_metadata", blueButtonMetadata)
 		}
 	})
 	r.Get("/_version", getVersion)

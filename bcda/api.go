@@ -40,7 +40,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
@@ -380,34 +379,6 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-}
-
-func blueButtonMetadata(w http.ResponseWriter, r *http.Request) {
-	bbClient, err := client.NewBlueButtonClient()
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	bbData, err := bbClient.GetMetadata()
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write([]byte(bbData))
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 /*
