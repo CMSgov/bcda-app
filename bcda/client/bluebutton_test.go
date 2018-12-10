@@ -37,13 +37,13 @@ func (s *BBTestSuite) SetupTest() {
 }
 
 func (s *BBTestSuite) TestGetBlueButtonPatientData() {
-	p, err := s.bbClient.GetPatientData("012345")
+	p, err := s.bbClient.GetPatientData("012345", "543210")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), `{ "test": "ok" }`, p)
 }
 
 func (s *BBTestSuite) TestGetBlueButtonCoverageData() {
-	c, err := s.bbClient.GetCoverageData("012345")
+	c, err := s.bbClient.GetCoverageData("012345", "543210")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), `{ "test": "ok" }`, c)
 }

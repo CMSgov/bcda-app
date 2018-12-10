@@ -25,7 +25,10 @@ func NewAPIRouter() http.Handler {
 		}
 	})
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/ExplanationOfBenefit/$export", bulkRequest)
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/ExplanationOfBenefit/$export", bulkEOBRequest)
+		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/Patient/$export", bulkPatientRequest)
+		}
 		r.With(auth.RequireTokenAuth).Get("/jobs/{jobId}", jobStatus)
 		r.Get("/metadata", metadata)
 		if os.Getenv("DEBUG") == "true" {

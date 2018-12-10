@@ -35,6 +35,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -54,7 +55,7 @@ import (
 )
 
 /*
-	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
+	swagger:route GET /ExplanationOfBenefit/$export bulkData bulkEOBRequest
 
 	Start explanation of benefit export
 
@@ -73,7 +74,21 @@ import (
 		400:ErrorModel
 		500:FHIRResponse
 */
-func bulkRequest(w http.ResponseWriter, r *http.Request) {
+func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
+	bulkRequest("ExplanationOfBenefit", w, r)
+}
+
+func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	bulkRequest("Patient", w, r)
+}
+
+func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
+	if t != "ExplanationOfBenefit" && t != "Patient" {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
 	m := monitoring.GetMonitor()
 	txn := m.Start("bulkRequest", w, r)
 	defer m.End(txn)
@@ -148,6 +163,7 @@ func bulkRequest(w http.ResponseWriter, r *http.Request) {
 		AcoID:          acoId,
 		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
+		ResourceType:   t,
 		// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
 		Encrypt: encrypt,
 	})
@@ -253,8 +269,11 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			scheme = "https"
 		}
 
+		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient)/\$export`)
+		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
+
 		fi := fileItem{
-			Type: "ExplanationOfBenefit",
+			Type: resourceType,
 			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
