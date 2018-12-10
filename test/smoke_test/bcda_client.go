@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	accessToken, apiHost, proto string
+	accessToken, apiHost, proto, endpoint string
 	timeout                     int
 )
 
@@ -27,6 +27,7 @@ func init() {
 	flag.StringVar(&accessToken, "token", "", "access token used to make request to bcda")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
+	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
 	flag.Parse()
 
@@ -58,10 +59,10 @@ func getAccessToken() string {
 	return string(respData)
 }
 
-func startJob() *http.Response {
+func startJob(resourceType string) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(
-		"GET", fmt.Sprintf("%s://%s/api/v1/ExplanationOfBenefit/$export", proto, apiHost), nil)
+		"GET", fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -129,9 +130,9 @@ func writeFile(resp *http.Response) {
 }
 
 func main() {
-	fmt.Println("making request to start data aggregation job")
+	fmt.Printf("making request to start %s data aggregation job\n", endpoint)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
-	if result := startJob(); result.StatusCode == 202 {
+	if result := startJob(endpoint); result.StatusCode == 202 {
 		for {
 			<-time.After(5 * time.Second)
 
@@ -186,7 +187,7 @@ func main() {
 			fmt.Println("  => job is still pending. waiting...")
 		}
 	} else {
-		fmt.Println("error: failed to start data aggregation job")
+		fmt.Printf("error: failed to start %s data aggregation job\n", endpoint)
 		os.Exit(1)
 	}
 }

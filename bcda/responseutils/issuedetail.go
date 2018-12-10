@@ -7,4 +7,5 @@ const (
 	FormatErr   = "Formatting Error"
 	BbErr       = "Blue Button Error"
 	InternalErr = "Internal Error"
+	RequestErr  = "Request Error"
 )

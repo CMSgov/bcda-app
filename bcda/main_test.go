@@ -194,7 +194,10 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	}
 	defer f.Close()
 
-	archiveExpiring(0)
+	err = archiveExpiring(0)
+	if err != nil {
+		s.T().Error(err)
+	}
 
 	//check that the file has moved to the archive location
 	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
@@ -248,7 +251,10 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 	}
 	defer f.Close()
 
-	archiveExpiring(1)
+	err = archiveExpiring(1)
+	if err != nil {
+		s.T().Error(err)
+	}
 
 	//check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
@@ -274,10 +280,10 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 
 	s.SetupAuthBackend()
 	acoUUID, err := createACO("ACO " + email)
-	assert.Nil(s.T(), err);
+	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
-	assert.Nil(s.T(), err);
+	assert.Nil(s.T(), err)
 
 	// save a job to our db
 	j := models.Job{
@@ -289,7 +295,7 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 	db.Save(&j)
 	db.Exec("UPDATE jobs SET updated_at=? WHERE id = ?", modified.Format("2006-01-02 15:04:05"), j.ID)
 	db.First(&j, "id = ?", j.ID)
-	assert.Nil(s.T(), err);
+	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), j.ID)
 	// compare times using formatted strings to avoid differences (like nano seconds) that we don't care about
 	assert.Equal(s.T(), modified.Format("2006-01-02 15:04:05"), j.UpdatedAt.Format("2006-01-02 15:04:05"), "UpdatedAt should match %v", modified)
@@ -341,10 +347,10 @@ func (s *MainTestSuite) TestCleanArchive() {
 
 	_, err := os.Stat(before.Name())
 
-	if (err == nil) {
-		assert.Fail(s.T(),"%s was not removed; it should have been", before.Name())
+	if err == nil {
+		assert.Fail(s.T(), "%s was not removed; it should have been", before.Name())
 	} else {
-		assert.True(s.T(), os.IsNotExist(err),"%s should have been removed", before.Name())
+		assert.True(s.T(), os.IsNotExist(err), "%s should have been removed", before.Name())
 	}
 
 	db := database.GetGORMDbConnection()
