@@ -21,9 +21,9 @@
 									"});",
 									"",
 									"pm.test(\"Resource type is OperationOutcome\", function() {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.resourceType).to.eql(\"OperationOutcome\")",
-									"})"
+									"    var respJson = pm.response.json();",
+									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -173,7 +173,7 @@
 									"",
 									"pm.test(\"Resource type is OperationOutcome\", function() {",
 									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-									"})",
+									"});",
 									"",
 									"pm.test(\"Issue details text is Invalid Token\", function() {",
 									"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid Token\")",
@@ -295,9 +295,9 @@
 									"});",
 									"",
 									"pm.test(\"Resource type is OperationOutcome\", function() {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.resourceType).to.eql(\"OperationOutcome\")",
-									"})"
+									"    var respJson = pm.response.json();",
+									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -452,9 +452,9 @@
 									"});",
 									"",
 									"pm.test(\"Resource type is OperationOutcome\", function() {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.resourceType).to.eql(\"OperationOutcome\")",
-									"})"
+									"    var respJson = pm.response.json();",
+									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+									"});"
 								],
 								"type": "text/javascript"
 							}
@@ -497,8 +497,8 @@
 									"    pm.response.to.have.status(200);",
 									"});",
 									"",
-									"pm.test(\"Content-Type is application/fhir+json\", function() {",
-									"    pm.response.to.have.header(\"Content-Type\", \"application/fhir+json\");",
+									"pm.test(\"Body contains data\", function() {",
+									"    pm.expect(pm.response.length > 0)",
 									"});"
 								],
 								"type": "text/javascript"
@@ -540,6 +540,42 @@
 			]
 		},
 		{
+			"name": "Get version",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "d982c280-433d-4732-8169-bc7d8ed0a217",
+						"exec": [
+							"pm.test(\"Response contains version\", function() {",
+							"    pm.expect(pm.response.json()).to.have.property(\"version\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/_version",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"_version"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Get metadata",
 			"event": [
 				{
@@ -563,7 +599,7 @@
 							"",
 							"pm.test(\"Resource type is CapabilityStatement\", function() {",
 							"    pm.expect(respJson.resourceType).to.eql(\"CapabilityStatement\")",
-							"})",
+							"});",
 							"",
 							"const schema = {",
 							"    \"properties\": {",
@@ -610,9 +646,10 @@
 							"        }",
 							"    }",
 							"};",
+							"",
 							"pm.test(\"Schema is valid\", function() {",
 							"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-							"})"
+							"});"
 						],
 						"type": "text/javascript"
 					}
@@ -651,11 +688,19 @@
 					"script": {
 						"id": "f5145875-0310-4092-a8f3-4891a45e402a",
 						"exec": [
-							"pm.test(\"Status code is 200\", function() {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.globals.set(\"token\", pm.response.text())"
+							"var env = pm.environment.get(\"env\");",
+							"if (env === \"local\" || env === \"dev\") {",
+							"    pm.test(\"Status code is 200\", function() {",
+							"        pm.response.to.have.status(200);",
+							"    });",
+							"    ",
+							"    // Set token for use in other tests",
+							"    pm.environment.set(\"token\", pm.response.text());",
+							"} else {",
+							"     pm.test(\"Status code is 404\", function() {",
+							"        pm.response.to.have.status(404);",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript"
 					}
