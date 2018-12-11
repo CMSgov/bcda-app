@@ -102,6 +102,12 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID)
 }
 
+func (bbc *BlueButtonClient) GetMetadata() (string, error) {
+	params := url.Values{}
+	params.Set("_format", "application/fhir+json")
+	return bbc.getData(blueButtonBasePath+"/metadata/", params, "")
+}
+
 func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID string) (string, error) {
 	reqID := uuid.NewRandom()
 
