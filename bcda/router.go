@@ -42,8 +42,9 @@ func NewAPIRouter() http.Handler {
 
 func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
+	r.Use(ConnectionClose)
 	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth,
-		auth.RequireTokenACOMatch, ConnectionClose).Get("/data/{jobID}/{acoID}.ndjson", serveData)
+		auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
 	return r
 }
 
