@@ -4,4 +4,4 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app/test
 COPY . .
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test/smoke_test
-CMD ["go", "run", "bcda_client.go", "-host=api:3000"]
+CMD ["sh", "smoke_test.sh"]
