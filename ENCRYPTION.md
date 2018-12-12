@@ -20,7 +20,7 @@ We encrypt the file as the last step in producing it, immediately before we retu
 1. Generate a random nonce (also known as an Initialization Value, or IV)
 1. Read the data from the file
 1. Use the the nonce and encryption key to encrypt the data with the AES-GCM algorithm. We do not append additional data. The resulting cipher text output begins with a byte indicating the size of the nonce, the nonce itself, and the encrypted data, and the additional data.
-1. Encrypt the symmetric key using an rsa public key you provided us. We use the filename as the label, which is appended to the end of the key.
+1. Encrypt the symmetric key using an rsa public key you provided us. We use the filename as the label, which is appended to the end of the key and separated from it by '|'.
 1. Write the encrypted file to the appropriate data directory
 1. Return the encrypted keys as hex-encoded strings in the body of the final jobStatus method, along with file download urls and other information. There can be two files, a data file and an error file. Each file will be encrypted with a different symmetric key. An example body follows:
 
@@ -86,9 +86,9 @@ Exactly how these steps are accomplished in code will vary with language and pla
 
 ###Example Code
 
-[python](https://gist.github.com/rnagle/f18099029460c7150cb5d68c3e06cb48)
+[go](https://gist.github.com/rnagle/f18099029460c7150cb5d68c3e06cb48)
 
-[go](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4)
+[python](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4)
 
 
 [java]() (in progress)
