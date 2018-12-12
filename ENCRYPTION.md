@@ -1,4 +1,4 @@
-#File Encryption in BCDA API
+# File Encryption in BCDA API
 
 When we deliver files via our data endpoint, we encrypt the files before sending them. You may wonder why we encrypt the files, since they are already being delivered via an encrypted channel (https). We do so for additional protection of all interested parties --- ourselves, you, and beneficiaries --- in the event of accidental or malicious activity like:
 
@@ -12,7 +12,7 @@ Some best practices you can observe include
 * storing them separately from each other
 * limiting access to only those who must use them.
 
-##How We Encrypt
+## How We Encrypt
 
 We encrypt the file as the last step in producing it, immediately before we return a final jobStatus (the one that has a body and no X-Progress header). Please see API.md for more on job status. 
 
@@ -65,16 +65,16 @@ To decrypt the files, you must use the same algorithm (AES-GCM), and follow thes
 
 Exactly how these steps are accomplished in code will vary with language and platform. We have some examples, implemented using commonly used languages, for you to consult.
 
-##Show me the code
+## Show me the code
 
-###We assume you have
+### We assume you have
 * saved the encrypted symmetric key 
 * downloaded the file
 * access to the RSA private key
 * sufficient memory to decode the file in one go
   (should provide a formula here for calculating memory needs)
 
-###These examples all do the following
+### These examples all do the following
 
 1. load the encrypted symmetric key, decoding it from the hex string
 1. load the RSA private key
@@ -84,7 +84,7 @@ Exactly how these steps are accomplished in code will vary with language and pla
 1. decode the encrypted file with the cypher
 1. write the decoded data to a file
 
-###Example Code
+### Example Code
 
 [go](https://gist.github.com/rnagle/f18099029460c7150cb5d68c3e06cb48)
 
@@ -94,17 +94,17 @@ Exactly how these steps are accomplished in code will vary with language and pla
 [java]() (in progress)
 
 
-###Why this cipher
+### Why this cipher
 
 If you're interested in why we chose this algorithm, read [this page](https://proandroiddev.com/security-best-practices-symmetric-encryption-with-aes-in-java-7616beaaade9), which provides a high-level discussion and pointers to deeper references.
 
-##PKI Key Pair
+## PKI Key Pair
 
-###You gave it to us or we gave it to you ... TKTK
+### You gave it to us or we gave it to you ... TKTK
 
 document process here once we know what it is
 
-##Limitations and Gotchas
+## Limitations and Gotchas
 
 * Encrypted data size is limited to 64GB
 * If you are using Java, you need to know [this](https://stackoverflow.com/questions/6481627/java-security-illegal-key-size-or-default-parameters)
