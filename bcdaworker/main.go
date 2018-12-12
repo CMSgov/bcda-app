@@ -12,20 +12,22 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/CMSgov/bcda-app/bcda/encryption"
-
 	"github.com/jackc/pgx"
+	newrelic "github.com/newrelic/go-agent"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/bgentry/que-go"
 )
 
 var (
-	qc *que.Client
+	qc  *que.Client
+	txn newrelic.Transaction
 )
 
 type jobEnqueueArgs struct {
@@ -52,6 +54,10 @@ func init() {
 }
 
 func processJob(j *que.Job) error {
+	m := monitoring.GetMonitor()
+	txn = m.Start("processJob", nil, nil)
+	defer m.End(txn)
+
 	log.Info("Worker started processing job ", j.ID)
 
 	db := database.GetGORMDbConnection()
@@ -159,6 +165,8 @@ func processJob(j *que.Job) error {
 }
 
 func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) error {
+	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
+
 	if bb == nil {
 		err := errors.New("Blue Button client is required")
 		log.Error(err)
@@ -211,10 +219,17 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 		return err
 	}
 
+	err = segment.End()
+	if err != nil {
+		log.Error(err)
+	}
+
 	return nil
 }
 
 func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {
+	segment := newrelic.StartSegment(txn, "appendErrorToFile")
+
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
@@ -235,9 +250,16 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID st
 	if _, err = f.WriteString(string(ooBytes) + "\n"); err != nil {
 		log.Error(err)
 	}
+
+	err = segment.End()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID, jobID string) {
+	segment := newrelic.StartSegment(txn, "fhirBundleToResourceNDJSON")
+
 	var jsonOBJ map[string]interface{}
 	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
 	if err != nil {
@@ -267,6 +289,10 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 		}
 	}
 
+	err = segment.End()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func waitForSig() {
