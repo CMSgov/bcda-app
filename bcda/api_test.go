@@ -542,46 +542,6 @@ func (s *APITestSuite) TestGetToken() {
 	assert.NotEmpty(s.T(), s.rr.Body)
 }
 
-// TODO: Mock with BB_SERVER_LOCATION
-// func (s *APITestSuite) TestBlueButtonMetadata() {
-// 	req := httptest.NewRequest("GET", "/api/v1/bb_metadata", nil)
-
-// 	handler := http.HandlerFunc(blueButtonMetadata)
-// 	handler.ServeHTTP(s.rr, req)
-
-// 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-
-// 	var respCS fhirmodels.CapabilityStatement
-// 	err := json.Unmarshal(s.rr.Body.Bytes(), &respCS)
-// 	if err != nil {
-// 		s.T().Error(err)
-// 	}
-// }
-
-func (s *APITestSuite) TestBlueButtonMetadataClientError() {
-	origBBCertPath := os.Getenv("BB_CLIENT_CERT_FILE")
-	os.Setenv("BB_CLIENT_CERT_FILE", "")
-
-	req := httptest.NewRequest("GET", "/api/v1/bb_metadata", nil)
-
-	handler := http.HandlerFunc(blueButtonMetadata)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
-
-	os.Setenv("BB_CLIENT_CERT_FILE", origBBCertPath)
-}
-
 func (s *APITestSuite) TestMetadata() {
 	req := httptest.NewRequest("GET", "/api/v1/metadata", nil)
 	req.TLS = &tls.ConnectionState{}
