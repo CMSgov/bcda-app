@@ -43,7 +43,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/bgentry/que-go"
@@ -90,10 +89,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
-
-	m := monitoring.GetMonitor()
-	txn := m.Start("bulkRequest", w, r)
-	defer m.End(txn)
 
 	var (
 		claims jwt.MapClaims
@@ -220,10 +215,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		500:FHIRResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
-	m := monitoring.GetMonitor()
-	txn := m.Start("jobStatus", w, r)
-	defer m.End(txn)
-
 	jobID := chi.URLParam(r, "jobId")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -347,10 +338,6 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		500:FHIRResponse
 */
 func serveData(w http.ResponseWriter, r *http.Request) {
-	m := monitoring.GetMonitor()
-	txn := m.Start("serveData", w, r)
-	defer m.End(txn)
-
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	acoID := chi.URLParam(r, "acoID")
 	jobID := chi.URLParam(r, "jobID")
@@ -358,10 +345,6 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
-	m := monitoring.GetMonitor()
-	txn := m.Start("getToken", w, r)
-	defer m.End(txn)
-
 	authBackend := auth.InitAuthBackend()
 
 	db := database.GetGORMDbConnection()

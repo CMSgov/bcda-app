@@ -50,3 +50,10 @@ func GetMonitor() *apm {
 	}
 	return a
 }
+
+func (a apm) WrapHandler(pattern string, h http.HandlerFunc) (string, func(http.ResponseWriter, *http.Request)) {
+	if a.App != nil {
+		return newrelic.WrapHandleFunc(a.App, pattern, h)
+	}
+	return "", nil
+}

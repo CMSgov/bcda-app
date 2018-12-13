@@ -9,11 +9,13 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/go-chi/chi"
 )
 
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
+	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
@@ -25,14 +27,14 @@ func NewAPIRouter() http.Handler {
 		}
 	})
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/ExplanationOfBenefit/$export", bulkEOBRequest)
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/Patient/$export", bulkPatientRequest)
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
 		}
-		r.With(auth.RequireTokenAuth).Get("/jobs/{jobId}", jobStatus)
+		r.With(auth.RequireTokenAuth).Get(m.WrapHandler("/jobs/{jobId}", jobStatus))
 		r.Get("/metadata", metadata)
 		if os.Getenv("DEBUG") == "true" {
-			r.Get("/token", getToken)
+			r.Get(m.WrapHandler("/token", getToken))
 		}
 	})
 	r.Get("/_version", getVersion)
@@ -41,9 +43,10 @@ func NewAPIRouter() http.Handler {
 
 func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
+	m := monitoring.GetMonitor()
 	r.Use(ConnectionClose)
 	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth,
-		auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
+		auth.RequireTokenACOMatch).Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
 	return r
 }
 
