@@ -55,7 +55,7 @@ import (
 )
 
 /*
-  swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
+  	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
 
 	Start explanation of benefit export
 
@@ -79,7 +79,7 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /Patient/$export bulkData bulkRequest
+	swagger:route GET /api/v1/Patient/$export bulkData bulkRequest
 
 	Start patient data export
 
