@@ -55,7 +55,9 @@ import (
 )
 
 /*
+
 	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
+
 
 	Start explanation of benefit export
 
