@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	newrelic "github.com/newrelic/go-agent"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -27,14 +28,14 @@ func NewAPIRouter() http.Handler {
 		}
 	})
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(newrelic.WrapHandleFunc(m.App, "/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(newrelic.WrapHandleFunc(m.App, "/Patient/$export", bulkPatientRequest))
 		}
-		r.With(auth.RequireTokenAuth).Get(m.WrapHandler("/jobs/{jobId}", jobStatus))
+		r.With(auth.RequireTokenAuth).Get(newrelic.WrapHandleFunc(m.App, "/jobs/{jobId}", jobStatus))
 		r.Get("/metadata", metadata)
 		if os.Getenv("DEBUG") == "true" {
-			r.Get(m.WrapHandler("/token", getToken))
+			r.Get(newrelic.WrapHandleFunc(m.App, "/token", getToken))
 		}
 	})
 	r.Get("/_version", getVersion)
@@ -46,7 +47,7 @@ func NewDataRouter() http.Handler {
 	m := monitoring.GetMonitor()
 	r.Use(ConnectionClose)
 	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth,
-		auth.RequireTokenACOMatch).Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
+		auth.RequireTokenACOMatch).Get(newrelic.WrapHandleFunc(m.App, "/data/{jobID}/{acoID}.ndjson", serveData))
 	return r
 }
 
