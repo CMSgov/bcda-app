@@ -23,6 +23,7 @@ type BackendTestSuite struct {
 }
 
 func (s *BackendTestSuite) SetupTest() {
+	models.InitializeGormModels()
 	auth.InitializeGormModels()
 	s.SetupAuthBackend()
 }
