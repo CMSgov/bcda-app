@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/jinzhu/gorm"
@@ -10,7 +9,6 @@ import (
 )
 
 func InitializeGormModels() *gorm.DB {
-	fmt.Print("Intitialize auth models")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 

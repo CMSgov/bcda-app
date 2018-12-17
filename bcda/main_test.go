@@ -67,49 +67,8 @@ func (s *MainTestSuite) TestCreateACO() {
 	assert.Equal(s.T(), badACO, "")
 	assert.NotNil(s.T(), err)
 
-	//// Might as well roll into user creation here bc otherwise I will just be rewriting this code
-	//name, email := "Unit Test", "UnitTest@mail.com"
-	//userUUID, err := createUser(acoUUID, name, email)
-	//assert.NotNil(s.T(), userUUID)
-	//assert.Nil(s.T(), err)
-	//var testUser models.User
-	//db.First(&testUser, "Email=?", email)
-	//assert.Equal(s.T(), testUser.UUID.String(), userUUID)
-	//
-	//// We have a user and an ACO, time for a token
-	//accessTokenString, err := createAccessToken(acoUUID, userUUID)
-	//assert.NotNil(s.T(), accessTokenString)
-	//assert.Nil(s.T(), err)
-	//
-	//// Bad/Negative tests
-	//
-	//// Blank UUID
-	//badUserUUID, err := createUser("", name, email)
-	//assert.NotNil(s.T(), err)
-	//assert.Equal(s.T(), "", badUserUUID)
-	//
-	//// Blank UUID
-	//badUserUUID, err = createUser(BADUUID, name, email)
-	//assert.NotNil(s.T(), err)
-	//assert.Equal(s.T(), "", badUserUUID)
-	//
-	//// Blank Name
-	//badUserUUID, err = createUser(acoUUID, "", email)
-	//assert.NotNil(s.T(), err)
-	//assert.Equal(s.T(), "", badUserUUID)
-	//
-	//// Blank E-mail address
-	//badUserUUID, err = createUser(acoUUID, name, "")
-	//assert.NotNil(s.T(), err)
-	//assert.Equal(s.T(), "", badUserUUID)
-	//
-	//// Duplicate User
-	//_, err = createUser(acoUUID, name, email)
-	//assert.NotNil(s.T(), err)
-	//assert.Contains(s.T(), err, email, "%s should contain 'already exists'", err)
-	//fmt.Println(err)
+	// we currently allow ACOs with duplicate names
 }
-
 
 func (s *MainTestSuite) TestCreateUser() {
 	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
