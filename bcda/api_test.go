@@ -607,6 +607,31 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	s.db.Delete(&j)
 }
 
+func (s *APITestSuite) TestHealthCheck() {
+	req, err := http.NewRequest("GET", "/_health", nil)
+	assert.Nil(s.T(), err)
+	handler := http.HandlerFunc(healthCheck)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+}
+
+func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
+	// Mock database.LogFatal() to allow execution to continue despite bad URL
+	origLogFatal := database.LogFatal
+	defer func() { database.LogFatal = origLogFatal }()
+	database.LogFatal = func(args ...interface{}) {
+		fmt.Println("FATAL (NO-OP)")
+	}
+	dbURL := os.Getenv("DATABASE_URL")
+	defer os.Setenv("DATABASE_URL", dbURL)
+	os.Setenv("DATABASE_URL", "not-a-database")
+	req, err := http.NewRequest("GET", "/_health", nil)
+	assert.Nil(s.T(), err)
+	handler := http.HandlerFunc(healthCheck)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusBadGateway, s.rr.Code)
+}
+
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
 }

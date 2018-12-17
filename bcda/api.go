@@ -465,6 +465,29 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	m := make(map[string]string)
+
+	if database.GetGORMDbConnection().DB().Ping() == nil {
+		m["database"] = "ok"
+		w.WriteHeader(http.StatusOK)
+	} else {
+		m["database"] = "error"
+		w.WriteHeader(http.StatusBadGateway)
+	}
+
+	respJSON, err := json.Marshal(m)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(respJSON)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
 func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
 	var (
 		claims jwt.MapClaims
