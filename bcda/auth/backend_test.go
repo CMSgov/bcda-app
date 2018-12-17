@@ -3,6 +3,7 @@ package auth_test
 import (
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -22,9 +23,13 @@ type BackendTestSuite struct {
 	testUtils.AuthTestSuite
 }
 
-func (s *BackendTestSuite) SetupTest() {
+func (s *BackendTestSuite) SetupSuite() {
+	fmt.Println("Initializing models for auth.backend testing")
 	models.InitializeGormModels()
 	auth.InitializeGormModels()
+}
+
+func (s *BackendTestSuite) SetupTest() {
 	s.SetupAuthBackend()
 }
 
