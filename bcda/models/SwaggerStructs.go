@@ -107,10 +107,6 @@ type FileParam struct {
 type BulkRequestHeaders struct {
 	// required: true
 	// in: header
-	// enum: application/fhir+json
-	Accept string
-	// required: true
-	// in: header
 	// enum: respond-async
 	Prefer string
 }
