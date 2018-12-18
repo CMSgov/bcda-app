@@ -36,6 +36,7 @@ func NewAPIRouter() http.Handler {
 		}
 	})
 	r.Get("/_version", getVersion)
+	r.Get("/_health", healthCheck)
 	return r
 }
 
