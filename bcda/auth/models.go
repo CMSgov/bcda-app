@@ -1,12 +1,11 @@
 package auth
 
 import (
-	"crypto/rsa"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -16,32 +15,19 @@ func InitializeGormModels() *gorm.DB {
 	// Migrate the schema
 	// Add your new models here
 	db.AutoMigrate(
-		&ACO{},
 		&Token{},
-		&User{},
 	)
 
 	return db
 }
 
-type ACO struct {
-	gorm.Model
-	UUID uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	Name string    `json:"name"`                                   // name
-}
-
-func (aco *ACO) GetPublicKey() *rsa.PublicKey {
-	// todo implement a real thing.  But for now we can use this.
-	return GetATOPublicKey()
-}
-
 type Token struct {
 	gorm.Model
-	UUID   uuid.UUID `gorm:"primary_key" json:"uuid"` // uuid
-	User   User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"`
-	UserID uuid.UUID `json:"user_id"`                                // user_id
-	Value  string    `gorm:"type:varchar(511); unique" json:"value"` // value
-	Active bool      `json:"active"`                                 // active
+	UUID   uuid.UUID   `gorm:"primary_key" json:"uuid"` // uuid
+	User   models.User `gorm:"foreignkey:UserID;association_foreignkey:UUID"`
+	UserID uuid.UUID   `json:"user_id"`                                // user_id
+	Value  string      `gorm:"type:varchar(511); unique" json:"value"` // value
+	Active bool        `json:"active"`                                 // active
 }
 
 func (token *Token) BeforeSave() error {
@@ -62,13 +48,4 @@ func (token *Token) BeforeSave() error {
 	}
 
 	return nil
-}
-
-type User struct {
-	gorm.Model
-	UUID  uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	Name  string    `json:"name"`                                   // name
-	Email string    `json:"email"`                                  // email
-	Aco   ACO       `gorm:"foreignkey:AcoID;association_foreignkey:UUID"`
-	AcoID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` // aco_id
 }

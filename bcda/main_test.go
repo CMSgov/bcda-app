@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -54,36 +53,36 @@ func (s *MainTestSuite) TestCreateACO() {
 	//args := []string{CreateACO, "--name", "TEST_ACO"}
 	//err := s.testApp.Run(args)
 	//assert.Nil(s.T(), err)
-	s.SetupAuthBackend()
+	//s.SetupAuthBackend()
 	ACOName := "UNIT TEST ACO"
 	acoUUID, err := createACO(ACOName)
 	assert.NotNil(s.T(), acoUUID)
 	assert.Nil(s.T(), err)
-	var testACO auth.ACO
+	var testACO models.ACO
 	db.First(&testACO, "Name=?", "UNIT TEST ACO")
 	assert.Equal(s.T(), testACO.UUID.String(), acoUUID)
 
-	// Might as well roll into user creation here bc otherwise I will just be rewriting this code
+	// No ACO Name
+	badACO, err := createACO("")
+	assert.Equal(s.T(), badACO, "")
+	assert.NotNil(s.T(), err)
+
+	// we currently allow ACOs with duplicate names
+}
+
+func (s *MainTestSuite) TestCreateUser() {
+	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	db := database.GetGORMDbConnection()
+
 	name, email := "Unit Test", "UnitTest@mail.com"
 	userUUID, err := createUser(acoUUID, name, email)
 	assert.NotNil(s.T(), userUUID)
 	assert.Nil(s.T(), err)
-	var testUser auth.User
+	var testUser models.User
 	db.First(&testUser, "Email=?", email)
 	assert.Equal(s.T(), testUser.UUID.String(), userUUID)
 
-	// We have a user and an ACO, time for a token
-	accessTokenString, err := createAccessToken(acoUUID, userUUID)
-	assert.NotNil(s.T(), accessTokenString)
-	assert.Nil(s.T(), err)
-
 	// Bad/Negative tests
-
-	// No ACO Name
-	badACOName := ""
-	badACO, err := createACO(badACOName)
-	assert.Equal(s.T(), badACO, "")
-	assert.NotNil(s.T(), err)
 
 	// Blank UUID
 	badUserUUID, err := createUser("", name, email)
@@ -105,6 +104,21 @@ func (s *MainTestSuite) TestCreateACO() {
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "", badUserUUID)
 
+	// Duplicate User
+	_, err = createUser(acoUUID, name, email)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), email, "%s should contain '%s' and 'already exists'", err, email)
+}
+
+func (s *MainTestSuite) TestCreateToken() {
+	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+
+	// Test successful creation
+	accessTokenString, err := createAccessToken(acoUUID, userUUID)
+	assert.NotNil(s.T(), accessTokenString)
+	assert.Nil(s.T(), err)
+
 	// Blank ACO UUID
 	badAccessTokenString, err := createAccessToken("", userUUID)
 	assert.NotNil(s.T(), err)
@@ -124,10 +138,6 @@ func (s *MainTestSuite) TestCreateACO() {
 	badAccessTokenString, err = createAccessToken(acoUUID, BADUUID)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "", badAccessTokenString)
-}
-
-func (s *MainTestSuite) TestCreateUser() {
-
 }
 
 const TOKENHEADER string = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9."
