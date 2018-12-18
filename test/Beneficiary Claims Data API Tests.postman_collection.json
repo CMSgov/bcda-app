@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "6071963a-3f7c-4f40-965b-7ebff2e8727b",
+		"_postman_id": "8736f37c-2dd2-4668-8fd1-3cde6c55f164",
 		"name": "Beneficiary Claims Data API Tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -570,6 +570,42 @@
 					],
 					"path": [
 						"_version"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Health check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "d982c280-433d-4732-8169-bc7d8ed0a217",
+						"exec": [
+							"pm.test(\"Response contains database status\", function() {",
+							"    pm.expect(pm.response.json()).to.have.property(\"database\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/_health",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"_health"
 					]
 				}
 			},
