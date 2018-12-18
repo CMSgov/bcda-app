@@ -3,6 +3,7 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -109,6 +110,10 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 }
 
 func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID string) (string, error) {
+	m := monitoring.GetMonitor()
+	txn := m.Start(path, nil, nil)
+	defer m.End(txn)
+
 	reqID := uuid.NewRandom()
 
 	bbServer := os.Getenv("BB_SERVER_LOCATION")
