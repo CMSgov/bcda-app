@@ -450,7 +450,6 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
 	assert.Equal(s.T(), expectedurl, rb.Files[0].URL)
 	assert.NotNil(s.T(), rb.KeyMap)
-	assert.NotNil(s.T(), rb.Keys)
 	assert.Empty(s.T(), rb.Errors)
 
 	s.db.Delete(&j)
