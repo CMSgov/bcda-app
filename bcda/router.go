@@ -19,26 +19,26 @@ func NewAPIRouter() http.Handler {
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	r.Get(m.WrapHandler("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Hello world!"))
 		if err != nil {
 			log.Error(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
-	})
+	}))
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
 			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
 		}
 		r.With(auth.RequireTokenAuth).Get(m.WrapHandler("/jobs/{jobId}", jobStatus))
-		r.Get("/metadata", metadata)
+		r.Get(m.WrapHandler("/metadata", metadata))
 		if os.Getenv("DEBUG") == "true" {
 			r.Get(m.WrapHandler("/token", getToken))
 		}
 	})
-	r.Get("/_version", getVersion)
-	r.Get("/_health", healthCheck)
+	r.Get(m.WrapHandler("/_version", getVersion))
+	r.Get(m.WrapHandler("/_health", healthCheck))
 	return r
 }
 
@@ -55,6 +55,7 @@ func NewDataRouter() http.Handler {
 // static files from a http.FileSystem.
 // stolen from https://github.com/go-chi/chi/blob/master/_examples/fileserver/main.go
 func FileServer(r chi.Router, path string, root http.FileSystem) {
+	m := monitoring.GetMonitor()
 	if strings.ContainsAny(path, "{}*") {
 		panic("FileServer does not permit URL parameters.")
 	}
@@ -67,7 +68,7 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 	}
 	path += "*"
 
-	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.Get(m.WrapHandler(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
-	}))
+	})))
 }
