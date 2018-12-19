@@ -3,6 +3,7 @@ package auth
 import (
 	"testing"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -17,12 +18,14 @@ func (s *AlphaAuthPluginTestSuite) SetupTest() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	err := s.p.RegisterClient([]byte("{}"))
+	c, err := s.p.RegisterClient([]byte("{}"))
+	assert.Nil(s.T(), c)
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestUpdateClient() {
-	err := s.p.UpdateClient([]byte("{}"))
+	c, err := s.p.UpdateClient([]byte("{}"))
+	assert.Nil(s.T(), c)
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
@@ -43,25 +46,24 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	r, err := s.p.RequestAccessToken([]byte("{}"))
-	assert.Nil(s.T(), r)
+	t, err := s.p.RequestAccessToken([]byte("{}"))
+	assert.IsType(s.T(), jwt.Token{}, t)
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
-	err := s.p.RevokeAccessToken([]byte("{}"))
+	err := s.p.RevokeAccessToken("")
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
-	r, err := s.p.ValidateAccessToken([]byte("{}"))
-	assert.Nil(s.T(), r)
+	err := s.p.ValidateAccessToken("")
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
-	r, err := s.p.DecodeAccessToken([]byte("{}"))
-	assert.Nil(s.T(), r)
+	t, err := s.p.DecodeAccessToken("")
+	assert.IsType(s.T(), jwt.Token{}, t)
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
