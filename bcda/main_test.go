@@ -56,10 +56,8 @@ func (s *MainTestSuite) TestMatt() {
         s.testApp.Writer = buf
         err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
-	output := buf.String()
-	fmt.Println(output)
-	fmt.Println("...")
-        assert.Equal(s.T(), output, "blah")
+	acoId := strings.TrimSpace(buf.String())
+        assert.Equal(s.T(), acoId, "blah")
 }
 
 
