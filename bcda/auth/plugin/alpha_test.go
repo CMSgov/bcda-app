@@ -1,10 +1,11 @@
 package auth
 
 import (
-	"github.com/pborman/uuid"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,6 +19,7 @@ type AlphaAuthPluginTestSuite struct {
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
 	s.p = new(AlphaAuthPlugin)
+	models.InitializeGormModels()
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {

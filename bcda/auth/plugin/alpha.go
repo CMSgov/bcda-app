@@ -2,14 +2,12 @@ package auth
 
 import (
 	"errors"
-
-	jwt "github.com/dgrijalva/jwt-go"
+	"regexp"
+	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/jinzhu/gorm"
-	"regexp"
-
 	"github.com/CMSgov/bcda-app/bcda/models"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type AlphaAuthPlugin struct{}
@@ -32,12 +30,10 @@ func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
 		return alphaID, errors.New("expected a valid UUID string")
 	}
 
-	var db = database.GetGORMDbConnection()
-	var aco models.ACO
-	if db.Find(&aco, "UUID = ?", acoUUID).RecordNotFound() {
-		return alphaID, gorm.ErrRecordNotFound
+	if aco, err := getFromDB(acoUUID); err != nil {
+		return alphaID, err
 	} else {
-		alphaID = []byte(acoUUID)
+		alphaID = []byte(strings.ToUpper(aco.UUID.String()))
 	}
 
 	// return the aco UUID as our auth client id. why? because we have to return something that the API / CLI will
@@ -81,4 +77,11 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
 	return jwt.Token{}, errors.New("Not yet implemented")
+}
+
+func getFromDB(acoUUID string) (models.ACO, error) {
+	var db = database.GetGORMDbConnection()
+	var aco models.ACO
+	db.Find(&aco, "UUID = ?", acoUUID)
+	return aco, db.Error
 }
