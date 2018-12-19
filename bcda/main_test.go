@@ -418,7 +418,7 @@ func (s *MainTestSuite) TestCleanArchive() {
 	now := time.Now()
 
 	// condition: FHIR_ARCHIVE_DIR doesn't exist
-	os.Setenv("FHIR_ARCHIVE_DIR", "bad_file_directory")
+	os.Unsetenv("FHIR_ARCHIVE_DIR")
 	args := []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
 	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
