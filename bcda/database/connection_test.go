@@ -3,11 +3,12 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"os"
-	"testing"
 )
 
 type ConnectionTestSuite struct {
@@ -19,11 +20,11 @@ type ConnectionTestSuite struct {
 func (suite *ConnectionTestSuite) TestDbConnections() {
 
 	// after this test, replace the original log.Fatal() function
-	origLogFatal := logFatal
-	defer func() { logFatal = origLogFatal }()
+	origLogFatal := LogFatal
+	defer func() { LogFatal = origLogFatal }()
 
 	// create the mock version of log.Fatal()
-	logFatal = func(args ...interface{}) {
+	LogFatal = func(args ...interface{}) {
 		fmt.Println("FATAL (NO-OP)")
 	}
 

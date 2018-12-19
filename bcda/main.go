@@ -322,8 +322,7 @@ func createACO(name string) (string, error) {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
 
-	authBackend := auth.InitAuthBackend()
-	acoUUID, err := authBackend.CreateACO(name)
+	acoUUID, err := models.CreateACO(name)
 	if err != nil {
 		return "", err
 	}
@@ -355,8 +354,8 @@ func createUser(acoID, name, email string) (string, error) {
 		return userUUID, errors.New(strings.Join(errMsgs, "\n"))
 	}
 
-	authBackend := auth.InitAuthBackend()
-	user, err := authBackend.CreateUser(name, email, acoUUID)
+	//authBackend := auth.InitAuthBackend()
+	user, err := models.CreateUser(name, email, acoUUID)
 	if err != nil {
 		return userUUID, err
 	}

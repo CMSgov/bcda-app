@@ -8,8 +8,8 @@ services:
     environment:
       - DB=postgresql://postgres:toor@db:5432
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
-      - ATO_PUBLIC_KEY_FILE=../shared_files/ATO_public.pem
-      - ATO_PRIVATE_KEY_FILE=../shared_files/ATO_private.pem
+      - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
+      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
   smoke_test:
