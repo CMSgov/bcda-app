@@ -170,7 +170,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(acoUUID)
+				fmt.Fprintf(app.Writer, "%s\n", acoUUID)
 				return nil
 			},
 		},

@@ -1,6 +1,7 @@
 package main
 
 import (
+        "bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -49,11 +50,23 @@ func (s *MainTestSuite) TestAutoMigrate() {
 	autoMigrate()
 }
 
+func (s *MainTestSuite) TestMatt() {
+        s.SetupAuthBackend()
+	buf := new(bytes.Buffer)
+	args := []string{"bcda", "create-aco", "--name", "TEST_ACO"}
+        s.testApp.Writer = buf
+        err := s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+	output := buf.String()
+	fmt.Println(output)
+	fmt.Println("...")
+        assert.Equal(s.T(), output, "blah")
+}
+
+
+
 func (s *MainTestSuite) TestCreateACO() {
 	db := database.GetGORMDbConnection()
-	//args := []string{CreateACO, "--name", "TEST_ACO"}
-	//err := s.testApp.Run(args)
-	//assert.Nil(s.T(), err)
 	s.SetupAuthBackend()
 	ACOName := "UNIT TEST ACO"
 	acoUUID, err := createACO(ACOName)
