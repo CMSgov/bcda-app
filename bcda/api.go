@@ -297,13 +297,11 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
 		}
 
-		var jobKeys []string
 		keyMap := make(map[string]string)
 		var jobKeysObj []models.JobKey
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
-			jobKeys = append(jobKeys, hex.EncodeToString(jobKey.EncryptedKey)+"|"+jobKey.FileName)
-			keyMap[jobKey.FileName] = hex.EncodeToString(jobKey.EncryptedKey)
+			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
 		}
 
 		rb := bulkResponseBody{
@@ -311,9 +309,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
 			Files:               []fileItem{fi},
-			Keys:                jobKeys,
 			Errors:              []fileItem{},
 			KeyMap:              keyMap,
+			JobID:               job.ID,
 		}
 
 		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.AcoID)
@@ -385,7 +383,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	var user auth.User
+	var user models.User
 	err := db.First(&user, "name = ?", "User One").Error
 	if err != nil {
 		log.Error(err)
@@ -394,7 +392,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var aco auth.ACO
+	var aco models.ACO
 	err = db.First(&aco, "name = ?", "ACO Dev").Error
 	if err != nil {
 		log.Error(err)
@@ -480,6 +478,29 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
+	}
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	m := make(map[string]string)
+
+	if database.GetGORMDbConnection().DB().Ping() == nil {
+		m["database"] = "ok"
+		w.WriteHeader(http.StatusOK)
+	} else {
+		m["database"] = "error"
+		w.WriteHeader(http.StatusBadGateway)
+	}
+
+	respJSON, err := json.Marshal(m)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(respJSON)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 

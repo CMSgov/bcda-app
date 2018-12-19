@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"errors"
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -38,14 +37,14 @@ func (s *EncryptionTestSuite) TestEncryptBytes() {
 	// Make a random String for encrypting
 	testBytes := []byte(uuid.NewRandom().String())
 	// Encrypt the sting and get the key back
-	encryptedBytes, encryptedKey, err := EncryptBytes(auth.GetATOPublicKey(), testBytes, "TEST")
+	encryptedBytes, encryptedKey, err := EncryptBytes(models.GetATOPublicKey(), testBytes, "TEST")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), encryptedBytes)
 	assert.NotNil(s.T(), encryptedKey)
 	// Make sure we changed something
 	assert.NotEqual(s.T(), testBytes, encryptedBytes)
 	// Decrypt the Key
-	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, auth.GetATOPrivateKey(), encryptedKey, []byte("TEST"))
+	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, models.GetATOPrivateKey(), encryptedKey, []byte("TEST"))
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), decryptedKey)
 	// Decrypted Key can not match the encrypted key
@@ -80,7 +79,7 @@ func (s *EncryptionTestSuite) TestEncryptAndMove() {
 	}
 	s.db.Save(&j)
 	// Do the Encrypt and Move
-	err := EncryptAndMove(fromPath, toPath, fileName, auth.GetATOPublicKey(), j.ID)
+	err := EncryptAndMove(fromPath, toPath, fileName, models.GetATOPublicKey(), j.ID)
 	// No Errors
 	assert.Nil(s.T(), err)
 	// Should have some Job Keys
@@ -107,7 +106,7 @@ func (s *EncryptionTestSuite) TestEncryptAndMove() {
 	assert.NotEqual(s.T(), rawBytes, encryptedBytes)
 	// Get the key back from the Job
 
-	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, auth.GetATOPrivateKey(), jobKey.EncryptedKey, []byte("Coverage"))
+	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, models.GetATOPrivateKey(), jobKey.EncryptedKey, []byte("Coverage"))
 	assert.Nil(s.T(), err)
 	key := [32]byte{}
 	copy(key[:], decryptedKey[0:32])

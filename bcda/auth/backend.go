@@ -1,11 +1,8 @@
 package auth
 
 import (
-	"bufio"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
@@ -16,6 +13,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/secutils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 )
@@ -61,36 +60,6 @@ func (backend *JWTAuthenticationBackend) ResetAuthBackend() {
 	}
 }
 
-func (backend *JWTAuthenticationBackend) CreateACO(name string) (uuid.UUID, error) {
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-	aco := ACO{Name: name, UUID: uuid.NewRandom()}
-	db.Create(&aco)
-
-	return aco.UUID, db.Error
-}
-
-func (backend *JWTAuthenticationBackend) CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-	var aco ACO
-	var user User
-	// If we don't find the ACO return a blank user and an error
-	if db.First(&aco, "UUID = ?", acoUUID).RecordNotFound() {
-		return user, fmt.Errorf("unable to locate ACO with id of %v", acoUUID)
-	}
-	// check for duplicate email addresses and only make one if it isn't found
-	if db.First(&user, "email = ?", email).RecordNotFound() {
-		user = User{UUID: uuid.NewRandom(), Name: name, Email: email, AcoID: aco.UUID}
-		db.Create(&user)
-		return user, nil
-	} else {
-
-		return user, fmt.Errorf("unable to create user for %v because a user with that Email address already exists", email)
-	}
-
-}
-
 func (backend *JWTAuthenticationBackend) GenerateTokenString(userID, acoID string) (string, error) {
 	expirationDelta, err := strconv.Atoi(jwtExpirationDelta)
 	if err != nil {
@@ -129,19 +98,18 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 	}
 
 	return db.Error
-
 }
 
-func (backend *JWTAuthenticationBackend) RevokeUserTokens(user User) error {
+func (backend *JWTAuthenticationBackend) RevokeUserTokens(user models.User) error {
 	db := database.GetGORMDbConnection()
 	var token Token
 	db.Model(&token).Where("active = ? and User_id = ?", true, user.UUID).Update("active", false)
 	return db.Error
 }
 
-func (backend *JWTAuthenticationBackend) RevokeACOTokens(aco ACO) error {
+func (backend *JWTAuthenticationBackend) RevokeACOTokens(aco models.ACO) error {
 	db := database.GetGORMDbConnection()
-	users := []User{} // a slice of users
+	users := []models.User{} // a slice of users
 	db.Find(&users, "aco_id = ?", aco.UUID)
 	for _, user := range users {
 		if err := backend.RevokeUserTokens(user); err != nil {
@@ -158,113 +126,33 @@ func (backend *JWTAuthenticationBackend) IsBlacklisted(jwtToken *jwt.Token) bool
 	defer db.Close()
 
 	var token Token
-	// Look for the token, if found, it must be blacklisted, if not it should be fine.
+	// Look for an inactive token with the uuid; if found, it is blacklisted or otherwise revoked
 	if db.Find(&token, "UUID = ? AND active = ?", claims["id"], false).RecordNotFound() {
 		return false
 	} else {
 		return true
 	}
-
 }
 
+// This method and its sibling, getPublicKey(), get the private key from the file system and environment variables.
+// They accesses external resources and so may panic and bubble up an error if the file is not present or otherwise corrupted
 func getPrivateKey() *rsa.PrivateKey {
 	privateKeyFile, err := os.Open(os.Getenv("JWT_PRIVATE_KEY_FILE"))
 	if err != nil {
 		log.Panic(err)
 	}
-	return openPrivateKeyFile(privateKeyFile)
-}
-func GetATOPrivateKey() *rsa.PrivateKey {
-	atoPrivateKeyFile, err := os.Open(os.Getenv("ATO_PRIVATE_KEY_FILE"))
-	if err != nil {
-		panic(err)
-	}
-	return openPrivateKeyFile(atoPrivateKeyFile)
-}
-func openPrivateKeyFile(privateKeyFile *os.File) *rsa.PrivateKey {
-	pemfileinfo, err := privateKeyFile.Stat()
-	if err != nil {
-		log.Panic(err)
-	}
-	var size int64 = pemfileinfo.Size()
-	pembytes := make([]byte, size)
-	buffer := bufio.NewReader(privateKeyFile)
-	_, err = buffer.Read(pembytes)
-	if err != nil {
-		// Above buffer.Read succeeded on a blank file Not Sure how to reach this
-		log.Panic(err)
-	}
-
-	data, _ := pem.Decode([]byte(pembytes))
-	err = privateKeyFile.Close()
-	if err != nil {
-		log.Panic(err)
-	}
-
-	privateKeyImported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
-	if err != nil {
-		// Above function panicked when receiving a bad and blank key file.  This may be unreachable
-		log.Panic(err)
-	}
-
-	return privateKeyImported
+	return secutils.OpenPrivateKeyFile(privateKeyFile)
 }
 
-// THis method gets the private key from the file system and environment variables.  It accesses external resources
-// so it may panic and bubble up an error if the file is not present or otherwise corrupted
+// panics if file is not found, corrupted, or otherwise unreadable
 func getPublicKey() *rsa.PublicKey {
 	publicKeyFile, err := os.Open(os.Getenv("JWT_PUBLIC_KEY_FILE"))
 	if err != nil {
 		panic(err)
 	}
-	return openPublicKeyFile(publicKeyFile)
+	return secutils.OpenPublicKeyFile(publicKeyFile)
 }
 
-// This exists to provide a known static keys used for ACO's in our alpha tests.
-// This key is not meant to protect anything and both halves will be made available publicly
-func GetATOPublicKey() *rsa.PublicKey {
-	fmt.Println("Looking for a key at:")
-	fmt.Println(os.Getenv("ATO_PUBLIC_KEY_FILE"))
-	atoPublicKeyFile, err := os.Open(os.Getenv("ATO_PUBLIC_KEY_FILE"))
-	if err != nil {
-		fmt.Println("failed to open file")
-		panic(err)
-	}
-	return openPublicKeyFile(atoPublicKeyFile)
-}
-func openPublicKeyFile(publicKeyFile *os.File) *rsa.PublicKey {
-	pemfileinfo, err := publicKeyFile.Stat()
-	if err != nil {
-		log.Panic(err)
-	}
-	var size int64 = pemfileinfo.Size()
-	pembytes := make([]byte, size)
-	buffer := bufio.NewReader(publicKeyFile)
-	_, err = buffer.Read(pembytes)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	data, _ := pem.Decode([]byte(pembytes))
-
-	err = publicKeyFile.Close()
-	if err != nil {
-		log.Panic(err)
-	}
-
-	publicKeyImported, err := x509.ParsePKIXPublicKey(data.Bytes)
-
-	if err != nil {
-		panic(err)
-	}
-
-	rsaPub, ok := publicKeyImported.(*rsa.PublicKey)
-
-	if !ok {
-		panic(err)
-	}
-	return rsaPub
-}
 
 func (backend *JWTAuthenticationBackend) GetJWTClaims(tokenString string) jwt.MapClaims {
 	token, err := backend.GetJWToken(tokenString)
@@ -290,7 +178,7 @@ func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.To
 }
 
 // Save a token to the DB for a user
-func (backend *JWTAuthenticationBackend) CreateToken(user User) (Token, string, error) {
+func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (Token, string, error) {
 	db := database.GetGORMDbConnection()
 	tokenString, err := backend.GenerateTokenString(
 		user.UUID.String(),
@@ -313,20 +201,20 @@ func (backend *JWTAuthenticationBackend) CreateToken(user User) (Token, string, 
 }
 
 // CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
-func createAlphaACO(db *gorm.DB) (ACO, error) {
+func createAlphaACO(db *gorm.DB) (models.ACO, error) {
 	var count int
 	db.Table("acos").Count(&count)
-	aco := ACO{Name: fmt.Sprintf("Alpha ACO %d", count), UUID: uuid.NewRandom()}
+	aco := models.ACO{Name: fmt.Sprintf("Alpha ACO %d", count), UUID: uuid.NewRandom()}
 	db.Create(&aco)
 
 	return aco, db.Error
 }
 
 // CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
-func createAlphaUser(db *gorm.DB, aco ACO) (User, error) {
+func createAlphaUser(db *gorm.DB, aco models.ACO) (models.User, error) {
 	var count int
 	db.Table("users").Count(&count)
-	user := User{UUID: uuid.NewRandom(),
+	user := models.User{UUID: uuid.NewRandom(),
 		Name:  fmt.Sprintf("Alpha User%d", count),
 		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
 	db.Create(&user)
@@ -334,15 +222,15 @@ func createAlphaUser(db *gorm.DB, aco ACO) (User, error) {
 	return user, db.Error
 }
 
-func assignBeneficiaries(db *gorm.DB, aco ACO) error {
+func assignBeneficiaries(db *gorm.DB, aco models.ACO) error {
 	s := "insert into beneficiaries (patient_id, aco_id) select patient_id, '" + aco.UUID.String() +
 		"' from beneficiaries where aco_id = (select uuid from acos where name = 'ACO Dev')"
 	return db.Exec(s).Error
 }
 
 func (backend *JWTAuthenticationBackend) CreateAlphaToken(timeToLive string) (string, error) {
-	var aco ACO
-	var user User
+	var aco models.ACO
+	var user models.User
 	var tokenString string
 	var err error
 	var originalJwtExpirationDelta = jwtExpirationDelta

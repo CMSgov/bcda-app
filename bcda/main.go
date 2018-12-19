@@ -66,13 +66,11 @@ type bulkResponseBody struct {
 	// Files included in the payload
 	// collection format: csv
 	Files []fileItem `json:"output"`
-	// Keys created during encryption of the files for this job
-	// These keys are encrypted using the ACO's public key
-	Keys []string `json:"keys"`
 	// Errors encountered during processing
 	// collection format: csv
 	Errors []fileItem        `json:"error"`
 	KeyMap map[string]string `json:"KeyMap"`
+	JobID  uint
 }
 
 func init() {
@@ -322,8 +320,7 @@ func createACO(name string) (string, error) {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
 
-	authBackend := auth.InitAuthBackend()
-	acoUUID, err := authBackend.CreateACO(name)
+	acoUUID, err := models.CreateACO(name)
 	if err != nil {
 		return "", err
 	}
@@ -355,8 +352,8 @@ func createUser(acoID, name, email string) (string, error) {
 		return userUUID, errors.New(strings.Join(errMsgs, "\n"))
 	}
 
-	authBackend := auth.InitAuthBackend()
-	user, err := authBackend.CreateUser(name, email, acoUUID)
+	//authBackend := auth.InitAuthBackend()
+	user, err := models.CreateUser(name, email, acoUUID)
 	if err != nil {
 		return userUUID, err
 	}
