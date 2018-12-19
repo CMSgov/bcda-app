@@ -9,42 +9,45 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/go-chi/chi"
 )
 
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
+	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	r.Get(m.WrapHandler("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Hello world!"))
 		if err != nil {
 			log.Error(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
-	})
+	}))
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/ExplanationOfBenefit/$export", bulkEOBRequest)
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get("/Patient/$export", bulkPatientRequest)
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
 		}
-		r.With(auth.RequireTokenAuth).Get("/jobs/{jobId}", jobStatus)
-		r.Get("/metadata", metadata)
+		r.With(auth.RequireTokenAuth).Get(m.WrapHandler("/jobs/{jobId}", jobStatus))
+		r.Get(m.WrapHandler("/metadata", metadata))
 		if os.Getenv("DEBUG") == "true" {
-			r.Get("/token", getToken)
+			r.Get(m.WrapHandler("/token", getToken))
 		}
 	})
-	r.Get("/_version", getVersion)
-	r.Get("/_health", healthCheck)
+	r.Get(m.WrapHandler("/_version", getVersion))
+	r.Get(m.WrapHandler("/_health", healthCheck))
 	return r
 }
 
 func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
+	m := monitoring.GetMonitor()
 	r.Use(ConnectionClose)
 	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth,
-		auth.RequireTokenACOMatch).Get("/data/{jobID}/{acoID}.ndjson", serveData)
+		auth.RequireTokenACOMatch).Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
 	return r
 }
 
@@ -52,6 +55,7 @@ func NewDataRouter() http.Handler {
 // static files from a http.FileSystem.
 // stolen from https://github.com/go-chi/chi/blob/master/_examples/fileserver/main.go
 func FileServer(r chi.Router, path string, root http.FileSystem) {
+	m := monitoring.GetMonitor()
 	if strings.ContainsAny(path, "{}*") {
 		panic("FileServer does not permit URL parameters.")
 	}
@@ -64,7 +68,7 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 	}
 	path += "*"
 
-	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.Get(m.WrapHandler(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
-	}))
+	})))
 }
