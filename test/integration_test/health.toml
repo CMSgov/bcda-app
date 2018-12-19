@@ -1,0 +1,10 @@
+[bcda-health-request-test]
+name = "Health check request test"
+uri = "{{.PROTOCOL}}://{{.HOST}}/_health"
+method = "GET"
+	[bcda-health-request-test.assert]
+		[bcda-health-request-test.assert.code]
+		code = 200
+                [bcda-health-request-test.assert.jsonschema]
+		ref = "./health.json"
+
