@@ -32,9 +32,9 @@ func InitializeGormModels() *gorm.DB {
 
 type Job struct {
 	gorm.Model
-	Aco        ACO  `gorm:"foreignkey:AcoID;association_foreignkey:UUID"` // aco
+	Aco        ACO       `gorm:"foreignkey:AcoID;association_foreignkey:UUID"` // aco
 	AcoID      uuid.UUID `gorm:"primary_key; type:char(36)" json:"aco_id"`
-	User       User `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
+	User       User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
 	UserID     uuid.UUID `gorm:"type:char(36)"`
 	RequestURL string    `json:"request_url"` // request_url
 	Status     string    `json:"status"`      // status
@@ -51,8 +51,9 @@ type JobKey struct {
 
 type ACO struct {
 	gorm.Model
-	UUID uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	Name string    `json:"name"`                                   // name
+	UUID     uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
+	Name     string    `json:"name"`                                   // name
+	ClientID string    `json:"client_id"`                              // software client id
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {
@@ -84,6 +85,7 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 func CreateACO(name string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
+
 	aco := ACO{Name: name, UUID: uuid.NewRandom()}
 	db.Create(&aco)
 
@@ -96,7 +98,7 @@ type User struct {
 	Name  string    `json:"name"`                                   // name
 	Email string    `json:"email"`                                  // email
 	Aco   ACO       `gorm:"foreignkey:AcoID;association_foreignkey:UUID"`
-	AcoID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` // aco_id
+	AcoID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` 			// aco_id
 }
 
 func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
