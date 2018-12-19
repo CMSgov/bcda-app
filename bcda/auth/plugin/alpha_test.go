@@ -1,6 +1,10 @@
 package auth
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -13,44 +17,53 @@ import (
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 
 type AlphaAuthPluginTestSuite struct {
-	suite.Suite
+	testUtils.AuthTestSuite
 	p *AlphaAuthPlugin
+}
+
+func (s *AlphaAuthPluginTestSuite) SetupSuite() {
+	models.InitializeGormModels()
+	auth.InitializeGormModels()
+	s.SetupAuthBackend()
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
 	s.p = new(AlphaAuthPlugin)
-	models.InitializeGormModels()
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.p.RegisterClient([]byte(KnownFixtureACO))
+	c, err := s.p.RegisterClient([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`))
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
-	assert.Equal(s.T(), KnownFixtureACO, string(c))
+	var result map[string]interface{}
+	if err = json.Unmarshal(c, &result); err != nil {
+		assert.Fail(s.T(), "Bad json result value")
+	}
+	assert.Equal(s.T(), KnownFixtureACO, result["clientID"].(string))
 
-	c, err = s.p.RegisterClient([]byte(""))
+	c, err = s.p.RegisterClient([]byte(`{"clientID":""}`))
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
 
-	c, err = s.p.RegisterClient([]byte("Not a valid UUID"))
+	c, err = s.p.RegisterClient([]byte(`{"clientID": "Not a valid UUID"}`))
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
-	c, err = s.p.RegisterClient([]byte(uuid.NewRandom()))
+	c, err = s.p.RegisterClient([]byte(fmt.Sprintf("{\"clientID\": \"%s\"}", uuid.NewRandom().String())))
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), c)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestUpdateClient() {
-	c, err := s.p.UpdateClient([]byte("{}"))
+	c, err := s.p.UpdateClient([]byte(`{}`))
 	assert.Nil(s.T(), c)
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
-	err := s.p.DeleteClient([]byte("{}"))
+	err := s.p.DeleteClient([]byte(`{}`))
 	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
@@ -66,9 +79,9 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.p.RequestAccessToken([]byte("{}"))
+	t, err := s.p.RequestAccessToken([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3", "ttl": 720}`))
+	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), "Not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
