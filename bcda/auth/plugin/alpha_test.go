@@ -1,12 +1,15 @@
 package auth
 
 import (
+	"github.com/pborman/uuid"
 	"testing"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 
 type AlphaAuthPluginTestSuite struct {
 	suite.Suite
@@ -18,9 +21,24 @@ func (s *AlphaAuthPluginTestSuite) SetupTest() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.p.RegisterClient([]byte("{}"))
+	c, err := s.p.RegisterClient([]byte(KnownFixtureACO))
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), c)
+	assert.Equal(s.T(), KnownFixtureACO, string(c))
+
+	c, err = s.p.RegisterClient([]byte(""))
+	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), c)
-	assert.Equal(s.T(), "Not yet implemented", err.Error())
+	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
+
+	c, err = s.p.RegisterClient([]byte("Not a valid UUID"))
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), c)
+	assert.Contains(s.T(), err.Error(), "valid UUID string")
+
+	c, err = s.p.RegisterClient([]byte(uuid.NewRandom()))
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), c)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestUpdateClient() {
