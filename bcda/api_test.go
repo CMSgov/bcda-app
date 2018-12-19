@@ -12,7 +12,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/encryption"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -41,10 +40,10 @@ func (s *APITestSuite) SetupTest() {
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
-	s.SetupAuthBackend()
+	//s.SetupAuthBackend()
 
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
-	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
+	user, err := models.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -82,7 +81,7 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
-	s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
+	s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
@@ -183,11 +182,11 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	s.SetupAuthBackend()
 
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
-	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkrequestnoqueue@example.com", uuid.Parse(acoID))
+	user, err := models.CreateUser("api.go Test User", "testbulkrequestnoqueue@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
 	}
-	defer s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
+	defer s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 
 	token := jwt.New(jwt.SigningMethodRS512)
 	token.Claims = jwt.MapClaims{
@@ -223,7 +222,7 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
 
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
-	user, err := s.AuthBackend.CreateUser("api.go Test User", "testbulkpatientrequest@example.com", uuid.Parse(acoID))
+	user, err := models.CreateUser("api.go Test User", "testbulkpatientrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -231,7 +230,7 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	defer func() {
 		os.Setenv("ENABLE_PATIENT_EXPORT", origPtExp)
 		s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
-		s.db.Where("uuid = ?", user.UUID).Delete(auth.User{})
+		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
 
 	token := jwt.New(jwt.SigningMethodRS512)
@@ -604,6 +603,31 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 
 	s.db.Delete(&j)
+}
+
+func (s *APITestSuite) TestHealthCheck() {
+	req, err := http.NewRequest("GET", "/_health", nil)
+	assert.Nil(s.T(), err)
+	handler := http.HandlerFunc(healthCheck)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+}
+
+func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
+	// Mock database.LogFatal() to allow execution to continue despite bad URL
+	origLogFatal := database.LogFatal
+	defer func() { database.LogFatal = origLogFatal }()
+	database.LogFatal = func(args ...interface{}) {
+		fmt.Println("FATAL (NO-OP)")
+	}
+	dbURL := os.Getenv("DATABASE_URL")
+	defer os.Setenv("DATABASE_URL", dbURL)
+	os.Setenv("DATABASE_URL", "not-a-database")
+	req, err := http.NewRequest("GET", "/_health", nil)
+	assert.Nil(s.T(), err)
+	handler := http.HandlerFunc(healthCheck)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusBadGateway, s.rr.Code)
 }
 
 func TestAPITestSuite(t *testing.T) {

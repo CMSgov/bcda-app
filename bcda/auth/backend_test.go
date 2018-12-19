@@ -3,8 +3,10 @@ package auth_test
 import (
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"os"
@@ -21,8 +23,13 @@ type BackendTestSuite struct {
 	testUtils.AuthTestSuite
 }
 
-func (s *BackendTestSuite) SetupTest() {
+func (s *BackendTestSuite) SetupSuite() {
+	fmt.Println("Initializing models for auth.backend testing")
+	models.InitializeGormModels()
 	auth.InitializeGormModels()
+}
+
+func (s *BackendTestSuite) SetupTest() {
 	s.SetupAuthBackend()
 }
 
@@ -38,36 +45,6 @@ func (s *BackendTestSuite) TestHashCompare() {
 	hashString := hash.Generate(uuidString)
 	assert.True(s.T(), hash.Compare(hashString, uuidString))
 	assert.False(s.T(), hash.Compare(hashString, uuid.NewRandom().String()))
-}
-
-func (s *BackendTestSuite) TestCreateACO() {
-	acoUUID, err := s.AuthBackend.CreateACO("ACO Name")
-
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), acoUUID)
-}
-
-func (s *BackendTestSuite) TestCreateUser() {
-	name, email, sampleUUID, duplicateName := "First Last", "firstlast@exaple.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3", "Duplicate Name"
-
-	// Make a user for an ACO that doesn't exist
-	badACOUser, err := s.AuthBackend.CreateUser(name, email, uuid.NewRandom())
-	//No ID because it wasn't saved
-	assert.True(s.T(), badACOUser.ID == 0)
-	// Should get an error
-	assert.NotNil(s.T(), err)
-
-	// Make a good user
-	user, err := s.AuthBackend.CreateUser(name, email, uuid.Parse(sampleUUID))
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), user.UUID)
-	assert.NotNil(s.T(), user.ID)
-
-	// Try making a duplicate user for the same E-mail address
-	duplicateUser, err := s.AuthBackend.CreateUser(duplicateName, email, uuid.Parse(sampleUUID))
-	// Got a user, not the one that was requested
-	assert.True(s.T(), duplicateUser.Name == name)
-	assert.NotNil(s.T(), err)
 }
 
 func (s *BackendTestSuite) TestGenerateToken() {
@@ -88,7 +65,7 @@ func (s *BackendTestSuite) TestGenerateToken() {
 func (s *BackendTestSuite) TestCreateToken() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	db := database.GetGORMDbConnection()
-	var user auth.User
+	var user models.User
 	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to locate user"))
 	}
@@ -132,7 +109,7 @@ func (s *BackendTestSuite) TestGetJWClaims() {
 func (s *BackendTestSuite) TestRevokeToken() {
 	db := database.GetGORMDbConnection()
 	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	var user auth.User
+	var user models.User
 	db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID)
 	// Good Revoke test
 	_, tokenString, _ := s.AuthBackend.CreateToken(user)
@@ -162,7 +139,7 @@ func (s *BackendTestSuite) TestRevokeUserTokens() {
 
 	db := database.GetGORMDbConnection()
 	// Get the User
-	var revokedUser, validUser auth.User
+	var revokedUser, validUser models.User
 	if db.First(&revokedUser, "Email = ?", revokedEmail).RecordNotFound() {
 		// If this user doesn't exist the test has failed
 		assert.NotNil(s.T(), errors.New("unable to find User"))
@@ -210,7 +187,7 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 	db := database.GetGORMDbConnection()
 
 	// Get the ACO's
-	var revokedACO, validACO auth.ACO
+	var revokedACO, validACO models.ACO
 	if db.First(&revokedACO, "UUID = ?", revokedACOUUID).RecordNotFound() {
 		// If this user doesn't exist the test has failed
 		assert.NotNil(s.T(), errors.New("unable to find ACO"))
@@ -220,7 +197,7 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 		assert.NotNil(s.T(), errors.New("unable to find ACO"))
 	}
 
-	users := []auth.User{}
+	users := []models.User{}
 
 	// Make a token for each user in the aco and then verify they have a valid token
 	if db.Find(&users, "aco_id = ?", revokedACOUUID).RecordNotFound() {
@@ -288,7 +265,6 @@ func (s *BackendTestSuite) TestRevokeACOTokens() {
 		assert.Nil(s.T(), db.Error)
 
 	}
-
 }
 
 func (s *BackendTestSuite) TestIsBlacklisted() {
@@ -297,8 +273,8 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 
 	db := database.GetGORMDbConnection()
 
-	var aco auth.ACO
-	var user auth.User
+	var aco models.ACO
+	var user models.User
 	// Bad test if we can't find the ACO
 	if db.Find(&aco, "UUID = ?", acoID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to find ACO"))
