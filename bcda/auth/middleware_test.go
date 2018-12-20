@@ -2,7 +2,10 @@ package auth_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -100,6 +103,43 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalid() {
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 401, s.rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestRequireTokenAuthBlackListed() {
+	req, err := http.NewRequest("GET", s.server.URL, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := auth.RequireTokenAuth(mockHandler)
+
+	// Blacklisted Token test
+	db := database.GetGORMDbConnection()
+	userID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
+	var user models.User
+	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
+		assert.NotNil(s.T(), errors.New("Unable to find User"))
+	}
+	_, tokenString, err := s.AuthBackend.CreateToken(user)
+	assert.Nil(s.T(), err)
+	// Convert tokenString to a jwtToken
+	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
+	assert.Nil(s.T(), err)
+
+	_ = s.AuthBackend.RevokeToken(tokenString)
+
+	// just to be sure it is blacklisted
+	blacklisted := s.AuthBackend.IsBlacklisted(jwtToken)
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), blacklisted)
+
+	// The actual test
+	ctx := req.Context()
+	ctx = context.WithValue(ctx, "token", jwtToken)
+	req = req.WithContext(ctx)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), 401, s.rr.Code)
+
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenAuthValid() {
