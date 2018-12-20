@@ -125,7 +125,7 @@ func setUpApp() *cli.App {
 
 				qc = que.NewClient(pgxpool)
 
-				fmt.Println("Starting bcda...")
+				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
 				if os.Getenv("DEBUG") == "true" {
 					autoMigrate()
 				}
@@ -168,7 +168,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(acoUUID)
+				fmt.Fprintf(app.Writer, "%s\n", acoUUID)
 				return nil
 			},
 		},
@@ -198,7 +198,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(userUUID)
+				fmt.Fprintf(app.Writer, "%s\n", userUUID)
 				return nil
 			},
 		},
@@ -223,7 +223,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(accessToken)
+				fmt.Fprintf(app.Writer, "%s\n", accessToken)
 				return nil
 			},
 		},
@@ -243,7 +243,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println("Access token has been deactivated")
+				fmt.Fprintf(app.Writer, "%s\n", "Access token has been deactivated")
 				return nil
 			},
 		},
@@ -263,7 +263,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(accessToken)
+				fmt.Fprintf(app.Writer, "%s\n", accessToken)
 				return nil
 			},
 		},
