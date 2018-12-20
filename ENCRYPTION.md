@@ -124,7 +124,7 @@ python decrypt.py \
 
 If you're interested in why we chose this algorithm, read [this page](https://proandroiddev.com/security-best-practices-symmetric-encryption-with-aes-in-java-7616beaaade9), which provides a high-level discussion and pointers to deeper references.
 
-##PKI/key pair
+## PKI/key pair
 
 **TODO:** For this proof-of-concept, we're using the key pair included in the bcda-app repository (i.e., [ATO_private.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem) and [ATO_public.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_public.pem)). Eventually, BCDA will use a public key provided by the API client to perform encryption. We'll document the process for accepting public keys from API clients at a later date.
 
