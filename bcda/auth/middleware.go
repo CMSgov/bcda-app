@@ -64,7 +64,12 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 				ctx := context.WithValue(r.Context(), "token", token)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
+			} else {
+				log.Error("Blacklisted Token with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
 			}
+
+		} else {
+			log.Error("Invalid Token with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
 		}
 
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
@@ -99,6 +104,7 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 			if uuid.Equal(uuid.Parse(aco), uuid.Parse(string(urlUUID))) {
 				next.ServeHTTP(w, r)
 			} else {
+				log.Error("Token for incorrect ACO with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
 				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 				responseutils.WriteError(oo, w, http.StatusNotFound)
 				return
