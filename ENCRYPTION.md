@@ -1,6 +1,6 @@
 # File Encryption in BCDA
 
-**NOTE:** Implementation of per-client payload encryption is still in-progress. Please consider this document a draft explaining the fundamentals of BCDA's encryption strategy.
+**NOTE:** Implementation of per-client payload encryption is still in progress. Please consider this document a draft explaining the fundamentals of BCDA's encryption strategy.
 
 When we deliver files via our data endpoint, we encrypt before sending them. You may wonder why we encrypt the files, since they are already being delivered via an encrypted channel (i.e., `https`). We do so for additional protection of all interested parties -- ourselves, you, and beneficiaries -- in the event of accidental or malicious activity like:
 
@@ -19,7 +19,7 @@ Some best practices you can observe include:
 
 We encrypt the file as the last step in producing it, immediately before we return a final job status (the one that has a body and no `X-Progress` header). Please see [API.md](https://github.com/CMSgov/bcda-app/blob/master/API.md) for more on job status.
 
-The steps in the encryption process are:
+The steps in our encryption process are:
 
 1. Generate a random 32 byte / 256 bit symmetric encryption key.
 1. Generate a random nonce (also known as an Initialization Value, or IV).
@@ -67,7 +67,7 @@ To decrypt the files, you must use the same algorithm (AES-GCM), and follow thes
 3. Decode the cipher text.
 4. Do something useful with the data.
 
-Exactly how these steps are accomplished in code will vary with language and platform. We have some examples, implemented using commonly used languages, for you to consult.
+Exactly how these steps are accomplished in code will vary with language and platform. We have some examples, implemented with commonly used languages, for you to consult.
 
 ## Show me the code
 
@@ -92,7 +92,7 @@ Exactly how these steps are accomplished in code will vary with language and pla
 Notes:
 
 - Example invocations are based on the filenames and symmetric keys included in the sample job status response above.
-- These examples interpret the basename of the input file as the label to use during decryption. It's important that the filename match what was sent in the job status response.
+- These examples interpret the basename of the input file as the label to use during decryption. **It's important that the filename match what was sent in the job status response.**
 - The sample private key used for this proof-of-concept is included in the [bcda-app repository](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem).
 
 [Golang](https://gist.github.com/rnagle/f18099029460c7150cb5d68c3e06cb48)
