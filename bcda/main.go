@@ -208,18 +208,13 @@ func setUpApp() *cli.App {
 			Usage:    "Create an access token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "aco-id",
-					Usage:       "UUID of ACO",
-					Destination: &acoID,
-				},
-				cli.StringFlag{
 					Name:        "user-id",
 					Usage:       "UUID of user",
 					Destination: &userID,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				accessToken, err := createAccessToken(acoID, userID)
+				accessToken, err := createAccessToken(userID)
 				if err != nil {
 					return err
 				}
@@ -361,18 +356,10 @@ func createUser(acoID, name, email string) (string, error) {
 	return user.UUID.String(), nil
 }
 
-func createAccessToken(acoID, userID string) (string, error) {
+func createAccessToken(userID string) (string, error) {
 	errMsgs := []string{}
-	var acoUUID, userUUID uuid.UUID
+	var userUUID uuid.UUID
 
-	if acoID == "" {
-		errMsgs = append(errMsgs, "ACO ID (--aco-id) must be provided")
-	} else {
-		acoUUID = uuid.Parse(acoID)
-		if acoUUID == nil {
-			errMsgs = append(errMsgs, "ACO ID must be a UUID")
-		}
-	}
 	if userID == "" {
 		errMsgs = append(errMsgs, "User ID (--user-id) must be provided")
 	} else {
@@ -388,12 +375,8 @@ func createAccessToken(acoID, userID string) (string, error) {
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	var aco models.ACO
 	var user models.User
 
-	if db.First(&aco, "UUID = ?", acoID).RecordNotFound() {
-		return "", fmt.Errorf("unable to locate ACO with id of %s", acoID)
-	}
 	if db.First(&user, "UUID = ?", userID).RecordNotFound() {
 		return "", fmt.Errorf("unable to locate User with id of %s", userID)
 	}
