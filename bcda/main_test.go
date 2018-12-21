@@ -491,11 +491,8 @@ func (s *MainTestSuite) TestRevokeToken() {
 	// Create a token
 	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	token, err := createAccessToken(acoUUID, userUUID)
+	tokenString, err := createAccessToken(acoUUID, userUUID)
 	assert.Nil(s.T(), err)
-	checkTokenInfo(s, token, "")
-	tokenData := strings.Split(token, "\n")
-	tokenString := tokenData[2]
 
 	// Negative case - attempt to revoke a token passing in a blank token string
 	args := []string{"bcda", "revoke-token", "--access-token", ""}
