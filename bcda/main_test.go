@@ -481,12 +481,21 @@ func (s *MainTestSuite) TestRevokeToken() {
 	// init
 	s.SetupAuthBackend()
 
-	// Create a token
+	// Create an alpha token
 	tokenInfo, err := createAlphaToken("720")
 	assert.Nil(s.T(), err)
 	checkTokenInfo(s, tokenInfo, "720")
-	tokenData := strings.Split(tokenInfo, "\n")
-	accessTokenString := tokenData[2]
+	alphaTokenData := strings.Split(tokenInfo, "\n")
+	alphaTokenString := alphaTokenData[2]
+
+	// Create a token
+	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	token, err := createAccessToken(acoUUID, userUUID)
+	assert.Nil(s.T(), err)
+	checkTokenInfo(s, token, "")
+	tokenData := strings.Split(token, "\n")
+	tokenString := tokenData[2]
 
 	// Negative case - attempt to revoke a token passing in a blank token string
 	args := []string{"bcda", "revoke-token", "--access-token", ""}
@@ -498,8 +507,13 @@ func (s *MainTestSuite) TestRevokeToken() {
 	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
 
+	// Positive case - revoke a token passing in a valid token string (alpha)
+	args = []string{"bcda", "revoke-token", "--access-token", alphaTokenString}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+
 	// Positive case - revoke a token passing in a valid token string
-	args = []string{"bcda", "revoke-token", "--access-token", accessTokenString}
+	args = []string{"bcda", "revoke-token", "--access-token", tokenString}
 	err = s.testApp.Run(args)
 	assert.Nil(s.T(), err)
 }
