@@ -386,14 +386,24 @@ func createAccessToken(acoID, userID string) (string, error) {
 		return "", errors.New(strings.Join(errMsgs, "\n"))
 	}
 
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	var aco models.ACO
+	var user models.User
+
+	if db.First(&aco, "UUID = ?", acoID).RecordNotFound() {
+		return "", fmt.Errorf("unable to locate ACO with id of %s", acoID)
+	}
+	if db.First(&user, "UUID = ?", userID).RecordNotFound() {
+		return "", fmt.Errorf("unable to locate User with id of %s", userID)
+	}
+
 	authBackend := auth.InitAuthBackend()
-	// !todo  This does the wrong thing.  A valid token string is created but not persisted to the db and can't then be reused
-	token, err := authBackend.GenerateTokenString(userID, acoID)
+	_, tokenString, err := authBackend.CreateToken(user)
 	if err != nil {
 		return "", err
 	}
-
-	return token, nil
+	return tokenString, nil
 }
 
 func revokeAccessToken(accessToken string) error {
