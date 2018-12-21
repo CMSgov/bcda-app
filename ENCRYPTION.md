@@ -117,7 +117,7 @@ python decrypt.py \
 	> decrypted_output.ndjson
 ```
 
-[Java]() (in progress)
+Java (in progress)
 
 
 ### Why this cipher
