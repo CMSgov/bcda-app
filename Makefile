@@ -29,6 +29,13 @@ test:
 	docker-compose up -d db queue
 	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from unit_test unit_test
 
+newman:
+	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
+	# and if needed a token.
+	# For example: make newman env=test token=<MY_TOKEN>
+	docker build . -f Dockerfiles/Dockerfile.newman_test -t newman_test
+	docker run newman_test test/$(env).postman_environment.json --global-var "token=$(token)"
+
 load-fixtures:
 	docker-compose up -d db
 	echo "Wait for db to be ready..."
