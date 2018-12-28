@@ -1,5 +1,4 @@
 FROM postman/newman
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
-RUN newman -v
 ENTRYPOINT ["newman", "run", "test/BCDA_Tests_Sequential.postman_collection.json",  "--timeout-script", "99999", "-e"]
