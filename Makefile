@@ -29,12 +29,17 @@ test:
 	docker-compose up -d db queue
 	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from unit_test unit_test
 
-newman:
+postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
 	# For example: make newman env=test token=<MY_TOKEN>
-	docker build . -f Dockerfiles/Dockerfile.newman_test -t newman_test
-	docker run newman_test test/$(env).postman_environment.json --global-var "token=$(token)"
+	docker-compose -f docker-compose.test.yml run newman_test test/$(env).postman_environment.json --global-var "token=$(token)"
+
+
+postman-local:
+	docker-compose up -d
+	sleep 30
+	docker-compose -f docker-compose.test.yml run newman_test test/local.postman_environment.json
 
 load-fixtures:
 	docker-compose up -d db
@@ -67,4 +72,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test integration-test
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test integration-test postman postman-local
