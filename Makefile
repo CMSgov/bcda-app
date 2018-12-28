@@ -32,14 +32,14 @@ test:
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
-	# For example: make newman env=test token=<MY_TOKEN>
-	docker-compose -f docker-compose.test.yml run newman_test test/$(env).postman_environment.json --global-var "token=$(token)"
+	# For example: make postman env=test token=<MY_TOKEN>
+	docker-compose -f docker-compose.test.yml run postman_test test/$(env).postman_environment.json --global-var "token=$(token)"
 
 
 postman-local:
 	docker-compose up -d
 	sleep 30
-	docker-compose -f docker-compose.test.yml run newman_test test/local.postman_environment.json
+	docker-compose -f docker-compose.test.yml run postman_test test/local.postman_environment.json
 
 load-fixtures:
 	docker-compose up -d db
