@@ -152,7 +152,6 @@ func (s *MainTestSuite) TestCreateUser() {
 func (s *MainTestSuite) TestCreateToken() {
 
 	// init
-	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -160,35 +159,20 @@ func (s *MainTestSuite) TestCreateToken() {
 	s.testApp.Writer = buf
 
 	// Test successful creation
-	args := []string{"bcda", "create-token", "--aco-id", acoUUID, "--user-id", userUUID}
+	args := []string{"bcda", "create-token", "--user-id", userUUID}
 	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), buf)
 	accessTokenString := strings.TrimSpace(buf.String())
 	assert.NotNil(s.T(), accessTokenString)
 
-	// Blank ACO UUID
-	args = []string{"bcda", "create-token", "--aco-id", "", "--user-id", userUUID}
-	err = s.testApp.Run(args)
-	assert.NotNil(s.T(), err)
-
-	// Bad ACO UUID
-	args = []string{"bcda", "create-token", "--aco-id", BADUUID, "--user-id", userUUID}
-	err = s.testApp.Run(args)
-	assert.NotNil(s.T(), err)
-
 	// Blank User UUID
-	args = []string{"bcda", "create-token", "--aco-id", acoUUID, "--user-id", ""}
+	args = []string{"bcda", "create-token", "--user-id", ""}
 	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
 
 	// Bad User UUID
-	args = []string{"bcda", "create-token", "--aco-id", acoUUID, "--user-id", BADUUID}
-	err = s.testApp.Run(args)
-	assert.NotNil(s.T(), err)
-
-	// Blank user id and blank aco id
-	args = []string{"bcda", "create-token", "--aco-id", "", "--user-id", ""}
+	args = []string{"bcda", "create-token", "--user-id", BADUUID}
 	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
 }
@@ -498,8 +482,13 @@ func (s *MainTestSuite) TestRevokeToken() {
 	tokenInfo, err := createAlphaToken("720", "Small")
 	assert.Nil(s.T(), err)
 	checkTokenInfo(s, tokenInfo, "720")
-	tokenData := strings.Split(tokenInfo, "\n")
-	accessTokenString := tokenData[2]
+	alphaTokenData := strings.Split(tokenInfo, "\n")
+	alphaTokenString := alphaTokenData[2]
+
+	// Create a token
+	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	tokenString, err := createAccessToken(userUUID)
+	assert.Nil(s.T(), err)
 
 	// Negative case - attempt to revoke a token passing in a blank token string
 	args := []string{"bcda", "revoke-token", "--access-token", ""}
@@ -511,8 +500,13 @@ func (s *MainTestSuite) TestRevokeToken() {
 	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
 
+	// Positive case - revoke a token passing in a valid token string (alpha)
+	args = []string{"bcda", "revoke-token", "--access-token", alphaTokenString}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+
 	// Positive case - revoke a token passing in a valid token string
-	args = []string{"bcda", "revoke-token", "--access-token", accessTokenString}
+	args = []string{"bcda", "revoke-token", "--access-token", tokenString}
 	err = s.testApp.Run(args)
 	assert.Nil(s.T(), err)
 }
