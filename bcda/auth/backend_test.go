@@ -10,6 +10,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 
 type BackendTestSuite struct {
 	testUtils.AuthTestSuite
+	expectedSizes map[string]int
 }
 
 func (s *BackendTestSuite) SetupSuite() {
@@ -31,6 +33,12 @@ func (s *BackendTestSuite) SetupSuite() {
 
 func (s *BackendTestSuite) SetupTest() {
 	s.SetupAuthBackend()
+	s.expectedSizes = map[string]int{
+		"dev":    50,
+		"small":  10,
+		"medium": 25,
+		"large":  100,
+	}
 }
 
 func (s *BackendTestSuite) TestInitAuthBackend() {
@@ -345,19 +353,37 @@ func (s *BackendTestSuite) TestPublicKey() {
 
 func (s *BackendTestSuite) TestCreateAlphaToken() {
 	ttl := os.Getenv("")
-	claims := checkStructure(s, ttl)
+	claims := checkStructure(s, ttl, "Dev")
 	checkTTL(s, claims, ttl)
 }
 
 func (s *BackendTestSuite) TestCreateAlphaTokenWithDefaultTTL() {
 	ttl := os.Getenv("JWT_EXPIRATION_DELTA")
-	claims := checkStructure(s, ttl)
+	claims := checkStructure(s, ttl, "Dev")
 	checkTTL(s, claims, ttl)
 }
 
 func (s *BackendTestSuite) TestCreateAlphaTokenWithCustomTTL() {
 	const ttl = "720"
-	claims := checkStructure(s, ttl)
+	claims := checkStructure(s, ttl, "Dev")
+	checkTTL(s, claims, ttl)
+}
+
+func (s *BackendTestSuite) TestCreateSmallAlphaToken() {
+	ttl := os.Getenv("")
+	claims := checkStructure(s, ttl, "Small")
+	checkTTL(s, claims, ttl)
+}
+
+func (s *BackendTestSuite) TestCreateMediumAlphaToken() {
+	ttl := os.Getenv("")
+	claims := checkStructure(s, ttl, "Medium")
+	checkTTL(s, claims, ttl)
+}
+
+func (s *BackendTestSuite) TestCreateLargeAlphaToken() {
+	ttl := os.Getenv("")
+	claims := checkStructure(s, ttl, "Large")
 	checkTTL(s, claims, ttl)
 }
 
@@ -379,9 +405,9 @@ func checkTTL(s *BackendTestSuite, claims jwt.MapClaims, ttl string) {
 	assert.True(s.T(), assert.WithinDuration(s.T(), iat, exp, delta, "expires date %s not within %s hours of issued at", exp.Format(time.RFC850), ttl))
 }
 
-func checkStructure(s *BackendTestSuite, ttl string) (jwt.MapClaims) {
+func checkStructure(s *BackendTestSuite, ttl, acoSize string) jwt.MapClaims {
 	db := database.GetGORMDbConnection()
-	tokenString, err := s.AuthBackend.CreateAlphaToken(ttl)
+	tokenString, err := s.AuthBackend.CreateAlphaToken(ttl, acoSize)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), tokenString)
 	claims := s.AuthBackend.GetJWTClaims(tokenString)
@@ -390,7 +416,7 @@ func checkStructure(s *BackendTestSuite, ttl string) (jwt.MapClaims) {
 	assert.NotNil(s.T(), acoUUID)
 	var count int
 	db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
-	assert.Equal(s.T(), 50, count)
+	assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
 	return claims
 }
 

@@ -101,7 +101,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold string
+	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -257,9 +257,18 @@ func setUpApp() *cli.App {
 					Usage:       "Set custom Time To Live in hours",
 					Destination: &ttl,
 				},
+				cli.StringFlag{
+					Name:        "size",
+					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', or 'Large'",
+					Destination: &acoSize,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				accessToken, err := createAlphaToken(ttl)
+				err := validateAlphaTokenInputs(ttl, acoSize)
+				if err != nil {
+					return err
+				}
+				accessToken, err := createAlphaToken(ttl, acoSize)
 				if err != nil {
 					return err
 				}
@@ -405,10 +414,29 @@ func revokeAccessToken(accessToken string) error {
 
 	return authBackend.RevokeToken(accessToken)
 }
+func validateAlphaTokenInputs(ttl, acoSize string) error {
+	_, err := strconv.Atoi(ttl)
+	if err != nil {
+		return errors.New("Unable to parse TTL as an integer")
+	}
+	switch strings.ToLower(acoSize) {
+	case
+		"dev",
+		"small",
+		"medium",
+		"large":
+		return nil
+	default:
+		return errors.New("Invalid argument for ACO Size.  Please use 'dev', 'small', 'medium', or 'large'")
+	}
+}
 
-func createAlphaToken(ttl string) (string, error) {
+func createAlphaToken(ttl, acoSize string) (string, error) {
 	authBackend := auth.InitAuthBackend()
-	tokenString, err := authBackend.CreateAlphaToken(ttl)
+	tokenString, err := authBackend.CreateAlphaToken(ttl, acoSize)
+	if err != nil {
+		return "", err
+	}
 	claims := authBackend.GetJWTClaims(tokenString)
 
 	if claims == nil {
@@ -417,7 +445,6 @@ func createAlphaToken(ttl string) (string, error) {
 
 	expiresOn := time.Unix(int64(claims["exp"].(float64)), 0).Format(time.RFC850)
 	tokenId := claims["id"].(string)
-
 	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, tokenString), err
 }
 
