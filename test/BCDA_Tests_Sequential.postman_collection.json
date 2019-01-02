@@ -419,7 +419,7 @@
 						"id": "f5145875-0310-4092-a8f3-4891a45e402a",
 						"exec": [
 							"var env = pm.environment.get(\"env\");",
-							"if (env === \"local\" || env === \"dev\") {",
+							"if (env === \"local\" || env === \"dev\" | env === \"test\") {",
 							"    pm.test(\"Status code is 200\", function() {",
 							"        pm.response.to.have.status(200);",
 							"    });",
