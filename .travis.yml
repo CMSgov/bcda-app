@@ -47,4 +47,4 @@ script:
   - make test
   - make smoke-test
   - make integration-test
-  - make postman-local
+  - make postman env=local
