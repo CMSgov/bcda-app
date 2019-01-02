@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "77534917-a94a-4ca8-a3a5-cc25170c681d",
+		"_postman_id": "bbea2e3d-26cf-47f7-9699-ab08793d8416",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -419,18 +419,22 @@
 						"id": "f5145875-0310-4092-a8f3-4891a45e402a",
 						"exec": [
 							"var env = pm.environment.get(\"env\");",
+							"pm.environment.set(\"token\", pm.globals.get(\"token\"));",
 							"if (env === \"local\" || env === \"dev\" || env === \"test\") {",
 							"    pm.test(\"Status code is 200\", function() {",
 							"        pm.response.to.have.status(200);",
 							"    });",
 							"    ",
-                            "if (env === \"local\" || env === \"dev\") {",
+							"if (env === \"local\" || env === \"dev\") {",
 							"    // Set token for use in other tests",
-							"    pm.environment.set(\"token\", pm.response.text());}",
+							"    pm.environment.set(\"token\", pm.response.text());",
+							"    ",
+							"    }",
 							"} else {",
 							"     pm.test(\"Status code is 404\", function() {",
 							"        pm.response.to.have.status(404);",
 							"    });",
+							"",
 							"}"
 						],
 						"type": "text/javascript"
