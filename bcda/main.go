@@ -125,7 +125,7 @@ func setUpApp() *cli.App {
 
 				qc = que.NewClient(pgxpool)
 
-				fmt.Println("Starting bcda...")
+				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
 				if os.Getenv("DEBUG") == "true" {
 					autoMigrate()
 				}
@@ -168,7 +168,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(acoUUID)
+				fmt.Fprintf(app.Writer, "%s\n", acoUUID)
 				return nil
 			},
 		},
@@ -198,7 +198,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(userUUID)
+				fmt.Fprintf(app.Writer, "%s\n", userUUID)
 				return nil
 			},
 		},
@@ -208,22 +208,17 @@ func setUpApp() *cli.App {
 			Usage:    "Create an access token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "aco-id",
-					Usage:       "UUID of ACO",
-					Destination: &acoID,
-				},
-				cli.StringFlag{
 					Name:        "user-id",
 					Usage:       "UUID of user",
 					Destination: &userID,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				accessToken, err := createAccessToken(acoID, userID)
+				accessToken, err := createAccessToken(userID)
 				if err != nil {
 					return err
 				}
-				fmt.Println(accessToken)
+				fmt.Fprintf(app.Writer, "%s\n", accessToken)
 				return nil
 			},
 		},
@@ -243,7 +238,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println("Access token has been deactivated")
+				fmt.Fprintf(app.Writer, "%s\n", "Access token has been deactivated")
 				return nil
 			},
 		},
@@ -263,7 +258,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Println(accessToken)
+				fmt.Fprintf(app.Writer, "%s\n", accessToken)
 				return nil
 			},
 		},
@@ -361,18 +356,10 @@ func createUser(acoID, name, email string) (string, error) {
 	return user.UUID.String(), nil
 }
 
-func createAccessToken(acoID, userID string) (string, error) {
+func createAccessToken(userID string) (string, error) {
 	errMsgs := []string{}
-	var acoUUID, userUUID uuid.UUID
+	var userUUID uuid.UUID
 
-	if acoID == "" {
-		errMsgs = append(errMsgs, "ACO ID (--aco-id) must be provided")
-	} else {
-		acoUUID = uuid.Parse(acoID)
-		if acoUUID == nil {
-			errMsgs = append(errMsgs, "ACO ID must be a UUID")
-		}
-	}
 	if userID == "" {
 		errMsgs = append(errMsgs, "User ID (--user-id) must be provided")
 	} else {
@@ -386,14 +373,20 @@ func createAccessToken(acoID, userID string) (string, error) {
 		return "", errors.New(strings.Join(errMsgs, "\n"))
 	}
 
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	var user models.User
+
+	if db.First(&user, "UUID = ?", userID).RecordNotFound() {
+		return "", fmt.Errorf("unable to locate User with id of %s", userID)
+	}
+
 	authBackend := auth.InitAuthBackend()
-	// !todo  This does the wrong thing.  A valid token string is created but not persisted to the db and can't then be reused
-	token, err := authBackend.GenerateTokenString(userID, acoID)
+	_, tokenString, err := authBackend.CreateToken(user)
 	if err != nil {
 		return "", err
 	}
-
-	return token, nil
+	return tokenString, nil
 }
 
 func revokeAccessToken(accessToken string) error {

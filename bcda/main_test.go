@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +20,7 @@ import (
 )
 
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
+const TOKENHEADER string = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9."
 
 type MainTestSuite struct {
 	testUtils.AuthTestSuite
@@ -35,6 +38,17 @@ func (s *MainTestSuite) TearDownTest() {
 func TestMainTestSuite(t *testing.T) {
 	suite.Run(t, new(MainTestSuite))
 }
+
+func (s *MainTestSuite) TestGetEnvInt() {
+	const DEFAULT_VALUE = 200
+	os.Setenv("TEST_ENV_STRING", "blah")
+	os.Setenv("TEST_ENV_INT", "232")
+
+	assert.Equal(s.T(), 232, getEnvInt("TEST_ENV_INT", DEFAULT_VALUE))
+	assert.Equal(s.T(), DEFAULT_VALUE, getEnvInt("TEST_ENV_STRING", DEFAULT_VALUE))
+	assert.Equal(s.T(), DEFAULT_VALUE, getEnvInt("FAKE_ENV", DEFAULT_VALUE))
+}
+
 func (s *MainTestSuite) TestSetup() {
 	assert.Equal(s.T(), 1, 1)
 	app := setUpApp()
@@ -45,39 +59,58 @@ func (s *MainTestSuite) TestSetup() {
 func (s *MainTestSuite) TestAutoMigrate() {
 	// Plenty of other tests will rely on this happening
 	// Other tests run these lines so as long as this doesn't error it sb fine
-	autoMigrate()
+	args := []string{"bcda", "sql-migrate"}
+	err := s.testApp.Run(args)
+	assert.Nil(s.T(), err)
 }
 
 func (s *MainTestSuite) TestCreateACO() {
+
+	// init
 	db := database.GetGORMDbConnection()
-	//args := []string{CreateACO, "--name", "TEST_ACO"}
-	//err := s.testApp.Run(args)
-	//assert.Nil(s.T(), err)
-	//s.SetupAuthBackend()
+	s.SetupAuthBackend()
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	// Successful ACO creation
 	ACOName := "UNIT TEST ACO"
-	acoUUID, err := createACO(ACOName)
-	assert.NotNil(s.T(), acoUUID)
+	args := []string{"bcda", "create-aco", "--name", ACOName}
+	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), buf)
+	acoUUID := strings.TrimSpace(buf.String())
 	var testACO models.ACO
 	db.First(&testACO, "Name=?", "UNIT TEST ACO")
 	assert.Equal(s.T(), testACO.UUID.String(), acoUUID)
 
 	// No ACO Name
-	badACO, err := createACO("")
-	assert.Equal(s.T(), badACO, "")
+	badACO := ""
+	args = []string{"bcda", "create-aco", "--name", badACO}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
 
 	// we currently allow ACOs with duplicate names
 }
 
 func (s *MainTestSuite) TestCreateUser() {
-	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	db := database.GetGORMDbConnection()
 
+	// init
+	db := database.GetGORMDbConnection()
+	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	name, email := "Unit Test", "UnitTest@mail.com"
-	userUUID, err := createUser(acoUUID, name, email)
-	assert.NotNil(s.T(), userUUID)
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	// Successful user creation
+	args := []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", email}
+	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), buf)
+	userUUID := strings.TrimSpace(buf.String())
 	var testUser models.User
 	db.First(&testUser, "Email=?", email)
 	assert.Equal(s.T(), testUser.UUID.String(), userUUID)
@@ -85,62 +118,64 @@ func (s *MainTestSuite) TestCreateUser() {
 	// Bad/Negative tests
 
 	// Blank UUID
-	badUserUUID, err := createUser("", name, email)
+	args = []string{"bcda", "create-user", "--name", name, "--aco-id", "", "--email", email}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badUserUUID)
 
 	// Blank UUID
-	badUserUUID, err = createUser(BADUUID, name, email)
+	args = []string{"bcda", "create-user", "--name", name, "--aco-id", BADUUID, "--email", email}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badUserUUID)
 
 	// Blank Name
-	badUserUUID, err = createUser(acoUUID, "", email)
+	args = []string{"bcda", "create-user", "--name", "", "--aco-id", acoUUID, "--email", email}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badUserUUID)
 
 	// Blank E-mail address
-	badUserUUID, err = createUser(acoUUID, name, "")
+	args = []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", ""}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badUserUUID)
+
+	// Multiple blank input params
+	args = []string{"bcda", "create-user", "--name", "", "--aco-id", "", "--email", ""}
+	err = s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
 
 	// Duplicate User
-	_, err = createUser(acoUUID, name, email)
+	args = []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", email}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), email, "%s should contain '%s' and 'already exists'", err, email)
 }
 
 func (s *MainTestSuite) TestCreateToken() {
-	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+
+	// init
 	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
 	// Test successful creation
-	accessTokenString, err := createAccessToken(acoUUID, userUUID)
-	assert.NotNil(s.T(), accessTokenString)
+	args := []string{"bcda", "create-token", "--user-id", userUUID}
+	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
-
-	// Blank ACO UUID
-	badAccessTokenString, err := createAccessToken("", userUUID)
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badAccessTokenString)
-
-	// Bad ACO UUID
-	badAccessTokenString, err = createAccessToken(BADUUID, userUUID)
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badAccessTokenString)
+	assert.NotNil(s.T(), buf)
+	accessTokenString := strings.TrimSpace(buf.String())
+	assert.NotNil(s.T(), accessTokenString)
 
 	// Blank User UUID
-	badAccessTokenString, err = createAccessToken(acoUUID, "")
+	args = []string{"bcda", "create-token", "--user-id", ""}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badAccessTokenString)
 
 	// Bad User UUID
-	badAccessTokenString, err = createAccessToken(acoUUID, BADUUID)
+	args = []string{"bcda", "create-token", "--user-id", BADUUID}
+	err = s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), "", badAccessTokenString)
 }
-
-const TOKENHEADER string = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9."
 
 func checkTokenInfo(s *MainTestSuite, tokenInfo string, ttl string) {
 	assert.NotNil(s.T(), tokenInfo)
@@ -155,6 +190,21 @@ func checkTokenInfo(s *MainTestSuite, tokenInfo string, ttl string) {
 }
 
 func (s *MainTestSuite) TestCreateAlphaToken() {
+
+	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	// execute single scenario via CLI
+	args := []string{"bcda", "create-alpha-token", "--ttl", "720"}
+	err := s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), buf)
+
+	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
+	// (this is required in order to validate the strings returned)
 
 	alphaTokenInfo, err := createAlphaToken("")
 	assert.Nil(s.T(), err)
@@ -171,8 +221,15 @@ func (s *MainTestSuite) TestCreateAlphaToken() {
 }
 
 func (s *MainTestSuite) TestArchiveExpiring() {
+
+	// init
 	autoMigrate()
 	db := database.GetGORMDbConnection()
+
+	// condition: no jobs exist
+	args := []string{"bcda", "archive-job-files"}
+	err := s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
 
 	// save a job to our db
 	j := models.Job{
@@ -191,7 +248,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 
 	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if _, err = os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			s.T().Error(err)
@@ -204,10 +261,11 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	}
 	defer f.Close()
 
-	err = archiveExpiring(0)
-	if err != nil {
-		s.T().Error(err)
-	}
+	// execute the test case from CLI
+	os.Setenv("ARCHIVE_THRESHOLD_HR", "0")
+	args = []string{"bcda", "archive-job-files"}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
 
 	//check that the file has moved to the archive location
 	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
@@ -228,6 +286,8 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 }
 
 func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
+
+	// init
 	autoMigrate()
 	db := database.GetGORMDbConnection()
 
@@ -335,10 +395,23 @@ func setupJobArchiveFile(s *MainTestSuite, email string, modified time.Time, acc
 }
 
 func (s *MainTestSuite) TestCleanArchive() {
+
+	// init
 	autoMigrate()
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 	const Threshold = 30
 	now := time.Now()
+
+	// condition: FHIR_ARCHIVE_DIR doesn't exist
+	os.Unsetenv("FHIR_ARCHIVE_DIR")
+	args := []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
+	err := s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+
+	// condition: no jobs exist
+	args = []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
 
 	// create a file that was last modified before the Threshold, but accessed after it
 	modified := now.Add(-(time.Hour * (Threshold + 1)))
@@ -350,12 +423,19 @@ func (s *MainTestSuite) TestCleanArchive() {
 	afterJobId, after := setupJobArchiveFile(s, "after@test.com", now, now)
 	defer after.Close()
 
+	// condition: bad threshold value
+	args = []string{"bcda", "cleanup-archive", "--threshold", "abcde"}
+	err = s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
+
 	// condition: before < Threshold < after <= now
 	// a file created before the Threshold should be deleted; one created after should not
 	// we use last modified as a proxy for created, because these files should not be changed after creation
-	assert.Nil(s.T(), cleanupArchive(Threshold))
+	args = []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
 
-	_, err := os.Stat(before.Name())
+	_, err = os.Stat(before.Name())
 
 	if err == nil {
 		assert.Fail(s.T(), "%s was not removed; it should have been", before.Name())
@@ -378,4 +458,55 @@ func (s *MainTestSuite) TestCleanArchive() {
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+}
+
+func (s *MainTestSuite) TestRevokeToken() {
+
+	// init
+	s.SetupAuthBackend()
+
+	// Create an alpha token
+	tokenInfo, err := createAlphaToken("720")
+	assert.Nil(s.T(), err)
+	checkTokenInfo(s, tokenInfo, "720")
+	alphaTokenData := strings.Split(tokenInfo, "\n")
+	alphaTokenString := alphaTokenData[2]
+
+	// Create a token
+	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	tokenString, err := createAccessToken(userUUID)
+	assert.Nil(s.T(), err)
+
+	// Negative case - attempt to revoke a token passing in a blank token string
+	args := []string{"bcda", "revoke-token", "--access-token", ""}
+	err = s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
+
+	// Negative case - attempt to revoke a token passing in an invalid token string
+	args = []string{"bcda", "revoke-token", "--access-token", "abcdefg"}
+	err = s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
+
+	// Positive case - revoke a token passing in a valid token string (alpha)
+	args = []string{"bcda", "revoke-token", "--access-token", alphaTokenString}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+
+	// Positive case - revoke a token passing in a valid token string
+	args = []string{"bcda", "revoke-token", "--access-token", tokenString}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+}
+
+func (s *MainTestSuite) TestStartApi() {
+
+	// Negative case
+	originalQueueDbUrl := os.Getenv("QUEUE_DATABASE_URL")
+	os.Setenv("QUEUE_DATABASE_URL", "http://bad url.com/")
+	args := []string{"bcda", "start-api"}
+	err := s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
+	os.Setenv("QUEUE_DATABASE_URL", originalQueueDbUrl)
+
+	// We cannot test the positive case because we don't want to start the HTTP Server in unit test environment
 }
