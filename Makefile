@@ -32,18 +32,14 @@ test:
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
+	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	docker-compose -f docker-compose.test.yml build --no-cache postman_test
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/$(env).postman_environment.json --global-var "token=$(token)"
-
-
-postman-local:
-	#Use this command when you need to test against a local environment.
-	#It will bring up the local docker containers needed for testing against.
+ifeq ($(env), local)
 	docker-compose up -d
 	sleep 30
+endif
 	docker-compose -f docker-compose.test.yml build --no-cache postman_test
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/local.postman_environment.json
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/$(env).postman_environment.json --global-var "token=$(token)"
 
 load-fixtures:
 	docker-compose up -d db
