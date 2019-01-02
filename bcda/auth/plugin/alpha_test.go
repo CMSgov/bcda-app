@@ -46,7 +46,7 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	assert.Nil(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
 
-	c, err = s.p.RegisterClient([]byte(`{"clientID": "Not a valid UUID"}`))
+	c, err = s.p.RegisterClient([]byte(`{"clientID": "correct length, but not a valid UUID"}`))
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "valid UUID string")

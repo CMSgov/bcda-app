@@ -38,7 +38,7 @@ func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
 	// We'll check carefully in this method, because we're returning something to be used as an id
 	// Normally, a plugin would treat this value as a black box external key, but this implementation is
 	// intimate with the API. So, we're going to protect against accidental bad things
-	if acoUUID == "" || len(acoUUID) > 36 {
+	if len(acoUUID) != 36 {
 		return empty, errors.New("you must provide a non-empty string 36 characters in length")
 	}
 
