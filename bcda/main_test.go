@@ -197,20 +197,33 @@ func (s *MainTestSuite) TestCreateAlphaToken() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	// execute single scenario via CLI
-	args := []string{"bcda", "create-alpha-token", "--ttl", "720"}
+	// execute positive scenario via CLI
+	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
 	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), buf)
+	buf.Reset()
+
+	// Execute CLI with invalid inputs
+	args = []string{"bcda", "create-alpha-token", "--ttl", "ABCD", "--size", "Dev"}
+	err = s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
+	assert.Equal(s.T(), 0, buf.Len())
+	buf.Reset()
+
+	args = []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "ABCD"}
+	err = s.testApp.Run(args)
+	assert.NotNil(s.T(), err)
+	assert.Equal(s.T(), 0, buf.Len())
 
 	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
 	// (this is required in order to validate the strings returned)
 
-	alphaTokenInfo, err := createAlphaToken("")
+	alphaTokenInfo, err := createAlphaToken("", "Dev")
 	assert.Nil(s.T(), err)
 	checkTokenInfo(s, alphaTokenInfo, "0")
 
-	anotherTokenInfo, err := createAlphaToken("720")
+	anotherTokenInfo, err := createAlphaToken("720", "Dev")
 	assert.Nil(s.T(), err)
 	checkTokenInfo(s, anotherTokenInfo, "720")
 
@@ -465,8 +478,8 @@ func (s *MainTestSuite) TestRevokeToken() {
 	// init
 	s.SetupAuthBackend()
 
-	// Create an alpha token
-	tokenInfo, err := createAlphaToken("720")
+	// Create a token
+	tokenInfo, err := createAlphaToken("720", "Small")
 	assert.Nil(s.T(), err)
 	checkTokenInfo(s, tokenInfo, "720")
 	alphaTokenData := strings.Split(tokenInfo, "\n")
