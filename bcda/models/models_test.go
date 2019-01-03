@@ -20,7 +20,8 @@ func (s *ModelsTestSuite) SetupTest() {
 }
 
 func (s *ModelsTestSuite) TestCreateACO() {
-	acoUUID, err := CreateACO("ACO Name")
+	const ACOName = "ACO Name"
+	acoUUID, err := CreateACO(ACOName)
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), acoUUID)
@@ -28,13 +29,25 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	var aco ACO
 	s.db.Find(&aco, "UUID = ?", acoUUID)
 	assert.NotNil(s.T(), aco)
+	assert.Equal(s.T(), ACOName, aco.Name)
+	assert.Equal(s.T(), "", aco.ClientID)
 	assert.NotNil(s.T(), aco.GetPublicKey())
 	assert.NotNil(s.T(), GetATOPrivateKey())
-	// should confirm they are a matched pair ?
+	// should confirm the keys are a matched pair? i.e., encrypt something with one and decrypt with the other
+	// the auth provider determines what the clientID contains (formatting, alphabet used, etc).
+	// we require that it be representable in a string of less than 255 characters
+	const ClientID = "Alpha client id"
+	aco.ClientID = ClientID
+	s.db.Save(aco);
+	s.db.Find(&aco, "UUID = ?", acoUUID)
+	assert.NotNil(s.T(), aco)
+	assert.Equal(s.T(), ACOName, aco.Name)
+	assert.NotNil(s.T(), aco.ClientID)
+	assert.Equal(s.T(), ClientID, aco.ClientID)
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {
-	name, email, sampleUUID, duplicateName := "First Last", "firstlast@exaple.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3", "Duplicate Name"
+	name, email, sampleUUID, duplicateName := "First Last", "firstlast@example.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3", "Duplicate Name"
 
 	// Make a user for an ACO that doesn't exist
 	badACOUser, err := CreateUser(name, email, uuid.NewRandom())

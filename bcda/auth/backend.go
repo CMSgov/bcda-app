@@ -86,7 +86,6 @@ func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
 	}
 
 	tokenID := claims["id"].(string)
-	//userID := claims["sub"].(string)
 
 	var token Token
 	hash := Hash{}
@@ -276,4 +275,8 @@ func (backend *JWTAuthenticationBackend) CreateAlphaToken(timeToLive, acoSize st
 	_, tokenString, err = backend.CreateToken(user)
 
 	return tokenString, err
+}
+
+func (backend *JWTAuthenticationBackend) SignJwtToken(token jwt.Token) (string, error) {
+	return token.SignedString(backend.PrivateKey)
 }
