@@ -54,9 +54,7 @@ import (
 )
 
 /*
-
-	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
-
+  	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
 
 	Start explanation of benefit export
 
@@ -79,6 +77,26 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("ExplanationOfBenefit", w, r)
 }
 
+/*
+	swagger:route GET /api/v1/Patient/$export bulkData bulkRequest
+
+	Start patient data export
+
+	Initiates a job to collect data from the Blue Button API for your ACO.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: [http, https]
+
+	Security:
+		api_key
+
+	Responses:
+		202:BulkRequestResponse
+		400:ErrorModel
+		500:FHIRResponse
+*/
 func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("Patient", w, r)
 }

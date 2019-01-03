@@ -3,6 +3,7 @@ package auth
 import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
@@ -28,6 +29,7 @@ type Token struct {
 	UserID uuid.UUID   `json:"user_id"`                                // user_id
 	Value  string      `gorm:"type:varchar(511); unique" json:"value"` // value
 	Active bool        `json:"active"`                                 // active
+	Token jwt.Token    `gorm:"-"`									   // ignore; not for database
 }
 
 func (token *Token) BeforeSave() error {
