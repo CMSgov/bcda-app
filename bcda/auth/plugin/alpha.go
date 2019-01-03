@@ -3,14 +3,16 @@ package auth
 import (
 	"encoding/json"
 	"errors"
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/pborman/uuid"
+	"fmt"
 	"regexp"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+
 	"github.com/dgrijalva/jwt-go"
+	"github.com/pborman/uuid"
 )
 
 type AlphaAuthPlugin struct{}
@@ -82,10 +84,10 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	jwtToken := jwt.Token{}
 
 	var (
-		aco models.ACO
+		aco  models.ACO
 		user models.User
-		err error
-		j interface{}
+		err  error
+		j    interface{}
 	)
 
 	if err = json.Unmarshal(params, &j); err != nil {
@@ -154,13 +156,24 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
 }
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
-	return jwt.Token{}, errors.New("Not yet implemented")
+	t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return auth.InitAuthBackend().PublicKey, nil
+	})
+
+	if err != nil {
+		return jwt.Token{}, err
+	}
+
+	return *t, nil
 }
 
 func getFromDB(acoUUID string) (models.ACO, error) {
 	var (
-		db = database.GetGORMDbConnection()
-	    aco models.ACO
+		db  = database.GetGORMDbConnection()
+		aco models.ACO
 		err error
 	)
 
