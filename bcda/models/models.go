@@ -11,7 +11,7 @@ import (
 )
 
 func InitializeGormModels() *gorm.DB {
-	fmt.Print("Intitialize bcda models")
+	fmt.Print("Initialize bcda models")
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -119,3 +119,32 @@ func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
 		return user, fmt.Errorf("unable to create user for %v because a user with that Email address already exists", email)
 	}
 }
+
+// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
+func CreateAlphaACO(db *gorm.DB) (ACO, error) {
+	var count int
+	db.Table("acos").Count(&count)
+	aco := ACO{Name: fmt.Sprintf("Alpha ACO %d", count), UUID: uuid.NewRandom()}
+	db.Create(&aco)
+
+	return aco, db.Error
+}
+
+func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
+	s := "insert into beneficiaries (patient_id, aco_id) select patient_id, '" + aco.UUID.String() +
+		"' from beneficiaries where aco_id = (select uuid from acos where name = 'ACO " + acoSize + "')"
+	return db.Exec(s).Error
+}
+
+// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
+func CreateAlphaUser(db *gorm.DB, aco ACO) (User, error) {
+	var count int
+	db.Table("users").Count(&count)
+	user := User{UUID: uuid.NewRandom(),
+		Name:  fmt.Sprintf("Alpha User%d", count),
+		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
+	db.Create(&user)
+
+	return user, db.Error
+}
+

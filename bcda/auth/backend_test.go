@@ -3,20 +3,19 @@ package auth_test
 import (
 	"crypto/rsa"
 	"errors"
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
+	"os"
+	"testing"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
-	"os"
-	"strings"
-	"testing"
-	"time"
-
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type BackendTestSuite struct {
@@ -137,7 +136,6 @@ func (s *BackendTestSuite) TestRevokeToken() {
 	err = s.AuthBackend.RevokeToken(tokenString)
 	assert.NotNil(s.T(), err)
 	assert.True(s.T(), gorm.IsRecordNotFoundError(err))
-
 }
 
 func (s *BackendTestSuite) TestRevokeUserTokens() {
@@ -347,75 +345,6 @@ func (s *BackendTestSuite) TestPublicKey() {
 	os.Setenv("JWT_PUBLIC_KEY_FILE", "../static/badPublic.pem")
 	assert.Panics(s.T(), s.AuthBackend.ResetAuthBackend)
 
-}
-
-func (s *BackendTestSuite) TestCreateAlphaToken() {
-	ttl := os.Getenv("")
-	claims := checkStructure(s, ttl, "Dev")
-	checkTTL(s, claims, ttl)
-}
-
-func (s *BackendTestSuite) TestCreateAlphaTokenWithDefaultTTL() {
-	ttl := os.Getenv("JWT_EXPIRATION_DELTA")
-	claims := checkStructure(s, ttl, "Dev")
-	checkTTL(s, claims, ttl)
-}
-
-func (s *BackendTestSuite) TestCreateAlphaTokenWithCustomTTL() {
-	const ttl = "720"
-	claims := checkStructure(s, ttl, "Dev")
-	checkTTL(s, claims, ttl)
-}
-
-func (s *BackendTestSuite) TestCreateSmallAlphaToken() {
-	ttl := os.Getenv("")
-	claims := checkStructure(s, ttl, "Small")
-	checkTTL(s, claims, ttl)
-}
-
-func (s *BackendTestSuite) TestCreateMediumAlphaToken() {
-	ttl := os.Getenv("")
-	claims := checkStructure(s, ttl, "Medium")
-	checkTTL(s, claims, ttl)
-}
-
-func (s *BackendTestSuite) TestCreateLargeAlphaToken() {
-	ttl := os.Getenv("")
-	claims := checkStructure(s, ttl, "Large")
-	checkTTL(s, claims, ttl)
-}
-
-func checkTTL(s *BackendTestSuite, claims jwt.MapClaims, ttl string) {
-	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.NotNil(s.T(), iat)
-	assert.NotNil(s.T(), exp)
-
-	// assumes the hard-coded value in auth/backend.go has not been overridden by an environment variable
-	var delta = 72 * time.Hour
-
-	if ttl != "" {
-		var err error
-		if delta, err = time.ParseDuration(ttl + "h"); err != nil {
-			assert.Fail(s.T(), "Can't parse ttl value of %s", ttl)
-		}
-	}
-	assert.True(s.T(), assert.WithinDuration(s.T(), iat, exp, delta, "expires date %s not within %s hours of issued at", exp.Format(time.RFC850), ttl))
-}
-
-func checkStructure(s *BackendTestSuite, ttl, acoSize string) jwt.MapClaims {
-	db := database.GetGORMDbConnection()
-	tokenString, err := s.AuthBackend.CreateAlphaToken(ttl, acoSize)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), tokenString)
-	claims := s.AuthBackend.GetJWTClaims(tokenString)
-
-	acoUUID := claims["aco"].(string)
-	assert.NotNil(s.T(), acoUUID)
-	var count int
-	db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
-	assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
-	return claims
 }
 
 func TestBackendTestSuite(t *testing.T) {
