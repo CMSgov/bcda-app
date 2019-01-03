@@ -152,7 +152,6 @@ func getPublicKey() *rsa.PublicKey {
 	return secutils.OpenPublicKeyFile(publicKeyFile)
 }
 
-
 func (backend *JWTAuthenticationBackend) GetJWTClaims(tokenString string) jwt.MapClaims {
 	token, err := backend.GetJWToken(tokenString)
 
@@ -221,13 +220,13 @@ func createAlphaUser(db *gorm.DB, aco models.ACO) (models.User, error) {
 	return user, db.Error
 }
 
-func assignBeneficiaries(db *gorm.DB, aco models.ACO) error {
+func assignBeneficiaries(db *gorm.DB, aco models.ACO, acoSize string) error {
 	s := "insert into beneficiaries (patient_id, aco_id) select patient_id, '" + aco.UUID.String() +
-		"' from beneficiaries where aco_id = (select uuid from acos where name = 'ACO Dev')"
+		"' from beneficiaries where aco_id = (select uuid from acos where name = 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
 }
 
-func (backend *JWTAuthenticationBackend) CreateAlphaToken(timeToLive string) (string, error) {
+func (backend *JWTAuthenticationBackend) CreateAlphaToken(timeToLive, acoSize string) (string, error) {
 	var aco models.ACO
 	var user models.User
 	var tokenString string
@@ -258,7 +257,7 @@ func (backend *JWTAuthenticationBackend) CreateAlphaToken(timeToLive string) (st
 		return "", err
 	}
 
-	if err = assignBeneficiaries(tx, aco); err != nil {
+	if err = assignBeneficiaries(tx, aco, acoSize); err != nil {
 		tx.Rollback()
 		return "", err
 	}
