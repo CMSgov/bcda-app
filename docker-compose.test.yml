@@ -24,3 +24,9 @@ services:
       dockerfile: Dockerfiles/Dockerfile.integration_test
     volumes:
       - ./test:/go/src/github.com/CMSgov/bcda-app/test
+  postman_test:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.postman_test
+    volumes:
+       - .:/go/src/github.com/CMSgov/bcda-app
