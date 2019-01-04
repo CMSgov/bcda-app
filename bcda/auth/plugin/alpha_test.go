@@ -100,6 +100,7 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
 	t, err := s.p.DecodeAccessToken(ts)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
+	assert.NotNil(s.T(), t.Claims.(*CustomClaims).Aco)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {
