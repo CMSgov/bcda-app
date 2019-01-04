@@ -96,7 +96,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
-	ts, _ := auth.InitAuthBackend().GenerateTokenString("504", "911")
+	ts, _ := auth.InitAuthBackend().GenerateTokenString(uuid.NewRandom().String(), uuid.NewRandom().String())
 	t, err := s.p.DecodeAccessToken(ts)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
