@@ -54,7 +54,7 @@ import (
 )
 
 /*
-  	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkRequest
+  	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
 
 	Start explanation of benefit export
 
@@ -62,8 +62,6 @@ import (
 
 	Produces:
 	- application/fhir+json
-
-	Schemes: [http, https]
 
 	Security:
 		api_key
@@ -78,7 +76,7 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/Patient/$export bulkData bulkRequest
+	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
 	Start patient data export
 
@@ -86,8 +84,6 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 
 	Produces:
 	- application/fhir+json
-
-	Schemes: [http, https]
 
 	Security:
 		api_key
