@@ -96,11 +96,14 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
-	ts, _ := auth.InitAuthBackend().GenerateTokenString(uuid.NewRandom().String(), uuid.NewRandom().String())
+	userID := uuid.NewRandom().String()
+	acoID := uuid.NewRandom().String()
+	ts, _ := auth.InitAuthBackend().GenerateTokenString(userID, acoID)
 	t, err := s.p.DecodeAccessToken(ts)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.NotNil(s.T(), t.Claims.(*CustomClaims).Aco)
+	assert.Equal(s.T(), userID, t.Claims.(*CustomClaims).Subject)
+	assert.Equal(s.T(), acoID, t.Claims.(*CustomClaims).Aco)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {
