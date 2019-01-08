@@ -3,11 +3,12 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -95,9 +96,14 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
-	t, err := s.p.DecodeAccessToken("")
+	userID := uuid.NewRandom().String()
+	acoID := uuid.NewRandom().String()
+	ts, _ := auth.InitAuthBackend().GenerateTokenString(userID, acoID)
+	t, err := s.p.DecodeAccessToken(ts)
+	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), "Not yet implemented", err.Error())
+	assert.Equal(s.T(), userID, t.Claims.(*CustomClaims).Subject)
+	assert.Equal(s.T(), acoID, t.Claims.(*CustomClaims).Aco)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {
