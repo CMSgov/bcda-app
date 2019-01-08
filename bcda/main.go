@@ -428,8 +428,8 @@ func revokeAccessToken(accessToken string) error {
 
 func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
 	i, err := strconv.Atoi(ttl)
-	if err != nil {
-		return i, fmt.Errorf("invalid argument '%v' for --ttl; should be an integer", ttl)
+	if err != nil || i <= 0 {
+		return i, fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
 	}
 	switch strings.ToLower(acoSize) {
 	case

@@ -242,7 +242,7 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
 	// (this is required in order to validate the strings returned)
 
-	alphaTokenInfo, err := createAlphaToken(0, "Dev")
+	alphaTokenInfo, err := createAlphaToken(1, "Dev")
 	assert.Nil(s.T(), err)
 	checkTokenInfo(s, alphaTokenInfo)
 
@@ -596,7 +596,6 @@ func checkStructure(s *MainTestSuite, ttl int, acoSize string) jwt.MapClaims {
 	assert.NotNil(s.T(), tokenString)
 	claims := s.AuthBackend.GetJWTClaims(tokenString)
 	assert.NotNil(s.T(), claims)
-	fmt.Printf("DJ >>>>>> claims are %v", claims)
 	acoUUID := claims["aco"].(string)
 	assert.NotNil(s.T(), acoUUID)
 	var count int
