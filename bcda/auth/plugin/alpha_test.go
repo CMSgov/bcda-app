@@ -93,6 +93,11 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
 
+	t, err = s.p.RequestAccessToken([]byte(`{ "ttl": 720}`))
+	assert.NotNil(s.T(), err)
+	assert.IsType(s.T(), jwt.Token{}, t)
+	assert.Contains(s.T(), err.Error(), "invalid string value")
+
 	t, err = s.p.RequestAccessToken([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`))
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
