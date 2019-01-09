@@ -84,10 +84,6 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
-<<<<<<< HEAD
-	err := s.p.RevokeClientCredentials([]byte("{}"))
-	assert.Equal(s.T(), "not yet implemented", err.Error())
-=======
 	c, err := s.p.RegisterClient([]byte(fmt.Sprintf(`{"clientID": "%s"}`, KnownFixtureACO)))
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
@@ -95,7 +91,6 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	err = s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, KnownFixtureACO)))
 	// TODO: Update this test when RevokeAccessToken() is implemented
 	assert.NotNil(s.T(), err)
->>>>>>> RevokeClientCredentials() in progress
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
