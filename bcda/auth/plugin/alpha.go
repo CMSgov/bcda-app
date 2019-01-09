@@ -118,7 +118,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	}
 	log.Info(fmt.Sprintf("%d token(s) revoked", revokedCount))
 	if len(errs) > 0 {
-		return fmt.Errorf("%d of %d tokens could not be revoked due to errors", len(errs), len(tokens))
+		return fmt.Errorf("%d of %d token(s) could not be revoked due to errors", len(errs), len(tokens))
 	}
 
 	return nil

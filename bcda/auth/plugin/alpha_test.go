@@ -84,13 +84,42 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
-	c, err := s.p.RegisterClient([]byte(fmt.Sprintf(`{"clientID": "%s"}`, KnownFixtureACO)))
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), c)
+	acoID := uuid.NewRandom()
+	clientID := uuid.NewRandom().String()
+	var aco = models.ACO{
+		UUID:     acoID,
+		Name:     "RevokeClientCredentials Test ACO",
+		ClientID: clientID,
+	}
+	db := database.GetGORMDbConnection()
+	db.Save(&aco)
 
-	err = s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, KnownFixtureACO)))
+	var user = models.User{
+		UUID:  uuid.NewRandom(),
+		Name:  "RevokeClientCredentials Test User",
+		Email: "revokeclientcredentialstest@example.com",
+		Aco:   aco,
+		AcoID: aco.UUID,
+	}
+	db.Save(&user)
+
+	var token = auth.Token{
+		UUID:   uuid.NewRandom(),
+		User:   user,
+		UserID: user.UUID,
+		Active: true,
+	}
+	db.Save(&token)
+
+	assert := assert.New(s.T())
+
+	err := s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, clientID)))
+	assert.NotNil(err)
+	assert.Equal("1 of 1 token(s) could not be revoked due to errors", err.Error())
 	// TODO: Update this test when RevokeAccessToken() is implemented
-	assert.NotNil(s.T(), err)
+	//assert.False(token.Active)
+
+	db.Delete(&token, &user, &aco)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
