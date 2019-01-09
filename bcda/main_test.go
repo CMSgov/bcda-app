@@ -10,13 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
+
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
@@ -24,7 +26,17 @@ const TOKENHEADER string = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9."
 
 type MainTestSuite struct {
 	testUtils.AuthTestSuite
-	testApp *cli.App
+	testApp       *cli.App
+	expectedSizes map[string]int
+}
+
+func (s *MainTestSuite) SetupSuite() {
+	s.expectedSizes = map[string]int{
+		"dev":    50,
+		"small":  10,
+		"medium": 25,
+		"large":  100,
+	}
 }
 
 func (s *MainTestSuite) SetupTest() {
@@ -177,19 +189,23 @@ func (s *MainTestSuite) TestCreateToken() {
 	assert.NotNil(s.T(), err)
 }
 
-func checkTokenInfo(s *MainTestSuite, tokenInfo string, ttl string) {
-	assert.NotNil(s.T(), tokenInfo)
+func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
+	assert := assert.New(s.T())
+	assert.NotNil(tokenInfo)
+	if (len(tokenInfo) == 0) {
+		assert.FailNow("tokenInfo has no content")
+	}
 	lines := strings.Split(tokenInfo, "\n")
-	assert.Equal(s.T(), 3, len(lines))
+	assert.Equal(3, len(lines))
 	expDate, err := time.Parse(time.RFC850, lines[0])
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), expDate)
-	assert.Regexp(s.T(), "[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}", lines[1], "no correctly formatted token id in second line %s", lines[1])
-	assert.True(s.T(), strings.HasPrefix(lines[2], TOKENHEADER), "incorrect token header %s", lines[2])
-	assert.InDelta(s.T(), 500, len(tokenInfo), 100, "encoded token string length should be 500+-100; it is %d\n%s", len(tokenInfo), lines[2])
+	assert.Nil(err)
+	assert.NotNil(expDate)
+	assert.Regexp("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}", lines[1], "no correctly formatted token id in second line %s", lines[1])
+	assert.True(strings.HasPrefix(lines[2], TOKENHEADER), "incorrect token header %s", lines[2])
+	assert.InDelta(500, len(tokenInfo), 100, "encoded token string length should be 500+-100; it is %d\n%s", len(tokenInfo), lines[2])
 }
 
-func (s *MainTestSuite) TestCreateAlphaToken() {
+func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
@@ -197,9 +213,16 @@ func (s *MainTestSuite) TestCreateAlphaToken() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	// execute positive scenario via CLI
+	// execute positive scenarios via CLI
 	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
 	err := s.testApp.Run(args)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), buf)
+	buf.Reset()
+
+	// ttl is optional when using the CLI
+	args = []string{"bcda", "create-alpha-token", "--size", "Dev"}
+	err = s.testApp.Run(args)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), buf)
 	buf.Reset()
@@ -219,13 +242,13 @@ func (s *MainTestSuite) TestCreateAlphaToken() {
 	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
 	// (this is required in order to validate the strings returned)
 
-	alphaTokenInfo, err := createAlphaToken("", "Dev")
+	alphaTokenInfo, err := createAlphaToken(1, "Dev")
 	assert.Nil(s.T(), err)
-	checkTokenInfo(s, alphaTokenInfo, "0")
+	checkTokenInfo(s, alphaTokenInfo)
 
-	anotherTokenInfo, err := createAlphaToken("720", "Dev")
+	anotherTokenInfo, err := createAlphaToken(720, "Dev")
 	assert.Nil(s.T(), err)
-	checkTokenInfo(s, anotherTokenInfo, "720")
+	checkTokenInfo(s, anotherTokenInfo)
 
 	l1 := strings.Split(alphaTokenInfo, "\n")
 	l2 := strings.Split(anotherTokenInfo, "\n")
@@ -280,7 +303,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	err = s.testApp.Run(args)
 	assert.Nil(s.T(), err)
 
-	//check that the file has moved to the archive location
+	// check that the file has moved to the archive location
 	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 	_, err = ioutil.ReadFile(expPath)
 	if err != nil {
@@ -291,7 +314,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	var testjob models.Job
 	db.First(&testjob, "id = ?", j.ID)
 
-	//check the status of the job
+	// check the status of the job
 	assert.Equal(s.T(), "Archived", testjob.Status)
 
 	// clean up
@@ -339,7 +362,7 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 		s.T().Error(err)
 	}
 
-	//check that the file has not moved to the archive location
+	// check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
 	_, err = ioutil.ReadFile(dataPath)
 	if err != nil {
@@ -350,7 +373,7 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 	var testjob models.Job
 	db.First(&testjob, "id = ?", j.ID)
 
-	//check the status of the job
+	// check the status of the job
 	assert.Equal(s.T(), "Completed", testjob.Status)
 
 	// clean up
@@ -479,9 +502,9 @@ func (s *MainTestSuite) TestRevokeToken() {
 	s.SetupAuthBackend()
 
 	// Create a token
-	tokenInfo, err := createAlphaToken("720", "Small")
+	tokenInfo, err := createAlphaToken(720, "Small")
 	assert.Nil(s.T(), err)
-	checkTokenInfo(s, tokenInfo, "720")
+	checkTokenInfo(s, tokenInfo)
 	alphaTokenData := strings.Split(tokenInfo, "\n")
 	alphaTokenString := alphaTokenData[2]
 
@@ -522,4 +545,61 @@ func (s *MainTestSuite) TestStartApi() {
 	os.Setenv("QUEUE_DATABASE_URL", originalQueueDbUrl)
 
 	// We cannot test the positive case because we don't want to start the HTTP Server in unit test environment
+}
+
+func (s *MainTestSuite) TestCreateAlphaToken() {
+	const ttl = 42
+	claims := checkStructure(s, ttl, "Dev")
+	checkTTL(s, claims, ttl)
+}
+
+func (s *MainTestSuite) TestCreateSmallAlphaToken() {
+	const ttl = 24
+	claims := checkStructure(s, ttl, "Small")
+	checkTTL(s, claims, ttl)
+}
+
+func (s *MainTestSuite) TestCreateMediumAlphaToken() {
+	const ttl = 24 * 365
+	claims := checkStructure(s, ttl, "Medium")
+	checkTTL(s, claims, ttl)
+}
+
+func (s *MainTestSuite) TestCreateLargeAlphaToken() {
+	endOfUnixTime, _ := time.Parse(time.RFC1123, "Tue, 19 Jan 2038 03:14:07 GMT")
+	ttl := int(time.Until(endOfUnixTime).Hours())
+	claims := checkStructure(s, ttl, "Large")
+	checkTTL(s, claims, ttl)
+}
+
+func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
+	iat := time.Unix(int64(claims["iat"].(float64)), 0)
+	exp := time.Unix(int64(claims["exp"].(float64)), 0)
+	assert.NotNil(s.T(), iat)
+	assert.NotNil(s.T(), exp)
+
+	delta, err := time.ParseDuration(fmt.Sprintf("%dh", ttl))
+	if err != nil {
+		assert.Fail(s.T(), "Can't parse ttl value of %s", ttl)
+	}
+
+	assert.True(s.T(), assert.WithinDuration(s.T(), iat, exp, delta, "expires date %s not within %s hours of issued at", exp.Format(time.RFC850), ttl))
+}
+
+func checkStructure(s *MainTestSuite, ttl int, acoSize string) jwt.MapClaims {
+	db := database.GetGORMDbConnection()
+	tokenInfo, err := createAlphaToken(ttl, acoSize)
+	lines := strings.Split(tokenInfo, "\n")
+	assert.Equal(s.T(), 3, len(lines))
+	tokenString := lines[2]
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), tokenString)
+	claims := s.AuthBackend.GetJWTClaims(tokenString)
+	assert.NotNil(s.T(), claims)
+	acoUUID := claims["aco"].(string)
+	assert.NotNil(s.T(), acoUUID)
+	var count int
+	db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
+	assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
+	return claims
 }

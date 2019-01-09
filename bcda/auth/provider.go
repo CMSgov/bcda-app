@@ -1,7 +1,7 @@
 package auth
 
 import (
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 )
 
 // Provider is an interface for operations performed through an authentication provider.

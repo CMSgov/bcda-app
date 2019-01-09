@@ -1,4 +1,4 @@
-package auth
+package plugin
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 )
 
@@ -27,20 +27,11 @@ type CustomClaims struct {
 // It returns a single string as well, being the clientID this implementation knows this client by
 // NB: Other implementations will probably expect more input, and will certainly return more data
 func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
-	var (
-		empty []byte
-		err   error
-		j     interface{}
-	)
+	var empty []byte
 
-	if err = json.Unmarshal(params, &j); err != nil {
+	acoUUID, err := GetParamString(params, "clientID")
+	if err != nil {
 		return empty, err
-	}
-	paramsMap := j.(map[string]interface{})
-
-	acoUUID, ok := paramsMap["clientID"].(string)
-	if !ok {
-		return empty, errors.New("missing or otherwise invalid clientID")
 	}
 
 	// We'll check carefully in this method, because we're returning something to be used as an id
@@ -54,7 +45,7 @@ func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
 		return empty, errors.New("expected a valid UUID string")
 	}
 
-	if _, err := getFromDB(acoUUID); err != nil {
+	if _, err := getACOFromDB(acoUUID); err != nil {
 		return empty, err
 	}
 
@@ -66,60 +57,51 @@ func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
 }
 
 func (p *AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
-	return nil, errors.New("Not yet implemented")
+	return nil, errors.New("not yet implemented")
 }
 
 func (p *AlphaAuthPlugin) DeleteClient(params []byte) error {
-	return errors.New("Not yet implemented")
+	return errors.New("not yet implemented")
 }
 
 // can treat as a no-op or call RequestAccessToken
 func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	return nil, errors.New("Not yet implemented")
+	return nil, errors.New("not yet implemented")
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
 func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	return errors.New("Not yet implemented")
+	return errors.New("not yet implemented")
 }
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
+// params are currently acoId and ttl; not going to introduce user until we have clear use cases
 func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	backend := auth.InitAuthBackend()
 	db := database.GetGORMDbConnection()
 	jwtToken := jwt.Token{}
 
-	var (
-		aco  models.ACO
-		user models.User
-		err  error
-		j    interface{}
-	)
-
-	if err = json.Unmarshal(params, &j); err != nil {
+	acoUUID, err := GetParamString(params, "clientID")
+	if err != nil {
 		return jwtToken, err
 	}
-	paramsMap := j.(map[string]interface{})
 
-	acoUUIDString, ok := paramsMap["clientID"].(string)
-	if !ok {
-		return jwtToken, errors.New("missing or otherwise invalid clientID")
-	}
-
-	if aco, err = getFromDB(acoUUIDString); err != nil {
+	aco, err := getACOFromDB(acoUUID)
+	if err != nil {
 		return jwtToken, err
 	}
 
 	// I arbitrarily decided to use the first user. An alternative would be to make a specific user
 	// that represents the client. I have no strong opinion here other than not creating stuff in the db
 	// unless we're willing to live with it forever.
+	var user models.User
 	if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
-		return jwtToken, errors.New("No user found for " + aco.UUID.String())
+		return jwtToken, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, ok := paramsMap["ttl"].(int)
-	if !ok {
-		ttl = 72
+	ttl, err := GetParamInt(params, "ttl")
+	if err != nil {
+		return jwtToken, errors.New("no valid ttl found because " + err.Error())
 	}
 
 	tokenUUID := uuid.NewRandom()
@@ -138,11 +120,12 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	}
 
 	token := auth.Token{
-		UUID:   tokenUUID,
-		UserID: user.UUID,
-		Value:  tokenString,
-		Active: true,
-		Token:  jwtToken,
+		UUID:        tokenUUID,
+		UserID:      user.UUID,
+		Value:       tokenString,	// replaced with hash when saved to db
+		Active:      true,
+		Token:       jwtToken,
+		TokenString: tokenString,
 	}
 
 	if err = db.Create(&token).Error; err != nil {
@@ -154,11 +137,11 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 
 // lookup token and set active flag to false
 func (p *AlphaAuthPlugin) RevokeAccessToken(token string) error {
-	return errors.New("Not yet implemented")
+	return errors.New("not yet implemented")
 }
 
 func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
-	return errors.New("Not yet implemented")
+	return errors.New("not yet implemented")
 }
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
@@ -175,7 +158,7 @@ func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
 	return *t, nil
 }
 
-func getFromDB(acoUUID string) (models.ACO, error) {
+func getACOFromDB(acoUUID string) (models.ACO, error) {
 	var (
 		db  = database.GetGORMDbConnection()
 		aco models.ACO
@@ -183,7 +166,45 @@ func getFromDB(acoUUID string) (models.ACO, error) {
 	)
 
 	if db.Find(&aco, "UUID = ?", acoUUID).RecordNotFound() {
-		err = errors.New("No ACO record found for " + acoUUID)
+		err = errors.New("no ACO record found for " + acoUUID)
 	}
 	return aco, err
+}
+
+func GetParamString(params []byte, name string) (string, error) {
+	var (
+		j   interface{}
+		err error
+	)
+
+	if err = json.Unmarshal(params, &j); err != nil {
+		return "", err
+	}
+	paramsMap := j.(map[string]interface{})
+
+	stringForName, ok := paramsMap[name].(string)
+	if !ok {
+		return "", errors.New("missing or otherwise invalid string value for " + name)
+	}
+
+	return stringForName, err
+}
+
+func GetParamInt(params []byte, name string) (int, error) {
+	var (
+		j   interface{}
+		err error
+	)
+
+	if err = json.Unmarshal(params, &j); err != nil {
+		return -1, err
+	}
+	paramsMap := j.(map[string]interface{})
+
+	valueForName, ok := paramsMap[name].(float64)
+	if !ok {
+		return -1, errors.New("missing or otherwise invalid int value for " + name)
+	}
+
+	return int(valueForName), err
 }

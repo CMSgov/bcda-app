@@ -9,18 +9,20 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/dgrijalva/jwt-go"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/auth/plugin"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/urfave/cli"
 
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 // App Name and usage.  Edit them here to prevent breaking tests
@@ -86,6 +88,17 @@ func init() {
 		log.Info("Failed to log to file; using default stderr")
 	}
 	monitoring.GetMonitor()
+}
+
+// a plugin instance is like a connection or an http request; it is ephemeral (the backend it interfaces to is not)
+func GetAuthProvider() auth.Provider {
+	v := os.Getenv("BCDA_AUTH_PROVIDER")
+	switch v {
+	case "Alpha":
+		return new(plugin.AlphaAuthPlugin)		// could fallthrough here, but prefer to be explicit
+	default:
+		return new(plugin.AlphaAuthPlugin)
+	}
 }
 
 func main() {
@@ -259,11 +272,17 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				err := validateAlphaTokenInputs(ttl, acoSize)
+				if ttl == "" {
+					ttl = os.Getenv("JWT_EXPIRATION_DELTA")
+					if (ttl == "") {
+						ttl = "72"
+					}
+				}
+				ttlInt, err := validateAlphaTokenInputs(ttl, acoSize)
 				if err != nil {
 					return err
 				}
-				accessToken, err := createAlphaToken(ttl, acoSize)
+				accessToken, err := createAlphaToken(ttlInt, acoSize)
 				if err != nil {
 					return err
 				}
@@ -356,7 +375,6 @@ func createUser(acoID, name, email string) (string, error) {
 		return userUUID, errors.New(strings.Join(errMsgs, "\n"))
 	}
 
-	//authBackend := auth.InitAuthBackend()
 	user, err := models.CreateUser(name, email, acoUUID)
 	if err != nil {
 		return userUUID, err
@@ -407,10 +425,11 @@ func revokeAccessToken(accessToken string) error {
 
 	return authBackend.RevokeToken(accessToken)
 }
-func validateAlphaTokenInputs(ttl, acoSize string) error {
-	_, err := strconv.Atoi(ttl)
-	if err != nil {
-		return errors.New("Unable to parse TTL as an integer")
+
+func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
+	i, err := strconv.Atoi(ttl)
+	if err != nil || i <= 0 {
+		return i, fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
 	}
 	switch strings.ToLower(acoSize) {
 	case
@@ -418,25 +437,53 @@ func validateAlphaTokenInputs(ttl, acoSize string) error {
 		"small",
 		"medium",
 		"large":
-		return nil
+		return i, nil
 	default:
-		return errors.New("Invalid argument for ACO Size.  Please use 'dev', 'small', 'medium', or 'large'")
+		return i, errors.New("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', or 'Large'")
 	}
 }
 
-func createAlphaToken(ttl, acoSize string) (string, error) {
-	authBackend := auth.InitAuthBackend()
-	tokenString, err := authBackend.CreateAlphaToken(ttl, acoSize)
+func createAlphaToken(ttl int, acoSize string) (s string, err error) {
+
+	aco, err := createAlphaEntities(acoSize)
+	if err != nil {
+		return
+	}
+
+	authProvider := GetAuthProvider()
+
+	params := fmt.Sprintf("{\"clientID\" : \"%s\"}", aco.UUID.String())
+	result, err := authProvider.RegisterClient([]byte(params))
+	if err != nil {
+		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
+	}
+	aco.ClientID, err = plugin.GetParamString(result, "clientID")
+	if err != nil {
+		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
+	}
+
+	if err = database.GetGORMDbConnection().Save(&aco).Error; err != nil {
+		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
+	}
+
+	params = fmt.Sprintf("{\"clientID\" : \"%s\", \"ttl\" : %d}", aco.ClientID, ttl)
+	jwtToken, err := authProvider.RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
-	claims := authBackend.GetJWTClaims(tokenString)
-
-	if claims == nil {
-		return "", errors.New("Could not read token claims")
+	// (re)produce the tokenString; JwtToken seems to only store the tokenString when it's been used to decode an incoming token
+	// TBD: have RequestAccessToken return the token string and decode the string here, or have it return a wrapped Token that has both?
+	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	if err != nil {
+		return "", err
 	}
 
-	expiresOn := time.Unix(int64(claims["exp"].(float64)), 0).Format(time.RFC850)
+	// this code can get cleaned up with DecodeToken
+	claims := jwtToken.Claims.(jwt.MapClaims)
+	if claims == nil {
+		return "", errors.New("could not read any token claims")
+	}
+	expiresOn := time.Unix(claims["exp"].(int64), 0).Format(time.RFC850)
 	tokenId := claims["id"].(string)
 	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, tokenString), err
 }
@@ -535,7 +582,8 @@ func cleanupArchive(hrThreshold int) error {
 
 			err = os.RemoveAll(jobArchiveDir)
 			if err != nil {
-				log.Error("Unable to remove %s because %s", jobArchiveDir, err)
+				e := fmt.Sprintf("Unable to remove %s because %s", jobArchiveDir, err)
+				log.Error(e)
 				continue
 			}
 
@@ -554,4 +602,43 @@ func cleanupArchive(hrThreshold int) error {
 	}
 
 	return nil
+}
+
+func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
+	tx := database.GetGORMDbConnection().Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			if tx.Error != nil {
+				tx.Rollback()
+			}
+			err = fmt.Errorf("createAlphaEntities failed because %s", r)
+		}
+	}()
+
+	if tx.Error != nil {
+		return aco, tx.Error
+	}
+
+	aco, err = models.CreateAlphaACO(tx)
+	if err != nil {
+		tx.Rollback()
+		return aco, err
+	}
+
+	if err = models.AssignAlphaBeneficiaries(tx, aco, acoSize); err != nil {
+		tx.Rollback()
+		return aco, err
+	}
+
+	if _, err = models.CreateAlphaUser(tx, aco); err != nil {
+		tx.Rollback()
+		return aco, err
+	}
+
+	if tx.Commit().Error != nil {
+		tx.Rollback()
+		return aco, tx.Error
+	}
+
+	return aco, nil
 }
