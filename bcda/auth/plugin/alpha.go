@@ -79,6 +79,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	}
 
 	db := database.GetGORMDbConnection()
+	defer db.Close()
 
 	var aco models.ACO
 	err = db.First(&aco, "client_id = ?", clientID).Error

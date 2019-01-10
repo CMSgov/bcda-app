@@ -92,6 +92,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 		ClientID: clientID,
 	}
 	db := database.GetGORMDbConnection()
+	defer db.Close()
 	db.Save(&aco)
 
 	var user = models.User{
