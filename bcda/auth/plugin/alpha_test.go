@@ -10,7 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -110,8 +110,13 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
-	err := s.p.ValidateAccessToken("")
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	userID := uuid.NewRandom().String()
+	acoID := uuid.NewRandom().String()
+	ts, _ := auth.InitAuthBackend().GenerateTokenString(userID, acoID)
+	err := s.p.ValidateAccessToken(ts)
+	assert.Nil(s.T(), err)
+	err = s.p.ValidateAccessToken("this.token.fails")
+	assert.NotNil(s.T(), err)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {

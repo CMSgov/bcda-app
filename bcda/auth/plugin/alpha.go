@@ -11,7 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 )
 
@@ -122,7 +122,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	token := auth.Token{
 		UUID:        tokenUUID,
 		UserID:      user.UUID,
-		Value:       tokenString,	// replaced with hash when saved to db
+		Value:       tokenString, // replaced with hash when saved to db
 		Active:      true,
 		Token:       jwtToken,
 		TokenString: tokenString,
@@ -141,7 +141,11 @@ func (p *AlphaAuthPlugin) RevokeAccessToken(token string) error {
 }
 
 func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
-	return errors.New("not yet implemented")
+	t, err := p.DecodeAccessToken(token)
+	if err != nil {
+		return err
+	}
+	return t.Claims.(*CustomClaims).Valid()
 }
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
