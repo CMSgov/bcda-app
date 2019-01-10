@@ -13,6 +13,8 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type AlphaAuthPlugin struct{}
@@ -71,7 +73,57 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, erro
 
 // look up the active access token associated with id, and call RevokeAccessToken
 func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	return errors.New("not yet implemented")
+	clientID, err := GetParamString(params, "clientID")
+	if err != nil {
+		return err
+	}
+
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	var aco models.ACO
+	err = db.First(&aco, "client_id = ?", clientID).Error
+	if err != nil {
+		return errors.New("no ACO found for client ID")
+	}
+
+	var users []models.User
+	db.Find(&users, "aco_id = ?", aco.UUID)
+	if len(users) == 0 {
+		return errors.New("no users found in client's ACO")
+	}
+
+	var (
+		userIDs []uuid.UUID
+		tokens  []auth.Token
+	)
+	for _, u := range users {
+		userIDs = append(userIDs, u.UUID)
+	}
+
+	db.Find(&tokens, "user_id in (?) and active = true", userIDs)
+	if len(tokens) == 0 {
+		log.Info("No tokens found to revoke for users in client's ACO.")
+		return nil
+	}
+
+	var errs []string
+	revokedCount := 0
+	for _, t := range tokens {
+		err := p.RevokeAccessToken(fmt.Sprintf(`{"token":"%s"}`, t.TokenString))
+		if err != nil {
+			log.Error(err)
+			errs = append(errs, err.Error())
+		} else {
+			revokedCount = revokedCount + 1
+		}
+	}
+	log.Info(fmt.Sprintf("%d token(s) revoked.", revokedCount))
+	if len(errs) > 0 {
+		return fmt.Errorf("%d of %d token(s) could not be revoked due to errors", len(errs), len(tokens))
+	}
+
+	return nil
 }
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
