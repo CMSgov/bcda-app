@@ -13,7 +13,6 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
-
 	log "github.com/sirupsen/logrus"
 )
 
