@@ -100,15 +100,16 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 		userIDs = append(userIDs, u.UUID)
 	}
 
-	db.Find(&tokens, "user_id in (?)", userIDs)
+	db.Find(&tokens, "user_id in (?) and active = true", userIDs)
 	if len(tokens) == 0 {
-		return errors.New("no tokens found for users in client's ACO")
+		log.Info("No tokens found to revoke for users in client's ACO.")
+		return nil
 	}
 
 	var errs []string
 	revokedCount := 0
 	for _, t := range tokens {
-		err := p.RevokeAccessToken(fmt.Sprintf(`{"token":"%s"}`, t.UUID))
+		err := p.RevokeAccessToken(fmt.Sprintf(`{"token":"%s"}`, t.TokenString))
 		if err != nil {
 			log.Error(err)
 			errs = append(errs, err.Error())
@@ -116,7 +117,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 			revokedCount = revokedCount + 1
 		}
 	}
-	log.Info(fmt.Sprintf("%d token(s) revoked", revokedCount))
+	log.Info(fmt.Sprintf("%d token(s) revoked.", revokedCount))
 	if len(errs) > 0 {
 		return fmt.Errorf("%d of %d token(s) could not be revoked due to errors", len(errs), len(tokens))
 	}
