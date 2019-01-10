@@ -53,7 +53,7 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	assert.Nil(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
-	c, err = s.p.RegisterClient([]byte(fmt.Sprintf("{\"clientID\": \"%s\"}", uuid.NewRandom().String())))
+	c, err = s.p.RegisterClient([]byte(fmt.Sprintf(`{"clientID": "%s"}`, uuid.NewRandom().String())))
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), c)
 
@@ -78,9 +78,38 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
+	// missing required param
 	r, err := s.p.GenerateClientCredentials([]byte("{}"))
 	assert.Nil(s.T(), r)
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "invalid string value")
+
+	aco := models.ACO{
+		UUID: uuid.NewRandom(),
+		Name: "Gen Client Creds Test",
+	}
+	err = database.GetGORMDbConnection().Save(&aco).Error
+	assert.Nil(s.T(), err, "wtf? %v", err)
+	j := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, aco.UUID.String()))
+	// we know that we use aco.UUID as the ClientID
+
+	r, err = s.p.GenerateClientCredentials(j)
+	assert.Nil(s.T(), r)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "have a registered client")
+
+	// quick and dirty register client
+	aco.ClientID = aco.UUID.String()
+	err = database.GetGORMDbConnection().Save(&aco).Error
+	assert.Nil(s.T(), err,"wtf? %v", err)
+	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
+	assert.Nil(s.T(), err,"wtf? %v", err)
+
+	r, err = s.p.GenerateClientCredentials(j)
+	assert.NotNil(s.T(), r)
+	assert.Nil(s.T(), err)
+
+	database.GetGORMDbConnection().Delete(&user, &aco)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {

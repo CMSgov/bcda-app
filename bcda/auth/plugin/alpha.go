@@ -68,7 +68,38 @@ func (p *AlphaAuthPlugin) DeleteClient(params []byte) error {
 
 // can treat as a no-op or call RequestAccessToken
 func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	return nil, errors.New("not yet implemented")
+	var empty []byte
+	clientID, err := GetParamString(params, "clientID")
+	if err != nil {
+		return nil, err
+	}
+
+	aco, err := getACOFromDB(clientID)
+	if err != nil {
+		return empty, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
+	}
+
+	if aco.ClientID == "" {
+		return empty, fmt.Errorf("ACO %s does not have a registered client", clientID)
+	}
+
+	/* uncomment when PR 128 implementing BCDA-637 is merged
+	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
+	if err != nil {
+		return empty, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
+	}
+	*/
+
+	jwtToken, err := p.RequestAccessToken([]byte(params))
+	if err != nil {
+		return empty, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
+	}
+	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	if err != nil {
+		return empty, fmt.Errorf("unable to generate tokenString because %s", err)
+	}
+
+	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, tokenString)), err
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
