@@ -83,12 +83,10 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, erro
 		return empty, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
-	/* uncomment when PR 128 implementing BCDA-637 is merged
 	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
 	if err != nil {
 		return empty, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
-	*/
 
 	jwtToken, err := p.RequestAccessToken([]byte(params))
 	if err != nil {

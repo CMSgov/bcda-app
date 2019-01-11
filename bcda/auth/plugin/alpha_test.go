@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -31,6 +32,22 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
 	s.p = new(AlphaAuthPlugin)
+}
+
+var connections = make(map[string]*gorm.DB)
+
+func (s *AlphaAuthPluginTestSuite) BeforeTest(suiteName, testName string) {
+	connections[testName] = database.GetGORMDbConnection()
+}
+
+func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
+	c, ok := connections[testName]
+	if !ok {
+		s.FailNow("WTF? no db connection for %s", testName)
+	}
+	if err := c.Close(); err != nil {
+		s.FailNow("error closing db connection for %s because %s", testName, err)
+	}
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
@@ -62,7 +79,8 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 		UUID: uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		Name: "Duplicate UUID Test",
 	}
-	err = database.GetGORMDbConnection().Save(&aco).Error
+	// Warning: do not try to use s.T().Name() to lookup the connection
+	err = connections["TestRegisterClient"].Save(&aco).Error
 	assert.NotNil(s.T(), err)
 }
 
@@ -100,7 +118,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 
 	// quick and dirty register client
 	aco.ClientID = aco.UUID.String()
-	err = database.GetGORMDbConnection().Save(&aco).Error
+	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
 	assert.Nil(s.T(), err,"wtf? %v", err)
 	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
 	assert.Nil(s.T(), err,"wtf? %v", err)
@@ -109,7 +127,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	assert.NotNil(s.T(), r)
 	assert.Nil(s.T(), err)
 
-	database.GetGORMDbConnection().Delete(&user, &aco)
+	connections["TestGenerateClientCredentials"].Delete(&user, &aco)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
