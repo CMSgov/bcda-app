@@ -106,7 +106,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 		UUID: uuid.NewRandom(),
 		Name: "Gen Client Creds Test",
 	}
-	err = database.GetGORMDbConnection().Save(&aco).Error
+	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
 	assert.Nil(s.T(), err, "wtf? %v", err)
 	j := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, aco.UUID.String()))
 	// we know that we use aco.UUID as the ClientID
@@ -138,8 +138,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 		Name:     "RevokeClientCredentials Test ACO",
 		ClientID: clientID,
 	}
-	db := database.GetGORMDbConnection()
-	defer db.Close()
+	db := connections["TestRevokeClientCredentials"]
 	db.Save(&aco)
 
 	var user = models.User{
