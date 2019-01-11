@@ -10,6 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/jinzhu/gorm"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
@@ -110,7 +111,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	var errs []string
 	revokedCount := 0
 	for _, t := range tokens {
-		err := p.RevokeAccessToken(fmt.Sprintf(`{"token":"%s"}`, t.TokenString))
+		err := revokeAccessTokenByID(t.UUID)
 		if err != nil {
 			log.Error(err)
 			errs = append(errs, err.Error())
@@ -188,8 +189,31 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 }
 
 // lookup token and set active flag to false
-func (p *AlphaAuthPlugin) RevokeAccessToken(token string) error {
-	return errors.New("not yet implemented")
+func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
+
+	backend := auth.InitAuthBackend()
+	claims := backend.GetJWTClaims(tokenString)
+
+	if claims == nil {
+		return errors.New("could not read token claims")
+	}
+
+	tokenID := claims["id"].(string)
+
+	return revokeAccessTokenByID(uuid.Parse(tokenID))
+}
+
+func revokeAccessTokenByID(tokenID uuid.UUID) error {
+	db := database.GetGORMDbConnection()
+	var token auth.Token
+	if db.First(&token, "UUID = ? and active = true", tokenID).RecordNotFound() {
+		return gorm.ErrRecordNotFound
+	}
+
+	token.Active = false
+	db.Save(&token)
+
+	return db.Error
 }
 
 func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {

@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -120,13 +121,14 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthBlackListed() {
 	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to find User"))
 	}
-	_, tokenString, err := s.AuthBackend.CreateToken(user)
+	t, tokenString, err := s.AuthBackend.CreateToken(user)
 	assert.Nil(s.T(), err)
 	// Convert tokenString to a jwtToken
 	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
 	assert.Nil(s.T(), err)
 
-	_ = s.AuthBackend.RevokeToken(tokenString)
+	t.Active = false
+	db.Save(&t)
 
 	// just to be sure it is blacklisted
 	blacklisted := s.AuthBackend.IsBlacklisted(jwtToken)

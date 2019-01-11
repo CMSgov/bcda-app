@@ -9,6 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/jinzhu/gorm"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
@@ -104,21 +105,15 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	}
 	db.Save(&user)
 
-	var token = auth.Token{
-		UUID:   uuid.NewRandom(),
-		User:   user,
-		UserID: user.UUID,
-		Active: true,
-	}
-	db.Save(&token)
+	token, _, _ := s.AuthBackend.CreateToken(user)
 
 	assert := assert.New(s.T())
 
 	err := s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, clientID)))
-	assert.NotNil(err)
-	assert.Equal("1 of 1 token(s) could not be revoked due to errors", err.Error())
-	// TODO: Update this test when RevokeAccessToken() is implemented
-	//assert.False(token.Active)
+	assert.Nil(err)
+
+	db.First(&token, "UUID = ?", token.UUID)
+	assert.False(token.Active)
 
 	db.Delete(&token, &user, &aco)
 }
@@ -140,8 +135,33 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
-	err := s.p.RevokeAccessToken("")
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	db := database.GetGORMDbConnection()
+	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	var user models.User
+	db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID)
+	// Good Revoke test
+	_, tokenString, _ := s.AuthBackend.CreateToken(user)
+
+	assert := assert.New(s.T())
+
+	err := s.p.RevokeAccessToken(userID)
+	assert.NotNil(err)
+
+	err = s.p.RevokeAccessToken(tokenString)
+	assert.Nil(err)
+	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
+	assert.Nil(err)
+	assert.True(s.AuthBackend.IsBlacklisted(jwtToken))
+
+	// Revoke the token again, you can't
+	err = s.p.RevokeAccessToken(tokenString)
+	assert.NotNil(err)
+
+	// Revoke a token that doesn't exist
+	tokenString, _ = s.AuthBackend.GenerateTokenString(uuid.NewRandom().String(), acoID)
+	err = s.p.RevokeAccessToken(tokenString)
+	assert.NotNil(err)
+	assert.True(gorm.IsRecordNotFoundError(err))
 }
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
