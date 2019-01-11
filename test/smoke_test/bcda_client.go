@@ -65,7 +65,7 @@ func startJob(resourceType string) *http.Response {
 	client := &http.Client{}
 
 	var url string = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType)
-	if encrypt == true {
+	if encrypt {
 		url = fmt.Sprintf("%s://%s/api/v1/%s/$export?encrypt=true", proto, apiHost, resourceType)
 	}
 
