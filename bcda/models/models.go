@@ -98,7 +98,7 @@ type User struct {
 	Name  string    `json:"name"`                                   // name
 	Email string    `json:"email"`                                  // email
 	Aco   ACO       `gorm:"foreignkey:AcoID;association_foreignkey:UUID"`
-	AcoID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` 			// aco_id
+	AcoID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` // aco_id
 }
 
 func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
@@ -132,7 +132,7 @@ func CreateAlphaACO(db *gorm.DB) (ACO, error) {
 
 func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 	s := "insert into beneficiaries (patient_id, aco_id) select patient_id, '" + aco.UUID.String() +
-		"' from beneficiaries where aco_id = (select uuid from acos where name = 'ACO " + acoSize + "')"
+		"' from beneficiaries where aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
 }
 
@@ -147,4 +147,3 @@ func CreateAlphaUser(db *gorm.DB, aco ACO) (User, error) {
 
 	return user, db.Error
 }
-

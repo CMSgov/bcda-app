@@ -192,7 +192,7 @@ func (s *MainTestSuite) TestCreateToken() {
 func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
 	assert := assert.New(s.T())
 	assert.NotNil(tokenInfo)
-	if (len(tokenInfo) == 0) {
+	if len(tokenInfo) == 0 {
 		assert.FailNow("tokenInfo has no content")
 	}
 	lines := strings.Split(tokenInfo, "\n")
@@ -549,7 +549,7 @@ func (s *MainTestSuite) TestStartApi() {
 
 func (s *MainTestSuite) TestCreateAlphaToken() {
 	const ttl = 42
-	claims := checkStructure(s, ttl, "Dev")
+	claims := checkStructure(s, ttl, "dev")
 	checkTTL(s, claims, ttl)
 }
 
@@ -561,7 +561,7 @@ func (s *MainTestSuite) TestCreateSmallAlphaToken() {
 
 func (s *MainTestSuite) TestCreateMediumAlphaToken() {
 	const ttl = 24 * 365
-	claims := checkStructure(s, ttl, "Medium")
+	claims := checkStructure(s, ttl, "MeDIum")
 	checkTTL(s, claims, ttl)
 }
 
