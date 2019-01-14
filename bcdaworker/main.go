@@ -26,8 +26,9 @@ import (
 )
 
 var (
-	qc  *que.Client
-	txn newrelic.Transaction
+	qc           *que.Client
+	txn          newrelic.Transaction
+	healthLogger *HealthLogger
 )
 
 type jobEnqueueArgs struct {
@@ -49,8 +50,11 @@ func init() {
 	if err == nil {
 		log.SetOutput(file)
 	} else {
-		log.Info("Failed to log to file; using default stderr")
+		log.Info("Failed to open worker error log file; using default stderr")
 	}
+
+	healthLogger = NewHealthLogger()
+	healthLogger.Log()
 }
 
 func processJob(j *que.Job) error {

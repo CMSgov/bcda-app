@@ -25,7 +25,7 @@ func NewStructuredLogger() func(next http.Handler) http.Handler {
 	if err == nil {
 		logger.SetOutput(file)
 	} else {
-		logger.Info("Failed to log to file; using default stderr")
+		logger.Info("Failed to open request log file; using default stderr")
 	}
 	return middleware.RequestLogger(&StructuredLogger{Logger: logger})
 }
