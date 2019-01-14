@@ -149,9 +149,11 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 
 	err = s.p.RevokeAccessToken(tokenString)
 	assert.Nil(err)
-	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
+	jwtToken, err := s.p.DecodeAccessToken(tokenString)
 	assert.Nil(err)
-	assert.True(s.AuthBackend.IsBlacklisted(jwtToken))
+	c, _ := jwtToken.Claims.(CustomClaims)
+	var tokenFromDB jwt.Token
+	assert.False(db.Find(&tokenFromDB, "UUID = ? AND active = false", c.ID).RecordNotFound())
 
 	// Revoke the token again, you can't
 	err = s.p.RevokeAccessToken(tokenString)

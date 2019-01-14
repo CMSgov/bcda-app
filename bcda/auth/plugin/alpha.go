@@ -119,7 +119,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 			revokedCount = revokedCount + 1
 		}
 	}
-	log.Info(fmt.Sprintf("%d token(s) revoked.", revokedCount))
+	log.Infof("%d token(s) revoked.", revokedCount)
 	if len(errs) > 0 {
 		return fmt.Errorf("%d of %d token(s) could not be revoked due to errors", len(errs), len(tokens))
 	}
@@ -188,19 +188,17 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	return jwtToken, err // really want to return auth.Token here, but first let's get this all working
 }
 
-// lookup token and set active flag to false
 func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
-
-	backend := auth.InitAuthBackend()
-	claims := backend.GetJWTClaims(tokenString)
-
-	if claims == nil {
-		return errors.New("could not read token claims")
+	t, err := p.DecodeAccessToken(tokenString)
+	if err != nil {
+		return err
 	}
 
-	tokenID := claims["id"].(string)
+	if c, ok := t.Claims.(*CustomClaims); ok {
+		return revokeAccessTokenByID(uuid.Parse(c.ID))
+	}
 
-	return revokeAccessTokenByID(uuid.Parse(tokenID))
+	return errors.New("could not read token claims")
 }
 
 func revokeAccessTokenByID(tokenID uuid.UUID) error {
