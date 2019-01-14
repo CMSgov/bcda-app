@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -33,6 +34,22 @@ func (s *AlphaAuthPluginTestSuite) SetupTest() {
 	s.p = new(AlphaAuthPlugin)
 }
 
+var connections = make(map[string]*gorm.DB)
+
+func (s *AlphaAuthPluginTestSuite) BeforeTest(suiteName, testName string) {
+	connections[testName] = database.GetGORMDbConnection()
+}
+
+func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
+	c, ok := connections[testName]
+	if !ok {
+		s.FailNow("WTF? no db connection for %s", testName)
+	}
+	if err := c.Close(); err != nil {
+		s.FailNow("error closing db connection for %s because %s", testName, err)
+	}
+}
+
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	c, err := s.p.RegisterClient([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`))
 	assert.Nil(s.T(), err)
@@ -53,7 +70,7 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	assert.Nil(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
-	c, err = s.p.RegisterClient([]byte(fmt.Sprintf("{\"clientID\": \"%s\"}", uuid.NewRandom().String())))
+	c, err = s.p.RegisterClient([]byte(fmt.Sprintf(`{"clientID": "%s"}`, uuid.NewRandom().String())))
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), c)
 
@@ -62,7 +79,8 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 		UUID: uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		Name: "Duplicate UUID Test",
 	}
-	err = database.GetGORMDbConnection().Save(&aco).Error
+	// Warning: do not try to use s.T().Name() to lookup the connection
+	err = connections["TestRegisterClient"].Save(&aco).Error
 	assert.NotNil(s.T(), err)
 }
 
@@ -78,9 +96,38 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
+	// missing required param
 	r, err := s.p.GenerateClientCredentials([]byte("{}"))
 	assert.Nil(s.T(), r)
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "invalid string value")
+
+	aco := models.ACO{
+		UUID: uuid.NewRandom(),
+		Name: "Gen Client Creds Test",
+	}
+	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
+	assert.Nil(s.T(), err, "wtf? %v", err)
+	j := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, aco.UUID.String()))
+	// we know that we use aco.UUID as the ClientID
+
+	r, err = s.p.GenerateClientCredentials(j)
+	assert.Nil(s.T(), r)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "have a registered client")
+
+	// quick and dirty register client
+	aco.ClientID = aco.UUID.String()
+	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
+	assert.Nil(s.T(), err,"wtf? %v", err)
+	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
+	assert.Nil(s.T(), err,"wtf? %v", err)
+
+	r, err = s.p.GenerateClientCredentials(j)
+	assert.NotNil(s.T(), r)
+	assert.Nil(s.T(), err)
+
+	connections["TestGenerateClientCredentials"].Delete(&user, &aco)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
@@ -91,8 +138,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 		Name:     "RevokeClientCredentials Test ACO",
 		ClientID: clientID,
 	}
-	db := database.GetGORMDbConnection()
-	defer db.Close()
+	db := connections["TestRevokeClientCredentials"]
 	db.Save(&aco)
 
 	var user = models.User{

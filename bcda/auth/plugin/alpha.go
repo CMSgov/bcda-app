@@ -29,26 +29,24 @@ type CustomClaims struct {
 // It returns a single string as well, being the clientID this implementation knows this client by
 // NB: Other implementations will probably expect more input, and will certainly return more data
 func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
-	var empty []byte
-
 	acoUUID, err := GetParamString(params, "clientID")
 	if err != nil {
-		return empty, err
+		return nil, err
 	}
 
 	// We'll check carefully in this method, because we're returning something to be used as an id
 	// Normally, a plugin would treat this value as a black box external key, but this implementation is
 	// intimate with the API. So, we're going to protect against accidental bad things
 	if len(acoUUID) != 36 {
-		return empty, errors.New("you must provide a non-empty string 36 characters in length")
+		return nil, errors.New("you must provide a non-empty string 36 characters in length")
 	}
 
 	if matched, err := regexp.MatchString("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$", acoUUID); !matched || err != nil {
-		return empty, errors.New("expected a valid UUID string")
+		return nil, errors.New("expected a valid UUID string")
 	}
 
 	if _, err := getACOFromDB(acoUUID); err != nil {
-		return empty, err
+		return nil, err
 	}
 
 	// return the aco UUID as our auth client id. why? because we have to return something that the API / CLI will
@@ -68,7 +66,35 @@ func (p *AlphaAuthPlugin) DeleteClient(params []byte) error {
 
 // can treat as a no-op or call RequestAccessToken
 func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	return nil, errors.New("not yet implemented")
+	clientID, err := GetParamString(params, "clientID")
+	if err != nil {
+		return nil, err
+	}
+
+	aco, err := getACOFromDB(clientID)
+	if err != nil {
+		return nil, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
+	}
+
+	if aco.ClientID == "" {
+		return nil, fmt.Errorf("ACO %s does not have a registered client", clientID)
+	}
+
+	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
+	}
+
+	jwtToken, err := p.RequestAccessToken([]byte(params))
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
+	}
+	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate tokenString because %s", err)
+	}
+
+	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, tokenString)), err
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
@@ -79,7 +105,11 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	}
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Infof("error closing db connection in %s because %s", "alpha plugin", err)
+		}
+	}()
 
 	var aco models.ACO
 	err = db.First(&aco, "client_id = ?", clientID).Error
@@ -151,7 +181,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 		return jwtToken, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := GetParamInt(params, "ttl")
+	ttl, err := GetParamPositiveInt(params, "ttl")
 	if err != nil {
 		return jwtToken, errors.New("no valid ttl found because " + err.Error())
 	}
@@ -199,7 +229,7 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
 func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return auth.InitAuthBackend().PublicKey, nil
 	}
@@ -242,7 +272,7 @@ func GetParamString(params []byte, name string) (string, error) {
 	return stringForName, err
 }
 
-func GetParamInt(params []byte, name string) (int, error) {
+func GetParamPositiveInt(params []byte, name string) (int, error) {
 	var (
 		j   interface{}
 		err error
