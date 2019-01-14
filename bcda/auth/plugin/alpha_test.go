@@ -136,6 +136,8 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	db := database.GetGORMDbConnection()
+	defer db.Close()
+
 	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	var user models.User
 	db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID)
