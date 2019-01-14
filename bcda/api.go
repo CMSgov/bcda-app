@@ -29,6 +29,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -463,7 +464,7 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 func healthCheck(w http.ResponseWriter, r *http.Request) {
 	m := make(map[string]string)
 
-	if database.GetGORMDbConnection().DB().Ping() == nil {
+	if isDatabaseOK() {
 		m["database"] = "ok"
 		w.WriteHeader(http.StatusOK)
 	} else {
@@ -481,6 +482,16 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+func isDatabaseOK() bool {
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		return false
+	}
+	defer db.Close()
+
+	return db.Ping() == nil
 }
 
 func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
