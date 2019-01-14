@@ -13,7 +13,8 @@ import (
 
 var (
 	accessToken, apiHost, proto, endpoint string
-	timeout                     int
+	timeout                               int
+	encrypt                               bool
 )
 
 type OutputCollection []Output
@@ -29,6 +30,7 @@ func init() {
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
+	flag.BoolVar(&encrypt, "encrypt", false, "whether to request encryption of data")
 	flag.Parse()
 
 	if accessToken == "" {
@@ -61,8 +63,13 @@ func getAccessToken() string {
 
 func startJob(resourceType string) *http.Response {
 	client := &http.Client{}
-	req, err := http.NewRequest(
-		"GET", fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType), nil)
+
+	var url string = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType)
+	if encrypt {
+		url = fmt.Sprintf("%s?encrypt=true", url)
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic(err)
 	}
