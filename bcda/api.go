@@ -463,7 +463,10 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 func healthCheck(w http.ResponseWriter, r *http.Request) {
 	m := make(map[string]string)
 
-	if database.GetGORMDbConnection().DB().Ping() == nil {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	if db.DB().Ping() == nil {
 		m["database"] = "ok"
 		w.WriteHeader(http.StatusOK)
 	} else {
