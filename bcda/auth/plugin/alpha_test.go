@@ -12,7 +12,6 @@ import (
 	"github.com/jinzhu/gorm"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -120,9 +119,9 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	// quick and dirty register client
 	aco.ClientID = aco.UUID.String()
 	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
-	assert.Nil(s.T(), err,"wtf? %v", err)
+	assert.Nil(s.T(), err, "wtf? %v", err)
 	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
-	assert.Nil(s.T(), err,"wtf? %v", err)
+	assert.Nil(s.T(), err, "wtf? %v", err)
 
 	r, err = s.p.GenerateClientCredentials(j)
 	assert.NotNil(s.T(), r)
@@ -181,8 +180,7 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
-	db := database.GetGORMDbConnection()
-	defer db.Close()
+	db := connections["TestRevokeAccessToken"]
 
 	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	var user models.User
