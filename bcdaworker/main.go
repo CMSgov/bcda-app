@@ -375,21 +375,20 @@ func main() {
 	hIntStr := os.Getenv("WORKER_HEALTH_INT_SEC")
 	hInt, err := strconv.Atoi(hIntStr)
 	if err != nil {
-		hInt = 30
-	}
-	ticker := time.NewTicker(time.Duration(hInt) * time.Second)
-	quit := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				healthLogger.Log()
-			case <-quit:
-				ticker.Stop()
-				return
+		ticker := time.NewTicker(time.Duration(hInt) * time.Second)
+		quit := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					healthLogger.Log()
+				case <-quit:
+					ticker.Stop()
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	waitForSig()
 }
