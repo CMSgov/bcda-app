@@ -17,7 +17,7 @@ package:
 
 integration-test:
 	docker-compose up -d 
-	sleep 5
+	sleep 30
 	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from integration_test integration_test
 
 smoke-test:
@@ -41,7 +41,7 @@ endif
 	docker-compose -f docker-compose.test.yml build --no-cache postman_test
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/$(env).postman_environment.json --global-var "token=$(token)"
 
-test: 
+test:
 	$(MAKE) unit-test
 	$(MAKE) integration-test
 	$(MAKE) postman env=local
