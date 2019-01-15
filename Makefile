@@ -17,7 +17,7 @@ package:
 
 integration-test:
 	docker-compose up -d 
-	sleep 5
+	sleep 30
 	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from integration_test integration_test
 
 smoke-test:
@@ -25,7 +25,7 @@ smoke-test:
 	sleep 30
 	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from smoke_test smoke_test
 
-test:
+unit-test:
 	docker-compose up -d db queue
 	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from unit_test unit_test
 
@@ -40,6 +40,12 @@ ifeq ($(env), local)
 endif
 	docker-compose -f docker-compose.test.yml build --no-cache postman_test
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/$(env).postman_environment.json --global-var "token=$(token)"
+
+test:
+	$(MAKE) unit-test
+	$(MAKE) integration-test
+	$(MAKE) postman env=local
+	$(MAKE) smoke-test
 
 load-fixtures:
 	docker-compose up -d db
@@ -72,4 +78,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test integration-test postman
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test integration-test postman unit-test
