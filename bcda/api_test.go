@@ -79,7 +79,7 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 	handler := http.HandlerFunc(bulkEOBRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	assert.Equal(s.T(), 444, s.rr.Code)
 	s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
 	s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 }
