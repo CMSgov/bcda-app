@@ -132,6 +132,8 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	backend := auth.InitAuthBackend()
 	db := database.GetGORMDbConnection()
+	defer db.Close()
+
 	jwtToken := jwt.Token{}
 
 	acoUUID, err := GetParamString(params, "clientID")
@@ -203,6 +205,8 @@ func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 
 func revokeAccessTokenByID(tokenID uuid.UUID) error {
 	db := database.GetGORMDbConnection()
+	defer db.Close()
+
 	var token auth.Token
 	if db.First(&token, "UUID = ? and active = true", tokenID).RecordNotFound() {
 		return gorm.ErrRecordNotFound
@@ -238,6 +242,7 @@ func getACOFromDB(acoUUID string) (models.ACO, error) {
 		aco models.ACO
 		err error
 	)
+	defer db.Close()
 
 	if db.Find(&aco, "UUID = ?", acoUUID).RecordNotFound() {
 		err = errors.New("no ACO record found for " + acoUUID)
