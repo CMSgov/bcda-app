@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx"
 	newrelic "github.com/newrelic/go-agent"
@@ -26,9 +27,8 @@ import (
 )
 
 var (
-	qc           *que.Client
-	txn          newrelic.Transaction
-	healthLogger *HealthLogger
+	qc  *que.Client
+	txn newrelic.Transaction
 )
 
 type jobEnqueueArgs struct {
@@ -52,9 +52,6 @@ func init() {
 	} else {
 		log.Info("Failed to open worker error log file; using default stderr")
 	}
-
-	healthLogger = NewHealthLogger()
-	healthLogger.Log()
 }
 
 func processJob(j *que.Job) error {
@@ -370,7 +367,29 @@ func setupQueue() *pgx.ConnPool {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
+
 	workerPool := setupQueue()
 	defer workerPool.Close()
+
+	healthLogger := NewHealthLogger()
+	hIntStr := os.Getenv("WORKER_HEALTH_INT_SEC")
+	hInt, err := strconv.Atoi(hIntStr)
+	if err != nil {
+		hInt = 30
+	}
+	ticker := time.NewTicker(time.Duration(hInt) * time.Second)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				healthLogger.Log()
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
 	waitForSig()
 }
