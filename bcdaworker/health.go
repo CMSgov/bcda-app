@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/pborman/uuid"
@@ -36,13 +35,20 @@ func (l *HealthLogger) Log() {
 	logFields := logrus.Fields{}
 	logFields["type"] = "health"
 	logFields["id"] = uuid.NewRandom()
-	logFields["db"] = health.IsDatabaseOK()
-	logFields["bb"] = health.IsBlueButtonOK()
-	logFields["ts"] = time.Now().UTC().Format(time.RFC1123)
 
-	entry.Logger = entry.Logger.WithFields(logFields)
+	if health.IsDatabaseOK() {
+		logFields["db"] = "ok"
+	} else {
+		logFields["db"] = "error"
+	}
 
-	entry.Logger.Info()
+	if health.IsBlueButtonOK() {
+		logFields["bb"] = "ok"
+	} else {
+		logFields["bb"] = "error"
+	}
+
+	entry.Logger.WithFields(logFields).Info()
 }
 
 type HealthLogEntry struct {

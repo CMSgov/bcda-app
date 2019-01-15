@@ -371,10 +371,8 @@ func main() {
 	workerPool := setupQueue()
 	defer workerPool.Close()
 
-	healthLogger := NewHealthLogger()
-	hIntStr := os.Getenv("WORKER_HEALTH_INT_SEC")
-	hInt, err := strconv.Atoi(hIntStr)
-	if err != nil {
+	if hInt, err := strconv.Atoi(os.Getenv("WORKER_HEALTH_INT_SEC")); err == nil {
+		healthLogger := NewHealthLogger()
 		ticker := time.NewTicker(time.Duration(hInt) * time.Second)
 		quit := make(chan struct{})
 		go func() {
