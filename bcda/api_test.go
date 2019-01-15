@@ -202,7 +202,7 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	handler := http.HandlerFunc(bulkEOBRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
+	assert.Equal(s.T(), 217, s.rr.Code)
 
 	var respOO fhirmodels.OperationOutcome
 	err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
