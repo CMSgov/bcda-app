@@ -3,9 +3,7 @@ package auth
 import (
 	"crypto/rsa"
 	"crypto/sha256"
-	"errors"
 	"fmt"
-	"github.com/jinzhu/gorm"
 	"os"
 	"strconv"
 	"time"
@@ -75,48 +73,6 @@ func (backend *JWTAuthenticationBackend) GenerateTokenString(userID, acoID strin
 		"id":  uuid.NewRandom(),
 	}
 	return token.SignedString(backend.PrivateKey)
-}
-
-func (backend *JWTAuthenticationBackend) RevokeToken(tokenString string) error {
-	db := database.GetGORMDbConnection()
-	claims := backend.GetJWTClaims(tokenString)
-
-	if claims == nil {
-		return errors.New("Could not read token claims")
-	}
-
-	tokenID := claims["id"].(string)
-
-	var token Token
-	hash := Hash{}
-	if db.First(&token, "value = ? and UUID = ? and active = ?", hash.Generate(tokenString), tokenID, true).RecordNotFound() {
-		return gorm.ErrRecordNotFound
-	} else {
-		token.Active = false
-		db.Save(&token)
-	}
-
-	return db.Error
-}
-
-func (backend *JWTAuthenticationBackend) RevokeUserTokens(user models.User) error {
-	db := database.GetGORMDbConnection()
-	var token Token
-	db.Model(&token).Where("active = ? and User_id = ?", true, user.UUID).Update("active", false)
-	return db.Error
-}
-
-func (backend *JWTAuthenticationBackend) RevokeACOTokens(aco models.ACO) error {
-	db := database.GetGORMDbConnection()
-	users := []models.User{} // a slice of users
-	db.Find(&users, "aco_id = ?", aco.UUID)
-	for _, user := range users {
-		if err := backend.RevokeUserTokens(user); err != nil {
-			return err
-		}
-
-	}
-	return db.Error
 }
 
 func (backend *JWTAuthenticationBackend) IsBlacklisted(jwtToken *jwt.Token) bool {

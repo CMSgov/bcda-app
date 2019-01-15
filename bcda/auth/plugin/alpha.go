@@ -10,6 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/jinzhu/gorm"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
@@ -140,7 +141,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	var errs []string
 	revokedCount := 0
 	for _, t := range tokens {
-		err := p.RevokeAccessToken(fmt.Sprintf(`{"token":"%s"}`, t.TokenString))
+		err := revokeAccessTokenByID(t.UUID)
 		if err != nil {
 			log.Error(err)
 			errs = append(errs, err.Error())
@@ -148,7 +149,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 			revokedCount = revokedCount + 1
 		}
 	}
-	log.Info(fmt.Sprintf("%d token(s) revoked.", revokedCount))
+	log.Infof("%d token(s) revoked.", revokedCount)
 	if len(errs) > 0 {
 		return fmt.Errorf("%d of %d token(s) could not be revoked due to errors", len(errs), len(tokens))
 	}
@@ -161,6 +162,8 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	backend := auth.InitAuthBackend()
 	db := database.GetGORMDbConnection()
+	defer db.Close()
+
 	jwtToken := jwt.Token{}
 
 	acoUUID, err := GetParamString(params, "clientID")
@@ -217,9 +220,32 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	return jwtToken, err // really want to return auth.Token here, but first let's get this all working
 }
 
-// lookup token and set active flag to false
-func (p *AlphaAuthPlugin) RevokeAccessToken(token string) error {
-	return errors.New("not yet implemented")
+func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
+	t, err := p.DecodeAccessToken(tokenString)
+	if err != nil {
+		return err
+	}
+
+	if c, ok := t.Claims.(*CustomClaims); ok {
+		return revokeAccessTokenByID(uuid.Parse(c.ID))
+	}
+
+	return errors.New("could not read token claims")
+}
+
+func revokeAccessTokenByID(tokenID uuid.UUID) error {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	var token auth.Token
+	if db.First(&token, "UUID = ? and active = true", tokenID).RecordNotFound() {
+		return gorm.ErrRecordNotFound
+	}
+
+	token.Active = false
+	db.Save(&token)
+
+	return db.Error
 }
 
 func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
@@ -246,6 +272,7 @@ func getACOFromDB(acoUUID string) (models.ACO, error) {
 		aco models.ACO
 		err error
 	)
+	defer db.Close()
 
 	if db.Find(&aco, "UUID = ?", acoUUID).RecordNotFound() {
 		err = errors.New("no ACO record found for " + acoUUID)
