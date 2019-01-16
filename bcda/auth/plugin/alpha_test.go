@@ -197,7 +197,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	assert.Nil(err)
 	jwtToken, err := s.p.DecodeAccessToken(tokenString)
 	assert.Nil(err)
-	c, _ := jwtToken.Claims.(CustomClaims)
+	c, _ := jwtToken.Claims.(AllClaims)
 	var tokenFromDB jwt.Token
 	assert.False(db.Find(&tokenFromDB, "UUID = ? AND active = false", c.ID).RecordNotFound())
 
@@ -229,8 +229,8 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
 	t, err := s.p.DecodeAccessToken(ts)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), userID, t.Claims.(*CustomClaims).Subject)
-	assert.Equal(s.T(), acoID, t.Claims.(*CustomClaims).Aco)
+	assert.Equal(s.T(), userID, t.Claims.(*AllClaims).Subject)
+	assert.Equal(s.T(), acoID, t.Claims.(*AllClaims).Aco)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {

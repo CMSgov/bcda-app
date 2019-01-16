@@ -19,7 +19,7 @@ import (
 
 type AlphaAuthPlugin struct{}
 
-type CustomClaims struct {
+type AllClaims struct {
 	Aco string `json:"aco"`
 	ID  string `json:"id"`
 	jwt.StandardClaims
@@ -225,7 +225,7 @@ func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 		return err
 	}
 
-	if c, ok := t.Claims.(*CustomClaims); ok {
+	if c, ok := t.Claims.(*AllClaims); ok {
 		return revokeAccessTokenByID(uuid.Parse(c.ID))
 	}
 
@@ -252,7 +252,7 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
 	if err != nil {
 		return err
 	}
-	return t.Claims.(*CustomClaims).Valid()
+	return t.Claims.(*AllClaims).Valid()
 }
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
@@ -262,7 +262,7 @@ func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
 		}
 		return auth.InitAuthBackend().PublicKey, nil
 	}
-	t, err := jwt.ParseWithClaims(token, &CustomClaims{}, keyFunc)
+	t, err := jwt.ParseWithClaims(token, &AllClaims{}, keyFunc)
 	if err != nil {
 		return jwt.Token{}, err
 	}
