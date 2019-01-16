@@ -247,22 +247,37 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 	return db.Error
 }
 
-func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
-	t, err := p.DecodeAccessToken(token)
+func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
+	t, err := p.DecodeAccessToken(tokenString)
 	if err != nil {
 		return err
 	}
+
+	b := isBlacklisted(t)
+	if b {
+		return fmt.Errorf("blacklisted Token with ID: %v was rejected", t.Claims.(*AllClaims).ID)
+	}
+
 	return t.Claims.(*AllClaims).Valid()
 }
 
-func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
+func isBlacklisted(token jwt.Token) bool {
+	claims := token.Claims.(*AllClaims)
+
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	return !db.Find(token, "UUID = ? AND active = ?", claims.ID, false).RecordNotFound()
+}
+
+func (p *AlphaAuthPlugin) DecodeAccessToken(tokenString string) (jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return auth.InitAuthBackend().PublicKey, nil
 	}
-	t, err := jwt.ParseWithClaims(token, &AllClaims{}, keyFunc)
+	t, err := jwt.ParseWithClaims(tokenString, &AllClaims{}, keyFunc)
 	if err != nil {
 		return jwt.Token{}, err
 	}
