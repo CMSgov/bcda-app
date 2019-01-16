@@ -20,7 +20,7 @@ import (
 type AlphaAuthPlugin struct{}
 
 type AllClaims struct {
-	Aco string `json:"aco"`
+	ACO string `json:"aco"`
 	ID  string `json:"id"`
 	jwt.StandardClaims
 }
@@ -253,9 +253,16 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
 		return err
 	}
 
+	c := t.Claims.(*AllClaims)
+
 	b := isBlacklisted(t)
 	if b {
-		return fmt.Errorf("blacklisted Token with ID: %v was rejected", t.Claims.(*AllClaims).ID)
+		return fmt.Errorf("blacklisted Token with ID: %v was rejected", c.ID)
+	}
+
+	_, err = getACOFromDB(c.ACO)
+	if err != nil {
+		return err
 	}
 
 	return t.Claims.(*AllClaims).Valid()
