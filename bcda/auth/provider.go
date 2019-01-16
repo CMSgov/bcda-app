@@ -14,8 +14,8 @@ type Provider interface {
 	RevokeClientCredentials(params []byte) error
 
 	RequestAccessToken(params []byte) (jwt.Token, error)
-	RevokeAccessToken(token string) error
+	RevokeAccessToken(tokenString string) error
 
-	ValidateAccessToken(token string) error
-	DecodeAccessToken(token string) (jwt.Token, error)
+	ValidateAccessToken(tokenString string) error
+	DecodeAccessToken(tokenString string) (jwt.Token, error)
 }

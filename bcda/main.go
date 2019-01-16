@@ -95,7 +95,7 @@ func GetAuthProvider() auth.Provider {
 	v := os.Getenv("BCDA_AUTH_PROVIDER")
 	switch v {
 	case "Alpha":
-		return new(plugin.AlphaAuthPlugin)		// could fallthrough here, but prefer to be explicit
+		return new(plugin.AlphaAuthPlugin) // could fallthrough here, but prefer to be explicit
 	default:
 		return new(plugin.AlphaAuthPlugin)
 	}
@@ -274,7 +274,7 @@ func setUpApp() *cli.App {
 			Action: func(c *cli.Context) error {
 				if ttl == "" {
 					ttl = os.Getenv("JWT_EXPIRATION_DELTA")
-					if (ttl == "") {
+					if ttl == "" {
 						ttl = "72"
 					}
 				}
@@ -421,9 +421,9 @@ func revokeAccessToken(accessToken string) error {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	authBackend := auth.InitAuthBackend()
+	authProvider := GetAuthProvider()
 
-	return authBackend.RevokeToken(accessToken)
+	return authProvider.RevokeAccessToken(accessToken)
 }
 
 func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {

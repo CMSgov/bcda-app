@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -111,166 +110,6 @@ func (s *BackendTestSuite) TestGetJWClaims() {
 	assert.Nil(s.T(), badClaims)
 }
 
-func (s *BackendTestSuite) TestRevokeToken() {
-	db := database.GetGORMDbConnection()
-	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	var user models.User
-	db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID)
-	// Good Revoke test
-	_, tokenString, _ := s.AuthBackend.CreateToken(user)
-
-	err := s.AuthBackend.RevokeToken(userID)
-	assert.NotNil(s.T(), err)
-	err = s.AuthBackend.RevokeToken(tokenString)
-	assert.Nil(s.T(), err)
-	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
-	assert.Nil(s.T(), err)
-	assert.True(s.T(), s.AuthBackend.IsBlacklisted(jwtToken))
-
-	// Revoke the token again, you can't
-	err = s.AuthBackend.RevokeToken(tokenString)
-	assert.NotNil(s.T(), err)
-
-	// Revoke a token that doesn't exist
-	tokenString, _ = s.AuthBackend.GenerateTokenString(uuid.NewRandom().String(), acoID)
-	err = s.AuthBackend.RevokeToken(tokenString)
-	assert.NotNil(s.T(), err)
-	assert.True(s.T(), gorm.IsRecordNotFoundError(err))
-}
-
-func (s *BackendTestSuite) TestRevokeUserTokens() {
-	revokedEmail, validEmail := "userrevoked@email.com", "usernotrevoked@email.com"
-
-	db := database.GetGORMDbConnection()
-	// Get the User
-	var revokedUser, validUser models.User
-	if db.First(&revokedUser, "Email = ?", revokedEmail).RecordNotFound() {
-		// If this user doesn't exist the test has failed
-		assert.NotNil(s.T(), errors.New("unable to find User"))
-	}
-	if db.First(&validUser, "Email = ?", validEmail).RecordNotFound() {
-		// If this user doesn't exist the test has failed
-		assert.NotNil(s.T(), errors.New("unable to find User"))
-	}
-	// make 2 valid tokens for this user to be revoked later
-	_, revokedTokenString, err := s.AuthBackend.CreateToken(revokedUser)
-	revokedJWTToken, _ := s.AuthBackend.GetJWToken(revokedTokenString)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), s.AuthBackend.IsBlacklisted(revokedJWTToken))
-
-	_, otherRevokedTokenString, err := s.AuthBackend.CreateToken(revokedUser)
-	otherRevokedJWTToken, _ := s.AuthBackend.GetJWToken(otherRevokedTokenString)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), s.AuthBackend.IsBlacklisted(otherRevokedJWTToken))
-
-	// Make 2 valid tokens for this user that won't be revoked
-	_, validTokenString, err := s.AuthBackend.CreateToken(validUser)
-	validJWTToken, _ := s.AuthBackend.GetJWToken(validTokenString)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), s.AuthBackend.IsBlacklisted(validJWTToken))
-
-	_, otherValidTokenString, err := s.AuthBackend.CreateToken(validUser)
-	otherValidJWTToken, _ := s.AuthBackend.GetJWToken(otherValidTokenString)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), s.AuthBackend.IsBlacklisted(otherValidJWTToken))
-
-	err = s.AuthBackend.RevokeUserTokens(revokedUser)
-	assert.Nil(s.T(), err)
-
-	// This user's tokens are all blacklisted
-	assert.True(s.T(), s.AuthBackend.IsBlacklisted(revokedJWTToken))
-	assert.True(s.T(), s.AuthBackend.IsBlacklisted(otherRevokedJWTToken))
-
-	// This user's tokens are all still valid
-	assert.False(s.T(), s.AuthBackend.IsBlacklisted(validJWTToken))
-	assert.False(s.T(), s.AuthBackend.IsBlacklisted(otherValidJWTToken))
-
-}
-func (s *BackendTestSuite) TestRevokeACOTokens() {
-	revokedACOUUID, validACOUUID := "c14822fa-19ee-402c-9248-32af98419fe3", "82f55b6a-728e-4c8b-807e-535caad7b139"
-	db := database.GetGORMDbConnection()
-
-	// Get the ACO's
-	var revokedACO, validACO models.ACO
-	if db.First(&revokedACO, "UUID = ?", revokedACOUUID).RecordNotFound() {
-		// If this user doesn't exist the test has failed
-		assert.NotNil(s.T(), errors.New("unable to find ACO"))
-	}
-	if db.First(&validACO, "UUID = ?", validACOUUID).RecordNotFound() {
-		// If this user doesn't exist the test has failed
-		assert.NotNil(s.T(), errors.New("unable to find ACO"))
-	}
-
-	users := []models.User{}
-
-	// Make a token for each user in the aco and then verify they have a valid token
-	if db.Find(&users, "aco_id = ?", revokedACOUUID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("no users for revoked ACO"))
-	}
-	for _, user := range users {
-		// Make sure we create a token for this user
-		_, _, err := s.AuthBackend.CreateToken(user)
-		assert.Nil(s.T(), err)
-		tokens := []auth.Token{}
-		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
-		// Must have one or more tokens here
-		numValidTokens := len(tokens)
-		assert.True(s.T(), numValidTokens > 0)
-
-	}
-
-	// Do the same thing for the Valid ACO
-	if db.Find(&users, "aco_id = ?", validACOUUID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("no users for valid ACO"))
-	}
-	for _, user := range users {
-		// Make sure we create a token for this user
-		_, _, err := s.AuthBackend.CreateToken(user)
-		assert.Nil(s.T(), err)
-		tokens := []auth.Token{}
-		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
-		// Must have one or more tokens here
-		numValidTokens := len(tokens)
-		assert.True(s.T(), numValidTokens > 0)
-
-	}
-
-	// Revoke the ACO tokens
-	err := s.AuthBackend.RevokeACOTokens(revokedACO)
-	assert.Nil(s.T(), err)
-	// Find the users for the revoked ACO
-	if db.Find(&users, "aco_id = ?", revokedACOUUID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("no users for revoked ACO"))
-	}
-	// Make sure none of them have a valid token
-	for _, user := range users {
-		tokens := []auth.Token{}
-		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
-		// Should be no valid tokens here
-		numValidTokens := len(tokens)
-		assert.True(s.T(), numValidTokens == 0)
-		// Should be no errors
-		assert.Nil(s.T(), db.Error)
-
-	}
-
-	// Find the users for the valid ACO
-	if db.Find(&users, "aco_id = ?", validACOUUID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("no users for valid ACO"))
-	}
-	// Make sure none of them have a valid token
-	for _, user := range users {
-		tokens := []auth.Token{}
-		db.Find(&tokens, "user_id = ? and active = ?", user.UUID, true)
-		// Should be valid tokens here
-		numValidTokens := len(tokens)
-		assert.True(s.T(), numValidTokens > 0)
-		// Should not be this kind of error
-		assert.Nil(s.T(), db.Error)
-
-	}
-}
-
 func (s *BackendTestSuite) TestIsBlacklisted() {
 	userID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
@@ -287,7 +126,7 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	if db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to find User"))
 	}
-	_, tokenString, err := s.AuthBackend.CreateToken(user)
+	t, tokenString, err := s.AuthBackend.CreateToken(user)
 	assert.Nil(s.T(), err)
 	// Convert tokenString to a jwtToken
 	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
@@ -296,7 +135,8 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	blacklisted := s.AuthBackend.IsBlacklisted(jwtToken)
 	assert.False(s.T(), blacklisted)
 
-	_ = s.AuthBackend.RevokeToken(tokenString)
+	t.Active = false
+	db.Save(&t)
 
 	blacklisted = s.AuthBackend.IsBlacklisted(jwtToken)
 	assert.Nil(s.T(), err)
