@@ -15,11 +15,6 @@ package:
 	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
-integration-test:
-	docker-compose up -d 
-	sleep 30
-	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from integration_test integration_test
-
 smoke-test:
 	docker-compose up -d 
 	sleep 30
@@ -39,11 +34,10 @@ ifeq ($(env), local)
 	sleep 30
 endif
 	docker-compose -f docker-compose.test.yml build --no-cache postman_test
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/$(env).postman_environment.json --global-var "token=$(token)"
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)"
 
 test:
 	$(MAKE) unit-test
-	$(MAKE) integration-test
 	$(MAKE) postman env=local
 	$(MAKE) smoke-test
 
@@ -78,4 +72,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test integration-test postman unit-test
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test

@@ -1,9 +1,0 @@
-[bcda-patient-request-test]
-name = "Patient request test (invalid token)"
-uri = "{{.PROTOCOL}}://{{.HOST}}/api/v1/Patient/$export"
-method = "GET"
-	[bcda-patient-request-test.assert]
-		[bcda-patient-request-test.assert.code]
-		code = 401
-                [bcda-patient-request-test.assert.jsonschema]
-                ref = "./patient-notoken.json"
