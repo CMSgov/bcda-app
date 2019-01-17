@@ -147,64 +147,85 @@ func (s *MainTestSuite) TestCreateUser() {
 	var testUser models.User
 	db.First(&testUser, "Email=?", email)
 	assert.Equal(testUser.UUID.String(), userUUID)
+	buf.Reset()
 
 	// Bad/Negative tests
 
 	// No parameters
 	args = []string{"bcda", "create-user"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO ID (--aco-id) must be provided\nName (--name) must be provided\nEmail address (--email) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Name only
 	args = []string{"bcda", "create-user", "--name", name}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO ID (--aco-id) must be provided\nEmail address (--email) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// ACO ID only
 	args = []string{"bcda", "create-user", "--aco-id", acoUUID}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("Name (--name) must be provided\nEmail address (--email) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Email only
 	args = []string{"bcda", "create-user", "--email", email}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO ID (--aco-id) must be provided\nName (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Unexpected flag
 	args = []string{"bcda", "create-user", "--abcd", "efg"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	buf.Reset()
 
 	// Blank UUID
 	args = []string{"bcda", "create-user", "--name", name, "--aco-id", "", "--email", email}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO ID (--aco-id) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Bad UUID
 	args = []string{"bcda", "create-user", "--name", name, "--aco-id", BADUUID, "--email", email}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO ID must be a UUID", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Blank Name
 	args = []string{"bcda", "create-user", "--name", "", "--aco-id", acoUUID, "--email", email}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("Name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Blank E-mail address
 	args = []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", ""}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("Email address (--email) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Multiple blank input params
 	args = []string{"bcda", "create-user", "--name", "", "--aco-id", "", "--email", ""}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO ID (--aco-id) must be provided\nName (--name) must be provided\nEmail address (--email) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Duplicate User
 	args = []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", email}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
 	assert.Contains(err.Error(), email, "%s should contain '%s' and 'already exists'", err, email)
+	assert.Equal(0, buf.Len())
 }
 
 func (s *MainTestSuite) TestCreateToken() {
@@ -225,26 +246,34 @@ func (s *MainTestSuite) TestCreateToken() {
 	assert.NotNil(buf)
 	accessTokenString := strings.TrimSpace(buf.String())
 	assert.NotNil(accessTokenString)
+	buf.Reset()
 
 	// No parameters
 	args = []string{"bcda", "create-token"}
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Blank User UUID
 	args = []string{"bcda", "create-token", "--user-id", ""}
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Bad User UUID
 	args = []string{"bcda", "create-token", "--user-id", BADUUID}
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Unexpected flag
 	args = []string{"bcda", "create-token", "--abcd", "efg"}
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 }
 
 func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
@@ -287,6 +316,12 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	assert.NotNil(buf)
 	buf.Reset()
 
+	args = []string{"bcda", "create-alpha-token", "--size", "DEV"}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+	assert.NotNil(buf)
+	buf.Reset()
+
 	// Execute CLI with invalid inputs
 	args = []string{"bcda", "create-alpha-token"}
 	err = s.testApp.Run(args)
@@ -304,6 +339,12 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
 	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	args = []string{"bcda", "create-alpha-token", "--abcd", "efg"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 
 	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
 	// (this is required in order to validate the strings returned)
