@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -98,29 +99,38 @@ func (s *MainTestSuite) TestCreateACO() {
 	var testACO models.ACO
 	db.First(&testACO, "Name=?", "UNIT TEST ACO")
 	assert.Equal(testACO.UUID.String(), acoUUID)
+	buf.Reset()
 
 	// Negative tests
 
 	// No parameters
 	args = []string{"bcda", "create-aco"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// No ACO Name
 	badACO := ""
 	args = []string{"bcda", "create-aco", "--name", badACO}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// ACO name without flag
 	args = []string{"bcda", "create-aco", ACOName}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Unexpected flag
 	args = []string{"bcda", "create-aco", "--abcd", "efg"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	buf.Reset()
 
 	// we currently allow ACOs with duplicate names
 }
@@ -251,28 +261,28 @@ func (s *MainTestSuite) TestCreateToken() {
 	// No parameters
 	args = []string{"bcda", "create-token"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("User ID (--user-id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Blank User UUID
 	args = []string{"bcda", "create-token", "--user-id", ""}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("User ID (--user-id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Bad User UUID
 	args = []string{"bcda", "create-token", "--user-id", BADUUID}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("User ID must be a UUID", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Unexpected flag
 	args = []string{"bcda", "create-token", "--abcd", "efg"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 }
 
@@ -302,48 +312,50 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 
 	assert := assert.New(s.T())
 
+	outputPattern := regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}\n.+\..+\..+\n`)
+
 	// execute positive scenarios via CLI
 	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	assert.NotNil(buf)
+	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
 
 	// ttl is optional when using the CLI
 	args = []string{"bcda", "create-alpha-token", "--size", "Dev"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
-	assert.NotNil(buf)
+	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
 
 	args = []string{"bcda", "create-alpha-token", "--size", "DEV"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
-	assert.NotNil(buf)
+	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
 
 	// Execute CLI with invalid inputs
 	args = []string{"bcda", "create-alpha-token"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', or 'Large'", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	args = []string{"bcda", "create-alpha-token", "--ttl", "ABCD", "--size", "Dev"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("invalid argument 'ABCD' for --ttl; should be an integer > 0", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	args = []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "ABCD"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', or 'Large'", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	args = []string{"bcda", "create-alpha-token", "--abcd", "efg"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 
 	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
