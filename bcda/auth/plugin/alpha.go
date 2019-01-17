@@ -29,45 +29,45 @@ type CustomClaims struct {
 // This implementation expects one value in params, an id the API knows this client by in string form
 // It returns a single string as well, being the clientID this implementation knows this client by
 // NB: Other implementations will probably expect more input, and will certainly return more data
-func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
-	acoUUID, err := GetParamString(params, "clientID")
+func (p *AlphaAuthPlugin) RegisterClient(params ...interface{}) (string, error) {
+	acoUUID, err := GetParamString("clientID", params...)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// We'll check carefully in this method, because we're returning something to be used as an id
 	// Normally, a plugin would treat this value as a black box external key, but this implementation is
 	// intimate with the API. So, we're going to protect against accidental bad things
 	if len(acoUUID) != 36 {
-		return nil, errors.New("you must provide a non-empty string 36 characters in length")
+		return "", errors.New("you must provide a non-empty string 36 characters in length")
 	}
 
 	if matched, err := regexp.MatchString("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$", acoUUID); !matched || err != nil {
-		return nil, errors.New("expected a valid UUID string")
+		return "", errors.New("expected a valid UUID string")
 	}
 
 	if _, err := getACOFromDB(acoUUID); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// return the aco UUID as our auth client id. why? because we have to return something that the API / CLI will
 	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
 	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
 	// whose client_id matches their UUID was created by this plugin.
-	return params, nil
+	return acoUUID, nil
 }
 
-func (p *AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
+func (p *AlphaAuthPlugin) UpdateClient(params ...interface{}) ([]interface{}, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (p *AlphaAuthPlugin) DeleteClient(params []byte) error {
+func (p *AlphaAuthPlugin) DeleteClient(params ...interface{}) error {
 	return errors.New("not yet implemented")
 }
 
 // can treat as a no-op or call RequestAccessToken
-func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	clientID, err := GetParamString(params, "clientID")
+func (p *AlphaAuthPlugin) GenerateClientCredentials(params ...interface{}) (interface{}, error) {
+	clientID, err := GetParamString("clientID", params...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +81,12 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, erro
 		return nil, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
-	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
+	err = p.RevokeClientCredentials(fmt.Sprintf(`{"clientID":"%s"}`, clientID))
 	if err != nil {
 		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
-	jwtToken, err := p.RequestAccessToken([]byte(params))
+	jwtToken, err := p.RequestAccessToken(params...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
@@ -95,12 +95,12 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, erro
 		return nil, fmt.Errorf("unable to generate tokenString because %s", err)
 	}
 
-	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, tokenString)), err
+	return fmt.Sprintf(`{"tokenString":"%s"}`, tokenString), err
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
-func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	clientID, err := GetParamString(params, "clientID")
+func (p *AlphaAuthPlugin) RevokeClientCredentials(params ...interface{}) error {
+	clientID, err := GetParamString("clientID", params...)
 	if err != nil {
 		return err
 	}
@@ -159,14 +159,14 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
 // params are currently acoId and ttl; not going to introduce user until we have clear use cases
-func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
+func (p *AlphaAuthPlugin) RequestAccessToken(params ...interface{}) (jwt.Token, error) {
 	backend := auth.InitAuthBackend()
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
 	jwtToken := jwt.Token{}
 
-	acoUUID, err := GetParamString(params, "clientID")
+	acoUUID, err := GetParamString("clientID", params...)
 	if err != nil {
 		return jwtToken, err
 	}
@@ -184,7 +184,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 		return jwtToken, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := GetParamPositiveInt(params, "ttl")
+	ttl, err := GetParamPositiveInt("ttl", params...)
 	if err != nil {
 		return jwtToken, errors.New("no valid ttl found because " + err.Error())
 	}
@@ -280,40 +280,61 @@ func getACOFromDB(acoUUID string) (models.ACO, error) {
 	return aco, err
 }
 
-func GetParamString(params []byte, name string) (string, error) {
+func GetParamString(name string, params ...interface{}) (string, error) {
 	var (
 		j   interface{}
 		err error
 	)
 
-	if err = json.Unmarshal(params, &j); err != nil {
-		return "", err
-	}
-	paramsMap := j.(map[string]interface{})
+	for _, param := range params {
+		if _, ok := param.(string); !ok {
+			return "", errors.New("invalid string value")
+		}
 
-	stringForName, ok := paramsMap[name].(string)
-	if !ok {
-		return "", errors.New("missing or otherwise invalid string value for " + name)
+		if err = json.Unmarshal([]byte(param.(string)), &j); err != nil {
+			return "", err
+		}
+
+		paramsMap, ok := j.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		stringForName, ok := paramsMap[name].(string)
+		if !ok {
+			continue
+		}
+
+		return stringForName, err
 	}
 
-	return stringForName, err
+	return "", errors.New("missing or otherwise invalid string value for " + name)
 }
 
-func GetParamPositiveInt(params []byte, name string) (int, error) {
+func GetParamPositiveInt(name string, params ...interface{}) (int, error) {
 	var (
 		j   interface{}
 		err error
 	)
 
-	if err = json.Unmarshal(params, &j); err != nil {
-		return -1, err
-	}
-	paramsMap := j.(map[string]interface{})
+	for _, param := range params {
+		if _, ok := param.(string); !ok {
+			return -1, errors.New("param not a string, and cannot be parsed")
+		}
 
-	valueForName, ok := paramsMap[name].(float64)
-	if !ok {
-		return -1, errors.New("missing or otherwise invalid int value for " + name)
-	}
+		if err = json.Unmarshal([]byte(param.(string)), &j); err != nil {
+			return -1, err
+		}
 
-	return int(valueForName), err
+		paramsMap, ok := j.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		valueForName, ok := paramsMap[name].(float64)
+		if !ok {
+			continue
+		}
+
+		return int(valueForName), err
+	}
+	return -1, errors.New("missing or otherwise invalid int value for " + name)
 }

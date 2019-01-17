@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -590,10 +592,10 @@ func checkStructure(s *MainTestSuite, ttl int, acoSize string) jwt.MapClaims {
 	db := database.GetGORMDbConnection()
 	tokenInfo, err := createAlphaToken(ttl, acoSize)
 	lines := strings.Split(tokenInfo, "\n")
-	assert.Equal(s.T(), 3, len(lines))
+	require.Equal(s.T(), 3, len(lines))
 	tokenString := lines[2]
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), tokenString)
+	assert.NotEmpty(s.T(), tokenString)
 	claims := s.AuthBackend.GetJWTClaims(tokenString)
 	assert.NotNil(s.T(), claims)
 	acoUUID := claims["aco"].(string)

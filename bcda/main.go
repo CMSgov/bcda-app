@@ -452,13 +452,13 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 
 	authProvider := GetAuthProvider()
 
-	params := fmt.Sprintf("{\"clientID\" : \"%s\"}", aco.UUID.String())
-	result, err := authProvider.RegisterClient([]byte(params))
-	if err != nil {
+	params := fmt.Sprintf(`{"clientID" : "%s"}`, aco.UUID.String())
+	result, err := authProvider.RegisterClient(params)
+	if err != nil || result == "" {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID, err = plugin.GetParamString(result, "clientID")
-	if err != nil {
+	aco.ClientID, err = plugin.GetParamString("clientID", params)
+	if err != nil || aco.ClientID == "" {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
 
@@ -466,8 +466,8 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
 
-	params = fmt.Sprintf("{\"clientID\" : \"%s\", \"ttl\" : %d}", aco.ClientID, ttl)
-	jwtToken, err := authProvider.RequestAccessToken([]byte(params))
+	params = fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, aco.ClientID, ttl)
+	jwtToken, err := authProvider.RequestAccessToken(params)
 	if err != nil {
 		return "", err
 	}

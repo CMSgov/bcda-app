@@ -6,14 +6,14 @@ import (
 
 // Provider is an interface for operations performed through an authentication provider.
 type Provider interface {
-	RegisterClient(params []byte) ([]byte, error)
-	UpdateClient(params []byte) ([]byte, error)
-	DeleteClient(params []byte) error
+	RegisterClient(params ...interface{}) (string, error)
+	UpdateClient(params ...interface{}) ([]interface{}, error)
+	DeleteClient(params ...interface{}) error
 
-	GenerateClientCredentials(params []byte) ([]byte, error)
-	RevokeClientCredentials(params []byte) error
+	GenerateClientCredentials(params ...interface{}) (interface{}, error)
+	RevokeClientCredentials(params ...interface{}) error
 
-	RequestAccessToken(params []byte) (jwt.Token, error)
+	RequestAccessToken(params ...interface{}) (jwt.Token, error)
 	RevokeAccessToken(tokenString string) error
 
 	ValidateAccessToken(tokenString string) error

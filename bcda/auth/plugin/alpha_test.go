@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -51,28 +50,25 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.p.RegisterClient([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`))
+	c, err := s.p.RegisterClient(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`)
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), c)
-	var result map[string]interface{}
-	if err = json.Unmarshal(c, &result); err != nil {
-		assert.Fail(s.T(), "Bad json result value")
-	}
-	assert.Equal(s.T(), KnownFixtureACO, result["clientID"].(string))
+	assert.NotEmpty(s.T(), c)
 
-	c, err = s.p.RegisterClient([]byte(`{"clientID":""}`))
+	assert.Equal(s.T(), KnownFixtureACO, c)
+
+	c, err = s.p.RegisterClient(`{"clientID":""}`)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), c)
+	assert.Empty(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
 
-	c, err = s.p.RegisterClient([]byte(`{"clientID": "correct length, but not a valid UUID"}`))
+	c, err = s.p.RegisterClient(`{"clientID": "correct length, but not a valid UUID"}`)
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), c)
+	assert.Empty(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
-	c, err = s.p.RegisterClient([]byte(fmt.Sprintf(`{"clientID": "%s"}`, uuid.NewRandom().String())))
+	c, err = s.p.RegisterClient(fmt.Sprintf(`{"clientID": "%s"}`, uuid.NewRandom().String()))
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), c)
+	assert.Empty(s.T(), c)
 
 	// make sure we can't duplicate the ACO UUID
 	aco := models.ACO{
@@ -85,19 +81,19 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestUpdateClient() {
-	c, err := s.p.UpdateClient([]byte(`{}`))
+	c, err := s.p.UpdateClient(`{}`)
 	assert.Nil(s.T(), c)
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
-	err := s.p.DeleteClient([]byte(`{}`))
+	err := s.p.DeleteClient(`{}`)
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	// missing required param
-	r, err := s.p.GenerateClientCredentials([]byte("{}"))
+	r, err := s.p.GenerateClientCredentials("{}")
 	assert.Nil(s.T(), r)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "invalid string value")
@@ -108,7 +104,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	}
 	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
 	assert.Nil(s.T(), err, "wtf? %v", err)
-	j := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, aco.UUID.String()))
+	j := fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, aco.UUID.String())
 	// we know that we use aco.UUID as the ClientID
 
 	r, err = s.p.GenerateClientCredentials(j)
@@ -154,7 +150,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 
 	assert := assert.New(s.T())
 
-	err := s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, clientID)))
+	err := s.p.RevokeClientCredentials(fmt.Sprintf(`{"clientID": "%s"}`, clientID))
 	assert.Nil(err)
 
 	db.First(&token, "UUID = ?", token.UUID)
@@ -164,16 +160,22 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.p.RequestAccessToken([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3", "ttl": 720}`))
+	// parameters can be separate interfaces, or . . .
+	t, err := s.p.RequestAccessToken(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`, `{"ttl": 720}`)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
 
-	t, err = s.p.RequestAccessToken([]byte(`{ "ttl": 720}`))
+	// in a single object
+	t, err = s.p.RequestAccessToken(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3", "ttl": 720}`)
+	assert.Nil(s.T(), err)
+	assert.IsType(s.T(), jwt.Token{}, t)
+
+	t, err = s.p.RequestAccessToken(`{ "ttl": 720}`)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
 	assert.Contains(s.T(), err.Error(), "invalid string value")
 
-	t, err = s.p.RequestAccessToken([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`))
+	t, err = s.p.RequestAccessToken(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
 	assert.Contains(s.T(), err.Error(), "invalid int value")
