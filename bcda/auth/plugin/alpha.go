@@ -274,7 +274,7 @@ func isBlacklisted(token jwt.Token) bool {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	return !db.Find(token, "UUID = ? AND active = ?", claims.ID, false).RecordNotFound()
+	return !db.Find(&token, "UUID = ? AND active = ?", claims.ID, false).RecordNotFound()
 }
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(tokenString string) (jwt.Token, error) {
