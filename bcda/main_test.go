@@ -638,25 +638,35 @@ func (s *MainTestSuite) TestRevokeToken() {
 	tokenString, err := createAccessToken(userUUID)
 	assert.Nil(err)
 
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
 	// Negative case - attempt to revoke a token passing in a blank token string
 	args := []string{"bcda", "revoke-token", "--access-token", ""}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("Access token (--access-token) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Negative case - attempt to revoke a token passing in an invalid token string
 	args = []string{"bcda", "revoke-token", "--access-token", "abcdefg"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Equal("token contains an invalid number of segments", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Positive case - revoke a token passing in a valid token string (alpha)
 	args = []string{"bcda", "revoke-token", "--access-token", alphaTokenString}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
+	assert.Equal("Access token has been deactivated\n", buf.String())
+	buf.Reset()
 
 	// Positive case - revoke a token passing in a valid token string
 	args = []string{"bcda", "revoke-token", "--access-token", tokenString}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
+	assert.Equal("Access token has been deactivated\n", buf.String())
 }
 
 func (s *MainTestSuite) TestStartApi() {
