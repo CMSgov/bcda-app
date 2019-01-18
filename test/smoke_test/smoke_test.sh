@@ -6,3 +6,4 @@ set -e
 
 go run bcda_client.go -host=api:3000 -endpoint=ExplanationOfBenefit
 go run bcda_client.go -host=api:3000 -endpoint=Patient
+go run bcda_client.go -host=api:3000 -endpoint=Coverage

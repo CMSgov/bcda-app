@@ -267,6 +267,58 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
+func (s *APITestSuite) TestBulkCoverageRequest() {
+	s.SetupAuthBackend()
+
+	origPtExp := os.Getenv("ENABLE_COVERAGE_EXPORT")
+	os.Setenv("ENABLE_COVERAGE_EXPORT", "true")
+
+	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	user, err := models.CreateUser("api.go Test User", "testbulkcoveragerequest@example.com", uuid.Parse(acoID))
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	defer func() {
+		os.Setenv("ENABLE_COVERAGE_EXPORT", origPtExp)
+		s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
+		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
+	}()
+
+	token := jwt.New(jwt.SigningMethodRS512)
+	token.Claims = jwt.MapClaims{
+		"sub": user.UUID.String(),
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+	}
+	token.Valid = true
+
+	req := httptest.NewRequest("GET", "/api/v1/test/Coverage/$export", nil)
+	req = req.WithContext(context.WithValue(req.Context(), "token", token))
+
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		s.T().Error(err)
+	}
+	defer pgxpool.Close()
+
+	qc = que.NewClient(pgxpool)
+
+	handler := http.HandlerFunc(bulkCoverageRequest)
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+}
+
 func (s *APITestSuite) TestBulkRequestInvalidType() {
 	req := httptest.NewRequest("GET", "/api/v1/test/Foo/$export", nil)
 
