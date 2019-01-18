@@ -453,12 +453,8 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 	authProvider := GetAuthProvider()
 
 	params := fmt.Sprintf(`{"clientID" : "%s"}`, aco.UUID.String())
-	result, err := authProvider.RegisterClient(params)
-	if err != nil || result == "" {
-		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
-	}
-	aco.ClientID, err = plugin.GetParamString("clientID", params)
-	if err != nil || aco.ClientID == "" {
+	aco.ClientID, err = authProvider.RegisterClient(params)
+	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
 

@@ -96,7 +96,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	r, err := s.p.GenerateClientCredentials("{}")
 	assert.Nil(s.T(), r)
 	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "invalid string value")
+	assert.Contains(s.T(), err.Error(), "missing value")
 
 	aco := models.ACO{
 		UUID: uuid.NewRandom(),
@@ -178,7 +178,7 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 	t, err = s.p.RequestAccessToken(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Contains(s.T(), err.Error(), "invalid int value")
+	assert.Contains(s.T(), err.Error(), "no valid ttl")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
@@ -228,6 +228,64 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
 	assert.IsType(s.T(), jwt.Token{}, t)
 	assert.Equal(s.T(), userID, t.Claims.(*CustomClaims).Subject)
 	assert.Equal(s.T(), acoID, t.Claims.(*CustomClaims).Aco)
+}
+
+func (s *AlphaAuthPluginTestSuite) TestGetParamString() {
+	name := "clientID"
+	value := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
+	stringParam := fmt.Sprintf(`{"clientID":"%v"}`, value)
+	intParam := `{"clientID":56}`
+	otherIntParam := `{"otherID":321}`
+	multipleParams := fmt.Sprintf(`{"clientID":"%v","somethingElse":123,"anotherString":"abc","moreStrings":{"a":"1","b":"2"}}`, value)
+	nonJSONParam := "Invalid param"
+
+	r, err := getParamString(name, stringParam)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), value, r)
+
+	r, err = getParamString(name, otherIntParam, stringParam)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), value, r)
+
+	_, err = getParamString(name, intParam)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "invalid string value")
+
+	r, err = getParamString(name, multipleParams)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), value, r)
+
+	_, err = getParamString(name, nonJSONParam)
+	assert.NotNil(s.T(), err)
+}
+
+func (s *AlphaAuthPluginTestSuite) TestgetParamPositiveInt() {
+	name := "ttl"
+	value := 500
+	stringParam := fmt.Sprintf(`{"%v":"%d"}`, name, value)
+	intParam := fmt.Sprintf(`{"%v":%d}`, name, value)
+	otherStringParam := `{"otherID":"abc"}`
+	multipleParams := fmt.Sprintf(`{"clientID":"12345","ttl":%d,"anotherString":"abc","moreStrings":{"a":"1","b":"2"}}`, value)
+	nonJSONParam := "Invalid param"
+
+	r, err := getParamPositiveInt(name, intParam)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), value, r)
+
+	r, err = getParamPositiveInt(name, otherStringParam, intParam)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), value, r)
+
+	_, err = getParamPositiveInt(name, stringParam)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "invalid numeric value")
+
+	r, err = getParamPositiveInt(name, multipleParams)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), value, r)
+
+	_, err = getParamPositiveInt(name, nonJSONParam)
+	assert.NotNil(s.T(), err)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {

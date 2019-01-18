@@ -30,7 +30,7 @@ type CustomClaims struct {
 // It returns a single string as well, being the clientID this implementation knows this client by
 // NB: Other implementations will probably expect more input, and will certainly return more data
 func (p *AlphaAuthPlugin) RegisterClient(params ...interface{}) (string, error) {
-	acoUUID, err := GetParamString("clientID", params...)
+	acoUUID, err := getParamString("clientID", params...)
 	if err != nil {
 		return "", err
 	}
@@ -67,7 +67,7 @@ func (p *AlphaAuthPlugin) DeleteClient(params ...interface{}) error {
 
 // can treat as a no-op or call RequestAccessToken
 func (p *AlphaAuthPlugin) GenerateClientCredentials(params ...interface{}) (interface{}, error) {
-	clientID, err := GetParamString("clientID", params...)
+	clientID, err := getParamString("clientID", params...)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params ...interface{}) (inte
 
 // look up the active access token associated with id, and call RevokeAccessToken
 func (p *AlphaAuthPlugin) RevokeClientCredentials(params ...interface{}) error {
-	clientID, err := GetParamString("clientID", params...)
+	clientID, err := getParamString("clientID", params...)
 	if err != nil {
 		return err
 	}
@@ -166,9 +166,9 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params ...interface{}) (jwt.Token, 
 
 	jwtToken := jwt.Token{}
 
-	acoUUID, err := GetParamString("clientID", params...)
+	acoUUID, err := getParamString("clientID", params...)
 	if err != nil {
-		return jwtToken, err
+		return jwtToken, errors.New("invalid string value " + err.Error())
 	}
 
 	aco, err := getACOFromDB(acoUUID)
@@ -184,7 +184,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params ...interface{}) (jwt.Token, 
 		return jwtToken, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := GetParamPositiveInt("ttl", params...)
+	ttl, err := getParamPositiveInt("ttl", params...)
 	if err != nil {
 		return jwtToken, errors.New("no valid ttl found because " + err.Error())
 	}
@@ -280,7 +280,7 @@ func getACOFromDB(acoUUID string) (models.ACO, error) {
 	return aco, err
 }
 
-func GetParamString(name string, params ...interface{}) (string, error) {
+func getParamString(name string, params ...interface{}) (string, error) {
 	var (
 		j   interface{}
 		err error
@@ -288,29 +288,36 @@ func GetParamString(name string, params ...interface{}) (string, error) {
 
 	for _, param := range params {
 		if _, ok := param.(string); !ok {
-			return "", errors.New("invalid string value")
+			// We might want non-string params in the future
+			continue
 		}
 
+		// We expect string params in JSON form: `{"clientID":"123123123"}`
 		if err = json.Unmarshal([]byte(param.(string)), &j); err != nil {
 			return "", err
 		}
 
 		paramsMap, ok := j.(map[string]interface{})
 		if !ok {
-			continue
+			return "", errors.New("unable to parse JSON for " + name)
 		}
-		stringForName, ok := paramsMap[name].(string)
+		val, ok := paramsMap[name]
 		if !ok {
 			continue
+		}
+
+		stringForName, ok := val.(string)
+		if !ok {
+			return "", errors.New("invalid string value for " + name)
 		}
 
 		return stringForName, err
 	}
 
-	return "", errors.New("missing or otherwise invalid string value for " + name)
+	return "", errors.New("missing value for " + name)
 }
 
-func GetParamPositiveInt(name string, params ...interface{}) (int, error) {
+func getParamPositiveInt(name string, params ...interface{}) (int, error) {
 	var (
 		j   interface{}
 		err error
@@ -318,23 +325,34 @@ func GetParamPositiveInt(name string, params ...interface{}) (int, error) {
 
 	for _, param := range params {
 		if _, ok := param.(string); !ok {
-			return -1, errors.New("param not a string, and cannot be parsed")
+			// We might want non-string params in the future
+			continue
 		}
 
+		// We expect string params (even those representing ints) in JSON form: `{"ttl":500}`
 		if err = json.Unmarshal([]byte(param.(string)), &j); err != nil {
 			return -1, err
 		}
 
 		paramsMap, ok := j.(map[string]interface{})
 		if !ok {
-			continue
+			return -1, errors.New("unable to parse JSON for " + name)
 		}
-		valueForName, ok := paramsMap[name].(float64)
+		val, ok := paramsMap[name]
 		if !ok {
 			continue
 		}
 
-		return int(valueForName), err
+		valueForName, ok := val.(float64)
+		if !ok {
+			return -1, errors.New("invalid numeric value for " + name)
+		}
+
+		intValue := int(valueForName)
+		if intValue < 0 {
+			return -1, errors.New("positive value expected for " + name)
+		}
+		return intValue, err
 	}
-	return -1, errors.New("missing or otherwise invalid int value for " + name)
+	return -1, errors.New("missing int value for " + name)
 }
