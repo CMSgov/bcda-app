@@ -4,13 +4,13 @@ The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (A
 This API follows the workflow outlined by the [FHIR Bulk Data Export Proposal](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md), using the [HL7 FHIR Standard](https://www.hl7.org/fhir/). Claims data is provided as FHIR resources in [NDJSON](http://ndjson.org/) format.
 
 1. [Getting Started](#getting-started)
-  1. [APIs](#apis)
-  1. [Authentication and Authorization](#authentication-and-authorization)
-  1. [Environment](#environment)
+   1. [APIs](#apis)
+   1. [Authentication and Authorization](#authentication-and-authorization)
+   1. [Environment](#environment)
 1. [Examples](#examples)
-  1. [BCDA Metadata](#bcda-metadata)
-  1. [Beneficiary Explanation of Benefit Data](#beneficiary-explanation-of-benefit-data)
-  1. [Beneficiary Patient Data](#beneficiary-patient-data)
+   1. [BCDA Metadata](#bcda-metadata)
+   1. [Beneficiary Explanation of Benefit Data](#beneficiary-explanation-of-benefit-data)
+   1. [Beneficiary Patient Data](#beneficiary-patient-data)
 
 ## Getting Started
 
