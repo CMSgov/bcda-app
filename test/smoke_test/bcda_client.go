@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"time"
 )
 
@@ -123,10 +125,10 @@ func getFile(location string) *http.Response {
 	return resp
 }
 
-func writeFile(resp *http.Response) {
+func writeFile(resp *http.Response, filename string) {
 	defer resp.Body.Close()
 	/* #nosec */
-	out, err := os.Create("/tmp/download.json")
+	out, err := os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
@@ -179,27 +181,35 @@ func main() {
 				fmt.Println("file is ready for download...")
 
 				defer status.Body.Close()
-
+					
 				var objmap map[string]*json.RawMessage
 				err := json.NewDecoder(status.Body).Decode(&objmap)
 				if err != nil {
 					panic(err)
 				}
 				output := (*json.RawMessage)(objmap["output"])
+                                var data OutputCollection
+                                if err := json.Unmarshal(*output, &data); err != nil {
+                                        panic(err)
+                                }
 
-				var data OutputCollection
-				if err := json.Unmarshal(*output, &data); err != nil {
-					panic(err)
+				encryptData := map[string]string{}
+				if encrypt {
+					encOutput := (*json.RawMessage)(objmap["KeyMap"])
+					if err := json.Unmarshal(*encOutput, &encryptData); err != nil {
+						panic(err)
+					}
 				}
 
 				fmt.Printf("fetching: %s\n", data[0].Url)
 				download := getFile(data[0].Url)
 				if download.StatusCode == 200 {
-					fmt.Println("writing download to disk: /tmp/download.json")
-					writeFile(download)
+					filename := "/tmp/"+path.Base(data[0].Url)
+					fmt.Printf("writing download to disk: %s\n", filename)
+					writeFile(download, filename)
 
 					fmt.Println("validating file...")
-					fi, err := os.Stat("/tmp/download.json")
+					fi, err := os.Stat(filename)
 					if err != nil {
 						panic(err)
 					}
@@ -208,13 +218,21 @@ func main() {
 						os.Exit(1)
 					}
 					
-					// TODO: add capability to decrypt and validate the decrypted file content
-					fmt.Println("validating file content...")
-					if !encrypt {
-						if !isValidNdjsonFile("/tmp/download.json") {
-							fmt.Println("Error: file is not in valid NDJSON format!")
-							os.Exit(1)
+					if encrypt {
+						fmt.Println("decrypting the file...")
+						encryptedKey, err := hex.DecodeString(encryptData[path.Base(data[0].Url)])
+						if err != nil {
+							panic(err)
 						}
+						// TODO: use env vars
+						privateKey := getPrivateKey("../../shared_files/ATO_private.pem")
+						filename = decryptFile(privateKey, encryptedKey, filename)
+					}
+
+					fmt.Println("validating file content...")
+					if !isValidNdjsonFile(filename) {
+						fmt.Println("Error: file is not in valid NDJSON format!")
+						os.Exit(1)
 					}
 	
 					fmt.Println("done.")
