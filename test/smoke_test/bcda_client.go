@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -136,6 +137,29 @@ func writeFile(resp *http.Response) {
 	}
 }
 
+func isValidNdjsonFile(filename string) bool {
+	isValid := true
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	r := bufio.NewReader(file)
+	for {
+		line, _, err := r.ReadLine()
+                if err == io.EOF {
+                        break
+                }
+                if !json.Valid(line) {
+            		isValid = false
+			break
+                }
+	}
+
+	return isValid
+}
+
 func main() {
 	fmt.Printf("making request to start %s data aggregation job\n", endpoint)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
@@ -183,6 +207,16 @@ func main() {
 						fmt.Println("Error: file is empty!.")
 						os.Exit(1)
 					}
+					
+					// TODO: add capability to decrypt and validate the decrypted file content
+					fmt.Println("validating file content...")
+					if !encrypt {
+						if !isValidNdjsonFile("/tmp/download.json") {
+							fmt.Println("Error: file is not in valid NDJSON format!")
+							os.Exit(1)
+						}
+					}
+	
 					fmt.Println("done.")
 				} else {
 					fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
