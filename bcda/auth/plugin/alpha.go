@@ -265,7 +265,7 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
 		return err
 	}
 
-	return t.Claims.(*AllClaims).Valid()
+	return c.Valid()
 }
 
 func isBlacklisted(token jwt.Token) bool {

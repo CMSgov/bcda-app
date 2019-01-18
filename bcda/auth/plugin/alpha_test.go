@@ -230,6 +230,16 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	wrongKey := "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.MejLezWY6hjGgbIXkq6Qbvx_-q5vWaTR6qPiNHphvla-XaZD3up1DN6Ib5AEOVtuB3fC9l-0L36noK4qQA79lhpSK3gozXO6XPIcCp4C8MU_ACzGtYe7IwGnnK3Emr6IHQE0bpGinHX1Ak1pAuwJNawaQ6Nvmz2ozZPsyxmiwoo"
 	err = s.p.ValidateAccessToken(wrongKey)
 	assert.Contains(s.T(), err.Error(), "crypto/rsa: verification error")
+
+	missingClaims := *jwt.New(jwt.SigningMethodRS512)
+	missingClaims.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+	}
+	missingClaimsString, _ := s.AuthBackend.SignJwtToken(missingClaims)
+	err = s.p.ValidateAccessToken(missingClaimsString)
+	assert.Contains(s.T(), err.Error(), "something")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
