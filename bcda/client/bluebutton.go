@@ -3,13 +3,14 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/monitoring"
 
 	"github.com/sirupsen/logrus"
 
@@ -23,6 +24,7 @@ const blueButtonBasePath = "/v1/fhir"
 type APIClient interface {
 	GetExplanationOfBenefitData(patientID, jobID string) (string, error)
 	GetPatientData(patientID, jobID string) (string, error)
+	GetCoverageData(beneficiaryID, jobID string) (string, error)
 }
 
 type BlueButtonClient struct {

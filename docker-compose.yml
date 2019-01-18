@@ -40,6 +40,7 @@ services:
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - HTTP_ONLY=true
       - ENABLE_PATIENT_EXPORT=true
+      - ENABLE_COVERAGE_EXPORT=true
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:

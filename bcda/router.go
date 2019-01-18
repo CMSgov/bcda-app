@@ -31,6 +31,9 @@ func NewAPIRouter() http.Handler {
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
 			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
 		}
+		if os.Getenv("ENABLE_COVERAGE_EXPORT") == "true" {
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Coverage/$export", bulkCoverageRequest))
+		}
 		r.With(auth.RequireTokenAuth).Get(m.WrapHandler("/jobs/{jobId}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
 		if os.Getenv("DEBUG") == "true" {
