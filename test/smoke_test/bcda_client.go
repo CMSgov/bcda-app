@@ -150,13 +150,13 @@ func isValidNdjsonFile(filename string) bool {
 	r := bufio.NewReader(file)
 	for {
 		line, _, err := r.ReadLine()
-                if err == io.EOF {
-                        break
-                }
-                if !json.Valid(line) {
-            		isValid = false
+		if err == io.EOF {
 			break
-                }
+		}
+		if !json.Valid(line) {
+			isValid = false
+			break
+		}
 	}
 
 	return isValid
@@ -181,17 +181,17 @@ func main() {
 				fmt.Println("file is ready for download...")
 
 				defer status.Body.Close()
-					
+
 				var objmap map[string]*json.RawMessage
 				err := json.NewDecoder(status.Body).Decode(&objmap)
 				if err != nil {
 					panic(err)
 				}
 				output := (*json.RawMessage)(objmap["output"])
-                                var data OutputCollection
-                                if err := json.Unmarshal(*output, &data); err != nil {
-                                        panic(err)
-                                }
+				var data OutputCollection
+				if err := json.Unmarshal(*output, &data); err != nil {
+					panic(err)
+				}
 
 				encryptData := map[string]string{}
 				if encrypt {
@@ -204,7 +204,7 @@ func main() {
 				fmt.Printf("fetching: %s\n", data[0].Url)
 				download := getFile(data[0].Url)
 				if download.StatusCode == 200 {
-					filename := "/tmp/"+path.Base(data[0].Url)
+					filename := "/tmp/" + path.Base(data[0].Url)
 					fmt.Printf("writing download to disk: %s\n", filename)
 					writeFile(download, filename)
 
@@ -217,7 +217,7 @@ func main() {
 						fmt.Println("Error: file is empty!.")
 						os.Exit(1)
 					}
-					
+
 					if encrypt {
 						fmt.Println("decrypting the file...")
 						encryptedKey, err := hex.DecodeString(encryptData[path.Base(data[0].Url)])
@@ -234,7 +234,7 @@ func main() {
 						fmt.Println("Error: file is not in valid NDJSON format!")
 						os.Exit(1)
 					}
-	
+
 					fmt.Println("done.")
 				} else {
 					fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
