@@ -44,7 +44,7 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 		panic(err)
 	}
 
-	ciphertext, err := ioutil.ReadFile(fmt.Sprintf(filename))
+	ciphertext, err := ioutil.ReadFile(fmt.Sprint(filename))
 	if err != nil {
 		panic(err)
 	}
@@ -67,10 +67,12 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 }
 
 func getPrivateKey(loc string) *rsa.PrivateKey {
+	/* #nosec */
 	pkFile, err := os.Open(loc)
 	if err != nil {
 		panic(err)
 	}
+	defer pkFile.Close()
 
 	pemfileinfo, _ := pkFile.Stat()
 	var size int64 = pemfileinfo.Size()
@@ -83,7 +85,9 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
-	pkFile.Close()
+	if data == nil {
+		log.Panic(err)
+	}
 
 	imported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
 	if err != nil {

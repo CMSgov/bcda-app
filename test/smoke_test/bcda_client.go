@@ -141,6 +141,7 @@ func writeFile(resp *http.Response, filename string) {
 
 func isValidNdjsonFile(filename string) bool {
 	isValid := true
+	/* #nosec */
 	file, err := os.Open(filename)
 	if err != nil {
 		panic(err)
