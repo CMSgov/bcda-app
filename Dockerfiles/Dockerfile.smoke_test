@@ -3,5 +3,8 @@ FROM golang:1.10.6
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test
 COPY . .
 
+WORKDIR /go/src/github.com/CMSgov/bcda-app/shared_files
+COPY . .
+
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test/smoke_test
 CMD ["sh", "smoke_test.sh"]

@@ -57,7 +57,7 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 		panic(err)
 	}
 
-	decryptedFile := "/tmp/decrypted_download.ndjson"
+	decryptedFile := "/tmp/decrypted_" + base
 	err = ioutil.WriteFile(decryptedFile, plaintext, 0644)
 	if err != nil {
 		panic(err)

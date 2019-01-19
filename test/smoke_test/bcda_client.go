@@ -149,11 +149,11 @@ func isValidNdjsonFile(filename string) bool {
 
 	r := bufio.NewReader(file)
 	for {
-		line, _, err := r.ReadLine()
+		line, err := r.ReadString('\n')
 		if err == io.EOF {
 			break
 		}
-		if !json.Valid(line) {
+		if !json.Valid([]byte(line)) {
 			isValid = false
 			break
 		}
@@ -224,9 +224,10 @@ func main() {
 						if err != nil {
 							panic(err)
 						}
-						// TODO: use env vars
-						privateKey := getPrivateKey("../../shared_files/ATO_private.pem")
+						privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
+						privateKey := getPrivateKey(privateKeyFile)
 						filename = decryptFile(privateKey, encryptedKey, filename)
+						fmt.Printf("writing decrypted file to disk: %s\n", filename)
 					}
 
 					fmt.Println("validating file content...")
