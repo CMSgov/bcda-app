@@ -3,7 +3,7 @@ The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (A
 
 This API follows the workflow outlined by the [FHIR Bulk Data Export Proposal](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md), using the [HL7 FHIR Standard](https://www.hl7.org/fhir/). Claims data is provided as FHIR resources in [NDJSON](http://ndjson.org/) format.
 
-This documentation serves as a starting point for users to begin working with the API. Comprehensive Swagger documentation is available in the sandbox environment [here](https://sandbox.bcda.cms.gov/api/v1/swagger/).
+This guide serves as a starting point for users to begin working with the API. Comprehensive Swagger documentation about all BCDA endpoints is available in the sandbox environment [here](https://sandbox.bcda.cms.gov/api/v1/swagger/).
 
 1. [Getting Started](#getting-started)
    1. [APIs](#apis)
@@ -26,7 +26,7 @@ Not familiar with APIs? Here are some great introductions:
 An access token is required for most requests. The token is presented in API requests in the `Authorization` header as a `Bearer` token. Tokens will be securely distributed to partners in our alpha release. For information about participating in user testing, please contact BCAPI@cms.hhs.gov.
 
 ### Encryption
-All data files are encrypted in the BCDA production environment. Find out about our encryption strategy [here](ENCRYPTION.md).
+All data files are encrypted. Find out about our encryption strategy [here](ENCRYPTION.md).
 
 ### Environment
 The examples below include [cURL](https://curl.haxx.se/) commands, but may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/).
@@ -211,7 +211,7 @@ curl https://sandbox.bcda.cms.gov/data/42/DBBD1CE1-AE24-435C-807D-ED45953077D3.n
 ```
 
 ##### Response
-The response will be the requested data as FHIR ExplanationOfBenefit resources in NDJSON format. An example of one such resource is shown below.
+The response will be the requested data as FHIR ExplanationOfBenefit resources in NDJSON format, encrypted. An unencrypted example of one such resource is shown below.
 ```json
 {
   "status":"active",
@@ -557,7 +557,7 @@ curl https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.n
 ```
 
 ##### Response
-The response will be the requested data as FHIR Patient resources in NDJSON format. An example of one such resource is shown below.
+The response will be the requested data as FHIR Patient resources in NDJSON format, encrypted. An unencrypted example of one such resource is shown below.
 
 ```json
 {
