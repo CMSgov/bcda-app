@@ -343,6 +343,7 @@ func getParamPositiveInt(name string, params ...interface{}) (int, error) {
 			continue
 		}
 
+		// Assert the actual type returned by json.Unmarshal, then convert to int
 		valueForName, ok := val.(float64)
 		if !ok {
 			return -1, errors.New("invalid numeric value for " + name)

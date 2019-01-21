@@ -264,6 +264,7 @@ func (s *AlphaAuthPluginTestSuite) TestgetParamPositiveInt() {
 	value := 500
 	stringParam := fmt.Sprintf(`{"%v":"%d"}`, name, value)
 	intParam := fmt.Sprintf(`{"%v":%d}`, name, value)
+	floatParam := fmt.Sprintf(`{"%v":500.25}`, name)
 	otherStringParam := `{"otherID":"abc"}`
 	multipleParams := fmt.Sprintf(`{"clientID":"12345","ttl":%d,"anotherString":"abc","moreStrings":{"a":"1","b":"2"}}`, value)
 	nonJSONParam := "Invalid param"
@@ -273,6 +274,11 @@ func (s *AlphaAuthPluginTestSuite) TestgetParamPositiveInt() {
 	assert.Equal(s.T(), value, r)
 
 	r, err = getParamPositiveInt(name, otherStringParam, intParam)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), value, r)
+
+	// This test does not imply we WANT float values to work; it's just documenting a side effect of type conversion
+	r, err = getParamPositiveInt(name, floatParam)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), value, r)
 
