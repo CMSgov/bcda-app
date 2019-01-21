@@ -239,7 +239,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	}
 	missingClaimsString, _ := s.AuthBackend.SignJwtToken(missingClaims)
 	err = s.p.ValidateAccessToken(missingClaimsString)
-	assert.Contains(s.T(), err.Error(), "something")
+	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {

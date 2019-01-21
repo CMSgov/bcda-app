@@ -255,9 +255,14 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
 
 	c := t.Claims.(*AllClaims)
 
-	b := isBlacklisted(t)
-	if b {
-		return fmt.Errorf("blacklisted Token with ID: %v was rejected", c.ID)
+	err = checkRequiredClaims(c)
+	if err != nil {
+		return err
+	}
+
+	err = c.Valid()
+	if err != nil {
+		return err
 	}
 
 	_, err = getACOFromDB(c.ACO)
@@ -265,16 +270,32 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
 		return err
 	}
 
-	return c.Valid()
+	b := isBlacklisted(t)
+	if b {
+		return fmt.Errorf("blacklisted Token with ID: %v was rejected", c.ID)
+	}
+
+	return nil
+}
+
+func checkRequiredClaims(claims *AllClaims) error {
+	if claims.ExpiresAt == 0 ||
+		claims.IssuedAt == 0 ||
+		claims.Subject == "" ||
+		claims.ACO == "" ||
+		claims.ID == "" {
+		return fmt.Errorf("missing one or more required claims")
+	}
+	return nil
 }
 
 func isBlacklisted(token jwt.Token) bool {
-	claims := token.Claims.(*AllClaims)
+	c := token.Claims.(*AllClaims)
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	return !db.Find(&token, "UUID = ? AND active = ?", claims.ID, false).RecordNotFound()
+	return !db.Find(&token, "UUID = ? AND active = ?", c.ID, false).RecordNotFound()
 }
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(tokenString string) (jwt.Token, error) {
