@@ -139,7 +139,7 @@ func writeFile(resp *http.Response, filename string) {
 	}
 }
 
-func isValidNdjsonFile(filename string) bool {
+func isValidNDJSONFile(filename string) bool {
 	isValid := true
 	/* #nosec */
 	file, err := os.Open(filename)
@@ -232,7 +232,7 @@ func main() {
 					}
 
 					fmt.Println("validating file content...")
-					if !isValidNdjsonFile(filename) {
+					if !isValidNDJSONFile(filename) {
 						fmt.Println("Error: file is not in valid NDJSON format!")
 						os.Exit(1)
 					}
