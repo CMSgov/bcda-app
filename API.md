@@ -589,3 +589,164 @@ The response will be the requested data as FHIR Patient resources in NDJSON form
 	}
 }
 ```
+
+### Beneficiary Coverage Data
+	The process of retrieving coverage data is very similar to all of the other exporting operations supported by this api.
+
+#### 1. Obtain an access token
+	See [Authentication and Authorization](#authentication-and-authorization) above.
+
+#### 2. Initiate an export job
+
+##### Request
+	`GET /api/v1/Coverage/$export`
+
+To start a coverage data export job, a GET request is made to the Coverage export endpoint. An access token as well as `Accept` and `Prefer` headers are required.
+
+The dollar sign ('$') before the word "export" in the URL indicates that the endpoint is an action rather than a resource. The format is defined by the [FHIR Bulk Data Export spec](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md).
+
+###### Headers
+	* `Authorization: Bearer {token}`
+	* `Accept: application/fhir+json`
+	* `Prefer: respond-async`
+
+###### cURL command
+	```sh
+	curl -v https://sandbox.bcda.cms.gov/api/v1/Coverage/\$export \
+	-H 'Authorization: Bearer {token}' \
+	-H 'Accept: application/fhir+json' \
+	-H 'Prefer: respond-async'
+	```
+
+  ##### Response
+	If the request was successful, a `202 Accepted` response code will be returned and the response will include a `Content-Location` header. The value of this header indicates the location to check for job status and outcome. In the example header below, the number 43 in the URL represents the ID of the export job.
+
+  ###### Headers
+	* `Content-Location: https://sandbox.bcda.cms.gov/api/v1/jobs/43`
+
+  #### 3. Check the status of the export job
+
+  ##### Request
+	`GET https://sandbox.bcda.cms.gov/api/v1/jobs/43`
+
+  Using the `Content-Location` header value from the Coverage data export response, you can check the status of the export job. The status will change from `202 Accepted` to `200 OK` when the export job is complete and the data is ready to be downloaded.
+
+  ###### Headers
+	* `Authorization: Bearer {token}`
+
+  ###### cURL Command
+	```sh
+	curl -v https://sandbox.bcda.cms.gov/api/v1/jobs/43 \
+	-H 'Authorization: Bearer {token}'
+	```
+
+  ##### Responses
+	* `202 Accepted` indicates that the job is processing. Headers will include `X-Progress: In Progress`
+	* `200 OK` indicates that the job is complete. Below is an example of the format of the response body.
+  ```json
+  {
+	  "transactionTime": "2018-10-19T14:47:33.975024Z",
+	  "request": "https://sandbox.bcda.cms.gov/api/v1/Coverage/$export",
+	  "requiresAccessToken": true,
+	  "output": [
+	    {
+	      "type": "Coverage",
+	      "url": "https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson"
+	    }
+	  ],
+	  "error": [
+	    {
+	      "type": "OperationOutcome",
+	      "url": "https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3-error.ndjson"
+	    }
+	  ]
+  }
+  ```
+  Coverage demographic data can be found at the URLs within the `output` field. The number 43 in the data file URLs is the same job ID from the `Content-Location` header URL in previous step. If some of the data cannot be exported due to errors, details of the errors can be found at the URLs in the `error` field. The errors are provided in an NDJSON file as FHIR [OperationOutcome](https://www.hl7.org/fhir/operationoutcome.html) resources.
+
+  #### 4. Retrieve the NDJSON output file(s)
+	To obtain the exported coverage data, a GET request is made to the output URLs in the job status response when the job reaches the Completed state. The data will be presented as an NDJSON file of [Coverage](https://www.hl7.org/fhir/coverage.html) resources.
+
+  ##### Request
+	`GET https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson`
+
+  ###### Headers
+	* `Authorization: Bearer {token}`
+
+  ###### cURL command
+	```sh
+	curl https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson \
+	-H 'Authorization: Bearer {token}'
+	```
+
+  ##### Response
+	The response will be the requested data as FHIR Coverage resources in NDJSON format. An example of one such resource is shown below.
+
+  ```json
+  {
+  "fullUrl": "https:///v1/fhir/Coverage/part-a-19990000002901",
+  "resource": {
+    "beneficiary": {
+      "reference": "Patient/19990000002901"
+    },
+    "extension": [
+      {
+        "url": "https://bluebutton.cms.gov/resources/variables/ms_cd",
+        "valueCoding": {
+          "code": "10",
+          "display": "Aged without end-stage renal disease (ESRD)",
+          "system": "https://bluebutton.cms.gov/resources/variables/ms_cd"
+        }
+      },
+      {
+        "url": "https://bluebutton.cms.gov/resources/variables/orec",
+        "valueCoding": {
+          "code": "0",
+          "display": "Old age and survivor’s insurance (OASI)",
+          "system": "https://bluebutton.cms.gov/resources/variables/orec"
+        }
+      },
+      {
+        "url": "https://bluebutton.cms.gov/resources/variables/crec",
+        "valueCoding": {
+          "code": "0",
+          "display": "Old age and survivor’s insurance (OASI)",
+          "system": "https://bluebutton.cms.gov/resources/variables/crec"
+        }
+      },
+      {
+        "url": "https://bluebutton.cms.gov/resources/variables/esrd_ind",
+        "valueCoding": {
+          "code": "0",
+          "display": "the beneficiary does not have ESRD",
+          "system": "https://bluebutton.cms.gov/resources/variables/esrd_ind"
+        }
+      },
+      {
+        "url": "https://bluebutton.cms.gov/resources/variables/a_trm_cd",
+        "valueCoding": {
+          "code": "0",
+          "display": "Not Terminated",
+          "system": "https://bluebutton.cms.gov/resources/variables/a_trm_cd"
+        }
+      }
+    ],
+    "grouping": {
+      "subGroup": "Medicare",
+      "subPlan": "Part A"
+    },
+    "id": "part-a-19990000002901",
+    "resourceType": "Coverage",
+    "status": "active",
+    "type": {
+      "coding": [
+        {
+          "code": "Part A",
+          "system": "Medicare"
+        }
+      ]
+    }
+  }
+}
+```
+
