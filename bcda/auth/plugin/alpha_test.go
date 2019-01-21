@@ -4,14 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/require"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jinzhu/gorm"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -240,6 +243,24 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	missingClaimsString, _ := s.AuthBackend.SignJwtToken(missingClaims)
 	err = s.p.ValidateAccessToken(missingClaimsString)
 	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
+
+	// three possible states in the db:
+	// invalid token id
+	// valid token id, not blacklisted
+	// valid token id, blacklisted
+	noSuchTokenID := *jwt.New(jwt.SigningMethodRS512)
+	noSuchTokenID.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id" : uuid.NewRandom().String(),
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Unix(),
+	}
+	invalidTokenIdString, _ := s.AuthBackend.SignJwtToken(noSuchTokenID)
+	err = s.p.ValidateAccessToken(invalidTokenIdString)
+	require.NotNil(s.T(), err, "expected error with non-existent token id")
+	// require above stops the test if NotNil fails; otherwise we get an ugly nil exception on the following line
+	assert.Contains(s.T(), err.Error(), "blacklisted Token with ID")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
