@@ -10,18 +10,17 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
-
-	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
-
 	log "github.com/sirupsen/logrus"
 )
 
 type AlphaAuthPlugin struct{}
 
-type CustomClaims struct {
-	Aco string `json:"aco"`
+type AllClaims struct {
+	ACO string `json:"aco"`
 	ID  string `json:"id"`
 	jwt.StandardClaims
 }
@@ -226,7 +225,7 @@ func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 		return err
 	}
 
-	if c, ok := t.Claims.(*CustomClaims); ok {
+	if c, ok := t.Claims.(*AllClaims); ok {
 		return revokeAccessTokenByID(uuid.Parse(c.ID))
 	}
 
@@ -248,18 +247,65 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 	return db.Error
 }
 
-func (p *AlphaAuthPlugin) ValidateAccessToken(token string) error {
-	return errors.New("not yet implemented")
+func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
+	t, err := p.DecodeAccessToken(tokenString)
+	if err != nil {
+		return err
+	}
+
+	c := t.Claims.(*AllClaims)
+
+	err = checkRequiredClaims(c)
+	if err != nil {
+		return err
+	}
+
+	err = c.Valid()
+	if err != nil {
+		return err
+	}
+
+	_, err = getACOFromDB(c.ACO)
+	if err != nil {
+		return err
+	}
+
+	b := isActive(t)
+	if !b {
+		return fmt.Errorf("token with id: %v is not active", c.ID)
+	}
+
+	return nil
 }
 
-func (p *AlphaAuthPlugin) DecodeAccessToken(token string) (jwt.Token, error) {
+func checkRequiredClaims(claims *AllClaims) error {
+	if claims.ExpiresAt == 0 ||
+		claims.IssuedAt == 0 ||
+		claims.Subject == "" ||
+		claims.ACO == "" ||
+		claims.ID == "" {
+		return fmt.Errorf("missing one or more required claims")
+	}
+	return nil
+}
+
+func isActive(token jwt.Token) bool {
+	c := token.Claims.(*AllClaims)
+
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	return !db.Find(&token, "UUID = ? AND active = ?", c.ID, true).RecordNotFound()
+}
+
+func (p *AlphaAuthPlugin) DecodeAccessToken(tokenString string) (jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return auth.InitAuthBackend().PublicKey, nil
 	}
-	t, err := jwt.ParseWithClaims(token, &CustomClaims{}, keyFunc)
+	t, err := jwt.ParseWithClaims(tokenString, &AllClaims{}, keyFunc)
 	if err != nil {
 		return jwt.Token{}, err
 	}

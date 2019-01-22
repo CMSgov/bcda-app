@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx"
 	newrelic "github.com/newrelic/go-agent"
@@ -49,7 +50,7 @@ func init() {
 	if err == nil {
 		log.SetOutput(file)
 	} else {
-		log.Info("Failed to log to file; using default stderr")
+		log.Info("Failed to open worker error log file; using default stderr")
 	}
 }
 
@@ -366,7 +367,26 @@ func setupQueue() *pgx.ConnPool {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
+
 	workerPool := setupQueue()
 	defer workerPool.Close()
+
+	if hInt, err := strconv.Atoi(os.Getenv("WORKER_HEALTH_INT_SEC")); err == nil {
+		healthLogger := NewHealthLogger()
+		ticker := time.NewTicker(time.Duration(hInt) * time.Second)
+		quit := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					healthLogger.Log()
+				case <-quit:
+					ticker.Stop()
+					return
+				}
+			}
+		}()
+	}
+
 	waitForSig()
 }
