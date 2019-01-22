@@ -6,15 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/require"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -218,12 +216,30 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	ts, _ := s.AuthBackend.GenerateTokenString(userID, acoID)
-	err := s.p.ValidateAccessToken(ts)
+	validClaims := jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	}
+
+	validToken := *jwt.New(jwt.SigningMethodRS512)
+	validToken.Claims = validClaims
+	validTokenString, _ := s.AuthBackend.SignJwtToken(validToken)
+	err := s.p.ValidateAccessToken(validTokenString)
 	assert.Nil(s.T(), err)
 
-	unknownACO, _ := s.AuthBackend.GenerateTokenString(userID, uuid.NewRandom().String())
-	err = s.p.ValidateAccessToken(unknownACO)
+	unknownAco := *jwt.New(jwt.SigningMethodRS512)
+	unknownAco.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": uuid.NewRandom().String(),
+		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	}
+	unknownAcoString, _ := s.AuthBackend.SignJwtToken(unknownAco)
+	err = s.p.ValidateAccessToken(unknownAcoString)
 	assert.Contains(s.T(), err.Error(), "no ACO record found")
 
 	badSigningMethod := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
@@ -238,29 +254,35 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	missingClaims.Claims = jwt.MapClaims{
 		"sub": userID,
 		"aco": acoID,
-		"id":  uuid.NewRandom().String(),
+		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
 	}
 	missingClaimsString, _ := s.AuthBackend.SignJwtToken(missingClaims)
 	err = s.p.ValidateAccessToken(missingClaimsString)
 	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
 
-	// three possible states in the db:
-	// invalid token id
-	// valid token id, not blacklisted
-	// valid token id, blacklisted
 	noSuchTokenID := *jwt.New(jwt.SigningMethodRS512)
 	noSuchTokenID.Claims = jwt.MapClaims{
 		"sub": userID,
 		"aco": acoID,
-		"id" : uuid.NewRandom().String(),
+		"id":  uuid.NewRandom().String(),
 		"iat": time.Now().Unix(),
-		"exp": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
-	invalidTokenIdString, _ := s.AuthBackend.SignJwtToken(noSuchTokenID)
-	err = s.p.ValidateAccessToken(invalidTokenIdString)
-	require.NotNil(s.T(), err, "expected error with non-existent token id")
-	// require above stops the test if NotNil fails; otherwise we get an ugly nil exception on the following line
-	assert.Contains(s.T(), err.Error(), "blacklisted Token with ID")
+	noSuchTokenIDString, _ := s.AuthBackend.SignJwtToken(noSuchTokenID)
+	err = s.p.ValidateAccessToken(noSuchTokenIDString)
+	assert.Contains(s.T(), err.Error(), "is not active")
+
+	invalidTokenID := *jwt.New(jwt.SigningMethodRS512)
+	invalidTokenID.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	}
+	invalidTokenIDString, _ := s.AuthBackend.SignJwtToken(invalidTokenID)
+	err = s.p.ValidateAccessToken(invalidTokenIDString)
+	assert.Contains(s.T(), err.Error(), "is not active")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {

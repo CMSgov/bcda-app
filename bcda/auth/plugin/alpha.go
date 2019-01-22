@@ -10,9 +10,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/jinzhu/gorm"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -270,9 +270,9 @@ func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
 		return err
 	}
 
-	b := isBlacklisted(t)
-	if b {
-		return fmt.Errorf("blacklisted Token with ID: %v was rejected", c.ID)
+	b := isActive(t)
+	if !b {
+		return fmt.Errorf("token with id: %v is not active", c.ID)
 	}
 
 	return nil
@@ -289,13 +289,13 @@ func checkRequiredClaims(claims *AllClaims) error {
 	return nil
 }
 
-func isBlacklisted(token jwt.Token) bool {
+func isActive(token jwt.Token) bool {
 	c := token.Claims.(*AllClaims)
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	return !db.Find(&token, "UUID = ? AND active = ?", c.ID, false).RecordNotFound()
+	return !db.Find(&token, "UUID = ? AND active = ?", c.ID, true).RecordNotFound()
 }
 
 func (p *AlphaAuthPlugin) DecodeAccessToken(tokenString string) (jwt.Token, error) {
