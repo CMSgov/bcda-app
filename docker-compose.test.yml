@@ -18,12 +18,9 @@ services:
       dockerfile: Dockerfiles/Dockerfile.smoke_test
     volumes:
       - ./test:/go/src/github.com/CMSgov/bcda-app/test
-  integration_test:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.integration_test
-    volumes:
-      - ./test:/go/src/github.com/CMSgov/bcda-app/test
+      - ./shared_files:/go/src/github.com/CMSgov/bcda-app/shared_files
+    environment:
+      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
   postman_test:
     build:
       context: .
