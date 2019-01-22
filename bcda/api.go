@@ -29,7 +29,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -43,6 +42,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
@@ -464,7 +464,7 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 func healthCheck(w http.ResponseWriter, r *http.Request) {
 	m := make(map[string]string)
 
-	if isDatabaseOK() {
+	if health.IsDatabaseOK() {
 		m["database"] = "ok"
 		w.WriteHeader(http.StatusOK)
 	} else {
@@ -482,16 +482,6 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
-}
-
-func isDatabaseOK() bool {
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
-	if err != nil {
-		return false
-	}
-	defer db.Close()
-
-	return db.Ping() == nil
 }
 
 func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {

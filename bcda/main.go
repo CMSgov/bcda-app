@@ -85,7 +85,7 @@ func init() {
 	if err == nil {
 		log.SetOutput(file)
 	} else {
-		log.Info("Failed to log to file; using default stderr")
+		log.Info("Failed to open error log file; using default stderr")
 	}
 	monitoring.GetMonitor()
 }
