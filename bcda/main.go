@@ -408,11 +408,16 @@ func createAccessToken(userID string) (string, error) {
 		return "", fmt.Errorf("unable to locate User with id of %s", userID)
 	}
 
-	authBackend := auth.InitAuthBackend()
-	_, tokenString, err := authBackend.CreateToken(user)
+	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.AcoID.String(), 72)
+	jwtToken, err := GetAuthProvider().RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
+	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	if err != nil {
+		return "", err
+	}
+
 	return tokenString, nil
 }
 

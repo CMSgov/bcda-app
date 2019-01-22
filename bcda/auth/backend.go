@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/secutils"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/pborman/uuid"
 )
 
 var (
@@ -131,7 +131,7 @@ func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.To
 	return token, err
 }
 
-// Save a token to the DB for a user
+// should be removed during BCDA-764; must be left in place until then
 func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (Token, string, error) {
 	db := database.GetGORMDbConnection()
 	tokenString, err := backend.GenerateTokenString(
