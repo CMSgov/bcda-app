@@ -98,8 +98,12 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("Patient", w, r)
 }
 
+func bulkCoverageRequest(w http.ResponseWriter, r *http.Request) {
+	bulkRequest("Coverage", w, r)
+}
+
 func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
-	if t != "ExplanationOfBenefit" && t != "Patient" {
+	if t != "ExplanationOfBenefit" && t != "Patient" && t != "Coverage" {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
@@ -278,7 +282,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			scheme = "https"
 		}
 
-		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient)/\$export`)
+		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient|Coverage)/\$export`)
 		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
 
 		fi := fileItem{

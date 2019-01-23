@@ -25,6 +25,7 @@ const blueButtonBasePath = "/v1/fhir"
 type APIClient interface {
 	GetExplanationOfBenefitData(patientID, jobID string) (string, error)
 	GetPatientData(patientID, jobID string) (string, error)
+	GetCoverageData(beneficiaryID, jobID string) (string, error)
 }
 
 type BlueButtonClient struct {
