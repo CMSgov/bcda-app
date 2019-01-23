@@ -66,6 +66,7 @@ func (s *BackendTestSuite) TestGenerateToken() {
 	assert.Panics(s.T(), func() { _, _ = s.AuthBackend.GenerateTokenString(userUUIDString, acoUUIDString) })
 }
 
+// remove with BCDA-764
 func (s *BackendTestSuite) TestCreateToken() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	db := database.GetGORMDbConnection()

@@ -42,7 +42,7 @@ type jobEnqueueArgs struct {
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
-	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 	Encrypt bool
 }
 
@@ -85,7 +85,7 @@ func init() {
 	if err == nil {
 		log.SetOutput(file)
 	} else {
-		log.Info("Failed to log to file; using default stderr")
+		log.Info("Failed to open error log file; using default stderr")
 	}
 	monitoring.GetMonitor()
 }
@@ -408,11 +408,16 @@ func createAccessToken(userID string) (string, error) {
 		return "", fmt.Errorf("unable to locate User with id of %s", userID)
 	}
 
-	authBackend := auth.InitAuthBackend()
-	_, tokenString, err := authBackend.CreateToken(user)
+	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.AcoID.String(), 72)
+	jwtToken, err := GetAuthProvider().RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
+	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	if err != nil {
+		return "", err
+	}
+
 	return tokenString, nil
 }
 

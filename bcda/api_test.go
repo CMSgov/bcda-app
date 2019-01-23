@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/encryption"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -35,13 +36,12 @@ type APITestSuite struct {
 
 func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
+	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
-	//s.SetupAuthBackend()
-
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	user, err := models.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
