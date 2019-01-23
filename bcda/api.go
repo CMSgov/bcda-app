@@ -363,8 +363,6 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
-	authBackend := auth.InitAuthBackend()
-
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -386,15 +384,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, err := authBackend.SignJwtToken(token)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write([]byte(tokenString))
+	_, err = w.Write([]byte(token.TokenString))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)

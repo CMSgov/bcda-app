@@ -26,17 +26,18 @@ func InitializeGormModels() *gorm.DB {
 type Token struct {
 	gorm.Model
 	// even though gorm.Model has an `id` field declared as the primary key, the following definition overrides that
-	UUID        uuid.UUID   `gorm:"primary_key" json:"uuid"` // uuid (primary key)
-	User        models.User `gorm:"foreignkey:UserID;association_foreignkey:UUID"`
-	UserID      uuid.UUID   `json:"user_id"`                                // user_id
-	Value       string      `gorm:"type:varchar(511); unique" json:"value"` // value
-	Active      bool        `json:"active"`                                 // active
-	Aco         models.ACO  `gorm:"foreignkey:AcoID;association_foreignkey:UUID"`
-	AcoID       uuid.UUID   `json:"aco_id"`     // aco_id
-	IssuedAt    int64       `json:"issued_at"`  // standard token claim; unix date
-	ExpiresOn   int64       `json:"expires_on"` // standard token claim; unix date
-	Token       jwt.Token   `gorm:"-"`          // ignore; not for database
-	TokenString string      `gorm:"-"`          // ignore; not for database
+	UUID   uuid.UUID   `gorm:"primary_key" json:"uuid"` // uuid (primary key)
+	User   models.User `gorm:"foreignkey:UserID;association_foreignkey:UUID"`
+	UserID uuid.UUID   `json:"user_id"` // user_id
+	// use of Value is being retired. when can we drop it without hurting existing alpha tokens?
+	Value     string     `gorm:"type:varchar(511); unique" json:"value"` // value
+	Active    bool       `json:"active"`                                 // active
+	Aco       models.ACO `gorm:"foreignkey:AcoID;association_foreignkey:UUID"`
+	AcoID     uuid.UUID  `json:"aco_id"`     // aco_id
+	IssuedAt  int64      `json:"issued_at"`  // standard token claim; unix date
+	ExpiresOn int64      `json:"expires_on"` // standard token claim; unix date
+	// Token       jwt.Token   `gorm:"-"`                                      // ignore; not for database
+	TokenString string `gorm:"-"` // ignore; not for database
 	// we store AcoID on the token because a user can belong to multiple ACOs
 	// unix time converter here: http://unixepoch.com
 }
