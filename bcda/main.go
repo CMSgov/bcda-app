@@ -42,7 +42,7 @@ type jobEnqueueArgs struct {
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
-	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 	Encrypt bool
 }
 
