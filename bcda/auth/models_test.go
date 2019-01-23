@@ -1,6 +1,8 @@
 package auth_test
 
 import (
+	"testing"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -9,7 +11,6 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type ModelsTestSuite struct {
@@ -22,6 +23,10 @@ func (s *ModelsTestSuite) SetupTest() {
 	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.SetupAuthBackend()
+}
+
+func (s *ModelsTestSuite) TearDownTest() {
+	s.db.Close()
 }
 
 func (s *ModelsTestSuite) TestTokenCreation() {

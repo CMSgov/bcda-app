@@ -7,12 +7,13 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"errors"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"os"
+
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	log "github.com/sirupsen/logrus"
 )
 
 // Code in this file borrows heavily from https://github.com/gtank/cryptopasta
@@ -88,6 +89,7 @@ func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID
 
 	// Save the encrypted key before trying anything dangerous
 	db := database.GetGORMDbConnection()
+	defer db.Close()
 	err = db.Create(&models.JobKey{JobID: jobID, EncryptedKey: encryptedKey, FileName: fileName}).Error
 	if err != nil {
 		log.Error(err)

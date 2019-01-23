@@ -13,7 +13,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/secutils"
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 )
 
@@ -134,6 +134,7 @@ func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.To
 // Save a token to the DB for a user
 func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (Token, string, error) {
 	db := database.GetGORMDbConnection()
+	defer db.Close()
 	tokenString, err := backend.GenerateTokenString(
 		user.UUID.String(),
 		user.AcoID.String(),
