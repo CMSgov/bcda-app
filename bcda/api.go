@@ -364,17 +364,8 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	var user models.User
-	err := db.First(&user, "name = ?", "User One").Error
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
 	var aco models.ACO
-	err = db.First(&aco, "name = ?", "ACO Dev").Error
+	err := db.First(&aco, "name = ?", "ACO Dev").Error
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
@@ -382,15 +373,24 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generates a token for fake user and ACO combination
-	token, err := authBackend.GenerateTokenString(user.UUID.String(), aco.UUID.String())
+	// Generates a token for 'ACO Dev' and its first user
+	token, err := GetAuthProvider().RequestAccessToken([]byte(fmt.Sprintf(`{"clientID":"%s", "ttl": 72}`, aco.UUID.String())))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	_, err = w.Write([]byte(token))
+
+	tokenString, err := authBackend.SignJwtToken(token)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write([]byte(tokenString))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
