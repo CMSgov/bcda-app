@@ -23,7 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/bgentry/que-go"
+	que "github.com/bgentry/que-go"
 )
 
 var (
@@ -62,7 +62,7 @@ func processJob(j *que.Job) error {
 	log.Info("Worker started processing job ", j.ID)
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	jobArgs := jobEnqueueArgs{}
 	err := json.Unmarshal(j.Args, &jobArgs)

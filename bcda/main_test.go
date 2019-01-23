@@ -81,7 +81,7 @@ func (s *MainTestSuite) TestCreateACO() {
 
 	// init
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	s.SetupAuthBackend()
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -140,7 +140,7 @@ func (s *MainTestSuite) TestCreateUser() {
 
 	// init
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	name, email := "Unit Test", "UnitTest@mail.com"
 
@@ -382,7 +382,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	// init
 	autoMigrate()
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	assert := assert.New(s.T())
 
@@ -450,7 +450,7 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 	// init
 	autoMigrate()
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	// save a job to our db
 	j := models.Job{
@@ -507,7 +507,7 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 
 func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	s.SetupAuthBackend()
 	acoUUID, err := createACO("ACO " + email)
@@ -607,7 +607,7 @@ func (s *MainTestSuite) TestCleanArchive() {
 	}
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	var beforeJob models.Job
 	db.First(&beforeJob, "id = ?", beforeJobId)
@@ -727,7 +727,7 @@ func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
 
 func checkStructure(s *MainTestSuite, ttl int, acoSize string) jwt.MapClaims {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	tokenInfo, err := createAlphaToken(ttl, acoSize)
 	lines := strings.Split(tokenInfo, "\n")
 	assert.Equal(s.T(), 3, len(lines))

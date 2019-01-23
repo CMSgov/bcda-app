@@ -78,7 +78,7 @@ func (backend *JWTAuthenticationBackend) GenerateTokenString(userID, acoID strin
 func (backend *JWTAuthenticationBackend) IsBlacklisted(jwtToken *jwt.Token) bool {
 	claims, _ := jwtToken.Claims.(jwt.MapClaims)
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	var token Token
 	// Look for an inactive token with the uuid; if found, it is blacklisted or otherwise revoked
@@ -134,7 +134,7 @@ func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.To
 // Save a token to the DB for a user
 func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (Token, string, error) {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	tokenString, err := backend.GenerateTokenString(
 		user.UUID.String(),
 		user.AcoID.String(),

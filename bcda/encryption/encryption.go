@@ -89,7 +89,7 @@ func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID
 
 	// Save the encrypted key before trying anything dangerous
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	err = db.Create(&models.JobKey{JobID: jobID, EncryptedKey: encryptedKey, FileName: fileName}).Error
 	if err != nil {
 		log.Error(err)
