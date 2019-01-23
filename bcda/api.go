@@ -161,13 +161,14 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		beneficiaryIds = append(beneficiaryIds, id)
 	}
 
-	// TODO(rnagle): this checks for ?encrypt=true appended to the bulk data request URL
-	// This is a temporary addition to allow SCA/ACT auditors to verify encryption of files works properly
-	// without exposing file encryption functionality to BCDA pilot users.
-	var encrypt bool = false
+	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
+        // By default, our encryption process is enabled but for now we are giving users the ability to turn
+        // it off
+        // Eventually, we will remove the ability for users to turn it off and it will remain on always
+	var encrypt bool = true
 	param, ok := r.URL.Query()["encrypt"]
-	if ok && strings.ToLower(param[0]) == "true" {
-		encrypt = true
+	if ok && strings.ToLower(param[0]) == "false" {
+		encrypt = false
 	}
 
 	args, err := json.Marshal(jobEnqueueArgs{
@@ -176,7 +177,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
 		ResourceType:   t,
-		// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+		// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 		Encrypt: encrypt,
 	})
 	if err != nil {

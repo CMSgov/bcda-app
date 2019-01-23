@@ -33,7 +33,7 @@ func init() {
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
-	flag.BoolVar(&encrypt, "encrypt", false, "whether to request encryption of data")
+	flag.BoolVar(&encrypt, "encrypt", true, "whether to disable encryption")
 	flag.Parse()
 
 	if accessToken == "" {
@@ -68,8 +68,8 @@ func startJob(resourceType string) *http.Response {
 	client := &http.Client{}
 
 	var url string = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType)
-	if encrypt {
-		url = fmt.Sprintf("%s?encrypt=true", url)
+	if !encrypt {
+		url = fmt.Sprintf("%s?encrypt=false", ural)
 	}
 
 	req, err := http.NewRequest("GET", url, nil)

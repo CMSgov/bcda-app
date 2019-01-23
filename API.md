@@ -7,6 +7,7 @@ This API follows the workflow outlined by the [FHIR Bulk Data Export Proposal](h
    1. [APIs](#apis)
    1. [Authentication and Authorization](#authentication-and-authorization)
    1. [Environment](#environment)
+   1. [Encryption](#encryption)
 1. [Examples](#examples)
    1. [BCDA Metadata](#bcda-metadata)
    1. [Beneficiary Explanation of Benefit Data](#beneficiary-explanation-of-benefit-data)
@@ -24,6 +25,9 @@ An access token is required for most requests. The token is presented in API req
 
 ### Environment
 The examples below include [cURL](https://curl.haxx.se/) commands, but may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/).
+
+### Encryption
+Details on the data encryption process, including decryption details, can be found in the [Encryption documentation](https://github.com/CMSgov/bcda-app/blob/master/ENCRYPTION.md).
 
 ## Examples
 Examples are shown as requests to the BCDA sandbox environment.
