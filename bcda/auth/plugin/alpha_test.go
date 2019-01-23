@@ -50,23 +50,23 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.p.RegisterClient(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`)
+	c, err := s.p.RegisterClient(auth.ClientID("DBBD1CE1-AE24-435C-807D-ED45953077D3"))
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), c)
 
 	assert.Equal(s.T(), KnownFixtureACO, c)
 
-	c, err = s.p.RegisterClient(`{"clientID":""}`)
+	c, err = s.p.RegisterClient(auth.ClientID(""))
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
 
-	c, err = s.p.RegisterClient(`{"clientID": "correct length, but not a valid UUID"}`)
+	c, err = s.p.RegisterClient(auth.ClientID("correct length, but not a valid UUID"))
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c)
 	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
-	c, err = s.p.RegisterClient(fmt.Sprintf(`{"clientID": "%s"}`, uuid.NewRandom().String()))
+	c, err = s.p.RegisterClient(auth.ClientID(uuid.NewRandom().String()))
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c)
 
@@ -96,7 +96,6 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	r, err := s.p.GenerateClientCredentials("{}")
 	assert.Nil(s.T(), r)
 	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "missing value")
 
 	aco := models.ACO{
 		UUID: uuid.NewRandom(),
@@ -104,10 +103,11 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	}
 	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
 	assert.Nil(s.T(), err, "wtf? %v", err)
-	j := fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, aco.UUID.String())
+	c := auth.ClientID(aco.UUID.String())
+	t := auth.TTL(720)
 	// we know that we use aco.UUID as the ClientID
 
-	r, err = s.p.GenerateClientCredentials(j)
+	r, err = s.p.GenerateClientCredentials(c, t)
 	assert.Nil(s.T(), r)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "have a registered client")
@@ -119,7 +119,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
 	assert.Nil(s.T(), err, "wtf? %v", err)
 
-	r, err = s.p.GenerateClientCredentials(j)
+	r, err = s.p.GenerateClientCredentials(c, t)
 	assert.NotNil(s.T(), r)
 	assert.Nil(s.T(), err)
 
@@ -128,11 +128,11 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	acoID := uuid.NewRandom()
-	clientID := uuid.NewRandom().String()
+	clientID := auth.ClientID(uuid.NewRandom().String())
 	var aco = models.ACO{
 		UUID:     acoID,
 		Name:     "RevokeClientCredentials Test ACO",
-		ClientID: clientID,
+		ClientID: string(clientID),
 	}
 	db := connections["TestRevokeClientCredentials"]
 	db.Save(&aco)
@@ -150,7 +150,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 
 	assert := assert.New(s.T())
 
-	err := s.p.RevokeClientCredentials(fmt.Sprintf(`{"clientID": "%s"}`, clientID))
+	err := s.p.RevokeClientCredentials(clientID)
 	assert.Nil(err)
 
 	db.First(&token, "UUID = ?", token.UUID)
@@ -160,22 +160,12 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	// parameters can be separate interfaces, or . . .
-	t, err := s.p.RequestAccessToken(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`, `{"ttl": 720}`)
+	clientID := auth.ClientID("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+	t, err := s.p.RequestAccessToken(clientID, auth.TTL(720))
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
 
-	// in a single object
-	t, err = s.p.RequestAccessToken(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3", "ttl": 720}`)
-	assert.Nil(s.T(), err)
-	assert.IsType(s.T(), jwt.Token{}, t)
-
-	t, err = s.p.RequestAccessToken(`{ "ttl": 720}`)
-	assert.NotNil(s.T(), err)
-	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Contains(s.T(), err.Error(), "invalid string value")
-
-	t, err = s.p.RequestAccessToken(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`)
+	t, err = s.p.RequestAccessToken(clientID)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
 	assert.Contains(s.T(), err.Error(), "no valid ttl")

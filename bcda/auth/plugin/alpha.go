@@ -29,11 +29,8 @@ type CustomClaims struct {
 // This implementation expects one value in params, an id the API knows this client by in string form
 // It returns a single string as well, being the clientID this implementation knows this client by
 // NB: Other implementations will probably expect more input, and will certainly return more data
-func (p *AlphaAuthPlugin) RegisterClient(params ...interface{}) (string, error) {
-	acoUUID, err := getParamString("clientID", params...)
-	if err != nil {
-		return "", err
-	}
+func (p *AlphaAuthPlugin) RegisterClient(clientID auth.ClientID, params ...interface{}) (string, error) {
+	acoUUID := string(clientID)
 
 	// We'll check carefully in this method, because we're returning something to be used as an id
 	// Normally, a plugin would treat this value as a black box external key, but this implementation is
@@ -57,22 +54,17 @@ func (p *AlphaAuthPlugin) RegisterClient(params ...interface{}) (string, error) 
 	return acoUUID, nil
 }
 
-func (p *AlphaAuthPlugin) UpdateClient(params ...interface{}) ([]interface{}, error) {
+func (p *AlphaAuthPlugin) UpdateClient(clientID auth.ClientID, params ...interface{}) ([]interface{}, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (p *AlphaAuthPlugin) DeleteClient(params ...interface{}) error {
+func (p *AlphaAuthPlugin) DeleteClient(clientID auth.ClientID, params ...interface{}) error {
 	return errors.New("not yet implemented")
 }
 
 // can treat as a no-op or call RequestAccessToken
-func (p *AlphaAuthPlugin) GenerateClientCredentials(params ...interface{}) (interface{}, error) {
-	clientID, err := getParamString("clientID", params...)
-	if err != nil {
-		return nil, err
-	}
-
-	aco, err := getACOFromDB(clientID)
+func (p *AlphaAuthPlugin) GenerateClientCredentials(clientID auth.ClientID, params ...interface{}) (interface{}, error) {
+	aco, err := getACOFromDB(string(clientID))
 	if err != nil {
 		return nil, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
 	}
@@ -81,12 +73,12 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params ...interface{}) (inte
 		return nil, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
-	err = p.RevokeClientCredentials(fmt.Sprintf(`{"clientID":"%s"}`, clientID))
+	err = p.RevokeClientCredentials(clientID)
 	if err != nil {
-		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
+		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", string(clientID), err)
 	}
 
-	jwtToken, err := p.RequestAccessToken(params...)
+	jwtToken, err := p.RequestAccessToken(clientID, params...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
@@ -99,12 +91,7 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params ...interface{}) (inte
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
-func (p *AlphaAuthPlugin) RevokeClientCredentials(params ...interface{}) error {
-	clientID, err := getParamString("clientID", params...)
-	if err != nil {
-		return err
-	}
-
+func (p *AlphaAuthPlugin) RevokeClientCredentials(clientID auth.ClientID, params ...interface{}) error {
 	db := database.GetGORMDbConnection()
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -113,7 +100,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params ...interface{}) error {
 	}()
 
 	var aco models.ACO
-	err = db.First(&aco, "client_id = ?", clientID).Error
+	err := db.First(&aco, "client_id = ?", string(clientID)).Error
 	if err != nil {
 		return errors.New("no ACO found for client ID")
 	}
@@ -159,19 +146,30 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params ...interface{}) error {
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
 // params are currently acoId and ttl; not going to introduce user until we have clear use cases
-func (p *AlphaAuthPlugin) RequestAccessToken(params ...interface{}) (jwt.Token, error) {
+func (p *AlphaAuthPlugin) RequestAccessToken(clientID auth.ClientID, params ...interface{}) (jwt.Token, error) {
 	backend := auth.InitAuthBackend()
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
 	jwtToken := jwt.Token{}
 
-	acoUUID, err := getParamString("clientID", params...)
-	if err != nil {
-		return jwtToken, errors.New("invalid string value " + err.Error())
+	ttl := 0
+
+	//err := auth.GetOpt(&ttl, &params[0])
+	for _, p := range params {
+		switch t := p.(type) {
+		case auth.TTL:
+			ttl = int(t)
+		default:
+			continue
+		}
 	}
 
-	aco, err := getACOFromDB(acoUUID)
+	if ttl <= 0 {
+		return jwtToken, errors.New("no valid ttl: ttl must have positive value ")
+	}
+
+	aco, err := getACOFromDB(string(clientID))
 	if err != nil {
 		return jwtToken, err
 	}
@@ -184,15 +182,10 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params ...interface{}) (jwt.Token, 
 		return jwtToken, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := getParamPositiveInt("ttl", params...)
-	if err != nil {
-		return jwtToken, errors.New("no valid ttl found because " + err.Error())
-	}
-
 	tokenUUID := uuid.NewRandom()
 	jwtToken = *jwt.New(jwt.SigningMethodRS512)
 	jwtToken.Claims = jwt.MapClaims{
-		"exp": time.Now().Add(time.Hour * time.Duration(ttl)).Unix(),
+		"exp": time.Now().Add(time.Hour * time.Duration(int(ttl))).Unix(),
 		"iat": time.Now().Unix(),
 		"sub": user.UUID.String(),
 		"aco": aco.UUID.String(),
