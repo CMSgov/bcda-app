@@ -35,7 +35,7 @@ func (s *EncryptionTestSuite) SetupTest() {
 }
 
 func (s *EncryptionTestSuite) TearDownTest() {
-	s.db.Close()
+	database.Close(s.db)
 }
 
 func (s *EncryptionTestSuite) TestEncryptBytes() {

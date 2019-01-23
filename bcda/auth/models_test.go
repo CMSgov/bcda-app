@@ -26,7 +26,7 @@ func (s *ModelsTestSuite) SetupTest() {
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
-	s.db.Close()
+	database.Close(s.db)
 }
 
 func (s *ModelsTestSuite) TestTokenCreation() {

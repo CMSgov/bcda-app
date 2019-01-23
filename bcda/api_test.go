@@ -40,7 +40,7 @@ func (s *APITestSuite) SetupTest() {
 }
 
 func (s *APITestSuite) TearDownTest() {
-	s.db.Close()
+	database.Close(s.db)
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
