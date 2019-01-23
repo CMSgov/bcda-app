@@ -20,5 +20,8 @@ insert into users values ('1ec70f78-7bb1-434b-9024-1d88c253ccec', 'User toNotRev
 insert into users values ('8c5f7cca-6ecd-4c18-83f8-15e59db3337b', 'User toRevoke', 'userrevoked2@email.com', '82f55b6a-728e-4c8b-807e-535caad7b139', default, default);
 insert into users values ('f85b3fc7-9d4e-49e1-8e7b-9feb3fb9f01b', 'User toNotRevoke', 'usernotrevoked2@email.com', '82f55b6a-728e-4c8b-807e-535caad7b139', default, default);
 
+insert into users values ('6baf8254-2e8a-4808-b11d-0fa00c527d2e', 'Dev User', 'devuser@acodev.com', '0c527d2e-2e8a-4808-b11d-0fa06baf8254', default, default);
+
 insert into tokens values ('d63205a8-d923-456b-a01b-0992fcb40968', '82503A18-BF3B-436D-BA7B-BAE09B7FFD2F', 'fake.token.value', 'true');
 insert into tokens values ('f5bd210a-5f95-4ba6-a167-2e9c95b5fbc1', 'EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73', 'fake.token.value', 'false');
+
