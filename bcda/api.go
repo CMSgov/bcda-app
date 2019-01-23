@@ -162,9 +162,9 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
-        // By default, our encryption process is enabled but for now we are giving users the ability to turn
-        // it off
-        // Eventually, we will remove the ability for users to turn it off and it will remain on always
+	// By default, our encryption process is enabled but for now we are giving users the ability to turn
+	// it off
+	// Eventually, we will remove the ability for users to turn it off and it will remain on always
 	var encrypt bool = true
 	param, ok := r.URL.Query()["encrypt"]
 	if ok && strings.ToLower(param[0]) == "false" {
