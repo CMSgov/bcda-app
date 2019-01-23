@@ -189,20 +189,20 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	db := connections["TestRevokeAccessToken"]
 
-	const UserID, AcoID = "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	const userID, acoID = "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	assert := assert.New(s.T())
 
 	// Good Revoke test
-	jwtToken, err := s.p.RequestAccessToken([]byte(fmt.Sprintf(`{"clientID": "%s", "ttl": 720}`, AcoID)))
+	jwtToken, err := s.p.RequestAccessToken([]byte(fmt.Sprintf(`{"clientID": "%s", "ttl": 720}`, acoID)))
 	if err != nil {
-		assert.FailNow("no access token for %s because %s", AcoID, err.Error())
+		assert.FailNow("no access token for %s because %s", acoID, err.Error())
 	}
 	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
 	if err != nil {
-		assert.FailNow("no token string for %s because %s", AcoID, err.Error())
+		assert.FailNow("no token string for %s because %s", acoID, err.Error())
 	}
 
-	err = s.p.RevokeAccessToken(UserID)
+	err = s.p.RevokeAccessToken(userID)
 	assert.NotNil(err)
 
 	err = s.p.RevokeAccessToken(tokenString)
@@ -219,7 +219,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	assert.NotNil(err)
 
 	// Revoke a token that doesn't exist
-	tokenString, _ = s.AuthBackend.GenerateTokenString(uuid.NewRandom().String(), AcoID)
+	tokenString, _ = s.AuthBackend.GenerateTokenString(uuid.NewRandom().String(), acoID)
 	err = s.p.RevokeAccessToken(tokenString)
 	assert.NotNil(err)
 	assert.True(gorm.IsRecordNotFoundError(err))
