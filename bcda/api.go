@@ -161,13 +161,14 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		beneficiaryIds = append(beneficiaryIds, id)
 	}
 
-	// TODO(rnagle): this checks for ?encrypt=true appended to the bulk data request URL
-	// This is a temporary addition to allow SCA/ACT auditors to verify encryption of files works properly
-	// without exposing file encryption functionality to BCDA pilot users.
-	var encrypt bool = false
+	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
+	// By default, our encryption process is enabled but for now we are giving users the ability to turn
+	// it off
+	// Eventually, we will remove the ability for users to turn it off and it will remain on always
+	var encrypt bool = true
 	param, ok := r.URL.Query()["encrypt"]
-	if ok && strings.ToLower(param[0]) == "true" {
-		encrypt = true
+	if ok && strings.ToLower(param[0]) == "false" {
+		encrypt = false
 	}
 
 	args, err := json.Marshal(jobEnqueueArgs{
@@ -176,7 +177,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
 		ResourceType:   t,
-		// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
+		// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 		Encrypt: encrypt,
 	})
 	if err != nil {
@@ -363,17 +364,8 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
-	var user models.User
-	err := db.First(&user, "name = ?", "User One").Error
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
 	var aco models.ACO
-	err = db.First(&aco, "name = ?", "ACO Dev").Error
+	err := db.First(&aco, "name = ?", "ACO Dev").Error
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
@@ -381,15 +373,24 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generates a token for fake user and ACO combination
-	token, err := authBackend.GenerateTokenString(user.UUID.String(), aco.UUID.String())
+	// Generates a token for 'ACO Dev' and its first user
+	token, err := GetAuthProvider().RequestAccessToken([]byte(fmt.Sprintf(`{"clientID":"%s", "ttl": 72}`, aco.UUID.String())))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	_, err = w.Write([]byte(token))
+
+	tokenString, err := authBackend.SignJwtToken(token)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write([]byte(tokenString))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)

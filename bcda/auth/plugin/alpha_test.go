@@ -6,16 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
-
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
@@ -133,11 +134,10 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	acoID := uuid.NewRandom()
-	clientID := uuid.NewRandom().String()
 	var aco = models.ACO{
 		UUID:     acoID,
 		Name:     "RevokeClientCredentials Test ACO",
-		ClientID: clientID,
+		ClientID: acoID.String(),
 	}
 	db := connections["TestRevokeClientCredentials"]
 	db.Save(&aco)
@@ -151,14 +151,20 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	}
 	db.Save(&user)
 
-	token, _, _ := s.AuthBackend.CreateToken(user)
+	params := fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, user.AcoID.String())
+	_, err := s.p.GenerateClientCredentials([]byte(params))
+	if err != nil {
+		assert.FailNow(s.T(), fmt.Sprintf(`can't create client credentials for %s because %s`, user.AcoID.String(), err))
+	}
 
 	assert := assert.New(s.T())
 
-	err := s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, clientID)))
+	err = s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, aco.ClientID)))
 	assert.Nil(err)
 
-	db.First(&token, "UUID = ?", token.UUID)
+	var token auth.Token
+	err = db.First(&token, "user_id = ?", user.UUID).Error
+	require.Nil(s.T(), err)
 	assert.False(token.Active)
 
 	db.Delete(&token, &user, &aco)
@@ -183,22 +189,28 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	db := connections["TestRevokeAccessToken"]
 
-	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	var user models.User
-	db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID)
-	// Good Revoke test
-	_, tokenString, _ := s.AuthBackend.CreateToken(user)
-
+	const userID, acoID = "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	assert := assert.New(s.T())
 
-	err := s.p.RevokeAccessToken(userID)
+	// Good Revoke test
+	jwtToken, err := s.p.RequestAccessToken([]byte(fmt.Sprintf(`{"clientID": "%s", "ttl": 720}`, acoID)))
+	if err != nil {
+		assert.FailNow("no access token for %s because %s", acoID, err.Error())
+	}
+	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	if err != nil {
+		assert.FailNow("no token string for %s because %s", acoID, err.Error())
+	}
+
+	err = s.p.RevokeAccessToken(userID)
 	assert.NotNil(err)
 
 	err = s.p.RevokeAccessToken(tokenString)
 	assert.Nil(err)
-	jwtToken, err := s.p.DecodeAccessToken(tokenString)
+	jwtToken, err = s.p.DecodeAccessToken(tokenString)
 	assert.Nil(err)
 	c, _ := jwtToken.Claims.(AllClaims)
+
 	var tokenFromDB jwt.Token
 	assert.False(db.Find(&tokenFromDB, "UUID = ? AND active = false", c.ID).RecordNotFound())
 
