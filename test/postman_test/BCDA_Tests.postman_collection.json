@@ -280,6 +280,131 @@
 			]
 		},
 		{
+			"name": "Coverage",
+			"item": [
+				{
+					"name": "Start Coverage export, no token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "f1078057-407c-4833-b49a-6f80bb5acefb",
+								"exec": [
+									"pm.test(\"Status code is 401\", function() {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"var respJson = pm.response.json();",
+									"",
+									"pm.test(\"Resource type is OperationOutcome\", function() {",
+									"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+									"});",
+									"",
+									"pm.test(\"Issue details text is Invalid Token\", function() {",
+									"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid Token\")",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/fhir+json",
+								"type": "text"
+							},
+							{
+								"key": "Prefer",
+								"value": "respond-async",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/Coverage/$export",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"Coverage",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start Coverage export, valid token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "4aa90ed8-0665-474f-a6fd-218c56c7387b",
+								"exec": [
+									"pm.test(\"Status code is 202\", function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test(\"Has Content-Location header\", function() {",
+									"    pm.response.to.have.header(\"Content-Location\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"type": "text",
+								"value": "application/fhir+json"
+							},
+							{
+								"key": "Prefer",
+								"type": "text",
+								"value": "respond-async"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{scheme}}://{{host}}/api/v1/Coverage/$export",
+							"protocol": "{{scheme}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"Coverage",
+								"$export"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Job status",
 			"item": [
 				{

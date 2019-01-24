@@ -32,7 +32,7 @@ The steps in our encryption process are:
 ```
 {
     "transactionTime": "2018-12-11T06:29:56.723792Z",
-    "request": "http://localhost:3000/api/v1/ExplanationOfBenefit/$export?encrypt=true",
+    "request": "http://localhost:3000/api/v1/ExplanationOfBenefit/$export",
     "requiresAccessToken": true,
     "output": [
         {
