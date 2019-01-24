@@ -1,4 +1,4 @@
-package plugin
+package auth_test
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 
 type AlphaAuthPluginTestSuite struct {
 	testUtils.AuthTestSuite
-	p *AlphaAuthPlugin
+	p *auth.AlphaAuthPlugin
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
@@ -33,7 +33,7 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
-	s.p = new(AlphaAuthPlugin)
+	s.p = new(auth.AlphaAuthPlugin)
 }
 
 var connections = make(map[string]*gorm.DB)
@@ -209,7 +209,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	assert.Nil(err)
 	jwtToken, err = s.p.DecodeAccessToken(tokenString)
 	assert.Nil(err)
-	c, _ := jwtToken.Claims.(AllClaims)
+	c, _ := jwtToken.Claims.(auth.AllClaims)
 
 	var tokenFromDB jwt.Token
 	assert.False(db.Find(&tokenFromDB, "UUID = ? AND active = false", c.ID).RecordNotFound())
@@ -304,8 +304,8 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
 	t, err := s.p.DecodeAccessToken(ts)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), userID, t.Claims.(*AllClaims).Subject)
-	assert.Equal(s.T(), acoID, t.Claims.(*AllClaims).ACO)
+	assert.Equal(s.T(), userID, t.Claims.(*auth.AllClaims).Subject)
+	assert.Equal(s.T(), acoID, t.Claims.(*auth.AllClaims).ACO)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {

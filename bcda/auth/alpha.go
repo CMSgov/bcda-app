@@ -1,4 +1,4 @@
-package plugin
+package auth
 
 import (
 	"encoding/json"
@@ -7,12 +7,11 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
@@ -89,7 +88,7 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, erro
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
-	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	tokenString, err := jwtToken.SignedString(InitAuthBackend().PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate tokenString because %s", err)
 	}
@@ -125,7 +124,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 
 	var (
 		userIDs []uuid.UUID
-		tokens  []auth.Token
+		tokens  []Token
 	)
 	for _, u := range users {
 		userIDs = append(userIDs, u.UUID)
@@ -159,7 +158,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
 // params are currently acoId and ttl; not going to introduce user until we have clear use cases
 func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
-	backend := auth.InitAuthBackend()
+	backend := InitAuthBackend()
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -203,7 +202,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 		return jwtToken, err
 	}
 
-	token := auth.Token{
+	token := Token{
 		UUID:        tokenUUID,
 		UserID:      user.UUID,
 		Value:       tokenString, // replaced with hash when saved to db
@@ -216,7 +215,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 		return jwtToken, err
 	}
 
-	return jwtToken, err // really want to return auth.Token here, but first let's get this all working
+	return jwtToken, err // really want to return Token here, but first let's get this all working
 }
 
 func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
@@ -236,7 +235,7 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var token auth.Token
+	var token Token
 	if db.First(&token, "UUID = ? and active = true", tokenID).RecordNotFound() {
 		return gorm.ErrRecordNotFound
 	}
@@ -303,7 +302,7 @@ func (p *AlphaAuthPlugin) DecodeAccessToken(tokenString string) (jwt.Token, erro
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return auth.InitAuthBackend().PublicKey, nil
+		return InitAuthBackend().PublicKey, nil
 	}
 	t, err := jwt.ParseWithClaims(tokenString, &AllClaims{}, keyFunc)
 	if err != nil {
