@@ -10,14 +10,15 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/encryption"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
+	que "github.com/bgentry/que-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -35,13 +36,16 @@ type APITestSuite struct {
 
 func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
+	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
 
-func (s *APITestSuite) TestBulkEOBRequest() {
-	//s.SetupAuthBackend()
+func (s *APITestSuite) TearDownTest() {
+	database.Close(s.db)
+}
 
+func (s *APITestSuite) TestBulkEOBRequest() {
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	user, err := models.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {

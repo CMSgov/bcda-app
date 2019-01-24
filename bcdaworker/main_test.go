@@ -15,7 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/bgentry/que-go"
+	que "github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -166,7 +166,7 @@ func (bbc *MockBlueButtonClient) getData(endpoint, patientID string) (string, er
 
 func (s *MainTestSuite) TestProcessJobEOB() {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	j := models.Job{
 		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),

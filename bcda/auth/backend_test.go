@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -66,9 +66,11 @@ func (s *BackendTestSuite) TestGenerateToken() {
 	assert.Panics(s.T(), func() { _, _ = s.AuthBackend.GenerateTokenString(userUUIDString, acoUUIDString) })
 }
 
+// remove with BCDA-764
 func (s *BackendTestSuite) TestCreateToken() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	db := database.GetGORMDbConnection()
+	defer database.Close(db)
 	var user models.User
 	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to locate user"))
@@ -115,6 +117,7 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 
 	db := database.GetGORMDbConnection()
+	defer database.Close(db)
 
 	var aco models.ACO
 	var user models.User

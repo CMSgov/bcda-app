@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -8,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"time"
 )
 
@@ -30,7 +33,7 @@ func init() {
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
-	flag.BoolVar(&encrypt, "encrypt", false, "whether to request encryption of data")
+	flag.BoolVar(&encrypt, "encrypt", true, "whether to disable encryption")
 	flag.Parse()
 
 	if accessToken == "" {
@@ -65,8 +68,8 @@ func startJob(resourceType string) *http.Response {
 	client := &http.Client{}
 
 	var url string = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType)
-	if encrypt {
-		url = fmt.Sprintf("%s?encrypt=true", url)
+	if !encrypt {
+		url = fmt.Sprintf("%s?encrypt=false", url)
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -122,10 +125,10 @@ func getFile(location string) *http.Response {
 	return resp
 }
 
-func writeFile(resp *http.Response) {
+func writeFile(resp *http.Response, filename string) {
 	defer resp.Body.Close()
 	/* #nosec */
-	out, err := os.Create("/tmp/download.json")
+	out, err := os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
@@ -134,6 +137,30 @@ func writeFile(resp *http.Response) {
 	if err != nil && num <= 0 {
 		panic(err)
 	}
+}
+
+func isValidNDJSONFile(filename string) bool {
+	isValid := true
+	/* #nosec */
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	r := bufio.NewReader(file)
+	for {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if !json.Valid([]byte(line)) {
+			isValid = false
+			break
+		}
+	}
+
+	return isValid
 }
 
 func main() {
@@ -162,20 +189,28 @@ func main() {
 					panic(err)
 				}
 				output := (*json.RawMessage)(objmap["output"])
-
 				var data OutputCollection
 				if err := json.Unmarshal(*output, &data); err != nil {
 					panic(err)
 				}
 
+				encryptData := map[string]string{}
+				if encrypt {
+					encOutput := (*json.RawMessage)(objmap["KeyMap"])
+					if err := json.Unmarshal(*encOutput, &encryptData); err != nil {
+						panic(err)
+					}
+				}
+
 				fmt.Printf("fetching: %s\n", data[0].Url)
 				download := getFile(data[0].Url)
 				if download.StatusCode == 200 {
-					fmt.Println("writing download to disk: /tmp/download.json")
-					writeFile(download)
+					filename := "/tmp/" + path.Base(data[0].Url)
+					fmt.Printf("writing download to disk: %s\n", filename)
+					writeFile(download, filename)
 
 					fmt.Println("validating file...")
-					fi, err := os.Stat("/tmp/download.json")
+					fi, err := os.Stat(filename)
 					if err != nil {
 						panic(err)
 					}
@@ -183,6 +218,25 @@ func main() {
 						fmt.Println("Error: file is empty!.")
 						os.Exit(1)
 					}
+
+					if encrypt {
+						fmt.Println("decrypting the file...")
+						encryptedKey, err := hex.DecodeString(encryptData[path.Base(data[0].Url)])
+						if err != nil {
+							panic(err)
+						}
+						privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
+						privateKey := getPrivateKey(privateKeyFile)
+						filename = decryptFile(privateKey, encryptedKey, filename)
+						fmt.Printf("writing decrypted file to disk: %s\n", filename)
+					}
+
+					fmt.Println("validating file content...")
+					if !isValidNDJSONFile(filename) {
+						fmt.Println("Error: file is not in valid NDJSON format!")
+						os.Exit(1)
+					}
+
 					fmt.Println("done.")
 				} else {
 					fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)

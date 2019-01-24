@@ -4,17 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jinzhu/gorm"
-
-	"github.com/dgrijalva/jwt-go"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
@@ -132,11 +134,10 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	acoID := uuid.NewRandom()
-	clientID := uuid.NewRandom().String()
 	var aco = models.ACO{
 		UUID:     acoID,
 		Name:     "RevokeClientCredentials Test ACO",
-		ClientID: clientID,
+		ClientID: acoID.String(),
 	}
 	db := connections["TestRevokeClientCredentials"]
 	db.Save(&aco)
@@ -150,14 +151,20 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	}
 	db.Save(&user)
 
-	token, _, _ := s.AuthBackend.CreateToken(user)
+	params := fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, user.AcoID.String())
+	_, err := s.p.GenerateClientCredentials([]byte(params))
+	if err != nil {
+		assert.FailNow(s.T(), fmt.Sprintf(`can't create client credentials for %s because %s`, user.AcoID.String(), err))
+	}
 
 	assert := assert.New(s.T())
 
-	err := s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, clientID)))
+	err = s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, aco.ClientID)))
 	assert.Nil(err)
 
-	db.First(&token, "UUID = ?", token.UUID)
+	var token auth.Token
+	err = db.First(&token, "user_id = ?", user.UUID).Error
+	require.Nil(s.T(), err)
 	assert.False(token.Active)
 
 	db.Delete(&token, &user, &aco)
@@ -182,22 +189,28 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	db := connections["TestRevokeAccessToken"]
 
-	userID, acoID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	var user models.User
-	db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID)
-	// Good Revoke test
-	_, tokenString, _ := s.AuthBackend.CreateToken(user)
-
+	const userID, acoID = "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	assert := assert.New(s.T())
 
-	err := s.p.RevokeAccessToken(userID)
+	// Good Revoke test
+	jwtToken, err := s.p.RequestAccessToken([]byte(fmt.Sprintf(`{"clientID": "%s", "ttl": 720}`, acoID)))
+	if err != nil {
+		assert.FailNow("no access token for %s because %s", acoID, err.Error())
+	}
+	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	if err != nil {
+		assert.FailNow("no token string for %s because %s", acoID, err.Error())
+	}
+
+	err = s.p.RevokeAccessToken(userID)
 	assert.NotNil(err)
 
 	err = s.p.RevokeAccessToken(tokenString)
 	assert.Nil(err)
-	jwtToken, err := s.p.DecodeAccessToken(tokenString)
+	jwtToken, err = s.p.DecodeAccessToken(tokenString)
 	assert.Nil(err)
-	c, _ := jwtToken.Claims.(CustomClaims)
+	c, _ := jwtToken.Claims.(AllClaims)
+
 	var tokenFromDB jwt.Token
 	assert.False(db.Find(&tokenFromDB, "UUID = ? AND active = false", c.ID).RecordNotFound())
 
@@ -213,19 +226,86 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
-	err := s.p.ValidateAccessToken("")
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	validClaims := jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	}
+
+	validToken := *jwt.New(jwt.SigningMethodRS512)
+	validToken.Claims = validClaims
+	validTokenString, _ := s.AuthBackend.SignJwtToken(validToken)
+	err := s.p.ValidateAccessToken(validTokenString)
+	assert.Nil(s.T(), err)
+
+	unknownAco := *jwt.New(jwt.SigningMethodRS512)
+	unknownAco.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": uuid.NewRandom().String(),
+		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	}
+	unknownAcoString, _ := s.AuthBackend.SignJwtToken(unknownAco)
+	err = s.p.ValidateAccessToken(unknownAcoString)
+	assert.Contains(s.T(), err.Error(), "no ACO record found")
+
+	badSigningMethod := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
+	err = s.p.ValidateAccessToken(badSigningMethod)
+	assert.Contains(s.T(), err.Error(), "unexpected signing method")
+
+	wrongKey := "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.MejLezWY6hjGgbIXkq6Qbvx_-q5vWaTR6qPiNHphvla-XaZD3up1DN6Ib5AEOVtuB3fC9l-0L36noK4qQA79lhpSK3gozXO6XPIcCp4C8MU_ACzGtYe7IwGnnK3Emr6IHQE0bpGinHX1Ak1pAuwJNawaQ6Nvmz2ozZPsyxmiwoo"
+	err = s.p.ValidateAccessToken(wrongKey)
+	assert.Contains(s.T(), err.Error(), "crypto/rsa: verification error")
+
+	missingClaims := *jwt.New(jwt.SigningMethodRS512)
+	missingClaims.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+	}
+	missingClaimsString, _ := s.AuthBackend.SignJwtToken(missingClaims)
+	err = s.p.ValidateAccessToken(missingClaimsString)
+	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
+
+	noSuchTokenID := *jwt.New(jwt.SigningMethodRS512)
+	noSuchTokenID.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	}
+	noSuchTokenIDString, _ := s.AuthBackend.SignJwtToken(noSuchTokenID)
+	err = s.p.ValidateAccessToken(noSuchTokenIDString)
+	assert.Contains(s.T(), err.Error(), "is not active")
+
+	invalidTokenID := *jwt.New(jwt.SigningMethodRS512)
+	invalidTokenID.Claims = jwt.MapClaims{
+		"sub": userID,
+		"aco": acoID,
+		"id":  uuid.NewRandom().String(),
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	}
+	invalidTokenIDString, _ := s.AuthBackend.SignJwtToken(invalidTokenID)
+	err = s.p.ValidateAccessToken(invalidTokenIDString)
+	assert.Contains(s.T(), err.Error(), "is not active")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeAccessToken() {
 	userID := uuid.NewRandom().String()
 	acoID := uuid.NewRandom().String()
-	ts, _ := auth.InitAuthBackend().GenerateTokenString(userID, acoID)
+	ts, _ := s.AuthBackend.GenerateTokenString(userID, acoID)
 	t, err := s.p.DecodeAccessToken(ts)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), userID, t.Claims.(*CustomClaims).Subject)
-	assert.Equal(s.T(), acoID, t.Claims.(*CustomClaims).Aco)
+	assert.Equal(s.T(), userID, t.Claims.(*AllClaims).Subject)
+	assert.Equal(s.T(), acoID, t.Claims.(*AllClaims).ACO)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {

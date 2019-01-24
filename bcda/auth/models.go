@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
@@ -12,7 +12,7 @@ import (
 
 func InitializeGormModels() *gorm.DB {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	// Migrate the schema
 	// Add your new models here
@@ -25,7 +25,7 @@ func InitializeGormModels() *gorm.DB {
 
 type Token struct {
 	gorm.Model
-	UUID        uuid.UUID   `gorm:"primary_key" json:"uuid"` 				// uuid
+	UUID        uuid.UUID   `gorm:"primary_key" json:"uuid"` // uuid
 	User        models.User `gorm:"foreignkey:UserID;association_foreignkey:UUID"`
 	UserID      uuid.UUID   `json:"user_id"`                                // user_id
 	Value       string      `gorm:"type:varchar(511); unique" json:"value"` // value

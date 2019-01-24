@@ -3,6 +3,7 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -42,7 +43,7 @@ func init() {
 	if err == nil {
 		logger.SetOutput(file)
 	} else {
-		logger.Info("Failed to log to file; using default stderr")
+		logger.Info("Failed to open Blue Button log file; using default stderr")
 	}
 }
 
@@ -136,6 +137,10 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return "", errors.New(resp.Status)
+	}
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
