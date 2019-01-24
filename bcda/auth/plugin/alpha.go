@@ -178,7 +178,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (auth.Token, error) 
 		return token, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := GetParamPositiveInt(params, "ttl")
+	ttl, err := getParamPositiveInt(params, "ttl")
 	if err != nil {
 		return token, errors.New("no valid ttl found because " + err.Error())
 	}
@@ -203,7 +203,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (auth.Token, error) 
 }
 
 func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
-	t, err := p.DecodeJwtToken(tokenString)
+	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
 		return err
 	}
@@ -230,8 +230,8 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 	return db.Error
 }
 
-func (p *AlphaAuthPlugin) ValidateJwtToken(tokenString string) error {
-	t, err := p.DecodeJwtToken(tokenString)
+func (p *AlphaAuthPlugin) ValidateJWT(tokenString string) error {
+	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func isActive(token jwt.Token) bool {
 	return !db.Find(&token, "UUID = ? AND active = ?", c.ID, true).RecordNotFound()
 }
 
-func (p *AlphaAuthPlugin) DecodeJwtToken(tokenString string) (jwt.Token, error) {
+func (p *AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -328,7 +328,7 @@ func GetParamString(params []byte, name string) (string, error) {
 	return stringForName, err
 }
 
-func GetParamPositiveInt(params []byte, name string) (int, error) {
+func getParamPositiveInt(params []byte, name string) (int, error) {
 	var (
 		j   interface{}
 		err error

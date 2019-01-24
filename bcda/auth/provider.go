@@ -14,6 +14,6 @@ type Provider interface {
 	RequestAccessToken(params []byte) (Token, error)
 	RevokeAccessToken(tokenString string) error
 
-	ValidateJwtToken(tokenString string) error
-	DecodeJwtToken(tokenString string) (jwt.Token, error)
+	ValidateJWT(tokenString string) error
+	DecodeJWT(tokenString string) (jwt.Token, error)
 }

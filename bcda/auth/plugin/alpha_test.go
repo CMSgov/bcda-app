@@ -231,7 +231,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	validToken := *jwt.New(jwt.SigningMethodRS512)
 	validToken.Claims = validClaims
 	validTokenString, _ := s.AuthBackend.SignJwtToken(validToken)
-	err := s.p.ValidateJwtToken(validTokenString)
+	err := s.p.ValidateJWT(validTokenString)
 	assert.Nil(s.T(), err)
 
 	unknownAco := *jwt.New(jwt.SigningMethodRS512)
@@ -243,15 +243,15 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
 	unknownAcoString, _ := s.AuthBackend.SignJwtToken(unknownAco)
-	err = s.p.ValidateJwtToken(unknownAcoString)
+	err = s.p.ValidateJWT(unknownAcoString)
 	assert.Contains(s.T(), err.Error(), "no ACO record found")
 
 	badSigningMethod := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
-	err = s.p.ValidateJwtToken(badSigningMethod)
+	err = s.p.ValidateJWT(badSigningMethod)
 	assert.Contains(s.T(), err.Error(), "unexpected signing method")
 
 	wrongKey := "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.MejLezWY6hjGgbIXkq6Qbvx_-q5vWaTR6qPiNHphvla-XaZD3up1DN6Ib5AEOVtuB3fC9l-0L36noK4qQA79lhpSK3gozXO6XPIcCp4C8MU_ACzGtYe7IwGnnK3Emr6IHQE0bpGinHX1Ak1pAuwJNawaQ6Nvmz2ozZPsyxmiwoo"
-	err = s.p.ValidateJwtToken(wrongKey)
+	err = s.p.ValidateJWT(wrongKey)
 	assert.Contains(s.T(), err.Error(), "crypto/rsa: verification error")
 
 	missingClaims := *jwt.New(jwt.SigningMethodRS512)
@@ -261,7 +261,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
 	}
 	missingClaimsString, _ := s.AuthBackend.SignJwtToken(missingClaims)
-	err = s.p.ValidateJwtToken(missingClaimsString)
+	err = s.p.ValidateJWT(missingClaimsString)
 	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
 
 	noSuchTokenID := *jwt.New(jwt.SigningMethodRS512)
@@ -273,7 +273,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
 	noSuchTokenIDString, _ := s.AuthBackend.SignJwtToken(noSuchTokenID)
-	err = s.p.ValidateJwtToken(noSuchTokenIDString)
+	err = s.p.ValidateJWT(noSuchTokenIDString)
 	assert.Contains(s.T(), err.Error(), "is not active")
 
 	invalidTokenID := *jwt.New(jwt.SigningMethodRS512)
@@ -285,15 +285,15 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
 	invalidTokenIDString, _ := s.AuthBackend.SignJwtToken(invalidTokenID)
-	err = s.p.ValidateJwtToken(invalidTokenIDString)
+	err = s.p.ValidateJWT(invalidTokenIDString)
 	assert.Contains(s.T(), err.Error(), "is not active")
 }
 
-func (s *AlphaAuthPluginTestSuite) TestDecodeJwtToken() {
+func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
 	userID := uuid.NewRandom().String()
 	acoID := uuid.NewRandom().String()
 	ts, _ := s.AuthBackend.GenerateTokenString(userID, acoID)
-	t, err := s.p.DecodeJwtToken(ts)
+	t, err := s.p.DecodeJWT(ts)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
 	assert.Equal(s.T(), userID, t.Claims.(*AllClaims).Subject)
