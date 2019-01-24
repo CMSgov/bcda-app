@@ -46,8 +46,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
+	que "github.com/bgentry/que-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -115,7 +115,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	)
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	if claims, err = readTokenClaims(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
@@ -237,7 +237,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobId")
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	i, err := strconv.Atoi(jobID)
 	if err != nil {
@@ -366,7 +366,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	authBackend := auth.InitAuthBackend()
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	var aco models.ACO
 	err := db.First(&aco, "name = ?", "ACO Dev").Error

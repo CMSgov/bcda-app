@@ -116,6 +116,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthBlackListed() {
 
 	// Blacklisted Token test
 	db := database.GetGORMDbConnection()
+	defer database.Close(db)
 	userID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
 	var user models.User
 	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {

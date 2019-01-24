@@ -1,12 +1,13 @@
 package models
 
 import (
+	"testing"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type ModelsTestSuite struct {
@@ -17,6 +18,10 @@ type ModelsTestSuite struct {
 func (s *ModelsTestSuite) SetupTest() {
 	InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
+}
+
+func (s *ModelsTestSuite) TearDownTest() {
+	database.Close(s.db)
 }
 
 func (s *ModelsTestSuite) TestCreateACO() {
@@ -38,7 +43,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	// we require that it be representable in a string of less than 255 characters
 	const ClientID = "Alpha client id"
 	aco.ClientID = ClientID
-	s.db.Save(aco);
+	s.db.Save(aco)
 	s.db.Find(&aco, "UUID = ?", acoUUID)
 	assert.NotNil(s.T(), aco)
 	assert.Equal(s.T(), ACOName, aco.Name)

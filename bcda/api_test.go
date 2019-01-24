@@ -17,8 +17,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
+	que "github.com/bgentry/que-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -39,6 +39,10 @@ func (s *APITestSuite) SetupTest() {
 	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
+}
+
+func (s *APITestSuite) TearDownTest() {
+	database.Close(s.db)
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {

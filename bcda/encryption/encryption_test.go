@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"errors"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -31,6 +32,10 @@ func (s *EncryptionTestSuite) SetupTest() {
 	s.db = database.GetGORMDbConnection()
 	os.Setenv("ATO_PUBLIC_KEY_FILE", "../../shared_files/ATO_public.pem")
 	os.Setenv("ATO_PRIVATE_KEY_FILE", "../../shared_files/ATO_private.pem")
+}
+
+func (s *EncryptionTestSuite) TearDownTest() {
+	database.Close(s.db)
 }
 
 func (s *EncryptionTestSuite) TestEncryptBytes() {

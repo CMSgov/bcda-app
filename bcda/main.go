@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/auth/plugin"
@@ -18,7 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 
-	"github.com/bgentry/que-go"
+	que "github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -401,7 +401,7 @@ func createAccessToken(userID string) (string, error) {
 	}
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	var user models.User
 
 	if db.First(&user, "UUID = ?", userID).RecordNotFound() {
@@ -467,7 +467,10 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
 
-	if err = database.GetGORMDbConnection().Save(&aco).Error; err != nil {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	err = db.Save(&aco).Error
+	if err != nil {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
 
@@ -507,7 +510,7 @@ func getEnvInt(varName string, defaultVal int) int {
 func archiveExpiring(hrThreshold int) error {
 	log.Info("Archiving expiring job files...")
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	var jobs []models.Job
 	err := db.Find(&jobs, "status = ?", "Completed").Error
@@ -556,7 +559,7 @@ func archiveExpiring(hrThreshold int) error {
 
 func cleanupArchive(hrThreshold int) error {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
 	if _, err := os.Stat(expDir); os.IsNotExist(err) {
@@ -610,7 +613,9 @@ func cleanupArchive(hrThreshold int) error {
 }
 
 func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
-	tx := database.GetGORMDbConnection().Begin()
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	tx := db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			if tx.Error != nil {

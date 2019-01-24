@@ -3,17 +3,18 @@ package models
 import (
 	"crypto/rsa"
 	"fmt"
+	"os"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/secutils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
-	"os"
 )
 
 func InitializeGormModels() *gorm.DB {
 	fmt.Print("Initialize bcda models")
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	// Migrate the schema
 	// Add your new models here
@@ -84,7 +85,7 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 
 func CreateACO(name string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	aco := ACO{Name: name, UUID: uuid.NewRandom()}
 	db.Create(&aco)
@@ -103,7 +104,7 @@ type User struct {
 
 func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	var aco ACO
 	var user User
 	// If we don't find the ACO return a blank user and an error
