@@ -625,15 +625,15 @@ The dollar sign ('$') before the word "export" in the URL indicates that the end
 	```
 
   ##### Response
-	If the request was successful, a `202 Accepted` response code will be returned and the response will include a `Content-Location` header. The value of this header indicates the location to check for job status and outcome. In the example header below, the number 43 in the URL represents the ID of the export job.
+	If the request was successful, a `202 Accepted` response code will be returned and the response will include a `Content-Location` header. The value of this header indicates the location to check for job status and outcome. In the example header below, the number 44 in the URL represents the ID of the export job.
 
   ###### Headers
-	* `Content-Location: https://sandbox.bcda.cms.gov/api/v1/jobs/43`
+	* `Content-Location: https://sandbox.bcda.cms.gov/api/v1/jobs/44`
 
   #### 3. Check the status of the export job
 
   ##### Request
-	`GET https://sandbox.bcda.cms.gov/api/v1/jobs/43`
+	`GET https://sandbox.bcda.cms.gov/api/v1/jobs/44`
 
   Using the `Content-Location` header value from the Coverage data export response, you can check the status of the export job. The status will change from `202 Accepted` to `200 OK` when the export job is complete and the data is ready to be downloaded.
 
@@ -642,7 +642,7 @@ The dollar sign ('$') before the word "export" in the URL indicates that the end
 
   ###### cURL Command
 	```sh
-	curl -v https://sandbox.bcda.cms.gov/api/v1/jobs/43 \
+	curl -v https://sandbox.bcda.cms.gov/api/v1/jobs/44 \
 	-H 'Authorization: Bearer {token}'
 	```
 
@@ -657,31 +657,31 @@ The dollar sign ('$') before the word "export" in the URL indicates that the end
 	  "output": [
 	    {
 	      "type": "Coverage",
-	      "url": "https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson"
+	      "url": "https://sandbox.bcda.cms.gov/data/44/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson"
 	    }
 	  ],
 	  "error": [
 	    {
 	      "type": "OperationOutcome",
-	      "url": "https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3-error.ndjson"
+	      "url": "https://sandbox.bcda.cms.gov/data/44/DBBD1CE1-AE24-435C-807D-ED45953077D3-error.ndjson"
 	    }
 	  ]
   }
   ```
-  Coverage demographic data can be found at the URLs within the `output` field. The number 43 in the data file URLs is the same job ID from the `Content-Location` header URL in previous step. If some of the data cannot be exported due to errors, details of the errors can be found at the URLs in the `error` field. The errors are provided in an NDJSON file as FHIR [OperationOutcome](https://www.hl7.org/fhir/operationoutcome.html) resources.
+  Coverage demographic data can be found at the URLs within the `output` field. The number 44 in the data file URLs is the same job ID from the `Content-Location` header URL in previous step. If some of the data cannot be exported due to errors, details of the errors can be found at the URLs in the `error` field. The errors are provided in an NDJSON file as FHIR [OperationOutcome](https://www.hl7.org/fhir/operationoutcome.html) resources.
 
   #### 4. Retrieve the NDJSON output file(s)
 	To obtain the exported coverage data, a GET request is made to the output URLs in the job status response when the job reaches the Completed state. The data will be presented as an NDJSON file of [Coverage](https://www.hl7.org/fhir/coverage.html) resources.
 
   ##### Request
-	`GET https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson`
+	`GET https://sandbox.bcda.cms.gov/data/44/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson`
 
   ###### Headers
 	* `Authorization: Bearer {token}`
 
   ###### cURL command
 	```sh
-	curl https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson \
+	curl https://sandbox.bcda.cms.gov/data/44/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson \
 	-H 'Authorization: Bearer {token}'
 	```
 
