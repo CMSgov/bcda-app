@@ -185,7 +185,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (auth.Token, error) 
 
 	token.UUID = uuid.NewRandom()
 	token.UserID = user.UUID
-	token.AcoID = aco.UUID
+	token.ACOID = aco.UUID
 	token.IssuedAt = time.Now().Unix()
 	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
 	token.Active = true
@@ -194,7 +194,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (auth.Token, error) 
 		return auth.Token{}, err
 	}
 
-	token.TokenString, err = auth.GenerateTokenString(token.UUID, token.UserID, token.AcoID, token.IssuedAt, token.ExpiresOn)
+	token.TokenString, err = auth.GenerateTokenString(token.UUID, token.UserID, token.ACOID, token.IssuedAt, token.ExpiresOn)
 	if err != nil {
 		return auth.Token{}, err
 	}

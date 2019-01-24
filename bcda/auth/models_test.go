@@ -57,7 +57,7 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 		UserID:    userUUID,
 		Value:     tokenString,
 		Active:    true,
-		AcoID:     acoUUID,
+		ACOID:     acoUUID,
 		IssuedAt:  issuedAt,
 		ExpiresOn: expiresOn,
 	}
