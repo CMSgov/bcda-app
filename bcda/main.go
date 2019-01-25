@@ -87,17 +87,6 @@ func init() {
 	monitoring.GetMonitor()
 }
 
-// a plugin instance is like a connection or an http request; it is ephemeral (the backend it interfaces to is not)
-func GetAuthProvider() auth.Provider {
-	v := os.Getenv("BCDA_AUTH_PROVIDER")
-	switch v {
-	case "Alpha":
-		return new(auth.AlphaAuthPlugin) // could fallthrough here, but prefer to be explicit
-	default:
-		return new(auth.AlphaAuthPlugin)
-	}
-}
-
 func main() {
 	app := setUpApp()
 	err := app.Run(os.Args)
@@ -406,7 +395,7 @@ func createAccessToken(userID string) (string, error) {
 	}
 
 	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.ACOID.String(), 72)
-	token, err := GetAuthProvider().RequestAccessToken([]byte(params))
+	token, err := auth.GetAuthProvider().RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
@@ -419,7 +408,7 @@ func revokeAccessToken(accessToken string) error {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	authProvider := GetAuthProvider()
+	authProvider := auth.GetAuthProvider()
 
 	return authProvider.RevokeAccessToken(accessToken)
 }
@@ -448,7 +437,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return
 	}
 
-	authProvider := GetAuthProvider()
+	authProvider := auth.GetAuthProvider()
 
 	params := fmt.Sprintf(`{"clientID" : "%s"}`, aco.UUID.String())
 	result, err := authProvider.RegisterClient([]byte(params))

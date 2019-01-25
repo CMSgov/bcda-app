@@ -376,7 +376,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generates a token for 'ACO Dev' and its first user
-	token, err := GetAuthProvider().RequestAccessToken([]byte(fmt.Sprintf(`{"clientID":"%s", "ttl": 72}`, aco.UUID.String())))
+	token, err := auth.GetAuthProvider().RequestAccessToken([]byte(fmt.Sprintf(`{"clientID":"%s", "ttl": 72}`, aco.UUID.String())))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
