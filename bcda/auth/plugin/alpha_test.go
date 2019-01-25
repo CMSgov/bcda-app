@@ -146,15 +146,15 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 		UUID:  uuid.NewRandom(),
 		Name:  "RevokeClientCredentials Test User",
 		Email: "revokeclientcredentialstest@example.com",
-		Aco:   aco,
-		AcoID: aco.UUID,
+		ACO:   aco,
+		ACOID: aco.UUID,
 	}
 	db.Save(&user)
 
-	params := fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, user.AcoID.String())
+	params := fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, user.ACOID.String())
 	_, err := s.p.GenerateClientCredentials([]byte(params))
 	if err != nil {
-		assert.FailNow(s.T(), fmt.Sprintf(`can't create client credentials for %s because %s`, user.AcoID.String(), err))
+		assert.FailNow(s.T(), fmt.Sprintf(`can't create client credentials for %s because %s`, user.ACOID.String(), err))
 	}
 
 	assert := assert.New(s.T())

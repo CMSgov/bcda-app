@@ -48,9 +48,6 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), tokenString)
 
-	// var user models.User
-	// s.db.Find(&user, "UUID = ?", userUUID)
-
 	// Get the claims of the token to find the token ID that was created
 	token := auth.Token{
 		UUID:      tokenUUID,

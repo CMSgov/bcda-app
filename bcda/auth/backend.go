@@ -137,7 +137,7 @@ func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (Token, s
 	defer database.Close(db)
 	tokenString, err := backend.GenerateTokenString(
 		user.UUID.String(),
-		user.AcoID.String(),
+		user.ACOID.String(),
 	)
 	if err != nil {
 		panic(err)

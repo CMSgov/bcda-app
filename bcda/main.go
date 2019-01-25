@@ -36,7 +36,7 @@ var (
 // swagger:ignore
 type jobEnqueueArgs struct {
 	ID             int
-	AcoID          string
+	ACOID          string
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
@@ -406,7 +406,7 @@ func createAccessToken(userID string) (string, error) {
 		return "", fmt.Errorf("unable to locate User with id of %s", userID)
 	}
 
-	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.AcoID.String(), 72)
+	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.ACOID.String(), 72)
 	token, err := GetAuthProvider().RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
