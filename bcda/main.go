@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/auth/plugin"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -38,7 +36,7 @@ var (
 // swagger:ignore
 type jobEnqueueArgs struct {
 	ID             int
-	AcoID          string
+	ACOID          string
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
@@ -408,17 +406,13 @@ func createAccessToken(userID string) (string, error) {
 		return "", fmt.Errorf("unable to locate User with id of %s", userID)
 	}
 
-	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.AcoID.String(), 72)
-	jwtToken, err := GetAuthProvider().RequestAccessToken([]byte(params))
-	if err != nil {
-		return "", err
-	}
-	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.ACOID.String(), 72)
+	token, err := GetAuthProvider().RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
 
-	return tokenString, nil
+	return token.TokenString, nil
 }
 
 func revokeAccessToken(accessToken string) error {
@@ -457,7 +451,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 
 	authProvider := GetAuthProvider()
 
-	params := fmt.Sprintf("{\"clientID\" : \"%s\"}", aco.UUID.String())
+	params := fmt.Sprintf(`{"clientID" : "%s"}`, aco.UUID.String())
 	result, err := authProvider.RegisterClient([]byte(params))
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
@@ -474,26 +468,15 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
 
-	params = fmt.Sprintf("{\"clientID\" : \"%s\", \"ttl\" : %d}", aco.ClientID, ttl)
-	jwtToken, err := authProvider.RequestAccessToken([]byte(params))
-	if err != nil {
-		return "", err
-	}
-	// (re)produce the tokenString; JwtToken seems to only store the tokenString when it's been used to decode an incoming token
-	// TBD: have RequestAccessToken return the token string and decode the string here, or have it return a wrapped Token that has both?
-	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	params = fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, aco.ClientID, ttl)
+	token, err := authProvider.RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
 
-	// this code can get cleaned up with DecodeToken
-	claims := jwtToken.Claims.(jwt.MapClaims)
-	if claims == nil {
-		return "", errors.New("could not read any token claims")
-	}
-	expiresOn := time.Unix(claims["exp"].(int64), 0).Format(time.RFC850)
-	tokenId := claims["id"].(string)
-	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, tokenString), err
+	expiresOn := time.Unix(token.ExpiresOn, 0).Format(time.RFC850)
+	tokenId := token.UUID.String()
+	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString), err
 }
 
 func getEnvInt(varName string, defaultVal int) int {

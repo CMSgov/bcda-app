@@ -33,8 +33,8 @@ func InitializeGormModels() *gorm.DB {
 
 type Job struct {
 	gorm.Model
-	Aco        ACO       `gorm:"foreignkey:AcoID;association_foreignkey:UUID"` // aco
-	AcoID      uuid.UUID `gorm:"primary_key; type:char(36)" json:"aco_id"`
+	ACO        ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
+	ACOID      uuid.UUID `gorm:"primary_key; type:char(36)" json:"aco_id"`
 	User       User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
 	UserID     uuid.UUID `gorm:"type:char(36)"`
 	RequestURL string    `json:"request_url"` // request_url
@@ -98,8 +98,8 @@ type User struct {
 	UUID  uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
 	Name  string    `json:"name"`                                   // name
 	Email string    `json:"email"`                                  // email
-	Aco   ACO       `gorm:"foreignkey:AcoID;association_foreignkey:UUID"`
-	AcoID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` // aco_id
+	ACO   ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"`
+	ACOID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` // aco_id
 }
 
 func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
@@ -113,7 +113,7 @@ func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
 	}
 	// check for duplicate email addresses and only make one if it isn't found
 	if db.First(&user, "email = ?", email).RecordNotFound() {
-		user = User{UUID: uuid.NewRandom(), Name: name, Email: email, AcoID: aco.UUID}
+		user = User{UUID: uuid.NewRandom(), Name: name, Email: email, ACOID: aco.UUID}
 		db.Create(&user)
 		return user, nil
 	} else {
@@ -143,7 +143,7 @@ func CreateAlphaUser(db *gorm.DB, aco ACO) (User, error) {
 	db.Table("users").Count(&count)
 	user := User{UUID: uuid.NewRandom(),
 		Name:  fmt.Sprintf("Alpha User%d", count),
-		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), AcoID: aco.UUID}
+		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), ACOID: aco.UUID}
 	db.Create(&user)
 
 	return user, db.Error

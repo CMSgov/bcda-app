@@ -33,7 +33,7 @@ var (
 
 type jobEnqueueArgs struct {
 	ID             int
-	AcoID          string
+	ACOID          string
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
@@ -100,7 +100,7 @@ func processJob(j *que.Job) error {
 		}
 	}
 
-	err = writeBBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	err = writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 
 	if err != nil {
 		exportJob.Status = "Failed"
@@ -131,11 +131,11 @@ func processJob(j *que.Job) error {
 				}
 			} else {
 				// this will be the only code path after ATO
-				publicKey := exportJob.Aco.GetPublicKey()
+				publicKey := exportJob.ACO.GetPublicKey()
 				if publicKey == nil {
 					fmt.Println("NO KEY EXISTS  THIS IS BAD")
 				}
-				err := encryption.EncryptAndMove(staging, data, f.Name(), exportJob.Aco.GetPublicKey(), exportJob.ID)
+				err := encryption.EncryptAndMove(staging, data, f.Name(), exportJob.ACO.GetPublicKey(), exportJob.ID)
 				if err != nil {
 					log.Error(err)
 					return err
