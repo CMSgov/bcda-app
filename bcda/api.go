@@ -54,6 +54,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const JobTimeout = time.Hour * 24
+
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
 
@@ -276,7 +278,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Completed":
 		w.Header().Set("Content-Type", "application/json")
-
+		w.Header().Set("Expires", job.CreatedAt.Add(JobTimeout).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
 			scheme = "https"

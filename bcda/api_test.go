@@ -400,7 +400,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	assert.Equal(s.T(), "Pending", s.rr.Header().Get("X-Progress"))
-
+	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
 	s.db.Delete(&j)
 }
 
@@ -427,6 +427,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	assert.Equal(s.T(), "In Progress", s.rr.Header().Get("X-Progress"))
+	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
 
 	s.db.Delete(&j)
 }
@@ -488,6 +489,8 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
+	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
+	assert.Equal(s.T(), j.CreatedAt.Add(JobTimeout).String()[:20], s.rr.Header().Get("Expires")[:20])
 
 	var rb bulkResponseBody
 	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
