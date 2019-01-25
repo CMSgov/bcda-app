@@ -393,7 +393,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 
 	// save a job to our db
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
@@ -454,7 +454,7 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 
 	// save a job to our db
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
@@ -518,7 +518,7 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 
 	// save a job to our db
 	j := models.Job{
-		AcoID:      uuid.Parse(acoUUID),
+		ACOID:      uuid.Parse(acoUUID),
 		UserID:     uuid.Parse(userUUID),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Archived",

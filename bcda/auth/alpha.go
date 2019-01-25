@@ -84,16 +84,12 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, erro
 		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
-	jwtToken, err := p.RequestAccessToken([]byte(params))
+	token, err := p.RequestAccessToken([]byte(params))
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
-	tokenString, err := jwtToken.SignedString(InitAuthBackend().PrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate tokenString because %s", err)
-	}
 
-	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, tokenString)), err
+	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, token.TokenString)), err
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
@@ -157,21 +153,20 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
 // params are currently acoId and ttl; not going to introduce user until we have clear use cases
-func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
-	backend := InitAuthBackend()
+func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	jwtToken := jwt.Token{}
+	token := Token{}
 
 	acoUUID, err := GetParamString(params, "clientID")
 	if err != nil {
-		return jwtToken, err
+		return token, err
 	}
 
 	aco, err := getACOFromDB(acoUUID)
 	if err != nil {
-		return jwtToken, err
+		return token, err
 	}
 
 	// I arbitrarily decided to use the first user. An alternative would be to make a specific user
@@ -179,47 +174,35 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (jwt.Token, error) {
 	// unless we're willing to live with it forever.
 	var user models.User
 	if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
-		return jwtToken, errors.New("no user found for " + aco.UUID.String())
+		return token, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := GetParamPositiveInt(params, "ttl")
+	ttl, err := getParamPositiveInt(params, "ttl")
 	if err != nil {
-		return jwtToken, errors.New("no valid ttl found because " + err.Error())
+		return token, errors.New("no valid ttl found because " + err.Error())
 	}
 
-	tokenUUID := uuid.NewRandom()
-	jwtToken = *jwt.New(jwt.SigningMethodRS512)
-	jwtToken.Claims = jwt.MapClaims{
-		"exp": time.Now().Add(time.Hour * time.Duration(ttl)).Unix(),
-		"iat": time.Now().Unix(),
-		"sub": user.UUID.String(),
-		"aco": aco.UUID.String(),
-		"id":  tokenUUID.String(),
-	}
-
-	tokenString, err := backend.SignJwtToken(jwtToken)
-	if err != nil {
-		return jwtToken, err
-	}
-
-	token := Token{
-		UUID:        tokenUUID,
-		UserID:      user.UUID,
-		Value:       tokenString, // replaced with hash when saved to db
-		Active:      true,
-		Token:       jwtToken,
-		TokenString: tokenString,
-	}
+	token.UUID = uuid.NewRandom()
+	token.UserID = user.UUID
+	token.ACOID = aco.UUID
+	token.IssuedAt = time.Now().Unix()
+	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
+	token.Active = true
 
 	if err = db.Create(&token).Error; err != nil {
-		return jwtToken, err
+		return Token{}, err
 	}
 
-	return jwtToken, err // really want to return Token here, but first let's get this all working
+	token.TokenString, err = GenerateTokenString(token.UUID, token.UserID, token.ACOID, token.IssuedAt, token.ExpiresOn)
+	if err != nil {
+		return Token{}, err
+	}
+
+	return token, nil // really want to return Token here, but first let's get this all working
 }
 
 func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
-	t, err := p.DecodeAccessToken(tokenString)
+	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
 		return err
 	}
@@ -246,8 +229,8 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 	return db.Error
 }
 
-func (p *AlphaAuthPlugin) ValidateAccessToken(tokenString string) error {
-	t, err := p.DecodeAccessToken(tokenString)
+func (p *AlphaAuthPlugin) ValidateJWT(tokenString string) error {
+	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
 		return err
 	}
@@ -297,7 +280,7 @@ func isActive(token jwt.Token) bool {
 	return !db.Find(&token, "UUID = ? AND active = ?", c.ID, true).RecordNotFound()
 }
 
-func (p *AlphaAuthPlugin) DecodeAccessToken(tokenString string) (jwt.Token, error) {
+func (p *AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -344,7 +327,7 @@ func GetParamString(params []byte, name string) (string, error) {
 	return stringForName, err
 }
 
-func GetParamPositiveInt(params []byte, name string) (int, error) {
+func getParamPositiveInt(params []byte, name string) (int, error) {
 	var (
 		j   interface{}
 		err error
