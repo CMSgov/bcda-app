@@ -29,7 +29,7 @@ type Token struct {
 	UUID        uuid.UUID   `gorm:"primary_key" json:"uuid"` // uuid (primary key)
 	User        models.User `gorm:"foreignkey:UserID;association_foreignkey:UUID"`
 	UserID      uuid.UUID   `json:"user_id"`                                      // user_id
-	Value       string      `gorm:"type:varchar(511); unique" json:"value"`       // use of Value is being retired. when can we drop it without hurting existing alpha tokens?
+	Value       string      `gorm:"type:varchar(511); unique" json:"value"`       // Deprecated: When can we drop Value without hurting existing alpha tokens?
 	Active      bool        `json:"active"`                                       // active
 	ACO         models.ACO  `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // ACO needed here because user can belong to multiple ACOs
 	ACOID       uuid.UUID   `json:"aco_id"`                                       // aco_id
