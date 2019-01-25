@@ -66,6 +66,26 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	assert.Equal(s.T(), tokenString, savedToken.TokenString)
 }
 
+func (s *BackendTestSuite) TestGenerateTokenString() {
+	var (
+		userUUID = uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+		acoUUID  = uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+	)
+	token, err := auth.GenerateTokenString(uuid.NewRandom(), userUUID, acoUUID, time.Now().Unix(), time.Now().Add(time.Hour).Unix())
+
+	// No errors, token is not nil
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+
+	// Wipe the keys
+	s.AuthBackend.PrivateKey = nil
+	s.AuthBackend.PublicKey = nil
+	defer s.AuthBackend.ResetAuthBackend()
+	assert.Panics(s.T(), func() {
+		_, _ = auth.GenerateTokenString(uuid.NewRandom(), userUUID, acoUUID, time.Now().Unix(), time.Now().Add(time.Hour).Unix())
+	})
+}
+
 func TestModelsTestSuite(t *testing.T) {
 	suite.Run(t, new(ModelsTestSuite))
 }
