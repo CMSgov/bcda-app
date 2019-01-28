@@ -276,7 +276,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	case "Failed":
 		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Completed":
-		// If the job should be expired, but the cleanup job hasn;t run for some reason, still respond with 410
+		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.CreatedAt.Add(GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
 			responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusGone)
