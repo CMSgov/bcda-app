@@ -283,7 +283,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-
+		w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
 			scheme = "https"
