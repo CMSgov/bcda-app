@@ -276,7 +276,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Completed":
 		w.Header().Set("Content-Type", "application/json")
-
+		w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
 			scheme = "https"
@@ -499,4 +499,8 @@ func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
 	}
 
 	return claims, nil
+}
+
+func GetJobTimeout() time.Duration {
+	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }
