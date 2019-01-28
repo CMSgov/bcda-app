@@ -575,7 +575,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 
 func (s *APITestSuite) TestJobStatusExpired() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Expired",
@@ -590,7 +590,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -604,7 +604,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 // THis job is old, but has not yet been marked as expired.
 func (s *APITestSuite) TestJobStatusNotExpired() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
@@ -621,7 +621,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -634,7 +634,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 
 func (s *APITestSuite) TestJobStatusArchived() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Archived",
@@ -649,7 +649,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
