@@ -54,8 +54,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const JobTimeout = time.Hour * 24
-
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
 
@@ -279,8 +277,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Completed":
 		// If the job should be expired, but the cleanup job hasn;t run for some reason, still respond with 410
-		if job.CreatedAt.Add(JobTimeout).Before(time.Now()) {
-			w.Header().Set("Expires", job.CreatedAt.Add(JobTimeout).String())
+		if job.CreatedAt.Add(GetJobTimeout()).Before(time.Now()) {
+			w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
 			responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusGone)
 			return
 		}
@@ -343,7 +341,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	case "Archived":
 		fallthrough
 	case "Expired":
-		w.Header().Set("Expires", job.CreatedAt.Add(JobTimeout).String())
+		w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
 		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusGone)
 	}
 }
@@ -523,4 +521,8 @@ func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
 	}
 
 	return claims, nil
+}
+
+func GetJobTimeout() time.Duration {
+	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }

@@ -590,7 +590,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
 	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.CreatedAt.Add(JobTimeout).String()[:20], s.rr.Header().Get("Expires")[:20])
+	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
 	s.db.Delete(&j)
 }
 
@@ -604,7 +604,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	}
 
 	//s.db.Save(&j)
-	j.CreatedAt = time.Now().Add(-JobTimeout).Add(-JobTimeout)
+	j.CreatedAt = time.Now().Add(-GetJobTimeout()).Add(-GetJobTimeout())
 	s.db.Save(&j)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
@@ -621,7 +621,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
 	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.CreatedAt.Add(JobTimeout).String()[:20], s.rr.Header().Get("Expires")[:20])
+	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
 	s.db.Delete(&j)
 }
 
@@ -649,7 +649,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
 	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.CreatedAt.Add(JobTimeout).String()[:20], s.rr.Header().Get("Expires")[:20])
+	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
 	s.db.Delete(&j)
 }
 
