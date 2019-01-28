@@ -54,6 +54,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const JobTimeout = time.Hour * 24
+
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
 
@@ -232,6 +234,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		200:bulkResponseBody
 		400:ErrorModel
         404:ErrorModel
+        410:ErrorModel
 		500:FHIRResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
@@ -275,6 +278,12 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	case "Failed":
 		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Completed":
+		// If the job should be expired, but the cleanup job hasn;t run for some reason, still respond with 410
+		if job.CreatedAt.Add(JobTimeout).Before(time.Now()) {
+			w.Header().Set("Expires", job.CreatedAt.Add(JobTimeout).String())
+			responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusGone)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 
 		scheme := "http"
@@ -331,6 +340,11 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
+	case "Archived":
+		fallthrough
+	case "Expired":
+		w.Header().Set("Expires", job.CreatedAt.Add(JobTimeout).String())
+		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusGone)
 	}
 }
 
