@@ -17,8 +17,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
+	que "github.com/bgentry/que-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -39,6 +39,10 @@ func (s *APITestSuite) SetupTest() {
 	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
+}
+
+func (s *APITestSuite) TearDownTest() {
+	database.Close(s.db)
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
@@ -335,7 +339,7 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", "test")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -360,7 +364,7 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", jobID)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -378,7 +382,7 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 
 func (s *APITestSuite) TestJobStatusPending() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
@@ -393,7 +397,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -406,7 +410,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 
 func (s *APITestSuite) TestJobStatusInProgress() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "In Progress",
@@ -420,7 +424,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -434,7 +438,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 
 func (s *APITestSuite) TestJobStatusFailed() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Failed",
@@ -449,7 +453,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -461,7 +465,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 
 func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
@@ -482,7 +486,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
@@ -512,7 +516,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 
 func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
@@ -527,7 +531,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
@@ -538,7 +542,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		}
 	}
 
-	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), j.AcoID)
+	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), j.ACOID)
 	_, err := os.Create(errFilePath)
 	if err != nil {
 		s.T().Error(err)
@@ -622,7 +626,7 @@ func (s *APITestSuite) TestGetVersion() {
 	assert.Equal(s.T(), "latest", respMap["version"])
 }
 
-func makeToken(acoId, userId string) *jwt.Token {
+func makeJWT(acoId, userId string) *jwt.Token {
 	token := jwt.New(jwt.SigningMethodRS512)
 	token.Claims = jwt.MapClaims{
 		"sub": userId,
@@ -635,7 +639,7 @@ func makeToken(acoId, userId string) *jwt.Token {
 
 func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	j := models.Job{
-		AcoID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
+		ACOID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
 		UserID:     uuid.Parse("82503a18-bf3b-436d-ba7b-bae09b7ffd2f"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
@@ -650,7 +654,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	token := makeToken("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", "82503a18-bf3b-436d-ba7b-bae09b7ffd2f")
+	token := makeJWT("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", "82503a18-bf3b-436d-ba7b-bae09b7ffd2f")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
