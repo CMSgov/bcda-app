@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	que "github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
@@ -143,16 +144,16 @@ func setUpApp() *cli.App {
 
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
-					ReadTimeout:  time.Duration(getEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(getEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
-					IdleTimeout:  time.Duration(getEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				fileserver := &http.Server{
 					Handler:      NewDataRouter(),
-					ReadTimeout:  time.Duration(getEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(getEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
-					IdleTimeout:  time.Duration(getEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				smux := servicemux.New(":3000")
@@ -302,7 +303,7 @@ func setUpApp() *cli.App {
 			Category: "Archive files for jobs that are expiring",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
-				threshold := getEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
 				return archiveExpiring(threshold)
 			},
 		},
@@ -477,17 +478,6 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 	expiresOn := time.Unix(token.ExpiresOn, 0).Format(time.RFC850)
 	tokenId := token.UUID.String()
 	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString), err
-}
-
-func getEnvInt(varName string, defaultVal int) int {
-	v := os.Getenv(varName)
-	if v != "" {
-		i, err := strconv.Atoi(v)
-		if err == nil {
-			return i
-		}
-	}
-	return defaultVal
 }
 
 func archiveExpiring(hrThreshold int) error {

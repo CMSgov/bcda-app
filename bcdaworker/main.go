@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	que "github.com/bgentry/que-go"
 )
 
@@ -206,14 +207,21 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
+	failThreshold := float64(utils.GetEnvInt("EXPORT_FAIL_PCT", 50))
+	errorCount := 0
 
 	for _, beneficiaryID := range beneficiaryIDs {
 		pData, err := bbFunc(beneficiaryID, jobID)
 		if err != nil {
 			log.Error(err)
+			errorCount++
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, beneficiaryID, acoID), jobID)
 		} else {
 			fhirBundleToResourceNDJSON(w, pData, t, beneficiaryID, acoID, jobID)
+		}
+		failPct := (float64(errorCount) / float64(len(beneficiaryIDs))) * 100
+		if failPct >= failThreshold {
+			return errors.New("number of failed requests has exceeded threshold")
 		}
 	}
 
