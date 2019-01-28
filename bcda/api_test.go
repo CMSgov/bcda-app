@@ -490,7 +490,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.CreatedAt.Add(JobTimeout).String()[:20], s.rr.Header().Get("Expires")[:20])
+	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
 
 	var rb bulkResponseBody
 	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
