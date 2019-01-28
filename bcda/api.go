@@ -46,8 +46,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
+	que "github.com/bgentry/que-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -115,7 +115,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	)
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	if claims, err = readTokenClaims(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
@@ -132,7 +132,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newJob := models.Job{
-		AcoID:      uuid.Parse(acoId),
+		ACOID:      uuid.Parse(acoId),
 		UserID:     uuid.Parse(userId),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
@@ -177,7 +177,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:             int(newJob.ID),
-		AcoID:          acoId,
+		ACOID:          acoId,
 		UserID:         userId,
 		BeneficiaryIDs: beneficiaryIds,
 		ResourceType:   t,
@@ -238,7 +238,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobId")
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	i, err := strconv.Atoi(jobID)
 	if err != nil {
@@ -294,7 +294,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 		fi := fileItem{
 			Type: resourceType,
-			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.AcoID),
+			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.ACOID),
 		}
 
 		keyMap := make(map[string]string)
@@ -314,11 +314,11 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			JobID:               job.ID,
 		}
 
-		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.AcoID)
+		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.ACOID)
 		if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 			errFI := fileItem{
 				Type: "OperationOutcome",
-				URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, job.AcoID),
+				URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, job.ACOID),
 			}
 			rb.Errors = append(rb.Errors, errFI)
 		}
@@ -375,10 +375,8 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
-	authBackend := auth.InitAuthBackend()
-
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	var aco models.ACO
 	err := db.First(&aco, "name = ?", "ACO Dev").Error
@@ -398,15 +396,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, err := authBackend.SignJwtToken(token)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write([]byte(tokenString))
+	_, err = w.Write([]byte(token.TokenString))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
