@@ -52,6 +52,16 @@ func TestMainTestSuite(t *testing.T) {
 	suite.Run(t, new(MainTestSuite))
 }
 
+func (s *MainTestSuite) TestGetEnvInt() {
+	const DEFAULT_VALUE = 200
+	os.Setenv("TEST_ENV_STRING", "blah")
+	os.Setenv("TEST_ENV_INT", "232")
+
+	assert.Equal(s.T(), 232, getEnvInt("TEST_ENV_INT", DEFAULT_VALUE))
+	assert.Equal(s.T(), DEFAULT_VALUE, getEnvInt("TEST_ENV_STRING", DEFAULT_VALUE))
+	assert.Equal(s.T(), DEFAULT_VALUE, getEnvInt("FAKE_ENV", DEFAULT_VALUE))
+}
+
 func (s *MainTestSuite) TestSetup() {
 	assert.Equal(s.T(), 1, 1)
 	app := setUpApp()

@@ -23,7 +23,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	que "github.com/bgentry/que-go"
 )
 
@@ -207,8 +206,9 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
-	failThreshold := float64(utils.GetEnvInt("EXPORT_FAIL_PCT", 50))
 	errorCount := 0
+	totalBeneIDs := float64(len(beneficiaryIDs))
+	failThreshold := getFailureThreshold()
 
 	for _, beneficiaryID := range beneficiaryIDs {
 		pData, err := bbFunc(beneficiaryID, jobID)
@@ -219,7 +219,7 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 		} else {
 			fhirBundleToResourceNDJSON(w, pData, t, beneficiaryID, acoID, jobID)
 		}
-		failPct := (float64(errorCount) / float64(len(beneficiaryIDs))) * 100
+		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
 			return errors.New("number of failed requests has exceeded threshold")
 		}
@@ -236,6 +236,19 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	}
 
 	return nil
+}
+
+func getFailureThreshold() float64 {
+	exportFailPctStr := os.Getenv("EXPORT_FAIL_PCT")
+	exportFailPct, err := strconv.Atoi(exportFailPctStr)
+	if err != nil {
+		exportFailPct = 50
+	} else if exportFailPct < 0 {
+		exportFailPct = 0
+	} else if exportFailPct > 100 {
+		exportFailPct = 100
+	}
+	return float64(exportFailPct)
 }
 
 func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {

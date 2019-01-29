@@ -168,6 +168,23 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	os.Remove(filePath)
 }
 
+func TestGetFailureThreshold(t *testing.T) {
+	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
+	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
+
+	os.Setenv("EXPORT_FAIL_PCT", "60")
+	assert.Equal(t, 60.0, getFailureThreshold())
+
+	os.Setenv("EXPORT_FAIL_PCT", "-1")
+	assert.Equal(t, 0.0, getFailureThreshold())
+
+	os.Setenv("EXPORT_FAIL_PCT", "500")
+	assert.Equal(t, 100.0, getFailureThreshold())
+
+	os.Setenv("EXPORT_FAIL_PCT", "zero")
+	assert.Equal(t, 50.0, getFailureThreshold())
+}
+
 func TestAppendErrorToFile(t *testing.T) {
 	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
