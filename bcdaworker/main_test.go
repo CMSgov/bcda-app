@@ -97,13 +97,19 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestWriteEOBDataToFileWithError(t *testing.T) {
+func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	os.Setenv("FHIR_STAGING_DIR", "data/test")
+	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
+	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
+	os.Setenv("EXPORT_FAIL_PCT", "70")
+
 	bbc := MockBlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefitData", mock.AnythingOfType("string")).Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefitData", "10000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefitData", "11000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefitData", "12000").Return(bbc.getData("ExplanationOfBenefit", "12000"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
-	beneficiaryIDs := []string{"10000", "11000"}
+	beneficiaryIDs := []string{"10000", "11000", "12000"}
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
@@ -125,6 +131,58 @@ func TestWriteEOBDataToFileWithError(t *testing.T) {
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(filePath)
+}
+
+func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
+	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
+	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
+	os.Setenv("EXPORT_FAIL_PCT", "60")
+
+	bbc := MockBlueButtonClient{}
+	// Set up the mock function to return the expected values
+	bbc.On("GetExplanationOfBenefitData", "10000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefitData", "11000").Return("", errors.New("error"))
+	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
+	beneficiaryIDs := []string{"10000", "11000", "12000"}
+	jobID := "1"
+	testUtils.CreateStaging(jobID)
+
+	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
+	assert.Equal(t, "number of failed requests has exceeded threshold", err.Error())
+
+	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
+	fData, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		t.Fail()
+	}
+
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	assert.Equal(t, ooResp+"\n", string(fData))
+	bbc.AssertExpectations(t)
+	// should not have requested third beneficiary EOB because failure threshold was reached after second
+	bbc.AssertNotCalled(t, "GetExplanationOfBenefitData", "12000")
+
+	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
+	os.Remove(filePath)
+}
+
+func TestGetFailureThreshold(t *testing.T) {
+	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
+	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
+
+	os.Setenv("EXPORT_FAIL_PCT", "60")
+	assert.Equal(t, 60.0, getFailureThreshold())
+
+	os.Setenv("EXPORT_FAIL_PCT", "-1")
+	assert.Equal(t, 0.0, getFailureThreshold())
+
+	os.Setenv("EXPORT_FAIL_PCT", "500")
+	assert.Equal(t, 100.0, getFailureThreshold())
+
+	os.Setenv("EXPORT_FAIL_PCT", "zero")
+	assert.Equal(t, 50.0, getFailureThreshold())
 }
 
 func TestAppendErrorToFile(t *testing.T) {
@@ -195,7 +253,8 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	var completedJob models.Job
 	err = db.First(&completedJob, "ID = ?", jobArgs.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), "Completed", completedJob.Status)
+	// As this test actually connects to BB, we can't be sure it will succeed
+	assert.Contains(s.T(), []string{"Failed", "Completed"}, completedJob.Status)
 }
 
 func (s *MainTestSuite) TestSetupQueue() {
