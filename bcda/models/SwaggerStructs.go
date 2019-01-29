@@ -11,7 +11,7 @@ type BulkRequestResponse struct {
 	ContentLocation string `json:"Content-Location"`
 }
 
-// Operation Outcome follows HL7 FHIR Spec https://www.hl7.org/fhir/operationoutcome.html
+// The action returned an error, warning, or information. This response will be a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.
 // swagger:response FHIRResponse
 type OperationOutcome struct {
 	// A Valid FHIR Response
@@ -51,7 +51,7 @@ type ErrorModel struct {
 	Message string
 }
 
-// JobStatus defines the status of a specific Job defined by the ID
+// Data export job is in progress.
 // swagger:response JobStatus
 type JobStatus struct {
 	// The status of the job progress
@@ -103,8 +103,7 @@ type FileParam struct {
 	Filename string `json:"filename"`
 }
 
-// swagger:parameters bulkPatientRequest
-// swagger:parameters bulkEOBRequest
+// swagger:parameters bulkPatientRequest bulkEOBRequest
 type BulkRequestHeaders struct {
 	// required: true
 	// in: header

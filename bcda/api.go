@@ -229,9 +229,9 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	Responses:
 		202:JobStatus
-		200:bulkResponseBody
-		400:ErrorModel
-        404:ErrorModel
+		200:completedJobResponse
+		400:FHIRResponse
+        404:FHIRResponse
 		500:FHIRResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
@@ -503,4 +503,36 @@ func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
 
 func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+}
+
+// swagger:model fileItem
+type fileItem struct {
+	// FHIR resource type of file contents
+	Type string `json:"type"`
+	// URL of the file
+	URL string `json:"url"`
+}
+
+/*
+Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
+swagger:response completedJobResponse
+*/
+type completedJobResponse struct {
+	// in: body
+	Body bulkResponseBody
+}
+
+type bulkResponseBody struct {
+	// Server time when the query was run
+	TransactionTime time.Time `json:"transactionTime"`
+	// URL of the bulk data export request
+	RequestURL string `json:"request"`
+	// Indicates whether an access token is required to download generated data files
+	RequiresAccessToken bool `json:"requiresAccessToken"`
+	// Information about generated data files, including URLs for downloading
+	Files []fileItem `json:"output"`
+	// Information about error files, including URLs for downloading
+	Errors []fileItem        `json:"error"`
+	KeyMap map[string]string `json:"KeyMap"`
+	JobID  uint
 }
