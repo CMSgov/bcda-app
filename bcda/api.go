@@ -342,7 +342,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	case "Expired":
 		w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
-		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusGone)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Deleted)
+		responseutils.WriteError(oo, w, http.StatusGone)
 	}
 }
 
