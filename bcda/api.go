@@ -279,7 +279,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.CreatedAt.Add(GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
-			responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusGone)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Deleted)
+			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
