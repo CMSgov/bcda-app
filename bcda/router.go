@@ -5,18 +5,17 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/go-chi/chi"
+	log "github.com/sirupsen/logrus"
 )
 
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
+	r.Use(logging.NewStructuredLogger(), ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
 	r.Get(m.WrapHandler("/", func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +48,7 @@ func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(ConnectionClose)
-	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth,
+	r.With(logging.NewStructuredLogger(), auth.RequireTokenAuth,
 		auth.RequireTokenACOMatch).Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
 	return r
 }

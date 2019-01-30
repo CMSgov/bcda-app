@@ -3,77 +3,37 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"regexp"
-
-	log "github.com/sirupsen/logrus"
+	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/dgrijalva/jwt-go/request"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
-func ParseToken(next http.Handler) http.Handler {
+func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 
 		if authHeader == "" {
-			next.ServeHTTP(w, r)
+			log.Error("no token in header")
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
-		authBackend := InitAuthBackend()
+		tokenString := strings.Split(authHeader, " ")[1]
+		err := GetAuthProvider().ValidateJWT(tokenString)
 
-		var keyFunc jwt.Keyfunc = func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-			} else {
-				return authBackend.PublicKey, nil
-			}
-		}
-
-		token, err := request.ParseFromRequest(r, request.OAuth2Extractor, keyFunc)
-
-		if err == nil {
-			ctx := context.WithValue(r.Context(), "token", token)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		} else {
-			next.ServeHTTP(w, r)
-		}
-	})
-}
-
-func RequireTokenAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authBackend := InitAuthBackend()
-		tokenValue := r.Context().Value("token")
-
-		if tokenValue == nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-			responseutils.WriteError(oo, w, http.StatusUnauthorized)
+		if err != nil {
+			log.Error(err)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
-		token := tokenValue.(*jwt.Token)
-
-		if token.Valid {
-			blacklisted := authBackend.IsBlacklisted(token)
-			if !blacklisted {
-				ctx := context.WithValue(r.Context(), "token", token)
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
-			} else {
-				log.Error("Blacklisted Token with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
-			}
-
-		} else {
-			log.Error("Invalid Token with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
-		}
-
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusUnauthorized)
+		ctx := context.WithValue(r.Context(), "token", tokenString)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -118,4 +78,9 @@ func ClaimsFromToken(token *jwt.Token) (jwt.MapClaims, error) {
 		return claims, nil
 	}
 	return jwt.MapClaims{}, errors.New("Error determining token claims")
+}
+
+func respond(w http.ResponseWriter, status int) {
+	oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+	responseutils.WriteError(oo, w, status)
 }
