@@ -68,9 +68,9 @@ import (
 		api_key
 
 	Responses:
-		202:BulkRequestResponse
-		400:ErrorModel
-		500:FHIRResponse
+		202: BulkRequestResponse
+		400: badRequestResponse
+		500: errorResponse
 */
 func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("ExplanationOfBenefit", w, r)
@@ -90,9 +90,9 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 		api_key
 
 	Responses:
-		202:BulkRequestResponse
-		400:ErrorModel
-		500:FHIRResponse
+		202: BulkRequestResponse
+		400: badRequestResponse
+		500: errorResponse
 */
 func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("Patient", w, r)
@@ -228,11 +228,11 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		api_key:
 
 	Responses:
-		202:JobStatus
-		200:completedJobResponse
-		400:FHIRResponse
-        404:FHIRResponse
-		500:FHIRResponse
+		202: jobStatusResponse
+		200: completedJobResponse
+		400: badRequestResponse
+        404: notFoundResponse
+		500: errorResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobId")
@@ -350,10 +350,10 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		api_key:
 
 	Responses:
-		200:ExplanationOfBenefitNDJSON
-		400:ErrorModel
-        404:ErrorModel
-		500:FHIRResponse
+		200: ExplanationOfBenefitNDJSON
+		400: badRequestResponse
+        404: notFoundResponse
+		500: errorResponse
 */
 func serveData(w http.ResponseWriter, r *http.Request) {
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")

@@ -11,49 +11,57 @@ type BulkRequestResponse struct {
 	ContentLocation string `json:"Content-Location"`
 }
 
-// The action returned an error, warning, or information. This response will be a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.
-// swagger:response FHIRResponse
-type OperationOutcome struct {
-	// A Valid FHIR Response
-	// in:body
-	FHIRResponse struct {
-		// OperationOutcome
-		ResourceType string
-		// A single issue associated with the action
+type operationOutcomeResponse struct {
+	// OperationOutcome
+	ResourceType string
+	// A single issue associated with the action
 
-		Issue struct {
-			// Severity of the outcome: fatal | error | warning | information
-			// Required: true
-			Severity string
-			//Error or warning code
-			// Required: true
-			Code string
-			// Additional details about the error
-			// Required: true
-			Details string
-			// Additional diagnostic information about the issue
-			// Required: true
-			Diagnostics string
-			// Path of element(s) related to issue
-			// Required: true
-			Location string
-			// FHIRPath of element(s) related to issue
-			// Required: true
-			Expression string
-		}
+	Issue struct {
+		// Severity of the outcome: fatal | error | warning | information
+		// Required: true
+		Severity string
+		//Error or warning code
+		// Required: true
+		Code string
+		// Additional details about the error
+		// Required: true
+		Details string
+		// Additional diagnostic information about the issue
+		// Required: true
+		Diagnostics string
+		// Path of element(s) related to issue
+		// Required: true
+		Location string
+		// FHIRPath of element(s) related to issue
+		// Required: true
+		Expression string
 	}
 }
 
-// A generic HTTP error Model.  Should only be used for well documented error types such as 404
-// swagger:response ErrorModel
-type ErrorModel struct {
-	// Message contains additional information about this error
-	Message string
+// The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html
+// swagger:response notFoundResponse
+type notFoundResponse struct {
+	// in: body
+	Body operationOutcomeResponse
+}
+
+// There was a problem with the request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.
+// swagger:response badRequestResponse
+type badRequestResponse struct {
+	// in: body
+	Body operationOutcomeResponse
+}
+
+// An error occurred. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.
+// swagger:response errorResponse
+type errorResponse struct {
+	// in: body
+	Body operationOutcomeResponse
 }
 
 // Data export job is in progress.
-// swagger:response JobStatus
-type JobStatus struct {
+// swagger:response jobStatusResponse
+type jobStatusResponse struct {
 	// The status of the job progress
 	XProgress string `json:"X-Progress"`
 }
