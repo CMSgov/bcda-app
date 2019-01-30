@@ -52,6 +52,13 @@ type badRequestResponse struct {
 	Body operationOutcomeResponse
 }
 
+// The requested resource is no longer available. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html
+// swagger:response goneResponse
+type goneResponse struct {
+	// in: body
+	Body operationOutcomeResponse
+}
+
 // An error occurred. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.
 // swagger:response errorResponse
 type errorResponse struct {

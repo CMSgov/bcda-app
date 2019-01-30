@@ -231,7 +231,8 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		202: jobStatusResponse
 		200: completedJobResponse
 		400: badRequestResponse
-        404: notFoundResponse
+		404: notFoundResponse
+		410: goneResponse
 		500: errorResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
