@@ -204,7 +204,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNotEqual() {
 	ctx = context.WithValue(ctx, "token", token)
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 404, s.rr.Code)
+	assert.Equal(s.T(), 401, s.rr.Code)
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenACOMatchEqual() {
@@ -252,18 +252,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 500, s.rr.Code)
-}
-
-func (s *MiddlewareTestSuite) TestRequireTokenACOMatchClaims() {
-	req, err := http.NewRequest("GET", s.server.URL, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	handler := auth.RequireTokenACOMatch(mockHandler)
-
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 401, s.rr.Code)
 }
 
 func (s *MiddlewareTestSuite) TestClaimsFromToken() {
