@@ -206,14 +206,22 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
+	errorCount := 0
+	totalBeneIDs := float64(len(beneficiaryIDs))
+	failThreshold := getFailureThreshold()
 
 	for _, beneficiaryID := range beneficiaryIDs {
 		pData, err := bbFunc(beneficiaryID, jobID)
 		if err != nil {
 			log.Error(err)
+			errorCount++
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, beneficiaryID, acoID), jobID)
 		} else {
 			fhirBundleToResourceNDJSON(w, pData, t, beneficiaryID, acoID, jobID)
+		}
+		failPct := (float64(errorCount) / totalBeneIDs) * 100
+		if failPct >= failThreshold {
+			return errors.New("number of failed requests has exceeded threshold")
 		}
 	}
 
@@ -228,6 +236,19 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	}
 
 	return nil
+}
+
+func getFailureThreshold() float64 {
+	exportFailPctStr := os.Getenv("EXPORT_FAIL_PCT")
+	exportFailPct, err := strconv.Atoi(exportFailPctStr)
+	if err != nil {
+		exportFailPct = 50
+	} else if exportFailPct < 0 {
+		exportFailPct = 0
+	} else if exportFailPct > 100 {
+		exportFailPct = 100
+	}
+	return float64(exportFailPct)
 }
 
 func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {
