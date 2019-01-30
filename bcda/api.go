@@ -531,7 +531,8 @@ type fileItem struct {
 Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
 swagger:response completedJobResponse
 */
-type completedJobResponse struct {
+//nolint
+type CompletedJobResponse struct {
 	// in: body
 	Body bulkResponseBody
 }

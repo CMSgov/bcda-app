@@ -11,7 +11,7 @@ type BulkRequestResponse struct {
 	ContentLocation string `json:"Content-Location"`
 }
 
-type operationOutcomeResponse struct {
+type OperationOutcomeResponse struct {
 	// OperationOutcome
 	ResourceType string
 	// A single issue associated with the action
@@ -40,35 +40,35 @@ type operationOutcomeResponse struct {
 
 // The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html
 // swagger:response notFoundResponse
-type notFoundResponse struct {
+type NotFoundResponse struct {
 	// in: body
-	Body operationOutcomeResponse
+	Body OperationOutcomeResponse
 }
 
 // There was a problem with the request. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.
 // swagger:response badRequestResponse
-type badRequestResponse struct {
+type BadRequestResponse struct {
 	// in: body
-	Body operationOutcomeResponse
+	Body OperationOutcomeResponse
 }
 
 // The requested resource is no longer available. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html
 // swagger:response goneResponse
-type goneResponse struct {
+type GoneResponse struct {
 	// in: body
-	Body operationOutcomeResponse
+	Body OperationOutcomeResponse
 }
 
 // An error occurred. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html Please refer to the body of the response for details.
 // swagger:response errorResponse
-type errorResponse struct {
+type ErrorResponse struct {
 	// in: body
-	Body operationOutcomeResponse
+	Body OperationOutcomeResponse
 }
 
 // Data export job is in progress.
 // swagger:response jobStatusResponse
-type jobStatusResponse struct {
+type JobStatusResponse struct {
 	// The status of the job progress
 	XProgress string `json:"X-Progress"`
 }
