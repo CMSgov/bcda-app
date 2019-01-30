@@ -53,6 +53,18 @@ func NewDataRouter() http.Handler {
 	return r
 }
 
+func NewHTTPRouter() http.Handler {
+	r := chi.NewRouter()
+	m := monitoring.GetMonitor()
+	r.Use(ConnectionClose)
+	r.With(logging.NewStructuredLogger()).Get(m.WrapHandler("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		url := "https://" + req.Host + req.URL.String()
+		http.Redirect(w, req, url, http.StatusMovedPermanently)
+	})))
+	return r
+}
+
 // FileServer conveniently sets up a http.FileServer handler to serve
 // static files from a http.FileSystem.
 // stolen from https://github.com/go-chi/chi/blob/master/_examples/fileserver/main.go

@@ -18,6 +18,7 @@ type RouterTestSuite struct {
 	suite.Suite
 	apiServer  *httptest.Server
 	dataServer *httptest.Server
+	httpServer *httptest.Server
 	rr         *httptest.ResponseRecorder
 }
 
@@ -25,12 +26,14 @@ func (suite *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
 	suite.apiServer = httptest.NewServer(NewAPIRouter())
 	suite.dataServer = httptest.NewServer(NewDataRouter())
+	suite.httpServer = httptest.NewServer(NewHTTPRouter())
 	suite.rr = httptest.NewRecorder()
 }
 
 func (suite *RouterTestSuite) TearDownTest() {
 	suite.apiServer.Close()
 	suite.dataServer.Close()
+	suite.httpServer.Close()
 }
 
 func (suite *RouterTestSuite) GetStringBody(url string) (string, error) {
@@ -59,6 +62,7 @@ func (suite *RouterTestSuite) TestDataRoute() {
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting data route: %s", err))
 	//assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
 }
+
 func (suite *RouterTestSuite) TestFileServerRoute() {
 	_, err := suite.GetStringBody(suite.apiServer.URL + "/api/v1/swagger")
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting swagger route: %s", err))
@@ -67,8 +71,15 @@ func (suite *RouterTestSuite) TestFileServerRoute() {
 	assert.Panics(suite.T(), func() {
 		FileServer(r, "/api/v1/swagger{}", http.Dir("./swaggerui"))
 	})
-
 }
+
+func (suite *RouterTestSuite) TestHTTPServerRedirect() {
+	client := suite.httpServer.Client()
+	res, err := client.Get(suite.httpServer.URL)
+	assert.Nil(suite.T(), err, fmt.Sprintf("redirect http to https"))
+	assert.Equal(suite.T(), res.StatusCode, 301)
+}
+
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))
 }
