@@ -19,6 +19,7 @@ const (
 	Not_supported = "Content not supported"
 	Duplicate     = "Duplicate"
 	Not_found     = "Not Found"
+	Deleted       = "Deleted"
 	Too_long      = "Content Too Long"
 	Code_invalid  = "Invalid Code"
 	Extension     = "Unacceptable Extension"
