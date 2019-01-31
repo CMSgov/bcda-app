@@ -6108,6 +6108,11 @@ article h2::after {
     margin-top: -15px;
     padding-bottom: 25px;
   }
+
+.ds-text--lead {
+    font-size: 24px;
+}
+
 @media only screen and (max-width: 995px){
   .api-pattern {
     background:none;
