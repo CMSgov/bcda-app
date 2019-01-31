@@ -6,22 +6,22 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 	<!-- Metadata for Twitter -->
-	<meta name="twitter:title" content="Beneficiary Claims API" />
+	<meta name="twitter:title" content="Your awesome title" />
 	<meta name="twitter:description" content="Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search resu..." />
 	<meta name="twitter:image" content="/assets/img/default-share-image.jpg" />
-	<meta name="twitter:site" content="/" />
+	<meta name="twitter:site" content="/404.html" />
 	<meta name="twitter:card" content="summary_large_image">
 	<!-- Facebook / OpenGraph Metadata -->
-  <meta property="og:title" content="Beneficiary Claims API" />
+  <meta property="og:title" content="Your awesome title" />
 	<meta property="og:description" content="Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search resu..." />
 	<meta property="og:image" content="/assets/img/default-share-image.jpg" />
-	<meta property="og:url" content="/" />
+	<meta property="og:url" content="/404.html" />
 
-  <title>Beneficiary Claims API</title>
+  <title>Your awesome title</title>
   <meta name="description" content="Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search resu...">
 
   <link rel="shortcut icon" type="image/x-icon"  href="/assets/img/favicon.ico" />
-  <link rel="canonical" href="/">
+  <link rel="canonical" href="/404.html">
 
   <link rel="stylesheet" href="/assets/css/static-main.css" />
     <!-- Global site tag (gtag.js) - Google Analytics -->
@@ -87,150 +87,26 @@
 </header>
 
 
-    <div class="ds-base">
-  <header class="blueberry-lime-gradient-background main-header ds-u-margin-bottom--2 ds-u-lg-margin-bottom--5">
-    <div class="api-pattern">
-      <div class="solid-container ds-u-padding-y--2 ds-u-lg-padding-y--5">
-        <div class="ds-l-container">
-          <div class="ds-l-row">
-            <div class="ds-u-color--white ds-l-sm-cold--12 ds-l-xl-col--10 ds-u-margin-left--auto ds-u-padding-x--4">
+    <style type="text/css" media="screen">
+  .container {
+    margin: 10px auto;
+    max-width: 600px;
+    text-align: center;
+  }
+  h1 {
+    margin: 30px 0;
+    font-size: 4em;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+</style>
 
+<div class="container">
+  <h1>404</h1>
 
-                <h1 class="ds-display">Beneficiary Claims API</h1>
-                <p class="ds-text--lead">
-                  SSP ACOs can use this FHIR-based API to retrieve bulk claims data related to their assigned beneficiaries. Under construction; feedback invited.
-                </p>
-
-                <!--
-                  BCDA is not using the CTA's here
-                  <div class="ctas">
-                  
-                  <a class="ds-c-button button--white" href="https://groups.google.com/forum/#!forum/bc-api" aria-label="Visit the BCDA Google Group" target="_self">Visit the BCDA Google Group &rarr;</a>
-                  
-                  </div>
-                  -->
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-  </header>
+  <p><strong>Page not found :(</strong></p>
+  <p>The requested page could not be found.</p>
 </div>
-
-<section class="ds-l-container ds-base">
-  <div class="ds-l-row">
-
-    <aside class="ds-l-col--4 ds-u-margin-left--right ds-u-display--none ds-u-sm-display--block" role="complementary">
-      <nav class="subnav">
-        <h5 class="sr-only" id="page-sub-nav">Page navigation links</h5>
-        <ul class="ds-c-list ds-c-list--bare" id="mainNav" aria-labelledby="page-sub-nav">
-          
-            <li><a href="#overview" aria-label="Overview section, current page" class="ds-u-display--block blueberry-lime-link" aria-label="Overview section, current page">Overview</a></li>
-          
-            <li><a href="#about-the-data" aria-label="About the Data section, current page" class="ds-u-display--block blueberry-lime-link" aria-label="About the Data section, current page">About the Data</a></li>
-          
-        </ul>
-      </nav>
-    </aside>
-
-
-    <article class="ds-l-col--12 ds-l-sm-col--7 " id="main" role="main">
-      <h2 id="overview">Overview</h2>
-
-<ul>
-  <li>
-    <p>The Beneficiary Claims Data API (BCDA) will enable Accountable Care Organizations (ACOs) to retrieve Medicare Part A, Part B, and Part D claims data for their aligned beneficiaries. This includes Medicare claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care. When it is in production, the API will provide similar data to Claim and Claim Line Feed (CCLF) files, currently provided monthly to SSP ACOs by CMS.</p>
-  </li>
-  <li>
-    <p>As of January 2019, the Beneficiary Claims Data API is a work in progress.</p>
-
-    <ul>
-      <li>
-        <p>We’re currently providing synthetic data that resembles the kinds of data SSP ACOs will receive by connecting with this endpoint, so that they can try out different ways of interacting with the API before receiving live data.</p>
-      </li>
-      <li>
-        <p>We’re providing this test experience and documentation early so we can learn from SSP ACOs and their vendor partners who need to access this information, about what works best for them. Through conversations and test drives, we strive to learn what ACOs need out of bulk beneficiary claims data, and create a process that meets their needs.</p>
-      </li>
-      <li>
-        <p>Developers, analysts, and administrators at SSP ACOs are invited to participate in this pilot process by joining our Google Group.</p>
-      </li>
-    </ul>
-  </li>
-  <li>
-    <p>What has been learned from SSP ACOs in the pilot?</p>
-
-    <p>Developers, analysts, and administrators at SSP ACOs have been instrumental in shaping CMS’ approach to this API. With their feedback, the team is implementing the following elements:</p>
-
-    <ul>
-      <li>Providing clear, human-readable narrative documentation to aid all users’ use of the API and the data that is shared</li>
-      <li>Using resilient NDJSON rather than fixed-width files in response to requests for delimited information</li>
-      <li>Providing bulk beneficiary claims data through an automated retrieval process that requires minimal hands-on intervention to receive</li>
-      <li>Implementing the robust specifications established by Blue Button 2.0 and FHIR data</li>
-    </ul>
-
-    <p>BCDA will continue to take an iterative approach to testing and learning from its users.</p>
-  </li>
-  <li class="bcda_callout no_list">
-    <p>How can I get access to BCDA? <img src="assets/img/google_logo.png" alt="Google Groups Logo" id="google_logo" /></p>
-
-    <ul>
-      <li class="no_list">
-        <p>While the Beneficiary Claims Data API (BCDA) is still in development, we’ll share updates about how to get access via the <a href="https://groups.google.com/forum/#!forum/bc-api">Google Group</a>.</p>
-      </li>
-      <li class="no_list">
-        <p>The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.</p>
-      </li>
-      <li class="button no_list">
-        <p><a href="https://groups.google.com/forum/#!forum/bc-api">Join the BCDA Google Group</a></p>
-      </li>
-    </ul>
-  </li>
-</ul>
-
-<h2 id="about-the-data">About the Data</h2>
-
-<ul>
-  <li>
-    <p>If you’re used to working with CCLF files, you’ll want to know more about the data we’re using and how to work with it.</p>
-
-    <p>For data formatting, BCDA follows the workflow outlined by the FHIR Bulk Data Export Implementation Guide (https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md), using the HL7 FHIR Standard (https://www.hl7.org/fhir/).</p>
-
-    <p>Claims data is provided as FHIR resources in NDJSON format (http://ndjson.org/).</p>
-  </li>
-  <li>
-    <p>What is FHIR (Fast Healthcare Interoperability Resources)?   [https://www.hl7.org/fhir/]</p>
-
-    <ul>
-      <li>
-        <p>FHIR is a specification for how servers that provide healthcare records should be set up.</p>
-      </li>
-      <li>FHIR provides a framework for the exchange of healthcare-related data, allowing any system to access and consume this data to solve clinical and administrative problems around healthcare-related data.</li>
-      <li>BCDA will be using the following endpoints from the FHIR spec:
-        <ul>
-          <li>patient endpoint</li>
-          <li>explanation of benefits endpoint</li>
-          <li>coverage endpoint</li>
-        </ul>
-      </li>
-    </ul>
-  </li>
-  <li>
-    <p>What is Blue Button 2.0? 
- https://bluebutton.cms.gov/ </p>
-    <ul>
-      <li>Blue Button 2.0 provides FHIR-formatted data for one individual Medicare beneficiary at a time, to registered and authorized applications, e.g. BCDA  https://bluebutton.cms.gov/developers/#authorization</li>
-      <li>BCDA uses the individual data to pull together bulk data files for all of the beneficiaries belonging to one SSP ACO.</li>
-      <li>BCDA then gives all data for all the beneficiaries in that ACO all at once, without someone at  the ACO needing to get them individually from Blue Button 2.0.</li>
-    </ul>
-  </li>
-</ul>
-
-      <a href="#site-top" class="ds-c-button ds-u-margin-top--4">Back to top</a>
-    </article>
-
-
-  </div>
-</section>
 
 
     <footer class="ds-base ds-u-fill--white ds-u-margin-top--7 ds-u-padding-y--6" role="contentinfo">
