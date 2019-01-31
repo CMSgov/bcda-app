@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi"
@@ -74,10 +75,25 @@ func (suite *RouterTestSuite) TestFileServerRoute() {
 }
 
 func (suite *RouterTestSuite) TestHTTPServerRedirect() {
-	client := suite.httpServer.Client()
-	res, err := client.Get(suite.httpServer.URL)
-	assert.Nil(suite.T(), err, fmt.Sprintf("redirect http to https"))
-	assert.Equal(suite.T(), res.StatusCode, 301)
+	// HTTP client that does not follow redirects
+	client := &http.Client{
+		Transport: &http.Transport{},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Redirect GET http requests to https
+	res, err := client.Get(suite.httpServer.URL + "/")
+	assert.Nil(suite.T(), err, fmt.Sprintf("redirect GET http to https"))
+	assert.Equal(suite.T(), 301, res.StatusCode, "http to https redirect return correct status code")
+	assert.Contains(suite.T(), res.Header.Get("Location"), "https://", "location response header contains 'https://'")
+
+	// Only respond to GET requests
+	r := strings.NewReader("")
+	res, err = client.Post(suite.httpServer.URL+"/", "application/octet-stream", r)
+	assert.Nil(suite.T(), err, fmt.Sprintf("redirect POST http to https"))
+	assert.Equal(suite.T(), 405, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
 func TestRouterTestSuite(t *testing.T) {
