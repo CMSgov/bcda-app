@@ -51,7 +51,8 @@ func (suite *RouterTestSuite) GetStringBody(url string) (string, error) {
 func (suite *RouterTestSuite) TestDefaultRoute() {
 	r, err := suite.GetStringBody(suite.apiServer.URL)
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting default route: %s", err))
-	assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
+	assert.NotContains(suite.T(), r, "404 page not found", "Default route returned wrong body")
+	assert.Contains(suite.T(), r, "Beneficiary Claims API")
 }
 
 func (suite *RouterTestSuite) TestDataRoute() {
