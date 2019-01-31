@@ -5440,12 +5440,12 @@ h1.ds-display {
 }
 
 header {
-    background: #f7f7f7;
+    background: #ffffff;
     font-family: Roboto, sans-serif
 }
 
 .ds-c-desktop-nav {
-    background: #f7f7f7;
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -5578,7 +5578,7 @@ header {
 }
 
 .ds-c-mobile-nav {
-    background: #f7f7f7;
+    background: #ffffff;
     display: none;
     align-items: center;
     justify-content: space-between;
@@ -5630,7 +5630,7 @@ header {
 }
 
 .mobile-nav-items {
-    background: #f7f7f7;
+    background: #ffffff;
     position: absolute;
     width: 100%;
     z-index: 100;
