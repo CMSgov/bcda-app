@@ -63,8 +63,16 @@ services:
     depends_on:
       - queue
   documentation:
+    depends_on:
+      - static_site
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.documentation
     volumes:
     - .:/go/src/github.com/CMSgov/bcda-app
+  static_site:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.static_site
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app

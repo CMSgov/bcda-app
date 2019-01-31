@@ -19,14 +19,16 @@
 
   <link rel="shortcut icon" type="image/x-icon"  href="{{ '/assets/img/favicon.ico' | relative_url }}" />
   <link rel="canonical" href="{{ page.url | replace:'index.html','' | absolute_url }}">
-  <link rel="alternate" type="application/rss+xml" title="{{ site.title | escape }}" href="{{ '/feed.xml' | relative_url }}">
-  <link href='https://bluebutton.cms.gov/feed.xml' rel='alternate' type='application/atom+xml'>
 
   <link rel="stylesheet" href="{{ site.cssurl | relative_url }}" />
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-133491498-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
 
-  <script>
-    window.tealiumEnvironment = "{{ site.tealium_env }}";
-  </script>
+        gtag('config', 'UA-133491498-1');
+    </script>
 
-  <script src="//tags.tiqcdn.com/utag/cmsgov/cms-bluebutton/prod/utag.sync.js"></script>
 </head>
