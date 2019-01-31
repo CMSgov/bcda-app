@@ -1,8 +1,8 @@
 ---
 layout: home
-title:  "Beneficiary Claims API"
+title:  "Beneficiary Claims Data API"
 date:   2017-10-30 09:21:12 -0500
-description: SSP ACOs can use this FHIR-based API to retrieve bulk claims data related to their assigned beneficiaries. Under construction; feedback invited.
+description: Shared Savings Program ACOs can use this FHIR-based API to retrieve bulk claims data related to their assigned beneficiaries. Under construction; feedback invited.
 landing-page: live
 gradient: "blueberry-lime-background"
 subnav-link-gradient: "blueberry-lime-link"
