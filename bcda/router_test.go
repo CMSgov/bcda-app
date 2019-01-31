@@ -85,14 +85,14 @@ func (suite *RouterTestSuite) TestHTTPServerRedirect() {
 
 	// Redirect GET http requests to https
 	res, err := client.Get(suite.httpServer.URL + "/")
-	assert.Nil(suite.T(), err, fmt.Sprintf("redirect GET http to https"))
+	assert.Nil(suite.T(), err, "redirect GET http to https")
 	assert.Equal(suite.T(), 301, res.StatusCode, "http to https redirect return correct status code")
 	assert.Contains(suite.T(), res.Header.Get("Location"), "https://", "location response header contains 'https://'")
 
 	// Only respond to GET requests
 	r := strings.NewReader("")
 	res, err = client.Post(suite.httpServer.URL+"/", "application/octet-stream", r)
-	assert.Nil(suite.T(), err, fmt.Sprintf("redirect POST http to https"))
+	assert.Nil(suite.T(), err, "redirect POST http to https")
 	assert.Equal(suite.T(), 405, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
