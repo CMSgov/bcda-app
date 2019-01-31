@@ -17,7 +17,7 @@ func NewAPIRouter() http.Handler {
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
-	FileServer(r, "/", http.Dir("../bcda-site-static/_site"))
+	FileServer(r, "/", http.Dir("./_site"))
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
