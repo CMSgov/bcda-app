@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/auth/plugin"
+	"github.com/CMSgov/bcda-app/bcda/auth/plugins"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
@@ -93,9 +93,9 @@ func GetAuthProvider() auth.Provider {
 	v := os.Getenv("BCDA_AUTH_PROVIDER")
 	switch v {
 	case "Alpha":
-		return new(plugin.AlphaAuthPlugin) // could fallthrough here, but prefer to be explicit
+		return new(plugins.AlphaAuthPlugin) // could fallthrough here, but prefer to be explicit
 	default:
-		return new(plugin.AlphaAuthPlugin)
+		return new(plugins.AlphaAuthPlugin)
 	}
 }
 
@@ -456,7 +456,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID, err = plugin.GetParamString(result, "clientID")
+	aco.ClientID, err = plugins.GetParamString(result, "clientID")
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
