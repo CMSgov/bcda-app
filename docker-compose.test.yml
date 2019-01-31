@@ -27,3 +27,9 @@ services:
       dockerfile: Dockerfiles/Dockerfile.postman_test
     volumes:
        - .:/go/src/github.com/CMSgov/bcda-app
+  performance_test:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.performance_test
+    volumes:
+      - ./test:/go/src/github.com/CMSgov/bcda-app/test
