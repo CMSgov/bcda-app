@@ -294,10 +294,11 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
 	acoID := uuid.NewRandom().String()
 	ts, _ := s.AuthBackend.GenerateTokenString(userID, acoID)
 	t, err := s.p.DecodeJWT(ts)
+	c := t.Claims.(jwt.MapClaims)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), userID, t.Claims.(*auth.AllClaims).Subject)
-	assert.Equal(s.T(), acoID, t.Claims.(*auth.AllClaims).ACO)
+	assert.Equal(s.T(), userID, c["sub"])
+	assert.Equal(s.T(), acoID, c["aco"])
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {

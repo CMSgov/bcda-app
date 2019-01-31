@@ -18,12 +18,6 @@ import (
 
 type AlphaAuthPlugin struct{}
 
-type AllClaims struct {
-	ACO string `json:"aco"`
-	ID  string `json:"id"`
-	jwt.StandardClaims
-}
-
 // This implementation expects one value in params, an id the API knows this client by in string form
 // It returns a single string as well, being the clientID this implementation knows this client by
 // NB: Other implementations will probably expect more input, and will certainly return more data
@@ -207,8 +201,8 @@ func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 		return err
 	}
 
-	if c, ok := t.Claims.(*AllClaims); ok {
-		return revokeAccessTokenByID(uuid.Parse(c.ID))
+	if c, ok := t.Claims.(jwt.MapClaims); ok {
+		return revokeAccessTokenByID(uuid.Parse(c["id"].(string)))
 	}
 
 	return errors.New("could not read token claims")
@@ -235,7 +229,7 @@ func (p *AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	c := t.Claims.(*AllClaims)
+	c := t.Claims.(jwt.MapClaims)
 
 	err = checkRequiredClaims(c)
 	if err != nil {
@@ -247,37 +241,37 @@ func (p *AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	_, err = getACOFromDB(c.ACO)
+	_, err = getACOFromDB(c["aco"].(string))
 	if err != nil {
 		return err
 	}
 
 	b := isActive(t)
 	if !b {
-		return fmt.Errorf("token with id: %v is not active", c.ID)
+		return fmt.Errorf("token with id: %v is not active", c["id"])
 	}
 
 	return nil
 }
 
-func checkRequiredClaims(claims *AllClaims) error {
-	if claims.ExpiresAt == 0 ||
-		claims.IssuedAt == 0 ||
-		claims.Subject == "" ||
-		claims.ACO == "" ||
-		claims.ID == "" {
+func checkRequiredClaims(claims jwt.MapClaims) error {
+	if claims["exp"] == nil ||
+		claims["iat"] == nil ||
+		claims["sub"] == nil ||
+		claims["aco"] == nil ||
+		claims["id"] == nil {
 		return fmt.Errorf("missing one or more required claims")
 	}
 	return nil
 }
 
 func isActive(token jwt.Token) bool {
-	c := token.Claims.(*AllClaims)
+	c := token.Claims.(jwt.MapClaims)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	return !db.Find(&token, "UUID = ? AND active = ?", c.ID, true).RecordNotFound()
+	return !db.Find(&token, "UUID = ? AND active = ?", c["id"], true).RecordNotFound()
 }
 
 func (p *AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
@@ -287,7 +281,7 @@ func (p *AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
 		}
 		return InitAuthBackend().PublicKey, nil
 	}
-	t, err := jwt.ParseWithClaims(tokenString, &AllClaims{}, keyFunc)
+	t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFunc)
 	if err != nil {
 		return jwt.Token{}, err
 	}
