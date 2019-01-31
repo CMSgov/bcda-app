@@ -63,8 +63,6 @@ services:
     depends_on:
       - queue
   documentation:
-    depends_on:
-      - static_site
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.documentation
