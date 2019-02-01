@@ -44,35 +44,6 @@ type jobEnqueueArgs struct {
 	Encrypt bool
 }
 
-// swagger:model fileItem
-type fileItem struct {
-	// KNOLL the type of File returned
-	Type string `json:"type"`
-	// The URL of the file
-	URL string `json:"url"`
-}
-
-/*
-Bulk Response Body for a completed Bulk Status Request
-swagger:response bulkResponseBody
-*/
-type bulkResponseBody struct {
-	// The Time of the Transaction Request
-	TransactionTime time.Time `json:"transactionTime"`
-	// The URL of the Response
-	RequestURL string `json:"request"`
-	// Is a token required for this response
-	RequiresAccessToken bool `json:"requiresAccessToken"`
-	// Files included in the payload
-	// collection format: csv
-	Files []fileItem `json:"output"`
-	// Errors encountered during processing
-	// collection format: csv
-	Errors []fileItem        `json:"error"`
-	KeyMap map[string]string `json:"KeyMap"`
-	JobID  uint
-}
-
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_ERROR_LOG")
