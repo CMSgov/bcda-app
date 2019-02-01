@@ -87,6 +87,8 @@ func (suite *RouterTestSuite) TestHTTPServerRedirect() {
 	res, err := client.Get(suite.httpServer.URL + "/")
 	assert.Nil(suite.T(), err, "redirect GET http to https")
 	assert.Equal(suite.T(), 301, res.StatusCode, "http to https redirect return correct status code")
+	assert.NotEmpty(suite.T(), res.Header.Get("Strict-Transport-Security"), "http to https redirect sets HSTS header")
+	assert.Equal(suite.T(), "close", res.Header.Get("Connection"), "http to https redirect sets 'connection: close' header")
 	assert.Contains(suite.T(), res.Header.Get("Location"), "https://", "location response header contains 'https://'")
 
 	// Only respond to GET requests

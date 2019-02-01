@@ -56,8 +56,7 @@ func NewDataRouter() http.Handler {
 func NewHTTPRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(ConnectionClose)
-	r.With(logging.NewStructuredLogger()).Get(m.WrapHandler("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	r.With(logging.NewStructuredLogger(), ConnectionClose).Get(m.WrapHandler("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 		url := "https://" + req.Host + req.URL.String()
 		http.Redirect(w, req, url, http.StatusMovedPermanently)
