@@ -68,9 +68,9 @@ import (
 		api_key
 
 	Responses:
-		202:BulkRequestResponse
-		400:ErrorModel
-		500:FHIRResponse
+		202: BulkRequestResponse
+		400: badRequestResponse
+		500: errorResponse
 */
 func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("ExplanationOfBenefit", w, r)
@@ -90,9 +90,9 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 		api_key
 
 	Responses:
-		202:BulkRequestResponse
-		400:ErrorModel
-		500:FHIRResponse
+		202: BulkRequestResponse
+		400: badRequestResponse
+		500: errorResponse
 */
 func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("Patient", w, r)
@@ -228,12 +228,12 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		api_key:
 
 	Responses:
-		202:JobStatus
-		200:bulkResponseBody
-		400:ErrorModel
-        404:ErrorModel
-        410:ErrorModel
-		500:FHIRResponse
+		202: jobStatusResponse
+		200: completedJobResponse
+		400: badRequestResponse
+		404: notFoundResponse
+		410: goneResponse
+		500: errorResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobId")
@@ -364,10 +364,10 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		api_key:
 
 	Responses:
-		200:ExplanationOfBenefitNDJSON
-		400:ErrorModel
-        404:ErrorModel
-		500:FHIRResponse
+		200: ExplanationOfBenefitNDJSON
+		400: badRequestResponse
+        404: notFoundResponse
+		500: errorResponse
 */
 func serveData(w http.ResponseWriter, r *http.Request) {
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
@@ -517,4 +517,37 @@ func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
 
 func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+}
+
+// swagger:model fileItem
+type fileItem struct {
+	// FHIR resource type of file contents
+	Type string `json:"type"`
+	// URL of the file
+	URL string `json:"url"`
+}
+
+/*
+Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
+swagger:response completedJobResponse
+*/
+//nolint
+type CompletedJobResponse struct {
+	// in: body
+	Body bulkResponseBody
+}
+
+type bulkResponseBody struct {
+	// Server time when the query was run
+	TransactionTime time.Time `json:"transactionTime"`
+	// URL of the bulk data export request
+	RequestURL string `json:"request"`
+	// Indicates whether an access token is required to download generated data files
+	RequiresAccessToken bool `json:"requiresAccessToken"`
+	// Information about generated data files, including URLs for downloading
+	Files []fileItem `json:"output"`
+	// Information about error files, including URLs for downloading
+	Errors []fileItem        `json:"error"`
+	KeyMap map[string]string `json:"KeyMap"`
+	JobID  uint
 }
