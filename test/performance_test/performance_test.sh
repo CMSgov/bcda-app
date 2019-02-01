@@ -4,4 +4,9 @@
 #
 set -e
 
-go run performance.go --endpoint=Coverage --encrypt=false
+go run performance.go -host=api:3000 -endpoint=ExplanationOfBenefit
+go run performance.go -host=api:3000 -endpoint=Patient
+go run performance.go -host=api:3000 -endpoint=Coverage
+go run performance.go -host=api:3000 -endpoint=ExplanationOfBenefit -encrypt=false
+go run performance.go -host=api:3000 -endpoint=Patient -encrypt=false
+go run performance.go -host=api:3000 -endpoint=Coverage -encrypt=false
