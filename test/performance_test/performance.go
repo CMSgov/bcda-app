@@ -30,7 +30,7 @@ func init() {
 	// create folder if doesn't exist for storing the results, maybe create env var later
 	reportFilePath = "results/"
 	if _, err := os.Stat(reportFilePath); os.IsNotExist(err) {
-		err := os.MkdirAll(reportFilePath, 0755)
+		err := os.MkdirAll(reportFilePath, os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
@@ -44,13 +44,19 @@ func main() {
 	if appTestToken != "" {
 		targeter := makeTarget(appTestToken)
 		apiResults := runAPITest(targeter)
-		apiResults.WriteTo(&buf)
+		_, err := apiResults.WriteTo(&buf)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if workerTestToken != "" {
 		targeter := makeTarget(workerTestToken)
 		workerResults := runWorkerTest(targeter)
-		workerResults.WriteTo(&buf)
+		_, err := workerResults.WriteTo(&buf)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	data := buf.Bytes()
@@ -90,7 +96,10 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 
 	attacker := vegeta.NewAttacker()
 	for results := range attacker.Attack(target, rate, duration, fmt.Sprintf("apiTest:_%s", endpoint)) {
-		plot.Add(results)
+		err := plot.Add(results)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return plot
 }
@@ -106,14 +115,17 @@ func runWorkerTest(target vegeta.Targeter) *plot.Plot {
 
 	attacker := vegeta.NewAttacker()
 	for results := range attacker.Attack(target, rate, duration, fmt.Sprintf("workerTest:_%s", endpoint)) {
-		plot.Add(results)
+		err := plot.Add(results)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return plot
 }
 
 func writeResults(data []byte) {
 	fmt.Printf("Writing results:")
-	err := ioutil.WriteFile(reportFilePath+"/performance_plot.html", data, 0755)
+	err := ioutil.WriteFile(reportFilePath+"/performance_plot.html", data, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
