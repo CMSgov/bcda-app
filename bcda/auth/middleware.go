@@ -25,7 +25,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		}
 
 		tokenString := strings.Split(authHeader, " ")[1]
-		token, err := GetAuthProvider().DecodeJWT(tokenString)
+		token, err := GetProvider().DecodeJWT(tokenString)
 
 		if err != nil {
 			log.Error(err)
@@ -33,7 +33,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		err = GetAuthProvider().ValidateJWT(tokenString)
+		err = GetProvider().ValidateJWT(tokenString)
 
 		if err != nil {
 			log.Error(err)

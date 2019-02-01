@@ -48,8 +48,8 @@ func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(ConnectionClose)
-	r.With(logging.NewStructuredLogger(), auth.RequireTokenAuth,
-		auth.RequireTokenACOMatch).Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
+	r.With(auth.RequireTokenAuth, logging.NewStructuredLogger(), auth.RequireTokenACOMatch).
+		Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
 	return r
 }
 

@@ -366,7 +366,7 @@ func createAccessToken(userID string) (string, error) {
 	}
 
 	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.ACOID.String(), 72)
-	token, err := auth.GetAuthProvider().RequestAccessToken([]byte(params))
+	token, err := auth.GetProvider().RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
@@ -379,7 +379,7 @@ func revokeAccessToken(accessToken string) error {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	authProvider := auth.GetAuthProvider()
+	authProvider := auth.GetProvider()
 
 	return authProvider.RevokeAccessToken(accessToken)
 }
@@ -408,7 +408,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return
 	}
 
-	authProvider := auth.GetAuthProvider()
+	authProvider := auth.GetProvider()
 
 	params := fmt.Sprintf(`{"clientID" : "%s"}`, aco.UUID.String())
 	result, err := authProvider.RegisterClient([]byte(params))

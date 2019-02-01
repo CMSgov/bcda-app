@@ -22,7 +22,7 @@ type Provider interface {
 	DecodeJWT(tokenString string) (jwt.Token, error)
 }
 
-func GetAuthProvider() Provider {
+func GetProvider() Provider {
 	v := os.Getenv("BCDA_AUTH_PROVIDER")
 	switch v {
 	case "Alpha":
