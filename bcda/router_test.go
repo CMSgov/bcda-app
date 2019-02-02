@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/go-chi/chi"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -75,25 +74,33 @@ func (suite *RouterTestSuite) TestFileServerRoute() {
 }
 
 func (suite *RouterTestSuite) TestHTTPServerRedirect() {
-	// HTTP client that does not follow redirects
-	client := &http.Client{
-		Transport: &http.Transport{},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	router := NewHTTPRouter()
 
 	// Redirect GET http requests to https
-	res, err := client.Get(suite.httpServer.URL + "/")
+	req, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	res := w.Result()
+
 	assert.Nil(suite.T(), err, "redirect GET http to https")
 	assert.Equal(suite.T(), 301, res.StatusCode, "http to https redirect return correct status code")
-	assert.NotEmpty(suite.T(), res.Header.Get("Strict-Transport-Security"), "http to https redirect sets HSTS header")
 	assert.Equal(suite.T(), "close", res.Header.Get("Connection"), "http to https redirect sets 'connection: close' header")
 	assert.Contains(suite.T(), res.Header.Get("Location"), "https://", "location response header contains 'https://'")
 
 	// Only respond to GET requests
-	r := strings.NewReader("")
-	res, err = client.Post(suite.httpServer.URL+"/", "application/octet-stream", r)
+	req, err = http.NewRequest("POST", "/", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	res = w.Result()
+
 	assert.Nil(suite.T(), err, "redirect POST http to https")
 	assert.Equal(suite.T(), 405, res.StatusCode, "http to https redirect rejects POST requests")
 }
