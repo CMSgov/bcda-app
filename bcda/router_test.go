@@ -18,7 +18,6 @@ type RouterTestSuite struct {
 	suite.Suite
 	apiServer  *httptest.Server
 	dataServer *httptest.Server
-	httpServer *httptest.Server
 	rr         *httptest.ResponseRecorder
 }
 
@@ -26,14 +25,12 @@ func (suite *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
 	suite.apiServer = httptest.NewServer(NewAPIRouter())
 	suite.dataServer = httptest.NewServer(NewDataRouter())
-	suite.httpServer = httptest.NewServer(NewHTTPRouter())
 	suite.rr = httptest.NewRecorder()
 }
 
 func (suite *RouterTestSuite) TearDownTest() {
 	suite.apiServer.Close()
 	suite.dataServer.Close()
-	suite.httpServer.Close()
 }
 
 func (suite *RouterTestSuite) GetStringBody(url string) (string, error) {
