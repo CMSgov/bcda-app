@@ -1,4 +1,4 @@
-package plugin
+package auth_test
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 
 type AlphaAuthPluginTestSuite struct {
 	testUtils.AuthTestSuite
-	p *AlphaAuthPlugin
+	p *auth.AlphaAuthPlugin
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
@@ -33,7 +33,7 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
-	s.p = new(AlphaAuthPlugin)
+	s.p = new(auth.AlphaAuthPlugin)
 }
 
 var connections = make(map[string]*gorm.DB)
@@ -294,10 +294,11 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
 	acoID := uuid.NewRandom().String()
 	ts, _ := s.AuthBackend.GenerateTokenString(userID, acoID)
 	t, err := s.p.DecodeJWT(ts)
+	c := t.Claims.(jwt.MapClaims)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), userID, t.Claims.(*AllClaims).Subject)
-	assert.Equal(s.T(), acoID, t.Claims.(*AllClaims).ACO)
+	assert.Equal(s.T(), userID, c["sub"])
+	assert.Equal(s.T(), acoID, c["aco"])
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {
