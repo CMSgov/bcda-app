@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"net/http"
 )
 
@@ -43,6 +44,15 @@ func ValidateBulkRequestHeaders(next http.Handler) http.Handler {
 func ConnectionClose(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "close")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func HSTSHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if servicemux.IsHTTPS(r) {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		}
 		next.ServeHTTP(w, r)
 	})
 }

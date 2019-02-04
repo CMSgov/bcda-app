@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -60,6 +60,7 @@ func (suite *RouterTestSuite) TestDataRoute() {
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting data route: %s", err))
 	//assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
 }
+
 func (suite *RouterTestSuite) TestFileServerRoute() {
 	_, err := suite.GetStringBody(suite.apiServer.URL + "/api/v1/swagger")
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting swagger route: %s", err))
@@ -68,8 +69,40 @@ func (suite *RouterTestSuite) TestFileServerRoute() {
 	assert.Panics(suite.T(), func() {
 		FileServer(r, "/api/v1/swagger{}", http.Dir("./swaggerui"))
 	})
-
 }
+
+func (suite *RouterTestSuite) TestHTTPServerRedirect() {
+	router := NewHTTPRouter()
+
+	// Redirect GET http requests to https
+	req, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	res := w.Result()
+
+	assert.Nil(suite.T(), err, "redirect GET http to https")
+	assert.Equal(suite.T(), 301, res.StatusCode, "http to https redirect return correct status code")
+	assert.Equal(suite.T(), "close", res.Header.Get("Connection"), "http to https redirect sets 'connection: close' header")
+	assert.Contains(suite.T(), res.Header.Get("Location"), "https://", "location response header contains 'https://'")
+
+	// Only respond to GET requests
+	req, err = http.NewRequest("POST", "/", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	res = w.Result()
+
+	assert.Nil(suite.T(), err, "redirect POST http to https")
+	assert.Equal(suite.T(), 405, res.StatusCode, "http to https redirect rejects POST requests")
+}
+
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))
 }
