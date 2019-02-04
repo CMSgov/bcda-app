@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 
 	vegeta "github.com/tsenart/vegeta/lib"
@@ -24,44 +25,40 @@ func init() {
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
+	flag.StringVar(&reportFilePath, "report_path", "../../test_results/performance", "path to write the result.html")
 	flag.BoolVar(&encrypt, "encrypt", true, "whether to disable encryption")
 	flag.Parse()
 
-	// create folder if doesn't exist for storing the results, maybe create env var later
-	reportFilePath = "results/"
+	// create folder if doesn't exist for storing the results
 	if _, err := os.Stat(reportFilePath); os.IsNotExist(err) {
 		err := os.MkdirAll(reportFilePath, os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
 	}
-
 }
 
 func main() {
-	var buf bytes.Buffer
-
 	if appTestToken != "" {
 		targeter := makeTarget(appTestToken)
 		apiResults := runAPITest(targeter)
+		var buf bytes.Buffer
 		_, err := apiResults.WriteTo(&buf)
 		if err != nil {
 			panic(err)
 		}
+		writeResults("api_plot", buf)
 	}
 
 	if workerTestToken != "" {
 		targeter := makeTarget(workerTestToken)
 		workerResults := runWorkerTest(targeter)
+		var buf bytes.Buffer
 		_, err := workerResults.WriteTo(&buf)
 		if err != nil {
 			panic(err)
 		}
-	}
-
-	data := buf.Bytes()
-	if len(data) > 0 {
-		writeResults(data)
+		// this will be monitored via new relic, but we have lots of flexibility going forward.
 	}
 }
 
@@ -87,46 +84,55 @@ func makeTarget(accessToken string) vegeta.Targeter {
 
 func runAPITest(target vegeta.Targeter) *plot.Plot {
 	fmt.Printf("running api performance for: %s\n", endpoint)
-	// 600 request a minute for 1 minute
-	duration := 1 * time.Minute
-	rate := vegeta.Rate{Freq: 600, Per: time.Minute}
+	title := plot.Title(fmt.Sprintf("apiTest_%s encrypt: %s", endpoint, strconv.FormatBool(encrypt)))
+	p := plot.New(title)
+	defer p.Close()
 
-	plot := plot.New()
-	defer plot.Close()
+	// 100 request every 10 seconds for 60 seconds = 600 total calls
+	duration := time.Minute
+	rate := vegeta.Rate{Freq: 100, Per: 10 * time.Second}
+	plotAttack(p, target, rate, duration)
 
-	attacker := vegeta.NewAttacker()
-	for results := range attacker.Attack(target, rate, duration, fmt.Sprintf("apiTest:_%s", endpoint)) {
-		err := plot.Add(results)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return plot
+	return p
 }
 
 func runWorkerTest(target vegeta.Targeter) *plot.Plot {
 	fmt.Printf("running worker performance for: %s\n", endpoint)
+	title := plot.Title(fmt.Sprintf("workerTest_%s encrypt: %s", endpoint, strconv.FormatBool(encrypt)))
+	p := plot.New(title)
+	defer p.Close()
+
 	// 1 request for 300,000 beneficiaries
-	duration := 1 * time.Minute
+	duration := time.Minute
 	rate := vegeta.Rate{Freq: 1, Per: time.Minute}
+	plotAttack(p, target, rate, duration)
 
-	plot := plot.New()
-	defer plot.Close()
+	return p
+}
 
+// need to make rate into some sort of pretty string format
+func plotAttack(p *plot.Plot, t vegeta.Targeter, r vegeta.Rate, du time.Duration) {
 	attacker := vegeta.NewAttacker()
-	for results := range attacker.Attack(target, rate, duration, fmt.Sprintf("workerTest:_%s", endpoint)) {
-		err := plot.Add(results)
+	for results := range attacker.Attack(t, r, du, fmt.Sprintf("%dps:", r.Freq)) {
+		err := p.Add(results)
 		if err != nil {
 			panic(err)
 		}
 	}
-	return plot
 }
 
-func writeResults(data []byte) {
-	fmt.Printf("Writing results:")
-	err := ioutil.WriteFile(reportFilePath+"/performance_plot.html", data, os.ModePerm)
-	if err != nil {
-		panic(err)
+func writeResults(filename string, buf bytes.Buffer) {
+	data := buf.Bytes()
+	if len(data) > 0 {
+		var s string
+		if encrypt {
+			s = "encrypt"
+		}
+		fn := fmt.Sprintf("%s/%s_%s.html", reportFilePath, filename, s)
+		fmt.Printf("Writing results: %s\n", fn)
+		err := ioutil.WriteFile(fn, data, 0644)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
