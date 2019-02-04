@@ -1,7 +1,6 @@
-package plugins
+package auth
 
 import (
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"testing"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -48,7 +47,7 @@ func (s *OktaAuthPluginTestSuite) TestRevokeClientCredentials() {
 
 func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {
 	t, err := s.o.RequestAccessToken([]byte("{}"))
-	assert.IsType(s.T(), auth.Token{}, t)
+	assert.IsType(s.T(), Token{}, t)
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 

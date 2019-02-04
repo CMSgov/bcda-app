@@ -1,10 +1,9 @@
-package plugins
+package auth
 
 import (
 	"errors"
-	"github.com/dgrijalva/jwt-go"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type OktaAuthPlugin struct{}
@@ -29,8 +28,8 @@ func (o *OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
-func (o *OktaAuthPlugin) RequestAccessToken(params []byte) (auth.Token, error) {
-	return auth.Token{}, errors.New("not yet implemented")
+func (o *OktaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
+	return Token{}, errors.New("not yet implemented")
 }
 
 func (o *OktaAuthPlugin) RevokeAccessToken(tokenString string) error {
