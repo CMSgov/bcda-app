@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.performance_test
     volumes:
-      - ./test:/go/src/github.com/CMSgov/bcda-app/test
+      - .:/go/src/github.com/CMSgov/bcda-app
       - ./shared_files:/go/src/github.com/CMSgov/bcda-app/shared_files
     environment:
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem

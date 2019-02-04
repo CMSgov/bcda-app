@@ -2,7 +2,7 @@ FROM golang:1.10.6
 
 RUN go get -u github.com/tsenart/vegeta
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/test
+WORKDIR /go/src/github.com/CMSgov/bcda-app/
 COPY . .
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/shared_files
