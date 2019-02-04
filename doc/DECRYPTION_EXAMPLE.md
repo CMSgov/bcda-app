@@ -16,7 +16,6 @@ To complete this decryption example, you will need:
 - You can write your own decryption code later based on the [documentation](../API.md).  Today we'll use the [python example decryption code](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4), which requires:
     - [Python](https://www.python.org/downloads/) installed
     - [decrypt.py](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/decrypt.py) and [requirements.txt](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/requirements.txt) downloaded to the same directory
-    - Run `pip install requirements.txt` from that same directory to download any required libraries
 
 
 ### Exploring the API with Swagger
@@ -29,16 +28,14 @@ We'll be interacting with the [BCDA API](../API.md) in your browser using [Swagg
 
 Let's provide our token to get full access to the API.
 
-- Click the `Authorize` button
-- Paste your `token` in the `api_key` box
-
 <img src="images/decrypt_demo_02.png" alt="Authorization dialog" width="350" />
 
+- Click the `Authorize` button
+- Paste your `token` in the `api_key` box
 - Click `Authorize`, then `Close`
 
 <img src="images/decrypt_demo_03.png" alt="API menu" width="600" />
 
-### Requesting a file
 We have two types of encrypted files we could download: Patient and Explanation of Benefit (EoB).  Let's choose EoB today.
 
 - Click the `/api/v1/ExplanationOfBenefit/$export` link
@@ -63,7 +60,7 @@ If you'd like to repeat this from the command line or implement this API call in
 
 <img src="images/decrypt_demo_07.png" alt="Job status response" width="600" />
 
-Depending on the size of the file, the job may take some time.  If the job is not yet complete, this will give us status information.  Simply wait a few seconds and click execute again until the job completes and you get a result for a completed job as shown below.  We can download the file from the URL provided.
+Depending on the size of the file, the job may take some time.  If the job is not yet complete, this will give us status information.  Shown below are the results for our completed job.  We can download the file from the URL provided.
 
 Take special note of the new `KeyMap` section of the response.  To decrypt the file, we will need the filename (the first part of the keymap) and the [symmetric key](../ENCRYPTION.md#how-we-encrypt) (the second part of the keymap), as shown above.  There are no spaces in either one.
 
@@ -81,7 +78,6 @@ Our last API task is to download the encrypted file.
 
 <img src="images/decrypt_demo_09.png" alt="Download file" width="600" />
 
-### Decrypting a file
 After downloading the file, we'll move to the command line.  Navigate to the directory you saved `decrypt.py` and `requirements.txt` in [earlier](#gathering-the-tools).
 
 <img src="images/decrypt_demo_10.png" alt="Directory with decryption tool" width="450" />
@@ -91,7 +87,7 @@ Let's verify that Python is running properly.
 
 <img src="images/decrypt_demo_11.png" alt="Decrypt.py syntax" width="600" />
 
-- Rename the downloaded file with the filename you saved earlier. **This is extremely important as the file name is used as part of the file decryption process and using a different file name will cause decryption to fail.**
+- Rename the downloaded file with the filename you saved earlier.
 
 <img src="images/decrypt_demo_12.png" alt="Rename downloaded file" width="600" />
 
@@ -101,7 +97,6 @@ We're now ready to decrypt the file!  Our sample decryption tool will print the 
         --pk   [location_of_private_key] 
         --file [location_of_encrypted_file] 
         --key  [symmetric_key_value]
-        > filename.txt
 
 <img src="images/decrypt_demo_13.png" alt="Running decrypt.py" width="900" />
 
@@ -116,7 +111,7 @@ Take a look at the result.  If you do not see unencrypted [NDJSON](http://ndjson
 ### Troubleshooting
 #### Authentication problems in Swagger
 - Has your token expired?  [Ask the support team](https://groups.google.com/forum/#!forum/bc-api) for a new token.
-- Is it possible you clicked on `Logout`?  Is the lock on the `Authorize` icon not closed?  Click it again, and after pasting your token in the `api_key` box, make sure to click the `Authorize` button.
+- Is the lock on the `Authorize` icon not closed?  Click it again, and after pasting your token in the `api_key` box, make sure to click the `Authorize` button.
 - Are there any spaces or newlines in your token?  Remove them and paste it as a single line.
 
 #### Python not installed
