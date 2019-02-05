@@ -9,7 +9,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/go-chi/chi"
-	log "github.com/sirupsen/logrus"
 )
 
 func NewAPIRouter() http.Handler {
