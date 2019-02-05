@@ -47,7 +47,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		writeResults("api_plot", buf)
+		writeResults(fmt.Sprintf("%s_api_plot", endpoint), buf)
 	}
 
 	if workerTestToken != "" {
@@ -126,9 +126,9 @@ func writeResults(filename string, buf bytes.Buffer) {
 	if len(data) > 0 {
 		var s string
 		if encrypt {
-			s = "encrypt"
+			s = "_encrypt"
 		}
-		fn := fmt.Sprintf("%s/%s_%s.html", reportFilePath, filename, s)
+		fn := fmt.Sprintf("%s/%s%s.html", reportFilePath, filename, s)
 		fmt.Printf("Writing results: %s\n", fn)
 		err := ioutil.WriteFile(fn, data, 0644)
 		if err != nil {
