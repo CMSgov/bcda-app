@@ -100,6 +100,15 @@ func setUpApp() *cli.App {
 					autoMigrate()
 				}
 
+				// Accepts and redirects HTTP requests to HTTPS
+				srv := &http.Server{
+					Handler:      NewHTTPRouter(),
+					Addr:         ":3001",
+					ReadTimeout:  5 * time.Second,
+					WriteTimeout: 5 * time.Second,
+				}
+				go func() { log.Fatal(srv.ListenAndServe()) }()
+
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
 					ReadTimeout:  time.Duration(getEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
