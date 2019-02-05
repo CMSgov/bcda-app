@@ -79,6 +79,7 @@ func makeTarget(accessToken string) vegeta.Targeter {
 		URL:    url,
 		Header: header,
 	})
+
 	return targeter
 }
 
@@ -130,7 +131,7 @@ func writeResults(filename string, buf bytes.Buffer) {
 		}
 		fn := fmt.Sprintf("%s/%s_%s.html", reportFilePath, filename, s)
 		fmt.Printf("Writing results: %s\n", fn)
-		err := ioutil.WriteFile(fn, data, os.ModePerm)
+		err := ioutil.WriteFile(fn, data, 0644)
 		if err != nil {
 			panic(err)
 		}
