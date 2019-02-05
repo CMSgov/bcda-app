@@ -113,6 +113,7 @@ func (s *BackendTestSuite) TestGetJWClaims() {
 }
 
 func (s *BackendTestSuite) TestIsBlacklisted() {
+	// test uses fixture data
 	userID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 
@@ -129,21 +130,20 @@ func (s *BackendTestSuite) TestIsBlacklisted() {
 	if db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to find User"))
 	}
-	t, tokenString, err := s.AuthBackend.CreateToken(user)
-	assert.Nil(s.T(), err)
-	// Convert tokenString to a jwtToken
-	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
-	assert.Nil(s.T(), err)
-	// Test to see if this is blacklisted
-	blacklisted := s.AuthBackend.IsBlacklisted(jwtToken)
+	activeToken := jwt.New(jwt.SigningMethodRS512)
+	activeToken.Claims = jwt.MapClaims{
+		"exp": 12345,
+		"iat": 123,
+		"sub": userID,
+		"aco": acoID,
+		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+	}
+
+	blacklisted := s.AuthBackend.IsBlacklisted(activeToken)
 	assert.False(s.T(), blacklisted)
 
-	t.Active = false
-	db.Save(&t)
-
-	blacklisted = s.AuthBackend.IsBlacklisted(jwtToken)
-	assert.Nil(s.T(), err)
-	assert.True(s.T(), blacklisted)
+	blacklisted = s.AuthBackend.IsBlacklisted(activeToken)
+	assert.False(s.T(), blacklisted)
 }
 
 func (s *BackendTestSuite) TestPrivateKey() {
