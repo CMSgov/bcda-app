@@ -69,8 +69,6 @@ services:
       dockerfile: Dockerfiles/Dockerfile.documentation
     volumes:
     - .:/go/src/github.com/CMSgov/bcda-app
-    depends_on:
-      - static_site
   static_site:
     build:
       context: .
