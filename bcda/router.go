@@ -9,7 +9,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/go-chi/chi"
-	log "github.com/sirupsen/logrus"
 )
 
 func NewAPIRouter() http.Handler {
@@ -18,13 +17,7 @@ func NewAPIRouter() http.Handler {
 	r.Use(logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
-	r.Get(m.WrapHandler("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("Hello world!"))
-		if err != nil {
-			log.Error(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-	}))
+	FileServer(r, "/", http.Dir("./_site"))
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
