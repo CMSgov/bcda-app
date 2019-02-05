@@ -79,7 +79,6 @@ func makeTarget(accessToken string) vegeta.Targeter {
 		URL:    url,
 		Header: header,
 	})
-
 	return targeter
 }
 
@@ -91,7 +90,7 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 
 	// 100 request every 10 seconds for 60 seconds = 600 total calls
 	duration := time.Minute
-	rate := vegeta.Rate{Freq: 100, Per: 10 * time.Second}
+	rate := vegeta.Rate{Freq: 2, Per: 10 * time.Second}
 	plotAttack(p, target, rate, duration)
 
 	return p
