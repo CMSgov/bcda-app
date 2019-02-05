@@ -130,7 +130,7 @@ func writeResults(filename string, buf bytes.Buffer) {
 		}
 		fn := fmt.Sprintf("%s/%s_%s.html", reportFilePath, filename, s)
 		fmt.Printf("Writing results: %s\n", fn)
-		err := ioutil.WriteFile(fn, data, 0644)
+		err := ioutil.WriteFile(fn, data, os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
