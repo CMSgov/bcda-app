@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/auth/plugins"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
@@ -59,17 +58,6 @@ func init() {
 	monitoring.GetMonitor()
 }
 
-// a plugin instance is like a connection or an http request; it is ephemeral (the backend it interfaces to is not)
-func GetAuthProvider() auth.Provider {
-	v := os.Getenv("BCDA_AUTH_PROVIDER")
-	switch v {
-	case "Alpha":
-		return new(plugins.AlphaAuthPlugin) // could fallthrough here, but prefer to be explicit
-	default:
-		return new(plugins.AlphaAuthPlugin)
-	}
-}
-
 func main() {
 	app := setUpApp()
 	err := app.Run(os.Args)
@@ -111,6 +99,15 @@ func setUpApp() *cli.App {
 				if os.Getenv("DEBUG") == "true" {
 					autoMigrate()
 				}
+
+				// Accepts and redirects HTTP requests to HTTPS
+				srv := &http.Server{
+					Handler:      NewHTTPRouter(),
+					Addr:         ":3001",
+					ReadTimeout:  5 * time.Second,
+					WriteTimeout: 5 * time.Second,
+				}
+				go func() { log.Fatal(srv.ListenAndServe()) }()
 
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
@@ -378,7 +375,7 @@ func createAccessToken(userID string) (string, error) {
 	}
 
 	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.ACOID.String(), 72)
-	token, err := GetAuthProvider().RequestAccessToken([]byte(params))
+	token, err := auth.GetProvider().RequestAccessToken([]byte(params))
 	if err != nil {
 		return "", err
 	}
@@ -391,7 +388,7 @@ func revokeAccessToken(accessToken string) error {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	authProvider := GetAuthProvider()
+	authProvider := auth.GetProvider()
 
 	return authProvider.RevokeAccessToken(accessToken)
 }
@@ -420,14 +417,14 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return
 	}
 
-	authProvider := GetAuthProvider()
+	authProvider := auth.GetProvider()
 
 	params := fmt.Sprintf(`{"clientID" : "%s"}`, aco.UUID.String())
 	result, err := authProvider.RegisterClient([]byte(params))
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID, err = plugins.GetParamString(result, "clientID")
+	aco.ClientID, err = auth.GetParamString(result, "clientID")
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}

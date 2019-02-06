@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
@@ -16,16 +14,10 @@ import (
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger(), ConnectionClose)
+	r.Use(logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
-	r.Get(m.WrapHandler("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("Hello world!"))
-		if err != nil {
-			log.Error(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-	}))
+	FileServer(r, "/", http.Dir("./_site"))
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
@@ -48,9 +40,20 @@ func NewAPIRouter() http.Handler {
 func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
+	r.Use(HSTSHeader, ConnectionClose)
+	r.With(auth.RequireTokenAuth, logging.NewStructuredLogger(), auth.RequireTokenACOMatch).
+		Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
+	return r
+}
+
+func NewHTTPRouter() http.Handler {
+	r := chi.NewRouter()
+	m := monitoring.GetMonitor()
 	r.Use(ConnectionClose)
-	r.With(auth.ParseToken, logging.NewStructuredLogger(), auth.RequireTokenAuth,
-		auth.RequireTokenACOMatch).Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
+	r.With(logging.NewStructuredLogger()).Get(m.WrapHandler("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		url := "https://" + req.Host + req.URL.String()
+		http.Redirect(w, req, url, http.StatusMovedPermanently)
+	})))
 	return r
 }
 

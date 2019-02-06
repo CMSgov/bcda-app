@@ -1,6 +1,10 @@
 package auth
 
-import "github.com/dgrijalva/jwt-go"
+import (
+	"os"
+
+	jwt "github.com/dgrijalva/jwt-go"
+)
 
 // Provider is an interface for operations performed through an authentication provider.
 type Provider interface {
@@ -30,4 +34,14 @@ type Provider interface {
 
 	// Decode a base64 encoded token string
 	DecodeJWT(tokenString string) (jwt.Token, error)
+}
+
+func GetProvider() Provider {
+	v := os.Getenv("BCDA_AUTH_PROVIDER")
+	switch v {
+	case "Alpha":
+		return new(AlphaAuthPlugin)
+	default:
+		return new(AlphaAuthPlugin)
+	}
 }

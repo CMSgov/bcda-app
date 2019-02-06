@@ -45,6 +45,7 @@ services:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
       - "3000:3000"
+      - "3001:3001"
     depends_on:
       - queue
   worker:
@@ -68,3 +69,9 @@ services:
       dockerfile: Dockerfiles/Dockerfile.documentation
     volumes:
     - .:/go/src/github.com/CMSgov/bcda-app
+  static_site:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.static_site
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
