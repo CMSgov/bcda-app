@@ -120,28 +120,30 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthBlackListed() {
 	// Blacklisted Token test
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
+	// using fixture data
 	userID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
+	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	var user models.User
 	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
 		assert.NotNil(s.T(), errors.New("Unable to find User"))
 	}
-	t, tokenString, err := s.AuthBackend.CreateToken(user)
-	assert.Nil(s.T(), err)
-	// Convert tokenString to a jwtToken
-	jwtToken, err := s.AuthBackend.GetJWToken(tokenString)
-	assert.Nil(s.T(), err)
+	var aco models.ACO
+	if db.Find(&aco, "UUID = ?", acoID).RecordNotFound() {
+		assert.NotNil(s.T(), errors.New("Unable to find ACO"))
+	}
 
-	t.Active = false
-	db.Save(&t)
-
-	// just to be sure it is blacklisted
-	blacklisted := s.AuthBackend.IsBlacklisted(jwtToken)
-	assert.Nil(s.T(), err)
-	assert.True(s.T(), blacklisted)
+	notActiveToken := jwt.New(jwt.SigningMethodRS512)
+	notActiveToken.Claims = jwt.MapClaims{
+		"exp": 12345,
+		"iat": 123,
+		"sub": userID,
+		"aco": acoID,
+		"id":  "f5bd210a-5f95-4ba6-a167-2e9c95b5fbc1",
+	}
 
 	// The actual test
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", jwtToken)
+	ctx = context.WithValue(ctx, "token", notActiveToken)
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 401, s.rr.Code)
