@@ -17,12 +17,15 @@ import (
 var (
 	appTestToken, workerTestToken, apiHost, proto, endpoint, reportFilePath string
 	encrypt                                                                 bool
+	freq, duration                                                          int
 )
 
 func init() {
 	flag.StringVar(&appTestToken, "api_test_token", "", "access token used for api performance testing")
 	flag.StringVar(&workerTestToken, "worker_test_token", "", "access token used for worker performance testing")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
+	flag.IntVar(&duration, "duration", 60, "seconds: the total time to run the test")
+	flag.IntVar(&freq, "freq", 10, "the number of requests per second")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
 	flag.StringVar(&reportFilePath, "report_path", "../../test_results/performance", "path to write the result.html")
@@ -88,10 +91,10 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 	p := plot.New(title)
 	defer p.Close()
 
-	// 100 request every 10 seconds for 60 seconds = 600 total calls
-	duration := time.Minute
-	rate := vegeta.Rate{Freq: 2, Per: 10 * time.Second}
-	plotAttack(p, target, rate, duration)
+	// 10 request every second for 60 seconds = 600 total calls
+	d := time.Second * time.Duration(duration)
+	rate := vegeta.Rate{Freq: freq, Per: time.Second}
+	plotAttack(p, target, rate, d)
 
 	return p
 }
@@ -103,9 +106,9 @@ func runWorkerTest(target vegeta.Targeter) *plot.Plot {
 	defer p.Close()
 
 	// 1 request for 300,000 beneficiaries
-	duration := time.Minute
+	d := time.Minute
 	rate := vegeta.Rate{Freq: 1, Per: time.Minute}
-	plotAttack(p, target, rate, duration)
+	plotAttack(p, target, rate, d)
 
 	return p
 }
