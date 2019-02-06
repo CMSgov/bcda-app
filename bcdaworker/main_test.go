@@ -71,13 +71,18 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
+
+	// 33 entries in test EOB data returned by bbc.getData, times two beneficiaries
+	for i := 0; i < 66; i++ {
+		assert.True(t, scanner.Scan())
 		var jsonOBJ map[string]interface{}
 		err := json.Unmarshal(scanner.Bytes(), &jsonOBJ)
 		assert.Nil(t, err)
-		assert.NotNil(t, jsonOBJ["fullUrl"])
-		assert.NotNil(t, jsonOBJ["resource"])
+		assert.NotNil(t, jsonOBJ["fullUrl"], "JSON should contain a value for `fullUrl`.")
+		assert.NotNil(t, jsonOBJ["resource"], "JSON should contain a value for `resource`.")
 	}
+	assert.False(t, scanner.Scan(), "There should be only 66 entries in the file.")
+
 	bbc.AssertExpectations(t)
 
 	os.Remove(filePath)
