@@ -236,7 +236,7 @@ template {
 }
 
 
-/*! Design System - Core v{{version}} */
+/*! Design System - Core v{{version}}
 
 @font-face {
     font-family: Bitter;
@@ -293,11 +293,12 @@ template {
     src: url(../fonts/OpenSans-Bold-webfont.eot);
     src: url(../fonts/OpenSans-Bold-webfont.eot?#iefix) format("embedded-opentype"), url(../fonts/OpenSans-Bold-webfont.woff2) format("woff2"), url(../fonts/OpenSans-Bold-webfont.woff) format("woff"), url(../fonts/OpenSans-Bold-webfont.ttf) format("truetype")
 }
+*/
 
 .ds-base,
 .ds-base--inverse {
-    font-family: "Open Sans", Helvetica, sans-serif;
-    font-size: 16px;
+    font-family: Roboto, sans-serif;
+    font-size: 18px;
     line-height: 1.5
 }
 
@@ -6044,7 +6045,7 @@ BCDA changes below this line
 }
 
 .blueberry-lime-gradient-background {
-background: linear-gradient(30deg, #339392, #339392 70%, #62C5C4);
+background: linear-gradient(30deg, #339392, #339392 73%, #62C5C4);
 }
 
 .solid-container {
@@ -6091,15 +6092,19 @@ article h2::after {
 
 .button p{
   text-align: center;
-  background-color: #0071BC;
-  width:60%;
+  width:100%;
   margin: auto;
-  border-radius:3px;
 }
 
 .button p a{
   color:white;
   text-decoration: none;
+  width:60%;
+  border-radius:3px;
+  padding: 10px;
+  background-color: #0071BC;
+  display:block;
+  margin:auto;
 }
 
 #google_logo {
@@ -6113,7 +6118,7 @@ article h2::after {
     font-size: 24px;
 }
 
-@media only screen and (max-width: 995px){
+@media only screen and (max-width: 1090px){
   .api-pattern {
     background:none;
     background-color: #339392;
@@ -6121,5 +6126,15 @@ article h2::after {
   .solid-container {
       width: 100%;
   }
+
+}
+
+@media only screen and (min-width: 1960px){
+    .solid-container {
+        width: 80%;
+    }
+    .blueberry-lime-gradient-background {
+        background: linear-gradient(30deg, #339392, #339392 83%, #62C5C4);
+    }
 
 }
