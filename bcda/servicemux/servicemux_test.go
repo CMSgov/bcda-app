@@ -49,7 +49,7 @@ func (s *ServiceMuxTestSuite) TestAddServer() {
 	}
 }
 
-func (s *ServiceMuxTestSuite) TestServe_NoCert() {
+func (s *ServiceMuxTestSuite) TestServeNoCert() {
 	origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
 	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
@@ -62,7 +62,7 @@ func (s *ServiceMuxTestSuite) TestServe_NoCert() {
 	assert.Panics(s.T(), sm.Serve)
 }
 
-func (s *ServiceMuxTestSuite) TestServe_NoKey() {
+func (s *ServiceMuxTestSuite) TestServeNoKey() {
 	origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
 	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
@@ -82,7 +82,7 @@ var testHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
+func (s *ServiceMuxTestSuite) TestServeServeHTTPS() {
 	srv := &http.Server{
 		Handler: testHandler,
 	}
@@ -126,7 +126,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
 	assert.Equal(s.T(), "Test", string(body))
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTPS_badKeypair() {
+func (s *ServiceMuxTestSuite) TestServeServeHTTPSBadKeypair() {
 	srv := &http.Server{
 		Handler: testHandler,
 	}
@@ -147,7 +147,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS_badKeypair() {
 	assert.Panics(s.T(), sm.Serve)
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
+func (s *ServiceMuxTestSuite) TestServeServeHTTP() {
 	srv := http.Server{
 		Handler: testHandler,
 	}
@@ -185,7 +185,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
 	assert.Equal(s.T(), "Test", string(b))
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTP_emptyPath() {
+func (s *ServiceMuxTestSuite) TestServeServeHTTPEmptyPath() {
 	srv := http.Server{
 		Handler: testHandler,
 	}
@@ -223,7 +223,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP_emptyPath() {
 	assert.Equal(s.T(), "Test", string(b))
 }
 
-func (s *ServiceMuxTestSuite) TestIsHTTPS_false() {
+func (s *ServiceMuxTestSuite) TestIsHTTPSFalse() {
 	req := httptest.NewRequest("GET", "/", nil)
 	assert.False(s.T(), IsHTTPS(req))
 }
