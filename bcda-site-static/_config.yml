@@ -17,7 +17,7 @@ destination: ../bcda/_site
 title: Beneficiary Claims Data API
 email: bc-api@googlegroups.com
 description: >- # this means to ignore newlines until "baseurl:"
-  Shared Savings Program ACOs can use this FHIR-based API to retrieve bulk claims data related to their assigned beneficiaries. Under construction; feedback invited.
+  Shared Savings Program ACOs can use this FHIR-based API to retrieve bulk Medicare claims data related to their assignable or prospectively assigned beneficiaries. Under construction; feedback invited.
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 #twitter_username: jekyllrb
