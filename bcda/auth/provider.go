@@ -41,6 +41,8 @@ func GetProvider() Provider {
 	switch v {
 	case "Alpha":
 		return new(AlphaAuthPlugin)
+	case "Okta":
+		return new(OktaAuthPlugin)
 	default:
 		return new(AlphaAuthPlugin)
 	}
