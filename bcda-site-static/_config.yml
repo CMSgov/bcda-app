@@ -19,7 +19,7 @@ email: bc-api@googlegroups.com
 description: >- # this means to ignore newlines until "baseurl:"
   Shared Savings Program ACOs can use this FHIR-based API to retrieve bulk claims data related to their assigned beneficiaries. Under construction; feedback invited.
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
+url: "http://sandbox.bcda.cms.gov" # This is a kludge for HIMMS, we can fix it later as needed. the base hostname & protocol for your site, e.g. http://example.com
 #twitter_username: jekyllrb
 #github_username:  jekyll
 cssurl: assets/css/static-main.css
