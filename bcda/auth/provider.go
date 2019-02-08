@@ -2,14 +2,58 @@ package auth
 
 import (
 	"os"
+	"strings"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
+	log "github.com/sirupsen/logrus"
 )
 
-// Provider is an interface for operations performed through an authentication provider.
+const (
+	Alpha = "alpha"
+	Okta  = "okta"
+)
+
+var providerName = Alpha
+
+func init () {
+	SetProvider(strings.ToLower(os.Getenv(`BCDA_AUTH_PROVIDER`)))
+}
+
+func SetProvider(name string) {
+	if name != "" {
+		switch (strings.ToLower(name)) {
+		case Okta:
+			providerName = name
+		case Alpha:
+			providerName = name
+		default:
+			log.Infof(`Unknown providerName %s; using %s`, name, providerName)
+		}
+	}
+	log.Infof(`Auth is made possible by %s`, providerName)
+}
+
+func GetProvider() Provider {
+	switch providerName {
+	case Alpha:
+		return AlphaAuthPlugin{}
+	case Okta:
+		return OktaAuthPlugin{}
+	default:
+		return AlphaAuthPlugin{}
+	}
+}
+
+type Credentials struct {
+	ClientID     string
+	ClientSecret string
+	Token        Token
+}
+
+// Provider defines operations performed through an authentication provider.
 type Provider interface {
 	// Ask the auth Provider to register a software client for the ACO identified by localID.
-	RegisterClient(params []byte) ([]byte, error)
+	RegisterClient(localID string) (Credentials, error)
 
 	// Update data associated with the registered software client identified by clientID
 	UpdateClient(params []byte) ([]byte, error)
@@ -34,14 +78,4 @@ type Provider interface {
 
 	// Decode a base64 encoded token string
 	DecodeJWT(tokenString string) (jwt.Token, error)
-}
-
-func GetProvider() Provider {
-	v := os.Getenv("BCDA_AUTH_PROVIDER")
-	switch v {
-	case "Alpha":
-		return new(AlphaAuthPlugin)
-	default:
-		return new(AlphaAuthPlugin)
-	}
 }
