@@ -46,7 +46,7 @@ ctas:
 
 * {:.bcda_callout .no_list #how-can-i-learn-more} ![Google Groups Logo](assets/img/google_logo.png){:#google_logo} **How can I learn more about BCDA?** 
 
-   * {:.no_list} The BCDA is still in development. Please join the [Google Group](https://groups.google.com/forum/#!forum/bc-api) to receive updates.
+* {:.no_list} The BCDA is still in development. Please join the [Google Group](https://groups.google.com/forum/#!forum/bc-api){:target="_blank"} to receive updates.
 
    * {:.no_list} The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.
 
@@ -72,5 +72,5 @@ ctas:
 
    How is BCDA different from Blue Button 2.0? 
 
-   * Blue Button 2.0 provides FHIR-formatted data for one individual Medicare beneficiary at a time, to registered applications with beneficiary authorization. See [https://bluebutton.cms.gov/](https://bluebutton.cms.gov/).
+   * Blue Button 2.0 provides FHIR-formatted data for one individual Medicare beneficiary at a time, to registered applications with beneficiary authorization. See [https://bluebutton.cms.gov/](https://bluebutton.cms.gov/){:target="_blank"}.
    * BCDA provides FHIR-formatted bulk data files to an ACO for all of the beneficiaries eligible to a given Shared Savings Program ACO. BCDA does not require individual beneficiary authorization. 
