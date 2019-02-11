@@ -2,14 +2,14 @@
 layout: home
 title:  "Beneficiary Claims Data API"
 date:   2017-10-30 09:21:12 -0500
-description: Shared Savings Program ACOs can use this FHIR-based API to retrieve bulk claims data related to their assigned beneficiaries. Under construction; feedback invited.
+description: Shared Savings Program ACOs can use this FHIR-based API to retrieve bulk Medicare claims data related to their assignable or prospectively assigned beneficiaries. Under construction; feedback invited.
 landing-page: live
 gradient: "blueberry-lime-background"
 subnav-link-gradient: "blueberry-lime-link"
 sections:
   - Overview
   - What We've Learned
-  - How Can I Get Access
+  - How Can I Learn More
   - About the Data
 ctas:
   -
@@ -31,7 +31,7 @@ ctas:
 
    * Developers, analysts, and administrators at Shared Savings Program ACOs are invited to participate in this pilot process by joining our Google Group.
 
-## What has been learned from ACOs in the pilot?
+## What has been learned so far from ACOs in the pilot?
 {:#what-we-ve-learned}
 
    Developers, analysts, and administrators at ACOs have been instrumental in shaping CMS’ approach to this API. With their feedback, the team is implementing the following elements:
@@ -44,9 +44,9 @@ ctas:
    BCDA will continue to take an iterative approach to testing and learning from its users.
 
 
-* {:.bcda_callout .no_list #how-can-i-get-access} ![Google Groups Logo](assets/img/google_logo.png){:#google_logo} **How can I get access to BCDA?** 
+* {:.bcda_callout .no_list #how-can-i-learn-more} ![Google Groups Logo](assets/img/google_logo.png){:#google_logo} **How can I learn more about BCDA?** 
 
-   * {:.no_list} While the Beneficiary Claims Data API (BCDA) is still in development, we'll share updates about how to get access via the [Google Group](https://groups.google.com/forum/#!forum/bc-api).
+   * {:.no_list} The BCDA is still in development. Please join the [Google Group](https://groups.google.com/forum/#!forum/bc-api){:target="_blank"} to receive updates.
 
    * {:.no_list} The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.
 
@@ -72,5 +72,5 @@ ctas:
 
    How is BCDA different from Blue Button 2.0? 
 
-   * Blue Button 2.0 provides FHIR-formatted data for one individual Medicare beneficiary at a time, to registered applications with beneficiary authorization. See [https://bluebutton.cms.gov/](https://bluebutton.cms.gov/).
+   * Blue Button 2.0 provides FHIR-formatted data for one individual Medicare beneficiary at a time, to registered applications with beneficiary authorization. See [https://bluebutton.cms.gov/](https://bluebutton.cms.gov/){:target="_blank"}.
    * BCDA provides FHIR-formatted bulk data files to an ACO for all of the beneficiaries eligible to a given Shared Savings Program ACO. BCDA does not require individual beneficiary authorization. 
