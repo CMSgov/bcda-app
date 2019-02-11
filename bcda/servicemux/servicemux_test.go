@@ -2,6 +2,8 @@ package servicemux
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,20 +20,21 @@ type ServiceMuxTestSuite struct {
 }
 
 func (s *ServiceMuxTestSuite) TestNew() {
-	sm := New(os.Getenv("SM_TEST_ADDR"))
+	addr := getConfig().testAddress
+	sm := New(addr)
 	go func() {
 		defer sm.Close()
 	}()
 
 	assert.NotNil(s.T(), sm)
-	assert.Equal(s.T(), "127.0.0.1:0", sm.Addr)
+	assert.Equal(s.T(), addr, sm.Addr)
 	assert.NotNil(s.T(), sm.Listener)
 	assert.IsType(s.T(), tcpKeepAliveListener{}, sm.Listener)
 	assert.Empty(s.T(), sm.Servers)
 }
 
 func (s *ServiceMuxTestSuite) TestAddServer() {
-	sm := New(os.Getenv("SM_TEST_ADDR"))
+	sm := New(getConfig().testAddress)
 	go func() {
 		defer sm.Close()
 	}()
@@ -87,7 +90,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPS() {
 		Handler: testHandler,
 	}
 
-	sm := New(os.Getenv("SM_TEST_ADDR"))
+	sm := New(getConfig().testAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(srv, "/test")
@@ -131,7 +134,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPSBadKeypair() {
 		Handler: testHandler,
 	}
 
-	sm := New(os.Getenv("SM_TEST_ADDR"))
+	sm := New(getConfig().testAddress)
 	sm.AddServer(srv, "/test")
 
 	defer sm.Close()
@@ -152,7 +155,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTP() {
 		Handler: testHandler,
 	}
 
-	sm := New(os.Getenv("SM_TEST_ADDR"))
+	sm := New(getConfig().testAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "/test")
@@ -190,7 +193,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPEmptyPath() {
 		Handler: testHandler,
 	}
 
-	sm := New(os.Getenv("SM_TEST_ADDR"))
+	sm := New(getConfig().testAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "")
@@ -240,4 +243,20 @@ func resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly string) {
 	os.Setenv("BCDA_TLS_CERT", origTLSCert)
 	os.Setenv("BCDA_TLS_KEY", origTLSKey)
 	os.Setenv("HTTP_ONLY", origHTTPOnly)
+}
+
+type config struct {
+	testAddress string
+}
+
+func getConfig() config {
+	file, _ := os.Open("config_test.json")
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	config := config{}
+	err := decoder.Decode(&config)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return config
 }
