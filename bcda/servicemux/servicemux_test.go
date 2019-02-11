@@ -18,7 +18,7 @@ type ServiceMuxTestSuite struct {
 }
 
 func (s *ServiceMuxTestSuite) TestNew() {
-	sm := New("127.0.0.1:0")
+	sm := New(os.Getenv("SM_TEST_ADDR"))
 	go func() {
 		defer sm.Close()
 	}()
@@ -31,7 +31,7 @@ func (s *ServiceMuxTestSuite) TestNew() {
 }
 
 func (s *ServiceMuxTestSuite) TestAddServer() {
-	sm := New("127.0.0.1:0")
+	sm := New(os.Getenv("SM_TEST_ADDR"))
 	go func() {
 		defer sm.Close()
 	}()
@@ -87,7 +87,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPS() {
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(os.Getenv("SM_TEST_ADDR"))
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(srv, "/test")
@@ -131,7 +131,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPSBadKeypair() {
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(os.Getenv("SM_TEST_ADDR"))
 	sm.AddServer(srv, "/test")
 
 	defer sm.Close()
@@ -152,7 +152,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTP() {
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(os.Getenv("SM_TEST_ADDR"))
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "/test")
@@ -190,7 +190,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPEmptyPath() {
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(os.Getenv("SM_TEST_ADDR"))
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "")

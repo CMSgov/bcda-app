@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.unit_test
     environment:
+      - SM_TEST_ADDR=127.0.0.1:0
       - DB=postgresql://postgres:toor@db:5432
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
