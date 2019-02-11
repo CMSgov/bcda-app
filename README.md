@@ -49,9 +49,12 @@ Configure the `bcda` and `bcdaworker` apps by setting the following environment 
 BCDA_ERROR_LOG <file_path>
 BCDA_REQUEST_LOG <file_path>
 BCDA_BB_LOG <file_path>
+BCDA_OKTA_LOG <file_path>
 BB_CLIENT_CERT_FILE <file_path>
 BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
+OKTA_CLIENT_TOKEN <token>
+OKTA_CLIENT_ORGURL <url>
 FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
 ```
