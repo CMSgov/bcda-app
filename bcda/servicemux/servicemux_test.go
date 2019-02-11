@@ -85,7 +85,7 @@ var testHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (s *ServiceMuxTestSuite) TestServeServeHTTPS() {
+func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 	srv := &http.Server{
 		Handler: testHandler,
 	}
@@ -129,7 +129,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPS() {
 	assert.Equal(s.T(), "Test", string(body))
 }
 
-func (s *ServiceMuxTestSuite) TestServeServeHTTPSBadKeypair() {
+func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 	srv := &http.Server{
 		Handler: testHandler,
 	}
@@ -150,7 +150,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTPSBadKeypair() {
 	assert.Panics(s.T(), sm.Serve)
 }
 
-func (s *ServiceMuxTestSuite) TestServeServeHTTP() {
+func (s *ServiceMuxTestSuite) TestServeHTTP() {
 	srv := http.Server{
 		Handler: testHandler,
 	}
@@ -188,7 +188,7 @@ func (s *ServiceMuxTestSuite) TestServeServeHTTP() {
 	assert.Equal(s.T(), "Test", string(b))
 }
 
-func (s *ServiceMuxTestSuite) TestServeServeHTTPEmptyPath() {
+func (s *ServiceMuxTestSuite) TestServeHTTPEmptyPath() {
 	srv := http.Server{
 		Handler: testHandler,
 	}
