@@ -17,7 +17,8 @@
   <title>{% if page.title %}{{ page.title | escape }}{% else %}{{ site.title | escape }}{% endif %}</title>
   <meta name="description" content="{{ page.excerpt | default: site.description | strip_html | normalize_whitespace | truncate: 160 | escape }}">
 
-  <link rel="shortcut icon" type="image/x-icon"  href="{{ '/assets/img/favicon.ico' | relative_url }}" />
+  <link rel="shortcut icon" type="image/png"  href="{{ '/assets/img/favicon.png' | relative_url }}" />
+
   <link rel="canonical" href="{{ page.url | replace:'index.html','' | absolute_url }}">
 
   <link rel="stylesheet" href="{{ site.cssurl | relative_url }}" />
