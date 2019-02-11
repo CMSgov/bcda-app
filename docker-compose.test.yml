@@ -27,3 +27,11 @@ services:
       dockerfile: Dockerfiles/Dockerfile.postman_test
     volumes:
        - .:/go/src/github.com/CMSgov/bcda-app
+  performance_test:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.performance_test
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
+    environment:
+      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
