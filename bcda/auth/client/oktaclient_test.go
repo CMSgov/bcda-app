@@ -1,12 +1,14 @@
 // +build okta
 
-// To enable this test, edit:
-// 1. The gotestsum invocation in unit_test.sh.  After "--" you should add "-tags=okta".
-// 2. The OKTA_CLIENT_TOKEN value in docker-compose.test.yml.
+// To enable this test suite:
+// 1. Put an appropriate token into env var OKTA_CLIENT_TOKEN
+// 2. Put an existing Okta user email address into OKTA_EMAIL
+// 3. Run "go test -tags=okta" from the bcda/auth/client directory
 
 package client_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
@@ -25,8 +27,11 @@ func (s *OTestSuite) SetupTest() {
 }
 
 func (s *OTestSuite) TestFindUser() {
-	// This test user should be present in the Okta sandbox environment
-	u, err := client.FindUser("shawn@bcda.aco-group.us")
+	// The email in OKTA_EMAIL should represent a test user present in the Okta sandbox environment
+	userEmail, success := os.LookupEnv("OKTA_EMAIL")
+	assert.True(s.T(), success, "Please set OKTA_EMAIL to match a test user account")
+
+	u, err := client.FindUser(userEmail)
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", u)
 
