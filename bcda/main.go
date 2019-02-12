@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -57,7 +56,7 @@ func init() {
 		log.Info("Failed to open error log file; using default stderr")
 	}
 	monitoring.GetMonitor()
-	log.Info(fmt.Sprintf(`Auth is made possible by %T`, reflect.TypeOf(auth.GetProvider())))
+	log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 }
 
 func main() {
@@ -416,8 +415,6 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 	if err != nil {
 		return
 	}
-
-	// authProvider := auth.GetProvider()
 
 	creds, err := auth.GetProvider().RegisterClient(aco.UUID.String())
 	if err != nil {

@@ -16,6 +16,7 @@ const (
 var providerName = Alpha
 
 func init () {
+	log.SetFormatter(&log.JSONFormatter{})
 	SetProvider(strings.ToLower(os.Getenv(`BCDA_AUTH_PROVIDER`)))
 }
 
