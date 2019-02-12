@@ -20,7 +20,6 @@ ENV BCDA_BB_LOG /var/log/bcda-bb-request.log
 ENV BB_CLIENT_CERT_FILE ../shared_files/bb-dev-test-key.pem
 ENV BB_CLIENT_KEY_FILE ../shared_files/bb-dev-test-key.pem
 ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
-ENV OKTA_CLIENT_ORGURL https://cms-sandbox.oktapreview.com
 ENV FHIR_PAYLOAD_DIR ../bcdaworker/data
 ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
 

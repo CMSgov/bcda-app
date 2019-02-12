@@ -1,3 +1,9 @@
+// +build okta
+
+// To enable this test, edit:
+// 1. The gotestsum invocation in unit_test.sh.  After "--" you should add "-tags=okta".
+// 2. The OKTA_CLIENT_TOKEN value in docker-compose.test.yml.
+
 package client_test
 
 import (
