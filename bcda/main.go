@@ -44,6 +44,7 @@ type jobEnqueueArgs struct {
 }
 
 func init() {
+	createAPIDirs()
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_ERROR_LOG")
 
@@ -56,6 +57,21 @@ func init() {
 		log.Info("Failed to open error log file; using default stderr")
 	}
 	monitoring.GetMonitor()
+}
+
+func createAPIDirs() {
+	log.Info("TESTING API DIRECTORIES!!!!")
+	payload := os.Getenv("FHIR_PAYLOAD_DIR")
+	err := os.MkdirAll(payload, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+
+	}
+	archive := os.Getenv("FHIR_ARCHIVE_DIR")
+	err = os.MkdirAll(archive, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {

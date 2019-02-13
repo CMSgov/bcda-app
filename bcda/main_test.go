@@ -389,7 +389,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	// condition: no jobs exist
 	args := []string{"bcda", "archive-job-files"}
 	err := s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Nil(err)
 
 	// save a job to our db
 	j := models.Job{
