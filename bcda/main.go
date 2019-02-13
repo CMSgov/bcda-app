@@ -486,15 +486,6 @@ func archiveExpiring(hrThreshold int) error {
 		return err
 	}
 
-	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
-	if _, err = os.Stat(expDir); os.IsNotExist(err) {
-		err = os.MkdirAll(expDir, os.ModePerm)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
 	var lastJobError error
 	for _, j := range jobs {
 		t := j.CreatedAt
@@ -503,7 +494,7 @@ func archiveExpiring(hrThreshold int) error {
 
 			id := int(j.ID)
 			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+			expDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
@@ -527,12 +518,6 @@ func archiveExpiring(hrThreshold int) error {
 func cleanupArchive(hrThreshold int) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
-	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
-	if _, err := os.Stat(expDir); os.IsNotExist(err) {
-		// nothing to do if no base directory exists.
-		return nil
-	}
 
 	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
 
