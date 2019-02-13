@@ -19,8 +19,6 @@ type ServiceMuxTestSuite struct {
 	suite.Suite
 }
 
-const testAddress = "127.0.0.1:0" // nolint
-
 func (s *ServiceMuxTestSuite) TestNew() {
 	addr := getConfig().testAddress
 	sm := New(addr)
