@@ -56,7 +56,6 @@ func init() {
 }
 
 func createWorkerDirs() {
-	log.Info("TESTING WORKER DIRECTORIES!!!!")
 	staging := os.Getenv("FHIR_STAGING_DIR")
 	err := os.MkdirAll(staging, os.ModePerm)
 	if err != nil {

@@ -61,7 +61,6 @@ func init() {
 }
 
 func createAPIDirs() {
-	log.Info("TESTING API DIRECTORIES!!!!")
 	payload := os.Getenv("FHIR_PAYLOAD_DIR")
 	err := os.MkdirAll(payload, os.ModePerm)
 	if err != nil {
