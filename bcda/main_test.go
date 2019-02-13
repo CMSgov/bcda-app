@@ -11,12 +11,14 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -313,8 +315,13 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
-
-	outputPattern := regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}\n.+\..+\..+\n`)
+	var outputPattern *regexp.Regexp
+	switch auth.GetProvider().(type) {
+	case auth.AlphaAuthPlugin:
+		outputPattern = regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}\n.+\..+\..+\n`)
+	case auth.OktaAuthPlugin:
+		outputPattern = regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[!-~]{16}\n\[!-~]{32}n`)
+	}
 
 	// execute positive scenarios via CLI
 	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
@@ -688,27 +695,23 @@ func (s *MainTestSuite) TestStartApi() {
 
 func (s *MainTestSuite) TestCreateAlphaToken() {
 	const ttl = 42
-	claims := checkStructure(s, ttl, "dev")
-	checkTTL(s, claims, ttl)
+	checkStructure(s, ttl, "dev")
 }
 
 func (s *MainTestSuite) TestCreateSmallAlphaToken() {
 	const ttl = 24
-	claims := checkStructure(s, ttl, "Small")
-	checkTTL(s, claims, ttl)
+	checkStructure(s, ttl, "Small")
 }
 
 func (s *MainTestSuite) TestCreateMediumAlphaToken() {
 	const ttl = 24 * 365
-	claims := checkStructure(s, ttl, "MeDIum")
-	checkTTL(s, claims, ttl)
+	checkStructure(s, ttl, "MeDIum")
 }
 
 func (s *MainTestSuite) TestCreateLargeAlphaToken() {
 	endOfUnixTime, _ := time.Parse(time.RFC1123, "Tue, 19 Jan 2038 03:14:07 GMT")
 	ttl := int(time.Until(endOfUnixTime).Hours())
-	claims := checkStructure(s, ttl, "Large")
-	checkTTL(s, claims, ttl)
+	checkStructure(s, ttl, "Large")
 }
 
 func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
@@ -725,21 +728,27 @@ func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
 	assert.True(s.T(), assert.WithinDuration(s.T(), iat, exp, delta, "expires date %s not within %s hours of issued at", exp.Format(time.RFC850), ttl))
 }
 
-func checkStructure(s *MainTestSuite, ttl int, acoSize string) jwt.MapClaims {
+func checkStructure(s *MainTestSuite, ttl int, acoSize string) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	tokenInfo, err := createAlphaToken(ttl, acoSize)
+	require.Nil(s.T(), err, "Unexpected error %v", err)
 	lines := strings.Split(tokenInfo, "\n")
 	assert.Equal(s.T(), 3, len(lines))
 	tokenString := lines[2]
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), tokenString)
-	claims := s.AuthBackend.GetJWTClaims(tokenString)
-	assert.NotNil(s.T(), claims)
-	acoUUID := claims["aco"].(string)
-	assert.NotNil(s.T(), acoUUID)
-	var count int
-	db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
-	assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
-	return claims
+	require.NotEmpty(s.T(), tokenString)
+	//  need to handle credentials for different providers here; this will no longer always be a tokenString
+	switch auth.GetProvider().(type) {
+	case auth.AlphaAuthPlugin:
+		claims := s.AuthBackend.GetJWTClaims(tokenString)
+		require.NotNil(s.T(), claims)
+		acoUUID := claims["aco"].(string)
+		assert.NotNil(s.T(), acoUUID)
+		var count int
+		db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
+		assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
+		checkTTL(s, claims, ttl)
+	case auth.OktaAuthPlugin:
+		// nothing to see here; move along
+	}
 }
