@@ -346,7 +346,7 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	// Execute CLI with invalid inputs
 	args = []string{"bcda", "create-alpha-token"}
 	err = s.testApp.Run(args)
-	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', or 'Large'", err.Error())
+	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
@@ -358,7 +358,7 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 
 	args = []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "ABCD"}
 	err = s.testApp.Run(args)
-	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', or 'Large'", err.Error())
+	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
