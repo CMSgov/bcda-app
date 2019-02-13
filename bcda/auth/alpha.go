@@ -261,16 +261,16 @@ func checkRequiredClaims(claims jwt.MapClaims) error {
 	return nil
 }
 
-func isActive(token jwt.Token) bool {
+func isActive(token *jwt.Token) bool {
 	c := token.Claims.(jwt.MapClaims)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
-	return !db.Find(&token, "UUID = ? AND active = ?", c["id"], true).RecordNotFound()
+	var dbt Token
+	return !db.Find(&dbt, "UUID = ? AND active = ?", c["id"], true).RecordNotFound()
 }
 
-func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
+func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -279,9 +279,9 @@ func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
 	}
 	t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFunc)
 	if err != nil {
-		return jwt.Token{}, err
+		return &jwt.Token{}, err
 	}
-	return *t, nil
+	return t, nil
 }
 
 func getACOFromDB(acoUUID string) (models.ACO, error) {

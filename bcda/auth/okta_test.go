@@ -4,8 +4,9 @@ import (
 	"regexp"
 	"testing"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -16,17 +17,19 @@ const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 type OktaAuthPluginTestSuite struct {
 	suite.Suite
 	o auth.OktaAuthPlugin
+	m *auth.Mokta
 }
 
 func (s *OktaAuthPluginTestSuite) SetupTest() {
-	s.o = auth.OktaAuthPlugin{}
+	s.m = auth.NewMokta()
+	s.o = auth.NewOktaAuthPlugin(s.m)
 }
 
 func (s *OktaAuthPluginTestSuite) TestRegisterClient() {
 	c, err := s.o.RegisterClient(KnownFixtureACO)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
-	assert.Regexp(s.T(), regexp.MustCompile("[!-~]"), c.ClientID)
+	assert.Regexp(s.T(), regexp.MustCompile("[!-~]+"), c.ClientID)
 }
 
 func (s *OktaAuthPluginTestSuite) TestUpdateClient() {
@@ -68,9 +71,12 @@ func (s *OktaAuthPluginTestSuite) TestValidateJWT() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestDecodeJWT() {
-	t, err := s.o.DecodeJWT("")
-	assert.IsType(s.T(), jwt.Token{}, t)
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	token, err := s.m.NewToken("12345", "54321", 3600)
+	require.Nil(s.T(), err, "could not create token")
+	t, err := s.o.DecodeJWT(token)
+	assert.IsType(s.T(), &jwt.Token{}, t)
+	require.Nil(s.T(), err, "no error should have occurred")
+	assert.True(s.T(), t.Valid)
 }
 
 func TestOktaAuthPluginSuite(t *testing.T) {

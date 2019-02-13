@@ -41,6 +41,13 @@ services:
       - HTTP_ONLY=true
       - ENABLE_PATIENT_EXPORT=true
       - ENABLE_COVERAGE_EXPORT=true
+      - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
+      - OKTA_EMAIL=shawn@bcda.aco-group.us
+# Add the Okta values below and uncomment
+#     - BCDA_AUTH_PROVIDER=okta
+#     - OKTA_CLIENT_TOKEN=<token>
+#     - OKTA_OAUTH_SERVER_METADATA=
+#     - OKTA_OAUTH_SERVER_ID
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:

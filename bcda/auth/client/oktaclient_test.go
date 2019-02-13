@@ -26,6 +26,10 @@ func (s *OTestSuite) SetupTest() {
 	s.oClient = client.NewOktaClient()
 }
 
+func (s *OTestSuite) TestCreateClient() {
+
+}
+
 func (s *OTestSuite) TestFindUser() {
 	// The email in OKTA_EMAIL should represent a test user present in the Okta sandbox environment
 	userEmail, success := os.LookupEnv("OKTA_EMAIL")

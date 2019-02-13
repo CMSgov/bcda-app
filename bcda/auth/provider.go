@@ -28,10 +28,10 @@ func SetProvider(name string) {
 		case Alpha:
 			providerName = name
 		default:
-			log.Infof(`Unknown providerName %s; using %s`, name, providerName)
+			log.Infof(`unknown providerName %s; using %s`, name, providerName)
 		}
 	}
-	log.Infof(`Auth is made possible by %s`, providerName)
+	log.Infof(`auth is made possible by %s`, providerName)
 }
 
 func GetProvider() Provider {
@@ -39,7 +39,7 @@ func GetProvider() Provider {
 	case Alpha:
 		return AlphaAuthPlugin{}
 	case Okta:
-		return OktaAuthPlugin{}
+		return NewOktaAuthPlugin(NewOB())
 	default:
 		return AlphaAuthPlugin{}
 	}
@@ -77,6 +77,6 @@ type Provider interface {
 	// Assert that a base64 encoded token string is valid for accessing the BCDA API
 	ValidateJWT(tokenString string) error
 
-	// Decode a base64 encoded token string
-	DecodeJWT(tokenString string) (jwt.Token, error)
+	// Decode a base64 encoded token string into a structured token
+	DecodeJWT(tokenString string) (*jwt.Token, error)
 }
