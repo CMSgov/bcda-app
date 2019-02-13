@@ -55,6 +55,7 @@ BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
 OKTA_CLIENT_TOKEN <token>
 OKTA_CLIENT_ORGURL <url>
+OKTA_EMAIL <test_account>
 FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
 ```

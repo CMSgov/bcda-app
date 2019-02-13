@@ -11,8 +11,9 @@ services:
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
+      - OKTA_EMAIL=shawn@bcda.aco-group.us
 # Add the Okta token below and uncomment
-#     - OKTA_CLIENT_TOKEN=
+#     - OKTA_CLIENT_TOKEN=<token>
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
   smoke_test:

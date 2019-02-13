@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"net/http"
 	"os"
 
@@ -42,25 +43,31 @@ func init() {
 	}
 }
 
-func HealthCheck() (bool, error) {
+func HealthCheck() error {
 	reqId := uuid.NewRandom()
 	client := NewOktaClient()
-	oktaTestUser := "shawn@bcda.aco-group.us"
+
+	// The email in OKTA_EMAIL should represent a test user present in the Okta sandbox environment
+	oktaTestUser, success := os.LookupEnv("OKTA_EMAIL")
+	if !success {
+		logRequest(reqId).Warn("Unable to perform Okta HealthCheck.  Please set OKTA_EMAIL to match a test user account.")
+		return errors.New("cannot perform Okta health check without OKTA_EMAIL configured ")
+	}
 
 	logRequest(reqId).Info("Okta ping request")
 	users, resp, err := client.User.ListUsers(query.NewQueryParams(query.WithQ(oktaTestUser)))
 	if err != nil {
 		logError(err, reqId).Error("Okta ping request error")
-		return false, err
+		return err
 	}
 
 	if len(users) >= 1 {
 		logResponse(resp.StatusCode, reqId).Info("Okta ping request successful")
-		return true, err
+		return nil
 	}
 
 	logResponse(resp.StatusCode, reqId).Info("Okta ping request unsuccessful")
-	return false, nil
+	return errors.New("ping unsuccessful ")
 }
 
 func DeleteUser(userId string) (bool, error) {
@@ -82,9 +89,8 @@ func DeleteUser(userId string) (bool, error) {
 func FindUser(email string) (string, error) {
 	reqId := uuid.NewRandom()
 	client := NewOktaClient()
-	emailField := logrus.Fields{"email": email}
 
-	logRequest(reqId).WithFields(emailField).Info("Okta find request")
+	logRequest(reqId).Info("Okta find request")
 	filter := query.NewQueryParams(query.WithQ(email))
 	users, resp, err := client.User.ListUsers(filter)
 	if err != nil {

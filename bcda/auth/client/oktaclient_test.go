@@ -42,9 +42,8 @@ func (s *OTestSuite) TestFindUser() {
 }
 
 func (s *OTestSuite) TestHealthCheck() {
-	b, err := client.HealthCheck()
+	err := client.HealthCheck()
 	assert.Nil(s.T(), err)
-	assert.True(s.T(), b)
 }
 
 func (s *OTestSuite) TestDeleteUser() {
