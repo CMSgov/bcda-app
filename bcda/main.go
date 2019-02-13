@@ -15,7 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -56,6 +56,7 @@ func init() {
 		log.Info("Failed to open error log file; using default stderr")
 	}
 	monitoring.GetMonitor()
+	log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 }
 
 func main() {
@@ -388,9 +389,7 @@ func revokeAccessToken(accessToken string) error {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	authProvider := auth.GetProvider()
-
-	return authProvider.RevokeAccessToken(accessToken)
+	return auth.GetProvider().RevokeAccessToken(accessToken)
 }
 
 func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
@@ -418,18 +417,11 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return
 	}
 
-	authProvider := auth.GetProvider()
-
-	params := fmt.Sprintf(`{"clientID" : "%s"}`, aco.UUID.String())
-	result, err := authProvider.RegisterClient([]byte(params))
+	creds, err := auth.GetProvider().RegisterClient(aco.UUID.String())
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID, err = auth.GetParamString(result, "clientID")
-	if err != nil {
-		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
-	}
-
+	aco.ClientID = creds.ClientID
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	err = db.Save(&aco).Error
@@ -437,15 +429,27 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
 
-	params = fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, aco.ClientID, ttl)
-	token, err := authProvider.RequestAccessToken([]byte(params))
-	if err != nil {
-		return "", err
+	// only Okta returns ClientSecret. Should be able to switch on concrete type
+	var result string
+
+	switch auth.GetProvider().(type) {
+
+	case auth.AlphaAuthPlugin:
+		params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, creds.ClientID, ttl)
+		token, err := auth.GetProvider().RequestAccessToken([]byte(params))
+		if err != nil {
+			return "", err
+		}
+		expiresOn := time.Unix(token.ExpiresOn, 0).Format(time.RFC850)
+		tokenId := token.UUID.String()
+		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString)
+
+	case auth.OktaAuthPlugin:
+		expiresOn := time.Now().AddDate(1, 0, 0).Format(time.RFC850)
+		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, creds.ClientID, creds.ClientSecret)
 	}
 
-	expiresOn := time.Unix(token.ExpiresOn, 0).Format(time.RFC850)
-	tokenId := token.UUID.String()
-	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString), err
+	return result, err
 }
 
 func getEnvInt(varName string, defaultVal int) int {

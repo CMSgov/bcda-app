@@ -1,26 +1,32 @@
-package auth
+package auth_test
 
 import (
+	"regexp"
 	"testing"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
 )
+
+const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 
 type OktaAuthPluginTestSuite struct {
 	suite.Suite
-	o *OktaAuthPlugin
+	o auth.OktaAuthPlugin
 }
 
 func (s *OktaAuthPluginTestSuite) SetupTest() {
-	s.o = new(OktaAuthPlugin)
+	s.o = auth.OktaAuthPlugin{}
 }
 
 func (s *OktaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.o.RegisterClient([]byte("{}"))
-	assert.Nil(s.T(), c)
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	c, err := s.o.RegisterClient(KnownFixtureACO)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), c)
+	assert.Regexp(s.T(), regexp.MustCompile("[!-~]"), c.ClientID)
 }
 
 func (s *OktaAuthPluginTestSuite) TestUpdateClient() {
@@ -47,7 +53,7 @@ func (s *OktaAuthPluginTestSuite) TestRevokeClientCredentials() {
 
 func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {
 	t, err := s.o.RequestAccessToken([]byte("{}"))
-	assert.IsType(s.T(), Token{}, t)
+	assert.IsType(s.T(), auth.Token{}, t)
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 

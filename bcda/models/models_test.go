@@ -49,6 +49,14 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.Equal(s.T(), ACOName, aco.Name)
 	assert.NotNil(s.T(), aco.ClientID)
 	assert.Equal(s.T(), ClientID, aco.ClientID)
+
+	// make sure we can't duplicate the ACO UUID
+	aco = ACO{
+		UUID: acoUUID,
+		Name: "Duplicate UUID Test",
+	}
+	err = s.db.Save(&aco).Error
+	assert.NotNil(s.T(), err)
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {

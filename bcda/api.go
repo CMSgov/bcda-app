@@ -201,7 +201,9 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
-	} else if err = qc.Enqueue(j); err != nil {
+	}
+
+	if err = qc.Enqueue(j); err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
