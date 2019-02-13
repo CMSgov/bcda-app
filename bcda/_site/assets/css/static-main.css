@@ -236,7 +236,7 @@ template {
 }
 
 
-/*! Design System - Core v{{version}} */
+/*! Design System - Core v{{version}}
 
 @font-face {
     font-family: Bitter;
@@ -293,6 +293,7 @@ template {
     src: url(../fonts/OpenSans-Bold-webfont.eot);
     src: url(../fonts/OpenSans-Bold-webfont.eot?#iefix) format("embedded-opentype"), url(../fonts/OpenSans-Bold-webfont.woff2) format("woff2"), url(../fonts/OpenSans-Bold-webfont.woff) format("woff"), url(../fonts/OpenSans-Bold-webfont.ttf) format("truetype")
 }
+*/
 
 .ds-base,
 .ds-base--inverse {
