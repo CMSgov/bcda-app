@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -15,14 +15,14 @@ const (
 
 var providerName = Alpha
 
-func init () {
+func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	SetProvider(strings.ToLower(os.Getenv(`BCDA_AUTH_PROVIDER`)))
 }
 
 func SetProvider(name string) {
 	if name != "" {
-		switch (strings.ToLower(name)) {
+		switch strings.ToLower(name) {
 		case Okta:
 			providerName = name
 		case Alpha:

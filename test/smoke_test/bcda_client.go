@@ -89,25 +89,7 @@ func startJob(resourceType string) *http.Response {
 	return resp
 }
 
-func checkStatus(location string) *http.Response {
-	client := &http.Client{}
-	req, err := http.NewRequest(
-		"GET", location, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	return resp
-}
-
-func getFile(location string) *http.Response {
+func get(location string) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"GET", location, nil)
@@ -176,7 +158,7 @@ func main() {
 			}
 
 			fmt.Println("checking job status...")
-			status := checkStatus(result.Header["Content-Location"][0])
+			status := get(result.Header["Content-Location"][0])
 
 			if status.StatusCode == 200 {
 				fmt.Println("file is ready for download...")
@@ -203,7 +185,7 @@ func main() {
 				}
 
 				fmt.Printf("fetching: %s\n", data[0].Url)
-				download := getFile(data[0].Url)
+				download := get(data[0].Url)
 				if download.StatusCode == 200 {
 					filename := "/tmp/" + path.Base(data[0].Url)
 					fmt.Printf("writing download to disk: %s\n", filename)

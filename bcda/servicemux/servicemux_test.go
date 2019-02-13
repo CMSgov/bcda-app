@@ -2,6 +2,8 @@ package servicemux
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,20 +20,21 @@ type ServiceMuxTestSuite struct {
 }
 
 func (s *ServiceMuxTestSuite) TestNew() {
-	sm := New("127.0.0.1:0")
+	addr := getConfig().testAddress
+	sm := New(addr)
 	go func() {
 		defer sm.Close()
 	}()
 
 	assert.NotNil(s.T(), sm)
-	assert.Equal(s.T(), "127.0.0.1:0", sm.Addr)
+	assert.Equal(s.T(), addr, sm.Addr)
 	assert.NotNil(s.T(), sm.Listener)
 	assert.IsType(s.T(), tcpKeepAliveListener{}, sm.Listener)
 	assert.Empty(s.T(), sm.Servers)
 }
 
 func (s *ServiceMuxTestSuite) TestAddServer() {
-	sm := New("127.0.0.1:0")
+	sm := New(getConfig().testAddress)
 	go func() {
 		defer sm.Close()
 	}()
@@ -49,7 +52,7 @@ func (s *ServiceMuxTestSuite) TestAddServer() {
 	}
 }
 
-func (s *ServiceMuxTestSuite) TestServe_NoCert() {
+func (s *ServiceMuxTestSuite) TestServeNoCert() {
 	origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
 	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
@@ -62,7 +65,7 @@ func (s *ServiceMuxTestSuite) TestServe_NoCert() {
 	assert.Panics(s.T(), sm.Serve)
 }
 
-func (s *ServiceMuxTestSuite) TestServe_NoKey() {
+func (s *ServiceMuxTestSuite) TestServeNoKey() {
 	origTLSCert, origTLSKey, origHTTPOnly := getOrigVars()
 
 	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
@@ -82,12 +85,12 @@ var testHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
+func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 	srv := &http.Server{
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(getConfig().testAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(srv, "/test")
@@ -126,12 +129,12 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS() {
 	assert.Equal(s.T(), "Test", string(body))
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTPS_badKeypair() {
+func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 	srv := &http.Server{
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(getConfig().testAddress)
 	sm.AddServer(srv, "/test")
 
 	defer sm.Close()
@@ -147,12 +150,12 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTPS_badKeypair() {
 	assert.Panics(s.T(), sm.Serve)
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
+func (s *ServiceMuxTestSuite) TestServeHTTP() {
 	srv := http.Server{
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(getConfig().testAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "/test")
@@ -185,12 +188,12 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP() {
 	assert.Equal(s.T(), "Test", string(b))
 }
 
-func (s *ServiceMuxTestSuite) TestServe_serveHTTP_emptyPath() {
+func (s *ServiceMuxTestSuite) TestServeHTTPEmptyPath() {
 	srv := http.Server{
 		Handler: testHandler,
 	}
 
-	sm := New("127.0.0.1:0")
+	sm := New(getConfig().testAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "")
@@ -223,7 +226,7 @@ func (s *ServiceMuxTestSuite) TestServe_serveHTTP_emptyPath() {
 	assert.Equal(s.T(), "Test", string(b))
 }
 
-func (s *ServiceMuxTestSuite) TestIsHTTPS_false() {
+func (s *ServiceMuxTestSuite) TestIsHTTPSFalse() {
 	req := httptest.NewRequest("GET", "/", nil)
 	assert.False(s.T(), IsHTTPS(req))
 }
@@ -240,4 +243,20 @@ func resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly string) {
 	os.Setenv("BCDA_TLS_CERT", origTLSCert)
 	os.Setenv("BCDA_TLS_KEY", origTLSKey)
 	os.Setenv("HTTP_ONLY", origHTTPOnly)
+}
+
+type config struct {
+	testAddress string
+}
+
+func getConfig() config {
+	file, _ := os.Open("config_test.json")
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	config := config{}
+	err := decoder.Decode(&config)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return config
 }
