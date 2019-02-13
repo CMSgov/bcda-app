@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -21,44 +21,40 @@ type AlphaAuthPlugin struct{}
 // This implementation expects one value in params, an id the API knows this client by in string form
 // It returns a single string as well, being the clientID this implementation knows this client by
 // NB: Other implementations will probably expect more input, and will certainly return more data
-func (p *AlphaAuthPlugin) RegisterClient(params []byte) ([]byte, error) {
-	acoUUID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return nil, err
-	}
+func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 
 	// We'll check carefully in this method, because we're returning something to be used as an id
 	// Normally, a plugin would treat this value as a black box external key, but this implementation is
 	// intimate with the API. So, we're going to protect against accidental bad things
-	if len(acoUUID) != 36 {
-		return nil, errors.New("you must provide a non-empty string 36 characters in length")
+	if len(localID) != 36 {
+		return Credentials{}, errors.New("you must provide a non-empty string 36 characters in length")
 	}
 
-	if matched, err := regexp.MatchString("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$", acoUUID); !matched || err != nil {
-		return nil, errors.New("expected a valid UUID string")
+	if matched, err := regexp.MatchString("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$", localID); !matched || err != nil {
+		return Credentials{}, errors.New("expected a valid UUID string")
 	}
 
-	if _, err := getACOFromDB(acoUUID); err != nil {
-		return nil, err
+	if _, err := getACOFromDB(localID); err != nil {
+		return Credentials{}, err
 	}
 
 	// return the aco UUID as our auth client id. why? because we have to return something that the API / CLI will
 	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
 	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
 	// whose client_id matches their UUID was created by this plugin.
-	return params, nil
+	return Credentials{ClientID:localID}, nil
 }
 
-func (p *AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
+func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (p *AlphaAuthPlugin) DeleteClient(params []byte) error {
+func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
 // can treat as a no-op or call RequestAccessToken
-func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
+func (p AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
 	clientID, err := GetParamString(params, "clientID")
 	if err != nil {
 		return nil, err
@@ -87,7 +83,7 @@ func (p *AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, erro
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
-func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
+func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	clientID, err := GetParamString(params, "clientID")
 	if err != nil {
 		return err
@@ -147,7 +143,7 @@ func (p *AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
 // params are currently acoId and ttl; not going to introduce user until we have clear use cases
-func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
+func (p AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -195,7 +191,7 @@ func (p *AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
 	return token, nil // really want to return Token here, but first let's get this all working
 }
 
-func (p *AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
+func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
 		return err
@@ -223,7 +219,7 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 	return db.Error
 }
 
-func (p *AlphaAuthPlugin) ValidateJWT(tokenString string) error {
+func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
 		return err
@@ -274,7 +270,7 @@ func isActive(token jwt.Token) bool {
 	return !db.Find(&token, "UUID = ? AND active = ?", c["id"], true).RecordNotFound()
 }
 
-func (p *AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
+func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

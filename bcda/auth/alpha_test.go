@@ -1,12 +1,11 @@
 package auth_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -19,11 +18,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
-const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-
 type AlphaAuthPluginTestSuite struct {
 	testUtils.AuthTestSuite
-	p *auth.AlphaAuthPlugin
+	p auth.AlphaAuthPlugin
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
@@ -33,7 +30,7 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
-	s.p = new(auth.AlphaAuthPlugin)
+	s.p = auth.AlphaAuthPlugin{}
 }
 
 var connections = make(map[string]*gorm.DB)
@@ -53,37 +50,25 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.p.RegisterClient([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`))
+	c, err := s.p.RegisterClient(KnownFixtureACO)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
-	var result map[string]interface{}
-	if err = json.Unmarshal(c, &result); err != nil {
-		assert.Fail(s.T(), "Bad json result value")
-	}
-	assert.Equal(s.T(), KnownFixtureACO, result["clientID"].(string))
+	assert.Equal(s.T(), KnownFixtureACO, c.ClientID)
 
-	c, err = s.p.RegisterClient([]byte(`{"clientID":""}`))
+	c, err = s.p.RegisterClient("")
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), c)
+	assert.Empty(s.T(), c.ClientID)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
 
-	c, err = s.p.RegisterClient([]byte(`{"clientID": "correct length, but not a valid UUID"}`))
+	c, err = s.p.RegisterClient("correct length, but not a valid UUID")
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), c)
+	assert.Empty(s.T(), c.ClientID)
 	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
-	c, err = s.p.RegisterClient([]byte(fmt.Sprintf(`{"clientID": "%s"}`, uuid.NewRandom().String())))
+	c, err = s.p.RegisterClient(uuid.NewRandom().String())
 	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), c)
-
-	// make sure we can't duplicate the ACO UUID
-	aco := models.ACO{
-		UUID: uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		Name: "Duplicate UUID Test",
-	}
-	// Warning: do not try to use s.T().Name() to lookup the connection
-	err = connections["TestRegisterClient"].Save(&aco).Error
-	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), c.ClientID)
+	assert.Contains(s.T(), err.Error(), "no ACO record found")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestUpdateClient() {
