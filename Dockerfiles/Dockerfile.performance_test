@@ -1,9 +1,10 @@
-FROM golang:1.10.6
+FROM golang:1.11.5
 
-RUN go get -u github.com/tsenart/vegeta
-
+ENV GO111MODULE on
 WORKDIR /go/src/github.com/CMSgov/bcda-app/
 COPY . .
+
+RUN go install github.com/tsenart/vegeta
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test/performance_test
 CMD ["sh", "performance_test.sh"]
