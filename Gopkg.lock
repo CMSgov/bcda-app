@@ -19,12 +19,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e210d035ad4156d715a4d6f2a8ddd788bf74a992cb7785a925f22f734c6794c5"
+  digest = "1:6e9d2dddd10b5668251398cbd9848b2ea7ebec447d88255abd1437b96c487eb4"
   name = "github.com/dgrijalva/jwt-go"
-  packages = [
-    ".",
-    "request",
-  ]
+  packages = ["."]
   pruneopts = "UT"
   revision = "0b96aaa707760d6ab28d9b9d1913ff5993328bae"
 
@@ -48,6 +45,22 @@
   ]
   pruneopts = "UT"
   revision = "cca4135d8dddff765463feaf1118047a9e506b4a"
+
+[[projects]]
+  digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
+  name = "github.com/go-yaml/yaml"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  version = "v2.2.2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:cddf81f7eefbb8bf6cf65fe56c3b3c01784d5ca2f133bd5adfc4912497b5176b"
+  name = "github.com/influxdata/tdigest"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "bf2b5ad3c0a925c44a0d2842c5d8182113cd248e"
 
 [[projects]]
   digest = "1:e95ccab7a6a9b39ed25607a8334213fa8b88869d721ec87b56f102c516fca075"
@@ -83,6 +96,14 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
+  digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
+  name = "github.com/kelseyhightower/envconfig"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:2d370ad7a48d3523291ad53a04b9b1510c182880927f800b46221cc465427800"
   name = "github.com/lib/pq"
   packages = [
@@ -92,6 +113,18 @@
   ]
   pruneopts = "UT"
   revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+
+[[projects]]
+  branch = "master"
+  digest = "1:84a5a2b67486d5d67060ac393aa255d05d24ed5ee41daecd5635ec22657b6492"
+  name = "github.com/mailru/easyjson"
+  packages = [
+    "buffer",
+    "jlexer",
+    "jwriter",
+  ]
+  pruneopts = "UT"
+  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
 
 [[projects]]
   digest = "1:01f60ec456e70c9be269902c08fa189a9d47056a419c4a91a02f19df5e36ab59"
@@ -107,6 +140,26 @@
   ]
   pruneopts = "UT"
   revision = "46d73e6be8b4faeee70850d0df829e4fe00d6819"
+  version = "v2.1.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:db79c2d101602e47f6c1b1be7fdf66a32b39f2c50e7d3dec746df1f1536bf8cc"
+  name = "github.com/okta/okta-sdk-golang"
+  packages = [
+    "okta",
+    "okta/cache",
+    "okta/query",
+  ]
+  pruneopts = "UT"
+  revision = "2395a5f0ddc8840b41566277432f0589f2570108"
+
+[[projects]]
+  digest = "1:808cdddf087fb64baeae67b8dfaee2069034d9704923a3cb8bd96a995421a625"
+  name = "github.com/patrickmn/go-cache"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0"
   version = "v2.1.0"
 
 [[projects]]
@@ -131,6 +184,22 @@
   pruneopts = "UT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:68cecd4c1137f77dfa2db1f13a0ceef2b5606d6b69d66fa69f7df1b2f2fe9afc"
+  name = "github.com/shurcooL/httpfs"
+  packages = ["vfsutil"]
+  pruneopts = "UT"
+  revision = "74dc9339e414ad069a8d04bba7e7aafd08043a25"
+
+[[projects]]
+  branch = "master"
+  digest = "1:98450c86949b8cdc4637b80c1c686ca955e503d3fbae9296d1f49c532895d281"
+  name = "github.com/shurcooL/vfsgen"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "6a9ea43bcacdf716a5c1b38efff722c07adf0069"
 
 [[projects]]
   digest = "1:68ae7a24476fe166c77ab60dace5945a0cd0c97bf714f27dd5cb66e5bde7fb82"
@@ -167,6 +236,29 @@
   ]
   pruneopts = "UT"
   revision = "2db35c88b92a1631e987089b5485a95e68bc5d3a"
+
+[[projects]]
+  branch = "master"
+  digest = "1:be87c1e6f0a15e5b1c45036b9382cdd63057a8b65e10ff2fe2bda23886a99c6a"
+  name = "github.com/tsenart/go-tsz"
+  packages = [
+    ".",
+    "testdata",
+  ]
+  pruneopts = "UT"
+  revision = "0bd30b3df1c328dfc87ed857cdf695c3c7d2cb09"
+
+[[projects]]
+  digest = "1:f06cad29ccbaefa5eba382f7b5e442a92170f367f8093a4b39b09b0fbe0277df"
+  name = "github.com/tsenart/vegeta"
+  packages = [
+    "lib",
+    "lib/lttb",
+    "lib/plot",
+  ]
+  pruneopts = "UT"
+  revision = "c120b942b43950d4237e41f31152706fbc3d4c0d"
+  version = "v12.1.0"
 
 [[projects]]
   digest = "1:189a0e6e9c657bb662bafc41a796360d11c88eed7614b1b6f003b8fbc8847e5e"
@@ -245,7 +337,6 @@
   input-imports = [
     "github.com/bgentry/que-go",
     "github.com/dgrijalva/jwt-go",
-    "github.com/dgrijalva/jwt-go/request",
     "github.com/eug48/fhir/models",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
@@ -254,12 +345,17 @@
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
+    "github.com/okta/okta-sdk-golang/okta",
+    "github.com/okta/okta-sdk-golang/okta/query",
     "github.com/pborman/uuid",
     "github.com/sirupsen/logrus",
     "github.com/soheilhy/cmux",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
+    "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
+    "github.com/tsenart/vegeta/lib",
+    "github.com/tsenart/vegeta/lib/plot",
     "github.com/urfave/cli",
   ]
   solver-name = "gps-cdcl"
