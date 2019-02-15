@@ -92,7 +92,7 @@ fi
 
 TMPFILE=$(mktemp /tmp/$(basename $0).XXXXXX) || exit 1
 
-if [ -z $PREVRELEASENUM ]
+if [ -n $PREVTAG ]
 then
   commits=$(git log --pretty=format:"- %s" $PREVTAG..HEAD)
 else
