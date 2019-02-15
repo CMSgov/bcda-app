@@ -4,11 +4,13 @@ require (
 	github.com/bgentry/que-go v1.0.1
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
-	github.com/c2h5oh/datasize v0.0.0-20171227191756-4eba002a5eae // indirect
+	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.0 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190204142019-df6d76eb9289 // indirect
 	github.com/dgrijalva/jwt-go v0.0.0-20180719211823-0b96aaa70776
+	github.com/dgryski/go-gk v0.0.0-20140819190930-201884a44051 // indirect
+	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/eug48/fhir v0.0.0-20180907082839-80144968c101
 	github.com/go-chi/chi v0.0.0-20180424172350-cca4135d8ddd
@@ -38,6 +40,7 @@ require (
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24 // indirect
 	github.com/sirupsen/logrus v0.0.0-20180731161355-d329d24db431
 	github.com/soheilhy/cmux v0.1.4
+	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/stretchr/testify v0.0.0-20181002233221-2db35c88b92a
 	github.com/tsenart/go-tsz v0.0.0-20180814235614-0bd30b3df1c3 // indirect
