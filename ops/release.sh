@@ -94,18 +94,7 @@ fi
 
 TMPFILE=$(mktemp /tmp/$(basename $0).XXXXXX) || exit 1
 
-if [ $PREVRELEASENUM -gt 0 ]
-then
-  commits=$(git log --pretty=format:"- %s" $PREVTAG..HEAD)
-else
-  commits=$(git log --pretty=format:"- %s" HEAD)
-fi
-
-echo "$NEWTAG - $(date +%Y-%m-%d)" > $TMPFILE
-echo "================" >> $TMPFILE
-echo "" >> $TMPFILE
-echo "$commits" >> $TMPFILE
-echo "" >> $TMPFILE
+bash create_release_notes.sh -p $PREVTAG -n $NEWTAG -f $TMPFILE
 
 git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
