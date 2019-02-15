@@ -11,8 +11,9 @@ RUN apk add --no-cache bash git gnupg
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/ops
+WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
+WORKDIR /go/src/github.com/CMSgov/bcda-app/ops
 ENTRYPOINT ["bash", "release.sh"]
 CMD []
