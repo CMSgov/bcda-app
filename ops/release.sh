@@ -81,7 +81,7 @@ if [ -n "$MANUAL_TAGS" ]; then
 else
   PREVTAG=$(git tag | sort -n | tail -1)
   if [ ! -n "$PREVTAG" ]; then
-      PREVRELEASENUM=0
+      PREVRELEASENUM=
   else
       PREVRELEASENUM=$(git tag | grep '^r[0-9]' | sed 's/^r//' | sort -n | tail -1)
   fi
@@ -92,7 +92,7 @@ fi
 
 TMPFILE=$(mktemp /tmp/$(basename $0).XXXXXX) || exit 1
 
-if [ $PREVRELEASENUM -gt 0 ]
+if [ -z $PREVRELEASENUM ]
 then
   commits=$(git log --pretty=format:"- %s" $PREVTAG..HEAD)
 else
