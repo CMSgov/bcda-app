@@ -10,6 +10,8 @@ Create release notes for a new $PROJECT_NAME release.
 
 Usage: $(basename "$0") [-h] [-p previous_tag] [-n new_tag] [-f release_notes_file]
 
+Optionally, GITHUB_USER, GITHUB_EMAIL, and GITHUB_GPG_KEY_FILE environment variables can be set prior to running this script, to identify and verify who is creating the release.  This is primarily necessary when the release process is run from a Docker container (i.e., from Jenkins).
+
 Options:
   -h    print this help text and exit
   -p    the previous tag (to compare against)
@@ -49,8 +51,15 @@ then
   exit 1
 fi
 
-commits=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..$NEW_TAG)
-#commits=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD)
+# initialize git configuration if env vars are set
+if [ ! -z "$GITHUB_USER" ] && [ ! -z "$GITHUB_EMAIL" ] && [ ! -z "$GITHUB_GPG_KEY_FILE" ]
+then
+  git config user.name "$GITHUB_USER"
+  git config user.email "$GITHUB_EMAIL"
+  gpg --import $GITHUB_GPG_KEY_FILE
+fi
+
+commits=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD)
 
 echo "$NEW_TAG - $(date +%Y-%m-%d)" > $RELEASE_NOTES_FILE
 echo "================" >> $RELEASE_NOTES_FILE
