@@ -3,14 +3,14 @@
 set -eo pipefail
 
 PROJECT_NAME="Beneficiary Claims Data API"
-GITHUB_REPO="CMSgov/bcda-app"
-ORIGIN="${BCDA_GIT_ORIGIN:-"origin"}"
 
 usage() {
     cat <<EOF >&2
 Start a new $PROJECT_NAME release.
 
-Usage: GITHUB_ACCESS_TOKEN=<gh_access_token> $(basename "$0") [-ch] [-t previous-tag new-tag]
+Usage: GITHUB_REPO_PATH=<gh_repo> GITHUB_ACCESS_TOKEN=<gh_access_token> $(basename "$0") [-ch] [-t previous-tag new-tag]
+
+Optionally, GITHUB_USER, GITHUB_EMAIL, and GITHUB_GPG_KEY_FILE environment variables can be set prior to running this script, to identify and verify who is creating the release.  This is primarily necessary when the release process is run from a Docker container (i.e., from Jenkins).
 
 Options:
   -h    print this help text and exit
@@ -55,15 +55,23 @@ then
   exit 1
 fi
 
-if [ ! -f ".travis.yml" ]
+if [ -z "$GITHUB_REPO_PATH" ]
 then
-  echo "Must run script in top-level project directory.">&2
+  echo "Please export GITHUB_REPO_PATH to continue (i.e., /CMSgov/bcda-app">&2
   exit 1
+fi
+
+# initialize git configuration if env vars are set
+if [ ! -z "$GITHUB_USER" ] && [ ! -z "$GITHUB_EMAIL" ] && [ ! -z "$GITHUB_GPG_KEY_FILE" ]
+then
+  git config user.name "$GITHUB_USER"
+  git config user.email "$GITHUB_EMAIL"
+  gpg --import $GITHUB_GPG_KEY_FILE
 fi
 
 # fetch tags before any tag lookups so we have the most up-to-date list
 # and generate the correct next release number
-git fetch https://${GITHUB_ACCESS_TOKEN}@github.com/CMSgov/bcda-app --tags
+git fetch https://${GITHUB_ACCESS_TOKEN}@github.com$GITHUB_REPO_PATH --tags
 
 if [ -n "$MANUAL_TAGS" ]; then
   PREVTAG="$1"
@@ -84,11 +92,23 @@ fi
 
 TMPFILE=$(mktemp /tmp/$(basename $0).XXXXXX) || exit 1
 
-bash create_release_notes.sh -p $PREVTAG -n $NEWTAG -f $TMPFILE
+if [ $PREVRELEASENUM -gt 0 ]
+then
+  commits=$(git log --pretty=format:"- %s" $PREVTAG..HEAD)
+else
+  commits=$(git log --pretty=format:"- %s" HEAD)
+fi
+
+echo "$NEWTAG - $(date +%Y-%m-%d)" > $TMPFILE
+echo "================" >> $TMPFILE
+echo "" >> $TMPFILE
+echo "$commits" >> $TMPFILE
+echo "" >> $TMPFILE
 
 git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
-python ./ops/github_release.py --release $NEWTAG --release-file $TMPFILE --repo /repos/CMSgov/bcda-app/releases
+RELEASE_PATH = "/repos$GITHUB_REPO_PATH/releases"
+python github_release.py --release $NEWTAG --release-file $TMPFILE --repo $RELEASE_PATH
 
 rm $TMPFILE
 
