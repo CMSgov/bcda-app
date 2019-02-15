@@ -13,8 +13,10 @@ timestamp=`date +%Y-%m-%d_%H-%M-%S`
 mkdir -p test_results/${timestamp}
 mkdir -p test_results/latest
 
+export GO111MODULE=auto
 echo "Running gosec..."
 gosec ./...
+export GO111MODULE=on
 
 echo "Setting up test DB (bcda_test)..."
 DB_HOST_URL=${DB}?sslmode=disable

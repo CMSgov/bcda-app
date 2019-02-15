@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "bbea2e3d-26cf-47f7-9699-ab08793d8416",
+		"_postman_id": "d0c3c7da-0213-48e5-aeeb-11a38791d337",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -13,10 +13,39 @@
 					"script": {
 						"id": "df92b634-556c-4331-b53b-3a19668ca846",
 						"exec": [
-							"pm.test(\"Response contains version\", function() {",
-							"    pm.expect(pm.response.json()).to.have.property(\"version\");",
-							"});",
+							"const retryDelay = 5000;",
+							"",
+							"if (pm.response.code == 200 && environment.counter < 20 && environment.counter >= 3) {",
+							"    // Stop execution",
+							"    pm.test(\"Response contains version\", function() {",
+							"        pm.expect(pm.response.json()).to.have.property(\"version\");",
+							"    });",
+							"    environment.counter = 0;",
+							"    postman.setNextRequest();",
+							"}",
+							"else {",
+							"    // retry the same request",
+							"    setTimeout(function(){",
+							"        console.log(\"retrying version endpoint\");",
+							"        console.log(\"retry number \" + environment.counter);",
+							"    }, retryDelay);",
+							"    postman.setNextRequest(\"Get version\");",
+							"}",
 							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "0464d4d2-9d73-4c89-b37d-a7472e43575d",
+						"exec": [
+							"const retryDelay = 5000;",
+							"const maxRetries = 10;",
+							"// Counter for number of requests",
+							"var counter = environment.counter ? _.parseInt(environment.counter) + 1 : 1;",
+							"postman.setEnvironmentVariable(\"counter\", counter);"
 						],
 						"type": "text/javascript"
 					}
