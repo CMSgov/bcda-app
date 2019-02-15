@@ -14,9 +14,11 @@ mkdir -p test_results/${timestamp}
 mkdir -p test_results/latest
 
 export GO111MODULE=auto
+echo $GO111MODULE
 echo "Running gosec..."
 gosec ./...
 export GO111MODULE=on
+echo $GO111MODULE
 
 echo "Setting up test DB (bcda_test)..."
 DB_HOST_URL=${DB}?sslmode=disable

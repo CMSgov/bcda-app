@@ -31,8 +31,9 @@ postman:
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
 ifeq ($(env), local)
+    echo "running tests locally"
 	docker-compose up -d
-	sleep 30
+	sleep 90
 endif
 	docker-compose -f docker-compose.test.yml build --no-cache postman_test
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)"
