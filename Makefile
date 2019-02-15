@@ -31,7 +31,7 @@ postman:
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
 ifeq ($(env), local)
-    echo "running tests locally"
+	echo "Wait for containers to be ready..."
 	docker-compose up -d
 	sleep 90
 endif
