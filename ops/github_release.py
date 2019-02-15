@@ -5,7 +5,7 @@ import sys
 import urllib.request
 
 
-def main(release, release_file):
+def main(release, release_file, repo):
     access_token = os.environ['GITHUB_ACCESS_TOKEN']
 
     with open(release_file, 'r') as f:
@@ -18,7 +18,7 @@ def main(release, release_file):
         }
 
         base_url = "https://api.github.com"
-        path = "/repos/CMSgov/bcda-app/releases"
+        path = repo
         headers = {
             "Authorization": "token %s" % access_token
         }
@@ -49,7 +49,12 @@ if __name__ == "__main__":
         '--release-file', dest='release_file', type=str,
         help='Path to file with body of release notes'
     )
+ 
+    parser.add_argument(
+        '--repo', dest='repo', type=str,
+        help='The repository of the release (i.e., /repos/CMSgov/bcda-app/releases)'
+    )
 
     args = parser.parse_args()
 
-    main(args.release, args.release_file)
+    main(args.release, args.release_file, args.repo)

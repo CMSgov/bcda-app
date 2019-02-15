@@ -98,7 +98,7 @@ bash create_release_notes.sh -p $PREVTAG -n $NEWTAG -f $TMPFILE
 
 git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
-python ./ops/github_release.py --release $NEWTAG --release-file $TMPFILE
+python ./ops/github_release.py --release $NEWTAG --release-file $TMPFILE --repo /repos/CMSgov/bcda-app/releases
 
 rm $TMPFILE
 
