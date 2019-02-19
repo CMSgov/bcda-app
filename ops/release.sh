@@ -3,14 +3,12 @@
 set -eo pipefail
 
 PROJECT_NAME="Beneficiary Claims Data API"
-GITHUB_REPO="CMSgov/bcda-app"
-ORIGIN="${BCDA_GIT_ORIGIN:-"origin"}"
 
 usage() {
     cat <<EOF >&2
 Start a new $PROJECT_NAME release.
 
-Usage: GITHUB_ACCESS_TOKEN=<gh_access_token> $(basename "$0") [-ch] [-t previous-tag new-tag]
+Usage: GITHUB_REPO_PATH=<gh_repo> GITHUB_ACCESS_TOKEN=<gh_access_token> $(basename "$0") [-ch] [-t previous-tag new-tag]
 
 Optionally, GITHUB_USER, GITHUB_EMAIL, and GITHUB_GPG_KEY_FILE environment variables can be set prior to running this script, to identify and verify who is creating the release.  This is primarily necessary when the release process is run from a Docker container (i.e., from Jenkins).
 
@@ -57,9 +55,9 @@ then
   exit 1
 fi
 
-if [ ! -f ".travis.yml" ]
+if [ -z "$GITHUB_REPO_PATH" ]
 then
-  echo "Must run script in top-level project directory.">&2
+  echo "Please export GITHUB_REPO_PATH to continue (i.e., /CMSgov/bcda-app">&2
   exit 1
 fi
 
@@ -73,7 +71,7 @@ fi
 
 # fetch tags before any tag lookups so we have the most up-to-date list
 # and generate the correct next release number
-git fetch https://${GITHUB_ACCESS_TOKEN}@github.com/CMSgov/bcda-app --tags
+git fetch https://${GITHUB_ACCESS_TOKEN}@github.com$GITHUB_REPO_PATH --tags
 
 if [ -n "$MANUAL_TAGS" ]; then
   PREVTAG="$1"
@@ -83,7 +81,7 @@ if [ -n "$MANUAL_TAGS" ]; then
 else
   PREVTAG=$(git tag | sort -n | tail -1)
   if [ ! -n "$PREVTAG" ]; then
-      PREVRELEASENUM=0
+      PREVRELEASENUM=
   else
       PREVRELEASENUM=$(git tag | grep '^r[0-9]' | sed 's/^r//' | sort -n | tail -1)
   fi
@@ -94,7 +92,7 @@ fi
 
 TMPFILE=$(mktemp /tmp/$(basename $0).XXXXXX) || exit 1
 
-if [ $PREVRELEASENUM -gt 0 ]
+if [ -n $PREVTAG ]
 then
   commits=$(git log --pretty=format:"- %s" $PREVTAG..HEAD)
 else
@@ -109,7 +107,8 @@ echo "" >> $TMPFILE
 
 git tag -a -m"$PROJECT_NAME release $NEWTAG" -s "$NEWTAG"
 
-python ./ops/github_release.py --release $NEWTAG --release-file $TMPFILE
+RELEASE_PATH="/repos$GITHUB_REPO_PATH/releases"
+python github_release.py --release $NEWTAG --release-file $TMPFILE --repo $RELEASE_PATH
 
 rm $TMPFILE
 
