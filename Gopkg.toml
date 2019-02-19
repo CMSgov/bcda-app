@@ -37,6 +37,10 @@
   branch = "master"
   name = "github.com/eug48/fhir"
 
+[[constraint]]
+  branch = "master"
+  name = "github.com/okta/okta-sdk-golang"
+
 [prune]
   go-tests = true
   unused-packages = true
