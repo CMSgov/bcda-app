@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -14,35 +13,54 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func RequireTokenAuth(next http.Handler) http.Handler {
+func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-
 		if authHeader == "" {
-			log.Error("no token in header")
-			respond(w, http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
-		tokenString := strings.Split(authHeader, " ")[1]
+		tokenRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
+		if !tokenRegexp.MatchString(authHeader) {
+			log.Error("Invalid Bearer token:", authHeader)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tokenString := tokenRegexp.FindStringSubmatch(authHeader)[1]
+
 		token, err := GetProvider().DecodeJWT(tokenString)
-
 		if err != nil {
-			log.Error(err)
-			respond(w, http.StatusUnauthorized)
-			return
-		}
-
-		err = GetProvider().ValidateJWT(tokenString)
-
-		if err != nil {
-			log.Error(err)
-			respond(w, http.StatusUnauthorized)
+			log.Error(err.Error())
+			next.ServeHTTP(w, r)
 			return
 		}
 
 		ctx := context.WithValue(r.Context(), "token", &token)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func RequireTokenAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Context().Value("token")
+		if token == nil {
+			log.Error("No token found")
+			respond(w, http.StatusUnauthorized)
+			return
+		}
+
+		if token, ok := token.(*jwt.Token); ok {
+			err := GetProvider().ValidateJWT(token.Raw)
+			if err != nil {
+				log.Error(err)
+				respond(w, http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
 	})
 }
 

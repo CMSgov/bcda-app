@@ -33,6 +33,7 @@ type MiddlewareTestSuite struct {
 
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	router := chi.NewRouter()
+	router.Use(auth.ParseToken)
 	router.With(auth.RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Test router"))
 		if err != nil {
