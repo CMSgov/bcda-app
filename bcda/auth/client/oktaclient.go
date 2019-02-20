@@ -76,6 +76,13 @@ func NewOktaClient() *OktaClient {
 	return &OktaClient{}
 }
 
+func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
+	key, ok := publicKeys[id]
+	logger.Warnf("invalid key id %s presented", id)
+	return key, ok
+}
+
+
 func refreshKeys() {
 	for range time.Tick(time.Hour * 1) {
 		logger.Info("refreshing okta public keys")

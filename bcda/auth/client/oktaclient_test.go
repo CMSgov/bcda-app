@@ -8,7 +8,6 @@
 package client
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"testing"
@@ -44,7 +43,6 @@ func (s *OTestSuite) TestConfig() {
 
 	err = config()
 	assert.NotNil(s.T(), err)
-	fmt.Println(err)
 	assert.Regexp(s.T(), regexp.MustCompile("(OKTA_[A-Z_]*=, ){2}(OKTA_CLIENT_TOKEN=\\[Redacted\\])"), err)
 
 	os.Setenv("OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
@@ -53,6 +51,16 @@ func (s *OTestSuite) TestConfig() {
 
 	err = config()
 	assert.Nil(s.T(), err)
+}
+
+// visually assert logging side effects for now
+// {"level":"info","msg":"1 okta public oauth server public keys cached","time":"2019-02-20T13:30:48-08:00"}
+// {"level":"warning","msg":"invalid key id not a real key presented","time":"2019-02-20T13:30:48-08:00"}
+func (s *OTestSuite) TestPublicKeyFor() {
+	s.oc = NewOktaClient()
+	pk, ok := s.oc.PublicKeyFor("not a real key")
+	assert.Nil(s.T(), pk.N)
+	assert.False(s.T(), ok)
 }
 
 func (s *OTestSuite) TearDownTest() {
