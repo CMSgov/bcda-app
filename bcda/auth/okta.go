@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
@@ -30,7 +31,17 @@ func (o OktaAuthPlugin) DeleteClient(params []byte) error {
 }
 
 func (o OktaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
-	return Credentials{}, errors.New("not yet implemented")
+	clientSecret, err := client.GenerateNewClientSecret(clientID)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	c := Credentials{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+	}
+
+	return c, nil
 }
 
 func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {

@@ -41,9 +41,14 @@ func (s *OktaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestGenerateClientCredentials() {
-	r, err := s.o.GenerateClientCredentials("")
-	assert.Equal(s.T(), auth.Credentials{}, r)
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	validClientID := "0oaj4590j9B5uh8rC0h7"
+	c, err := s.o.GenerateClientCredentials(validClientID)
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", c.ClientSecret)
+
+	invalidClientID := "IDontexist"
+	c, err = s.o.GenerateClientCredentials(invalidClientID)
+	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 
 func (s *OktaAuthPluginTestSuite) TestRevokeClientCredentials() {
