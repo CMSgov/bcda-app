@@ -21,15 +21,15 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		tokenRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
-		if !tokenRegexp.MatchString(authHeader) {
-			log.Error("Invalid Bearer token:", authHeader)
+		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
+		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
+		if len(authSubmatches) < 2 {
+			log.Warn("Invalid Authorization header value")
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		tokenString := tokenRegexp.FindStringSubmatch(authHeader)[1]
-
+		tokenString := authSubmatches[1]
 		token, err := GetProvider().DecodeJWT(tokenString)
 		if err != nil {
 			log.Error(err.Error())
