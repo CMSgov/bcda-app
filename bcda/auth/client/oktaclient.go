@@ -1,8 +1,11 @@
 package client
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/pborman/uuid"
 
@@ -10,9 +13,13 @@ import (
 )
 
 var logger *logrus.Logger
+
 var oktaBaseUrl string
 var oktaAuthString string
 var oktaServerID string
+
+var publicKeys map[string]rsa.PublicKey
+var once sync.Once
 
 func init() {
 	logger = logrus.New()
@@ -31,8 +38,10 @@ func init() {
 	} else {
 		logger.Info("No Okta log location provided; using default stderr")
 	}
+	config()
 }
 
+// separate from init for testing
 func config() error {
 	// required env vars
 	oktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
@@ -53,6 +62,25 @@ func config() error {
 	oktaAuthString = fmt.Sprintf("SSWS %s", oktaToken)
 
 	return nil
+}
+
+type OktaClient struct {}
+
+// Returns an OktaClient. An OktaClient is always created, whether or not it is currently able to converse with Okta.
+func NewOktaClient() *OktaClient {
+	once.Do(func() {
+		publicKeys = getPublicKeys()
+		go refreshKeys()
+	})
+
+	return &OktaClient{}
+}
+
+func refreshKeys() {
+	for range time.Tick(time.Hour * 1) {
+		logger.Info("refreshing okta public keys")
+		publicKeys = getPublicKeys()
+	}
 }
 
 func logRequest(requestId uuid.UUID) *logrus.Entry {

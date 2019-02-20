@@ -19,7 +19,6 @@ type JWKTestSuite struct {
 	suite.Suite
 }
 
-
 func (s *JWKTestSuite) TestGetPublicKeys(t *testing.T) {
 	publicKeys := getPublicKeys()
 	assert.NotNil(t, publicKeys)

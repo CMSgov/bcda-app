@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/okta/okta-sdk-golang/okta"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -21,7 +20,11 @@ import (
 
 type OTestSuite struct {
 	suite.Suite
-	oClient *okta.Client
+	oc *OktaClient
+}
+
+func (s *OTestSuite) SetupTest() {
+	s.oc = NewOktaClient()
 }
 
 func (s *OTestSuite) TestConfig() {
