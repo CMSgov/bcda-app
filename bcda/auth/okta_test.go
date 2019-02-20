@@ -41,8 +41,8 @@ func (s *OktaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestGenerateClientCredentials() {
-	r, err := s.o.GenerateClientCredentials([]byte("{}"))
-	assert.Nil(s.T(), r)
+	r, err := s.o.GenerateClientCredentials("")
+	assert.Equal(s.T(), auth.Credentials{}, r)
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 

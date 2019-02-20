@@ -140,7 +140,10 @@ func GenerateNewClientSecret(clientID string) (string, error) {
 	}
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return "", err
+	}
 	cs := result["client_secret"].(string)
 
 	return cs, nil

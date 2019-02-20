@@ -3,7 +3,7 @@ package auth
 import (
 	"errors"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type OktaAuthPlugin struct{}
@@ -29,8 +29,8 @@ func (o OktaAuthPlugin) DeleteClient(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	return nil, errors.New("not yet implemented")
+func (o OktaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
+	return Credentials{}, errors.New("not yet implemented")
 }
 
 func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
