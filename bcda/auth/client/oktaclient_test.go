@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/cmsgov/bcda-app/bcda/auth/client"
 	"github.com/okta/okta-sdk-golang/okta"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -51,6 +51,17 @@ func (s *OTestSuite) TestDeleteUser() {
 	b, err := client.DeleteUser("INVALID_USER_ID")
 	assert.NotNil(s.T(), err)
 	assert.False(s.T(), b)
+}
+
+func (s *OTestSuite) TestGenerateNewClientSecret() {
+	validClientID := "0oaj4590j9B5uh8rC0h7"
+	newSecret, err := client.GenerateNewClientSecret(validClientID)
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", newSecret)
+
+	invalidClientID := "IDontexist"
+	newSecret, err = client.GenerateNewClientSecret(invalidClientID)
+	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 
 func (s *OTestSuite) TearDownTest() {

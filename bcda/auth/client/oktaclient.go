@@ -1,14 +1,14 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
 
-	"github.com/pborman/uuid"
-
 	"github.com/okta/okta-sdk-golang/okta"
 	"github.com/okta/okta-sdk-golang/okta/query"
+	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -119,6 +119,37 @@ func NewOktaClient() *okta.Client {
 	config := okta.NewConfig()
 	httpClient := &http.Client{}
 	return okta.NewClient(config, httpClient, nil)
+}
+
+func GenerateNewClientSecret(clientID string) (string, error) {
+	url := os.Getenv("OKTA_CLIENT_ORGURL") + "/oauth2/v1/clients/" + clientID + "/lifecycle/newSecret"
+
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	addRequestHeaders(req)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode >= 400 {
+		return "", errors.New(resp.Status)
+	}
+
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	cs := result["client_secret"].(string)
+
+	return cs, nil
+}
+
+func addRequestHeaders(req *http.Request) {
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "SSWS "+os.Getenv("OKTA_CLIENT_TOKEN"))
 }
 
 func logRequest(requestId uuid.UUID) *logrus.Entry {
