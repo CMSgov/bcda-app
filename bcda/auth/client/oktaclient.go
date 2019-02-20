@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/pborman/uuid"
@@ -9,6 +10,9 @@ import (
 )
 
 var logger *logrus.Logger
+var oktaBaseUrl string
+var oktaAuthString string
+var oktaServerID string
 
 func init() {
 	logger = logrus.New()
@@ -27,16 +31,28 @@ func init() {
 	} else {
 		logger.Info("No Okta log location provided; using default stderr")
 	}
+}
 
+func config() error {
+	// required env vars
+	oktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
+	oktaServerID = os.Getenv("OKTA_OAUTH_SERVER_ID")
 	oktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
-	if oktaToken == "" {
-		logger.Fatal("No Okta token found; please set OKTA_CLIENT_TOKEN")
+
+	// report missing env vars
+	at := oktaToken
+	if at != "" {
+		at =  "[Redacted]"
 	}
 
-	oktaURL := os.Getenv("OKTA_CLIENT_ORGURL")
-	if oktaURL == "" {
-		logger.Fatal("No Okta URL found; please set OKTA_CLIENT_ORGURL")
+	if oktaBaseUrl == "" || oktaServerID == "" || oktaToken == "" {
+		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_OAUTH_SERVER_ID=%s, OKTA_CLIENT_TOKEN=%s", oktaBaseUrl, oktaServerID, at))
 	}
+
+	// manufactured from env var
+	oktaAuthString = fmt.Sprintf("SSWS %s", oktaToken)
+
+	return nil
 }
 
 func logRequest(requestId uuid.UUID) *logrus.Entry {
