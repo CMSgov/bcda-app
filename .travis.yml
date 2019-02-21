@@ -44,6 +44,6 @@ before_script:
 # .golangci.yml file at the top level of your repo.
 script:
   - make docker-bootstrap-fresh
-  - docker-compose up
+  - docker-compose up -d
   - sleep 30
   - make test
