@@ -48,12 +48,10 @@ func init() {
 
 // separate from init for testing
 func config() error {
-	// required env vars
 	oktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
 	oktaServerID = os.Getenv("OKTA_OAUTH_SERVER_ID")
 	oktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
 
-	// report missing env vars
 	at := oktaToken
 	if at != "" {
 		at = "[Redacted]"
@@ -63,7 +61,6 @@ func config() error {
 		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_OAUTH_SERVER_ID=%s, OKTA_CLIENT_TOKEN=%s", oktaBaseUrl, oktaServerID, at))
 	}
 
-	// manufactured from env var
 	oktaAuthString = fmt.Sprintf("SSWS %s", oktaToken)
 
 	return nil
