@@ -3,12 +3,11 @@ package models
 import (
 	"crypto/rsa"
 	"fmt"
-	"os"
-
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/secutils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
+	"os"
 )
 
 func InitializeGormModels() *gorm.DB {
