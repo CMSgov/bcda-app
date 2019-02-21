@@ -13,10 +13,10 @@ package:
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 smoke-test:
-	docker-compose -f docker-compose.test.yml run --rm smoke_test
+	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from smoke_test smoke_test
 
 unit-test:
-	docker-compose -f docker-compose.test.yml run --rm unit_test
+	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test unit_test
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
@@ -28,7 +28,7 @@ endif
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)"
 
 performance-test:
-	docker-compose -f docker-compose.test.yml run --rm performance_test
+	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from performance_test performance_test
 
 test:
 	$(MAKE) unit-test
@@ -45,6 +45,12 @@ load-fixtures:
 docker-build:
 	docker-compose build
 	docker-compose -f docker-compose.test.yml build
+
+docker-build-fresh:
+	docker-compose build --force-rm --no-cache
+	docker-compose -f docker-compose.test.yml build --force-rm --no-cache
+
+docker-bootstrap-fresh: docker-build-fresh load-fixtures
 
 docker-bootstrap: docker-build load-fixtures
 

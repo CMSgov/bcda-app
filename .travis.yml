@@ -43,7 +43,7 @@ before_script:
 # failing test, we want to see both. Configure golangci-lint with a
 # .golangci.yml file at the top level of your repo.
 script:
-  - make docker-bootstrap
+  - make docker-bootstrap-fresh
   - docker-compose up
   - sleep 30
   - make test
