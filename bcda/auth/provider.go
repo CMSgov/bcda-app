@@ -6,6 +6,8 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 )
 
 const (
@@ -39,7 +41,7 @@ func GetProvider() Provider {
 	case Alpha:
 		return AlphaAuthPlugin{}
 	case Okta:
-		return NewOktaAuthPlugin(NewOB())
+		return NewOktaAuthPlugin(client.NewOktaClient())
 	default:
 		return AlphaAuthPlugin{}
 	}

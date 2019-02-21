@@ -1,13 +1,14 @@
 // +build okta
 
 // To enable this test suite:
-// 1. Put an appropriate token into env var OKTA_CLIENT_TOKEN
-// 2. Put an existing Okta user email address into OKTA_EMAIL
+
 // 3. Run "go test -tags=okta -v" from the bcda/auth/client directory
 
 package client
 
 import (
+	"fmt"
+	"math/rand"
 	"os"
 	"regexp"
 	"testing"
@@ -57,10 +58,21 @@ func (s *OTestSuite) TestConfig() {
 // {"level":"info","msg":"1 okta public oauth server public keys cached","time":"2019-02-20T13:30:48-08:00"}
 // {"level":"warning","msg":"invalid key id not a real key presented","time":"2019-02-20T13:30:48-08:00"}
 func (s *OTestSuite) TestPublicKeyFor() {
-	s.oc = NewOktaClient()
+	// s.oc = NewOktaClient()
 	pk, ok := s.oc.PublicKeyFor("not a real key")
 	assert.Nil(s.T(), pk.N)
 	assert.False(s.T(), ok)
+}
+
+// for manual verification, the clientID returned should be listed in the server's policy page under clients
+// also should be listed as a "BCDA <randomClientID>" in the apps page
+func (s *OTestSuite) TestAddClientApplication() {
+	rci := randomClientId(6)
+	clientID, secret, err := s.oc.AddClientApplication(rci)
+	fmt.Printf("\nBCDA %s %s, %s, %v\n", rci, clientID, secret, err)
+	assert.Nil(s.T(), err)
+	assert.NotEmpty(s.T(), clientID)
+	assert.NotEmpty(s.T(), secret)
 }
 
 func (s *OTestSuite) TearDownTest() {
@@ -68,4 +80,13 @@ func (s *OTestSuite) TearDownTest() {
 
 func TestOTestSuite(t *testing.T) {
 	suite.Run(t, new(OTestSuite))
+}
+
+func randomClientId(n int) string {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "not_random"
+	}
+	return fmt.Sprintf("%x", b)
 }

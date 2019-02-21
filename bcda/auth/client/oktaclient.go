@@ -1,8 +1,12 @@
 package client
 
 import (
+	"bytes"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -38,7 +42,8 @@ func init() {
 	} else {
 		logger.Info("No Okta log location provided; using default stderr")
 	}
-	config()
+	// there is no possibility of recovery if we put the call to config() here
+	// because init() is called once when main is being started
 }
 
 // separate from init for testing
@@ -51,7 +56,7 @@ func config() error {
 	// report missing env vars
 	at := oktaToken
 	if at != "" {
-		at =  "[Redacted]"
+		at = "[Redacted]"
 	}
 
 	if oktaBaseUrl == "" || oktaServerID == "" || oktaToken == "" {
@@ -68,11 +73,20 @@ type OktaClient struct {}
 
 // Returns an OktaClient. An OktaClient is always created, whether or not it is currently able to converse with Okta.
 func NewOktaClient() *OktaClient {
+	var err error
 	once.Do(func() {
-		publicKeys = getPublicKeys()
+		err = config()
+		if err == nil {
+			publicKeys = getPublicKeys()
+		}
+		// called even if there's been an error so we might recover
 		go refreshKeys()
 	})
-
+	if err != nil {
+		logger.Errorf("no public keys available for server because %s", err)
+		// our practice is to not stop the app, even when it's in a state where it can do nothing but emit errors
+		// methods called on this ob value will result in errors until the publicKeys map is successfully updated
+	}
 	return &OktaClient{}
 }
 
@@ -82,6 +96,153 @@ func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
 	return key, ok
 }
 
+func (oc *OktaClient) AddClientApplication(localID string) (string, string, error) {
+	requestID := uuid.NewRandom()
+
+	body := fmt.Sprintf(`{ "client_name": "BCDA %s", "client_uri": null, "logo_uri": null, "application_type": "service", "redirect_uris": [], "response_types": [ "token" ], "grant_types": [ "client_credentials" ], "token_endpoint_auth_method": "client_secret_basic" }`, localID)
+	req, err := http.NewRequest("POST", oktaBaseUrl+"/oauth2/v1/clients", bytes.NewBufferString(body))
+	if err != nil {
+		return "", "", err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", oktaAuthString)
+
+	logRequest(requestID)
+
+	var client = &http.Client{Timeout: time.Second * 10,}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+
+	logResponse(resp.StatusCode, requestID)
+
+	if resp.StatusCode != 201 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			logError(err, requestID).Infof("failed to create client %s", localID)
+			return "", "", err
+		}
+		err = fmt.Errorf("unexpected result: %s", body)
+		logError(err, requestID)
+		return "", "", err
+	}
+
+	var result map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return "", "", err
+	}
+
+	clientID := result["client_id"].(string)
+	clientSecret := result["client_secret"].(string)
+
+	err = addClientToPolicy(clientID, requestID)
+	if err != nil {
+		logError(err, requestID).Infof("invalid client %s", localID)
+		return "", "", err
+		// client will not be able to use server until it is added to the policy
+	}
+
+	return clientID, clientSecret, nil
+}
+
+type Policy struct {
+	ID          string `json:"id"`
+	Type        string `json:"type"`
+	Status      string `json:"status"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Priority    int    `json:"priority"`
+	System      bool   `json:"system"`
+	Conditions  Cond   `json:"conditions"`
+}
+
+type Cond struct {
+	Clients Cli `json:"clients"`
+}
+
+type Cli struct {
+	Include []string `json:"include"`
+}
+
+// Update the Auth Server's access policy to include our new client application. Otherwise, that application
+// will not be able to use the server. To do this, we first get the current list of clients, add the new
+// server to the inclusion list, and put it back to the server
+func addClientToPolicy(clientID string, requestID uuid.UUID) error {
+	policyUrl := fmt.Sprintf("%s/api/v1/authorizationServers/%s/policies", oktaBaseUrl, oktaServerID)
+	req, err := http.NewRequest("GET", policyUrl, nil)
+	if err != nil {
+		logError(err, requestID)
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", oktaAuthString)
+
+	var client = &http.Client{Timeout: time.Second * 10,}
+	resp, err := client.Do(req)
+	if err != nil {
+		logError(err, requestID)
+		return err
+	}
+
+	var result []Policy
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		logError(err, requestID)
+		return err
+	}
+
+	if len(result) > 1 {
+		err := fmt.Errorf("more than one policy entry for server; can't continue safely")
+		logError(err, requestID)
+		return err
+	}
+
+	// add the new client to the inclusion list
+	incl := result[0].Conditions.Clients.Include
+	incl = append(incl, clientID)
+	result[0].Conditions.Clients.Include = incl
+
+	// put the list back to the server
+	body, err := json.Marshal(result[0])
+	if err != nil {
+		logError(err, requestID)
+		return err
+	}
+
+	req, err = http.NewRequest("PUT", fmt.Sprintf("%s/%s", policyUrl, result[0].ID), bytes.NewBuffer(body))
+	if err != nil {
+		logError(err, requestID)
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", oktaAuthString)
+
+	client = &http.Client{Timeout: time.Second * 10,}
+	resp, err = client.Do(req)
+	if err != nil {
+		logError(err, requestID)
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			logError(err, requestID).Infof("failed to update policy with %s", clientID)
+			return err
+		}
+		return fmt.Errorf("unexpected result: %s", body)
+	}
+
+	return nil
+}
 
 func refreshKeys() {
 	for range time.Tick(time.Hour * 1) {

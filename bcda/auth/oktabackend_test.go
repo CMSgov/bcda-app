@@ -95,5 +95,6 @@ func TestOB_AddClientApplication(t *testing.T) {
 	fmt.Printf("\n%s, %s, %s\n", clientID, secret, err)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, clientID)
+	assert.Contains(t, "BCDA", clientID)
 	assert.NotEmpty(t, secret)
 }
