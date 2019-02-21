@@ -1,4 +1,4 @@
-FROM golang:1.10.6-alpine
+FROM golang:1.11.5-alpine
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/test/smoke_test
 COPY ./test/smoke_test .
