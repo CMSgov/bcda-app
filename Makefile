@@ -48,14 +48,8 @@ load-fixtures:
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_beneficiaries.sql
 
 docker-build:
-	docker-compose build
-	docker-compose -f docker-compose.test.yml build
-
-docker-build-fresh:
-	docker-compose build --force-rm --no-cache
-	docker-compose -f docker-compose.test.yml build --force-rm --no-cache
-
-docker-bootstrap-fresh: docker-build-fresh load-fixtures
+	docker-compose build --force-rm
+	docker-compose -f docker-compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures
 
@@ -77,4 +71,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
