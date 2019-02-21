@@ -13,13 +13,10 @@ package:
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 smoke-test:
-	docker-compose up -d 
-	sleep 30
-	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from smoke_test smoke_test
+	docker-compose -f docker-compose.test.yml run --rm smoke_test
 
 unit-test:
-	docker-compose up -d db queue
-	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from unit_test unit_test
+	docker-compose -f docker-compose.test.yml run --rm unit_test
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
@@ -27,16 +24,11 @@ postman:
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
 ifeq ($(env), local)
-	docker-compose up -d
-	sleep 30
 endif
-	docker-compose -f docker-compose.test.yml build --no-cache postman_test
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)"
 
 performance-test:
-	docker-compose up -d
-	sleep 30
-	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from performance_test performance_test
+	docker-compose -f docker-compose.test.yml run --rm performance_test
 
 test:
 	$(MAKE) unit-test

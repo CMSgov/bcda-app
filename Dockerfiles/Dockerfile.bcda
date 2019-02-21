@@ -1,4 +1,7 @@
-FROM golang:1.10.6
+FROM golang:1.10.6-alpine
+
+RUN apk update upgrade
+RUN apk add git openssl
 
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
@@ -10,10 +13,6 @@ RUN go get -u github.com/derekparker/delve/cmd/dlv
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 RUN dep ensure
-
-ENV BB_CLIENT_CERT_FILE ../shared_files/bb-dev-test-cert.pem
-ENV BB_CLIENT_KEY_FILE ../shared_files/bb-dev-test-key.pem
-ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 CMD ["fresh", "-r", "start-api"]

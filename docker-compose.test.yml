@@ -10,6 +10,14 @@ services:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
+      - BCDA_ERROR_LOG=/var/log/bcda-error.log
+      - BCDA_REQUEST_LOG=/var/log/bcda-request.log
+      - BCDA_BB_LOG=/var/log/bcda-bb-request.log
+      - BB_CLIENT_CERT_FILE=../shared_files/bb-dev-test-key.pem
+      - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem
+      - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
+      - FHIR_PAYLOAD_DIR=../bcdaworker/data
+      - FHIR_STAGING_DIR=../bcdaworker/tmpdata
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
 # Add the Okta token below and uncomment
