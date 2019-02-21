@@ -1,0 +1,8 @@
+./bcda/tmp/*
+./bcdaworker/archive/*
+./bcdaworker/data/*
+!./bcdaworker/data/test/test.ndjson
+./bcdaworker/tmp/*
+./bcdaworker/tmpdata/*
+./test_results/*
+./data/*
