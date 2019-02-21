@@ -32,7 +32,6 @@ func ParseToken(next http.Handler) http.Handler {
 		tokenString := authSubmatches[1]
 		token, err := GetProvider().DecodeJWT(tokenString)
 		if err != nil {
-			log.Error(err.Error())
 			next.ServeHTTP(w, r)
 			return
 		}
