@@ -47,14 +47,6 @@
   revision = "cca4135d8dddff765463feaf1118047a9e506b4a"
 
 [[projects]]
-  digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
-  name = "github.com/go-yaml/yaml"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
-  version = "v2.2.2"
-
-[[projects]]
   branch = "master"
   digest = "1:cddf81f7eefbb8bf6cf65fe56c3b3c01784d5ca2f133bd5adfc4912497b5176b"
   name = "github.com/influxdata/tdigest"
@@ -96,14 +88,6 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
-  digest = "1:edbef42561faa44c19129b68d1e109fbc1647f63239250391eadc8d0e7c9f669"
-  name = "github.com/kelseyhightower/envconfig"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
-  version = "v1.3.0"
-
-[[projects]]
   digest = "1:2d370ad7a48d3523291ad53a04b9b1510c182880927f800b46221cc465427800"
   name = "github.com/lib/pq"
   packages = [
@@ -140,26 +124,6 @@
   ]
   pruneopts = "UT"
   revision = "46d73e6be8b4faeee70850d0df829e4fe00d6819"
-  version = "v2.1.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:db79c2d101602e47f6c1b1be7fdf66a32b39f2c50e7d3dec746df1f1536bf8cc"
-  name = "github.com/okta/okta-sdk-golang"
-  packages = [
-    "okta",
-    "okta/cache",
-    "okta/query",
-  ]
-  pruneopts = "UT"
-  revision = "2395a5f0ddc8840b41566277432f0589f2570108"
-
-[[projects]]
-  digest = "1:808cdddf087fb64baeae67b8dfaee2069034d9704923a3cb8bd96a995421a625"
-  name = "github.com/patrickmn/go-cache"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0"
   version = "v2.1.0"
 
 [[projects]]
@@ -345,8 +309,6 @@
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
-    "github.com/okta/okta-sdk-golang/okta",
-    "github.com/okta/okta-sdk-golang/okta/query",
     "github.com/pborman/uuid",
     "github.com/sirupsen/logrus",
     "github.com/soheilhy/cmux",
