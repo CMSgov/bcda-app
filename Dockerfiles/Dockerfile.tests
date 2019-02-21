@@ -5,6 +5,7 @@ RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 RUN go get -u github.com/xo/usql
 RUN go get -u github.com/securego/gosec/cmd/gosec
 RUN go get -u gotest.tools/gotestsum
+RUN go get -u github.com/tsenart/vegeta
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
@@ -12,4 +13,4 @@ COPY . .
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
-CMD ["bash", "unit_test.sh"]
+ENTRYPOINT []

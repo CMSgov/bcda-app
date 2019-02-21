@@ -1,10 +1,10 @@
 version: '3'
 
 services:
-  unit_test:
+  tests:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.unit_test
+      dockerfile: Dockerfiles/Dockerfile.tests
     environment:
       - DB=postgresql://postgres:toor@db:5432
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
@@ -24,26 +24,9 @@ services:
 #     - OKTA_CLIENT_TOKEN=<token>
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-  smoke_test:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.smoke_test
-    volumes:
-      - ./test:/go/src/github.com/CMSgov/bcda-app/test
-      - ./shared_files:/go/src/github.com/CMSgov/bcda-app/shared_files
-    environment:
-      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
   postman_test:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.postman_test
     volumes:
        - .:/go/src/github.com/CMSgov/bcda-app
-  performance_test:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.performance_test
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
-    environment:
-      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem

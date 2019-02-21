@@ -12,11 +12,15 @@ package:
 	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+lint:
+	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
+	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
+
 smoke-test:
-	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from smoke_test smoke_test
+	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
 
 unit-test:
-	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from unit_test unit_test
+	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
@@ -28,9 +32,10 @@ endif
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)"
 
 performance-test:
-	docker-compose -f docker-compose.test.yml up --force-recreate --exit-code-from performance_test performance_test
+	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
+	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
 	$(MAKE) smoke-test

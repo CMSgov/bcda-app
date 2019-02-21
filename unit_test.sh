@@ -6,15 +6,9 @@
 set -e
 set -o pipefail
 
-echo "Running linter..."
-golangci-lint run
-
 timestamp=`date +%Y-%m-%d_%H-%M-%S`
 mkdir -p test_results/${timestamp}
 mkdir -p test_results/latest
-
-echo "Running gosec..."
-gosec ./...
 
 echo "Setting up test DB (bcda_test)..."
 DB_HOST_URL=${DB}?sslmode=disable
