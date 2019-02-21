@@ -83,7 +83,7 @@ func NewOktaClient() *OktaClient {
 		go refreshKeys()
 	})
 	if err != nil {
-		logger.Errorf("no public keys available for server because %s", err)
+		logger.Errorf("No public keys available for server because %s", err)
 		// our practice is to not stop the app, even when it's in a state where it can do nothing but emit errors
 		// methods called on this ob value will result in errors until the publicKeys map is successfully updated
 	}
@@ -92,7 +92,7 @@ func NewOktaClient() *OktaClient {
 
 func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
 	key, ok := publicKeys[id]
-	logger.Warnf("invalid key id %s presented", id)
+	logger.Warnf("Invalid key id %s presented", id)
 	return key, ok
 }
 
@@ -246,7 +246,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 
 func refreshKeys() {
 	for range time.Tick(time.Hour * 1) {
-		logger.Info("refreshing okta public keys")
+		logger.Info("Refreshing okta public keys")
 		publicKeys = getPublicKeys()
 	}
 }

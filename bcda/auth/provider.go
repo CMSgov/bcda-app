@@ -30,10 +30,10 @@ func SetProvider(name string) {
 		case Alpha:
 			providerName = name
 		default:
-			log.Infof(`unknown providerName %s; using %s`, name, providerName)
+			log.Infof(`Unknown providerName %s; using %s`, name, providerName)
 		}
 	}
-	log.Infof(`auth is made possible by %s`, providerName)
+	log.Infof(`Auth is made possible by %s`, providerName)
 }
 
 func GetProvider() Provider {
