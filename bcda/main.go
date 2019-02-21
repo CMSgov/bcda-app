@@ -249,7 +249,7 @@ func setUpApp() *cli.App {
 				},
 				cli.StringFlag{
 					Name:        "size",
-					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', or 'Large'",
+					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'",
 					Destination: &acoSize,
 				},
 			},
@@ -417,10 +417,11 @@ func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
 		"dev",
 		"small",
 		"medium",
-		"large":
+		"large",
+		"extra_large":
 		return i, nil
 	default:
-		return i, errors.New("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', or 'Large'")
+		return i, errors.New("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'")
 	}
 }
 
