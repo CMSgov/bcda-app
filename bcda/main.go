@@ -61,14 +61,8 @@ func init() {
 }
 
 func createAPIDirs() {
-	payload := os.Getenv("FHIR_PAYLOAD_DIR")
-	err := os.MkdirAll(payload, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-
-	}
 	archive := os.Getenv("FHIR_ARCHIVE_DIR")
-	err = os.MkdirAll(archive, os.ModePerm)
+	err := os.MkdirAll(archive, 0750)
 	if err != nil {
 		log.Fatal(err)
 	}

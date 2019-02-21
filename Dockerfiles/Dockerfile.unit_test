@@ -1,4 +1,4 @@
-FROM golang:1.10.6
+FROM golang:1.11.5
 
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
