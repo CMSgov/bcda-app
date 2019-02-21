@@ -95,6 +95,17 @@ Notes:
 - These examples interpret the basename of the input file as the label to use during decryption. **It's important that the filename match what was sent in the job status response.**
 - The sample private key used for this proof-of-concept is included in the [bcda-app repository](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem).
 
+[C#](https://gist.github.com/dhgreene/5b2307a6b6caf4add18a91e3936ee71a)
+```bash
+dotnet run decrypt.cs \
+	--file /path/to/0c527d2e-2e8a-4808-b11d-0fa06baf8254.ndjson \
+	--pk /path/to/bcda-app/shared_files/ATO_private.pem \
+	--key 6c498a997001592ac05ace691fcf4a81724936c78937e24f90242c4f3081759f5365bef70a79eb0a6e145d22190b1178acf9f819399d27a4261efedf027642ca37d3f50cc0b941b105e35fc5b21cc785b171acb0ed299be16ff86fb457ff00d6855fefc9d403efdecbaca81ebffc85f8dbf1574d791640d392c5523482578ed232f7554880fa52d3471a4d919ab1ae8687e0442697cad7326aeb6ad0ddecaaeccaf61f952ef0cde2a3f15167b8854f8620440d8f1d9e09a0a39f1d04a3acf8178e5b6b28d9a062f09ff5fece3d16d9aacf7d43f4b94932d4f3268d1029f2874f3542ba71c858586393a80f45cb92b0cff9d2857b960045d733183d15c3599377 \
+	> decrypted_output.ndjson
+    
+```
+
+
 [Golang](https://gist.github.com/rnagle/f18099029460c7150cb5d68c3e06cb48)
 
 ```bash
