@@ -8,7 +8,7 @@ package client
 
 import (
 	"fmt"
-	"math/rand"
+	"crypto/rand"
 	"os"
 	"regexp"
 	"testing"
