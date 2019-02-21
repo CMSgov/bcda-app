@@ -57,7 +57,7 @@ func init() {
 
 func createWorkerDirs() {
 	staging := os.Getenv("FHIR_STAGING_DIR")
-	err := os.MkdirAll(staging, 0750)
+	err := os.MkdirAll(staging, 0744)
 	if err != nil {
 		log.Fatal(err)
 	}

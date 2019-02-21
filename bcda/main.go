@@ -62,7 +62,7 @@ func init() {
 
 func createAPIDirs() {
 	archive := os.Getenv("FHIR_ARCHIVE_DIR")
-	err := os.MkdirAll(archive, 0750)
+	err := os.MkdirAll(archive, 0744)
 	if err != nil {
 		log.Fatal(err)
 	}
