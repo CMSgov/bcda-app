@@ -22,6 +22,7 @@ ENV BB_CLIENT_KEY_FILE ../shared_files/bb-dev-test-key.pem
 ENV BB_SERVER_LOCATION https://fhir.backend.bluebutton.hhsdevcloud.us
 ENV FHIR_PAYLOAD_DIR ../bcdaworker/data
 ENV FHIR_STAGING_DIR ../bcdaworker/tmpdata
+ENV FHIR_ARCHIVE_DIR ../bcdaworker/archive
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 CMD ["bash", "unit_test.sh"]

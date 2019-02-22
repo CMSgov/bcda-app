@@ -42,6 +42,7 @@ type jobEnqueueArgs struct {
 }
 
 func init() {
+	createWorkerDirs()
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
 
@@ -51,6 +52,14 @@ func init() {
 		log.SetOutput(file)
 	} else {
 		log.Info("Failed to open worker error log file; using default stderr")
+	}
+}
+
+func createWorkerDirs() {
+	staging := os.Getenv("FHIR_STAGING_DIR")
+	err := os.MkdirAll(staging, 0744)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
