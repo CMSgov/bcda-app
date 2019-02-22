@@ -18,6 +18,7 @@ services:
       - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
       - FHIR_PAYLOAD_DIR=../bcdaworker/data
       - FHIR_STAGING_DIR=../bcdaworker/tmpdata
+      - FHIR_ARCHIVE_DIR=../bcdaworker/archive
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
 # Add the Okta token below and uncomment
