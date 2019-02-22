@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -81,7 +83,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize string
+	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -301,6 +303,21 @@ func setUpApp() *cli.App {
 					return err
 				}
 				return cleanupArchive(th)
+			},
+		},
+		{
+			Name:     "load-cclf8",
+			Category: "",
+			Usage:    "",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF8 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF8(filePath)
 			},
 		},
 	}
@@ -601,4 +618,36 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 	}
 
 	return aco, nil
+}
+
+func importCCLF8(filePath string) error {
+	fmt.Printf("Importing CCLF8 at %s\n", filePath)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Confirm filename pattern. P.A****.Y**.CCLF8.Dyymmdd.Thhmmsst ?
+	//filenameRegexp = regexp.Compile(```)
+
+	sc := bufio.NewScanner(file)
+	for sc.Scan() {
+		b := sc.Bytes()
+		if len(bytes.TrimSpace(b)) > 0 {
+			fmt.Printf("\nMBI: %s\n", b[0:11])
+			fmt.Printf("HICN: %s\n", b[11:22])
+			fmt.Printf("State: %s\n", b[22:24])
+			fmt.Printf("County: %s\n", b[24:27])
+			fmt.Printf("Zip code: %s\n", b[27:32])
+			fmt.Printf("DOB: %s\n", b[32:42])
+			fmt.Printf("Sex: %s\n", b[42:43])
+			fmt.Printf("Race: %s\n", b[43:44])
+			fmt.Printf("Age: %s\n", b[44:47])
+			fmt.Printf("Medicare status: %s\n", b[47:49])
+			fmt.Printf("Dual status: %s\n", b[49:51])
+		}
+	}
+
+	return nil
 }

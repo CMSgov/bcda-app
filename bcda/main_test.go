@@ -722,6 +722,10 @@ func (s *MainTestSuite) TestCreateLargeAlphaToken() {
 	checkStructure(s, ttl, "Large")
 }
 
+func (s *MainTestSuite) TestImportCCLF8() {
+	importCCLF8("")
+}
+
 func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
 	exp := time.Unix(int64(claims["exp"].(float64)), 0)
