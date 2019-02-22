@@ -396,7 +396,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	// condition: no jobs exist
 	args := []string{"bcda", "archive-job-files"}
 	err := s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Nil(err)
 
 	// save a job to our db
 	j := models.Job{
@@ -414,9 +414,17 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	assert.NotNil(id)
 
 	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+	newpath := os.Getenv("FHIR_ARCHIVE_DIR")
 
 	if _, err = os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
+		if err != nil {
+			s.T().Error(err)
+		}
+	}
+
+	if _, err = os.Stat(newpath); os.IsNotExist(err) {
+		err = os.MkdirAll(newpath, os.ModePerm)
 		if err != nil {
 			s.T().Error(err)
 		}

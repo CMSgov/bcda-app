@@ -44,6 +44,7 @@ type jobEnqueueArgs struct {
 }
 
 func init() {
+	createAPIDirs()
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_ERROR_LOG")
 
@@ -57,6 +58,14 @@ func init() {
 	}
 	monitoring.GetMonitor()
 	log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
+}
+
+func createAPIDirs() {
+	archive := os.Getenv("FHIR_ARCHIVE_DIR")
+	err := os.MkdirAll(archive, 0744)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -475,15 +484,6 @@ func archiveExpiring(hrThreshold int) error {
 		return err
 	}
 
-	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
-	if _, err = os.Stat(expDir); os.IsNotExist(err) {
-		err = os.MkdirAll(expDir, os.ModePerm)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
 	var lastJobError error
 	for _, j := range jobs {
 		t := j.CreatedAt
@@ -492,7 +492,7 @@ func archiveExpiring(hrThreshold int) error {
 
 			id := int(j.ID)
 			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+			expDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
@@ -516,12 +516,6 @@ func archiveExpiring(hrThreshold int) error {
 func cleanupArchive(hrThreshold int) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
-	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
-	if _, err := os.Stat(expDir); os.IsNotExist(err) {
-		// nothing to do if no base directory exists.
-		return nil
-	}
 
 	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
 
