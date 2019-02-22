@@ -23,29 +23,29 @@ func getPublicKeys() (map[string]rsa.PublicKey) {
 
 	body, err = get(fmt.Sprintf("%s/oauth2/%s/.well-known/oauth-authorization-server", oktaBaseUrl, oktaServerID))
 	if err != nil {
-		logger.Errorf("can't fetch okta oauth server metadata because %v", err)
+		logEmergency(err, nil).Print("okta oauth server metadata not available")
 		return nil
 	}
 	md := make(map[string]interface{})
 	if err = json.Unmarshal(body, &md); err != nil {
-		logger.Errorf("can't unmarshal %s because %v", string(body), err)
+		logEmergency(err, nil).WithField("body", string(body)).Print("can't unmarshal metadata")
 		return nil
 	}
 
 	jwkUrl := md["jwks_uri"].(string)
 	body, err = get(jwkUrl)
 	if err != nil {
-		logger.Errorf("can't get keys from %s because %v", jwkUrl, err)
+		logEmergency(err, nil).WithField("jwkurl", jwkUrl).Print("no metadata url")
 		return nil
 	}
 
 	keys, err = parseKeys(body)
 	if err != nil {
-		logger.Errorf("couldn't parse %s because %v", string(body), err)
+		logEmergency(err, nil).WithField("body", string(body)).Print("can't parse metadata")
 		return nil
 	}
 	if len(keys) == 0 {
-		logger.Errorf("must have at least 1 public key; have none")
+		logEmergency(err, nil).WithField("jwkurl", jwkUrl).Print("no server signing keys")
 		return nil
 	}
 
@@ -72,28 +72,31 @@ func get(urlString string) ([]byte, error) {
 		logger.Error(err)
 		return nil, err
 	}
+
 	u, err := url.Parse(urlString)
 	if err != nil {
-		logger.Errorf("invalid url %s because %v", urlString, err)
+		logError(err, nil).WithField("url", urlString).Print("invalid url")
 		return nil, err
 	}
 
 	var client = &http.Client{Timeout: time.Second * 10,}
 	res, err := client.Get(u.String())
 	if err != nil {
-		logger.Errorf("net failure to %s because %v", u.String(), err)
+		logError(err, nil).Print("http or network failure")
 		return nil, err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		logger.Errorf("okta responded with %v (expected 200)", res.StatusCode)
+		err := fmt.Errorf("okta responded with %v (expected 200)", res.StatusCode)
+		logError(err, nil).WithField("http_status", res.StatusCode).Print()
 		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
+
 	if err != nil {
-		logger.Errorf("couldn't read response body from okta because %v", err)
+		logError(err, nil).Print("couldn't read response body from okta")
 		return nil, err
 	}
 
@@ -103,7 +106,7 @@ func get(urlString string) ([]byte, error) {
 func parseKeys(body []byte) (map[string]rsa.PublicKey, error) {
 	data := KeyList{}
 	if err := json.Unmarshal(body, &data); err != nil {
-		logger.Errorf("can't unmarshal key %v because %s", body, err)
+		logError(err, nil).WithField("body", string(body)).Print("can't unmarshal key data")
 		return nil, err
 	}
 
@@ -111,14 +114,8 @@ func parseKeys(body []byte) (map[string]rsa.PublicKey, error) {
 	for _, v := range data.Keys {
 		if v.KeyType != "RSA" || v.Algorithm != "RS256" || v.Use != "sig" {
 			err := fmt.Errorf(fmt.Sprintf("malformed key (values %v)", v))
-			logger.Error(err)
+			logError(err, nil).Print()
 			return nil, err
-		}
-		if len(v.N) != 342 {
-			logger.Warnf("N value is not 342 chars (%v)", v.N)
-		}
-		if len(v.E) != 4 {
-			logger.Warnf("E value is not 4 chars (%v)", v.N)
 		}
 
 		var err error

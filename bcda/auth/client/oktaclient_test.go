@@ -7,8 +7,8 @@
 package client
 
 import (
-	"fmt"
 	"crypto/rand"
+	"fmt"
 	"os"
 	"regexp"
 	"testing"
@@ -69,7 +69,6 @@ func (s *OTestSuite) TestPublicKeyFor() {
 func (s *OTestSuite) TestAddClientApplication() {
 	rci := randomClientId(6)
 	clientID, secret, err := s.oc.AddClientApplication(rci)
-	fmt.Printf("\nBCDA %s %s, %s, %v\n", rci, clientID, secret, err)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), clientID)
 	assert.NotEmpty(s.T(), secret)

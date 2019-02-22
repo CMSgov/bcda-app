@@ -80,7 +80,7 @@ func NewOktaClient() *OktaClient {
 		go refreshKeys()
 	})
 	if err != nil {
-		logger.Errorf("No public keys available for server because %s", err)
+		logEmergency(err, nil).Print("No public keys available for server")
 		// our practice is to not stop the app, even when it's in a state where it can do nothing but emit errors
 		// methods called on this ob value will result in errors until the publicKeys map is successfully updated
 	}
@@ -89,7 +89,9 @@ func NewOktaClient() *OktaClient {
 
 func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
 	key, ok := publicKeys[id]
-	logger.Warnf("Invalid key id %s presented", id)
+	if !ok {
+		logger.WithFields(logrus.Fields{"signing_key_id": id}).Warn("invalid signing key id presented")
+	}
 	return key, ok
 }
 
@@ -106,7 +108,7 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", oktaAuthString)
 
-	logRequest(requestID)
+	logRequest(requestID).Print("creating client in okta")
 
 	var client = &http.Client{Timeout: time.Second * 10,}
 	resp, err := client.Do(req)
@@ -114,16 +116,16 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 		return "", "", err
 	}
 
-	logResponse(resp.StatusCode, requestID)
+	logResponse(resp.StatusCode, requestID).Print()
 
 	if resp.StatusCode != 201 {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			logError(err, requestID).Infof("failed to create client %s", localID)
+			logError(err, requestID).WithField("local_id", localID).Print()
 			return "", "", err
 		}
 		err = fmt.Errorf("unexpected result: %s", body)
-		logError(err, requestID)
+		logError(err, requestID).Print()
 		return "", "", err
 	}
 
@@ -138,7 +140,7 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 
 	err = addClientToPolicy(clientID, requestID)
 	if err != nil {
-		logError(err, requestID).Infof("invalid client %s", localID)
+		logError(err, requestID).WithField("local_id", localID).Info("client can't access server")
 		return "", "", err
 		// client will not be able to use server until it is added to the policy
 	}
@@ -170,9 +172,10 @@ type Cli struct {
 // server to the inclusion list, and put it back to the server
 func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 	policyUrl := fmt.Sprintf("%s/api/v1/authorizationServers/%s/policies", oktaBaseUrl, oktaServerID)
+
 	req, err := http.NewRequest("GET", policyUrl, nil)
 	if err != nil {
-		logError(err, requestID)
+		logError(err, requestID).Print()
 		return err
 	}
 
@@ -180,41 +183,40 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", oktaAuthString)
 
+	// not calling logRequest() because this is a step of AddClientApplication
+
 	var client = &http.Client{Timeout: time.Second * 10,}
 	resp, err := client.Do(req)
 	if err != nil {
-		logError(err, requestID)
+		logError(err, requestID).Print()
 		return err
 	}
 
 	var result []Policy
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		logError(err, requestID)
+		logError(err, requestID).Print()
 		return err
 	}
 
 	if len(result) > 1 {
-		err := fmt.Errorf("more than one policy entry for server; can't continue safely")
-		logError(err, requestID)
+		logError(err, requestID).Print("more than one policy entry for server; can't continue safely")
 		return err
 	}
 
-	// add the new client to the inclusion list
 	incl := result[0].Conditions.Clients.Include
 	incl = append(incl, clientID)
 	result[0].Conditions.Clients.Include = incl
 
-	// put the list back to the server
 	body, err := json.Marshal(result[0])
 	if err != nil {
-		logError(err, requestID)
+		logError(err, requestID).Print()
 		return err
 	}
 
 	req, err = http.NewRequest("PUT", fmt.Sprintf("%s/%s", policyUrl, result[0].ID), bytes.NewBuffer(body))
 	if err != nil {
-		logError(err, requestID)
+		logError(err, requestID).Print()
 		return err
 	}
 
@@ -222,20 +224,24 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", oktaAuthString)
 
+	// not calling logRequest() because this is a step of AddClientApplication
+
 	client = &http.Client{Timeout: time.Second * 10,}
 	resp, err = client.Do(req)
 	if err != nil {
-		logError(err, requestID)
+		logError(err, requestID).WithField("policy_id", result[0].ID).Print()
 		return err
 	}
 
 	if resp.StatusCode != 200 {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			logError(err, requestID).Infof("failed to update policy with %s", clientID)
+			logError(err, requestID).WithFields(logrus.Fields{"client_id": clientID, "http_status": resp.StatusCode}).Info("failed to update policy")
 			return err
 		}
-		return fmt.Errorf("unexpected result: %s", body)
+		err = fmt.Errorf("unexpected result: %s", body)
+		logError(err, requestID).WithFields(logrus.Fields{"client_id": clientID, "http_status": resp.StatusCode}).Print()
+		return err
 	}
 
 	return nil
@@ -258,4 +264,8 @@ func logResponse(httpStatus int, requestId uuid.UUID) *logrus.Entry {
 
 func logError(err error, requestId uuid.UUID) *logrus.Entry {
 	return logger.WithFields(logrus.Fields{"error": err, "request_id": requestId})
+}
+
+func logEmergency(err error, requestId uuid.UUID) *logrus.Entry {
+	return logger.WithFields(logrus.Fields{"error": err, "emergency": "invalid system state"})
 }
