@@ -295,23 +295,24 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient|Coverage)/\$export`)
 		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
 
-		fi := fileItem{
-			Type: resourceType,
-			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.ACOID),
-		}
-
+		var files []fileItem
 		keyMap := make(map[string]string)
 		var jobKeysObj []models.JobKey
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
 			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
+			fi := fileItem{
+				Type: resourceType,
+				URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, jobKey.FileName),
+			}
+			files = append(files, fi)
 		}
 
 		rb := bulkResponseBody{
 			TransactionTime:     job.CreatedAt,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
-			Files:               []fileItem{fi},
+			Files:               files,
 			Errors:              []fileItem{},
 			KeyMap:              keyMap,
 			JobID:               job.ID,
@@ -527,6 +528,8 @@ type fileItem struct {
 	Type string `json:"type"`
 	// URL of the file
 	URL string `json:"url"`
+	// Encrypted Symmetric Key used to encrypt this file
+	Key string `json:"key"`
 }
 
 /*

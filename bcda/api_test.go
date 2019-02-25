@@ -522,7 +522,13 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
-
+	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+	jobKey := models.JobKey{
+		JobID:        j.ID,
+		FileName:     fileName,
+		EncryptedKey: []byte("Encrypted Key"),
+	}
+	s.db.Save(&jobKey)
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	req.TLS = &tls.ConnectionState{}
 
@@ -559,7 +565,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
-	dataurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
+	dataurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
 	errorurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3-error.ndjson")
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)

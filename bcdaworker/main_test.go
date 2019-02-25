@@ -37,6 +37,7 @@ func (s *MainTestSuite) SetupTest() {
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
 	models.InitializeGormModels()
+
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -49,10 +50,15 @@ func TestMainTestSuite(t *testing.T) {
 
 func TestWriteEOBDataToFile(t *testing.T) {
 	os.Setenv("FHIR_STAGING_DIR", "data/test")
+
 	bbc := MockBlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}
 	jobID := "1"
+	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+
+	// clean out the data dir before beginning this test
+	//os.RemoveAll(staging)
 	testUtils.CreateStaging(jobID)
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
@@ -64,28 +70,36 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		t.Fail()
 	}
 
-	filePath := fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Fatal(err)
+	files, err := ioutil.ReadDir(staging)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(files))
+
+	for _, f := range files {
+		fmt.Println(f.Name())
+		filePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		scanner := bufio.NewScanner(file)
+
+		// 33 entries in test EOB data returned by bbc.getData, times two beneficiaries
+		for i := 0; i < 66; i++ {
+			assert.True(t, scanner.Scan())
+			var jsonOBJ map[string]interface{}
+			err := json.Unmarshal(scanner.Bytes(), &jsonOBJ)
+			assert.Nil(t, err)
+			assert.NotNil(t, jsonOBJ["fullUrl"], "JSON should contain a value for `fullUrl`.")
+			assert.NotNil(t, jsonOBJ["resource"], "JSON should contain a value for `resource`.")
+		}
+		assert.False(t, scanner.Scan(), "There should be only 66 entries in the file.")
+
+		bbc.AssertExpectations(t)
+
+		file.Close()
+		os.Remove(filePath)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-
-	// 33 entries in test EOB data returned by bbc.getData, times two beneficiaries
-	for i := 0; i < 66; i++ {
-		assert.True(t, scanner.Scan())
-		var jsonOBJ map[string]interface{}
-		err := json.Unmarshal(scanner.Bytes(), &jsonOBJ)
-		assert.Nil(t, err)
-		assert.NotNil(t, jsonOBJ["fullUrl"], "JSON should contain a value for `fullUrl`.")
-		assert.NotNil(t, jsonOBJ["resource"], "JSON should contain a value for `resource`.")
-	}
-	assert.False(t, scanner.Scan(), "There should be only 66 entries in the file.")
-
-	bbc.AssertExpectations(t)
-
-	os.Remove(filePath)
 }
 
 func TestWriteEOBDataToFileNoClient(t *testing.T) {
