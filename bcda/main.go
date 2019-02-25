@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -306,9 +307,9 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "load-cclf8",
-			Category: "",
-			Usage:    "",
+			Name:     "import-cclf8",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF8 file",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "file",
@@ -628,8 +629,28 @@ func importCCLF8(filePath string) error {
 		return err
 	}
 
-	// TODO: Confirm filename pattern. P.A****.Y**.CCLF8.Dyymmdd.Thhmmsst ?
-	//filenameRegexp = regexp.Compile(```)
+	// CCLF8 filename convention for SSP: P.A****.ACO.ZC8Y**.Dyymmdd.Thhmmsst
+	// Prefix: T = test, P = prod; Y** = performance year
+	filenameRegexp := regexp.MustCompile(`(T|P)\.(A.{4})\.ACO\.ZC8Y\d{2}\.(D\d{6}\.T\d{6})\d`)
+	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
+	if len(filenameMatches) < 4 {
+		return errors.New("invalid CCLF8 filename")
+	}
+
+	var fileType string
+	if filenameMatches[1] == "T" {
+		fileType = "test"
+	} else if filenameMatches[1] == "P" {
+		fileType = "production"
+	}
+
+	filenameDate := filenameMatches[3]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil {
+		return fmt.Errorf("failed to parse date '%s' from filename", filenameDate)
+	}
+
+	fmt.Printf("File %s contains %s data for ACO %s at %s.\n", filenameMatches[0], fileType, filenameMatches[2], t)
 
 	sc := bufio.NewScanner(file)
 	for sc.Scan() {
