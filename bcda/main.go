@@ -321,6 +321,21 @@ func setUpApp() *cli.App {
 				return importCCLF8(filePath)
 			},
 		},
+		{
+			Name:     "import-cclf9",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF9 file",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF9 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF9(filePath)
+			},
+		},
 	}
 	return app
 }
@@ -622,7 +637,7 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 }
 
 func importCCLF8(filePath string) error {
-	fmt.Printf("Importing CCLF8 at %s\n", filePath)
+	fmt.Printf("Importing CCLF8 from %s\n", filePath)
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -658,15 +673,50 @@ func importCCLF8(filePath string) error {
 		if len(bytes.TrimSpace(b)) > 0 {
 			fmt.Printf("\nMBI: %s\n", b[0:11])
 			fmt.Printf("HICN: %s\n", b[11:22])
-			fmt.Printf("State: %s\n", b[22:24])
-			fmt.Printf("County: %s\n", b[24:27])
-			fmt.Printf("Zip code: %s\n", b[27:32])
-			fmt.Printf("DOB: %s\n", b[32:42])
-			fmt.Printf("Sex: %s\n", b[42:43])
-			fmt.Printf("Race: %s\n", b[43:44])
-			fmt.Printf("Age: %s\n", b[44:47])
-			fmt.Printf("Medicare status: %s\n", b[47:49])
-			fmt.Printf("Dual status: %s\n", b[49:51])
+		}
+	}
+
+	return nil
+}
+
+func importCCLF9(filePath string) error {
+	fmt.Printf("Importing CCLF9 from %s\n", filePath)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+
+	// CCLF9 filename convention for SSP: P.A****.ACO.ZC9Y**.Dyymmdd.Thhmmsst
+	// Prefix: T = test, P = prod; Y** = performance year
+	filenameRegexp := regexp.MustCompile(`(T|P)\.(A.{4})\.ACO\.ZC9Y\d{2}\.(D\d{6}\.T\d{6})\d`)
+	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
+	if len(filenameMatches) < 4 {
+		return errors.New("invalid CCLF9 filename")
+	}
+
+	var fileType string
+	if filenameMatches[1] == "T" {
+		fileType = "test"
+	} else if filenameMatches[1] == "P" {
+		fileType = "production"
+	}
+
+	filenameDate := filenameMatches[3]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil {
+		return fmt.Errorf("failed to parse date '%s' from filename", filenameDate)
+	}
+
+	fmt.Printf("File %s contains %s data for ACO %s at %s.\n", filenameMatches[0], fileType, filenameMatches[2], t)
+
+	sc := bufio.NewScanner(file)
+	for sc.Scan() {
+		b := sc.Bytes()
+		if len(bytes.TrimSpace(b)) > 0 {
+			fmt.Printf("\nXREF: %s\n", b[0:1])
+			fmt.Printf("Current identifier: %s\n", b[1:12])
+			fmt.Printf("Previous identifier: %s\n", b[12:23])
 		}
 	}
 
