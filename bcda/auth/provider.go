@@ -6,6 +6,8 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 )
 
 const (
@@ -39,7 +41,7 @@ func GetProvider() Provider {
 	case Alpha:
 		return AlphaAuthPlugin{}
 	case Okta:
-		return OktaAuthPlugin{}
+		return NewOktaAuthPlugin(client.NewOktaClient())
 	default:
 		return AlphaAuthPlugin{}
 	}
@@ -77,6 +79,6 @@ type Provider interface {
 	// Assert that a base64 encoded token string is valid for accessing the BCDA API
 	ValidateJWT(tokenString string) error
 
-	// Decode a base64 encoded token string
-	DecodeJWT(tokenString string) (jwt.Token, error)
+	// Decode a base64 encoded token string into a structured token
+	DecodeJWT(tokenString string) (*jwt.Token, error)
 }
