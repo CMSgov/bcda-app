@@ -41,6 +41,9 @@ services:
       - HTTP_ONLY=true
       - ENABLE_PATIENT_EXPORT=true
       - ENABLE_COVERAGE_EXPORT=true
+      - BB_CLIENT_CERT_FILE=../shared_files/bb-dev-test-cert.pem
+      - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem
+      - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
 # Add the Okta values below and uncomment
@@ -66,6 +69,10 @@ services:
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata
       - ATO_PUBLIC_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_private.pem
+      - BB_CLIENT_CERT_FILE=../shared_files/bb-dev-test-cert.pem
+      - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem 
+      - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
+      - BB_TIMEOUT_MS=500
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:

@@ -27,11 +27,41 @@ docker-compose up
 
 ### Test
 
-Run tests and produce test metrics:
+Run tests and produce test metrics.  
+The items identified above in the `Build/Start` section are prerequisites to running tests.  
+In order to keep the test feedback loop optimized, the following items must be handled by the caller (and are not handled by the test targets):
+- Ensuring the compose stack is up and running
+- Ensuring the database has been seeded
+- Managing images/containers (if Dockerfile changes have occurred, an image rebuild is required and won't occur as part of the test targets)
 
-1. Run tests (this places results and a coverage report in test_results/<timestamp>):
+1. Run golang linter and gosec:
+```sh
+make lint
+```
+
+2. Run unit tests (this places results and a coverage report in test_results/<timestamp>):
+```sh
+make unit-test
+```
+
+3. Run postman integration tests:
+```sh
+make postman env=local
+```
+
+4. Run smoke tests:
+```sh
+make smoke-test
+```
+
+5. Run full test suite (executes all of items in 1-4 above):
 ```sh
 make test
+```
+
+6. Run performance tests (primarily to be utilized by Jenkins in AWS):
+```sh
+make performance-test
 ```
 
 ### Use the application
