@@ -281,7 +281,7 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
 	t, err := s.p.DecodeJWT(ts)
 	c := t.Claims.(jwt.MapClaims)
 	assert.Nil(s.T(), err)
-	assert.IsType(s.T(), jwt.Token{}, t)
+	assert.IsType(s.T(), &jwt.Token{}, t)
 	assert.Equal(s.T(), userID, c["sub"])
 	assert.Equal(s.T(), acoID, c["aco"])
 }

@@ -40,7 +40,7 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "token", &token)
+		ctx := context.WithValue(r.Context(), "token", token)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

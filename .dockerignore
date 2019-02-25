@@ -1,0 +1,9 @@
+**/bcda/tmp/*
+**/bcdaworker/archive/*
+**/bcdaworker/data/*
+**/bcdaworker/tmp/*
+**/bcdaworker/tmpdata/*
+**/.git
+**/data
+**/test_results
+!./bcdaworker/data/test/test.ndjson

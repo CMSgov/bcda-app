@@ -1,20 +1,36 @@
 package auth
 
 import (
+	"crypto/rsa"
 	"errors"
+	"fmt"
 
 	"github.com/dgrijalva/jwt-go"
 )
 
-type OktaAuthPlugin struct{}
+type OktaBackend interface {
+	// Returns the current set of public signing keys for the okta auth server
+	PublicKeyFor(id string) (rsa.PublicKey, bool)
+
+	// Adds an api client application to our Okta organization
+	AddClientApplication(string) (string, string, error)
+}
+
+type OktaAuthPlugin struct {
+	backend OktaBackend // interface, not a concrete type, so no *
+}
+
+// Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
+func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
+	return OktaAuthPlugin{backend}
+}
 
 func (o OktaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	if localID == "" {
 		return Credentials{}, errors.New("you must provide a localID")
 	}
 
-	// using the mocktaclient here for now
-	id, key, err := addClientApplication(localID)
+	id, key, err := o.backend.AddClientApplication(localID)
 	return Credentials{
 		ClientID:     id,
 		ClientSecret: key,
@@ -49,6 +65,24 @@ func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) DecodeJWT(tokenString string) (jwt.Token, error) {
-	return jwt.Token{}, errors.New("not yet implemented")
+func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
+	keyFinder := func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		keyID, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, fmt.Errorf("no key id in token header? %v", token.Header)
+		}
+
+		key, ok := o.backend.PublicKeyFor(keyID)
+		if !ok {
+			return nil, fmt.Errorf("no key found with id %s", keyID)
+		}
+
+		return &key, nil
+	}
+
+	return jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFinder)
 }

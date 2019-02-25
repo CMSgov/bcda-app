@@ -1,41 +1,37 @@
 version: '3'
 
 services:
-  unit_test:
+  tests:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.unit_test
+      dockerfile: Dockerfiles/Dockerfile.tests
     environment:
       - DB=postgresql://postgres:toor@db:5432
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
+      - BCDA_ERROR_LOG=/var/log/bcda-error.log
+      - BCDA_REQUEST_LOG=/var/log/bcda-request.log
+      - BCDA_BB_LOG=/var/log/bcda-bb-request.log
+      - BB_CLIENT_CERT_FILE=../shared_files/bb-dev-test-key.pem
+      - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem
+      - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
+      - FHIR_PAYLOAD_DIR=../bcdaworker/data
+      - FHIR_STAGING_DIR=../bcdaworker/tmpdata
+      - FHIR_ARCHIVE_DIR=../bcdaworker/archive
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
-# Add the Okta token below and uncomment
+# Add the Okta values below and uncomment
+#     - BCDA_AUTH_PROVIDER=okta
 #     - OKTA_CLIENT_TOKEN=<token>
+#     - OKTA_OAUTH_SERVER_METADATA=
+#     - OKTA_OAUTH_SERVER_ID
+
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-  smoke_test:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.smoke_test
-    volumes:
-      - ./test:/go/src/github.com/CMSgov/bcda-app/test
-      - ./shared_files:/go/src/github.com/CMSgov/bcda-app/shared_files
-    environment:
-      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
   postman_test:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.postman_test
     volumes:
        - .:/go/src/github.com/CMSgov/bcda-app
-  performance_test:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.performance_test
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
-    environment:
-      - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
