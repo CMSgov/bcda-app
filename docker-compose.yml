@@ -44,6 +44,13 @@ services:
       - BB_CLIENT_CERT_FILE=../shared_files/bb-dev-test-cert.pem
       - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem
       - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
+      - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
+      - OKTA_EMAIL=shawn@bcda.aco-group.us
+# Add the Okta values below and uncomment
+#     - BCDA_AUTH_PROVIDER=okta
+#     - OKTA_CLIENT_TOKEN=<token>
+#     - OKTA_OAUTH_SERVER_METADATA=
+#     - OKTA_OAUTH_SERVER_ID
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
