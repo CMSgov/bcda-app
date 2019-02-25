@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -82,6 +86,44 @@ func RequireTokenACOMatch(next http.Handler) http.Handler {
 			respond(w, http.StatusUnauthorized)
 			return
 		}
+	})
+}
+
+func RequireTokenJobMatch(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		jobID := chi.URLParam(r, "jobId")
+		token := r.Context().Value("token").(*jwt.Token)
+
+		db := database.GetGORMDbConnection()
+		defer database.Close(db)
+
+		i, err := strconv.Atoi(jobID)
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		}
+
+		claims, err := ClaimsFromToken(token)
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		}
+
+		acoId := claims["aco"].(string)
+
+		var job models.Job
+		err = db.Find(&job, "id = ? and aco_id = ?", i, acoId).Error
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+			responseutils.WriteError(oo, w, http.StatusNotFound)
+			return
+		}
+
 	})
 }
 

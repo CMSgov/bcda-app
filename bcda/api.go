@@ -36,7 +36,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -46,8 +45,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	que "github.com/bgentry/que-go"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/bgentry/que-go"
+	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -242,26 +241,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	i, err := strconv.Atoi(jobID)
-	if err != nil {
-		log.Print(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
-
-	var claims jwt.MapClaims
-
-	if claims, err = readTokenClaims(r); err != nil {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
-
-	acoId := claims["aco"].(string)
-
 	var job models.Job
-	err = db.Find(&job, "id = ? and aco_id = ?", i, acoId).Error
+	err := db.Find(&job, "id = ?", jobID).Error
 	if err != nil {
 		log.Print(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
@@ -303,7 +284,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
 			fi := fileItem{
 				Type: resourceType,
-				URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, jobKey.FileName),
+				URL:  fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				Key:  hex.EncodeToString(jobKey.EncryptedKey),
 			}
 			files = append(files, fi)
 		}

@@ -352,7 +352,7 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
 func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
@@ -742,7 +742,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))

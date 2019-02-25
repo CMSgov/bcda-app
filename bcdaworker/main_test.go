@@ -58,7 +58,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 
 	// clean out the data dir before beginning this test
-	//os.RemoveAll(staging)
+	os.RemoveAll(staging)
 	testUtils.CreateStaging(jobID)
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
