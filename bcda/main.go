@@ -641,33 +641,21 @@ func importCCLF8(filePath string) error {
 		return errors.New("file path (--file) must be provided")
 	}
 
+	fileMetadata, err := getCCLFFileMetadata(filePath)
+	if err != nil {
+		return err
+	}
+
+	if fileMetadata.cclfNum != 8 {
+		return errors.New("invalid CCLF8 filename")
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 
-	// CCLF8 filename convention for SSP: P.A****.ACO.ZC8Y**.Dyymmdd.Thhmmsst
-	// Prefix: T = test, P = prod; Y** = performance year
-	filenameRegexp := regexp.MustCompile(`(T|P)\.(A.{4})\.ACO\.ZC8Y\d{2}\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
-	if len(filenameMatches) < 4 {
-		return errors.New("invalid CCLF8 filename")
-	}
-
-	var fileType string
-	if filenameMatches[1] == "T" {
-		fileType = "test"
-	} else if filenameMatches[1] == "P" {
-		fileType = "production"
-	}
-
-	filenameDate := filenameMatches[3]
-	t, err := time.Parse("D060102.T150405", filenameDate)
-	if err != nil {
-		return fmt.Errorf("failed to parse date '%s' from filename", filenameDate)
-	}
-
-	fmt.Printf("File %s contains %s data for ACO %s at %s.\n", filenameMatches[0], fileType, filenameMatches[2], t)
+	fmt.Printf("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
 
 	sc := bufio.NewScanner(file)
 	for sc.Scan() {
@@ -686,33 +674,21 @@ func importCCLF9(filePath string) error {
 		return errors.New("file path (--file) must be provided")
 	}
 
+	fileMetadata, err := getCCLFFileMetadata(filePath)
+	if err != nil {
+		return err
+	}
+
+	if fileMetadata.cclfNum != 9 {
+		return errors.New("invalid CCLF9 filename")
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 
-	// CCLF9 filename convention for SSP: P.A****.ACO.ZC9Y**.Dyymmdd.Thhmmsst
-	// Prefix: T = test, P = prod; Y** = performance year
-	filenameRegexp := regexp.MustCompile(`(T|P)\.(A.{4})\.ACO\.ZC9Y\d{2}\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
-	if len(filenameMatches) < 4 {
-		return errors.New("invalid CCLF9 filename")
-	}
-
-	var fileType string
-	if filenameMatches[1] == "T" {
-		fileType = "test"
-	} else if filenameMatches[1] == "P" {
-		fileType = "production"
-	}
-
-	filenameDate := filenameMatches[3]
-	t, err := time.Parse("D060102.T150405", filenameDate)
-	if err != nil {
-		return fmt.Errorf("failed to parse date '%s' from filename", filenameDate)
-	}
-
-	fmt.Printf("File %s contains %s data for ACO %s at %s.\n", filenameMatches[0], fileType, filenameMatches[2], t)
+	fmt.Printf("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
 
 	sc := bufio.NewScanner(file)
 	for sc.Scan() {
@@ -727,4 +703,45 @@ func importCCLF9(filePath string) error {
 	}
 
 	return nil
+}
+
+func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
+	var metadata cclfFileMetadata
+	// CCLF8/9 filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
+	// Prefix: T = test, P = prod; A**** = ACO ID; ZC* = CCLF file number; Y** = performance year
+	filenameRegexp := regexp.MustCompile(`(T|P)\.(A\d{4})\.ACO\.ZC(8|9)Y\d{2}\.(D\d{6}\.T\d{6})\d`)
+	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
+	if len(filenameMatches) < 5 {
+		return metadata, errors.New("invalid filename")
+	}
+
+	filenameDate := filenameMatches[4]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil {
+		return metadata, fmt.Errorf("failed to parse date '%s' from filename", filenameDate)
+	}
+
+	cclfNum, err := strconv.Atoi(filenameMatches[3])
+	if err != nil {
+		return metadata, err
+	}
+
+	if filenameMatches[1] == "T" {
+		metadata.env = "test"
+	} else if filenameMatches[1] == "P" {
+		metadata.env = "production"
+	}
+
+	metadata.cclfNum = cclfNum
+	metadata.acoID = filenameMatches[2]
+	metadata.timestamp = t
+
+	return metadata, nil
+}
+
+type cclfFileMetadata struct {
+	env       string
+	acoID     string
+	cclfNum   int
+	timestamp time.Time
 }

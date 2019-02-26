@@ -729,11 +729,11 @@ func (s *MainTestSuite) TestImportCCLF8() {
 	err := s.testApp.Run(args)
 	assert.Equal("file path (--file) must be provided", err.Error())
 
-	args = []string{"bcda", "import-cclf8", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC9Y18.D180201.T1230301"}
+	args = []string{"bcda", "import-cclf8", "--file", "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"}
 	err = s.testApp.Run(args)
 	assert.Equal("invalid CCLF8 filename", err.Error())
 
-	args = []string{"bcda", "import-cclf8", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC8Y18.D180201.T1230301"}
+	args = []string{"bcda", "import-cclf8", "--file", "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 }
@@ -745,11 +745,11 @@ func (s *MainTestSuite) TestImportCCLF9() {
 	err := s.testApp.Run(args)
 	assert.Equal("file path (--file) must be provided", err.Error())
 
-	args = []string{"bcda", "import-cclf9", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC8Y18.D180201.T1230301"}
+	args = []string{"bcda", "import-cclf9", "--file", "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
 	err = s.testApp.Run(args)
 	assert.Equal("invalid CCLF9 filename", err.Error())
 
-	args = []string{"bcda", "import-cclf9", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC9Y18.D180201.T1230301"}
+	args = []string{"bcda", "import-cclf9", "--file", "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 }
