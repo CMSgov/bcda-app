@@ -14,7 +14,7 @@ import (
 
 // Gets the current set of public server signing keys. This code treats all failures as fatal,
 // since failures are likely to result in an unrecoverable state for the application.
-func getPublicKeys() map[string]rsa.PublicKey {
+func getPublicKeys() (map[string]rsa.PublicKey) {
 	var (
 		body []byte
 		err  error
@@ -79,7 +79,7 @@ func get(urlString string) ([]byte, error) {
 		return nil, err
 	}
 
-	var client = &http.Client{Timeout: time.Second * 10}
+	var client = &http.Client{Timeout: time.Second * 10,}
 	res, err := client.Get(u.String())
 	if err != nil {
 		logError(err, nil).Print("http or network failure")

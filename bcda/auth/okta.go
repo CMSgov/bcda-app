@@ -16,8 +16,8 @@ type OktaBackend interface {
 	AddClientApplication(string) (string, string, error)
 }
 
-type OktaAuthPlugin struct {
-	backend OktaBackend // interface, not a concrete type, so no *
+type OktaAuthPlugin struct{
+	backend OktaBackend			// interface, not a concrete type, so no *
 }
 
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
@@ -77,7 +77,7 @@ func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		}
 
 		key, ok := o.backend.PublicKeyFor(keyID)
-		if !ok {
+		if (!ok) {
 			return nil, fmt.Errorf("no key found with id %s", keyID)
 		}
 

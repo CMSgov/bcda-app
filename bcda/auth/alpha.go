@@ -42,7 +42,7 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
 	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
 	// whose client_id matches their UUID was created by this plugin.
-	return Credentials{ClientID: localID}, nil
+	return Credentials{ClientID:localID}, nil
 }
 
 func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {

@@ -10,8 +10,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type Mokta struct {
-	publicKey  rsa.PublicKey
+type Mokta struct{
+	publicKey rsa.PublicKey
 	privateKey *rsa.PrivateKey
 }
 
@@ -28,11 +28,11 @@ func NewMokta() *Mokta {
 	keys := make(map[string]rsa.PublicKey)
 	keys["mokta"] = publicKey
 
-	return &Mokta{publicKey, privateKey}
+	return &Mokta{publicKey,privateKey}
 }
 
 func (m *Mokta) PublicKeyFor(id string) (rsa.PublicKey, bool) {
-	if id != "mokta" {
+	if (id != "mokta") {
 		return rsa.PublicKey{}, false
 	}
 	return m.publicKey, true
@@ -63,7 +63,7 @@ func someRandomBytes(n int) ([]byte, error) {
 // Returns a new access token
 func (m *Mokta) NewToken(clientID, acoID string, expiresIn int) (string, error) {
 	tid, err := someRandomBytes(32)
-	if err != nil {
+	if (err != nil) {
 		return "", err
 	}
 	token := jwt.New(jwt.SigningMethodRS256)
