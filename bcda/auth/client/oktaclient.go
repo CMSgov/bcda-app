@@ -66,7 +66,7 @@ func config() error {
 	return nil
 }
 
-type OktaClient struct{}
+type OktaClient struct {}
 
 // Returns an OktaClient. An OktaClient is always created, whether or not it is currently able to converse with Okta.
 func NewOktaClient() *OktaClient {
@@ -110,7 +110,7 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 
 	logRequest(requestID).Print("creating client in okta")
 
-	var client = &http.Client{Timeout: time.Second * 10}
+	var client = &http.Client{Timeout: time.Second * 10,}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", "", err
@@ -185,7 +185,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
-	var client = &http.Client{Timeout: time.Second * 10}
+	var client = &http.Client{Timeout: time.Second * 10,}
 	resp, err := client.Do(req)
 	if err != nil {
 		logError(err, requestID).Print()
@@ -226,7 +226,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
-	client = &http.Client{Timeout: time.Second * 10}
+	client = &http.Client{Timeout: time.Second * 10,}
 	resp, err = client.Do(req)
 	if err != nil {
 		logError(err, requestID).WithField("policy_id", result[0].ID).Print()
