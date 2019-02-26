@@ -58,7 +58,7 @@ func init() {
 	}
 	monitoring.GetMonitor()
 	log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
-	log.Info("Knoll in here writing things")
+
 }
 
 func createAPIDirs() {
