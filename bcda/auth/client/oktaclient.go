@@ -87,6 +87,10 @@ func NewOktaClient() *OktaClient {
 	return &OktaClient{}
 }
 
+func (oc *OktaClient) ServerID() string {
+	return oktaServerID
+}
+
 func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
 	key, ok := publicKeys[id]
 	if !ok {
