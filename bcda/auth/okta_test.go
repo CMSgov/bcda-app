@@ -29,6 +29,12 @@ func (s *OktaAuthPluginTestSuite) SetupSuite() {
 	InitializeGormModels()
 
 	db := database.GetGORMDbConnection()
+	defer func() {
+		if err := db.Close(); err != nil {
+			assert.Failf(s.T(), err.Error(), "okta plugin test")
+		}
+	}()
+
 	var aco models.ACO
 	if db.Find(&aco, "UUID = ?", uuid.Parse(KnownFixtureACO)).RecordNotFound() {
 		assert.NotNil(s.T(), fmt.Errorf("Unable to find ACO %s", KnownFixtureACO))
