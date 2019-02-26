@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -650,7 +651,7 @@ func importCCLF8(filePath string) error {
 		return errors.New("invalid CCLF8 filename")
 	}
 
-	file, err := os.Open(filePath)
+	file, err := os.Open(filepath.Clean(filePath))
 	if err != nil {
 		return err
 	}
@@ -683,7 +684,7 @@ func importCCLF9(filePath string) error {
 		return errors.New("invalid CCLF9 filename")
 	}
 
-	file, err := os.Open(filePath)
+	file, err := os.Open(filepath.Clean(filePath))
 	if err != nil {
 		return err
 	}
