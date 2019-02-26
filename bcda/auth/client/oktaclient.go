@@ -108,9 +108,7 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 		return "", "", err
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", oktaAuthString)
+	addRequestHeaders(req)
 
 	logRequest(requestID).Print("creating client in okta")
 
@@ -182,9 +180,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 		return err
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", oktaAuthString)
+	addRequestHeaders(req)
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
@@ -222,9 +218,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 		return err
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", oktaAuthString)
+	addRequestHeaders(req)
 
 	// not calling logRequest() because this is a step of AddClientApplication
 	resp, err = client().Do(req)
@@ -255,7 +249,7 @@ func refreshKeys() {
 }
 
 func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
-	url := os.Getenv("OKTA_CLIENT_ORGURL") + "/oauth2/v1/clients/" + clientID + "/lifecycle/newSecret"
+	url := oktaBaseUrl + "/oauth2/v1/clients/" + clientID + "/lifecycle/newSecret"
 
 	reqID := uuid.NewRandom()
 	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print()
@@ -294,19 +288,19 @@ func client() *http.Client {
 func addRequestHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "SSWS "+os.Getenv("OKTA_CLIENT_TOKEN"))
+	req.Header.Set("Authorization", oktaAuthString)
 }
 
-func logRequest(requestId uuid.UUID) *logrus.Entry {
-	return logger.WithField("request_id", requestId)
+func logRequest(requestID uuid.UUID) *logrus.Entry {
+	return logger.WithField("request_id", requestID)
 }
 
-func logResponse(httpStatus int, requestId uuid.UUID) *logrus.Entry {
-	return logger.WithFields(logrus.Fields{"http_status": httpStatus, "request_id": requestId})
+func logResponse(httpStatus int, requestID uuid.UUID) *logrus.Entry {
+	return logger.WithFields(logrus.Fields{"http_status": httpStatus, "request_id": requestID})
 }
 
-func logError(err error, requestId uuid.UUID) *logrus.Entry {
-	return logger.WithFields(logrus.Fields{"error": err, "request_id": requestId})
+func logError(err error, requestID uuid.UUID) *logrus.Entry {
+	return logger.WithFields(logrus.Fields{"error": err, "request_id": requestID})
 }
 
 func logEmergency(err error) *logrus.Entry {
