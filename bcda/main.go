@@ -717,6 +717,8 @@ func importCCLF9(filePath string) error {
 			fmt.Printf("\nXREF: %s\n", b[0:1])
 			fmt.Printf("Current identifier: %s\n", b[1:12])
 			fmt.Printf("Previous identifier: %s\n", b[12:23])
+			fmt.Printf("Previous identifier effective date: %s\n", b[23:33])
+			fmt.Printf("Previous identifier obsolete date: %s\n", b[33:43])
 		}
 	}
 
