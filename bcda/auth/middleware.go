@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -11,9 +10,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
-	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -67,28 +65,6 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 	})
 }
 
-func RequireTokenACOMatch(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Context().Value("token").(*jwt.Token)
-		claims, err := ClaimsFromToken(token)
-		if err != nil {
-			log.Error(err)
-			respond(w, http.StatusInternalServerError)
-			return
-		}
-
-		re := regexp.MustCompile("/([a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12})(?:-error)?.ndjson")
-		urlUUID := re.FindStringSubmatch(r.URL.String())[1]
-		if uuid.Equal(uuid.Parse(claims["aco"].(string)), uuid.Parse(string(urlUUID))) {
-			next.ServeHTTP(w, r)
-		} else {
-			log.Error(fmt.Errorf("token with ID: %v does not match ACO in request url", claims["id"]))
-			respond(w, http.StatusUnauthorized)
-			return
-		}
-	})
-}
-
 func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jobID := chi.URLParam(r, "jobId")
@@ -101,7 +77,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
@@ -109,7 +85,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
@@ -120,10 +96,10 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-			responseutils.WriteError(oo, w, http.StatusNotFound)
+			responseutils.WriteError(oo, w, http.StatusUnauthorized)
 			return
 		}
-
+		next.ServeHTTP(w, r)
 	})
 }
 

@@ -42,7 +42,7 @@ func NewDataRouter() http.Handler {
 	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 	r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).
-		Get(m.WrapHandler("/data/{jobID}/{fileName}", serveData))
+		Get(m.WrapHandler("/data/{jobId}/{fileName}", serveData))
 	return r
 }
 

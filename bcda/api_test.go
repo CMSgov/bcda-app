@@ -671,7 +671,7 @@ func (s *APITestSuite) TestServeData() {
 	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("acoID", "test")
+	rctx.URLParams.Add("fileName", "test.ndjson")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler := http.HandlerFunc(serveData)
@@ -752,7 +752,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 
 	s.db.Delete(&j)
 }

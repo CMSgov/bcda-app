@@ -283,9 +283,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		for _, jobKey := range jobKeysObj {
 			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
 			fi := fileItem{
-				Type: resourceType,
-				URL:  fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
-				Key:  hex.EncodeToString(jobKey.EncryptedKey),
+				Type:         resourceType,
+				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				EncryptedKey: hex.EncodeToString(jobKey.EncryptedKey),
 			}
 			files = append(files, fi)
 		}
@@ -356,9 +356,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 */
 func serveData(w http.ResponseWriter, r *http.Request) {
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
-	acoID := chi.URLParam(r, "acoID")
-	jobID := chi.URLParam(r, "jobID")
-	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
+	fileName := chi.URLParam(r, "fileName")
+	jobID := chi.URLParam(r, "jobId")
+	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
@@ -511,7 +511,7 @@ type fileItem struct {
 	// URL of the file
 	URL string `json:"url"`
 	// Encrypted Symmetric Key used to encrypt this file
-	Key string `json:"key"`
+	EncryptedKey string `json:"encryptedKey"`
 }
 
 /*

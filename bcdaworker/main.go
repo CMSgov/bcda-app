@@ -123,6 +123,12 @@ func processJob(j *que.Job) error {
 			return err
 		}
 
+		// TODO (knollfear): Remove this too when we stop supporting unencrypted files
+		if !jobArgs.Encrypt {
+			db := database.GetGORMDbConnection()
+			defer database.Close(db)
+		}
+
 		for _, f := range files {
 			oldpath := staging + "/" + f.Name()
 			newpath := data + "/" + f.Name()
@@ -136,11 +142,19 @@ func processJob(j *que.Job) error {
 
 			// TODO(rnagle): this condition should be removed when file encryption is ready for release
 			if !jobArgs.Encrypt {
+
+				err = db.Create(&models.JobKey{JobID: uint(jobArgs.ID), EncryptedKey: []byte("NO_ENCRYPTION"), FileName: f.Name()}).Error
+				if err != nil {
+					log.Error(err)
+					return err
+				}
+
 				err := os.Rename(oldpath, newpath)
 				if err != nil {
 					log.Error(err)
 					return err
 				}
+
 			} else {
 				// this will be the only code path after ATO
 				publicKey := exportJob.ACO.GetPublicKey()
