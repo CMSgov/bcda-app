@@ -637,7 +637,9 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 }
 
 func importCCLF8(filePath string) error {
-	fmt.Printf("Importing CCLF8 from %s\n", filePath)
+	if filePath == "" {
+		return errors.New("file path (--file) must be provided")
+	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -680,7 +682,9 @@ func importCCLF8(filePath string) error {
 }
 
 func importCCLF9(filePath string) error {
-	fmt.Printf("Importing CCLF9 from %s\n", filePath)
+	if filePath == "" {
+		return errors.New("file path (--file) must be provided")
+	}
 
 	file, err := os.Open(filePath)
 	if err != nil {

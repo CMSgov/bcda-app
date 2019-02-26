@@ -723,7 +723,35 @@ func (s *MainTestSuite) TestCreateLargeAlphaToken() {
 }
 
 func (s *MainTestSuite) TestImportCCLF8() {
-	importCCLF8("")
+	assert := assert.New(s.T())
+
+	args := []string{"bcda", "import-cclf8"}
+	err := s.testApp.Run(args)
+	assert.Equal("file path (--file) must be provided", err.Error())
+
+	args = []string{"bcda", "import-cclf8", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC9Y18.D180201.T1230301"}
+	err = s.testApp.Run(args)
+	assert.Equal("invalid CCLF8 filename", err.Error())
+
+	args = []string{"bcda", "import-cclf8", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC8Y18.D180201.T1230301"}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+}
+
+func (s *MainTestSuite) TestImportCCLF9() {
+	assert := assert.New(s.T())
+
+	args := []string{"bcda", "import-cclf9"}
+	err := s.testApp.Run(args)
+	assert.Equal("file path (--file) must be provided", err.Error())
+
+	args = []string{"bcda", "import-cclf9", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC8Y18.D180201.T1230301"}
+	err = s.testApp.Run(args)
+	assert.Equal("invalid CCLF9 filename", err.Error())
+
+	args = []string{"bcda", "import-cclf9", "--file", "../shared_files/cclf/T.AXXXX.ACO.ZC9Y18.D180201.T1230301"}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
 }
 
 func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
