@@ -5,18 +5,17 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-const KnownClientID = "0oajfkq1mc7O1fdrk0h7"					// not a valid Okta ID
+const KnownClientID = "0oajfkq1mc7O1fdrk0h7" // not a valid Okta ID
 
 type OktaAuthPluginTestSuite struct {
 	suite.Suite
@@ -69,10 +68,15 @@ func (s *OktaAuthPluginTestSuite) TestOktaDeleteClient() {
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
-func (s *OktaAuthPluginTestSuite) TestOktaGenerateClientCredentials() {
-	r, err := s.o.GenerateClientCredentials([]byte("{}"))
-	assert.Nil(s.T(), r)
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+func (s *OktaAuthPluginTestSuite) TestGenerateClientCredentials() {
+	validClientID := "0oaj4590j9B5uh8rC0h7"
+	c, err := s.o.GenerateClientCredentials(validClientID, 0)
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", c.ClientSecret)
+
+	invalidClientID := "IDontexist"
+	c, err = s.o.GenerateClientCredentials(invalidClientID, 0)
+	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 
 func (s *OktaAuthPluginTestSuite) TestOktaRevokeClientCredentials() {
@@ -99,19 +103,19 @@ func (s *OktaAuthPluginTestSuite) TestValidateJWT() {
 	require.Nil(s.T(), err)
 
 	// a variety of unhappy paths
-	token, err = s.m.NewCustomToken(OktaToken{ClientID:randomClientID()})
+	token, err = s.m.NewCustomToken(OktaToken{ClientID: randomClientID()})
 	require.Nil(s.T(), err)
 	err = s.o.ValidateJWT(token)
 	require.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "invalid cid")
 
-	token, err = s.m.NewCustomToken(OktaToken{ClientID:KnownClientID, Issuer: "not_our_okta_server"})
+	token, err = s.m.NewCustomToken(OktaToken{ClientID: KnownClientID, Issuer: "not_our_okta_server"})
 	require.Nil(s.T(), err)
 	err = s.o.ValidateJWT(token)
 	require.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "invalid iss")
 
-	token, err = s.m.NewCustomToken(OktaToken{ClientID:KnownClientID, ExpiresIn: -1})
+	token, err = s.m.NewCustomToken(OktaToken{ClientID: KnownClientID, ExpiresIn: -1})
 	require.Nil(s.T(), err)
 	err = s.o.ValidateJWT(token)
 	require.NotNil(s.T(), err)
