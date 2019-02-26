@@ -5,12 +5,17 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type OktaBackend interface {
 	// Returns the current set of public signing keys for the okta auth server
 	PublicKeyFor(id string) (rsa.PublicKey, bool)
+
+	// Returns the id of the authorization server
+	ServerID() string
 
 	// Adds an api client application to our Okta organization
 	AddClientApplication(string) (string, string, error)
@@ -75,7 +80,34 @@ func (o OktaAuthPlugin) RevokeAccessToken(tokenString string) error {
 }
 
 func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
-	return errors.New("not yet implemented")
+	t, err := o.DecodeJWT(tokenString)
+	if err != nil {
+		return err
+	}
+
+	c := t.Claims.(jwt.MapClaims)
+
+	ok := c["iss"].(string) == o.backend.ServerID()
+	if !ok {
+		return fmt.Errorf("invalid iss claim; %s <> %s", c["iss"].(string), o.backend.ServerID())
+	}
+
+	err = c.Valid()
+	if err != nil {
+		return err
+	}
+
+	// need to check revocation here, which is not yet implemented
+	// options:
+	// keep an in-memory cache of tokens we have revoked and check that
+	// use the introspection endpoint okta provides (expensive network call)
+
+	_, err = getACOByClientID(c["cid"].(string))
+	if err != nil {
+		return fmt.Errorf("invalid cid claim; %s", err)
+	}
+
+	return nil
 }
 
 func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
@@ -98,4 +130,18 @@ func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 	}
 
 	return jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFinder)
+}
+
+func getACOByClientID(clientID string) (models.ACO, error) {
+	var (
+		db  = database.GetGORMDbConnection()
+		aco models.ACO
+		err error
+	)
+	defer database.Close(db)
+
+	if db.Find(&aco, "client_id = ?", clientID).RecordNotFound() {
+		err = errors.New("no ACO record found for " + clientID)
+	}
+	return aco, err
 }

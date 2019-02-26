@@ -50,10 +50,10 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.p.RegisterClient(KnownFixtureACO)
+	c, err := s.p.RegisterClient(auth.KnownFixtureACO)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
-	assert.Equal(s.T(), KnownFixtureACO, c.ClientID)
+	assert.Equal(s.T(), auth.KnownFixtureACO, c.ClientID)
 
 	c, err = s.p.RegisterClient("")
 	assert.NotNil(s.T(), err)
