@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -77,12 +76,12 @@ func (s *OTestSuite) TestAddClientApplication() {
 
 func (s *OTestSuite) TestGenerateNewClientSecret() {
 	validClientID := "0oaj4590j9B5uh8rC0h7"
-	newSecret, err := client.GenerateNewClientSecret(validClientID)
+	newSecret, err := s.oc.GenerateNewClientSecret(validClientID)
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", newSecret)
 
 	invalidClientID := "IDontexist"
-	newSecret, err = client.GenerateNewClientSecret(invalidClientID)
+	newSecret, err = s.oc.GenerateNewClientSecret(invalidClientID)
 	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 

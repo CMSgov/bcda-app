@@ -54,7 +54,7 @@ func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
 }
 
 // can treat as a no-op or call RequestAccessToken
-func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
+func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
 	aco, err := getACOFromDB(clientID)
 	if err != nil {
 		return Credentials{}, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
@@ -69,7 +69,7 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials
 		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
-	params := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":%d}`, clientID, 1))
+	params := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":%d}`, clientID, ttl))
 	token, err := p.RequestAccessToken([]byte(params))
 	if err != nil {
 		return Credentials{}, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)

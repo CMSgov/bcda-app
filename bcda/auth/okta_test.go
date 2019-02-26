@@ -4,12 +4,11 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/auth"
 )
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
@@ -45,12 +44,12 @@ func (s *OktaAuthPluginTestSuite) TestDeleteClient() {
 
 func (s *OktaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	validClientID := "0oaj4590j9B5uh8rC0h7"
-	c, err := s.o.GenerateClientCredentials(validClientID)
+	c, err := s.o.GenerateClientCredentials(validClientID, 0)
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", c.ClientSecret)
 
 	invalidClientID := "IDontexist"
-	c, err = s.o.GenerateClientCredentials(invalidClientID)
+	c, err = s.o.GenerateClientCredentials(invalidClientID, 0)
 	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 

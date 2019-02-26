@@ -83,7 +83,7 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
-	r, err := s.p.GenerateClientCredentials("")
+	r, err := s.p.GenerateClientCredentials("", 0)
 	assert.Equal(s.T(), auth.Credentials{}, r)
 	assert.NotNil(s.T(), err)
 
@@ -96,7 +96,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	// we know that we use aco.UUID as the ClientID
 	clientID := aco.UUID.String()
 
-	r, err = s.p.GenerateClientCredentials(clientID)
+	r, err = s.p.GenerateClientCredentials(clientID, 0)
 	assert.Equal(s.T(), auth.Credentials{}, r)
 	assert.Contains(s.T(), err.Error(), "have a registered client")
 
@@ -107,7 +107,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
 	assert.Nil(s.T(), err, "wtf? %v", err)
 
-	r, err = s.p.GenerateClientCredentials(clientID)
+	r, err = s.p.GenerateClientCredentials(clientID, 0)
 	assert.NotNil(s.T(), r)
 	assert.Nil(s.T(), err)
 
@@ -134,7 +134,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	db.Save(&user)
 
 	clientID := user.ACOID.String()
-	_, err := s.p.GenerateClientCredentials(clientID)
+	_, err := s.p.GenerateClientCredentials(clientID, 0)
 	if err != nil {
 		assert.FailNow(s.T(), fmt.Sprintf(`can't create client credentials for %s because %s`, user.ACOID.String(), err))
 	}

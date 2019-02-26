@@ -65,7 +65,7 @@ type Provider interface {
 	DeleteClient(params []byte) error
 
 	// Generate new or replace existing Credentials for the given clientID
-	GenerateClientCredentials(clientID string) (Credentials, error)
+	GenerateClientCredentials(clientID string, ttl int) (Credentials, error)
 
 	// Revoke any existing Credentials for the given clientID
 	RevokeClientCredentials(params []byte) error
