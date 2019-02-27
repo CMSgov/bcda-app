@@ -109,7 +109,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					{
 						Name: "data",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/data/[jobID]/[acoID].ndjson",
+							Reference: baseurl + "/data/[jobID]/[random_UUID].ndjson",
 							Type:      "Endpoint",
 						},
 					},

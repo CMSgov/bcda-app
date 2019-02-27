@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pborman/uuid"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -14,7 +15,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx"
-	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -23,7 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 )
 
 var (
@@ -109,8 +110,10 @@ func processJob(j *que.Job) error {
 		}
 	}
 
+	// todo this is where we do a subset of beneficiaries
 	err = writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 
+	// THis is only run AFTER completion of all the collection
 	if err != nil {
 		exportJob.Status = "Failed"
 	} else {
@@ -118,6 +121,12 @@ func processJob(j *que.Job) error {
 		if err != nil {
 			log.Error(err)
 			return err
+		}
+
+		// TODO (knollfear): Remove this too when we stop supporting unencrypted files
+		if !jobArgs.Encrypt {
+			db := database.GetGORMDbConnection()
+			defer database.Close(db)
 		}
 
 		for _, f := range files {
@@ -133,11 +142,19 @@ func processJob(j *que.Job) error {
 
 			// TODO(rnagle): this condition should be removed when file encryption is ready for release
 			if !jobArgs.Encrypt {
+
+				err = db.Create(&models.JobKey{JobID: uint(jobArgs.ID), EncryptedKey: []byte("NO_ENCRYPTION"), FileName: f.Name()}).Error
+				if err != nil {
+					log.Error(err)
+					return err
+				}
+
 				err := os.Rename(oldpath, newpath)
 				if err != nil {
 					log.Error(err)
 					return err
 				}
+
 			} else {
 				// this will be the only code path after ATO
 				publicKey := exportJob.ACO.GetPublicKey()
@@ -206,7 +223,8 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	}
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
-	f, err := os.Create(fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
+	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+	f, err := os.Create(fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 	if err != nil {
 		log.Error(err)
 		return err
