@@ -92,7 +92,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		acoID := claims["aco"].(string)
 
 		var job models.Job
-		err = db.Find(&job, "id = ? and aco_id = ?", i, acoId).Error
+		err = db.Find(&job, "id = ? and aco_id = ?", i, acoID).Error
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
