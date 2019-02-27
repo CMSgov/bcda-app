@@ -203,7 +203,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchNotEqual() {
 	jobID := strconv.Itoa(int(j.ID))
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", jobID)
+	rctx.URLParams.Add("jobID", jobID)
 
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
@@ -224,10 +224,10 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchNotEqual() {
 	ctx = context.WithValue(ctx, "token", token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 401, s.rr.Code)
+	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenACOMatchEqual() {
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchEqual() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -246,7 +246,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchEqual() {
 	}
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", jobID)
+	rctx.URLParams.Add("jobID", jobID)
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
@@ -280,7 +280,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 	jobID := strconv.Itoa(int(j.ID))
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", jobID)
+	rctx.URLParams.Add("jobID", jobID)
 
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
@@ -302,7 +302,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 	ctx = context.WithValue(ctx, "token", token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 500, s.rr.Code)
+	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
 func (s *MiddlewareTestSuite) TestClaimsFromToken() {

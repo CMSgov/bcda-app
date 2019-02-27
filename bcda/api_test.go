@@ -752,7 +752,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 
 	s.db.Delete(&j)
 }
