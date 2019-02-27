@@ -83,6 +83,16 @@ type VersionResponse struct {
 	}
 }
 
+// JSON object containing an auth_provider field 
+// swagger:response AuthResponse
+type AuthResponse struct {
+        // in: body
+        Body struct {
+                // Required: true
+                Version string `json:"auth_provider"`
+        }
+}
+
 // FHIR CapabilityStatement in JSON format
 // swagger:response MetadataResponse
 type MetadataResponse struct {

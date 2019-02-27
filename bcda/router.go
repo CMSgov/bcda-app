@@ -34,6 +34,7 @@ func NewAPIRouter() http.Handler {
 	})
 	r.Get(m.WrapHandler("/_version", getVersion))
 	r.Get(m.WrapHandler("/_health", healthCheck))
+	r.Get(m.WrapHandler("/_auth", getAuthInfo))
 	return r
 }
 

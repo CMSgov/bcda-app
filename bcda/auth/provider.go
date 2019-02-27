@@ -36,6 +36,10 @@ func SetProvider(name string) {
 	log.Infof(`Auth is made possible by %s`, providerName)
 }
 
+func GetProviderName() string {
+	return providerName
+}
+
 func GetProvider() Provider {
 	switch providerName {
 	case Alpha:
