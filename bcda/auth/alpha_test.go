@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -83,11 +83,9 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
-	// missing required param
-	r, err := s.p.GenerateClientCredentials([]byte("{}"))
-	assert.Nil(s.T(), r)
+	r, err := s.p.GenerateClientCredentials("", 0)
+	assert.Equal(s.T(), auth.Credentials{}, r)
 	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "invalid string value")
 
 	aco := models.ACO{
 		UUID: uuid.NewRandom(),
@@ -95,12 +93,11 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	}
 	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
 	assert.Nil(s.T(), err, "wtf? %v", err)
-	j := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, aco.UUID.String()))
 	// we know that we use aco.UUID as the ClientID
+	clientID := aco.UUID.String()
 
-	r, err = s.p.GenerateClientCredentials(j)
-	assert.Nil(s.T(), r)
-	assert.NotNil(s.T(), err)
+	r, err = s.p.GenerateClientCredentials(clientID, 0)
+	assert.Equal(s.T(), auth.Credentials{}, r)
 	assert.Contains(s.T(), err.Error(), "have a registered client")
 
 	// quick and dirty register client
@@ -110,7 +107,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
 	assert.Nil(s.T(), err, "wtf? %v", err)
 
-	r, err = s.p.GenerateClientCredentials(j)
+	r, err = s.p.GenerateClientCredentials(clientID, 0)
 	assert.NotNil(s.T(), r)
 	assert.Nil(s.T(), err)
 
@@ -136,8 +133,8 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	}
 	db.Save(&user)
 
-	params := fmt.Sprintf(`{"clientID":"%s", "ttl":720}`, user.ACOID.String())
-	_, err := s.p.GenerateClientCredentials([]byte(params))
+	clientID := user.ACOID.String()
+	_, err := s.p.GenerateClientCredentials(clientID, 0)
 	if err != nil {
 		assert.FailNow(s.T(), fmt.Sprintf(`can't create client credentials for %s because %s`, user.ACOID.String(), err))
 	}

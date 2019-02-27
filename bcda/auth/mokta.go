@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type Mokta struct {
@@ -31,7 +32,7 @@ func NewMokta() *Mokta {
 	keys := make(map[string]rsa.PublicKey)
 	keys["mokta"] = publicKey
 
-	return &Mokta{privateKey, publicKey, "mokta", "mokta.fake.backend",}
+	return &Mokta{privateKey, publicKey, "mokta", "mokta.fake.backend"}
 }
 
 func (m *Mokta) PublicKeyFor(id string) (rsa.PublicKey, bool) {
@@ -58,6 +59,14 @@ func (m *Mokta) AddClientApplication(localId string) (string, string, error) {
 	return base64.URLEncoding.EncodeToString(id), base64.URLEncoding.EncodeToString(key), err
 }
 
+func (m *Mokta) GenerateNewClientSecret(clientID string) (string, error) {
+	if len(clientID) != 20 {
+		return "", errors.New("404 Not Found")
+	}
+
+	fakeClientSecret := "thisClientSecretIsFakeButIsCorrectLength"
+	return fakeClientSecret, nil
+}
 func randomClientID() string {
 	b, err := someRandomBytes(4)
 	if err != nil {

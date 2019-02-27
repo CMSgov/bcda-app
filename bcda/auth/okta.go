@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dgrijalva/jwt-go"
-
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type OktaBackend interface {
@@ -20,10 +19,13 @@ type OktaBackend interface {
 
 	// Adds an api client application to our Okta organization
 	AddClientApplication(string) (string, string, error)
+
+	// Renews client secret for an okta client
+	GenerateNewClientSecret(string) (string, error)
 }
 
-type OktaAuthPlugin struct{
-	backend OktaBackend			// interface, not a concrete type, so no *
+type OktaAuthPlugin struct {
+	backend OktaBackend // interface, not a concrete type, so no *
 }
 
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
@@ -51,8 +53,18 @@ func (o OktaAuthPlugin) DeleteClient(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	return nil, errors.New("not yet implemented")
+func (o OktaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
+	clientSecret, err := o.backend.GenerateNewClientSecret(clientID)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	c := Credentials{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+	}
+
+	return c, nil
 }
 
 func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
@@ -110,7 +122,7 @@ func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		}
 
 		key, ok := o.backend.PublicKeyFor(keyID)
-		if (!ok) {
+		if !ok {
 			return nil, fmt.Errorf("no key found with id %s", keyID)
 		}
 
