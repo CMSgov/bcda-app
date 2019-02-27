@@ -69,7 +69,7 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
-	if ttl <= 0 {
+	if ttl < 0 {
 		return Credentials{}, errors.New("invalid TTL")
 	}
 

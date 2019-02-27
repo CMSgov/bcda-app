@@ -4,7 +4,6 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -92,11 +91,7 @@ func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, e
 		return Token{}, err
 	}
 
-	return Token{
-		TokenString: ot.AccessToken,
-		ExpiresOn:   time.Now().Add(time.Duration(ot.ExpiresIn)).Unix(),
-		IssuedAt:    time.Now().Unix(),
-	}, nil
+	return Token{TokenString: ot.AccessToken}, nil
 }
 
 func (o OktaAuthPlugin) RevokeAccessToken(tokenString string) error {

@@ -165,21 +165,9 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 }
 
 func (oc OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
-	var ot OktaToken = OktaToken{}
-
 	requestID := uuid.NewRandom()
 
-	oktaURL := os.Getenv("OKTA_CLIENT_ORGURL")
-	if oktaURL == "" {
-		return OktaToken{}, errors.New("Okta client URL not set")
-	}
-
-	oktaAuthServerID := os.Getenv("OKTA_OAUTH_SERVER_ID")
-	if oktaAuthServerID == "" {
-		return OktaToken{}, errors.New("Okta auth server ID not set")
-	}
-
-	tokenURL := fmt.Sprintf("%s/oauth2/%s/v1/token", oktaURL, oktaAuthServerID)
+	tokenURL := fmt.Sprintf("%s/oauth2/%s/v1/token", oktaBaseUrl, oktaServerID)
 	req, err := http.NewRequest("POST", tokenURL, nil)
 	if err != nil {
 		return OktaToken{}, err
@@ -212,6 +200,8 @@ func (oc OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 		logError(err, requestID).WithField("client_id", creds.ClientID).Info("unable to get access token")
 		return OktaToken{}, err
 	}
+
+	var ot = OktaToken{}
 
 	if err = json.NewDecoder(resp.Body).Decode(&ot); err != nil {
 		message := "unexpected token response format from Okta"

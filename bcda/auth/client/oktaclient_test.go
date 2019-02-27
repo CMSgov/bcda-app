@@ -78,12 +78,15 @@ func (s *OTestSuite) TestRequestAccessToken() {
 	clientID := os.Getenv("OKTA_CLIENT_ID")
 	clientSecret := os.Getenv("OKTA_CLIENT_SECRET")
 
-	t, err := s.o.RequestAccessToken(Credentials{ClientID: clientID, ClientSecret: clientSecret}, 0)
-	assert.IsType(s.T(), oktaToken{}, t)
+	assert.NotEmpty(s.T(), clientID, "Test requires OKTA_CLIENT_ID")
+	assert.NotEmpty(s.T(), clientSecret, "Test requires OKTA_CLIENT_SECRET")
+
+	t, err := s.oc.RequestAccessToken(Credentials{ClientID: clientID, ClientSecret: clientSecret})
+	assert.IsType(s.T(), OktaToken{}, t)
 	assert.Nil(s.T(), err)
 
-	t, err = s.o.RequestAccessToken(Credentials{ClientID: "", ClientSecret: ""}, 0)
-	assert.IsType(s.T(), oktaToken{}, t)
+	t, err = s.oc.RequestAccessToken(Credentials{ClientID: "", ClientSecret: ""})
+	assert.IsType(s.T(), OktaToken{}, t)
 	assert.NotNil(s.T(), err)
 }
 
