@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -42,7 +42,7 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
 	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
 	// whose client_id matches their UUID was created by this plugin.
-	return Credentials{ClientID:localID}, nil
+	return Credentials{ClientID: localID}, nil
 }
 
 func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
@@ -54,32 +54,28 @@ func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
 }
 
 // can treat as a no-op or call RequestAccessToken
-func (p AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	clientID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return nil, err
-	}
-
+func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
 	aco, err := getACOFromDB(clientID)
 	if err != nil {
-		return nil, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
+		return Credentials{}, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
 	}
 
 	if aco.ClientID == "" {
-		return nil, fmt.Errorf("ACO %s does not have a registered client", clientID)
+		return Credentials{}, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
 	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
 	if err != nil {
-		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
+		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
+	params := []byte(fmt.Sprintf(`{"clientID":"%s", "ttl":%d}`, clientID, ttl))
 	token, err := p.RequestAccessToken([]byte(params))
 	if err != nil {
-		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
+		return Credentials{}, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
 
-	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, token.TokenString)), err
+	return Credentials{Token: token}, err
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
@@ -188,7 +184,7 @@ func (p AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
 		return Token{}, err
 	}
 
-	return token, nil // really want to return Token here, but first let's get this all working
+	return token, nil
 }
 
 func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {

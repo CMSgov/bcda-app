@@ -74,6 +74,17 @@ func (s *OTestSuite) TestAddClientApplication() {
 	assert.NotEmpty(s.T(), secret)
 }
 
+func (s *OTestSuite) TestGenerateNewClientSecret() {
+	validClientID := "0oaj4590j9B5uh8rC0h7"
+	newSecret, err := s.oc.GenerateNewClientSecret(validClientID)
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", newSecret)
+
+	invalidClientID := "IDontexist"
+	newSecret, err = s.oc.GenerateNewClientSecret(invalidClientID)
+	assert.Equal(s.T(), "404 Not Found", err.Error())
+}
+
 func (s *OTestSuite) TearDownTest() {
 }
 
