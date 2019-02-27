@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -24,6 +26,18 @@ var oktaServerID string
 
 var publicKeys map[string]rsa.PublicKey
 var once sync.Once
+
+type OktaToken struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	Scope       string `json:"scope"`
+}
+
+type Credentials struct {
+	ClientID     string
+	ClientSecret string
+}
 
 func init() {
 	logger = logrus.New()
@@ -66,7 +80,7 @@ func config() error {
 	return nil
 }
 
-type OktaClient struct {}
+type OktaClient struct{}
 
 // Returns an OktaClient. An OktaClient is always created, whether or not it is currently able to converse with Okta.
 func NewOktaClient() *OktaClient {
@@ -110,7 +124,7 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 
 	logRequest(requestID).Print("creating client in okta")
 
-	var client = &http.Client{Timeout: time.Second * 10,}
+	var client = &http.Client{Timeout: time.Second * 10}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", "", err
@@ -146,6 +160,64 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 	}
 
 	return clientID, clientSecret, nil
+}
+
+func (oc OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
+	var ot OktaToken = OktaToken{}
+
+	requestID := uuid.NewRandom()
+
+	oktaURL := os.Getenv("OKTA_CLIENT_ORGURL")
+	if oktaURL == "" {
+		return OktaToken{}, errors.New("Okta client URL not set")
+	}
+
+	oktaAuthServerID := os.Getenv("OKTA_OAUTH_SERVER_ID")
+	if oktaAuthServerID == "" {
+		return OktaToken{}, errors.New("Okta auth server ID not set")
+	}
+
+	tokenURL := fmt.Sprintf("%s/oauth2/%s/v1/token", oktaURL, oktaAuthServerID)
+	req, err := http.NewRequest("POST", tokenURL, nil)
+	if err != nil {
+		return OktaToken{}, err
+	}
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Cache-Control", "no-cache")
+
+	params := url.Values{}
+	params.Set("client_id", creds.ClientID)
+	params.Set("client_secret", creds.ClientSecret)
+	params.Set("grant_type", "client_credentials")
+	params.Set("scope", "bcda_api")
+	req.URL.RawQuery = params.Encode()
+
+	httpClient := &http.Client{}
+
+	logRequest(requestID).Print("requesting Okta access token")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return OktaToken{}, err
+	}
+
+	defer resp.Body.Close()
+	logResponse(resp.StatusCode, requestID).Print()
+
+	if resp.StatusCode >= 400 {
+		err = errors.New(resp.Status)
+		logError(err, requestID).WithField("client_id", creds.ClientID).Info("unable to get access token")
+		return OktaToken{}, err
+	}
+
+	if err = json.NewDecoder(resp.Body).Decode(&ot); err != nil {
+		message := "unexpected token response format from Okta"
+		logError(err, requestID).WithField("client_id", creds.ClientID).Info(message)
+		return OktaToken{}, errors.New(message)
+	}
+
+	return ot, nil
 }
 
 type Policy struct {
@@ -185,7 +257,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
-	var client = &http.Client{Timeout: time.Second * 10,}
+	var client = &http.Client{Timeout: time.Second * 10}
 	resp, err := client.Do(req)
 	if err != nil {
 		logError(err, requestID).Print()
@@ -226,7 +298,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
-	client = &http.Client{Timeout: time.Second * 10,}
+	client = &http.Client{Timeout: time.Second * 10}
 	resp, err = client.Do(req)
 	if err != nil {
 		logError(err, requestID).WithField("policy_id", result[0].ID).Print()

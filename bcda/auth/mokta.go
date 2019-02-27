@@ -4,14 +4,16 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/dgrijalva/jwt-go"
 )
 
-type Mokta struct{
-	publicKey rsa.PublicKey
+type Mokta struct {
+	publicKey  rsa.PublicKey
 	privateKey *rsa.PrivateKey
 }
 
@@ -28,11 +30,11 @@ func NewMokta() *Mokta {
 	keys := make(map[string]rsa.PublicKey)
 	keys["mokta"] = publicKey
 
-	return &Mokta{publicKey,privateKey}
+	return &Mokta{publicKey, privateKey}
 }
 
 func (m *Mokta) PublicKeyFor(id string) (rsa.PublicKey, bool) {
-	if (id != "mokta") {
+	if id != "mokta" {
 		return rsa.PublicKey{}, false
 	}
 	return m.publicKey, true
@@ -51,6 +53,30 @@ func (m *Mokta) AddClientApplication(localId string) (string, string, error) {
 	return base64.URLEncoding.EncodeToString(id), base64.URLEncoding.EncodeToString(key), err
 }
 
+func (m *Mokta) RequestAccessToken(creds client.Credentials) (client.OktaToken, error) {
+	if creds.ClientID == "" {
+		return client.OktaToken{}, fmt.Errorf("client ID required")
+	}
+
+	if creds.ClientSecret == "" {
+		return client.OktaToken{}, fmt.Errorf("client secret required")
+	}
+
+	mt, err := m.NewToken(creds.ClientID, "A00000", 300)
+
+	if err != nil {
+		fmt.Printf("mokta RequestAccessToken() error: %v\n", err.Error())
+		return client.OktaToken{}, err
+	}
+
+	return client.OktaToken{
+		AccessToken: mt,
+		TokenType:   "mokta_token",
+		ExpiresIn:   300,
+		Scope:       "bcda_api",
+	}, nil
+}
+
 func someRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
@@ -63,7 +89,7 @@ func someRandomBytes(n int) ([]byte, error) {
 // Returns a new access token
 func (m *Mokta) NewToken(clientID, acoID string, expiresIn int) (string, error) {
 	tid, err := someRandomBytes(32)
-	if (err != nil) {
+	if err != nil {
 		return "", err
 	}
 	token := jwt.New(jwt.SigningMethodRS256)

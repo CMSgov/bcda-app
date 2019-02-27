@@ -42,7 +42,7 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
 	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
 	// whose client_id matches their UUID was created by this plugin.
-	return Credentials{ClientID:localID}, nil
+	return Credentials{ClientID: localID}, nil
 }
 
 func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
@@ -74,7 +74,12 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error
 		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
-	token, err := p.RequestAccessToken([]byte(params))
+	ttl, err := getParamPositiveInt(params, "ttl")
+	if err != nil {
+		return nil, errors.New("invalid TTL")
+	}
+
+	token, err := p.RequestAccessToken(Credentials{ClientID: clientID}, ttl)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
@@ -143,15 +148,15 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
 // params are currently acoId and ttl; not going to introduce user until we have clear use cases
-func (p AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
+func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
 	token := Token{}
 
-	acoUUID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return token, err
+	acoUUID := creds.ClientID
+	if acoUUID == "" {
+		return token, errors.New("no ACO ID provided")
 	}
 
 	aco, err := getACOFromDB(acoUUID)
@@ -167,9 +172,8 @@ func (p AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
 		return token, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := getParamPositiveInt(params, "ttl")
-	if err != nil {
-		return token, errors.New("no valid ttl found because " + err.Error())
+	if ttl < 0 {
+		return token, fmt.Errorf("invalid TTL: %d", ttl)
 	}
 
 	token.UUID = uuid.NewRandom()

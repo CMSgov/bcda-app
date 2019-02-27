@@ -55,9 +55,9 @@ func (s *OktaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.o.RequestAccessToken([]byte("{}"))
+	t, err := s.o.RequestAccessToken(auth.Credentials{ClientID: "", ClientSecret: ""}, 0)
 	assert.IsType(s.T(), auth.Token{}, t)
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	assert.NotNil(s.T(), err)
 }
 
 func (s *OktaAuthPluginTestSuite) TestRevokeAccessToken() {

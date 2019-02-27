@@ -156,21 +156,20 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.p.RequestAccessToken([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3", "ttl": 720}`))
+	t, err := s.p.RequestAccessToken(auth.Credentials{ClientID: "DBBD1CE1-AE24-435C-807D-ED45953077D3"}, 720)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
 
-	t, err = s.p.RequestAccessToken([]byte(`{ "ttl": 720}`))
+	t, err = s.p.RequestAccessToken(auth.Credentials{}, 720)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
-	assert.Contains(s.T(), err.Error(), "invalid string value")
+	assert.Contains(s.T(), err.Error(), "no ACO ID")
 
-	t, err = s.p.RequestAccessToken([]byte(`{"clientID": "DBBD1CE1-AE24-435C-807D-ED45953077D3"}`))
+	t, err = s.p.RequestAccessToken(auth.Credentials{ClientID: "DBBD1CE1-AE24-435C-807D-ED45953077D3"}, -1)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
-	assert.Contains(s.T(), err.Error(), "invalid int value")
+	assert.Contains(s.T(), err.Error(), "invalid TTL")
 }
-
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	db := connections["TestRevokeAccessToken"]
 
@@ -178,7 +177,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	assert := assert.New(s.T())
 
 	// Good Revoke test
-	token, err := s.p.RequestAccessToken([]byte(fmt.Sprintf(`{"clientID": "%s", "ttl": 720}`, acoID)))
+	token, err := s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, 720)
 	if err != nil {
 		assert.FailNow("no access token for %s because %s", acoID, err.Error())
 	}

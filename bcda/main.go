@@ -384,8 +384,7 @@ func createAccessToken(userID string) (string, error) {
 		return "", fmt.Errorf("unable to locate User with id of %s", userID)
 	}
 
-	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.ACOID.String(), 72)
-	token, err := auth.GetProvider().RequestAccessToken([]byte(params))
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: user.ACOID.String()}, 72)
 	if err != nil {
 		return "", err
 	}
@@ -444,8 +443,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 	switch auth.GetProvider().(type) {
 
 	case auth.AlphaAuthPlugin:
-		params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, creds.ClientID, ttl)
-		token, err := auth.GetProvider().RequestAccessToken([]byte(params))
+		token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: creds.ClientID}, ttl)
 		if err != nil {
 			return "", err
 		}

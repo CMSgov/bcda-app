@@ -4,7 +4,9 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -14,10 +16,13 @@ type OktaBackend interface {
 
 	// Adds an api client application to our Okta organization
 	AddClientApplication(string) (string, string, error)
+
+	// Gets a session token from Okta
+	RequestAccessToken(creds client.Credentials) (client.OktaToken, error)
 }
 
-type OktaAuthPlugin struct{
-	backend OktaBackend			// interface, not a concrete type, so no *
+type OktaAuthPlugin struct {
+	backend OktaBackend // interface, not a concrete type, so no *
 }
 
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
@@ -53,8 +58,27 @@ func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
-	return Token{}, errors.New("not yet implemented")
+func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
+	if creds.ClientID == "" {
+		return Token{}, fmt.Errorf("client ID required")
+	}
+
+	if creds.ClientSecret == "" {
+		return Token{}, fmt.Errorf("client secret required")
+	}
+
+	clientCreds := client.Credentials{ClientID: creds.ClientID, ClientSecret: creds.ClientSecret}
+	ot, err := o.backend.RequestAccessToken(clientCreds)
+
+	if err != nil {
+		return Token{}, err
+	}
+
+	return Token{
+		TokenString: ot.AccessToken,
+		ExpiresOn:   time.Now().Add(time.Duration(ot.ExpiresIn)).Unix(),
+		IssuedAt:    time.Now().Unix(),
+	}, nil
 }
 
 func (o OktaAuthPlugin) RevokeAccessToken(tokenString string) error {
@@ -77,7 +101,7 @@ func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		}
 
 		key, ok := o.backend.PublicKeyFor(keyID)
-		if (!ok) {
+		if !ok {
 			return nil, fmt.Errorf("no key found with id %s", keyID)
 		}
 
