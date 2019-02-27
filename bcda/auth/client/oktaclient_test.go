@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -79,12 +78,12 @@ func (s *OTestSuite) TestRequestAccessToken() {
 	clientID := os.Getenv("OKTA_CLIENT_ID")
 	clientSecret := os.Getenv("OKTA_CLIENT_SECRET")
 
-	t, err := s.o.RequestAccessToken(auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}, 0)
-	assert.IsType(s.T(), auth.Token{}, t)
+	t, err := s.o.RequestAccessToken(Credentials{ClientID: clientID, ClientSecret: clientSecret}, 0)
+	assert.IsType(s.T(), oktaToken{}, t)
 	assert.Nil(s.T(), err)
 
-	t, err = s.o.RequestAccessToken(auth.Credentials{ClientID: "", ClientSecret: ""}, 0)
-	assert.IsType(s.T(), auth.Token{}, t)
+	t, err = s.o.RequestAccessToken(Credentials{ClientID: "", ClientSecret: ""}, 0)
+	assert.IsType(s.T(), oktaToken{}, t)
 	assert.NotNil(s.T(), err)
 }
 

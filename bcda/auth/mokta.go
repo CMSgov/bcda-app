@@ -33,12 +33,7 @@ func NewMokta() *Mokta {
 	keys := make(map[string]rsa.PublicKey)
 	keys["mokta"] = publicKey
 
-}
-
-func (m *Mokta) PublicKeyFor(id string) (rsa.PublicKey, bool) {
-	if id != "mokta" {
-		return &Mokta{privateKey, publicKey, "mokta", "mokta.fake.backend"}
-	}
+	return &Mokta{publicKey, privateKey, "mokta", "mokta.fake.backend"}
 }
 
 func (m *Mokta) PublicKeyFor(id string) (rsa.PublicKey, bool) {
@@ -74,7 +69,7 @@ func (m *Mokta) RequestAccessToken(creds client.Credentials) (client.OktaToken, 
 		return client.OktaToken{}, fmt.Errorf("client secret required")
 	}
 
-	mt, err := m.NewToken(creds.ClientID, "A00000", 300)
+	mt, err := m.NewToken(creds.ClientID)
 
 	if err != nil {
 		fmt.Printf("mokta RequestAccessToken() error: %v\n", err.Error())

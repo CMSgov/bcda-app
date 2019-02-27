@@ -70,7 +70,7 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 	}
 
 	if ttl <= 0 {
-		return nil, errors.New("invalid TTL")
+		return Credentials{}, errors.New("invalid TTL")
 	}
 
 	token, err := p.RequestAccessToken(Credentials{ClientID: clientID}, ttl)

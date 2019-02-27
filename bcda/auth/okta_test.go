@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -86,8 +85,8 @@ func (s *OktaAuthPluginTestSuite) TestOktaRevokeClientCredentials() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.o.RequestAccessToken(auth.Credentials{ClientID: "", ClientSecret: ""}, 0)
-	assert.IsType(s.T(), auth.Token{}, t)
+	t, err := s.o.RequestAccessToken(Credentials{ClientID: "", ClientSecret: ""}, 0)
+	assert.IsType(s.T(), Token{}, t)
 	assert.NotNil(s.T(), err)
 }
 
