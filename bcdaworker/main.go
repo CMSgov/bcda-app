@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -86,8 +87,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	exportJob.Status = "In Progress"
-	err = db.Save(exportJob).Error
+	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
 	if err != nil {
 		return err
 	}
@@ -111,93 +111,104 @@ func processJob(j *que.Job) error {
 	}
 
 	// todo this is where we do a subset of beneficiaries
-	err = writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	fileName, err := writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 
 	// THis is only run AFTER completion of all the collection
 	if err != nil {
 		exportJob.Status = "Failed"
 	} else {
-		files, err := ioutil.ReadDir(staging)
+		_, err := ioutil.ReadDir(staging)
 		if err != nil {
 			log.Error(err)
 			return err
+		}
+
+		oldpath := staging + "/" + fileName
+		newpath := data + "/" + fileName
+		if _, err := os.Stat(data); os.IsNotExist(err) {
+			err = os.Mkdir(data, os.ModePerm)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
 		}
 
 		// TODO (knollfear): Remove this too when we stop supporting unencrypted files
 		if !jobArgs.Encrypt {
 			db := database.GetGORMDbConnection()
 			defer database.Close(db)
-		}
-
-		for _, f := range files {
-			oldpath := staging + "/" + f.Name()
-			newpath := data + "/" + f.Name()
-			if _, err := os.Stat(data); os.IsNotExist(err) {
-				err = os.Mkdir(data, os.ModePerm)
-				if err != nil {
-					log.Error(err)
-					return err
-				}
+			err = db.Create(&models.JobKey{JobID: uint(jobArgs.ID), EncryptedKey: []byte("NO_ENCRYPTION"), FileName: fileName}).Error
+			if err != nil {
+				log.Error(err)
+				return err
 			}
 
-			// TODO(rnagle): this condition should be removed when file encryption is ready for release
-			if !jobArgs.Encrypt {
+			err := os.Rename(oldpath, newpath)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
 
-				err = db.Create(&models.JobKey{JobID: uint(jobArgs.ID), EncryptedKey: []byte("NO_ENCRYPTION"), FileName: f.Name()}).Error
-				if err != nil {
-					log.Error(err)
-					return err
-				}
-
-				err := os.Rename(oldpath, newpath)
-				if err != nil {
-					log.Error(err)
-					return err
-				}
-
+		} else {
+			// this will be the only code path after ATO
+			publicKey := exportJob.ACO.GetPublicKey()
+			if publicKey == nil {
+				fmt.Println("NO KEY EXISTS  THIS IS BAD")
 			} else {
-				// this will be the only code path after ATO
-				publicKey := exportJob.ACO.GetPublicKey()
-				if publicKey == nil {
-					fmt.Println("NO KEY EXISTS  THIS IS BAD")
-				}
-				err := encryption.EncryptAndMove(staging, data, f.Name(), exportJob.ACO.GetPublicKey(), exportJob.ID)
-				if err != nil {
-					log.Error(err)
-					return err
-				}
-				err = os.Remove(oldpath)
+				err := encryption.EncryptAndMove(staging, data, fileName, exportJob.ACO.GetPublicKey(), exportJob.ID)
 				if err != nil {
 					log.Error(err)
 					return err
 				}
 			}
+			err = os.Remove(oldpath)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+
 		}
+
+	}
+	completedFiles := 0
+	files, err := ioutil.ReadDir(data)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	for _, f := range files {
+		// Ignore the error file if it exists
+		if !strings.Contains(f.Name(), "error") {
+			completedFiles++
+		}
+	}
+
+	// only mark as completed if we have the right number of files
+	if completedFiles >= exportJob.JobCount {
 		err = os.Remove(staging)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		exportJob.Status = "Completed"
-	}
 
-	err = db.Save(exportJob).Error
-	if err != nil {
-		return err
+		err = db.Model(&exportJob).Update("status", "Completed").Error
+		if err != nil {
+			return err
+		}
 	}
-
 	log.Info("Worker finished processing job ", j.ID)
 
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) error {
+func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) (fileName string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
 		err := errors.New("Blue Button client is required")
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	// TODO: Should this error be returned or written to file?
@@ -212,22 +223,22 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	default:
 		err := fmt.Errorf("Invalid resource type requested: %s", t)
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
 	if !re.Match([]byte(acoID)) {
 		err := errors.New("Invalid ACO ID")
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
-	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+	fileName = fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
 	f, err := os.Create(fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 	if err != nil {
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	defer f.Close()
@@ -248,13 +259,13 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
-			return errors.New("number of failed requests has exceeded threshold")
+			return "", errors.New("number of failed requests has exceeded threshold")
 		}
 	}
 
 	err = w.Flush()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = segment.End()
@@ -262,7 +273,7 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 		log.Error(err)
 	}
 
-	return nil
+	return fileName, nil
 }
 
 func getFailureThreshold() float64 {

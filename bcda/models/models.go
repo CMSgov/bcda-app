@@ -33,11 +33,12 @@ func InitializeGormModels() *gorm.DB {
 type Job struct {
 	gorm.Model
 	ACO        ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
-	ACOID      uuid.UUID `gorm:"primary_key; type:char(36)" json:"aco_id"`
+	ACOID      uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
 	User       User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
 	UserID     uuid.UUID `gorm:"type:char(36)"`
 	RequestURL string    `json:"request_url"` // request_url
 	Status     string    `json:"status"`      // status
+	JobCount   int
 	JobKeys    []JobKey
 }
 

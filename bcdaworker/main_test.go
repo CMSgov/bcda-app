@@ -65,7 +65,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.getData("ExplanationOfBenefit", beneficiaryIDs[i]))
 	}
 
-	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -103,7 +103,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileNoClient(t *testing.T) {
-	err := writeBBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"}, "1", "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"}, "1", "ExplanationOfBenefit")
 	assert.NotNil(t, err)
 }
 
@@ -112,7 +112,7 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
 	beneficiaryIDs := []string{"10000", "11000"}
 
-	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, "1", "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, "1", "ExplanationOfBenefit")
 	assert.NotNil(t, err)
 }
 
@@ -132,7 +132,7 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
+	fileName, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -148,7 +148,7 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 
-	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
+	os.Remove(fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, fileName))
 	os.Remove(filePath)
 }
 
@@ -167,7 +167,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
 	assert.Equal(t, "number of failed requests has exceeded threshold", err.Error())
 
 	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
@@ -250,6 +250,7 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
+		JobCount:   1,
 	}
 	db.Save(&j)
 

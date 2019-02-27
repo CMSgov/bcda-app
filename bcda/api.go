@@ -36,6 +36,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,6 +72,9 @@ import (
 		400: badRequestResponse
 		500: errorResponse
 */
+//Setting a default here.  It may need to change.  It also shouldn't really be used much.
+const BCDA_FHIR_MAX_RECORDS = 15
+
 func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("ExplanationOfBenefit", w, r)
 }
@@ -143,27 +147,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	beneficiaryIds := []string{}
-	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-	var id string
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-		beneficiaryIds = append(beneficiaryIds, id)
-	}
-
 	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
 	// By default, our encryption process is enabled but for now we are giving users the ability to turn
 	// it off
@@ -174,6 +157,72 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		encrypt = false
 	}
 
+	if qc == nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	beneficiaryIds := []string{}
+	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	var id string
+	var jobCount = 1
+	maxBeneficiaries, err := strconv.Atoi(os.Getenv("BCDA_FHIR_MAX_RECORDS"))
+	if err != nil {
+		maxBeneficiaries = BCDA_FHIR_MAX_RECORDS
+	}
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+		beneficiaryIds = append(beneficiaryIds, id)
+		if len(beneficiaryIds) >= maxBeneficiaries {
+
+			args, err := json.Marshal(jobEnqueueArgs{
+				ID:             int(newJob.ID),
+				ACOID:          acoId,
+				UserID:         userId,
+				BeneficiaryIDs: beneficiaryIds,
+				ResourceType:   t,
+				// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
+				Encrypt: encrypt,
+			})
+			if err != nil {
+				log.Error(err)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+				return
+			}
+
+			j := &que.Job{
+				Type: "ProcessJob",
+				Args: args,
+			}
+
+			if err = qc.Enqueue(j); err != nil {
+				log.Error(err)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+				return
+			}
+			jobCount++
+			beneficiaryIds = []string{}
+		}
+	}
+
+	// Get the last chunk of beneficiaries queued up
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:             int(newJob.ID),
 		ACOID:          acoId,
@@ -195,16 +244,16 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		Args: args,
 	}
 
-	if qc == nil {
+	if err = qc.Enqueue(j); err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
-	if err = qc.Enqueue(j); err != nil {
+	if db.Model(&newJob).Update("job_count", jobCount).Error != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
