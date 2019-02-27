@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/pborman/uuid"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -94,11 +93,15 @@ func NewOktaClient() *OktaClient {
 		go refreshKeys()
 	})
 	if err != nil {
-		logEmergency(err, nil).Print("No public keys available for server")
+		logEmergency(err).Print("No public keys available for server")
 		// our practice is to not stop the app, even when it's in a state where it can do nothing but emit errors
 		// methods called on this ob value will result in errors until the publicKeys map is successfully updated
 	}
 	return &OktaClient{}
+}
+
+func (oc *OktaClient) ServerID() string {
+	return oktaServerID
 }
 
 func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
@@ -118,14 +121,13 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 		return "", "", err
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", oktaAuthString)
+	addRequestHeaders(req)
 
 	logRequest(requestID).Print("creating client in okta")
 
 	var client = &http.Client{Timeout: time.Second * 10}
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return "", "", err
 	}
@@ -251,14 +253,13 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 		return err
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", oktaAuthString)
+	addRequestHeaders(req)
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
 	var client = &http.Client{Timeout: time.Second * 10}
 	resp, err := client.Do(req)
+
 	if err != nil {
 		logError(err, requestID).Print()
 		return err
@@ -292,14 +293,13 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 		return err
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", oktaAuthString)
+	addRequestHeaders(req)
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
 	client = &http.Client{Timeout: time.Second * 10}
 	resp, err = client.Do(req)
+
 	if err != nil {
 		logError(err, requestID).WithField("policy_id", result[0].ID).Print()
 		return err
@@ -326,18 +326,61 @@ func refreshKeys() {
 	}
 }
 
-func logRequest(requestId uuid.UUID) *logrus.Entry {
-	return logger.WithField("request_id", requestId)
+func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
+	url := oktaBaseUrl + "/oauth2/v1/clients/" + clientID + "/lifecycle/newSecret"
+
+	reqID := uuid.NewRandom()
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print()
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		logError(err, reqID)
+		return "", err
+	}
+
+	addRequestHeaders(req)
+
+	resp, err := client().Do(req)
+	if err != nil {
+		logError(err, reqID).Print()
+		return "", err
+	}
+	if resp.StatusCode >= 400 {
+		logError(errors.New(resp.Status), reqID).Print()
+		return "", errors.New(resp.Status)
+	}
+
+	logResponse(resp.StatusCode, reqID).Print()
+	var result map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return "", err
+	}
+	cs := result["client_secret"].(string)
+
+	return cs, nil
 }
 
-func logResponse(httpStatus int, requestId uuid.UUID) *logrus.Entry {
-	return logger.WithFields(logrus.Fields{"http_status": httpStatus, "request_id": requestId})
+func client() *http.Client {
+	return &http.Client{Timeout: time.Second * 10}
+}
+func addRequestHeaders(req *http.Request) {
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", oktaAuthString)
 }
 
-func logError(err error, requestId uuid.UUID) *logrus.Entry {
-	return logger.WithFields(logrus.Fields{"error": err, "request_id": requestId})
+func logRequest(requestID uuid.UUID) *logrus.Entry {
+	return logger.WithField("request_id", requestID)
 }
 
-func logEmergency(err error, requestId uuid.UUID) *logrus.Entry {
+func logResponse(httpStatus int, requestID uuid.UUID) *logrus.Entry {
+	return logger.WithFields(logrus.Fields{"http_status": httpStatus, "request_id": requestID})
+}
+
+func logError(err error, requestID uuid.UUID) *logrus.Entry {
+	return logger.WithFields(logrus.Fields{"error": err, "request_id": requestID})
+}
+
+func logEmergency(err error) *logrus.Entry {
 	return logger.WithFields(logrus.Fields{"error": err, "emergency": "invalid system state"})
 }

@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -54,37 +54,31 @@ func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
 }
 
 // can treat as a no-op or call RequestAccessToken
-func (p AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	clientID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return nil, err
-	}
-
+func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
 	aco, err := getACOFromDB(clientID)
 	if err != nil {
-		return nil, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
+		return Credentials{}, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
 	}
 
 	if aco.ClientID == "" {
-		return nil, fmt.Errorf("ACO %s does not have a registered client", clientID)
+		return Credentials{}, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
 	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
 	if err != nil {
-		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
+		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
-	ttl, err := getParamPositiveInt(params, "ttl")
-	if err != nil {
+	if ttl <= 0 {
 		return nil, errors.New("invalid TTL")
 	}
 
 	token, err := p.RequestAccessToken(Credentials{ClientID: clientID}, ttl)
 	if err != nil {
-		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
+		return Credentials{}, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
 
-	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, token.TokenString)), err
+	return Credentials{Token: token}, err
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
@@ -192,7 +186,7 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 		return Token{}, err
 	}
 
-	return token, nil // really want to return Token here, but first let's get this all working
+	return token, nil
 }
 
 func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
