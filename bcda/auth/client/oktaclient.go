@@ -125,8 +125,7 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 
 	logRequest(requestID).Print("creating client in okta")
 
-	var client = &http.Client{Timeout: time.Second * 10}
-	resp, err := client.Do(req)
+	resp, err := client().Do(req)
 
 	if err != nil {
 		return "", "", err
@@ -164,7 +163,7 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, erro
 	return clientID, clientSecret, nil
 }
 
-func (oc OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
+func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 	requestID := uuid.NewRandom()
 
 	tokenURL := fmt.Sprintf("%s/oauth2/%s/v1/token", oktaBaseUrl, oktaServerID)
@@ -247,8 +246,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
-	var client = &http.Client{Timeout: time.Second * 10}
-	resp, err := client.Do(req)
+	resp, err := client().Do(req)
 
 	if err != nil {
 		logError(err, requestID).Print()
@@ -287,8 +285,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 
 	// not calling logRequest() because this is a step of AddClientApplication
 
-	client = &http.Client{Timeout: time.Second * 10}
-	resp, err = client.Do(req)
+	resp, err = client().Do(req)
 
 	if err != nil {
 		logError(err, requestID).WithField("policy_id", result[0].ID).Print()
@@ -353,6 +350,7 @@ func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
 func client() *http.Client {
 	return &http.Client{Timeout: time.Second * 10}
 }
+
 func addRequestHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
