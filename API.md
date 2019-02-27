@@ -115,7 +115,7 @@ curl https://sandbox.bcda.cms.gov/api/v1/metadata
 		}, {
 			"name": "data",
 			"definition": {
-				"reference": "https://sandbox.bcda.cms.gov/data/[jobID]/[acoID].ndjson"
+				"reference": "https://sandbox.bcda.cms.gov/data/[jobID]/[random_UUID].ndjson"
 			}
 		}]
 	}]
