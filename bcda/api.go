@@ -237,7 +237,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobId")
+	jobID := chi.URLParam(r, "jobID")
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -357,7 +357,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 func serveData(w http.ResponseWriter, r *http.Request) {
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	fileName := chi.URLParam(r, "fileName")
-	jobID := chi.URLParam(r, "jobId")
+	jobID := chi.URLParam(r, "jobID")
 	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 }
 

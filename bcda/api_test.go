@@ -337,7 +337,7 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", "test")
+	rctx.URLParams.Add("jobID", "test")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -362,7 +362,7 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", jobID)
+	rctx.URLParams.Add("jobID", jobID)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -395,7 +395,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -422,7 +422,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -451,7 +451,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -484,7 +484,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -535,7 +535,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -594,7 +594,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -625,7 +625,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -653,7 +653,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -745,14 +745,14 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", "82503a18-bf3b-436d-ba7b-bae09b7ffd2f")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
 
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 
 	s.db.Delete(&j)
 }

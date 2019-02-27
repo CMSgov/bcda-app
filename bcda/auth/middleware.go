@@ -67,7 +67,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		jobID := chi.URLParam(r, "jobId")
+		jobID := chi.URLParam(r, "jobID")
 		token := r.Context().Value("token").(*jwt.Token)
 
 		db := database.GetGORMDbConnection()
@@ -76,16 +76,16 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		i, err := strconv.Atoi(jobID)
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)
+			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
 		}
 
 		claims, err := ClaimsFromToken(token)
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)
+			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
 		}
 
@@ -95,8 +95,8 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		err = db.Find(&job, "id = ? and aco_id = ?", i, acoId).Error
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-			responseutils.WriteError(oo, w, http.StatusUnauthorized)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)
+			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
 		}
 		next.ServeHTTP(w, r)
