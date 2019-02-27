@@ -314,22 +314,3 @@ func GetParamString(params []byte, name string) (string, error) {
 
 	return stringForName, err
 }
-
-func getParamPositiveInt(params []byte, name string) (int, error) {
-	var (
-		j   interface{}
-		err error
-	)
-
-	if err = json.Unmarshal(params, &j); err != nil {
-		return -1, err
-	}
-	paramsMap := j.(map[string]interface{})
-
-	valueForName, ok := paramsMap[name].(float64)
-	if !ok {
-		return -1, errors.New("missing or otherwise invalid int value for " + name)
-	}
-
-	return int(valueForName), err
-}
