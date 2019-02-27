@@ -96,7 +96,7 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	// we know that we use aco.UUID as the ClientID
 	clientID := aco.UUID.String()
 
-	r, err = s.p.GenerateClientCredentials(clientID, 0)
+	r, err = s.p.GenerateClientCredentials(clientID, 720)
 	assert.Equal(s.T(), auth.Credentials{}, r)
 	assert.Contains(s.T(), err.Error(), "have a registered client")
 
@@ -104,7 +104,8 @@ func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	aco.ClientID = aco.UUID.String()
 	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
 	assert.Nil(s.T(), err, "wtf? %v", err)
-	user, err := models.CreateUser("Fake User", "fake@genclientcredstest.com", aco.UUID)
+	email := fmt.Sprintf("%s@genclientcredstest.com", testUtils.RandomHexID())
+	user, err := models.CreateUser("Fake User", email, aco.UUID)
 	assert.Nil(s.T(), err, "wtf? %v", err)
 
 	r, err = s.p.GenerateClientCredentials(clientID, 0)
@@ -124,10 +125,11 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	db := connections["TestRevokeClientCredentials"]
 	db.Save(&aco)
 
+	email := fmt.Sprintf("%s@revokeclientcredentialstes.com", testUtils.RandomHexID())
 	var user = models.User{
 		UUID:  uuid.NewRandom(),
 		Name:  "RevokeClientCredentials Test User",
-		Email: "revokeclientcredentialstest@example.com",
+		Email: email,
 		ACO:   aco,
 		ACOID: aco.UUID,
 	}
