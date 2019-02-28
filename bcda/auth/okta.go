@@ -19,7 +19,7 @@ type OktaBackend interface {
 	ServerID() string
 
 	// Adds an api client application to our Okta organization
-	AddClientApplication(string) (string, string, error)
+	AddClientApplication(string) (string, string, string, error)
 
 	// Gets a session token from Okta
 	RequestAccessToken(creds client.Credentials) (client.OktaToken, error)
@@ -42,10 +42,12 @@ func (o OktaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 		return Credentials{}, errors.New("you must provide a localID")
 	}
 
-	id, key, err := o.backend.AddClientApplication(localID)
+	id, key, name, err := o.backend.AddClientApplication(localID)
+
 	return Credentials{
 		ClientID:     id,
 		ClientSecret: key,
+		ClientName:   name,
 	}, err
 }
 
