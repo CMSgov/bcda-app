@@ -85,6 +85,7 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("A0000", metadata.acoID)
 	assert.Equal(8, metadata.cclfNum)
 	assert.Equal(expTime, metadata.timestamp)
+	assert.Nil(err)
 
 	expTime, _ = time.Parse(time.RFC3339, "2019-01-08T23:55:00Z")
 	metadata, err = getCCLFFileMetadata("/path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
@@ -92,4 +93,5 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("A0001", metadata.acoID)
 	assert.Equal(9, metadata.cclfNum)
 	assert.Equal(expTime, metadata.timestamp)
+	assert.Nil(err)
 }
