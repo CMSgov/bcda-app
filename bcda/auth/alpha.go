@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -42,7 +42,7 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
 	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
 	// whose client_id matches their UUID was created by this plugin.
-	return Credentials{ClientID:localID}, nil
+	return Credentials{ClientID: localID}, nil
 }
 
 func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
@@ -54,32 +54,31 @@ func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
 }
 
 // can treat as a no-op or call RequestAccessToken
-func (p AlphaAuthPlugin) GenerateClientCredentials(params []byte) ([]byte, error) {
-	clientID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return nil, err
-	}
-
+func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
 	aco, err := getACOFromDB(clientID)
 	if err != nil {
-		return nil, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
+		return Credentials{}, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
 	}
 
 	if aco.ClientID == "" {
-		return nil, fmt.Errorf("ACO %s does not have a registered client", clientID)
+		return Credentials{}, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
 	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
 	if err != nil {
-		return nil, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
+		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
 
-	token, err := p.RequestAccessToken([]byte(params))
+	if ttl < 0 {
+		return Credentials{}, errors.New("invalid TTL")
+	}
+
+	token, err := p.RequestAccessToken(Credentials{ClientID: clientID}, ttl)
 	if err != nil {
-		return nil, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
+		return Credentials{}, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
 	}
 
-	return []byte(fmt.Sprintf(`{"tokenString":"%s"}`, token.TokenString)), err
+	return Credentials{Token: token}, err
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
@@ -143,15 +142,15 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 
 // generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
 // params are currently acoId and ttl; not going to introduce user until we have clear use cases
-func (p AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
+func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
 	token := Token{}
 
-	acoUUID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return token, err
+	acoUUID := creds.ClientID
+	if acoUUID == "" {
+		return token, errors.New("no ACO ID provided")
 	}
 
 	aco, err := getACOFromDB(acoUUID)
@@ -167,9 +166,8 @@ func (p AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
 		return token, errors.New("no user found for " + aco.UUID.String())
 	}
 
-	ttl, err := getParamPositiveInt(params, "ttl")
-	if err != nil {
-		return token, errors.New("no valid ttl found because " + err.Error())
+	if ttl < 0 {
+		return token, fmt.Errorf("invalid TTL: %d", ttl)
 	}
 
 	token.UUID = uuid.NewRandom()
@@ -188,7 +186,7 @@ func (p AlphaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
 		return Token{}, err
 	}
 
-	return token, nil // really want to return Token here, but first let's get this all working
+	return token, nil
 }
 
 func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
@@ -315,23 +313,4 @@ func GetParamString(params []byte, name string) (string, error) {
 	}
 
 	return stringForName, err
-}
-
-func getParamPositiveInt(params []byte, name string) (int, error) {
-	var (
-		j   interface{}
-		err error
-	)
-
-	if err = json.Unmarshal(params, &j); err != nil {
-		return -1, err
-	}
-	paramsMap := j.(map[string]interface{})
-
-	valueForName, ok := paramsMap[name].(float64)
-	if !ok {
-		return -1, errors.New("missing or otherwise invalid int value for " + name)
-	}
-
-	return int(valueForName), err
 }

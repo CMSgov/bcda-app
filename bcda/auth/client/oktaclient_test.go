@@ -74,6 +74,33 @@ func (s *OTestSuite) TestAddClientApplication() {
 	assert.NotEmpty(s.T(), secret)
 }
 
+func (s *OTestSuite) TestRequestAccessToken() {
+	clientID := os.Getenv("OKTA_CLIENT_ID")
+	clientSecret := os.Getenv("OKTA_CLIENT_SECRET")
+
+	assert.NotEmpty(s.T(), clientID, "Test requires OKTA_CLIENT_ID")
+	assert.NotEmpty(s.T(), clientSecret, "Test requires OKTA_CLIENT_SECRET")
+
+	t, err := s.oc.RequestAccessToken(Credentials{ClientID: clientID, ClientSecret: clientSecret})
+	assert.IsType(s.T(), OktaToken{}, t)
+	assert.Nil(s.T(), err)
+
+	t, err = s.oc.RequestAccessToken(Credentials{ClientID: "", ClientSecret: ""})
+	assert.IsType(s.T(), OktaToken{}, t)
+	assert.NotNil(s.T(), err)
+}
+
+func (s *OTestSuite) TestGenerateNewClientSecret() {
+	validClientID := "0oaj4590j9B5uh8rC0h7"
+	newSecret, err := s.oc.GenerateNewClientSecret(validClientID)
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", newSecret)
+
+	invalidClientID := "IDontexist"
+	newSecret, err = s.oc.GenerateNewClientSecret(invalidClientID)
+	assert.Equal(s.T(), "404 Not Found", err.Error())
+}
+
 func (s *OTestSuite) TearDownTest() {
 }
 

@@ -337,7 +337,7 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", "test")
+	rctx.URLParams.Add("jobID", "test")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -352,7 +352,7 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
 func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
@@ -362,7 +362,7 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", jobID)
+	rctx.URLParams.Add("jobID", jobID)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -395,7 +395,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -422,7 +422,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -451,7 +451,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -484,7 +484,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -522,14 +522,20 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
-
+	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+	jobKey := models.JobKey{
+		JobID:        j.ID,
+		FileName:     fileName,
+		EncryptedKey: []byte("Encrypted Key"),
+	}
+	s.db.Save(&jobKey)
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	req.TLS = &tls.ConnectionState{}
 
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -559,7 +565,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
-	dataurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
+	dataurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
 	errorurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3-error.ndjson")
 
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
@@ -588,7 +594,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -619,7 +625,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -647,7 +653,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	handler := http.HandlerFunc(jobStatus)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("DBBD1CE1-AE24-435C-807D-ED45953077D3", "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -665,7 +671,7 @@ func (s *APITestSuite) TestServeData() {
 	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("acoID", "test")
+	rctx.URLParams.Add("fileName", "test.ndjson")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	handler := http.HandlerFunc(serveData)
@@ -736,10 +742,10 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobId", fmt.Sprint(j.ID))
+	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	token := makeJWT("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", "82503a18-bf3b-436d-ba7b-bae09b7ffd2f")
 	req = req.WithContext(context.WithValue(req.Context(), "token", token))
@@ -774,6 +780,75 @@ func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
 	handler := http.HandlerFunc(healthCheck)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadGateway, s.rr.Code)
+}
+
+func (s *APITestSuite) TestAuthInfoDefault() {
+
+	// get original provider so we can reset at the end of the test
+	originalProvider := auth.GetProviderName()
+
+	// set provider to bogus value and make sure default (alpha) is retrieved
+	auth.SetProvider("bogus")
+	req := httptest.NewRequest("GET", "/_auth", nil)
+	handler := http.HandlerFunc(getAuthInfo)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	respMap := make(map[string]string)
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
+	if err != nil {
+		s.T().Error(err.Error())
+	}
+	assert.Equal(s.T(), "alpha", respMap["auth_provider"])
+
+	// set provider back to original value
+	auth.SetProvider(originalProvider)
+
+}
+
+func (s *APITestSuite) TestAuthInfoAlpha() {
+
+	// get original provider so we can reset at the end of the test
+	originalProvider := auth.GetProviderName()
+
+	// set provider to alpha and make sure alpha is retrieved
+	auth.SetProvider("alpha")
+	req := httptest.NewRequest("GET", "/_auth", nil)
+	handler := http.HandlerFunc(getAuthInfo)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	respMap := make(map[string]string)
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
+	if err != nil {
+		s.T().Error(err.Error())
+	}
+	assert.Equal(s.T(), "alpha", respMap["auth_provider"])
+
+	// set provider back to original value
+	auth.SetProvider(originalProvider)
+
+}
+
+func (s *APITestSuite) TestAuthInfoOkta() {
+
+	// get original provider so we can reset at the end of the test
+	originalProvider := auth.GetProviderName()
+
+	// set provider to okta and make sure okta is retrieved
+	auth.SetProvider("okta")
+	req := httptest.NewRequest("GET", "/_auth", nil)
+	handler := http.HandlerFunc(getAuthInfo)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	respMap := make(map[string]string)
+	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
+	if err != nil {
+		s.T().Error(err.Error())
+	}
+	assert.Equal(s.T(), "okta", respMap["auth_provider"])
+
+	// set provider back to original value
+	auth.SetProvider(originalProvider)
+
 }
 
 func TestAPITestSuite(t *testing.T) {

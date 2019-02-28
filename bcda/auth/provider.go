@@ -36,6 +36,10 @@ func SetProvider(name string) {
 	log.Infof(`Auth is made possible by %s`, providerName)
 }
 
+func GetProviderName() string {
+	return providerName
+}
+
 func GetProvider() Provider {
 	switch providerName {
 	case Alpha:
@@ -65,13 +69,13 @@ type Provider interface {
 	DeleteClient(params []byte) error
 
 	// Generate new or replace existing Credentials for the given clientID
-	GenerateClientCredentials(params []byte) ([]byte, error)
+	GenerateClientCredentials(clientID string, ttl int) (Credentials, error)
 
 	// Revoke any existing Credentials for the given clientID
 	RevokeClientCredentials(params []byte) error
 
 	// Request an access token with a specific time-to-live for the given clientID
-	RequestAccessToken(params []byte) (Token, error)
+	RequestAccessToken(creds Credentials, ttl int) (Token, error)
 
 	// Revoke a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error

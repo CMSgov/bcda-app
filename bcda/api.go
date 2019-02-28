@@ -36,7 +36,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -46,8 +45,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	que "github.com/bgentry/que-go"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/bgentry/que-go"
+	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -238,30 +237,12 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func jobStatus(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobId")
+	jobID := chi.URLParam(r, "jobID")
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	i, err := strconv.Atoi(jobID)
-	if err != nil {
-		log.Print(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
-
-	var claims jwt.MapClaims
-
-	if claims, err = readTokenClaims(r); err != nil {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
-
-	acoId := claims["aco"].(string)
-
 	var job models.Job
-	err = db.Find(&job, "id = ? and aco_id = ?", i, acoId).Error
+	err := db.Find(&job, "id = ?", jobID).Error
 	if err != nil {
 		log.Print(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
@@ -295,23 +276,25 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient|Coverage)/\$export`)
 		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
 
-		fi := fileItem{
-			Type: resourceType,
-			URL:  fmt.Sprintf("%s://%s/data/%s/%s.ndjson", scheme, r.Host, jobID, job.ACOID),
-		}
-
+		var files []fileItem
 		keyMap := make(map[string]string)
 		var jobKeysObj []models.JobKey
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
 			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
+			fi := fileItem{
+				Type:         resourceType,
+				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				EncryptedKey: hex.EncodeToString(jobKey.EncryptedKey),
+			}
+			files = append(files, fi)
 		}
 
 		rb := bulkResponseBody{
 			TransactionTime:     job.CreatedAt,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
-			Files:               []fileItem{fi},
+			Files:               files,
 			Errors:              []fileItem{},
 			KeyMap:              keyMap,
 			JobID:               job.ID,
@@ -373,9 +356,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 */
 func serveData(w http.ResponseWriter, r *http.Request) {
 	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
-	acoID := chi.URLParam(r, "acoID")
+	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
-	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
+	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
@@ -392,7 +375,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generates a token for 'ACO Dev' and its first user
-	token, err := auth.GetProvider().RequestAccessToken([]byte(fmt.Sprintf(`{"clientID":"%s", "ttl": 72}`, aco.UUID.String())))
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: aco.UUID.String()}, 72)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
@@ -495,6 +478,36 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
+        swagger:route GET /_auth metadata getAuthInfo
+
+        Get details about auth
+
+        Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
+
+        Produces:
+        - application/json
+
+        Schemes: http, https
+
+        Responses:
+                200: AuthResponse
+*/
+func getAuthInfo(w http.ResponseWriter, r *http.Request) {
+        respMap := make(map[string]string)
+        respMap["auth_provider"] = auth.GetProviderName()
+        respBytes, err := json.Marshal(respMap)
+        if err != nil {
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        _, err = w.Write(respBytes)
+        if err != nil {
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
+}
+
 func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
 	var (
 		claims jwt.MapClaims
@@ -527,6 +540,8 @@ type fileItem struct {
 	Type string `json:"type"`
 	// URL of the file
 	URL string `json:"url"`
+	// Encrypted Symmetric Key used to encrypt this file
+	EncryptedKey string `json:"encryptedKey"`
 }
 
 /*
