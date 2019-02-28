@@ -82,7 +82,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
+	var acoName, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -195,20 +195,23 @@ func setUpApp() *cli.App {
 		{
 			Name:     "create-token",
 			Category: "Authentication tools",
-			Usage:    "Create an access token",
+			Usage:    "Create an access/session token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "user-id",
-					Usage:       "UUID of user",
-					Destination: &userID,
-				},
-			},
+					Name:        "id",
+					Usage:       "ID associated with token (either a user UUID, or client-id paired with the secret",
+					Destination: &tokenID,
+				}, cli.StringFlag{
+					Name:        "secret",
+					Usage:       "Credential secret for creating session tokens",
+					Destination: &tokenSecret,
+				}},
 			Action: func(c *cli.Context) error {
-				accessToken, err := createAccessToken(userID)
+				tokenValue, err := createAccessToken(tokenID, tokenSecret)
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(app.Writer, "%s\n", accessToken)
+				fmt.Fprintf(app.Writer, "%s\n", tokenValue)
 				return nil
 			},
 		},
@@ -390,16 +393,30 @@ func createUser(acoID, name, email string) (string, error) {
 	return user.UUID.String(), nil
 }
 
-func createAccessToken(userID string) (string, error) {
-	errMsgs := []string{}
+func createAccessToken(userID string, secret string) (string, error) {
+	var clientID string
 	var userUUID uuid.UUID
+	errMsgs := []string{}
 
-	if userID == "" {
-		errMsgs = append(errMsgs, "User ID (--user-id) must be provided")
-	} else {
-		userUUID = uuid.Parse(userID)
-		if userUUID == nil {
-			errMsgs = append(errMsgs, "User ID must be a UUID")
+	a := auth.GetProvider()
+
+	switch a.(type) {
+	case auth.AlphaAuthPlugin:
+		if userID == "" {
+			errMsgs = append(errMsgs, "User ID (--id) must be provided")
+		} else {
+			userUUID = uuid.Parse(userID)
+			if userUUID == nil {
+				errMsgs = append(errMsgs, "User ID must be a UUID")
+			}
+		}
+
+	case auth.OktaAuthPlugin:
+		if userID == "" {
+			errMsgs = append(errMsgs, "Client ID (--id) must be provided")
+		}
+		if secret == "" {
+			errMsgs = append(errMsgs, "Secret (--secret) must be provided")
 		}
 	}
 
@@ -407,15 +424,23 @@ func createAccessToken(userID string) (string, error) {
 		return "", errors.New(strings.Join(errMsgs, "\n"))
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var user models.User
+	switch a.(type) {
+	case auth.AlphaAuthPlugin:
+		db := database.GetGORMDbConnection()
+		defer database.Close(db)
+		var user models.User
 
-	if db.First(&user, "UUID = ?", userID).RecordNotFound() {
-		return "", fmt.Errorf("unable to locate User with id of %s", userID)
+		if db.First(&user, "UUID = ?", userID).RecordNotFound() {
+			return "", fmt.Errorf("unable to locate User with id of %s", userID)
+		}
+
+		clientID = user.ACOID.String()
+
+	case auth.OktaAuthPlugin:
+		clientID = userID
 	}
 
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: user.ACOID.String()}, 72)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: clientID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}
