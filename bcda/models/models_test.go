@@ -25,19 +25,22 @@ func (s *ModelsTestSuite) TearDownTest() {
 }
 
 func (s *ModelsTestSuite) TestCreateACO() {
-	const ACOName = "ACO Name"
-	acoUUID, err := CreateACO(ACOName)
+	assert := s.Assert()
 
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), acoUUID)
+	const ACOName = "ACO Name"
+	acoUUID, err := CreateACO(ACOName, "A0000")
+
+	assert.Nil(err)
+	assert.NotNil(acoUUID)
 
 	var aco ACO
 	s.db.Find(&aco, "UUID = ?", acoUUID)
-	assert.NotNil(s.T(), aco)
-	assert.Equal(s.T(), ACOName, aco.Name)
-	assert.Equal(s.T(), "", aco.ClientID)
-	assert.NotNil(s.T(), aco.GetPublicKey())
-	assert.NotNil(s.T(), GetATOPrivateKey())
+	assert.NotNil(aco)
+	assert.Equal(ACOName, aco.Name)
+	assert.Equal("", aco.ClientID)
+	assert.Equal("A0000", aco.CMSID)
+	assert.NotNil(aco.GetPublicKey())
+	assert.NotNil(GetATOPrivateKey())
 	// should confirm the keys are a matched pair? i.e., encrypt something with one and decrypt with the other
 	// the auth provider determines what the clientID contains (formatting, alphabet used, etc).
 	// we require that it be representable in a string of less than 255 characters
@@ -45,10 +48,10 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	aco.ClientID = ClientID
 	s.db.Save(aco)
 	s.db.Find(&aco, "UUID = ?", acoUUID)
-	assert.NotNil(s.T(), aco)
-	assert.Equal(s.T(), ACOName, aco.Name)
-	assert.NotNil(s.T(), aco.ClientID)
-	assert.Equal(s.T(), ClientID, aco.ClientID)
+	assert.NotNil(aco)
+	assert.Equal(ACOName, aco.Name)
+	assert.NotNil(aco.ClientID)
+	assert.Equal(ClientID, aco.ClientID)
 
 	// make sure we can't duplicate the ACO UUID
 	aco = ACO{
@@ -56,7 +59,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 		Name: "Duplicate UUID Test",
 	}
 	err = s.db.Save(&aco).Error
-	assert.NotNil(s.T(), err)
+	assert.NotNil(err)
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {

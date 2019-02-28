@@ -25,7 +25,6 @@ import (
 // App Name and usage.  Edit them here to prevent breaking tests
 const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
-const CreateACO = "create-aco"
 
 var (
 	qc      *que.Client
@@ -82,7 +81,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
+	var acoName, acoCMSID, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -143,7 +142,7 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     CreateACO,
+			Name:     "create-aco",
 			Category: "Authentication tools",
 			Usage:    "Create an ACO",
 			Flags: []cli.Flag{
@@ -152,9 +151,14 @@ func setUpApp() *cli.App {
 					Usage:       "Name of ACO",
 					Destination: &acoName,
 				},
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName)
+				acoUUID, err := createACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -343,19 +347,6 @@ func autoMigrate() {
 	models.InitializeGormModels()
 	auth.InitializeGormModels()
 	fmt.Println("Completed Database Initialization")
-}
-
-func createACO(name string) (string, error) {
-	if name == "" {
-		return "", errors.New("ACO name (--name) must be provided")
-	}
-
-	acoUUID, err := models.CreateACO(name)
-	if err != nil {
-		return "", err
-	}
-
-	return acoUUID.String(), nil
 }
 
 func createUser(acoID, name, email string) (string, error) {

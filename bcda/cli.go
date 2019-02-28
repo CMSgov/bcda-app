@@ -10,7 +10,30 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/models"
 )
+
+func createACO(name, cmsID string) (string, error) {
+	if name == "" {
+		return "", errors.New("ACO name (--name) must be provided")
+	}
+
+	// ACO ID is not required, but must match `AXXXX` if provided
+	if cmsID != "" {
+		acoIDFmt := regexp.MustCompile(`^A\d{4}$`)
+		if !acoIDFmt.MatchString(cmsID) {
+			return "", errors.New("ACO CMS ID (--cms-id) is invalid")
+		}
+	}
+
+	acoUUID, err := models.CreateACO(name, cmsID)
+	if err != nil {
+		return "", err
+	}
+
+	return acoUUID.String(), nil
+}
 
 type cclfFileMetadata struct {
 	env       string

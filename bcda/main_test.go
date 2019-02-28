@@ -79,65 +79,6 @@ func (s *MainTestSuite) TestAutoMigrate() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *MainTestSuite) TestCreateACO() {
-
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	s.SetupAuthBackend()
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	assert := assert.New(s.T())
-
-	// Successful ACO creation
-	ACOName := "UNIT TEST ACO"
-	args := []string{"bcda", "create-aco", "--name", ACOName}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.NotNil(buf)
-	acoUUID := strings.TrimSpace(buf.String())
-	var testACO models.ACO
-	db.First(&testACO, "Name=?", "UNIT TEST ACO")
-	assert.Equal(testACO.UUID.String(), acoUUID)
-	buf.Reset()
-
-	// Negative tests
-
-	// No parameters
-	args = []string{"bcda", "create-aco"}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// No ACO Name
-	badACO := ""
-	args = []string{"bcda", "create-aco", "--name", badACO}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// ACO name without flag
-	args = []string{"bcda", "create-aco", ACOName}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Unexpected flag
-	args = []string{"bcda", "create-aco", "--abcd", "efg"}
-	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-	buf.Reset()
-
-	// we currently allow ACOs with duplicate names
-}
-
 func (s *MainTestSuite) TestCreateUser() {
 
 	// init
@@ -525,7 +466,7 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 	defer database.Close(db)
 
 	s.SetupAuthBackend()
-	acoUUID, err := createACO("ACO " + email)
+	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
