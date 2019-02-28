@@ -114,3 +114,20 @@ func CreateStaging(jobID string) {
 		}
 	}
 }
+
+func RandomHexID() string {
+	b, err := someRandomBytes(4)
+	if err != nil {
+		return "not_a_random_client_id"
+	}
+	return fmt.Sprintf("%x", b)
+}
+
+func someRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}

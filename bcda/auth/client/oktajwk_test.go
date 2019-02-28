@@ -22,9 +22,8 @@ type JWKTestSuite struct {
 func (s *JWKTestSuite) TestGetPublicKeys(t *testing.T) {
 	publicKeys := getPublicKeys()
 	assert.NotNil(t, publicKeys)
-	assert.Condition(t, func() bool {return 1 <= len(publicKeys) && len(publicKeys) <= 3})
+	assert.Condition(t, func() bool { return 1 <= len(publicKeys) && len(publicKeys) <= 3 })
 }
-
 
 func (s *JWKTestSuite) TestParseKeys(t *testing.T) {
 	// sample okta public server signing keys from public documentation site

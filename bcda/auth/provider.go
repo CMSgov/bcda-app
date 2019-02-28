@@ -71,7 +71,7 @@ type Provider interface {
 	RevokeClientCredentials(params []byte) error
 
 	// Request an access token with a specific time-to-live for the given clientID
-	RequestAccessToken(params []byte) (Token, error)
+	RequestAccessToken(creds Credentials, ttl int) (Token, error)
 
 	// Revoke a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error
