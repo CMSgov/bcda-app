@@ -478,6 +478,36 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
+        swagger:route GET /_auth metadata getAuthInfo
+
+        Get details about auth
+
+        Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
+
+        Produces:
+        - application/json
+
+        Schemes: http, https
+
+        Responses:
+                200: AuthResponse
+*/
+func getAuthInfo(w http.ResponseWriter, r *http.Request) {
+        respMap := make(map[string]string)
+        respMap["auth_provider"] = auth.GetProviderName()
+        respBytes, err := json.Marshal(respMap)
+        if err != nil {
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        _, err = w.Write(respBytes)
+        if err != nil {
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
+}
+
 func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
 	var (
 		claims jwt.MapClaims
