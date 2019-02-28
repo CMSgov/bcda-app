@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -187,13 +188,29 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthEmpty() {
 	assert.Equal(s.T(), 401, resp.StatusCode)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNotEqual() {
-	req, err := http.NewRequest("GET", s.server.URL+"/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", nil)
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchNotEqual() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Failed",
+	}
+
+	db.Save(&j)
+	jobID := strconv.Itoa(int(j.ID))
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", jobID)
+
+	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	handler := auth.RequireTokenACOMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
 	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
@@ -205,18 +222,33 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNotEqual() {
 
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, "token", token)
-	req = req.WithContext(ctx)
+	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 401, s.rr.Code)
+	assert.Equal(s.T(), 404, s.rr.Code)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenACOMatchEqual() {
-	req, err := http.NewRequest("GET", s.server.URL+"/data/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson", nil)
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchEqual() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Failed",
+	}
+
+	db.Save(&j)
+	jobID := strconv.Itoa(int(j.ID))
+	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	handler := auth.RequireTokenACOMatch(mockHandler)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", jobID)
+
+	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	acoID, userID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
 	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
@@ -228,18 +260,34 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchEqual() {
 
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, "token", token)
-	req = req.WithContext(ctx)
+	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 200, s.rr.Code)
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Failed",
+	}
+
+	db.Save(&j)
+	jobID := strconv.Itoa(int(j.ID))
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", jobID)
+
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	handler := auth.RequireTokenACOMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
 	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
@@ -252,9 +300,9 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, "token", token)
-	req = req.WithContext(ctx)
+	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 500, s.rr.Code)
+	assert.Equal(s.T(), 404, s.rr.Code)
 }
 
 func (s *MiddlewareTestSuite) TestClaimsFromToken() {
