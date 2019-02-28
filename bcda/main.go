@@ -81,7 +81,11 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
+<<<<<<< HEAD
 	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath string
+=======
+	var acoName, acoCMSID, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
+>>>>>>> Add CMS ID to ACO; optional parameter on CreateACO()
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
