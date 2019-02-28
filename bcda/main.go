@@ -82,7 +82,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize string
+	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -302,6 +302,36 @@ func setUpApp() *cli.App {
 					return err
 				}
 				return cleanupArchive(th)
+			},
+		},
+		{
+			Name:     "import-cclf8",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF8 file",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF8 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF8(filePath)
+			},
+		},
+		{
+			Name:     "import-cclf9",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF9 file",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF9 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF9(filePath)
 			},
 		},
 	}
