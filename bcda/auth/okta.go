@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -19,6 +20,9 @@ type OktaBackend interface {
 
 	// Adds an api client application to our Okta organization
 	AddClientApplication(string) (string, string, error)
+
+	// Gets a session token from Okta
+	RequestAccessToken(creds client.Credentials) (client.OktaToken, error)
 
 	// Renews client secret for an okta client
 	GenerateNewClientSecret(string) (string, error)
@@ -71,8 +75,23 @@ func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) RequestAccessToken(params []byte) (Token, error) {
-	return Token{}, errors.New("not yet implemented")
+func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
+	if creds.ClientID == "" {
+		return Token{}, fmt.Errorf("client ID required")
+	}
+
+	if creds.ClientSecret == "" {
+		return Token{}, fmt.Errorf("client secret required")
+	}
+
+	clientCreds := client.Credentials{ClientID: creds.ClientID, ClientSecret: creds.ClientSecret}
+	ot, err := o.backend.RequestAccessToken(clientCreds)
+
+	if err != nil {
+		return Token{}, err
+	}
+
+	return Token{TokenString: ot.AccessToken}, nil
 }
 
 func (o OktaAuthPlugin) RevokeAccessToken(tokenString string) error {

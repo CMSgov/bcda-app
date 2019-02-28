@@ -26,7 +26,7 @@ func NewAPIRouter() http.Handler {
 		if os.Getenv("ENABLE_COVERAGE_EXPORT") == "true" {
 			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Coverage/$export", bulkCoverageRequest))
 		}
-		r.With(auth.RequireTokenAuth).Get(m.WrapHandler("/jobs/{jobId}", jobStatus))
+		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
 		if os.Getenv("DEBUG") == "true" {
 			r.Get(m.WrapHandler("/token", getToken))
@@ -42,8 +42,8 @@ func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
-	r.With(auth.RequireTokenAuth, auth.RequireTokenACOMatch).
-		Get(m.WrapHandler("/data/{jobID}/{acoID}.ndjson", serveData))
+	r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).
+		Get(m.WrapHandler("/data/{jobID}/{fileName}", serveData))
 	return r
 }
 
