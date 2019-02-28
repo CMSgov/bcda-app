@@ -183,10 +183,8 @@ func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 	params.Set("scope", "bcda_api")
 	req.URL.RawQuery = params.Encode()
 
-	httpClient := &http.Client{}
-
 	logRequest(requestID).Print("requesting Okta access token")
-	resp, err := httpClient.Do(req)
+	resp, err := client().Do(req)
 	if err != nil {
 		return OktaToken{}, err
 	}
