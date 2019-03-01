@@ -26,6 +26,9 @@ type OktaBackend interface {
 
 	// Renews client secret for an okta client
 	GenerateNewClientSecret(string) (string, error)
+
+	// Deactivates a client application so it cannot be used
+	DeactivateApplication(clientID string) error
 }
 
 type OktaAuthPlugin struct {
@@ -72,7 +75,12 @@ func (o OktaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cre
 }
 
 func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
-	return errors.New("not yet implemented")
+	err := o.backend.DeactivateApplication(clientID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {

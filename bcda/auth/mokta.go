@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type Mokta struct {
@@ -91,6 +91,10 @@ func (m *Mokta) GenerateNewClientSecret(clientID string) (string, error) {
 
 	fakeClientSecret := "thisClientSecretIsFakeButIsCorrectLength"
 	return fakeClientSecret, nil
+}
+
+func (m *Mokta) DeactivateApplication(clientID string) error {
+	return nil
 }
 
 func randomClientID() string {
