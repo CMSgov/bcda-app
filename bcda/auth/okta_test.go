@@ -80,7 +80,7 @@ func (s *OktaAuthPluginTestSuite) TestGenerateClientCredentials() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestOktaRevokeClientCredentials() {
-	err := s.o.RevokeClientCredentials([]byte("{}"))
+	err := s.o.RevokeClientCredentials("")
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 

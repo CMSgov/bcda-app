@@ -71,7 +71,7 @@ func (o OktaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cre
 	return c, nil
 }
 
-func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
+func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return errors.New("not yet implemented")
 }
 
