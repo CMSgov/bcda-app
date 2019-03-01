@@ -36,6 +36,7 @@ type OktaToken struct {
 type Credentials struct {
 	ClientID     string
 	ClientSecret string
+	ClientName   string
 }
 
 func init() {
@@ -112,14 +113,14 @@ func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
 	return key, ok
 }
 
-func (oc *OktaClient) AddClientApplication(localID string) (string, string, string, error) {
+func (oc *OktaClient) AddClientApplication(localID string) (clientID string, clientSecret string, clientName string, err error) {
 	requestID := uuid.NewRandom()
-	clientName := fmt.Sprintf("BCDA %s", localID)
+	clientName = fmt.Sprintf("BCDA %s", localID)
 
 	body := fmt.Sprintf(`{ "client_name": "%s", "client_uri": null, "logo_uri": null, "application_type": "service", "redirect_uris": [], "response_types": [ "token" ], "grant_types": [ "client_credentials" ], "token_endpoint_auth_method": "client_secret_basic" }`, clientName)
 	req, err := http.NewRequest("POST", oktaBaseUrl+"/oauth2/v1/clients", bytes.NewBufferString(body))
 	if err != nil {
-		return "", "", "", err
+		return
 	}
 
 	addRequestHeaders(req)
@@ -129,39 +130,40 @@ func (oc *OktaClient) AddClientApplication(localID string) (string, string, stri
 	resp, err := client().Do(req)
 
 	if err != nil {
-		return "", "", "", err
+		return
 	}
 
 	logResponse(resp.StatusCode, requestID).Print()
 
 	if resp.StatusCode != 201 {
-		body, err := ioutil.ReadAll(resp.Body)
+		var body []byte
+		body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			logError(err, requestID).WithField("local_id", localID).Print()
-			return "", "", "", err
+			return
 		}
 		err = fmt.Errorf("unexpected result: %s", body)
 		logError(err, requestID).Print()
-		return "", "", "", err
+		return
 	}
 
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		return "", "", "", err
+		return
 	}
 
-	clientID := result["client_id"].(string)
-	clientSecret := result["client_secret"].(string)
+	clientID = result["client_id"].(string)
+	clientSecret = result["client_secret"].(string)
 
 	err = addClientToPolicy(clientID, requestID)
 	if err != nil {
 		logError(err, requestID).WithField("local_id", localID).Info("client can't access server")
-		return "", "", "", err
+		return
 		// client will not be able to use server until it is added to the policy
 	}
 
-	return clientID, clientSecret, clientName, nil
+	return
 }
 
 func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {

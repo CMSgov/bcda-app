@@ -47,18 +47,20 @@ func (m *Mokta) ServerID() string {
 	return m.serverID
 }
 
-func (m *Mokta) AddClientApplication(localId string) (string, string, string, error) {
+func (m *Mokta) AddClientApplication(localId string) (clientID string, clientSecret string, clientName string, err error) {
 	id, err := someRandomBytes(16)
 	if err != nil {
-		return "", "", "", nil
+		return
 	}
 	key, err := someRandomBytes(32)
 	if err != nil {
-		return "", "", "", nil
+		return
 	}
 
-	clientID := base64.URLEncoding.EncodeToString(id)
-	return clientID, base64.URLEncoding.EncodeToString(key), fmt.Sprintf("BCDA %s", clientID), err
+	clientID = base64.URLEncoding.EncodeToString(id)
+	clientSecret = base64.URLEncoding.EncodeToString(key)
+	clientName = fmt.Sprintf("BCDA %s", clientID)
+	return
 }
 
 func (m *Mokta) RequestAccessToken(creds client.Credentials) (client.OktaToken, error) {
