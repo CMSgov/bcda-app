@@ -7,7 +7,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/secutils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os"
+	"strings"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -40,6 +43,44 @@ type Job struct {
 	Status     string    `json:"status"`      // status
 	JobCount   int
 	JobKeys    []JobKey
+}
+
+func (job *Job) checkCompleted() (bool, error) {
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	completedFiles := 0
+
+	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), job.ID)
+	data := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), job.ID)
+
+	files, err := ioutil.ReadDir(data)
+	if err != nil {
+		log.Error(err)
+		return false, err
+	}
+
+	for _, f := range files {
+		// Ignore the error file if it exists
+		if !strings.Contains(f.Name(), "error") {
+			completedFiles++
+		}
+	}
+
+	// only mark as completed if we have the right number of files
+	if completedFiles >= job.JobCount {
+
+		err = os.Remove(staging)
+		if err != nil {
+			log.Error(err)
+		}
+
+		return true, db.Model(&job).Update("status", "Completed").Error
+
+	}
+
+	return false, nil
 }
 
 type JobKey struct {

@@ -33,6 +33,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -54,6 +55,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+//Setting a default here.  It may need to change.  It also shouldn't really be used much.
+const BCDA_FHIR_MAX_RECORDS = 1
+
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
 
@@ -72,8 +76,6 @@ import (
 		400: badRequestResponse
 		500: errorResponse
 */
-//Setting a default here.  It may need to change.  It also shouldn't really be used much.
-const BCDA_FHIR_MAX_RECORDS = 15
 
 func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("ExplanationOfBenefit", w, r)
@@ -174,7 +176,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	var id string
-	var jobCount = 1
+	var jobCount = 0
 	maxBeneficiaries, err := strconv.Atoi(os.Getenv("BCDA_FHIR_MAX_RECORDS"))
 	if err != nil {
 		maxBeneficiaries = BCDA_FHIR_MAX_RECORDS
@@ -221,34 +223,37 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 			beneficiaryIds = []string{}
 		}
 	}
+	// Get the last chunk of beneficiaries queued up if there are any.
+	if len(beneficiaryIds) > 0 {
 
-	// Get the last chunk of beneficiaries queued up
-	args, err := json.Marshal(jobEnqueueArgs{
-		ID:             int(newJob.ID),
-		ACOID:          acoId,
-		UserID:         userId,
-		BeneficiaryIDs: beneficiaryIds,
-		ResourceType:   t,
-		// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-		Encrypt: encrypt,
-	})
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
+		args, err := json.Marshal(jobEnqueueArgs{
+			ID:             int(newJob.ID),
+			ACOID:          acoId,
+			UserID:         userId,
+			BeneficiaryIDs: beneficiaryIds,
+			ResourceType:   t,
+			// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
+			Encrypt: encrypt,
+		})
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
 
-	j := &que.Job{
-		Type: "ProcessJob",
-		Args: args,
-	}
+		j := &que.Job{
+			Type: "ProcessJob",
+			Args: args,
+		}
 
-	if err = qc.Enqueue(j); err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
+		if err = qc.Enqueue(j); err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+		jobCount++
 	}
 
 	if db.Model(&newJob).Update("job_count", jobCount).Error != nil {
@@ -300,13 +305,46 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch job.Status {
+
+	case "Failed":
+		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Pending":
 		fallthrough
 	case "In Progress":
-		w.Header().Set("X-Progress", job.Status)
-		w.WriteHeader(http.StatusAccepted)
-	case "Failed":
-		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
+		// Check the job status in case it is done and just needs a small poke
+		completedFiles := 0
+		data := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
+
+		files, err := ioutil.ReadDir(data)
+		if err != nil {
+			log.Error(err)
+
+		} else {
+
+			for _, f := range files {
+				// Ignore the error file if it exists
+				if !strings.Contains(f.Name(), "error") {
+					completedFiles++
+				}
+			}
+
+			// only mark as completed if we have the right number of files
+			if completedFiles >= job.JobCount {
+
+				err = db.Model(&job).Update("status", "Completed").Error
+				if err != nil {
+					log.Error(err)
+				}
+				job.Status = "Completed"
+			}
+		}
+		if job.Status != "Completed" {
+			w.Header().Set("X-Progress", job.Status)
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+		fallthrough
+
 	case "Completed":
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.CreatedAt.Add(GetJobTimeout()).Before(time.Now()) {

@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"regexp"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -170,33 +169,7 @@ func processJob(j *que.Job) error {
 		}
 
 	}
-	completedFiles := 0
-	files, err := ioutil.ReadDir(data)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
 
-	for _, f := range files {
-		// Ignore the error file if it exists
-		if !strings.Contains(f.Name(), "error") {
-			completedFiles++
-		}
-	}
-
-	// only mark as completed if we have the right number of files
-	if completedFiles >= exportJob.JobCount {
-		err = os.Remove(staging)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-
-		err = db.Model(&exportJob).Update("status", "Completed").Error
-		if err != nil {
-			return err
-		}
-	}
 	log.Info("Worker finished processing job ", j.ID)
 
 	return nil
