@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/pborman/uuid"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -99,6 +101,16 @@ func (s *OTestSuite) TestGenerateNewClientSecret() {
 	invalidClientID := "IDontexist"
 	newSecret, err = s.oc.GenerateNewClientSecret(invalidClientID)
 	assert.Equal(s.T(), "404 Not Found", err.Error())
+}
+
+func (s *OTestSuite) TestDeactivateApplication() {
+	newClientID, _, _ := s.oc.AddClientApplication("TestDeactivate" + uuid.NewRandom().String())
+
+	err := s.oc.DeactivateApplication(newClientID)
+	assert.Nil(s.T(), err, fmt.Sprintf("failed to deactivate application with ID %s", newClientID))
+
+	err = s.oc.RemoveClientApplication(newClientID)
+	assert.Nil(s.T(), err, fmt.Sprintf("failed to remove client application with ID %s", newClientID))
 }
 
 func (s *OTestSuite) TearDownTest() {
