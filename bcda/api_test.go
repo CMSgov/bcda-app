@@ -386,6 +386,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
+		JobCount:   1,
 	}
 	s.db.Save(&j)
 
@@ -414,6 +415,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "In Progress",
+		JobCount:   1,
 	}
 	s.db.Save(&j)
 

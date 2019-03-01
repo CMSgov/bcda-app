@@ -109,12 +109,16 @@ func processJob(j *que.Job) error {
 		}
 	}
 
-	// todo this is where we do a subset of beneficiaries
 	fileName, err := writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 
 	// THis is only run AFTER completion of all the collection
 	if err != nil {
-		exportJob.Status = "Failed"
+
+		err = db.Model(&exportJob).Update("status", "Failed").Error
+		if err != nil {
+			return err
+		}
+
 	} else {
 		_, err := ioutil.ReadDir(staging)
 		if err != nil {
@@ -168,6 +172,12 @@ func processJob(j *que.Job) error {
 
 		}
 
+	}
+
+	_, err = exportJob.CheckCompleted()
+	if err != nil {
+		log.Error(err)
+		return err
 	}
 
 	log.Info("Worker finished processing job ", j.ID)

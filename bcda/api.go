@@ -33,7 +33,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -56,7 +55,7 @@ import (
 )
 
 //Setting a default here.  It may need to change.  It also shouldn't really be used much.
-const BCDA_FHIR_MAX_RECORDS = 1
+const BCDA_FHIR_MAX_RECORDS = 30
 
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
@@ -312,33 +311,14 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	case "In Progress":
 		// Check the job status in case it is done and just needs a small poke
-		completedFiles := 0
-		data := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
+		complete, err := job.CheckCompleted()
 
-		files, err := ioutil.ReadDir(data)
 		if err != nil {
-			log.Error(err)
-
-		} else {
-
-			for _, f := range files {
-				// Ignore the error file if it exists
-				if !strings.Contains(f.Name(), "error") {
-					completedFiles++
-				}
-			}
-
-			// only mark as completed if we have the right number of files
-			if completedFiles >= job.JobCount {
-
-				err = db.Model(&job).Update("status", "Completed").Error
-				if err != nil {
-					log.Error(err)
-				}
-				job.Status = "Completed"
-			}
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
 		}
-		if job.Status != "Completed" {
+		if !complete {
 			w.Header().Set("X-Progress", job.Status)
 			w.WriteHeader(http.StatusAccepted)
 			return

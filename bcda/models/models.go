@@ -8,9 +8,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
 	"os"
-	"strings"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -45,33 +43,23 @@ type Job struct {
 	JobKeys    []JobKey
 }
 
-func (job *Job) checkCompleted() (bool, error) {
+func (job *Job) CheckCompleted() (bool, error) {
 
+	// Trivial case, no need to keep going
+	if job.Status == "Completed" {
+		return true, nil
+	}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	completedFiles := 0
+	var completedJobs int64
+	db.Model(&JobKey{}).Where("job_id = ?", job.ID).Count(&completedJobs)
 
-	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), job.ID)
-	data := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), job.ID)
+	if int(completedJobs) >= job.JobCount {
 
-	files, err := ioutil.ReadDir(data)
-	if err != nil {
-		log.Error(err)
-		return false, err
-	}
+		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), job.ID)
+		err := os.Remove(staging)
 
-	for _, f := range files {
-		// Ignore the error file if it exists
-		if !strings.Contains(f.Name(), "error") {
-			completedFiles++
-		}
-	}
-
-	// only mark as completed if we have the right number of files
-	if completedFiles >= job.JobCount {
-
-		err = os.Remove(staging)
 		if err != nil {
 			log.Error(err)
 		}
