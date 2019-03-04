@@ -394,53 +394,17 @@ func createUser(acoID, name, email string) (string, error) {
 }
 
 func createAccessToken(userID string, secret string) (string, error) {
-	var clientID string
-	var userUUID uuid.UUID
 	errMsgs := []string{}
 
-	a := auth.GetProvider()
-
-	switch a.(type) {
-	case auth.AlphaAuthPlugin:
-		if userID == "" {
-			errMsgs = append(errMsgs, "User ID (--id) must be provided")
-		} else {
-			userUUID = uuid.Parse(userID)
-			if userUUID == nil {
-				errMsgs = append(errMsgs, "User ID must be a UUID")
-			}
-		}
-
-	case auth.OktaAuthPlugin:
-		if userID == "" {
-			errMsgs = append(errMsgs, "Client ID (--id) must be provided")
-		}
-		if secret == "" {
-			errMsgs = append(errMsgs, "Secret (--secret) must be provided")
-		}
+	if userID == "" {
+		errMsgs = append(errMsgs, "ID (--id) must be provided")
 	}
 
 	if len(errMsgs) > 0 {
 		return "", errors.New(strings.Join(errMsgs, "\n"))
 	}
 
-	switch a.(type) {
-	case auth.AlphaAuthPlugin:
-		db := database.GetGORMDbConnection()
-		defer database.Close(db)
-		var user models.User
-
-		if db.First(&user, "UUID = ?", userID).RecordNotFound() {
-			return "", fmt.Errorf("unable to locate User with id of %s", userID)
-		}
-
-		clientID = user.ACOID.String()
-
-	case auth.OktaAuthPlugin:
-		clientID = userID
-	}
-
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: clientID, ClientSecret: secret}, 72)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: userID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}

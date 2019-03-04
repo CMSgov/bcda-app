@@ -33,6 +33,12 @@ type MainTestSuite struct {
 	expectedSizes map[string]int
 }
 
+type OktaAuthPluginTestSuite struct {
+	suite.Suite
+	o auth.OktaAuthPlugin
+	m *auth.Mokta
+}
+
 func (s *MainTestSuite) SetupSuite() {
 	s.expectedSizes = map[string]int{
 		"dev":    50,
@@ -243,13 +249,13 @@ func (s *MainTestSuite) TestCreateUser() {
 }
 
 func (s *MainTestSuite) TestCreateToken() {
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	// Set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
 	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	clientID := "not_a_client"
+	badUUID := "not_a_uuid"
 	clientSecret := "not_a_secret"
 
 	// Unexpected flag
@@ -259,59 +265,43 @@ func (s *MainTestSuite) TestCreateToken() {
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 	buf.Reset()
 
-	switch auth.GetProvider().(type) {
-	case auth.OktaAuthPlugin:
-		// No parameters
-		args = []string{"bcda", "create-token"}
-		err = s.testApp.Run(args)
-		assert.Equal("Client ID (--id) must be provided\nSecret (--secret) must be provided", err.Error())
-		assert.Equal(0, buf.Len())
-		buf.Reset()
+	// No parameters
+	args = []string{"bcda", "create-token"}
+	err = s.testApp.Run(args)
+	assert.Equal("ID (--id) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
-		// Blank Client ID
-		args = []string{"bcda", "create-token", "--id", "", "--secret", clientSecret}
-		err = s.testApp.Run(args)
-		assert.Equal("Client ID (--id) must be provided", err.Error())
-		assert.Equal(0, buf.Len())
-		buf.Reset()
+	// Blank ID
+	args = []string{"bcda", "create-token", "--id", "", "--secret", clientSecret}
+	err = s.testApp.Run(args)
+	assert.Equal("ID (--id) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
-		// Blank Client Secret
-		args = []string{"bcda", "create-token", "--id", clientID, "--secret", ""}
-		err = s.testApp.Run(args)
-		assert.Equal("Secret (--secret) must be provided", err.Error())
-		assert.Equal(0, buf.Len())
-		buf.Reset()
-	case auth.AlphaAuthPlugin:
-		// No parameters
-		args := []string{"bcda", "create-token"}
-		err := s.testApp.Run(args)
-		assert.Equal("User ID (--id) must be provided", err.Error())
-		assert.Equal(0, buf.Len())
-		buf.Reset()
+	// Alpha auth section
+	originalAuthProvider := auth.GetProviderName()
+	auth.SetProvider("alpha")
+	// Test alpha auth bad ID
+	args = []string{"bcda", "create-token", "--id", badUUID}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	buf.Reset()
 
-		// Test successful creation
-		args = []string{"bcda", "create-token", "--id", userUUID}
-		err = s.testApp.Run(args)
-		assert.Nil(err)
-		assert.NotNil(buf)
-		accessTokenString := strings.TrimSpace(buf.String())
-		assert.NotNil(accessTokenString)
-		buf.Reset()
+	// Test alpha auth successful creation
+	args = []string{"bcda", "create-token", "--id", userUUID}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+	assert.NotNil(buf)
+	accessTokenString := strings.TrimSpace(buf.String())
+	assert.Nil(err)
+	assert.NotEmpty(accessTokenString)
+	buf.Reset()
 
-		// Blank User UUID
-		args = []string{"bcda", "create-token", "--id", ""}
-		err = s.testApp.Run(args)
-		assert.Equal("User ID (--id) must be provided", err.Error())
-		assert.Equal(0, buf.Len())
-		buf.Reset()
+	// Okta auth section
+	auth.SetProvider("okta")
 
-		// Bad User UUID
-		args = []string{"bcda", "create-token", "--id", BADUUID}
-		err = s.testApp.Run(args)
-		assert.Equal("User ID must be a UUID", err.Error())
-		assert.Equal(0, buf.Len())
-		buf.Reset()
-	}
+	auth.SetProvider(originalAuthProvider)
 }
 
 func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
