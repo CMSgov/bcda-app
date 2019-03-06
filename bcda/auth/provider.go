@@ -36,6 +36,10 @@ func SetProvider(name string) {
 	log.Infof(`Auth is made possible by %s`, providerName)
 }
 
+func GetProviderName() string {
+	return providerName
+}
+
 func GetProvider() Provider {
 	switch providerName {
 	case Alpha:
@@ -51,6 +55,7 @@ type Credentials struct {
 	ClientID     string
 	ClientSecret string
 	Token        Token
+	ClientName   string
 }
 
 // Provider defines operations performed through an authentication provider.
@@ -71,7 +76,7 @@ type Provider interface {
 	RevokeClientCredentials(params []byte) error
 
 	// Request an access token with a specific time-to-live for the given clientID
-	RequestAccessToken(params []byte) (Token, error)
+	RequestAccessToken(creds Credentials, ttl int) (Token, error)
 
 	// Revoke a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error

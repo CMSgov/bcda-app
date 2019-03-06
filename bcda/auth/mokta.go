@@ -9,12 +9,13 @@ import (
 	"log"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/dgrijalva/jwt-go"
 )
 
 type Mokta struct {
-	privateKey  *rsa.PrivateKey
 	publicKey   rsa.PublicKey
+	privateKey  *rsa.PrivateKey
 	publicKeyID string
 	serverID    string
 }
@@ -32,7 +33,7 @@ func NewMokta() *Mokta {
 	keys := make(map[string]rsa.PublicKey)
 	keys["mokta"] = publicKey
 
-	return &Mokta{privateKey, publicKey, "mokta", "mokta.fake.backend"}
+	return &Mokta{publicKey, privateKey, "mokta", "mokta.fake.backend"}
 }
 
 func (m *Mokta) PublicKeyFor(id string) (rsa.PublicKey, bool) {
@@ -46,17 +47,44 @@ func (m *Mokta) ServerID() string {
 	return m.serverID
 }
 
-func (m *Mokta) AddClientApplication(localId string) (string, string, error) {
+func (m *Mokta) AddClientApplication(localId string) (clientID string, clientSecret string, clientName string, err error) {
 	id, err := someRandomBytes(16)
 	if err != nil {
-		return "", "", nil
+		return
 	}
 	key, err := someRandomBytes(32)
 	if err != nil {
-		return "", "", nil
+		return
 	}
 
-	return base64.URLEncoding.EncodeToString(id), base64.URLEncoding.EncodeToString(key), err
+	clientID = base64.URLEncoding.EncodeToString(id)
+	clientSecret = base64.URLEncoding.EncodeToString(key)
+	clientName = fmt.Sprintf("BCDA %s", clientID)
+	return
+}
+
+func (m *Mokta) RequestAccessToken(creds client.Credentials) (client.OktaToken, error) {
+	if creds.ClientID == "" {
+		return client.OktaToken{}, fmt.Errorf("client ID required")
+	}
+
+	if creds.ClientSecret == "" {
+		return client.OktaToken{}, fmt.Errorf("client secret required")
+	}
+
+	mt, err := m.NewToken(creds.ClientID)
+
+	if err != nil {
+		fmt.Printf("mokta RequestAccessToken() error: %v\n", err.Error())
+		return client.OktaToken{}, err
+	}
+
+	return client.OktaToken{
+		AccessToken: mt,
+		TokenType:   "mokta_token",
+		ExpiresIn:   300,
+		Scope:       "bcda_api",
+	}, nil
 }
 
 func (m *Mokta) GenerateNewClientSecret(clientID string) (string, error) {
@@ -67,6 +95,7 @@ func (m *Mokta) GenerateNewClientSecret(clientID string) (string, error) {
 	fakeClientSecret := "thisClientSecretIsFakeButIsCorrectLength"
 	return fakeClientSecret, nil
 }
+
 func randomClientID() string {
 	b, err := someRandomBytes(4)
 	if err != nil {

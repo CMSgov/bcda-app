@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -24,6 +25,19 @@ var oktaServerID string
 
 var publicKeys map[string]rsa.PublicKey
 var once sync.Once
+
+type OktaToken struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	Scope       string `json:"scope"`
+}
+
+type Credentials struct {
+	ClientID     string
+	ClientSecret string
+	ClientName   string
+}
 
 func init() {
 	logger = logrus.New()
@@ -99,54 +113,103 @@ func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
 	return key, ok
 }
 
-func (oc *OktaClient) AddClientApplication(localID string) (string, string, error) {
+func (oc *OktaClient) AddClientApplication(localID string) (clientID string, clientSecret string, clientName string, err error) {
 	requestID := uuid.NewRandom()
+	clientName = fmt.Sprintf("BCDA %s", localID)
 
-	body := fmt.Sprintf(`{ "client_name": "BCDA %s", "client_uri": null, "logo_uri": null, "application_type": "service", "redirect_uris": [], "response_types": [ "token" ], "grant_types": [ "client_credentials" ], "token_endpoint_auth_method": "client_secret_basic" }`, localID)
+	body := fmt.Sprintf(`{ "client_name": "%s", "client_uri": null, "logo_uri": null, "application_type": "service", "redirect_uris": [], "response_types": [ "token" ], "grant_types": [ "client_credentials" ], "token_endpoint_auth_method": "client_secret_basic" }`, clientName)
 	req, err := http.NewRequest("POST", oktaBaseUrl+"/oauth2/v1/clients", bytes.NewBufferString(body))
 	if err != nil {
-		return "", "", err
+		return
 	}
 
 	addRequestHeaders(req)
 
-	logRequest(requestID).Print("creating client in okta")
+	logRequest(requestID).WithField("client_name", clientName).Print("creating client in okta")
 
 	resp, err := client().Do(req)
+
 	if err != nil {
-		return "", "", err
+		return
 	}
 
 	logResponse(resp.StatusCode, requestID).Print()
 
 	if resp.StatusCode != 201 {
-		body, err := ioutil.ReadAll(resp.Body)
+		var body []byte
+		body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			logError(err, requestID).WithField("local_id", localID).Print()
-			return "", "", err
+			return
 		}
 		err = fmt.Errorf("unexpected result: %s", body)
 		logError(err, requestID).Print()
-		return "", "", err
+		return
 	}
 
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		return "", "", err
+		return
 	}
 
-	clientID := result["client_id"].(string)
-	clientSecret := result["client_secret"].(string)
+	clientID = result["client_id"].(string)
+	clientSecret = result["client_secret"].(string)
 
 	err = addClientToPolicy(clientID, requestID)
 	if err != nil {
 		logError(err, requestID).WithField("local_id", localID).Info("client can't access server")
-		return "", "", err
+		return
 		// client will not be able to use server until it is added to the policy
 	}
 
-	return clientID, clientSecret, nil
+	return
+}
+
+func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
+	requestID := uuid.NewRandom()
+
+	tokenURL := fmt.Sprintf("%s/oauth2/%s/v1/token", oktaBaseUrl, oktaServerID)
+	req, err := http.NewRequest("POST", tokenURL, nil)
+	if err != nil {
+		return OktaToken{}, err
+	}
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Cache-Control", "no-cache")
+
+	params := url.Values{}
+	params.Set("client_id", creds.ClientID)
+	params.Set("client_secret", creds.ClientSecret)
+	params.Set("grant_type", "client_credentials")
+	params.Set("scope", "bcda_api")
+	req.URL.RawQuery = params.Encode()
+
+	logRequest(requestID).Print("requesting Okta access token")
+	resp, err := client().Do(req)
+	if err != nil {
+		return OktaToken{}, err
+	}
+
+	defer resp.Body.Close()
+	logResponse(resp.StatusCode, requestID).Print()
+
+	if resp.StatusCode >= 400 {
+		err = errors.New(resp.Status)
+		logError(err, requestID).WithField("client_id", creds.ClientID).Info("unable to get access token")
+		return OktaToken{}, err
+	}
+
+	var ot = OktaToken{}
+
+	if err = json.NewDecoder(resp.Body).Decode(&ot); err != nil {
+		message := "unexpected token response format from Okta"
+		logError(err, requestID).WithField("client_id", creds.ClientID).Info(message)
+		return OktaToken{}, errors.New(message)
+	}
+
+	return ot, nil
 }
 
 type Policy struct {
@@ -185,6 +248,7 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 	// not calling logRequest() because this is a step of AddClientApplication
 
 	resp, err := client().Do(req)
+
 	if err != nil {
 		logError(err, requestID).Print()
 		return err
@@ -221,7 +285,9 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 	addRequestHeaders(req)
 
 	// not calling logRequest() because this is a step of AddClientApplication
+
 	resp, err = client().Do(req)
+
 	if err != nil {
 		logError(err, requestID).WithField("policy_id", result[0].ID).Print()
 		return err
@@ -285,6 +351,7 @@ func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
 func client() *http.Client {
 	return &http.Client{Timeout: time.Second * 10}
 }
+
 func addRequestHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")

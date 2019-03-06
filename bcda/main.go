@@ -82,7 +82,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize string
+	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -304,6 +304,36 @@ func setUpApp() *cli.App {
 				return cleanupArchive(th)
 			},
 		},
+		{
+			Name:     "import-cclf8",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF8 file",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF8 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF8(filePath)
+			},
+		},
+		{
+			Name:     "import-cclf9",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF9 file",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF9 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF9(filePath)
+			},
+		},
 	}
 	return app
 }
@@ -385,8 +415,7 @@ func createAccessToken(userID string) (string, error) {
 		return "", fmt.Errorf("unable to locate User with id of %s", userID)
 	}
 
-	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.ACOID.String(), 72)
-	token, err := auth.GetProvider().RequestAccessToken([]byte(params))
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: user.ACOID.String()}, 72)
 	if err != nil {
 		return "", err
 	}
@@ -445,8 +474,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 	switch auth.GetProvider().(type) {
 
 	case auth.AlphaAuthPlugin:
-		params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, creds.ClientID, ttl)
-		token, err := auth.GetProvider().RequestAccessToken([]byte(params))
+		token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: creds.ClientID}, ttl)
 		if err != nil {
 			return "", err
 		}
@@ -455,8 +483,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString)
 
 	case auth.OktaAuthPlugin:
-		expiresOn := time.Now().AddDate(1, 0, 0).Format(time.RFC850)
-		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, creds.ClientID, creds.ClientSecret)
+		result = fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 	}
 
 	return result, err

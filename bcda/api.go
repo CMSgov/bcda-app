@@ -442,7 +442,7 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generates a token for 'ACO Dev' and its first user
-	token, err := auth.GetProvider().RequestAccessToken([]byte(fmt.Sprintf(`{"clientID":"%s", "ttl": 72}`, aco.UUID.String())))
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: aco.UUID.String()}, 72)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
@@ -543,6 +543,36 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+/*
+        swagger:route GET /_auth metadata getAuthInfo
+
+        Get details about auth
+
+        Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
+
+        Produces:
+        - application/json
+
+        Schemes: http, https
+
+        Responses:
+                200: AuthResponse
+*/
+func getAuthInfo(w http.ResponseWriter, r *http.Request) {
+        respMap := make(map[string]string)
+        respMap["auth_provider"] = auth.GetProviderName()
+        respBytes, err := json.Marshal(respMap)
+        if err != nil {
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        _, err = w.Write(respBytes)
+        if err != nil {
+                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
 }
 
 func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
