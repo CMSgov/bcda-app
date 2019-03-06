@@ -55,6 +55,7 @@ type Credentials struct {
 	ClientID     string
 	ClientSecret string
 	Token        Token
+	ClientName   string
 }
 
 // Provider defines operations performed through an authentication provider.
