@@ -14,7 +14,6 @@ import (
 	"testing"
 
 	"github.com/pborman/uuid"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -66,14 +65,15 @@ func (s *OTestSuite) TestPublicKeyFor() {
 	assert.False(s.T(), ok)
 }
 
-// for manual verification, the clientID returned should be listed in the server's policy page under clients
-// also should be listed as a "BCDA <randomClientID>" in the apps page
 func (s *OTestSuite) TestAddClientApplication() {
 	rci := randomClientId(6)
-	clientID, secret, err := s.oc.AddClientApplication(rci)
+	clientID, secret, clientName, err := s.oc.AddClientApplication(rci)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), clientID)
 	assert.NotEmpty(s.T(), secret)
+	assert.Equal(s.T(), "BCDA "+rci, clientName)
+
+	_ = s.oc.RemoveClientApplication(clientID)
 }
 
 func (s *OTestSuite) TestRequestAccessToken() {
@@ -104,13 +104,16 @@ func (s *OTestSuite) TestGenerateNewClientSecret() {
 }
 
 func (s *OTestSuite) TestDeactivateApplication() {
-	newClientID, _, _ := s.oc.AddClientApplication("TestDeactivate" + uuid.NewRandom().String())
+	newClientID, _, _, _ := s.oc.AddClientApplication("TestDeactivate" + uuid.NewRandom().String())
 
 	err := s.oc.DeactivateApplication(newClientID)
 	assert.Nil(s.T(), err, fmt.Sprintf("failed to deactivate application with ID %s", newClientID))
 
 	err = s.oc.RemoveClientApplication(newClientID)
 	assert.Nil(s.T(), err, fmt.Sprintf("failed to remove client application with ID %s", newClientID))
+
+	err = s.oc.RemoveClientApplication(newClientID)
+	assert.Equal(s.T(), "401 Unauthorized", err.Error())
 }
 
 func (s *OTestSuite) TearDownTest() {
