@@ -55,7 +55,7 @@ import (
 )
 
 //Setting a default here.  It may need to change.  It also shouldn't really be used much.
-const BCDA_FHIR_MAX_RECORDS = 30
+const BCDA_FHIR_MAX_RECORDS = 10000
 
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
@@ -546,33 +546,33 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-        swagger:route GET /_auth metadata getAuthInfo
+   swagger:route GET /_auth metadata getAuthInfo
 
-        Get details about auth
+   Get details about auth
 
-        Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
+   Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
 
-        Produces:
-        - application/json
+   Produces:
+   - application/json
 
-        Schemes: http, https
+   Schemes: http, https
 
-        Responses:
-                200: AuthResponse
+   Responses:
+           200: AuthResponse
 */
 func getAuthInfo(w http.ResponseWriter, r *http.Request) {
-        respMap := make(map[string]string)
-        respMap["auth_provider"] = auth.GetProviderName()
-        respBytes, err := json.Marshal(respMap)
-        if err != nil {
-                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+	respMap := make(map[string]string)
+	respMap["auth_provider"] = auth.GetProviderName()
+	respBytes, err := json.Marshal(respMap)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 
-        w.Header().Set("Content-Type", "application/json")
-        _, err = w.Write(respBytes)
-        if err != nil {
-                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(respBytes)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
