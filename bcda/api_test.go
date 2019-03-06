@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,8 +16,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	que "github.com/bgentry/que-go"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/bgentry/que-go"
+	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -473,13 +472,20 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
-	// Encrypt something to get a fake key to put in the job key
-	fileName := "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson"
-	_, encryptedKey, err := encryption.EncryptBytes(s.AuthBackend.PublicKey, []byte("FOO"), fileName)
-	assert.Nil(s.T(), err)
-	jobKey := models.JobKey{JobID: j.ID, EncryptedKey: encryptedKey, FileName: fileName}
-	err = s.db.Save(&jobKey).Error
-	assert.Nil(s.T(), err)
+
+	var expectedUrls []string
+
+	for i := 1; i <= 10; i++ {
+		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+		expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
+		expectedUrls = append(expectedUrls, expectedurl)
+		jobKey := models.JobKey{JobID: j.ID, EncryptedKey: []byte("FOO"), FileName: fileName}
+		err := s.db.Save(&jobKey).Error
+		assert.Nil(s.T(), err)
+
+	}
+	assert.Equal(s.T(), 10, len(expectedUrls))
+
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	req.TLS = &tls.ConnectionState{}
 
@@ -499,17 +505,28 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
 
 	var rb bulkResponseBody
-	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
+	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
 	}
 
-	expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), "dbbd1ce1-ae24-435c-807d-ed45953077d3.ndjson")
-
 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), expectedurl, rb.Files[0].URL)
+	assert.Equal(s.T(), len(expectedUrls), len(rb.Files))
+	// Order of these values is impossible to know so this is the only way
+	for _, fileItem := range rb.Files {
+		inOutput := false
+		for _, expectedUrl := range expectedUrls {
+			if fileItem.URL == expectedUrl {
+				inOutput = true
+				break
+			}
+		}
+		assert.True(s.T(), inOutput)
+
+	}
+
 	assert.NotNil(s.T(), rb.KeyMap)
 	assert.Empty(s.T(), rb.Errors)
 

@@ -107,9 +107,14 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 	completed, err = j.CheckCompleted()
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
+	s.db.Delete(&j)
+}
+func (s *ModelsTestSuite) TestJobDefaultCompleted() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
 
 	// Job is completed, but no keys exist.  This is fine, it is still complete
-	j = Job{
+	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
@@ -118,11 +123,17 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 	}
 	db.Save(&j)
 
-	completed, err = j.CheckCompleted()
+	completed, err := j.CheckCompleted()
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
+	s.db.Delete(&j)
 
-	j = Job{
+}
+func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
@@ -130,7 +141,7 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 		JobCount:   10,
 	}
 	db.Save(&j)
-	completed, err = j.CheckCompleted()
+	completed, err := j.CheckCompleted()
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), completed)
 
@@ -150,5 +161,6 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 	completed, err = j.CheckCompleted()
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
+	s.db.Delete(&j)
 
 }
