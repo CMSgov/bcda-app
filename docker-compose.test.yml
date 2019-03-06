@@ -21,6 +21,7 @@ services:
       - FHIR_ARCHIVE_DIR=../bcdaworker/archive
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
+      - BCDA_FHIR_MAX_RECORDS=100
 # Add the Okta values below and uncomment
 #     - BCDA_AUTH_PROVIDER=okta
 #     - OKTA_CLIENT_TOKEN=<token>

@@ -85,3 +85,70 @@ func (s *ModelsTestSuite) TestCreateUser() {
 func TestModelsTestSuite(t *testing.T) {
 	suite.Run(t, new(ModelsTestSuite))
 }
+
+func (s *ModelsTestSuite) TestJobCompleted() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Pending",
+		JobCount:   1,
+	}
+	db.Save(&j)
+	completed, err := j.CheckCompleted()
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), completed)
+
+	err = db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+	assert.Nil(s.T(), err)
+	completed, err = j.CheckCompleted()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), completed)
+
+	// Job is completed, but no keys exist.  This is fine, it is still complete
+	j = Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Completed",
+		JobCount:   10,
+	}
+	db.Save(&j)
+
+	completed, err = j.CheckCompleted()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), completed)
+
+	j = Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Pending",
+		JobCount:   10,
+	}
+	db.Save(&j)
+	completed, err = j.CheckCompleted()
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), completed)
+
+	for i := 1; i <= 5; i++ {
+		err = db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+		assert.Nil(s.T(), err)
+	}
+	// JobKeys exist, but not enough to make the job complete
+	completed, err = j.CheckCompleted()
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), completed)
+
+	for i := 1; i <= 5; i++ {
+		err = db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+		assert.Nil(s.T(), err)
+	}
+	completed, err = j.CheckCompleted()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), completed)
+
+}
