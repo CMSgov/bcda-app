@@ -33,12 +33,6 @@ type MainTestSuite struct {
 	expectedSizes map[string]int
 }
 
-type OktaAuthPluginTestSuite struct {
-	suite.Suite
-	o auth.OktaAuthPlugin
-	m *auth.Mokta
-}
-
 func (s *MainTestSuite) SetupSuite() {
 	s.expectedSizes = map[string]int{
 		"dev":    50,
