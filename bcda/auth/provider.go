@@ -73,7 +73,7 @@ type Provider interface {
 	GenerateClientCredentials(clientID string, ttl int) (Credentials, error)
 
 	// Revoke any existing Credentials for the given clientID
-	RevokeClientCredentials(params []byte) error
+	RevokeClientCredentials(clientID string) error
 
 	// Request an access token with a specific time-to-live for the given clientID
 	RequestAccessToken(creds Credentials, ttl int) (Token, error)

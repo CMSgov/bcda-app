@@ -64,7 +64,7 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 		return Credentials{}, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
-	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
+	err = p.RevokeClientCredentials(clientID)
 	if err != nil {
 		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
@@ -82,12 +82,7 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
-func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	clientID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return err
-	}
-
+func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	db := database.GetGORMDbConnection()
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -96,7 +91,7 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	}()
 
 	var aco models.ACO
-	err = db.First(&aco, "client_id = ?", clientID).Error
+	err := db.First(&aco, "client_id = ?", clientID).Error
 	if err != nil {
 		return errors.New("no ACO found for client ID")
 	}
