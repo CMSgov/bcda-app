@@ -44,6 +44,7 @@ func (s *MainTestSuite) SetupSuite() {
 
 func (s *MainTestSuite) SetupTest() {
 	s.testApp = setUpApp()
+	models.InitializeGormModels()
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -700,7 +701,7 @@ func checkStructure(s *MainTestSuite, ttl int, acoSize string) {
 		acoUUID := claims["aco"].(string)
 		assert.NotNil(s.T(), acoUUID)
 		var count int
-		db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
+		db.Table("acos_beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
 		assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
 		checkTTL(s, claims, ttl)
 	case auth.OktaAuthPlugin:
