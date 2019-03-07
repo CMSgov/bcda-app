@@ -53,7 +53,7 @@ type JobKey struct {
 type ACO struct {
 	gorm.Model
 	UUID     uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	CMSID    string    `gorm:"type:char(5)" json:"cms_id"`
+	CMSID    *string   `gorm:"type:char(5); unique" json:"cms_id"`
 	Name     string    `json:"name"`      // name
 	ClientID string    `json:"client_id"` // software client id
 }
@@ -84,7 +84,7 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 	return secutils.OpenPrivateKeyFile(atoPrivateKeyFile)
 }
 
-func CreateACO(name, cmsID string) (uuid.UUID, error) {
+func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 

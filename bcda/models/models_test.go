@@ -28,7 +28,8 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert := s.Assert()
 
 	const ACOName = "ACO Name"
-	acoUUID, err := CreateACO(ACOName, "A0000")
+	cmsID := "A0000"
+	acoUUID, err := CreateACO(ACOName, &cmsID)
 
 	assert.Nil(err)
 	assert.NotNil(acoUUID)
@@ -38,7 +39,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.NotNil(aco)
 	assert.Equal(ACOName, aco.Name)
 	assert.Equal("", aco.ClientID)
-	assert.Equal("A0000", aco.CMSID)
+	assert.Equal(cmsID, *aco.CMSID)
 	assert.NotNil(aco.GetPublicKey())
 	assert.NotNil(GetATOPrivateKey())
 	// should confirm the keys are a matched pair? i.e., encrypt something with one and decrypt with the other
@@ -57,6 +58,15 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	aco = ACO{
 		UUID: acoUUID,
 		Name: "Duplicate UUID Test",
+	}
+	err = s.db.Save(&aco).Error
+	assert.NotNil(err)
+
+	// Duplicate CMS ID
+	aco = ACO{
+		UUID:  uuid.NewRandom(),
+		CMSID: &cmsID,
+		Name:  "Duplicate CMS ID Test",
 	}
 	err = s.db.Save(&aco).Error
 	assert.NotNil(err)

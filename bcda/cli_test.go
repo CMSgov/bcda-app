@@ -53,7 +53,8 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 
 	ACO2Name := "Unit Test ACO 2"
-	args = []string{"bcda", "create-aco", "--name", ACO2Name, "--cms-id", "A0000"}
+	aco2ID := "A9999"
+	args = []string{"bcda", "create-aco", "--name", ACO2Name, "--cms-id", aco2ID}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
@@ -61,6 +62,7 @@ func (s *CLITestSuite) TestCreateACO() {
 	var testACO2 models.ACO
 	db.First(&testACO2, "Name=?", ACO2Name)
 	assert.Equal(testACO2.UUID.String(), acoUUID)
+	assert.Equal(*testACO2.CMSID, aco2ID)
 	buf.Reset()
 
 	// Negative tests

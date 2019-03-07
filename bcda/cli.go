@@ -19,15 +19,17 @@ func createACO(name, cmsID string) (string, error) {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
 
+	var cmsIDPt *string
 	// ACO ID is not required, but must match `AXXXX` if provided
 	if cmsID != "" {
 		acoIDFmt := regexp.MustCompile(`^A\d{4}$`)
 		if !acoIDFmt.MatchString(cmsID) {
 			return "", errors.New("ACO CMS ID (--cms-id) is invalid")
 		}
+		cmsIDPt = &cmsID
 	}
 
-	acoUUID, err := models.CreateACO(name, cmsID)
+	acoUUID, err := models.CreateACO(name, cmsIDPt)
 	if err != nil {
 		return "", err
 	}
