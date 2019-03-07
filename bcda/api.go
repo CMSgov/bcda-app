@@ -166,6 +166,9 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	beneficiaryIds := []string{}
 	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
+
+	var actualBeneficiaries int64
+	db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Count(&actualBeneficiaries)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
@@ -175,8 +178,11 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	var id string
 	var jobCount = 0
+	var rowCount int64 = 0
 	maxBeneficiaries := getEnvInt("BCDA_FHIR_MAX_RECORDS", BCDA_FHIR_MAX_RECORDS_DEFAULT)
+
 	for rows.Next() {
+		rowCount++
 		err := rows.Scan(&id)
 		if err != nil {
 			log.Error(err)
@@ -185,7 +191,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		beneficiaryIds = append(beneficiaryIds, id)
-		if len(beneficiaryIds) >= maxBeneficiaries {
+		if len(beneficiaryIds) >= maxBeneficiaries || rowCount >= actualBeneficiaries {
 
 			args, err := json.Marshal(jobEnqueueArgs{
 				ID:             int(newJob.ID),
@@ -217,38 +223,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 			jobCount++
 			beneficiaryIds = []string{}
 		}
-	}
-	// Get the last chunk of beneficiaries queued up if there are any.
-	if len(beneficiaryIds) > 0 {
-
-		args, err := json.Marshal(jobEnqueueArgs{
-			ID:             int(newJob.ID),
-			ACOID:          acoId,
-			UserID:         userId,
-			BeneficiaryIDs: beneficiaryIds,
-			ResourceType:   t,
-			// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-			Encrypt: encrypt,
-		})
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-
-		j := &que.Job{
-			Type: "ProcessJob",
-			Args: args,
-		}
-
-		if err = qc.Enqueue(j); err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-		jobCount++
 	}
 
 	if db.Model(&newJob).Update("job_count", jobCount).Error != nil {
