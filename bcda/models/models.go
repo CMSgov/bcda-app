@@ -52,10 +52,10 @@ type JobKey struct {
 
 type ACO struct {
 	gorm.Model
-	UUID     uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	CMSID    *string   `gorm:"type:char(5); unique" json:"cms_id"`
-	Name     string    `json:"name"`      // name
-	ClientID string    `json:"client_id"` // software client id
+	UUID     uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"`
+	CMSID    *string   `gorm:"type:char(5); unique"`
+	Name     string    `json:"name"`
+	ClientID string    `json:"client_id"`
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {

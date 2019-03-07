@@ -20,7 +20,6 @@ func createACO(name, cmsID string) (string, error) {
 	}
 
 	var cmsIDPt *string
-	// ACO ID is not required, but must match `AXXXX` if provided
 	if cmsID != "" {
 		acoIDFmt := regexp.MustCompile(`^A\d{4}$`)
 		if !acoIDFmt.MatchString(cmsID) {
