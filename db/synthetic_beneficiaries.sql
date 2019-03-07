@@ -1,5 +1,5 @@
 WITH b AS (
-  insert into beneficiaries values (default,'19990000002901'),
+  INSERT INTO beneficiaries VALUES (default,'19990000002901'),
   (default,'19990000002902'),
   (default,'19990000002903'),
   (default,'19990000002904'),
@@ -2501,10 +2501,10 @@ WITH b AS (
   (default,'19990000006830')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('3461C774-B48F-11E8-96F8-529269fb1459', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('3461C774-B48F-11E8-96F8-529269fb1459', UNNEST(ARRAY(SELECT id FROM b)));
 
 WITH b AS (
-  insert into beneficiaries values (default,'19990000006831'),
+  INSERT INTO beneficiaries VALUES (default,'19990000006831'),
   (default,'19990000006832'),
   (default,'19990000006833'),
   (default,'19990000006834'),
@@ -10003,13 +10003,13 @@ WITH b AS (
   (default,'19990000009236'),
   (default,'19990000009237'),
   (default,'19990000009238'),
-  (default,'19990000009239'),
+  (default,'19990000009239')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', UNNEST(ARRAY(SELECT id FROM b)));
 
 WITH b AS (
-  insert into beneficiaries values (default,'19990000009240'),
+  INSERT INTO beneficiaries VALUES (default,'19990000009240'),
   (default,'19990000009241'),
   (default,'19990000009242'),
   (default,'19990000009243'),
@@ -30011,10 +30011,10 @@ WITH b AS (
   (default,'20140000009200')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('8D80925A-027E-43DD-8AED-9A501CC4CD91', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('8D80925A-027E-43DD-8AED-9A501CC4CD91', UNNEST(ARRAY(SELECT id FROM b)));
 
 WITH b AS (
-  insert into beneficiaries values (default,'19990000002901'),
+  INSERT INTO beneficiaries VALUES (default,'19990000002901'),
   (default,'19990000002902'),
   (default,'19990000002903'),
   (default,'19990000002904'),
@@ -30066,10 +30066,10 @@ WITH b AS (
   (default,'-9876543210987')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', UNNEST(ARRAY(SELECT id FROM b)));
 
 WITH b AS (
-  insert into beneficiaries values (default,'19990000002901'),
+  INSERT INTO beneficiaries VALUES (default,'19990000002901'),
   (default,'19990000002902'),
   (default,'19990000002903'),
   (default,'19990000002904'),
@@ -60071,4 +60071,4 @@ WITH b AS (
   (default,'20140000009200')
 RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('55954dba-d4d9-438d-bd03-453da4993fe9', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('55954dba-d4d9-438d-bd03-453da4993fe9', UNNEST(ARRAY(SELECT id FROM b)));

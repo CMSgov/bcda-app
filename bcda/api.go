@@ -154,8 +154,11 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	//defer rows.Close()
 	beneficiaryIDs := []string{}
 	var beneficiaryID string
+	// TODO: Fix whatever is preventing the ACOBeneficiary join from pulling in Beneficiary
+	var beneficiary models.Beneficiary
 	for _, acoBeneficiary := range acoBeneficiaries {
-		beneficiaryID = acoBeneficiary.Beneficiary.BlueButtonID
+		db.Find(&beneficiary, "id = ?", acoBeneficiary.BeneficiaryID)
+		beneficiaryID = beneficiary.BlueButtonID
 		beneficiaryIDs = append(beneficiaryIDs, beneficiaryID)
 	}
 

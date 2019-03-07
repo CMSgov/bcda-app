@@ -51,7 +51,7 @@ WITH b AS (
   (default,'-9876543210987')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', UNNEST(ARRAY(SELECT id FROM b)));
 
 /* 10 beneficiaries for the Small ACO */
 WITH b AS (
@@ -67,7 +67,7 @@ WITH b AS (
   (default,'19990000003003')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('3461C774-B48F-11E8-96F8-529269fb1459', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('3461C774-B48F-11E8-96F8-529269fb1459', UNNEST(ARRAY(SELECT id FROM b)));
 
 /* 25 beneficiaries for the Medium ACO */
 WITH b AS (
@@ -98,7 +98,7 @@ WITH b AS (
   (default,'19990000002371')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', UNNEST(ARRAY(SELECT id FROM b)));
 
 /* 100 beneficiaries for the Large ACO */
 WITH b AS (
@@ -204,4 +204,4 @@ WITH b AS (
   (default,'20000000000890')
   RETURNING id
 )
-INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('8D80925A-027E-43DD-8AED-9A501CC4CD91', UNNEST(ARRAY(SELECT id FROM b));
+INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('8D80925A-027E-43DD-8AED-9A501CC4CD91', UNNEST(ARRAY(SELECT id FROM b)));

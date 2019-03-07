@@ -40,4 +40,4 @@ create table beneficiaries (
 create table acos_beneficiaries (
   aco_id uuid not null,
   beneficiary_id int not null
-)
+);
