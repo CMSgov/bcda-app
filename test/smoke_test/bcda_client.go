@@ -210,6 +210,9 @@ func main() {
 								panic(err)
 							}
 							otherEncryptedKey, err := hex.DecodeString(fileItem.EncryptedKey)
+							if err != nil {
+								panic(err)
+							}
 							if string(otherEncryptedKey) != string(encryptedKey) {
 								fmt.Println("Encryption Keys don't match")
 								os.Exit(1)
