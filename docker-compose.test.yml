@@ -21,11 +21,10 @@ services:
       - FHIR_ARCHIVE_DIR=../bcdaworker/archive
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
-# Add the Okta values below and uncomment
-#     - BCDA_AUTH_PROVIDER=okta
-#     - OKTA_CLIENT_TOKEN=<token>
-#     - OKTA_OAUTH_SERVER_METADATA=
-#     - OKTA_OAUTH_SERVER_ID
+      - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
+      - BCDA_AUTH_PROVIDER=${BCDA_AUTH_PROVIDER}
+      - OKTA_OAUTH_SERVER_METADATA=${OKTA_OAUTH_SERVER_METADATA}
+      - OKTA_OAUTH_SERVER_ID=${OKTA_OAUTH_SERVER_ID}
 
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
