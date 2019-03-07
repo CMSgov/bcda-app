@@ -143,7 +143,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 
 	assert := assert.New(s.T())
 
-	err = s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, aco.ClientID)))
+	err = s.p.RevokeClientCredentials(aco.ClientID)
 	assert.Nil(err)
 
 	var token auth.Token
@@ -155,19 +155,30 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.p.RequestAccessToken(auth.Credentials{ClientID: "DBBD1CE1-AE24-435C-807D-ED45953077D3"}, 720)
+	const userID, acoID = "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	t, err := s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, 720)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
+	assert.NotEmpty(s.T(), t.TokenString)
 
 	t, err = s.p.RequestAccessToken(auth.Credentials{}, 720)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
-	assert.Contains(s.T(), err.Error(), "no ACO ID")
+	assert.Nil(s.T(), t.ACOID)
+	assert.Nil(s.T(), t.UserID)
+	assert.Contains(s.T(), err.Error(), "must provide either UserID or ClientID")
 
-	t, err = s.p.RequestAccessToken(auth.Credentials{ClientID: "DBBD1CE1-AE24-435C-807D-ED45953077D3"}, -1)
+	t, err = s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, -1)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
 	assert.Contains(s.T(), err.Error(), "invalid TTL")
+
+	t, err = s.p.RequestAccessToken(auth.Credentials{UserID: userID}, 720)
+	assert.Nil(s.T(), err)
+	assert.IsType(s.T(), auth.Token{}, t)
+	assert.NotEmpty(s.T(), t.TokenString)
+	assert.NotNil(s.T(), t.ACOID)
+	assert.NotNil(s.T(), t.UserID)
 }
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	db := connections["TestRevokeAccessToken"]

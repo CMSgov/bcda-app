@@ -26,6 +26,9 @@ type OktaBackend interface {
 
 	// Renews client secret for an okta client
 	GenerateNewClientSecret(string) (string, error)
+
+	// Deactivates a client application so it cannot be used
+	DeactivateApplication(clientID string) error
 }
 
 type OktaAuthPlugin struct {
@@ -73,12 +76,23 @@ func (o OktaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cre
 	return c, nil
 }
 
-func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	return errors.New("not yet implemented")
+func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
+	err := o.backend.DeactivateApplication(clientID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	if creds.ClientID == "" {
+	clientID := creds.ClientID
+	// Also accept clientID via creds.UserID to match alpha auth implementation
+	if clientID == "" {
+		clientID = creds.UserID
+	}
+
+	if clientID == "" {
 		return Token{}, fmt.Errorf("client ID required")
 	}
 
@@ -86,7 +100,7 @@ func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, e
 		return Token{}, fmt.Errorf("client secret required")
 	}
 
-	clientCreds := client.Credentials{ClientID: creds.ClientID, ClientSecret: creds.ClientSecret}
+	clientCreds := client.Credentials{ClientID: clientID, ClientSecret: creds.ClientSecret}
 	ot, err := o.backend.RequestAccessToken(clientCreds)
 
 	if err != nil {
