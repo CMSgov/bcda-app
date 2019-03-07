@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type Mokta struct {
@@ -47,17 +47,20 @@ func (m *Mokta) ServerID() string {
 	return m.serverID
 }
 
-func (m *Mokta) AddClientApplication(localId string) (string, string, error) {
+func (m *Mokta) AddClientApplication(localId string) (clientID string, clientSecret string, clientName string, err error) {
 	id, err := someRandomBytes(16)
 	if err != nil {
-		return "", "", nil
+		return
 	}
 	key, err := someRandomBytes(32)
 	if err != nil {
-		return "", "", nil
+		return
 	}
 
-	return base64.URLEncoding.EncodeToString(id), base64.URLEncoding.EncodeToString(key), err
+	clientID = base64.URLEncoding.EncodeToString(id)
+	clientSecret = base64.URLEncoding.EncodeToString(key)
+	clientName = fmt.Sprintf("BCDA %s", clientID)
+	return
 }
 
 func (m *Mokta) RequestAccessToken(creds client.Credentials) (client.OktaToken, error) {
@@ -91,6 +94,10 @@ func (m *Mokta) GenerateNewClientSecret(clientID string) (string, error) {
 
 	fakeClientSecret := "thisClientSecretIsFakeButIsCorrectLength"
 	return fakeClientSecret, nil
+}
+
+func (m *Mokta) DeactivateApplication(clientID string) error {
+	return nil
 }
 
 func randomClientID() string {

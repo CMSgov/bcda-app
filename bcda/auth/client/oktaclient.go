@@ -36,6 +36,7 @@ type OktaToken struct {
 type Credentials struct {
 	ClientID     string
 	ClientSecret string
+	ClientName   string
 }
 
 func init() {
@@ -112,55 +113,57 @@ func (oc *OktaClient) PublicKeyFor(id string) (rsa.PublicKey, bool) {
 	return key, ok
 }
 
-func (oc *OktaClient) AddClientApplication(localID string) (string, string, error) {
+func (oc *OktaClient) AddClientApplication(localID string) (clientID string, clientSecret string, clientName string, err error) {
 	requestID := uuid.NewRandom()
+	clientName = fmt.Sprintf("BCDA %s", localID)
 
-	body := fmt.Sprintf(`{ "client_name": "BCDA %s", "client_uri": null, "logo_uri": null, "application_type": "service", "redirect_uris": [], "response_types": [ "token" ], "grant_types": [ "client_credentials" ], "token_endpoint_auth_method": "client_secret_basic" }`, localID)
+	body := fmt.Sprintf(`{ "client_name": "%s", "client_uri": null, "logo_uri": null, "application_type": "service", "redirect_uris": [], "response_types": [ "token" ], "grant_types": [ "client_credentials" ], "token_endpoint_auth_method": "client_secret_basic" }`, clientName)
 	req, err := http.NewRequest("POST", oktaBaseUrl+"/oauth2/v1/clients", bytes.NewBufferString(body))
 	if err != nil {
-		return "", "", err
+		return
 	}
 
 	addRequestHeaders(req)
 
-	logRequest(requestID).Print("creating client in okta")
+	logRequest(requestID).WithField("client_name", clientName).Print("creating client in okta")
 
 	resp, err := client().Do(req)
 
 	if err != nil {
-		return "", "", err
+		return
 	}
 
 	logResponse(resp.StatusCode, requestID).Print()
 
 	if resp.StatusCode != 201 {
-		body, err := ioutil.ReadAll(resp.Body)
+		var body []byte
+		body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			logError(err, requestID).WithField("local_id", localID).Print()
-			return "", "", err
+			return
 		}
 		err = fmt.Errorf("unexpected result: %s", body)
 		logError(err, requestID).Print()
-		return "", "", err
+		return
 	}
 
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		return "", "", err
+		return
 	}
 
-	clientID := result["client_id"].(string)
-	clientSecret := result["client_secret"].(string)
+	clientID = result["client_id"].(string)
+	clientSecret = result["client_secret"].(string)
 
 	err = addClientToPolicy(clientID, requestID)
 	if err != nil {
 		logError(err, requestID).WithField("local_id", localID).Info("client can't access server")
-		return "", "", err
+		return
 		// client will not be able to use server until it is added to the policy
 	}
 
-	return clientID, clientSecret, nil
+	return
 }
 
 func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
@@ -343,6 +346,60 @@ func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
 	cs := result["client_secret"].(string)
 
 	return cs, nil
+}
+
+func (oc *OktaClient) DeactivateApplication(clientID string) error {
+	url := oktaBaseUrl + "/api/v1/apps/" + clientID + "/lifecycle/deactivate"
+
+	reqID := uuid.NewRandom()
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print()
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		logError(err, reqID)
+		return err
+	}
+
+	addRequestHeaders(req)
+
+	resp, err := client().Do(req)
+	if err != nil {
+		logError(err, reqID).Print()
+		return err
+	}
+	if resp.StatusCode >= 400 {
+		logError(errors.New(resp.Status), reqID).Print()
+		return errors.New(resp.Status)
+	}
+	logResponse(resp.StatusCode, reqID).Print()
+
+	return nil
+}
+
+func (oc *OktaClient) RemoveClientApplication(clientID string) error {
+	url := oktaBaseUrl + "/oauth2/v1/clients/" + clientID
+
+	reqID := uuid.NewRandom()
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print()
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		logError(err, reqID)
+		return err
+	}
+
+	addRequestHeaders(req)
+
+	resp, err := client().Do(req)
+	if err != nil {
+		logError(err, reqID).Print()
+		return err
+	}
+	if resp.StatusCode >= 400 {
+		logError(errors.New(resp.Status), reqID).Print()
+		return errors.New(resp.Status)
+	}
+	logResponse(resp.StatusCode, reqID).Print()
+
+	return nil
 }
 
 func client() *http.Client {

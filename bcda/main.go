@@ -466,8 +466,7 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString)
 
 	case auth.OktaAuthPlugin:
-		expiresOn := time.Now().AddDate(1, 0, 0).Format(time.RFC850)
-		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, creds.ClientID, creds.ClientSecret)
+		result = fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 	}
 
 	return result, err

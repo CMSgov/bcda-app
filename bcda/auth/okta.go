@@ -19,13 +19,16 @@ type OktaBackend interface {
 	ServerID() string
 
 	// Adds an api client application to our Okta organization
-	AddClientApplication(string) (string, string, error)
+	AddClientApplication(string) (clientID string, secret string, clientName string, err error)
 
 	// Gets a session token from Okta
 	RequestAccessToken(creds client.Credentials) (client.OktaToken, error)
 
 	// Renews client secret for an okta client
 	GenerateNewClientSecret(string) (string, error)
+
+	// Deactivates a client application so it cannot be used
+	DeactivateApplication(clientID string) error
 }
 
 type OktaAuthPlugin struct {
@@ -42,10 +45,12 @@ func (o OktaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 		return Credentials{}, errors.New("you must provide a localID")
 	}
 
-	id, key, err := o.backend.AddClientApplication(localID)
+	id, secret, name, err := o.backend.AddClientApplication(localID)
+
 	return Credentials{
 		ClientID:     id,
-		ClientSecret: key,
+		ClientSecret: secret,
+		ClientName:   name,
 	}, err
 }
 
@@ -71,8 +76,13 @@ func (o OktaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cre
 	return c, nil
 }
 
-func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	return errors.New("not yet implemented")
+func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
+	err := o.backend.DeactivateApplication(clientID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
