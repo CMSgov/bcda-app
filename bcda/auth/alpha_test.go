@@ -143,7 +143,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 
 	assert := assert.New(s.T())
 
-	err = s.p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID": "%s"}`, aco.ClientID)))
+	err = s.p.RevokeClientCredentials(aco.ClientID)
 	assert.Nil(err)
 
 	var token auth.Token

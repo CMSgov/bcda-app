@@ -79,9 +79,9 @@ func (s *OktaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 
-func (s *OktaAuthPluginTestSuite) TestOktaRevokeClientCredentials() {
-	err := s.o.RevokeClientCredentials([]byte("{}"))
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+func (s *OktaAuthPluginTestSuite) TestRevokeClientCredentials() {
+	err := s.o.RevokeClientCredentials("fakeClientID")
+	assert.Nil(s.T(), err)
 }
 
 func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {

@@ -348,6 +348,60 @@ func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
 	return cs, nil
 }
 
+func (oc *OktaClient) DeactivateApplication(clientID string) error {
+	url := oktaBaseUrl + "/api/v1/apps/" + clientID + "/lifecycle/deactivate"
+
+	reqID := uuid.NewRandom()
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print()
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		logError(err, reqID)
+		return err
+	}
+
+	addRequestHeaders(req)
+
+	resp, err := client().Do(req)
+	if err != nil {
+		logError(err, reqID).Print()
+		return err
+	}
+	if resp.StatusCode >= 400 {
+		logError(errors.New(resp.Status), reqID).Print()
+		return errors.New(resp.Status)
+	}
+	logResponse(resp.StatusCode, reqID).Print()
+
+	return nil
+}
+
+func (oc *OktaClient) RemoveClientApplication(clientID string) error {
+	url := oktaBaseUrl + "/oauth2/v1/clients/" + clientID
+
+	reqID := uuid.NewRandom()
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print()
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		logError(err, reqID)
+		return err
+	}
+
+	addRequestHeaders(req)
+
+	resp, err := client().Do(req)
+	if err != nil {
+		logError(err, reqID).Print()
+		return err
+	}
+	if resp.StatusCode >= 400 {
+		logError(errors.New(resp.Status), reqID).Print()
+		return errors.New(resp.Status)
+	}
+	logResponse(resp.StatusCode, reqID).Print()
+
+	return nil
+}
+
 func client() *http.Client {
 	return &http.Client{Timeout: time.Second * 10}
 }
