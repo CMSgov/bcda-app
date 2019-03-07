@@ -23,8 +23,9 @@ var (
 type OutputCollection []Output
 
 type Output struct {
-	Url  string `json:"url"`
-	Type string `json:"type"`
+	Url          string `json:"url"`
+	Type         string `json:"type"`
+	EncryptedKey string `json:"encryptedKey"`
 }
 
 func init() {
@@ -184,48 +185,56 @@ func main() {
 					}
 				}
 
-				fmt.Printf("fetching: %s\n", data[0].Url)
-				download := get(data[0].Url)
-				if download.StatusCode == 200 {
-					filename := "/tmp/" + path.Base(data[0].Url)
-					fmt.Printf("writing download to disk: %s\n", filename)
-					writeFile(download, filename)
+				for _, fileItem := range data {
+					fmt.Printf("fetching: %s\n", fileItem.Url)
+					download := get(fileItem.Url)
+					if download.StatusCode == 200 {
+						filename := "/tmp/" + path.Base(fileItem.Url)
+						fmt.Printf("writing download to disk: %s\n", filename)
+						writeFile(download, filename)
 
-					fmt.Println("validating file...")
-					fi, err := os.Stat(filename)
-					if err != nil {
-						panic(err)
-					}
-					if fi.Size() <= 0 {
-						fmt.Println("Error: file is empty!.")
-						os.Exit(1)
-					}
-
-					if encrypt {
-						fmt.Println("decrypting the file...")
-						encryptedKey, err := hex.DecodeString(encryptData[path.Base(data[0].Url)])
+						fmt.Println("validating file...")
+						fi, err := os.Stat(filename)
 						if err != nil {
 							panic(err)
 						}
-						privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
-						privateKey := getPrivateKey(privateKeyFile)
-						filename = decryptFile(privateKey, encryptedKey, filename)
-						fmt.Printf("writing decrypted file to disk: %s\n", filename)
-					}
+						if fi.Size() <= 0 {
+							fmt.Println("Error: file is empty!.")
+							os.Exit(1)
+						}
 
-					fmt.Println("validating file content...")
-					if !isValidNDJSONFile(filename) {
-						fmt.Println("Error: file is not in valid NDJSON format!")
+						if encrypt {
+							fmt.Println("decrypting the file...")
+							encryptedKey, err := hex.DecodeString(encryptData[path.Base(fileItem.Url)])
+							if err != nil {
+								panic(err)
+							}
+							otherEncryptedKey, err := hex.DecodeString(fileItem.EncryptedKey)
+							if string(otherEncryptedKey) != string(encryptedKey) {
+								fmt.Println("Encryption Keys don't match")
+								os.Exit(1)
+							}
+							privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
+							privateKey := getPrivateKey(privateKeyFile)
+							filename = decryptFile(privateKey, encryptedKey, filename)
+							fmt.Printf("writing decrypted file to disk: %s\n", filename)
+						}
+
+						fmt.Println("validating file content...")
+						if !isValidNDJSONFile(filename) {
+							fmt.Println("Error: file is not in valid NDJSON format!")
+							os.Exit(1)
+						}
+
+						fmt.Println("done.")
+					} else {
+						fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
 						os.Exit(1)
 					}
-
-					fmt.Println("done.")
-				} else {
-					fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
-					os.Exit(1)
 				}
 
 				break
+
 			}
 			fmt.Println("  => job is still pending. waiting...")
 		}
