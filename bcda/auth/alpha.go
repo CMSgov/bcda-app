@@ -135,39 +135,53 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return nil
 }
 
-// generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
-// params are currently acoId and ttl; not going to introduce user until we have clear use cases
+// generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
 func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
+	var userUUID, acoUUID uuid.UUID
+	var user models.User
+	var err error
 	token := Token{}
 
-	acoUUID := creds.ClientID
-	if acoUUID == "" {
-		return token, errors.New("no ACO ID provided")
-	}
-
-	aco, err := getACOFromDB(acoUUID)
-	if err != nil {
-		return token, err
-	}
-
-	// I arbitrarily decided to use the first user. An alternative would be to make a specific user
-	// that represents the client. I have no strong opinion here other than not creating stuff in the db
-	// unless we're willing to live with it forever.
-	var user models.User
-	if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
-		return token, errors.New("no user found for " + aco.UUID.String())
+	if creds.UserID == "" && creds.ClientID == "" {
+		return token, fmt.Errorf("must provide either UserID or ClientID")
 	}
 
 	if ttl < 0 {
 		return token, fmt.Errorf("invalid TTL: %d", ttl)
 	}
 
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	if creds.UserID != "" {
+		userUUID = uuid.Parse(creds.UserID)
+		if userUUID == nil {
+			return token, fmt.Errorf("user ID must be a UUID")
+		}
+
+		if db.First(&user, "UUID = ?", creds.UserID).RecordNotFound() {
+			return token, fmt.Errorf("unable to locate User with id of %s", creds.UserID)
+		}
+
+		userUUID = user.UUID
+		acoUUID = user.ACOID
+	} else {
+		aco, err := getACOFromDB(creds.ClientID)
+		if err != nil {
+			return token, err
+		}
+
+		if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
+			return token, errors.New("no user found for " + aco.UUID.String())
+		}
+
+		userUUID = user.UUID
+		acoUUID = aco.UUID
+	}
+
 	token.UUID = uuid.NewRandom()
-	token.UserID = user.UUID
-	token.ACOID = aco.UUID
+	token.UserID = userUUID
+	token.ACOID = acoUUID
 	token.IssuedAt = time.Now().Unix()
 	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
 	token.Active = true

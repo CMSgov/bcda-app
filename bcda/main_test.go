@@ -243,51 +243,55 @@ func (s *MainTestSuite) TestCreateUser() {
 }
 
 func (s *MainTestSuite) TestCreateToken() {
-
-	// init
-	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	// Set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
+	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	badUUID := "not_a_uuid"
+	clientSecret := "not_a_secret"
 
-	// Test successful creation
-	args := []string{"bcda", "create-token", "--user-id", userUUID}
+	// Unexpected flag
+	args := []string{"bcda", "create-token", "--abcd", "efg"}
 	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.NotNil(buf)
-	accessTokenString := strings.TrimSpace(buf.String())
-	assert.NotNil(accessTokenString)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 	buf.Reset()
 
 	// No parameters
 	args = []string{"bcda", "create-token"}
 	err = s.testApp.Run(args)
-	assert.Equal("User ID (--user-id) must be provided", err.Error())
+	assert.Equal("ID (--id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	// Blank User UUID
-	args = []string{"bcda", "create-token", "--user-id", ""}
+	// Blank ID
+	args = []string{"bcda", "create-token", "--id", "", "--secret", clientSecret}
 	err = s.testApp.Run(args)
-	assert.Equal("User ID (--user-id) must be provided", err.Error())
+	assert.Equal("ID (--id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	// Bad User UUID
-	args = []string{"bcda", "create-token", "--user-id", BADUUID}
+	// Alpha auth section
+	originalAuthProvider := auth.GetProviderName()
+	defer auth.SetProvider(originalAuthProvider)
+	auth.SetProvider("alpha")
+	// Test alpha auth bad ID
+	args = []string{"bcda", "create-token", "--id", badUUID}
 	err = s.testApp.Run(args)
-	assert.Equal("User ID must be a UUID", err.Error())
-	assert.Equal(0, buf.Len())
+	assert.Contains(err.Error(), "must be a UUID")
 	buf.Reset()
 
-	// Unexpected flag
-	args = []string{"bcda", "create-token", "--abcd", "efg"}
+	// Test alpha auth successful creation
+	args = []string{"bcda", "create-token", "--id", userUUID}
 	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	assert.Nil(err)
+	assert.NotNil(buf)
+	accessTokenString := strings.TrimSpace(buf.String())
+	assert.Nil(err)
+	assert.NotEmpty(accessTokenString)
+	buf.Reset()
 }
 
 func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
@@ -639,7 +643,9 @@ func (s *MainTestSuite) TestCleanArchive() {
 }
 
 func (s *MainTestSuite) TestRevokeToken() {
-
+	originalAuthProvider := auth.GetProviderName()
+	defer auth.SetProvider(originalAuthProvider)
+	auth.SetProvider("alpha")
 	// init
 	s.SetupAuthBackend()
 
@@ -654,7 +660,7 @@ func (s *MainTestSuite) TestRevokeToken() {
 
 	// Create a token
 	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	tokenString, err := createAccessToken(userUUID)
+	tokenString, err := createAccessToken(userUUID, "")
 	assert.Nil(err)
 
 	buf := new(bytes.Buffer)
