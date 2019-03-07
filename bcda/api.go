@@ -36,7 +36,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -55,7 +54,7 @@ import (
 )
 
 //Setting a default here.  It may need to change.  It also shouldn't really be used much.
-const BCDA_FHIR_MAX_RECORDS = 10000
+const BCDA_FHIR_MAX_RECORDS_DEFAULT = 10000
 
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
@@ -176,10 +175,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	var id string
 	var jobCount = 0
-	maxBeneficiaries, err := strconv.Atoi(os.Getenv("BCDA_FHIR_MAX_RECORDS"))
-	if err != nil {
-		maxBeneficiaries = BCDA_FHIR_MAX_RECORDS
-	}
+	maxBeneficiaries := getEnvInt("BCDA_FHIR_MAX_RECORDS", BCDA_FHIR_MAX_RECORDS_DEFAULT)
 	for rows.Next() {
 		err := rows.Scan(&id)
 		if err != nil {
