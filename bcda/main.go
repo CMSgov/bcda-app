@@ -393,18 +393,12 @@ func createUser(acoID, name, email string) (string, error) {
 	return user.UUID.String(), nil
 }
 
-func createAccessToken(userID string, secret string) (string, error) {
-	errMsgs := []string{}
-
-	if userID == "" {
-		errMsgs = append(errMsgs, "ID (--id) must be provided")
+func createAccessToken(ID string, secret string) (string, error) {
+	if ID == "" {
+		return "", errors.New("ID (--id) must be provided")
 	}
 
-	if len(errMsgs) > 0 {
-		return "", errors.New(strings.Join(errMsgs, "\n"))
-	}
-
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: userID, ClientSecret: secret}, 72)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: ID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}

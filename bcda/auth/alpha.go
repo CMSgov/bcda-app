@@ -158,8 +158,12 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	// Get both acoUUID and userUUID based on creds.UserID if provided
 	if creds.UserID != "" {
+		userUUID = uuid.Parse(creds.UserID)
+		if userUUID == nil {
+			return token, fmt.Errorf("user ID must be a UUID")
+		}
+
 		if db.First(&user, "UUID = ?", creds.UserID).RecordNotFound() {
 			return token, fmt.Errorf("unable to locate User with id of %s", creds.UserID)
 		}
@@ -172,9 +176,6 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 			return token, err
 		}
 
-		// I arbitrarily decided to use the first user. An alternative would be to make a specific user
-		// that represents the client. I have no strong opinion here other than not creating stuff in the db
-		// unless we're willing to live with it forever.
 		if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
 			return token, errors.New("no user found for " + aco.UUID.String())
 		}
