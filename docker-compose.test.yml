@@ -23,7 +23,7 @@ services:
       - OKTA_EMAIL=shawn@bcda.aco-group.us
 # Add the Okta values below and uncomment
 #     - BCDA_AUTH_PROVIDER=okta
-#     - OKTA_CLIENT_TOKEN=<token>
+#     - OKTA_API_KEY=<apiKey>
 #     - OKTA_OAUTH_SERVER_METADATA=
 #     - OKTA_OAUTH_SERVER_ID
 

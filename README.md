@@ -83,7 +83,7 @@ BCDA_OKTA_LOG <file_path>
 BB_CLIENT_CERT_FILE <file_path>
 BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
-OKTA_CLIENT_TOKEN <token>
+OKTA_API_KEY <api_key>
 OKTA_CLIENT_ORGURL <url>
 OKTA_EMAIL <test_account>
 FHIR_PAYLOAD_DIR <directory_path>
