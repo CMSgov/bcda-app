@@ -72,11 +72,21 @@ See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
 To handle secrets safely, edit `.env.sh` to include any environment variables you need for local development.
 
-From the `bcda-app/` directory, simply
+In the project root `bcda-app/` directory, create a file called `.env.sh`
 ```
-$ cp env.sh .env.sh
+$ touch .env.sh
 ```
-make any changes to `.env.sh` to add any necessary environment variables and then
+
+Next, edit `.env.sh` to include the bash shebang and any necessary environment variables like this
+```
+#!/bin/bash
+export BCDA_AUTH_PROVIDER=okta
+export OKTA_OAUTH_SERVER_ID="<serverID>"
+export OKTA_CLIENT_TOKEN="<apiKey>"
+export OKTA_CLIENT_SECRET="<clientSecret>"
+```
+
+Lastly, source the file to add the variables to your local development environment
 ```
 $ source .env.sh
 ```
