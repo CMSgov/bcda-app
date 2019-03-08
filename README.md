@@ -68,6 +68,17 @@ make performance-test
 
 See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
+### Handling secrets
+
+To handle secrets safely, edit `env.sh` to include any environment variables you need for local development.
+
+Then, from the `bcda-app/` directory, simply
+```
+$ source env.sh
+```
+
+The file is ignored by git and changes will not be tracked so you won't have to worry about exposing any secrets.
+
 
 ### Environment variables
 
