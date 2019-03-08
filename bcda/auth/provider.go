@@ -52,6 +52,7 @@ func GetProvider() Provider {
 }
 
 type Credentials struct {
+	UserID       string
 	ClientID     string
 	ClientSecret string
 	Token        Token

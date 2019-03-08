@@ -3,11 +3,12 @@ package models
 import (
 	"crypto/rsa"
 	"fmt"
+	"os"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/secutils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
-	"os"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -51,9 +52,10 @@ type JobKey struct {
 
 type ACO struct {
 	gorm.Model
-	UUID     uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	Name     string    `json:"name"`                                   // name
-	ClientID string    `json:"client_id"`                              // software client id
+	UUID     uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"`
+	CMSID    *string   `gorm:"type:char(5); unique"`
+	Name     string    `json:"name"`
+	ClientID string    `json:"client_id"`
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {
@@ -82,11 +84,11 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 	return secutils.OpenPrivateKeyFile(atoPrivateKeyFile)
 }
 
-func CreateACO(name string) (uuid.UUID, error) {
+func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	aco := ACO{Name: name, UUID: uuid.NewRandom()}
+	aco := ACO{Name: name, CMSID: cmsID, UUID: uuid.NewRandom()}
 	db.Create(&aco)
 
 	return aco.UUID, db.Error

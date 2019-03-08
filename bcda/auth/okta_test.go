@@ -94,6 +94,10 @@ func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {
 	t, err = s.o.RequestAccessToken(Credentials{ClientID: mockID, ClientSecret: mockSecret}, 0)
 	assert.IsType(s.T(), Token{}, t)
 	assert.Nil(s.T(), err)
+
+	t, err = s.o.RequestAccessToken(Credentials{UserID: mockID, ClientSecret: mockSecret}, 0)
+	assert.IsType(s.T(), Token{}, t)
+	assert.Nil(s.T(), err)
 }
 
 func (s *OktaAuthPluginTestSuite) TestOktaRevokeAccessToken() {

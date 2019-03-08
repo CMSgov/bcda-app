@@ -1,16 +1,21 @@
 package main
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
 )
 
 type CLITestSuite struct {
-	suite.Suite
+	testUtils.AuthTestSuite
 	testApp *cli.App
 }
 
@@ -20,6 +25,83 @@ func (s *CLITestSuite) SetupTest() {
 
 func TestCLITestSuite(t *testing.T) {
 	suite.Run(t, new(CLITestSuite))
+}
+
+func (s *CLITestSuite) TestCreateACO() {
+
+	// init
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	s.SetupAuthBackend()
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	assert := assert.New(s.T())
+
+	// Successful ACO creation
+	ACOName := "Unit Test ACO 1"
+	args := []string{"bcda", "create-aco", "--name", ACOName}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.NotNil(buf)
+	acoUUID := strings.TrimSpace(buf.String())
+	var testACO models.ACO
+	db.First(&testACO, "Name=?", ACOName)
+	assert.Equal(testACO.UUID.String(), acoUUID)
+	buf.Reset()
+
+	ACO2Name := "Unit Test ACO 2"
+	aco2ID := "A9999"
+	args = []string{"bcda", "create-aco", "--name", ACO2Name, "--cms-id", aco2ID}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+	assert.NotNil(buf)
+	acoUUID = strings.TrimSpace(buf.String())
+	var testACO2 models.ACO
+	db.First(&testACO2, "Name=?", ACO2Name)
+	assert.Equal(testACO2.UUID.String(), acoUUID)
+	assert.Equal(*testACO2.CMSID, aco2ID)
+	buf.Reset()
+
+	// Negative tests
+
+	// No parameters
+	args = []string{"bcda", "create-aco"}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	// No ACO Name
+	badACO := ""
+	args = []string{"bcda", "create-aco", "--name", badACO}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	// ACO name without flag
+	args = []string{"bcda", "create-aco", ACOName}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	// Unexpected flag
+	args = []string{"bcda", "create-aco", "--abcd", "efg"}
+	err = s.testApp.Run(args)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	buf.Reset()
+
+	// Invalid CMS ID
+	args = []string{"bcda", "create-aco", "--name", ACOName, "--cms-id", "ABCDE"}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO CMS ID (--cms-id) is invalid", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 }
 
 func (s *CLITestSuite) TestImportCCLF8() {
