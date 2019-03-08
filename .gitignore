@@ -13,3 +13,4 @@ bcda/_site/*
 bcda-site-static/.sass-cache
 bcda-site-static/.jekyll-metadata
 bcdaworker/tmpdata/*
+env.sh
