@@ -1,8 +1,8 @@
-## Beneficiary Claims Data API
+# Beneficiary Claims Data API
 
 [![Build Status](https://travis-ci.org/CMSgov/bcda-app.svg?branch=master)](https://travis-ci.org/CMSgov/bcda-app)
 
-### Dependencies
+## Dependencies
 
 To get started, install some dependencies:
 
@@ -11,7 +11,7 @@ To get started, install some dependencies:
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
 4. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
-### Build / Start
+## Build / Start
 
 Build the images and start the containers:
 
@@ -25,7 +25,7 @@ make docker-bootstrap
 docker-compose up
 ```
 
-### Test
+## Test
 
 Run tests and produce test metrics.  
 The items identified above in the `Build/Start` section are prerequisites to running tests.  
@@ -64,14 +64,20 @@ make test
 make performance-test
 ```
 
-### Use the application
+## Use the application
 
 See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
-### Handling secrets
+## Handling secrets
 
-To handle secrets safely, edit `.env.sh` to include any environment variables you need for local development.
+### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE!  INSTEAD, USE ONE OF THE STRATEGIES OUTLINED HERE**
 
+#### 1. Copy the `.env.sh` from the BCDA Keybase team
+- Copy `.env.sh` from the BCDA Keybase team to the root of the bcda-app project directory.  The path to the file is `/keybase/team/bcda/.env.sh`. This file is ignored by git and changes will not be tracked so you won't have to worry about exposing any secrets.
+- Source this file to set the included environment variables:  ```$ source .env.sh```
+- You're good to go! Use environment variables in application code like this:  ```apiKey := os.Getenv("OKTA_CLIENT_TOKEN")```
+
+#### 2. Create your `.env.sh` file from scratch
 In the project root `bcda-app/` directory, create a file called `.env.sh`
 ```
 $ touch .env.sh
@@ -91,13 +97,16 @@ Lastly, source the file to add the variables to your local development environme
 $ source .env.sh
 ```
 
-This file is ignored by git and changes will not be tracked so you won't have to worry about exposing any secrets.
+Congratulations, you can now use the environment variables in application code like this:
+```
+apiKey := os.Getenv("OKTA_CLIENT_TOKEN")
+```
 
-### Environment variables
+## Environment variables
 
 Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
 
-##### bcda
+### bcda
 
 ```
 BCDA_ERROR_LOG <file_path>
@@ -114,7 +123,7 @@ FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
 ```
 
-##### bcdaworker
+### bcdaworker
 
 ```
 BCDA_WORKER_ERROR_LOG <file_path>
@@ -126,7 +135,7 @@ FHIR_PAYLOAD_DIR <directory_path>
 BB_TIMEOUT_MS <integer>
 ```
 
-### Other things you can do
+## Other things you can do
 
 Use docker to look at the api database with psql:
 ```sh
