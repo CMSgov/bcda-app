@@ -4,7 +4,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/secutils"
@@ -55,14 +54,12 @@ type JobKey struct {
 
 // ACO-Beneficiary relationship models based on https://github.com/jinzhu/gorm/issues/719#issuecomment-168485989
 type ACO struct {
+	gorm.Model
 	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
 	CMSID            *string   `gorm:"type:char(5)" json:"cms_id"`
 	Name             string    `json:"name"`
 	ClientID         string    `json:"client_id"`
 	ACOBeneficiaries []*ACOBeneficiary
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	DeletedAt        *time.Time `sql:"index"`
 }
 
 type Beneficiary struct {
