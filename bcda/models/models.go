@@ -30,6 +30,9 @@ func InitializeGormModels() *gorm.DB {
 		&ACOBeneficiary{},
 	)
 
+	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
+	db.Model(&ACOBeneficiary{}).AddForeignKey("beneficiary_id", "beneficiaries(id)", "RESTRICT", "RESTRICT")
+
 	return db
 }
 

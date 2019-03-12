@@ -143,23 +143,17 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoID).Rows()
 	var acoBeneficiaries []models.ACOBeneficiary
-	if db.Find(&acoBeneficiaries, "aco_id = ?", acoID).RecordNotFound() {
+	if db.Preload("Beneficiary.BlueButtonID").Find(&acoBeneficiaries, "aco_id = ?", acoID).RecordNotFound() {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	//defer rows.Close()
+
 	beneficiaryIDs := []string{}
-	var beneficiaryID string
-	// TODO: Fix whatever is preventing the ACOBeneficiary join from pulling in Beneficiary
-	var beneficiary models.Beneficiary
 	for _, acoBeneficiary := range acoBeneficiaries {
-		db.Find(&beneficiary, "id = ?", acoBeneficiary.BeneficiaryID)
-		beneficiaryID = beneficiary.BlueButtonID
-		beneficiaryIDs = append(beneficiaryIDs, beneficiaryID)
+		beneficiaryIDs = append(beneficiaryIDs, acoBeneficiary.Beneficiary.BlueButtonID)
 	}
 
 	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
