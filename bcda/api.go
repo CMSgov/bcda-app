@@ -122,8 +122,8 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acoId, _ := claims["aco"].(string)
-	userId, _ := claims["sub"].(string)
+	acoID, _ := claims["aco"].(string)
+	userID, _ := claims["sub"].(string)
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -131,8 +131,8 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newJob := models.Job{
-		ACOID:      uuid.Parse(acoId),
-		UserID:     uuid.Parse(userId),
+		ACOID:      uuid.Parse(acoID),
+		UserID:     uuid.Parse(userID),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
@@ -143,32 +143,24 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	beneficiaryIds := []string{}
-	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
-	if err != nil {
+	var acoBeneficiaries []models.ACOBeneficiary
+	if db.Preload("Beneficiary.BlueButtonID").Find(&acoBeneficiaries, "aco_id = ?", acoID).RecordNotFound() {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-	var id string
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-		beneficiaryIds = append(beneficiaryIds, id)
+
+	beneficiaryIDs := []string{}
+	for _, acoBeneficiary := range acoBeneficiaries {
+		beneficiaryIDs = append(beneficiaryIDs, acoBeneficiary.Beneficiary.BlueButtonID)
 	}
 
 	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
 	// By default, our encryption process is enabled but for now we are giving users the ability to turn
 	// it off
 	// Eventually, we will remove the ability for users to turn it off and it will remain on always
-	var encrypt bool = true
+	var encrypt = true
 	param, ok := r.URL.Query()["encrypt"]
 	if ok && strings.ToLower(param[0]) == "false" {
 		encrypt = false
@@ -176,9 +168,9 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:             int(newJob.ID),
-		ACOID:          acoId,
-		UserID:         userId,
-		BeneficiaryIDs: beneficiaryIds,
+		ACOID:          acoID,
+		UserID:         userID,
+		BeneficiaryIDs: beneficiaryIDs,
 		ResourceType:   t,
 		// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 		Encrypt: encrypt,
