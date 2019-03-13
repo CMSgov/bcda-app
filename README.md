@@ -72,7 +72,7 @@ See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
 ### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE!  INSTEAD, USE THE STRATEGY OUTLINED HERE**
 
-In the project root `bcda-app/` directory, create a file called `.env.sh`
+In the project root `bcda-app/` directory, create a file called `.env.sh`. This file is ignored by git and will not be committed
 ```
 $ touch .env.sh
 ```
