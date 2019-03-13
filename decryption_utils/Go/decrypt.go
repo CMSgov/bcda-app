@@ -68,8 +68,8 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 	if err != nil {
 		panic(err)
 	}
-
-	ciphertext, err := ioutil.ReadFile(fmt.Sprintf(filename))
+	/* #nosec -- Command line util requires reading a file that is passed via an argument */
+	ciphertext, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
@@ -86,6 +86,7 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 }
 
 func getPrivateKey(loc string) *rsa.PrivateKey {
+	/* #nosec -- Command line util requires reading a file that is passed via an argument */
 	pkFile, err := os.Open(loc)
 	if err != nil {
 		panic(err)
@@ -102,7 +103,10 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
-	pkFile.Close()
+	err = pkFile.Close()
+	if err != nil {
+		log.Panic(err)
+	}
 
 	imported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
 	if err != nil {
