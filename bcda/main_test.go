@@ -44,7 +44,7 @@ func (s *MainTestSuite) SetupSuite() {
 
 func (s *MainTestSuite) SetupTest() {
 	s.testApp = setUpApp()
-	models.InitializeGormModels()
+	autoMigrate()
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -333,7 +333,6 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 func (s *MainTestSuite) TestArchiveExpiring() {
 
 	// init
-	autoMigrate()
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -409,7 +408,6 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 
 	// init
-	autoMigrate()
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -519,7 +517,6 @@ func setupJobArchiveFile(s *MainTestSuite, email string, modified time.Time, acc
 func (s *MainTestSuite) TestCleanArchive() {
 
 	// init
-	autoMigrate()
 	const Threshold = 30
 	now := time.Now()
 
