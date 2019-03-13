@@ -1,13 +1,12 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -83,6 +82,10 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 
 // look up the active access token associated with id, and call RevokeAccessToken
 func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
+	if clientID == "" {
+		return errors.New("missing clientID argument")
+	}
+
 	db := database.GetGORMDbConnection()
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -91,15 +94,13 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	}()
 
 	var aco models.ACO
-	err := db.First(&aco, "client_id = ?", clientID).Error
-	if err != nil {
-		return errors.New("no ACO found for client ID")
+	if err := db.First(&aco, "client_id = ?", clientID).Error; err != nil {
+		return fmt.Errorf("no ACO found for client ID because %s", err)
 	}
 
 	var users []models.User
-	db.Find(&users, "aco_id = ?", aco.UUID)
-	if len(users) == 0 {
-		return errors.New("no users found in client's ACO")
+	if err := db.Find(&users, "aco_id = ?", aco.UUID).Error; err != nil || len(users) == 0 {
+		return fmt.Errorf("no users found in client's ACO because %s", err)
 	}
 
 	var (
@@ -190,7 +191,7 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 		return Token{}, err
 	}
 
-	token.TokenString, err = GenerateTokenString(token.UUID, token.UserID, token.ACOID, token.IssuedAt, token.ExpiresOn)
+	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.UserID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
 	if err != nil {
 		return Token{}, err
 	}
@@ -204,8 +205,8 @@ func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 		return err
 	}
 
-	if c, ok := t.Claims.(jwt.MapClaims); ok {
-		return revokeAccessTokenByID(uuid.Parse(c["id"].(string)))
+	if c, ok := t.Claims.(*CommonClaims); ok {
+		return revokeAccessTokenByID(uuid.Parse(c.UUID))
 	}
 
 	return errors.New("could not read token claims")
@@ -229,10 +230,11 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
+		log.Errorf("could not decode token %s because %s", tokenString, err)
 		return err
 	}
 
-	c := t.Claims.(jwt.MapClaims)
+	c := t.Claims.(*CommonClaims)
 
 	err = checkRequiredClaims(c)
 	if err != nil {
@@ -244,37 +246,37 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	_, err = getACOFromDB(c["aco"].(string))
+	_, err = getACOFromDB(c.ACOID)
 	if err != nil {
 		return err
 	}
 
 	b := isActive(t)
 	if !b {
-		return fmt.Errorf("token with id: %v is not active", c["id"])
+		return fmt.Errorf("token with id: %v is not active", c.UUID)
 	}
 
 	return nil
 }
 
-func checkRequiredClaims(claims jwt.MapClaims) error {
-	if claims["exp"] == nil ||
-		claims["iat"] == nil ||
-		claims["sub"] == nil ||
-		claims["aco"] == nil ||
-		claims["id"] == nil {
+func checkRequiredClaims(claims *CommonClaims) error {
+	if claims.ExpiresAt == 0 ||
+		claims.IssuedAt == 0 ||
+		claims.Subject == "" ||
+		claims.ACOID == "" ||
+		claims.UUID == "" {
 		return fmt.Errorf("missing one or more required claims")
 	}
 	return nil
 }
 
 func isActive(token *jwt.Token) bool {
-	c := token.Claims.(jwt.MapClaims)
+	c := token.Claims.(*CommonClaims)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	var dbt Token
-	return !db.Find(&dbt, "UUID = ? AND active = ?", c["id"], true).RecordNotFound()
+	return !db.Find(&dbt, "UUID = ? AND active = ?", c.UUID, true).RecordNotFound()
 }
 
 func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
@@ -284,11 +286,8 @@ func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		}
 		return InitAuthBackend().PublicKey, nil
 	}
-	t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFunc)
-	if err != nil {
-		return &jwt.Token{}, err
-	}
-	return t, nil
+
+	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)
 }
 
 func getACOFromDB(acoUUID string) (models.ACO, error) {
@@ -299,27 +298,8 @@ func getACOFromDB(acoUUID string) (models.ACO, error) {
 	)
 	defer database.Close(db)
 
-	if db.Find(&aco, "UUID = ?", acoUUID).RecordNotFound() {
+	if db.Find(&aco, "UUID = ?", uuid.Parse(acoUUID)).RecordNotFound() {
 		err = errors.New("no ACO record found for " + acoUUID)
 	}
 	return aco, err
-}
-
-func GetParamString(params []byte, name string) (string, error) {
-	var (
-		j   interface{}
-		err error
-	)
-
-	if err = json.Unmarshal(params, &j); err != nil {
-		return "", err
-	}
-	paramsMap := j.(map[string]interface{})
-
-	stringForName, ok := paramsMap[name].(string)
-	if !ok {
-		return "", errors.New("missing or otherwise invalid string value for " + name)
-	}
-
-	return stringForName, err
 }
