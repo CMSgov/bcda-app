@@ -70,15 +70,8 @@ See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
 ## Handling secrets
 
-### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE!  INSTEAD, USE ONE OF THE STRATEGIES OUTLINED HERE**
+### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE!  INSTEAD, USE THE STRATEGY OUTLINED HERE**
 
-#### 1. Copy the `.env.sh` from the BCDA Keybase team
-- Copy `.env.sh` from the BCDA Keybase team to the root of the bcda-app project directory.  The path to the file is `/keybase/team/bcda/.env.sh`. This file is ignored by git and changes will not be tracked so you won't have to worry about exposing any secrets.
-- Source this file to set the included environment variables:  ```$ source .env.sh```
-- You're good to go! Use environment variables in application code like this:  ```apiKey := os.Getenv("OKTA_CLIENT_TOKEN")```
-- Optionally, you can add `source $GOPATH/src/github.com/CMSgov/bcda-app/.env.sh` to your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start
-
-#### 2. Create your `.env.sh` file from scratch
 In the project root `bcda-app/` directory, create a file called `.env.sh`
 ```
 $ touch .env.sh
@@ -98,12 +91,12 @@ Lastly, source the file to add the variables to your local development environme
 $ source .env.sh
 ```
 
-Congratulations, you can now use the environment variables in application code like this:
+You're good to go! Use the environment variables in application code like this
 ```
 apiKey := os.Getenv("OKTA_CLIENT_TOKEN")
 ```
 
-Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by adding
+Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line
 ```
 source $GOPATH/src/github.com/CMSgov/bcda-app/.env.sh
 ```
