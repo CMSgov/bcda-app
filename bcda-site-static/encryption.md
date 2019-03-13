@@ -1,4 +1,22 @@
-# File Encryption in BCDA
+---
+layout: home
+title:  "File Encryption in BCDA"
+date:   2017-10-30 09:21:12 -0500
+description: File Encryption in BCDA
+landing-page: live
+gradient: "blueberry-lime-background"
+subnav-link-gradient: "blueberry-lime-link"
+sections:
+  - File Encryption in BCDA
+  - How we encrypt
+  - Show me the code
+  - PKI/key pair
+  - About the Data
+
+
+---
+
+## File Encryption in BCDA
 
 **NOTE:** Implementation of per-client payload encryption is still in progress. Please consider this document a draft explaining the fundamentals of BCDA's encryption strategy.
 

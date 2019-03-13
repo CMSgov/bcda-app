@@ -1,3 +1,17 @@
+---
+layout: home
+title:  "Beneficiary Claims Data API"
+date:   2017-10-30 09:21:12 -0500
+description: Beneficiary Claims Data API
+landing-page: live
+gradient: "blueberry-lime-background"
+subnav-link-gradient: "blueberry-lime-link"
+sections:
+  - Getting Started
+  - Examples
+
+
+---
 # Beneficiary Claims Data API
 The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) to retrieve claims data for their Medicare beneficiaries. This includes claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care.
 
