@@ -1,8 +1,8 @@
-## Beneficiary Claims Data API
+# Beneficiary Claims Data API
 
 [![Build Status](https://travis-ci.org/CMSgov/bcda-app.svg?branch=master)](https://travis-ci.org/CMSgov/bcda-app)
 
-### Dependencies
+## Dependencies
 
 To get started, install some dependencies:
 
@@ -11,7 +11,7 @@ To get started, install some dependencies:
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
 4. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
 
-### Build / Start
+## Build / Start
 
 Build the images and start the containers:
 
@@ -25,7 +25,7 @@ make docker-bootstrap
 docker-compose up
 ```
 
-### Test
+## Test
 
 Run tests and produce test metrics.  
 The items identified above in the `Build/Start` section are prerequisites to running tests.  
@@ -64,16 +64,48 @@ make test
 make performance-test
 ```
 
-### Use the application
+## Use the application
 
 See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
+## Handling secrets
 
-### Environment variables
+### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE!  INSTEAD, USE THE STRATEGY OUTLINED HERE**
+
+In the project root `bcda-app/` directory, create a file called `.env.sh`. This file is ignored by git and will not be committed
+```
+$ touch .env.sh
+```
+
+Next, edit `.env.sh` to include the bash shebang and any necessary environment variables like this
+```
+#!/bin/bash
+export BCDA_AUTH_PROVIDER=okta
+export OKTA_OAUTH_SERVER_ID="<serverID>"
+export OKTA_CLIENT_TOKEN="<apiKey>"
+export OKTA_CLIENT_SECRET="<clientSecret>"
+```
+
+Lastly, source the file to add the variables to your local development environment
+```
+$ source .env.sh
+```
+
+You're good to go! Use the environment variables in application code like this
+```
+apiKey := os.Getenv("OKTA_CLIENT_TOKEN")
+```
+
+Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line
+```
+source $GOPATH/src/github.com/CMSgov/bcda-app/.env.sh
+```
+
+## Environment variables
 
 Configure the `bcda` and `bcdaworker` apps by setting the following environment variables.
 
-##### bcda
+### bcda
 
 ```
 BCDA_ERROR_LOG <file_path>
@@ -83,14 +115,14 @@ BCDA_OKTA_LOG <file_path>
 BB_CLIENT_CERT_FILE <file_path>
 BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
-OKTA_CLIENT_TOKEN <token>
+OKTA_CLIENT_TOKEN <api_key>
 OKTA_CLIENT_ORGURL <url>
 OKTA_EMAIL <test_account>
 FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
 ```
 
-##### bcdaworker
+### bcdaworker
 
 ```
 BCDA_WORKER_ERROR_LOG <file_path>
@@ -102,7 +134,7 @@ FHIR_PAYLOAD_DIR <directory_path>
 BB_TIMEOUT_MS <integer>
 ```
 
-### Other things you can do
+## Other things you can do
 
 Use docker to look at the api database with psql:
 ```sh
