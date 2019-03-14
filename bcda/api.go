@@ -144,7 +144,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var acoBeneficiaries []models.ACOBeneficiary
-	if db.Preload("Beneficiary.BlueButtonID").Find(&acoBeneficiaries, "aco_id = ?", acoID).RecordNotFound() {
+	if db.Preload("Beneficiary").Find(&acoBeneficiaries, "aco_id = ?", acoID).RecordNotFound() {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
