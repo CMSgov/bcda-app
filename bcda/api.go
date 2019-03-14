@@ -361,6 +361,50 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 }
 
+/*
+	swagger:route POST /auth/token auth getAuthToken
+
+	Get access token
+
+	Verifies parameters client_id and secret, and returns a JWT token that can be presented to the other API endpoints.
+
+	Consumes:
+	- application/x-www-form-urlencoded
+
+	Produces:
+	- application/json
+
+	Schemes: https
+
+	Responses:
+		200: tokenResponse
+		400: missingCredentials
+		401: invalidCredentials
+		500: serverError
+*/
+func getAuthToken(w http.ResponseWriter, r *http.Request) {
+	clientId := r.Header.Get("client_id")
+	secret := r.Header.Get("secret")
+
+	if clientId == "" || secret == "" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	token, err := auth.GetProvider().GetAccessToken(auth.Credentials{UserID: clientId, ClientSecret: secret})
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	body := []byte(fmt.Sprintf(`{"access_token": "%s"}`, token.TokenString))
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
 func getToken(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -479,19 +523,19 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-        swagger:route GET /_auth metadata getAuthInfo
+   swagger:route GET /_auth metadata getAuthInfo
 
-        Get details about auth
+   Get details about auth
 
-        Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
+   Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
 
-        Produces:
-        - application/json
+   Produces:
+   - application/json
 
-        Schemes: http, https
+   Schemes: http, https
 
-        Responses:
-                200: AuthResponse
+   Responses:
+           200: AuthResponse
 */
 func getAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)

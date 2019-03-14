@@ -11,7 +11,15 @@ import (
 	"testing"
 	"time"
 
-	que "github.com/bgentry/que-go"
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/encryption"
+
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+
+	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -19,13 +27,6 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/encryption"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type APITestSuite struct {
@@ -643,6 +644,23 @@ func (s *APITestSuite) TestGetToken() {
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.NotEmpty(s.T(), s.rr.Body)
+}
+
+func (s *APITestSuite) TestAuthToken() {
+	s.SetupAuthBackend()
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+
+	handler := http.HandlerFunc(getAuthToken)
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+	assert.Empty(s.T(), s.rr.Body)
+
+	req.Header.Add("client_id", "not_a_client_id")
+	req.Header.Add("secret", "not_a_secret")
+
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+	assert.Empty(s.T(), s.rr.Body)
 }
 
 func (s *APITestSuite) TestMetadata() {

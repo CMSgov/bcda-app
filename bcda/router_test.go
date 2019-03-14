@@ -61,6 +61,10 @@ func (suite *RouterTestSuite) TestDataRoute() {
 	//assert.Equal(suite.T(), "Hello world!", r, "Default route returned wrong body")
 }
 
+func (suite *RouterTestSuite) TestAuthTokenRoute() {
+	//	_, err := suite.GetStringBody(suite.)
+}
+
 func (suite *RouterTestSuite) TestFileServerRoute() {
 	_, err := suite.GetStringBody(suite.apiServer.URL + "/api/v1/swagger")
 	assert.Nil(suite.T(), err, fmt.Sprintf("Error when getting swagger route: %s", err))
