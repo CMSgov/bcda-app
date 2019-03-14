@@ -1,7 +1,6 @@
 package auth
 
 import (
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
@@ -43,23 +42,10 @@ type Token struct {
 
 // When getting a Token out of the database, reconstruct its string value and store it in TokenString.
 func (t *Token) AfterFind() error {
-	s, err := GenerateTokenString(t.UUID, t.UserID, t.ACOID, t.IssuedAt, t.ExpiresOn)
+	s, err := GenerateTokenString(t.UUID.String(), t.UserID.String(), t.ACOID.String(), t.IssuedAt, t.ExpiresOn)
 	if err == nil {
 		t.TokenString = s
 		return nil
 	}
 	return err
-}
-
-// Given all claim values, construct a token string.
-func GenerateTokenString(id, userID, acoID uuid.UUID, issuedAt int64, expiresOn int64) (string, error) {
-	token := jwt.New(jwt.SigningMethodRS512)
-	token.Claims = jwt.MapClaims{
-		"exp": expiresOn,
-		"iat": issuedAt,
-		"sub": userID.String(),
-		"aco": acoID.String(),
-		"id":  id.String(),
-	}
-	return token.SignedString(InitAuthBackend().PrivateKey)
 }

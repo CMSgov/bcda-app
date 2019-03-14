@@ -9,8 +9,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type Mokta struct {
@@ -158,12 +159,7 @@ func (m *Mokta) NewCustomToken(overrides OktaToken) (string, error) {
 		"sub": values.Subject,
 	}
 
-	tokenString, err := token.SignedString(m.privateKey)
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return token.SignedString(m.privateKey)
 }
 
 func (m *Mokta) valuesWithOverrides(or OktaToken) OktaToken {
