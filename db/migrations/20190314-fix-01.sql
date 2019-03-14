@@ -5,3 +5,5 @@ ALTER TABLE beneficiaries
     DROP COLUMN patient_id,
     DROP COLUMN aco_id,
     ADD PRIMARY KEY (id);
+
+DELETE FROM beneficiaries WHERE blue_button_id IS null;
