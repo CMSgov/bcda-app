@@ -234,6 +234,8 @@ func (s *MainTestSuite) TestCreateToken() {
 }
 
 func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
+	originalAuthProvider := auth.GetProviderName()
+	defer auth.SetProvider(originalAuthProvider)
 
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
@@ -242,6 +244,7 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
+
 	outputPattern := regexp.MustCompile(`.+\n.+\n.+`)
 
 	// execute positive scenarios via CLI

@@ -654,13 +654,14 @@ func (s *APITestSuite) TestAuthToken() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
-	assert.Empty(s.T(), s.rr.Body)
 
-	req.Header.Add("client_id", "not_a_client_id")
-	req.Header.Add("secret", "not_a_secret")
+	// // The following change in error status can be tested with alpha auth (presumably along with success paths)
+	// // once GetAccessToken() is implemented
+	//
+	// req.Header.Add("client_id", "not_a_client_id")
+	// req.Header.Add("secret", "not_a_secret")
 
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
-	assert.Empty(s.T(), s.rr.Body)
+	// assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }
 
 func (s *APITestSuite) TestMetadata() {
