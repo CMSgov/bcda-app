@@ -3,7 +3,7 @@ package jwt
 import (
 	"encoding/json"
 	"errors"
-	// "fmt"
+	"time"
 )
 
 // Claims type that uses the map[string]interface{} for JSON decoding
@@ -72,17 +72,25 @@ func (m MapClaims) Valid() error {
 	now := TimeFunc().Unix()
 
 	if m.VerifyExpiresAt(now, false) == false {
-		vErr.Inner = errors.New("Token is expired")
+		var expiresAt int64
+		switch exp := m["exp"].(type) {
+		case float64:
+			expiresAt = int64(exp)
+		case json.Number:
+			expiresAt, _ = exp.Int64()
+		}
+		delta := time.Unix(now, 0).Sub(time.Unix(expiresAt, 0))
+		vErr.Inner = &ExpiredError{now, delta, m}
 		vErr.Errors |= ValidationErrorExpired
 	}
 
 	if m.VerifyIssuedAt(now, false) == false {
-		vErr.Inner = errors.New("Token used before issued")
+		vErr.Inner = errors.New("token used before issued")
 		vErr.Errors |= ValidationErrorIssuedAt
 	}
 
 	if m.VerifyNotBefore(now, false) == false {
-		vErr.Inner = errors.New("Token is not valid yet")
+		vErr.Inner = errors.New("token is not valid yet")
 		vErr.Errors |= ValidationErrorNotValidYet
 	}
 
