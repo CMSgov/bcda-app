@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -671,17 +670,6 @@ func (s *APITestSuite) TestGetVersion() {
 	}
 
 	assert.Equal(s.T(), "latest", respMap["version"])
-}
-
-func makeJWT(acoId, userId string) *jwt.Token {
-	token := jwt.New(jwt.SigningMethodRS512)
-	token.Claims = jwt.MapClaims{
-		"sub": userId,
-		"aco": acoId,
-		"id":  uuid.NewRandom().String(),
-	}
-	token.Valid = true
-	return token
 }
 
 func (s *APITestSuite) TestJobStatusWithWrongACO() {
