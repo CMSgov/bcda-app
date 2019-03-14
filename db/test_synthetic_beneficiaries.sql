@@ -1,5 +1,5 @@
 WITH b AS (
-  insert into beneficiaries values (default,'19990000002901'),
+  insert into beneficiaries (id, blue_button_id) values (default,'19990000002901'),
   (default,'19990000002902'),
   (default,'19990000002903'),
   (default,'19990000002904'),
@@ -55,7 +55,7 @@ INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('0c527d2e-2e8a-4
 
 /* 10 beneficiaries for the Small ACO */
 WITH b AS (
-  INSERT INTO beneficiaries VALUES (default,'19990000002902'),
+  INSERT INTO beneficiaries (id, blue_button_id) VALUES (default,'19990000002902'),
   (default,'19990000002903'),
   (default,'19990000002904'),
   (default,'19990000002905'),
@@ -71,7 +71,7 @@ INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('3461C774-B48F-1
 
 /* 25 beneficiaries for the Medium ACO */
 WITH b AS (
-  INSERT INTO beneficiaries VALUES (default,'19990000006831'),
+  INSERT INTO beneficiaries (id, blue_button_id) VALUES (default,'19990000006831'),
   (default,'19990000006832'),
   (default,'19990000006833'),
   (default,'19990000006834'),
@@ -102,7 +102,7 @@ INSERT INTO acos_beneficiaries (aco_id, beneficiary_id) VALUES ('C74C008D-42F8-4
 
 /* 100 beneficiaries for the Large ACO */
 WITH b AS (
-  INSERT INTO beneficiaries VALUES (default,'20000000001809'),
+  INSERT INTO beneficiaries (id, blue_button_id) VALUES (default,'20000000001809'),
   (default,'20000000001810'),
   (default,'20000000001811'),
   (default,'20000000001812'),
