@@ -2,7 +2,7 @@
 layout: home
 title:  "File Decryption in BCDA"
 date:   2019-03-13 09:21:12 -0500
-description: File Decryption in BCDA
+description: Step-by-step instructions to assist with decrypting the NDJSON payload.
 landing-page: live
 gradient: "blueberry-lime-background"
 subnav-link-gradient: "blueberry-lime-link"
@@ -17,19 +17,11 @@ sections:
 
 # BCDA File Decryption: An Example
 
-### Contents
-1. [Gathering the tools](#gathering-the-tools)
-1. [Exploring the API with Swagger](#exploring-the-api-with-swagger)
-1. [Requesting a file](#requesting-a-file)
-1. [Decrypting a file](#decrypting-a-file)
-1. [Reading further](#reading-further)
-1. [Troubleshooting](#troubleshooting)
-
 ### Gathering the tools
 To complete this decryption example, you will need:
 
 - The `token` given to you by the BCDA team, ready to paste into your browser
-- A file containing the example RSA `private key` ([download](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem))
+- A file containing the example RSA `private key` ([example RSA private key](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem)) download
 - You can write your own decryption code later based on the [documentation](../API.md). We'll use the [python example decryption code](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4), which requires:
     - [Python](https://www.python.org/downloads/) installed
     - [decrypt.py](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/decrypt.py) and [requirements.txt](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/requirements.txt) downloaded to the same directory
@@ -102,7 +94,7 @@ Our last API task is to download the encrypted file.
 <img src="assets/img/decrypt_demo_09.png" alt="Download file" width="600" />
 
 ### Decrypting a file
-After downloading the file, we'll move to the command line.  Navigate to the directory you saved `decrypt.py` and `requirements.txt` in [earlier](#gathering-the-tools).
+After downloading the file, we'll move to the command line.  Navigate to the directory you saved `decrypt.py` and `requirements.txt` from the [Gathering the tools](#gathering-the-tools) section.
 
 <img src="assets/img/decrypt_demo_10.png" alt="Directory with decryption tool" width="450" />
 
