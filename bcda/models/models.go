@@ -62,6 +62,7 @@ type ACO struct {
 	CMSID            *string   `gorm:"type:char(5)" json:"cms_id"`
 	Name             string    `json:"name"`
 	ClientID         string    `json:"client_id"`
+	AlphaSecret      string
 	ACOBeneficiaries []*ACOBeneficiary
 }
 
