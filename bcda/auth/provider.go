@@ -82,11 +82,11 @@ type Provider interface {
 	// Revoke any existing Credentials for the given clientID
 	RevokeClientCredentials(clientID string) error
 
-	// Request an access token with a specific time-to-live for the given clientID
-	RequestAccessToken(creds Credentials, ttl int) (Token, error)
+	// Manufactures an access token for the given credentials
+	AccessToken(credentials Credentials) (*jwt.Token, error)
 
-	// Verify credentials and return access token
-	GetAccessToken(creds Credentials) (Token, error)
+	// Request an access token with a specific time-to-live for the given clientID
+	RequestAccessToken(credentials Credentials, ttl int) (Token, error)
 
 	// Revoke a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error

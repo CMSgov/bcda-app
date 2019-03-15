@@ -85,8 +85,10 @@ func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return nil
 }
 
-func (o OktaAuthPlugin) GetAccessToken(creds Credentials) (Token, error) {
-	return o.RequestAccessToken(creds, 0)
+
+// Manufactures an access token for the given credentials
+func (p OktaAuthPlugin) AccessToken(credentials Credentials) (*jwt.Token, error) {
+	return nil, nil
 }
 
 func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
