@@ -30,21 +30,21 @@ To complete this decryption example, you will need:
 
 - The `token` given to you by the BCDA team, ready to paste into your browser
 - A file containing the example RSA `private key` ([download](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem))
-- You can write your own decryption code later based on the [documentation](../API.md).  Today we'll use the [python example decryption code](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4), which requires:
+- You can write your own decryption code later based on the [documentation](../API.md). We'll use the [python example decryption code](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4), which requires:
     - [Python](https://www.python.org/downloads/) installed
     - [decrypt.py](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/decrypt.py) and [requirements.txt](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/requirements.txt) downloaded to the same directory
     - Run `pip install requirements.txt` from that same directory to download any required libraries
 
 
 ### Exploring the API with Swagger
-We'll be interacting with the [BCDA API](../API.md) in your browser using [Swagger](https://swagger.io).  We'll be able to authenticate, make requests, and everything else the API provides.  
+You will be interacting with the [BCDA API](../API.md) in your browser using [Swagger](https://swagger.io). This will enable you to authenticate, make requests, and everything else the API provides.
 
 - Open your browser and navigate to:
 
 #### [https://sandbox.bcda.cms.gov/api/v1/swagger](https://sandbox.bcda.cms.gov/api/v1/swagger/)
 <img src="assets/img/decrypt_demo_01.png" alt="Screenshot of swagger" width="400" />
 
-Let's provide our token to get full access to the API.
+Provide your token to get full access to the API.
 
 - Click the `Authorize` button
 - In the `api_key` box:
@@ -59,7 +59,7 @@ Let's provide our token to get full access to the API.
 <img src="assets/img/decrypt_demo_03.png" alt="API menu" width="600" />
 
 ### Requesting a file
-We have two types of encrypted files we could download: Patient and Explanation of Benefit (EoB).  Let's choose EoB today.
+There are two types of encrypted files that can be downloaded: Patient and Explanation of Benefit (EoB). The example below id is for downloading the EoB.
 
 - Click the `/api/v1/ExplanationOfBenefit/$export` link
 
@@ -83,9 +83,9 @@ If you'd like to repeat this from the command line or implement this API call in
 
 <img src="assets/img/decrypt_demo_07.png" alt="Job status response" width="600" />
 
-1. Depending on the size of the file, the job may take some time.  If the job is not yet complete, this will give us status information.  Simply wait a few seconds and click execute again until the job completes and you get a result for a completed job as shown below.  We can download the file from the URL provided.
+1. Depending on the size of the file, the job may take some time.  If the job is not yet complete, status information will be shown.  Simply wait a few seconds and click execute again until the job completes. You will then get a result for a completed job as shown below.  We can download the file from the URL provided.
 1. Take special note of the new `KeyMap` section of the response.  To decrypt the file, we will need the filename (the first part of the keymap) and the [symmetric key](../ENCRYPTION.md#how-we-encrypt) (the second part of the keymap), as shown above.  There are no spaces in either one.
-1. Sometimes one or more data points is unavailable.  When this happens, the `error` section will contain a separate filename and symmetric key with a list of the patients involved.
+1. Sometimes one or more data points are unavailable.  When this happens, the `error` section will contain a separate filename and symmetric key with a list of the patients involved.
 
 - Copy these values from the `KeyMap` (filename and symmetric key) for later.
 
@@ -106,7 +106,7 @@ After downloading the file, we'll move to the command line.  Navigate to the dir
 
 <img src="assets/img/decrypt_demo_10.png" alt="Directory with decryption tool" width="450" />
 
-Let's verify that Python is running properly.  
+Verify that Python is running properly.
 - Run `decrypt.py` with the help argument (`python decrypt.py -h`).  You should get the response shown below.
 
 <img src="assets/img/decrypt_demo_11.png" alt="Decrypt.py syntax" width="600" />
@@ -115,7 +115,7 @@ Let's verify that Python is running properly.
 
 <img src="assets/img/decrypt_demo_12.png" alt="Rename downloaded file" width="600" />
 
-We're now ready to decrypt the file!  Our sample decryption tool will print the decrypted contents to the console, so we'll send the output to a file.  Make sure to use the following syntax, with the entire command on the same line:
+You are now ready to decrypt the file!  Your sample decryption tool will print the decrypted contents to the console, so we'll send the output to a file.  Make sure to use the following syntax, with the entire command on the same line:
 
     python decrypt.py 
         --pk   [location_of_private_key] 
