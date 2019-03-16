@@ -1,4 +1,4 @@
-package secutils
+package utils
 
 import (
 	"fmt"

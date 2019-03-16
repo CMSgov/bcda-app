@@ -80,7 +80,7 @@ func (s *BackendTestSuite) TestGenerateTokenString() {
 	// Wipe the keys
 	s.AuthBackend.PrivateKey = nil
 	s.AuthBackend.PublicKey = nil
-	defer s.AuthBackend.ResetAuthBackend()
+	defer s.AuthBackend.ResetAlphaBackend()
 	assert.Panics(s.T(), func() {
 		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
 	})

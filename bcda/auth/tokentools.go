@@ -35,5 +35,5 @@ func GenerateTokenString(id, userID, acoID string, issuedAt int64, expiresAt int
 		"aco": acoID,
 		"id":  id,
 	}
-	return token.SignedString(InitAuthBackend().PrivateKey)
+	return token.SignedString(InitAlphaBackend().PrivateKey)
 }

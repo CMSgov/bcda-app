@@ -302,7 +302,7 @@ func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return InitAuthBackend().PublicKey, nil
+		return InitAlphaBackend().PublicKey, nil
 	}
 
 	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)

@@ -97,7 +97,7 @@ func (s *AuthTestSuite) SetupAuthBackend() {
 	s.SavePubKey(pubKeyFile, publicKey)
 	defer pubKeyFile.Close()
 
-	s.AuthBackend = auth.InitAuthBackend()
+	s.AuthBackend = auth.InitAlphaBackend()
 }
 
 func CreateStaging(jobID string) {

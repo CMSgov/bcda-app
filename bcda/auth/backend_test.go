@@ -58,15 +58,15 @@ func (s *BackendTestSuite) TestPrivateKey() {
 	// set the Private Key File to a bogus value to test negative scenarios
 	// File does not exist
 	os.Setenv("JWT_PRIVATE_KEY_FILE", "/static/thisDoesNotExist.pem")
-	assert.Panics(s.T(), s.AuthBackend.ResetAuthBackend)
+	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
 
 	// Empty file
 	os.Setenv("JWT_PRIVATE_KEY_FILE", "../static/emptyFile.pem")
-	assert.Panics(s.T(), s.AuthBackend.ResetAuthBackend)
+	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
 
 	// File contains not a key
 	os.Setenv("JWT_PRIVATE_KEY_FILE", "../static/badPrivate.pem")
-	assert.Panics(s.T(), s.AuthBackend.ResetAuthBackend)
+	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
 
 }
 
@@ -80,15 +80,15 @@ func (s *BackendTestSuite) TestPublicKey() {
 	// set the Private Key File to a bogus value to test negative scenarios
 	// File does not exist
 	os.Setenv("JWT_PUBLIC_KEY_FILE", "/static/thisDoesNotExist.pem")
-	assert.Panics(s.T(), s.AuthBackend.ResetAuthBackend)
+	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
 
 	// Empty file
 	os.Setenv("JWT_PUBLIC_KEY_FILE", "../static/emptyFile.pem")
-	assert.Panics(s.T(), s.AuthBackend.ResetAuthBackend)
+	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
 
 	// File contains not a key
 	os.Setenv("JWT_PUBLIC_KEY_FILE", "../static/badPublic.pem")
-	assert.Panics(s.T(), s.AuthBackend.ResetAuthBackend)
+	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
 
 }
 
