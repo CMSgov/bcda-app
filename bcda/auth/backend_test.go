@@ -2,17 +2,14 @@ package auth_test
 
 import (
 	"crypto/rsa"
-	"errors"
 	"os"
 	"testing"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
@@ -38,7 +35,7 @@ func (s *BackendTestSuite) SetupTest() {
 }
 
 func (s *BackendTestSuite) TestInitAuthBackend() {
-	assert.IsType(s.T(), &auth.JWTAuthenticationBackend{}, s.AuthBackend)
+	assert.IsType(s.T(), &auth.AlphaBackend{}, s.AuthBackend)
 	assert.IsType(s.T(), &rsa.PrivateKey{}, s.AuthBackend.PrivateKey)
 	assert.IsType(s.T(), &rsa.PublicKey{}, s.AuthBackend.PublicKey)
 }
@@ -49,101 +46,6 @@ func (s *BackendTestSuite) TestHashCompare() {
 	hashString := hash.Generate(uuidString)
 	assert.True(s.T(), hash.Compare(hashString, uuidString))
 	assert.False(s.T(), hash.Compare(hashString, uuid.NewRandom().String()))
-}
-
-func (s *BackendTestSuite) TestGenerateToken() {
-	userUUIDString, acoUUIDString := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	token, err := s.AuthBackend.GenerateTokenString(userUUIDString, acoUUIDString)
-
-	// No errors, token is not nil
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), token)
-
-	// Wipe the keys
-	s.AuthBackend.PrivateKey = nil
-	s.AuthBackend.PublicKey = nil
-	defer s.AuthBackend.ResetAuthBackend()
-	assert.Panics(s.T(), func() { _, _ = s.AuthBackend.GenerateTokenString(userUUIDString, acoUUIDString) })
-}
-
-// remove with BCDA-764
-func (s *BackendTestSuite) TestCreateToken() {
-	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var user models.User
-	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("Unable to locate user"))
-	}
-	token, _, err := s.AuthBackend.CreateToken(user)
-	assert.NotNil(s.T(), token.UUID)
-	assert.Nil(s.T(), err)
-
-	// Wipe the keys
-	s.AuthBackend.PrivateKey = nil
-	s.AuthBackend.PublicKey = nil
-	defer s.AuthBackend.ResetAuthBackend()
-	assert.Panics(s.T(), func() { _, _, _ = s.AuthBackend.CreateToken(user) })
-}
-
-func (s *BackendTestSuite) TestGetJWClaims() {
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	goodToken, err := s.AuthBackend.GenerateTokenString(acoID, userID)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), s.AuthBackend.GetJWTClaims(goodToken))
-
-	// Check an expired token
-	expiredToken := jwt.New(jwt.SigningMethodRS512)
-	expiredToken.Claims = jwt.MapClaims{
-		"exp": 12345,
-		"iat": 123,
-		"sub": userID,
-		"aco": acoID,
-		"id":  uuid.NewRandom(),
-	}
-	expiredTokenString, err := expiredToken.SignedString(s.AuthBackend.PrivateKey)
-	assert.Nil(s.T(), err)
-	invalidClaims := s.AuthBackend.GetJWTClaims(expiredTokenString)
-	assert.Nil(s.T(), invalidClaims)
-
-	// Check an incorrectly signed token.
-	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
-	badClaims := s.AuthBackend.GetJWTClaims(badToken)
-	assert.Nil(s.T(), badClaims)
-}
-
-func (s *BackendTestSuite) TestIsBlacklisted() {
-	// test uses fixture data
-	userID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
-	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var aco models.ACO
-	var user models.User
-	// Bad test if we can't find the ACO
-	if db.Find(&aco, "UUID = ?", acoID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("Unable to find ACO"))
-	}
-	// Bad test if we can't find the User or they are for a different aco
-	if db.Find(&user, "UUID = ? AND aco_id = ?", userID, acoID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("Unable to find User"))
-	}
-	activeToken := jwt.New(jwt.SigningMethodRS512)
-	activeToken.Claims = jwt.MapClaims{
-		"exp": 12345,
-		"iat": 123,
-		"sub": userID,
-		"aco": acoID,
-		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
-	}
-
-	blacklisted := s.AuthBackend.IsBlacklisted(activeToken)
-	assert.False(s.T(), blacklisted)
-
-	blacklisted = s.AuthBackend.IsBlacklisted(activeToken)
-	assert.False(s.T(), blacklisted)
 }
 
 func (s *BackendTestSuite) TestPrivateKey() {

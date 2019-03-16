@@ -16,7 +16,7 @@ import (
 
 type AuthTestSuite struct {
 	suite.Suite
-	AuthBackend *auth.JWTAuthenticationBackend
+	AuthBackend *auth.AlphaBackend
 	TmpFiles    []string
 }
 
