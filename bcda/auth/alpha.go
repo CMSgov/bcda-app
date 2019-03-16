@@ -184,7 +184,8 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 		userUUID = user.UUID
 		acoUUID = user.ACOID
 	} else {
-		aco, err := getACOFromDB(creds.ClientID)
+		var aco models.ACO
+		aco, err = getACOFromDB(creds.ClientID)
 		if err != nil {
 			return token, err
 		}
