@@ -13,15 +13,11 @@ import (
 )
 
 var (
-	// otherwise known as ttl
-	jwtExpirationDelta string
 	alphaBackend *AlphaBackend
 )
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
-	// initalized here so we get logging in the right format
-	jwtExpirationDelta = utils.FromEnv("JWT_EXPIRATION_DELTA", "60")
 }
 
 // Hash supports cryptographically hashing strings and comparing the hashed strings
@@ -54,7 +50,6 @@ func InitAlphaBackend() *AlphaBackend {
 			PublicKey:  getPublicKey(),
 		}
 	}
-
 	return alphaBackend
 }
 
