@@ -17,13 +17,16 @@
      - application/json
 
      Security:
-     - api_key:
+	 - api_key:
+	 - basic_auth:
 
      SecurityDefinitions:
      api_key:
           type: apiKey
           name: Authorization
-          in: header
+		  in: header
+	 basic_auth:
+		  type: basic
  swagger:meta
 */
 package main
@@ -366,13 +369,12 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 
 	Get access token
 
-	Verifies parameters client_id and secret, and returns a JWT token that can be presented to the other API endpoints.
-
-	Consumes:
-	- application/x-www-form-urlencoded
+	Verifies Basic authentication credentials, and returns a JWT token that can be presented to the other API endpoints.
 
 	Produces:
 	- application/json
+
+	Security: basic_auth
 
 	Schemes: https
 
@@ -383,10 +385,8 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 		500: serverError
 */
 func getAuthToken(w http.ResponseWriter, r *http.Request) {
-	clientId := r.Header.Get("client_id")
-	secret := r.Header.Get("secret")
-
-	if clientId == "" || secret == "" {
+	clientId, secret, ok := r.BasicAuth()
+	if !ok {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}

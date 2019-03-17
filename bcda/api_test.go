@@ -656,9 +656,9 @@ func (s *APITestSuite) TestAuthToken() {
 
 	// // The following change in error status can be tested with alpha auth (presumably along with success paths)
 	// // once GetAccessToken() is implemented
-	//
-	// req.Header.Add("client_id", "not_a_client_id")
-	// req.Header.Add("secret", "not_a_secret")
+	// credential := base64.StdEncoding.EncodeToString([]byte("not_a_client_id:not_a_secret"))
+	// req.Header.Add("Authorization", "Basic "+credential)
+	// handler.ServeHTTP(s.rr, req)
 
 	// assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }

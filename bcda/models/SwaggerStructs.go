@@ -136,17 +136,6 @@ type BulkRequestHeaders struct {
 	Prefer string
 }
 
-// swagger:parameters getAuthToken
-type AuthParams struct {
-	// required: true
-	// in: header
-	ClientID string `json:"client_id"`
-
-	// required: true
-	// in: header
-	Secret string `json:"secret"`
-}
-
 // JSON with a valid JWT
 // swagger:response tokenResponse
 type TokenResponse struct {
