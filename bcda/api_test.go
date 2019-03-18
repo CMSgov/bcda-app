@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bgentry/que-go"
+	que "github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -135,7 +135,7 @@ func (s *APITestSuite) TestBulkEOBRequestUserDoesNotExist() {
 	acoID := "dbbd1ce1-ae24-435c-807d-ed45953077d3"
 	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffdff"
 	tokenID := "665341c9-7d0c-4844-b66f-5910d9d0822f"
-	ad := auth.AuthData{acoID, userID, tokenID}
+	ad := auth.AuthData{ACOID: acoID, UserID: userID, TokenID: tokenID}
 
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
@@ -795,5 +795,5 @@ func TestAPITestSuite(t *testing.T) {
 }
 
 func makeContextValues(acoID string, userID string) (data auth.AuthData) {
-	return auth.AuthData{acoID, userID, uuid.NewRandom().String()}
+	return auth.AuthData{ACOID: acoID, UserID: userID, TokenID: uuid.NewRandom().String()}
 }
