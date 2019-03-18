@@ -146,17 +146,17 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	var acoBeneficiaries []models.ACOBeneficiary
 	if err = db.Find(&acoBeneficiaries, "aco_id = ?", acoID).Error; err != nil {
-		log.Error(err.Error())
+		log.Errorf("Error retrieving ACO-beneficiary with ACO ID %s: %s", acoID, err.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
-	var beneficiary models.Beneficiary
 	beneficiaryIDs := []string{}
 	for _, acoBeneficiary := range acoBeneficiaries {
-		if err = db.First(&beneficiary, "id = ?", acoBeneficiary.BeneficiaryID).Error; err != nil {
-			log.Error(err.Error())
+		var beneficiary models.Beneficiary
+		if err = db.First(&beneficiary, acoBeneficiary.BeneficiaryID).Error; err != nil {
+			log.Errorf("Error retrieving beneficiary with ID %d: %s", acoBeneficiary.BeneficiaryID, err.Error())
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
