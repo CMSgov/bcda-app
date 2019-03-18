@@ -13,6 +13,13 @@ sections:
   - Decrypting a file
   - Reading further
   - Troubleshooting
+ctas:
+  -
+    title: Visit the BCDA Google Group
+    link: https://groups.google.com/forum/#!forum/bc-api
+  -
+    title: Visit our encryption overview
+    link: encryption.html
 ---
 
 # BCDA File Decryption: An Example
