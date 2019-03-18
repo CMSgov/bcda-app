@@ -9,7 +9,6 @@ subnav-link-gradient: "blueberry-lime-link"
 sections:
   - Getting Started
   - What We've Learned
-  - How Can I Learn More
   - About the Data
 ctas:
 
@@ -50,16 +49,6 @@ ctas:
    * Formatting data in accordance with robust Fast Health Interoperability Resource ([FHIR](https://www.hl7.org/fhir/overview.html){:target="_blank"}) specifications
 
    BCDA will continue to take an iterative approach to testing and learning from its users.
-
-
-* {:.bcda_callout .no_list #how-can-i-learn-more} ![Google Groups Logo](assets/img/google_logo.png){:#google_logo} **How can I learn more about BCDA?** 
-
-   * {:.no_list} The BCDA is still in development. Please join the [Google Group](https://groups.google.com/forum/#!forum/bc-api){:target="_blank"} to receive updates.
-
-   * {:.no_list} The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.
-
-   * {:.button .no_list}[Join the BCDA Google Group](https://groups.google.com/forum/#!forum/bc-api){:target="_blank"}
-
 
 
 ## About the Data

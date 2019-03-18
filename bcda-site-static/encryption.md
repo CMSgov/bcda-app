@@ -10,6 +10,13 @@ sections:
   - How we encrypt
   - Show me the code
   - PKI/key pair
+  
+ctas:
+
+  - title: Visit the BCDA User Guide
+    link: ./user_guide.html
+  - title: View a decryption example
+    link: ./decryption.html
 ---
 
 # About File Encryption
