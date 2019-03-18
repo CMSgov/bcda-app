@@ -17,7 +17,7 @@ sections:
 
 # BCDA File Decryption: An Example
 
-### Gathering the tools
+## Gathering the tools
 To complete this decryption example, you will need:
 
 - The `token` given to you by the BCDA team, ready to paste into your browser
@@ -28,12 +28,12 @@ To complete this decryption example, you will need:
     - Run `pip install requirements.txt` from that same directory to download any required libraries
 
 
-### Exploring the API with Swagger
+## Exploring the API with Swagger
 You will be interacting with the [BCDA API](https://github.com/CMSgov/bcda-app/blob/master/API.md) in your browser using [Swagger](https://swagger.io). This will enable you to authenticate, make requests, and everything else the API provides.
 
 - Open your browser and navigate to:
 
-#### [https://sandbox.bcda.cms.gov/api/v1/swagger](https://sandbox.bcda.cms.gov/api/v1/swagger/)
+### [https://sandbox.bcda.cms.gov/api/v1/swagger](https://sandbox.bcda.cms.gov/api/v1/swagger/)
 <img src="assets/img/decrypt_demo_01.png" alt="Screenshot of swagger" width="400" />
 
 Provide your token to get full access to the API.
@@ -50,7 +50,7 @@ Provide your token to get full access to the API.
 
 <img src="assets/img/decrypt_demo_03.png" alt="API menu" width="600" />
 
-### Requesting a file
+## Requesting a file
 There are two types of encrypted files that can be downloaded: Patient and Explanation of Benefit (EoB). The example below id is for downloading the EoB.
 
 - Click the `/api/v1/ExplanationOfBenefit/$export` link
@@ -93,7 +93,7 @@ Our last API task is to download the encrypted file.
 
 <img src="assets/img/decrypt_demo_09.png" alt="Download file" width="600" />
 
-### Decrypting a file
+## Decrypting a file
 After downloading the file, we'll move to the command line.  Navigate to the directory you saved `decrypt.py` and `requirements.txt` from the [Gathering the tools](#gathering-the-tools) section.
 
 <img src="assets/img/decrypt_demo_10.png" alt="Directory with decryption tool" width="450" />
@@ -121,21 +121,21 @@ Take a look at the result.  If you do not see unencrypted [NDJSON](http://ndjson
 
 <img src="assets/img/decrypt_demo_14.png" alt="Parsing decrypted file contents" width="900" />
 
-### Reading further
+## Reading further
 * [Encryption documentation](https://github.com/CMSgov/bcda-app/blob/master/ENCRYPTION.md)
 * [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
-### Troubleshooting
-#### Authentication problems in Swagger
+## Troubleshooting
+### Authentication problems in Swagger
 - Has your token expired?  [Ask the support team](https://groups.google.com/forum/#!forum/bc-api) for a new token.
 - Is it possible you clicked on `Logout`?  Is the lock on the `Authorize` icon not closed?  Click it again, and after pasting your token in the `api_key` box, make sure to click the `Authorize` button.
 - Are there any spaces or newlines in your token?  Remove them and paste it as a single line.
 - Do you get an HTTP 504 `GATEWAY_TIMEOUT` error?  Make sure to add the word "bearer" (and a space) before the token, as demonstrated in the [exploring the API](#exploring-the-api-with-swagger) section.
 
-#### Python not installed
+### Python not installed
 - Is this your first time running Python on your system?  You might be interested in [this Windows installation guide](https://www.howtogeek.com/197947/how-to-install-python-on-windows/)
 
-#### Encryption issues
+### Encryption issues
 - The best practice would be to keep your private key in a separate, secured directory.  While you're testing the encryption feature for the first time, however, you may find it useful to have all the files in the same directory.
 - Have you saved the encrypted file with exactly the filename provided by the API?  If not, rename it and try again.
 - Is the symmetric key value provided with no spaces or newlines?  Double-check that no characters are missing from the beginning or end of the key.  
