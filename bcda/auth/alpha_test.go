@@ -55,7 +55,7 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	c, err := s.p.RegisterClient(acoUUID.String())
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
-	assert.NotNil(s.T(), c.ClientSecret)
+	assert.NotEqual(s.T(), "", c.ClientSecret)
 	assert.Equal(s.T(), acoUUID.String(), c.ClientID)
 	var aco models.ACO
 	aco.UUID = acoUUID
