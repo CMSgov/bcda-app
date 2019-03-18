@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -173,7 +173,7 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	err = database.GetGORMDbConnection().Save(aco).Error
 	require.Nil(s.T(), err)
 	// end of code to remove
-	tsExpression := regexp.MustCompile(`[^\.\s]+\.{1}[^\.\s]+\.{1}[^\.\s]+`)
+	tsExpression := regexp.MustCompile(`[^\.\s]+\.[^\.\s]+\.[^\.\s]+`)
 
 	ts, err := s.p.AccessToken(auth.Credentials{ClientID: clientID, ClientSecret: "hashed db value"})
 	assert.Nil(s.T(), err)
