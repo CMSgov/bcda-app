@@ -51,7 +51,7 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, err := models.CreateACO("TestRegisterClient", &cmsID)
+	acoUUID, _ := models.CreateACO("TestRegisterClient", &cmsID)
 	c, err := s.p.RegisterClient(acoUUID.String())
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
