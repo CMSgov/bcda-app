@@ -53,17 +53,13 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	c, err := s.p.RegisterClient(auth.KnownFixtureACO)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
+	assert.NotNil(s.T(), c.ClientSecret)
 	assert.Equal(s.T(), auth.KnownFixtureACO, c.ClientID)
 
 	c, err = s.p.RegisterClient("")
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c.ClientID)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
-
-	c, err = s.p.RegisterClient("correct length, but not a valid UUID")
-	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), c.ClientID)
-	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
 	c, err = s.p.RegisterClient(uuid.NewRandom().String())
 	assert.NotNil(s.T(), err)

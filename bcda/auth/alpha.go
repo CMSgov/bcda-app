@@ -17,6 +17,10 @@ import (
 type AlphaAuthPlugin struct{}
 
 func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
+	if localID == "" {
+		return Credentials{}, errors.New("provide a non-empty string")
+	}
+
 	aco, err := getACOFromDB(localID)
 	if err != nil {
 		return Credentials{}, err
@@ -28,11 +32,12 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	}
 
 	hash := Hash{}
-	hash.Generate(s)
+	hashedSecret := hash.Generate(s)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	db.Model(&aco).Update("alpha_secret", hash)
+	aco.AlphaSecret = hashedSecret
+	db.Save(&aco)
 
 	return Credentials{ClientID: localID, ClientSecret: s}, nil
 }
