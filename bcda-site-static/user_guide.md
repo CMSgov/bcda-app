@@ -1,41 +1,60 @@
-# Beneficiary Claims Data API
-The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) to retrieve claims data for their Medicare beneficiaries. This includes claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care.
+---
+layout: home
+title:  "Beneficiary Claims Data API User Guide"
+date:   2017-10-30 09:21:12 -0500
+description: Information on accessing and working with the API
+landing-page: live
+gradient: "blueberry-lime-background"
+subnav-link-gradient: "blueberry-lime-link"
+sections:
+  - User Guide
+  - About APIs
+  - Authentication and Authorization
+  - Encryption
+  - Environment
+  - Examples
+  - BCDA Metadata
+  - Beneficiary Explanation of Benefit Data
+  - Beneficiary Patient Data
 
-This API follows the workflow outlined by the [FHIR Bulk Data Export Proposal](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md), using the [HL7 FHIR Standard](https://www.hl7.org/fhir/). Claims data is provided as FHIR resources in [NDJSON](http://ndjson.org/) format.
+ctas:
 
-This guide serves as a starting point for users to begin working with the API. Comprehensive Swagger documentation about all BCDA endpoints is available in the sandbox environment [here](https://sandbox.bcda.cms.gov/api/v1/swagger/).
+  - title: Learn about encryption
+    link: ./encryption.html
+  - title: Join the BCDA Google Group
+    link: https://groups.google.com/forum/#!forum/bc-api
+    target: _blank
+    
+---
+# User Guide
+The [Beneficiary Claims Data API (BCDA)](https://sandbox.bcda.cms.gov) enables Accountable Care Organizations (ACOs) to retrieve claims data for their Medicare beneficiaries. This includes claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care.
 
-1. [Getting Started](#getting-started)
-   1. [APIs](#apis)
-   1. [Authentication and Authorization](#authentication-and-authorization)
-   1. [Environment](#environment)
-   1. [Encryption](#encryption)
-1. [Examples](#examples)
-   1. [BCDA Metadata](#bcda-metadata)
-   1. [Beneficiary Explanation of Benefit Data](#beneficiary-explanation-of-benefit-data)
-   1. [Beneficiary Patient Data](#beneficiary-patient-data)
+While the BCDA sandbox is currently focused on the needs of Medicare Shared Savings Program ACOs, all are invited to use the sandbox and share their feedback.
 
-## Getting Started
+This API follows the workflow outlined by the [FHIR Bulk Data Export Proposal](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md){:target="_blank"}, using the [HL7 FHIR Standard](https://www.hl7.org/fhir/){:target="_blank"}. Claims data is provided as FHIR resources in [NDJSON](http://ndjson.org/){:target="_blank"} format.
 
-### APIs
+This guide serves as a starting point for users to begin working with the API. [Comprehensive Swagger documentation about all BCDA endpoints is available in the sandbox environment.](./api/v1/swagger/)
+
+
+## About APIs
 Not familiar with APIs? Here are some great introductions:
-* [Introduction to Web APIs](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Client-side_web_APIs/Introduction)
-* [An Intro to APIs](https://www.codenewbie.org/blogs/an-intro-to-apis)
+* [Introduction to Web APIs](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Client-side_web_APIs/Introduction){:target="_blank"}
+* [An Intro to APIs](https://www.codenewbie.org/blogs/an-intro-to-apis){:target="_blank"}
 
-### Authentication and Authorization
-An access token is required for most requests. The token is presented in API requests in the `Authorization` header as a `Bearer` token. Tokens will be securely distributed to partners in our alpha release. For information about participating in user testing, please contact BCAPI@cms.hhs.gov.
+## Authentication and Authorization
+The Beneficiary Claims Data API is currently accessible as an open sandbox environment, which returns sample NDJSON files with synthetic beneficiary data. You can use the credentials below to view our implementation of the API, write a process for decrypting the payload, and learn the shape of the data before working with production files that include PII and PHI. There is no beneficiary PII or PHI in the files you can access via the sandbox.
 
-### Encryption
-All data files are encrypted. Find out about our encryption strategy [here](ENCRYPTION.md).
+## Encryption
+All data files are encrypted. Learn more about the [encryption strategy](./encryption.html).
 
-### Environment
-The examples below include [cURL](https://curl.haxx.se/) commands, but may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/).
+## Environment
+The examples below include [cURL](https://curl.haxx.se/){:target="_blank"} commands, but may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/){:target="_blank"}.
 
-## Examples
+# Examples
 Examples are shown as requests to the BCDA sandbox environment.
 
-### BCDA Metadata
-Metadata about the Beneficiary Claims Data API is available as a FHIR [CapabilityStatement](https://www.hl7.org/fhir/capabilitystatement.html) resource. A token is not required to access this information.
+## BCDA Metadata
+Metadata about the Beneficiary Claims Data API is available as a FHIR [CapabilityStatement](https://www.hl7.org/fhir/capabilitystatement.html){:target="_blank"} resource. A token is not required to access this information.
 
 #### 1. Request the metadata
 
@@ -122,10 +141,10 @@ curl https://sandbox.bcda.cms.gov/api/v1/metadata
 }
 ```
 
-### Beneficiary Explanation of Benefit Data
+## Beneficiary Explanation of Benefit Data
 
 #### 1. Obtain an access token
-See [Authentication and Authorization](#authentication-and-authorization) above.
+See [Authentication and Authorization](#authentication-and-authorization){:target="_blank"} above.
 
 #### 2. Initiate an export job
 
@@ -134,7 +153,7 @@ See [Authentication and Authorization](#authentication-and-authorization) above.
 
 To start an explanation of benefit data export job, a GET request is made to the ExplanationOfBenefit export endpoint. An access token as well as `Accept` and `Prefer` headers are required.
 
-The dollar sign ('$') before the word "export" in the URL indicates that the endpoint is an action rather than a resource. The format is defined by the [FHIR Bulk Data Export spec](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md).
+The dollar sign ('$') before the word "export" in the URL indicates that the endpoint is an action rather than a resource. The format is defined by the [FHIR Bulk Data Export spec](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md){:target="_blank"}.
 
 ###### Headers
 * `Authorization: Bearer {token}`
@@ -193,10 +212,10 @@ curl -v https://sandbox.bcda.cms.gov/api/v1/jobs/42 \
   ]
 }
 ```
-Claims data can be found at the URLs within the `output` field. The number 42 in the data file URLs is the same job ID from the `Content-Location` header URL in previous step. If some of the data cannot be exported due to errors, details of the errors can be found at the URLs in the `error` field. The errors are provided in an NDJSON file as FHIR [OperationOutcome](https://www.hl7.org/fhir/operationoutcome.html) resources.
+Claims data can be found at the URLs within the `output` field. The number 42 in the data file URLs is the same job ID from the `Content-Location` header URL in previous step. If some of the data cannot be exported due to errors, details of the errors can be found at the URLs in the `error` field. The errors are provided in an NDJSON file as FHIR [OperationOutcome](https://www.hl7.org/fhir/operationoutcome.html){:target="_blank"} resources.
 
 #### 4. Retrieve the NDJSON output file(s)
-To obtain the exported explanation of benefit data, a GET request is made to the output URLs in the job status response when the job reaches the Completed state. The data will be presented as an NDJSON file of [ExplanationOfBenefit](https://www.hl7.org/fhir/explanationofbenefit.html) resources.
+To obtain the exported explanation of benefit data, a GET request is made to the output URLs in the job status response when the job reaches the Completed state. The data will be presented as an NDJSON file of [ExplanationOfBenefit](https://www.hl7.org/fhir/explanationofbenefit.html){:target="_blank"} resources.
 
 ##### Request
 `GET https://sandbox.bcda.cms.gov/data/42/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson`
@@ -467,7 +486,7 @@ The response will be the requested data as FHIR ExplanationOfBenefit resources i
 }
 ```
 
-### Beneficiary Patient Data
+## Beneficiary Patient Data
 The process of retrieving patient data is very similar to exporting explanation of benefit data.
 
 #### 1. Obtain an access token
@@ -480,7 +499,7 @@ See [Authentication and Authorization](#authentication-and-authorization) above.
 
 To start a patient data export job, a GET request is made to the Patient export endpoint. An access token as well as `Accept` and `Prefer` headers are required.
 
-The dollar sign ('$') before the word "export" in the URL indicates that the endpoint is an action rather than a resource. The format is defined by the [FHIR Bulk Data Export spec](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md).
+The dollar sign ('$') before the word "export" in the URL indicates that the endpoint is an action rather than a resource. The format is defined by the [FHIR Bulk Data Export spec](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md){:target="_blank"}.
 
 ###### Headers
 * `Authorization: Bearer {token}`
@@ -539,10 +558,10 @@ curl -v https://sandbox.bcda.cms.gov/api/v1/jobs/43 \
   ]
 }
 ```
-Patient demographic data can be found at the URLs within the `output` field. The number 43 in the data file URLs is the same job ID from the `Content-Location` header URL in previous step. If some of the data cannot be exported due to errors, details of the errors can be found at the URLs in the `error` field. The errors are provided in an NDJSON file as FHIR [OperationOutcome](https://www.hl7.org/fhir/operationoutcome.html) resources.
+Patient demographic data can be found at the URLs within the `output` field. The number 43 in the data file URLs is the same job ID from the `Content-Location` header URL in previous step. If some of the data cannot be exported due to errors, details of the errors can be found at the URLs in the `error` field. The errors are provided in an NDJSON file as FHIR [OperationOutcome](https://www.hl7.org/fhir/operationoutcome.html){:target="_blank"} resources.
 
 #### 4. Retrieve the NDJSON output file(s)
-To obtain the exported explanation of benefit data, a GET request is made to the output URLs in the job status response when the job reaches the Completed state. The data will be presented as an NDJSON file of [Patient](https://www.hl7.org/fhir/patient.html) resources.
+To obtain the exported explanation of benefit data, a GET request is made to the output URLs in the job status response when the job reaches the Completed state. The data will be presented as an NDJSON file of [Patient](https://www.hl7.org/fhir/patient.html){:target="_blank"} resources.
 
 ##### Request
 `GET https://sandbox.bcda.cms.gov/data/43/DBBD1CE1-AE24-435C-807D-ED45953077D3.ndjson`
