@@ -1,47 +1,60 @@
 package auth
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"regexp"
 	"time"
-
-	"github.com/dgrijalva/jwt-go"
-	"github.com/jinzhu/gorm"
-	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type AlphaAuthPlugin struct{}
 
-// This implementation expects one value in params, an id the API knows this client by in string form
-// It returns a single string as well, being the clientID this implementation knows this client by
-// NB: Other implementations will probably expect more input, and will certainly return more data
 func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
-
-	// We'll check carefully in this method, because we're returning something to be used as an id
-	// Normally, a plugin would treat this value as a black box external key, but this implementation is
-	// intimate with the API. So, we're going to protect against accidental bad things
-	if len(localID) != 36 {
-		return Credentials{}, errors.New("you must provide a non-empty string 36 characters in length")
+	if localID == "" {
+		return Credentials{}, errors.New("provide a non-empty string")
 	}
 
-	if matched, err := regexp.MatchString("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$", localID); !matched || err != nil {
-		return Credentials{}, errors.New("expected a valid UUID string")
-	}
-
-	if _, err := getACOFromDB(localID); err != nil {
+	aco, err := getACOFromDB(localID)
+	if err != nil {
 		return Credentials{}, err
 	}
 
-	// return the aco UUID as our auth client id. why? because we have to return something that the API / CLI will
-	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
-	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
-	// whose client_id matches their UUID was created by this plugin.
-	return Credentials{ClientID: localID}, nil
+	if aco.AlphaSecret != "" {
+		return Credentials{}, fmt.Errorf("aco %s has a secret", localID)
+	}
+
+	s, err := generateClientSecret()
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	hash := Hash{}
+	hashedSecret := hash.Generate(s)
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	aco.ClientID = localID
+	aco.AlphaSecret = hashedSecret
+	db.Save(&aco)
+
+	return Credentials{ClientID: localID, ClientSecret: s}, nil
+}
+
+func generateClientSecret() (string, error) {
+	b := make([]byte, 20)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", b), nil
 }
 
 func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
@@ -52,7 +65,6 @@ func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
-// can treat as a no-op or call RequestAccessToken
 func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
 	aco, err := getACOFromDB(clientID)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bgentry/que-go"
+	que "github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
