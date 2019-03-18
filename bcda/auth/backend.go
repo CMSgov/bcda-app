@@ -34,6 +34,10 @@ func (h Hash) IsHashOf(source string) bool {
 	return h == NewHash(source)
 }
 
+func (h Hash) String() string {
+	return string(h)
+}
+
 // AlphaBackend is the authorization backend for the alpha plugin. Its purpose is to hold and control use of the
 // server's public and private keys.
 type AlphaBackend struct {
