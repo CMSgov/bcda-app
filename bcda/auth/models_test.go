@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"testing"
@@ -9,18 +9,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type ModelsTestSuite struct {
-	suite.Suite
+	testUtils.AuthTestSuite
 	db *gorm.DB
 }
 
 func (s *ModelsTestSuite) SetupTest() {
-	InitializeGormModels()
+	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
-	setAuthTestKeyEnvVars()
+	s.SetupAuthBackend()
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
@@ -34,7 +36,7 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	issuedAt := time.Now().Unix()
 	expiresOn := time.Now().Add(time.Hour * time.Duration(72)).Unix()
 
-	tokenString, err := GenerateTokenString(
+	tokenString, err := auth.GenerateTokenString(
 		tokenUUID.String(),
 		userUUID.String(),
 		acoUUID.String(),
@@ -46,7 +48,7 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	assert.NotNil(s.T(), tokenString)
 
 	// Get the claims of the token to find the token ID that was created
-	token := Token{
+	token := auth.Token{
 		UUID:      tokenUUID,
 		UserID:    userUUID,
 		Active:    true,
@@ -56,7 +58,7 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	}
 	s.db.Create(&token)
 
-	var savedToken Token
+	var savedToken auth.Token
 	s.db.Find(&savedToken, "UUID = ?", tokenUUID)
 	assert.NotNil(s.T(), savedToken)
 	assert.Equal(s.T(), tokenString, savedToken.TokenString)

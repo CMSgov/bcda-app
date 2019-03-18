@@ -69,6 +69,7 @@ func getPrivateKey() *rsa.PrivateKey {
 		log.Panic("no value in JWT_PRIVATE_KEY_FILE")
 	}
 	log.Infof("opening %s", fileName)
+	/* #nosec -- Potential file inclusion via variable */
 	privateKeyFile, err := os.Open(fileName)
 	if err != nil {
 		log.Panicf("can't open private key file %s because %v", fileName, err)
@@ -91,7 +92,3 @@ func (backend *AlphaBackend) SignJwtToken(token jwt.Token) (string, error) {
 	return token.SignedString(backend.PrivateKey)
 }
 
-func setAuthTestKeyEnvVars() {
-	os.Setenv("JWT_PRIVATE_KEY_FILE", "../../shared_files/ATO_private.pem")
-	os.Setenv("JWT_PUBLIC_KEY_FILE", "../../shared_files/ATO_public.pem")
-}

@@ -161,7 +161,7 @@ func (p AlphaAuthPlugin) AccessToken(credentials Credentials) (string, error) {
 		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
 	}
 	issuedAt := time.Now().Unix()
-	expiresAt := time.Now().Add(time.Hour * time.Duration(tokenTTL)).Unix()
+	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
 	return GenerateTokenString(uuid.NewRandom().String(), user.UUID.String(), aco.UUID.String(), issuedAt, expiresAt)
 }
 

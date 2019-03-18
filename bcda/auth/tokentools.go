@@ -10,11 +10,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
-var tokenTTL = time.Hour
+var TokenTTL = time.Hour
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
-	setTokenDuration()
+	SetTokenDuration()
 }
 
 type CommonClaims struct {
@@ -27,7 +27,7 @@ type CommonClaims struct {
 
 // TokenStringWithIDs generates a tokenstring that expires in tokenTTL time
 func TokenStringWithIDs(tokenID, userID, acoID string) (string, error) {
-	return TokenStringExpiration(tokenID, userID, acoID, tokenTTL)
+	return TokenStringExpiration(tokenID, userID, acoID, TokenTTL)
 }
 
 // TokenStringExpiration generates a tokenstring that expires after a specific duration from now.
@@ -50,16 +50,16 @@ func GenerateTokenString(id, userID, acoID string, issuedAt int64, expiresAt int
 }
 
 // for testing only; we don't support changing the ttl during runtime
-func setTokenDuration() {
+func SetTokenDuration() {
 	if ttl := utils.FromEnv("JWT_EXPIRATION_DELTA", "60"); ttl != "" {
 		var (
 			n   int
 			err error
 		)
 		if n, err = strconv.Atoi(ttl); err != nil {
-			log.Infof("Invalid ttl %s in JWT_EXPIRATION_DELTA because %s; using %v", ttl, err, tokenTTL)
+			log.Infof("Invalid ttl %s in JWT_EXPIRATION_DELTA because %s; using %v", ttl, err, TokenTTL)
 			return
 		}
-		tokenTTL = time.Minute * time.Duration(n)
+		TokenTTL = time.Minute * time.Duration(n)
 	}
 }
