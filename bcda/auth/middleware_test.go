@@ -10,17 +10,17 @@ import (
 	"os"
 	"strconv"
 	"testing"
-	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/chi"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
@@ -30,6 +30,7 @@ type MiddlewareTestSuite struct {
 	server *httptest.Server
 	rr     *httptest.ResponseRecorder
 	token  string
+	ad     auth.AuthData
 }
 
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
@@ -47,17 +48,15 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 
 func (s *MiddlewareTestSuite) SetupTest() {
 	s.SetupAuthBackend()
-	validClaims := jwt.MapClaims{
-		"sub": "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
-		"aco": "DBBD1CE1-AE24-435C-807D-ED45953077D3",
-		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	tokenID := "d63205a8-d923-456b-a01b-0992fcb40968"
+	s.token, _ = auth.TokenStringWithIDs(tokenID, userID, acoID)
+	s.ad = auth.AuthData{
+		TokenID: tokenID,
+		UserID:  userID,
+		ACOID:   acoID,
 	}
-	validToken := *jwt.New(jwt.SigningMethodRS512)
-	validToken.Claims = validClaims
-	validTokenString, _ := s.AuthBackend.SignJwtToken(validToken)
-	s.token = validTokenString
 	s.server = httptest.NewServer(s.CreateRouter())
 	s.rr = httptest.NewRecorder()
 }
@@ -72,14 +71,13 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalidSigning() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
-	s.token = badToken
 
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
 	resp, err := client.Do(req)
 
 	fmt.Println(resp.StatusCode)
@@ -95,17 +93,24 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalid() {
 
 	handler := auth.RequireTokenAuth(mockHandler)
 
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(userID, acoID, tokenID)
 	assert.Nil(s.T(), err)
 
-	token, err := s.AuthBackend.GetJWToken(tokenString)
+	token, err := auth.GetProvider().DecodeJWT(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Valid = false
 
+	ad := auth.AuthData{
+		UserID:  userID,
+		ACOID:   acoID,
+		TokenID: tokenID,
+	}
+
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, "token", token)
+	ctx = context.WithValue(ctx, "ad", ad)
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 401, s.rr.Code)
@@ -127,11 +132,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthBlackListed() {
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	var user models.User
 	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("Unable to find User"))
+		assert.NotNil(s.T(), errors.New("unable to find User"))
 	}
 	var aco models.ACO
 	if db.Find(&aco, "UUID = ?", acoID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("Unable to find ACO"))
+		assert.NotNil(s.T(), errors.New("unable to find ACO"))
 	}
 
 	notActiveToken := jwt.New(jwt.SigningMethodRS512)
@@ -212,8 +217,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchNotEqual() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := s.AuthBackend.GetJWToken(tokenString)
@@ -221,7 +226,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchNotEqual() {
 	assert.NotNil(s.T(), token)
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", token)
+	// ctx = context.WithValue(ctx, "token", token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 404, s.rr.Code)
@@ -250,16 +255,22 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchEqual() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := s.AuthBackend.GetJWToken(tokenString)
+	token, err := auth.GetProvider().DecodeJWT(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
-	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", token)
+	ctx := context.WithValue(req.Context(), "token", token)
+	ad := auth.AuthData{
+		ACOID:   acoID,
+		UserID:  userID,
+		TokenID: tokenID,
+	}
+	ctx = context.WithValue(ctx, "ad", ad)
+
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 200, s.rr.Code)
@@ -289,11 +300,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := s.AuthBackend.GetJWToken(tokenString)
+	token, err := auth.GetProvider().DecodeJWT(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Claims = nil
@@ -303,27 +314,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 404, s.rr.Code)
-}
-
-func (s *MiddlewareTestSuite) TestClaimsFromToken() {
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
-	assert.Nil(s.T(), err)
-
-	token, err := s.AuthBackend.GetJWToken(tokenString)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), token)
-
-	// Test good claims
-	claims, err := auth.ClaimsFromToken(token)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), claims)
-
-	// Test invalid claims
-	token.Claims = nil
-	badclaims, err := auth.ClaimsFromToken(token)
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), jwt.MapClaims{}, badclaims)
 }
 
 func TestMiddlewareTestSuite(t *testing.T) {

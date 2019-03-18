@@ -44,6 +44,7 @@ func (s *MainTestSuite) SetupSuite() {
 
 func (s *MainTestSuite) SetupTest() {
 	s.testApp = setUpApp()
+	autoMigrate()
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -332,7 +333,6 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 func (s *MainTestSuite) TestArchiveExpiring() {
 
 	// init
-	autoMigrate()
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -408,7 +408,6 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 
 	// init
-	autoMigrate()
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -518,7 +517,6 @@ func setupJobArchiveFile(s *MainTestSuite, email string, modified time.Time, acc
 func (s *MainTestSuite) TestCleanArchive() {
 
 	// init
-	autoMigrate()
 	const Threshold = 30
 	now := time.Now()
 
@@ -700,7 +698,7 @@ func checkStructure(s *MainTestSuite, ttl int, acoSize string) {
 		acoUUID := claims["aco"].(string)
 		assert.NotNil(s.T(), acoUUID)
 		var count int
-		db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
+		db.Table("acos_beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
 		assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
 		checkTTL(s, claims, ttl)
 	case auth.OktaAuthPlugin:

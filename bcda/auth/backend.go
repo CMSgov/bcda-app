@@ -3,12 +3,13 @@ package auth
 import (
 	"crypto/rsa"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
@@ -132,10 +133,15 @@ func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.To
 }
 
 // should be removed during BCDA-764; must be left in place until then
-func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (Token, string, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	tokenString, err := backend.GenerateTokenString(
+func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (token Token, tokenString string, err error) {
+	if user.UUID == nil || user.ACOID == nil {
+		err = errors.New("invalid user model parameter")
+		return
+	}
+
+	tokenID := uuid.NewRandom().String()
+	tokenString, err = TokenStringWithIDs(
+		tokenID,
 		user.UUID.String(),
 		user.ACOID.String(),
 	)
@@ -144,13 +150,26 @@ func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (Token, s
 	}
 	// Get the claims of the token to find the token ID that was created
 	claims := backend.GetJWTClaims(tokenString)
-	token := Token{
-		UUID:   uuid.Parse(claims["id"].(string)),
+	tid, ok := claims["id"].(string)
+	if !ok || tid == "" {
+		err = fmt.Errorf(`missing claim "id"; got claims %v`, claims)
+		return
+	}
+
+	token = Token{
+		UUID:   uuid.Parse(tid),
 		UserID: user.UUID,
+		ACOID:  user.ACOID,
 		Value:  tokenString,
 		Active: true,
 	}
-	db.Create(&token)
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	err = db.Create(&token).Error
+	if err != nil {
+		log.Errorf("unable to create token for aco %v because %s", user.ACOID, err)
+	}
 
 	return token, tokenString, err
 }

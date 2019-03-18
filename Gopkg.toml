@@ -30,7 +30,7 @@
   version = "1.0.1"
 
 [[constraint]]
-  branch = "master"
+  branch = "release_4_0_0"
   name = "github.com/dgrijalva/jwt-go"
 
 [[constraint]]
