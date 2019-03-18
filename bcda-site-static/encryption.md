@@ -9,7 +9,7 @@ subnav-link-gradient: "blueberry-lime-link"
 sections:
   - How we encrypt
   - Show me the code
-  - PKI/key pair
+  - PKI-key pair
   
 ctas:
 
@@ -38,7 +38,7 @@ Some best practices you can observe include:
 
 ## How we encrypt
 
-We encrypt the file as the last step in producing it, immediately before we return a final job status (the one that has a body and no `X-Progress` header). Please see [our getting started guide](./index.html) for more on job status.
+We encrypt the file as the last step in producing it, immediately before we return a final job status (the one that has a body and no `X-Progress` header). Please see [our getting started guide](./user_guide.html) for more on job status.
 
 The steps in our encryption process are:
 
@@ -156,7 +156,7 @@ python decrypt.py \
 
 If you're interested in why we chose this algorithm this article provides [a high-level discussion and pointers to deeper references.](https://proandroiddev.com/security-best-practices-symmetric-encryption-with-aes-in-java-7616beaaade9){:target="_blank"} 
 
-## PKI/key pair
+## PKI-key pair
 
 For this proof-of-concept, we're using the key pair included in the bcda-app repository (i.e., [ATO_private.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem){:target="_blank"} and [ATO_public.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_public.pem){:target="_blank"}). Eventually, BCDA will use a public key provided by the API client to perform encryption. We'll document the process for accepting public keys from API clients at a later date.
 

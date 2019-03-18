@@ -16,6 +16,7 @@ ctas:
     link: ./user_guide.html
   - title: Join the BCDA Google Group
     link: https://groups.google.com/forum/#!forum/bc-api
+    target: _blank
 
 ---
 

@@ -23,16 +23,17 @@ ctas:
     link: ./encryption.html
   - title: Join the BCDA Google Group
     link: https://groups.google.com/forum/#!forum/bc-api
+    target: _blank
     
 ---
 # User Guide
-The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) to retrieve claims data for their Medicare beneficiaries. This includes claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care.
+The [Beneficiary Claims Data API (BCDA)](https://sandbox.bcda.cms.gov) enables Accountable Care Organizations (ACOs) to retrieve claims data for their Medicare beneficiaries. This includes claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care.
 
 While the BCDA sandbox is currently focused on the needs of Medicare Shared Savings Program ACOs, all are invited to use the sandbox and share their feedback.
 
 This API follows the workflow outlined by the [FHIR Bulk Data Export Proposal](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md){:target="_blank"}, using the [HL7 FHIR Standard](https://www.hl7.org/fhir/){:target="_blank"}. Claims data is provided as FHIR resources in [NDJSON](http://ndjson.org/){:target="_blank"} format.
 
-This guide serves as a starting point for users to begin working with the API. Comprehensive Swagger documentation about all BCDA endpoints is available in the sandbox environment [here](./api/v1/swagger/).
+This guide serves as a starting point for users to begin working with the API. [Comprehensive Swagger documentation about all BCDA endpoints is available in the sandbox environment.](./api/v1/swagger/)
 
 
 ## About APIs
@@ -44,7 +45,7 @@ Not familiar with APIs? Here are some great introductions:
 The Beneficiary Claims Data API is currently accessible as an open sandbox environment, which returns sample NDJSON files with synthetic beneficiary data. You can use the credentials below to view our implementation of the API, write a process for decrypting the payload, and learn the shape of the data before working with production files that include PII and PHI. There is no beneficiary PII or PHI in the files you can access via the sandbox.
 
 ## Encryption
-All data files are encrypted. Learn more about the [encryption strategy](./encryption.html)
+All data files are encrypted. Learn more about the [encryption strategy](./encryption.html).
 
 ## Environment
 The examples below include [cURL](https://curl.haxx.se/){:target="_blank"} commands, but may be followed using any tool that can make HTTP GET requests with headers, such as [Postman](https://www.getpostman.com/){:target="_blank"}.
@@ -489,7 +490,7 @@ The response will be the requested data as FHIR ExplanationOfBenefit resources i
 The process of retrieving patient data is very similar to exporting explanation of benefit data.
 
 #### 1. Obtain an access token
-See [Authentication and Authorization](#authentication-and-authorization){:target="_blank"} above.
+See [Authentication and Authorization](#authentication-and-authorization) above.
 
 #### 2. Initiate an export job
 
