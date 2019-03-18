@@ -39,7 +39,7 @@ You will be interacting with the [BCDA API](./user_guide.html) in your browser u
 
 - Open your browser and navigate to:
 
-### [https://sandbox.bcda.cms.gov/api/v1/swagger](./api/v1/swagger/)
+### [https://sandbox.bcda.cms.gov/api/v1/swagger](./api/v1/swagger/){:target="_blank"}
 <img src="assets/img/decrypt_demo_01.png" alt="Screenshot of swagger" width="400" />
 
 Provide your token to get full access to the API.
