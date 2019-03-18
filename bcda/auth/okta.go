@@ -120,11 +120,11 @@ func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	c := t.Claims.(jwt.MapClaims)
+	c := t.Claims.(*CommonClaims)
 
-	ok := c["iss"].(string) == o.backend.ServerID()
+	ok := c.Issuer == o.backend.ServerID()
 	if !ok {
-		return fmt.Errorf("invalid iss claim; %s <> %s", c["iss"].(string), o.backend.ServerID())
+		return fmt.Errorf("invalid iss claim; %s <> %s", c.Issuer, o.backend.ServerID())
 	}
 
 	err = c.Valid()
@@ -137,7 +137,7 @@ func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
 	// keep an in-memory cache of tokens we have revoked and check that
 	// use the introspection endpoint okta provides (expensive network call)
 
-	_, err = getACOByClientID(c["cid"].(string))
+	_, err = getACOByClientID(c.ClientID)
 	if err != nil {
 		return fmt.Errorf("invalid cid claim; %s", err)
 	}
@@ -164,7 +164,7 @@ func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		return &key, nil
 	}
 
-	return jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFinder)
+	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFinder)
 }
 
 func getACOByClientID(clientID string) (models.ACO, error) {

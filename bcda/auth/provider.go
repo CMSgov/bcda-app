@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
@@ -49,6 +49,12 @@ func GetProvider() Provider {
 	default:
 		return AlphaAuthPlugin{}
 	}
+}
+
+type AuthData struct {
+	ACOID   string
+	UserID  string
+	TokenID string
 }
 
 type Credentials struct {

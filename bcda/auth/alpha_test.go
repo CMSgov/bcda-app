@@ -125,7 +125,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	db := connections["TestRevokeClientCredentials"]
 	db.Save(&aco)
 
-	email := fmt.Sprintf("%s@revokeclientcredentialstes.com", testUtils.RandomHexID())
+	email := fmt.Sprintf("%s@revokeclientcredentialstest.com", testUtils.RandomHexID())
 	var user = models.User{
 		UUID:  uuid.NewRandom(),
 		Name:  "RevokeClientCredentials Test User",
@@ -205,7 +205,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	assert.NotNil(err)
 
 	// Revoke a token that doesn't exist
-	tokenString, _ := s.AuthBackend.GenerateTokenString(uuid.NewRandom().String(), acoID)
+	tokenString, _ := auth.TokenStringWithIDs(uuid.NewRandom().String(), uuid.NewRandom().String(), acoID)
 	err = s.p.RevokeAccessToken(tokenString)
 	assert.NotNil(err)
 	assert.True(gorm.IsRecordNotFoundError(err))
@@ -286,13 +286,13 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
 	userID := uuid.NewRandom().String()
 	acoID := uuid.NewRandom().String()
-	ts, _ := s.AuthBackend.GenerateTokenString(userID, acoID)
+	ts, _ := auth.TokenStringWithIDs(uuid.NewRandom().String(), userID, acoID)
 	t, err := s.p.DecodeJWT(ts)
-	c := t.Claims.(jwt.MapClaims)
+	c := t.Claims.(*auth.CommonClaims)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), &jwt.Token{}, t)
-	assert.Equal(s.T(), userID, c["sub"])
-	assert.Equal(s.T(), acoID, c["aco"])
+	assert.Equal(s.T(), userID, c.Subject)
+	assert.Equal(s.T(), acoID, c.ACOID)
 }
 
 func TestAlphaAuthPluginSuite(t *testing.T) {

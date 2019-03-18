@@ -31,3 +31,13 @@ create table tokens (
   value text not null,
   active boolean not null default false
 );
+
+create table beneficiaries (
+  id serial not null primary key,
+  blue_button_id text not null
+);
+
+create table acos_beneficiaries (
+  aco_id uuid not null,
+  beneficiary_id int not null
+);

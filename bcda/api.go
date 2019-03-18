@@ -39,18 +39,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bgentry/que-go"
+	fhirmodels "github.com/eug48/fhir/models"
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
-	fhirmodels "github.com/eug48/fhir/models"
-	"github.com/go-chi/chi"
-	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -109,21 +109,22 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		claims jwt.MapClaims
-		err    error
+		ad  auth.AuthData
+		err error
 	)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	if claims, err = readTokenClaims(r); err != nil {
+	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
 	}
 
-	acoId, _ := claims["aco"].(string)
-	userId, _ := claims["sub"].(string)
+
+	acoID := ad.ACOID
+	userID := ad.UserID
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -131,8 +132,8 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newJob := models.Job{
-		ACOID:      uuid.Parse(acoId),
-		UserID:     uuid.Parse(userId),
+		ACOID:      uuid.Parse(acoID),
+		UserID:     uuid.Parse(userID),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
@@ -143,32 +144,24 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	beneficiaryIds := []string{}
-	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
-	if err != nil {
+	var acoBeneficiaries []models.ACOBeneficiary
+	if db.Preload("Beneficiary").Find(&acoBeneficiaries, "aco_id = ?", acoID).RecordNotFound() {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-	var id string
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-		beneficiaryIds = append(beneficiaryIds, id)
+
+	beneficiaryIDs := []string{}
+	for _, acoBeneficiary := range acoBeneficiaries {
+		beneficiaryIDs = append(beneficiaryIDs, acoBeneficiary.Beneficiary.BlueButtonID)
 	}
 
 	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
 	// By default, our encryption process is enabled but for now we are giving users the ability to turn
 	// it off
 	// Eventually, we will remove the ability for users to turn it off and it will remain on always
-	var encrypt bool = true
+	var encrypt = true
 	param, ok := r.URL.Query()["encrypt"]
 	if ok && strings.ToLower(param[0]) == "false" {
 		encrypt = false
@@ -176,9 +169,9 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	args, err := json.Marshal(jobEnqueueArgs{
 		ID:             int(newJob.ID),
-		ACOID:          acoId,
-		UserID:         userId,
-		BeneficiaryIDs: beneficiaryIds,
+		ACOID:          acoID,
+		UserID:         userID,
+		BeneficiaryIDs: beneficiaryIDs,
 		ResourceType:   t,
 		// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 		Encrypt: encrypt,
@@ -494,44 +487,18 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
                 200: AuthResponse
 */
 func getAuthInfo(w http.ResponseWriter, r *http.Request) {
-        respMap := make(map[string]string)
-        respMap["auth_provider"] = auth.GetProviderName()
-        respBytes, err := json.Marshal(respMap)
-        if err != nil {
-                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
-
-        w.Header().Set("Content-Type", "application/json")
-        _, err = w.Write(respBytes)
-        if err != nil {
-                http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
-}
-
-func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
-	var (
-		claims jwt.MapClaims
-		err    error
-	)
-
-	t := r.Context().Value("token")
-	if token, ok := t.(*jwt.Token); ok && token.Valid {
-		claims, err = auth.ClaimsFromToken(token)
-		if err != nil {
-			log.Error(err)
-			return nil, err
-		}
-	} else {
-		err = errors.New("missing or invalid token")
-		log.Error(err)
-		return nil, err
+	respMap := make(map[string]string)
+	respMap["auth_provider"] = auth.GetProviderName()
+	respBytes, err := json.Marshal(respMap)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return claims, nil
-}
-
-func GetJobTimeout() time.Duration {
-	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(respBytes)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 // swagger:model fileItem
@@ -548,7 +515,7 @@ type fileItem struct {
 Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
 swagger:response completedJobResponse
 */
-//nolint
+// nolint
 type CompletedJobResponse struct {
 	// in: body
 	Body bulkResponseBody
@@ -568,3 +535,17 @@ type bulkResponseBody struct {
 	KeyMap map[string]string `json:"KeyMap"`
 	JobID  uint
 }
+
+func readAuthData(r *http.Request) (data auth.AuthData, err error) {
+	var ok bool
+	data, ok = r.Context().Value("ad").(auth.AuthData)
+	if !ok {
+		err = errors.New("no auth data in context")
+	}
+	return
+}
+
+func GetJobTimeout() time.Duration {
+	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+}
+

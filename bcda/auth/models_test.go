@@ -38,9 +38,9 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	expiresOn := time.Now().Add(time.Hour * time.Duration(72)).Unix()
 
 	tokenString, err := auth.GenerateTokenString(
-		tokenUUID,
-		userUUID,
-		acoUUID,
+		tokenUUID.String(),
+		userUUID.String(),
+		acoUUID.String(),
 		issuedAt,
 		expiresOn,
 	)
@@ -68,10 +68,10 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 
 func (s *BackendTestSuite) TestGenerateTokenString() {
 	var (
-		userUUID = uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
-		acoUUID  = uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+		userUUID = "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+		acoUUID  = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	)
-	token, err := auth.GenerateTokenString(uuid.NewRandom(), userUUID, acoUUID, time.Now().Unix(), time.Now().Add(time.Hour).Unix())
+	token, err := auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
 
 	// No errors, token is not nil
 	assert.Nil(s.T(), err)
@@ -82,7 +82,7 @@ func (s *BackendTestSuite) TestGenerateTokenString() {
 	s.AuthBackend.PublicKey = nil
 	defer s.AuthBackend.ResetAuthBackend()
 	assert.Panics(s.T(), func() {
-		_, _ = auth.GenerateTokenString(uuid.NewRandom(), userUUID, acoUUID, time.Now().Unix(), time.Now().Add(time.Hour).Unix())
+		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
 	})
 }
 
