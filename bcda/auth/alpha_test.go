@@ -164,21 +164,18 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
-	const clientID = "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
-	// the following code should be removed when we actually have alpha client credentials
-	var aco models.ACO
-	err := database.GetGORMDbConnection().Find(&aco, "UUID = ?", clientID).Error
-	require.Nil(s.T(), err)
-	aco.ClientID = clientID
-	err = database.GetGORMDbConnection().Save(aco).Error
-	require.Nil(s.T(), err)
-	// end of code to remove
-	tsExpression := regexp.MustCompile(`[^\.\s]+\.[^\.\s]+\.[^\.\s]+`)
-
-	ts, err := s.p.AccessToken(auth.Credentials{ClientID: clientID, ClientSecret: "hashed db value"})
+	cmsID := testUtils.RandomHexID()[0:4]
+	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
+	user, _ := models.CreateUser("Test Access Token", "testaccesstoken@examplecom", acoUUID)
+	cc, err := s.p.RegisterClient(acoUUID.String())
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), cc)
+	ts, err := s.p.AccessToken(auth.Credentials{ClientID: cc.ClientID, ClientSecret: cc.ClientSecret})
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), ts)
-	assert.Regexp(s.T(), tsExpression, ts)
+	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
+	connections["TestAccessToken"].Where("client_id = ?", cc.ClientID).Delete(&models.ACO{})
+	connections["TestAccessToken"].Delete(&user)
 
 	ts, err = s.p.AccessToken(auth.Credentials{})
 	assert.NotNil(s.T(), err)

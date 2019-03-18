@@ -41,7 +41,10 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	defer database.Close(db)
 	aco.ClientID = localID
 	aco.AlphaSecret = hashedSecret.String()
-	db.Save(&aco)
+	err = db.Save(&aco).Error
+	if err != nil {
+		return Credentials{}, err
+	}
 
 	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
 }
@@ -157,7 +160,7 @@ func (p AlphaAuthPlugin) AccessToken(credentials Credentials) (string, error) {
 		return "", fmt.Errorf("invalid credentials; %s",err)
 	}
 	// when we have ClientSecret in ACO, adjust following line
-	Hash(/*aco.ClientSecret*/"hashed db value").IsHashOf(credentials.ClientSecret)
+	Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret)
 	var user models.User
 	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
 		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
