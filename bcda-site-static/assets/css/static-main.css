@@ -5742,6 +5742,7 @@ header {
 
 .subnav {
     position: sticky;
+    position: -webkit-sticky;
     top: 24px
 }
 
@@ -6020,7 +6021,7 @@ pre {
 .button--white:hover {
     border: 2px #fff solid;
     background-color: #fff;
-    color: #323a45
+    color: #339392
 }
 
 footer:before {

@@ -14,15 +14,12 @@ layout: default
                 <p class="ds-text--lead">
                   {{ page.description | escape }}
                 </p>
+                <div class="ctas">
+                {% for item in page.ctas limit:2 %}
+                <a class="ds-c-button button--white" href="{{ item.link }}" aria-label="{{ item.title }}" target="_self">{{ item.title }} &rarr;</a>
+                {% endfor %}
+                </div>
 
-                <!--
-                  BCDA is not using the CTA's here
-                  <div class="ctas">
-                  {% for item in page.ctas limit:2 %}
-                  <a class="ds-c-button button--white" href="{{ item.link }}" aria-label="{{ item.title }}" target="_self">{{ item.title }} &rarr;</a>
-                  {% endfor %}
-                  </div>
-                  -->
               </div>
             </div>
           </div>
@@ -48,6 +45,15 @@ layout: default
 
     <article class="ds-l-col--12 ds-l-sm-col--7 {{ page.badge | slugify }}" id="main" role="main">
       {{ content }}
+
+      <div class="bcda_callout">
+        <p><img src="assets/img/google_logo.png" alt="Google Groups Logo" id="google_logo"> <strong>Have questions?</strong></p>
+
+        <p>The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.</p>
+        <div class="button">
+            <p ><a href="https://groups.google.com/forum/#!forum/bc-api" target="_blank">Join the BCDA Google Group</a></p>
+        </div>
+      </div>
       <a href="#site-top" class="ds-c-button ds-u-margin-top--4">Back to top</a>
     </article>
 
