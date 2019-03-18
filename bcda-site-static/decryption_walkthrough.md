@@ -22,14 +22,14 @@ To complete this decryption example, you will need:
 
 - The `token` given to you by the BCDA team, ready to paste into your browser
 - A file containing the example RSA `private key` ([example RSA private key](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem)) download
-- You can write your own decryption code later based on the [documentation](../API.md). We'll use the [python example decryption code](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4), which requires:
+- You can write your own decryption code later based on the [documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md). We'll use the [python example decryption code](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/decrypt.py), which requires:
     - [Python](https://www.python.org/downloads/) installed
-    - [decrypt.py](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/decrypt.py) and [requirements.txt](https://gist.githubusercontent.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4/raw/76191f339230f8c5085b711acd7482e74202168a/requirements.txt) downloaded to the same directory
+    - [decrypt.py](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/decrypt.py) and [requirements.txt](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/requirements.txt) downloaded to the same directory
     - Run `pip install requirements.txt` from that same directory to download any required libraries
 
 
 ### Exploring the API with Swagger
-You will be interacting with the [BCDA API](../API.md) in your browser using [Swagger](https://swagger.io). This will enable you to authenticate, make requests, and everything else the API provides.
+You will be interacting with the [BCDA API](https://github.com/CMSgov/bcda-app/blob/master/API.md) in your browser using [Swagger](https://swagger.io). This will enable you to authenticate, make requests, and everything else the API provides.
 
 - Open your browser and navigate to:
 
@@ -76,7 +76,7 @@ If you'd like to repeat this from the command line or implement this API call in
 <img src="assets/img/decrypt_demo_07.png" alt="Job status response" width="600" />
 
 1. Depending on the size of the file, the job may take some time.  If the job is not yet complete, status information will be shown.  Simply wait a few seconds and click execute again until the job completes. You will then get a result for a completed job as shown below.  We can download the file from the URL provided.
-1. Take special note of the new `KeyMap` section of the response.  To decrypt the file, we will need the filename (the first part of the keymap) and the [symmetric key](../ENCRYPTION.md#how-we-encrypt) (the second part of the keymap), as shown above.  There are no spaces in either one.
+1. Take special note of the new `KeyMap` section of the response.  To decrypt the file, we will need the filename (the first part of the keymap) and the [symmetric key](https://github.com/CMSgov/bcda-app/blob/master/ENCRYPTION.md#how-we-encrypt) (the second part of the keymap), as shown above.  There are no spaces in either one.
 1. Sometimes one or more data points are unavailable.  When this happens, the `error` section will contain a separate filename and symmetric key with a list of the patients involved.
 
 - Copy these values from the `KeyMap` (filename and symmetric key) for later.
@@ -122,8 +122,8 @@ Take a look at the result.  If you do not see unencrypted [NDJSON](http://ndjson
 <img src="assets/img/decrypt_demo_14.png" alt="Parsing decrypted file contents" width="900" />
 
 ### Reading further
-* [Encryption documentation](../ENCRYPTION.md)
-* [API documentation](../API.md)
+* [Encryption documentation](https://github.com/CMSgov/bcda-app/blob/master/ENCRYPTION.md)
+* [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
 
 ### Troubleshooting
 #### Authentication problems in Swagger
