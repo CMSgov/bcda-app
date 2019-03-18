@@ -138,15 +138,15 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		Status:     "Pending",
 	}
 	if result := db.Save(&newJob); result.Error != nil {
-		log.Error(err)
+		log.Error(result.Error.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
 	var acoBeneficiaries []models.ACOBeneficiary
-	if db.Preload("Beneficiary").Find(&acoBeneficiaries, "aco_id = ?", acoID).RecordNotFound() {
-		log.Error(err)
+	if err = db.Find(&acoBeneficiaries, "aco_id = ?", acoID).Error; err != nil {
+		log.Errorf("Error retrieving ACO-beneficiary with ACO ID %s: %s", acoID, err.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -154,7 +154,14 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	beneficiaryIDs := []string{}
 	for _, acoBeneficiary := range acoBeneficiaries {
-		beneficiaryIDs = append(beneficiaryIDs, acoBeneficiary.Beneficiary.BlueButtonID)
+		var beneficiary models.Beneficiary
+		if err = db.First(&beneficiary, acoBeneficiary.BeneficiaryID).Error; err != nil {
+			log.Errorf("Error retrieving beneficiary with ID %d: %s", acoBeneficiary.BeneficiaryID, err.Error())
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+		beneficiaryIDs = append(beneficiaryIDs, beneficiary.BlueButtonID)
 	}
 
 	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
