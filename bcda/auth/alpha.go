@@ -26,6 +26,10 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 		return Credentials{}, err
 	}
 
+	if aco.AlphaSecret != "" {
+		return Credentials{}, fmt.Errorf("aco %s has a secret", localID)
+	}
+
 	s, err := generateClientSecret()
 	if err != nil {
 		return Credentials{}, err
@@ -36,6 +40,7 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
+	aco.ClientID = localID
 	aco.AlphaSecret = hashedSecret
 	db.Save(&aco)
 
