@@ -1,8 +1,29 @@
-# File Encryption in BCDA
+---
+layout: home
+title:  "File Encryption in BCDA"
+date:   2017-10-30 09:21:12 -0500
+description: How and why the bulk beneficiary claims file is encrypted, and tips for decrypting.
+landing-page: live
+gradient: "blueberry-lime-background"
+subnav-link-gradient: "blueberry-lime-link"
+sections:
+  - How we encrypt
+  - Show me the code
+  - PKI-key pair
+  
+ctas:
+
+  - title: Visit the BCDA User Guide
+    link: ./user_guide.html
+  - title: View a decryption example
+    link: ./decryption.html
+---
+
+# About File Encryption
 
 **NOTE:** Implementation of per-client payload encryption is still in progress. Please consider this document a draft explaining the fundamentals of BCDA's encryption strategy.
 
-When we deliver files via our data endpoint, we encrypt before sending them. You may wonder why we encrypt the files, since they are already being delivered via an encrypted channel (i.e., `https`). We do so for additional protection of all interested parties -- ourselves, you, and beneficiaries -- in the event of accidental or malicious activity like:
+When we deliver files via our data endpoint, we encrypt before sending them. You may wonder why we encrypt the files, since they are already being delivered via an encrypted channel (i.e., `https`). We do so for additional protection of all interested parties -- ourselves, you, and beneficiaries -- in the event of accidental or malicious activity such as:
 
 * A malicious party steals your credentials or an access token. The party can make requests and download files, but can't read the data without being able to decrypt it.
 * A malicious party intercepts a file in transit. They can't read the data without being able to decrypt it.
@@ -17,15 +38,15 @@ Some best practices you can observe include:
 
 ## How we encrypt
 
-We encrypt the file as the last step in producing it, immediately before we return a final job status (the one that has a body and no `X-Progress` header). Please see [API.md](https://github.com/CMSgov/bcda-app/blob/master/API.md) for more on job status.
+We encrypt the file as the last step in producing it, immediately before we return a final job status (the one that has a body and no `X-Progress` header). Please see [our getting started guide](./user_guide.html) for more on job status.
 
 The steps in our encryption process are:
 
 1. Generate a random 32 byte / 256 bit symmetric encryption key.
 1. Generate a random nonce (also known as an Initialization Value, or IV).
 1. Read the data from the file.
-1. Use the the nonce and encryption key to encrypt the data with the AES-GCM algorithm. We do not append additional data. The resulting cipher text output begins with a byte indicating the size of the nonce, the nonce itself, and the encrypted data, and the additional data.
-1. Encrypt the symmetric key using an RSA public key you provided us (**TODO:** the process of communicating public keys to BCDA is to be determined, notes follow below). We use the filename as the label.  
+1. We use the nonce and encryption key to encrypt the data with the AES-GCM algorithm. We do not append additional data. The resulting cipher text output begins with a byte indicating the size of the nonce, the nonce itself, then the encrypted data, and finally the additional data.
+1. Encrypt the symmetric key using an RSA public key you provided us. We use the filename as the label.  
 1. Write the encrypted file to the appropriate data directory.
 1. Return the encrypted keys as hex-encoded strings in the body of the final job status method, along with file download urls and other information. There can be two files, a data file and an error file. Each file will be encrypted with a different symmetric key. An example body follows:
 
@@ -54,7 +75,7 @@ The steps in our encryption process are:
 }
 ```
 
-The `KeyMap` object within our job status response has keys, values: `"<filename/label>": "<hex-encoded-symmetric-key>"`for each of the files listed in the `output` attribute of the response.
+The `KeyMap` object within our job status response has keys, values: `"<filename/label>": "<hex-encoded-symmetric-key>"` for each of the files listed in the `output` attribute of the response.
 
 When you receive the final job status response, you should save the keys associated with the files so that they are available to you when you are ready to decrypt the file(s). You should also save the `output.url` and the `error.url`.
 
@@ -75,7 +96,7 @@ Exactly how these steps are accomplished in code will vary with language and pla
 * Saved the encrypted symmetric key 
 * Downloaded the file
 * Access to the RSA private key
-* Sufficient memory to decode the file in one go (**TODO**: we should provide a formula here for calculating memory needs)
+* Sufficient memory to decode the file in one pass
 
 ### These examples all do the following
 
@@ -93,9 +114,9 @@ Notes:
 
 - Example invocations are based on the filenames and symmetric keys included in the sample job status response above.
 - These examples interpret the basename of the input file as the label to use during decryption. **It's important that the filename match what was sent in the job status response.**
-- The sample private key used for this proof-of-concept is included in the [bcda-app repository](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem).
+- The sample private key used for this proof-of-concept is included in the [bcda-app repository](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem){:target="_blank"}.
 
-[C#](https://gist.github.com/dhgreene/5b2307a6b6caf4add18a91e3936ee71a)
+[C#](https://github.com/CMSgov/bcda-app/tree/master/encryption_utils/C%23){:target="_blank"}
 ```bash
 dotnet run decrypt.cs \
 	--file /path/to/0c527d2e-2e8a-4808-b11d-0fa06baf8254.ndjson \
@@ -106,7 +127,7 @@ dotnet run decrypt.cs \
 ```
 
 
-[Golang](https://gist.github.com/rnagle/f18099029460c7150cb5d68c3e06cb48)
+[Golang](https://github.com/CMSgov/bcda-app/blob/master/decryption_utils/Go/decrypt.go){:target="_blank"}
 
 ```bash
 go build decrypt.go
@@ -118,7 +139,7 @@ go build decrypt.go
 
 ```
 
-[Python](https://gist.github.com/rnagle/a2b8ecb7905337afaf00c060024d4fb4)
+[Python](https://github.com/CMSgov/bcda-app/tree/master/encryption_utils/Python){:target="_blank"}
 
 ```bash
 python decrypt.py \
@@ -128,18 +149,14 @@ python decrypt.py \
 	> decrypted_output.ndjson
 ```
 
-Java (in progress)
+*Java (in progress)*
 
 
 ### Why this cipher
 
-If you're interested in why we chose this algorithm, read [this page](https://proandroiddev.com/security-best-practices-symmetric-encryption-with-aes-in-java-7616beaaade9), which provides a high-level discussion and pointers to deeper references.
+If you're interested in why we chose this algorithm this article provides [a high-level discussion and pointers to deeper references.](https://proandroiddev.com/security-best-practices-symmetric-encryption-with-aes-in-java-7616beaaade9){:target="_blank"} 
 
-## PKI/key pair
+## PKI-key pair
 
-**TODO:** For this proof-of-concept, we're using the key pair included in the bcda-app repository (i.e., [ATO_private.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem) and [ATO_public.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_public.pem)). Eventually, BCDA will use a public key provided by the API client to perform encryption. We'll document the process for accepting public keys from API clients at a later date.
+For this proof-of-concept, we're using the key pair included in the bcda-app repository (i.e., [ATO_private.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem){:target="_blank"} and [ATO_public.pem](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_public.pem){:target="_blank"}). Eventually, BCDA will use a public key provided by the API client to perform encryption. We'll document the process for accepting public keys from API clients at a later date.
 
-## Limitations and Gotchas
-
-* Encrypted data size is limited to 64GB
-* If you are using Java, you need to know [this](https://stackoverflow.com/questions/6481627/java-security-illegal-key-size-or-default-parameters)

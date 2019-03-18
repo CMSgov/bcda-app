@@ -26,15 +26,25 @@
 
   <link rel="stylesheet" href="/assets/css/static-main.css" />
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-133491498-1"></script>
+    <script async src="https://www.google-analytics.com/analytics.js"></script>
+    <script async src="/assets/js/autotrack.js"></script>
     <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
+        window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+        ga('create', 'UA-133491498-1', 'auto');
 
-        gtag('config', 'UA-133491498-1');
+        // Implementing the following trackers via auto track
+        // https://github.com/googleanalytics/autotrack
+        ga('require', 'eventTracker');
+        ga('require', 'impressionTracker');
+        ga('require', 'mediaQueryTracker');
+        ga('require', 'maxScrollTracker');
+        ga('require', 'outboundLinkTracker');
+        ga('require', 'urlChangeTracker');
+        ga('require', 'pageVisibilityTracker');
+
+        // send the pageview
+        ga('send', 'pageview');
     </script>
-
 </head>
 
 

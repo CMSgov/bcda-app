@@ -26,15 +26,25 @@
 
   <link rel="stylesheet" href="/assets/css/static-main.css" />
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-133491498-1"></script>
+    <script async src="https://www.google-analytics.com/analytics.js"></script>
+    <script async src="/assets/js/autotrack.js"></script>
     <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
+        window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+        ga('create', 'UA-133491498-1', 'auto');
 
-        gtag('config', 'UA-133491498-1');
+        // Implementing the following trackers via auto track
+        // https://github.com/googleanalytics/autotrack
+        ga('require', 'eventTracker');
+        ga('require', 'impressionTracker');
+        ga('require', 'mediaQueryTracker');
+        ga('require', 'maxScrollTracker');
+        ga('require', 'outboundLinkTracker');
+        ga('require', 'urlChangeTracker');
+        ga('require', 'pageVisibilityTracker');
+
+        // send the pageview
+        ga('send', 'pageview');
     </script>
-
 </head>
 
 
@@ -101,15 +111,14 @@
                 <p class="ds-text--lead">
                   Shared Savings Program ACOs can use this FHIR-based API to retrieve bulk Medicare claims data related to their assignable or prospectively assigned beneficiaries. Under construction; feedback invited.
                 </p>
+                <div class="ctas">
+                
+                <a class="ds-c-button button--white" href="./user_guide.html" aria-label="Visit the BCDA User Guide" target="_blank">Visit the BCDA User Guide &rarr;</a>
+                
+                <a class="ds-c-button button--white" href="https://groups.google.com/forum/#!forum/bc-api" aria-label="Join the BCDA Google Group" target="_blank">Join the BCDA Google Group &rarr;</a>
+                
+                </div>
 
-                <!--
-                  BCDA is not using the CTA's here
-                  <div class="ctas">
-                  
-                  <a class="ds-c-button button--white" href="https://groups.google.com/forum/#!forum/bc-api" aria-label="Visit the BCDA Google Group" target="_self">Visit the BCDA Google Group &rarr;</a>
-                  
-                  </div>
-                  -->
               </div>
             </div>
           </div>
@@ -126,11 +135,9 @@
         <h5 class="sr-only" id="page-sub-nav">Page navigation links</h5>
         <ul class="ds-c-list ds-c-list--bare" id="mainNav" aria-labelledby="page-sub-nav">
           
-            <li><a href="#overview" aria-label="Overview section, current page" class="ds-u-display--block blueberry-lime-link" aria-label="Overview section, current page">Overview</a></li>
+            <li><a href="#getting-started" aria-label="Getting Started section, current page" class="ds-u-display--block blueberry-lime-link" aria-label="Getting Started section, current page">Getting Started</a></li>
           
             <li><a href="#what-we-ve-learned" aria-label="What We've Learned section, current page" class="ds-u-display--block blueberry-lime-link" aria-label="What We've Learned section, current page">What We've Learned</a></li>
-          
-            <li><a href="#how-can-i-learn-more" aria-label="How Can I Learn More section, current page" class="ds-u-display--block blueberry-lime-link" aria-label="How Can I Learn More section, current page">How Can I Learn More</a></li>
           
             <li><a href="#about-the-data" aria-label="About the Data section, current page" class="ds-u-display--block blueberry-lime-link" aria-label="About the Data section, current page">About the Data</a></li>
           
@@ -140,11 +147,11 @@
 
 
     <article class="ds-l-col--12 ds-l-sm-col--7 " id="main" role="main">
-      <h2 id="overview">Overview</h2>
+      <h1 id="overview">Overview</h1>
 
 <p>The Beneficiary Claims Data API (BCDA) will enable Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their assigned or assignable beneficiaries. This includes Medicare claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care. When it is in production, the API will provide similar data to Claim and Claim Line Feed (CCLF) files, currently provided monthly to Shared Savings Program ACOs by CMS.</p>
 
-<p>As of January 2019, the Beneficiary Claims Data API is a work in progress.</p>
+<p>Developers, analysts, and administrators at Shared Savings Program ACOs are invited to try out the BCDA sandbox experience. Learn more and obtain credentials by visiting the BCDA <a href="./user_guide.html">user guide</a>.</p>
 
 <ul>
   <li>
@@ -154,8 +161,16 @@
     <p>We’re providing this test experience and documentation early so we can learn from Shared Savings Program ACOs and their vendor partners who need to access this information, about what works best for them. Through conversations and test drives, we strive to learn what ACOs need from bulk beneficiary claims data, and create a process that meets their needs.</p>
   </li>
   <li>
-    <p>Developers, analysts, and administrators at Shared Savings Program ACOs are invited to participate in this pilot process by joining our Google Group.</p>
+    <p>While the initial iteration of the sandbox focuses on Shared Savings Program ACOs, all ACOs and their vendor partners are invited to explore the sandbox and give their feedback.</p>
   </li>
+</ul>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<ul>
+  <li><a href="./user_guide.html">User Guide</a></li>
+  <li><a href="./encryption.html">Encryption Overview</a></li>
+  <li><a href="./api/v1/swagger">Swagger Documentation</a></li>
 </ul>
 
 <h2 id="what-we-ve-learned">What has been learned so far from ACOs in the pilot?</h2>
@@ -170,24 +185,6 @@
 </ul>
 
 <p>BCDA will continue to take an iterative approach to testing and learning from its users.</p>
-
-<ul>
-  <li class="bcda_callout no_list" id="how-can-i-learn-more">
-    <p><img src="assets/img/google_logo.png" alt="Google Groups Logo" id="google_logo" /> <strong>How can I learn more about BCDA?</strong></p>
-
-    <ul>
-      <li class="no_list">
-        <p>The BCDA is still in development. Please join the <a href="https://groups.google.com/forum/#!forum/bc-api" target="_blank">Google Group</a> to receive updates.</p>
-      </li>
-      <li class="no_list">
-        <p>The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.</p>
-      </li>
-      <li class="button no_list">
-        <p><a href="https://groups.google.com/forum/#!forum/bc-api" target="_blank">Join the BCDA Google Group</a></p>
-      </li>
-    </ul>
-  </li>
-</ul>
 
 <h2 id="about-the-data">About the Data</h2>
 
@@ -218,6 +215,15 @@
   <li>BCDA provides FHIR-formatted bulk data files to an ACO for all of the beneficiaries eligible to a given Shared Savings Program ACO. BCDA does not require individual beneficiary authorization.</li>
 </ul>
 
+
+      <div class="bcda_callout">
+        <p><img src="assets/img/google_logo.png" alt="Google Groups Logo" id="google_logo"> <strong>Have questions?</strong></p>
+
+        <p>The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.</p>
+        <div class="button">
+            <p ><a href="https://groups.google.com/forum/#!forum/bc-api" target="_blank">Join the BCDA Google Group</a></p>
+        </div>
+      </div>
       <a href="#site-top" class="ds-c-button ds-u-margin-top--4">Back to top</a>
     </article>
 
