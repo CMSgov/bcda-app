@@ -1,4 +1,4 @@
-package auth_test
+package auth
 
 import (
 	"testing"
@@ -9,21 +9,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type ModelsTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	db *gorm.DB
 }
 
 func (s *ModelsTestSuite) SetupTest() {
-	// Setup the DB
-	auth.InitializeGormModels()
+	InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
-	s.SetupAuthBackend()
+	setAuthTestKeyEnvVars()
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
@@ -37,7 +34,7 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	issuedAt := time.Now().Unix()
 	expiresOn := time.Now().Add(time.Hour * time.Duration(72)).Unix()
 
-	tokenString, err := auth.GenerateTokenString(
+	tokenString, err := GenerateTokenString(
 		tokenUUID.String(),
 		userUUID.String(),
 		acoUUID.String(),
@@ -49,10 +46,9 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	assert.NotNil(s.T(), tokenString)
 
 	// Get the claims of the token to find the token ID that was created
-	token := auth.Token{
+	token := Token{
 		UUID:      tokenUUID,
 		UserID:    userUUID,
-		Value:     tokenString,
 		Active:    true,
 		ACOID:     acoUUID,
 		IssuedAt:  issuedAt,
@@ -60,30 +56,10 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	}
 	s.db.Create(&token)
 
-	var savedToken auth.Token
+	var savedToken Token
 	s.db.Find(&savedToken, "UUID = ?", tokenUUID)
 	assert.NotNil(s.T(), savedToken)
 	assert.Equal(s.T(), tokenString, savedToken.TokenString)
-}
-
-func (s *BackendTestSuite) TestGenerateTokenString() {
-	var (
-		userUUID = "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-		acoUUID  = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	)
-	token, err := auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
-
-	// No errors, token is not nil
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), token)
-
-	// Wipe the keys
-	s.AuthBackend.PrivateKey = nil
-	s.AuthBackend.PublicKey = nil
-	defer s.AuthBackend.ResetAlphaBackend()
-	assert.Panics(s.T(), func() {
-		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
-	})
 }
 
 func TestModelsTestSuite(t *testing.T) {

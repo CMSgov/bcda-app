@@ -3,6 +3,7 @@ package models
 import (
 	"crypto/rsa"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -12,7 +13,7 @@ import (
 )
 
 func InitializeGormModels() *gorm.DB {
-	fmt.Print("Initialize bcda models")
+	log.Println("Initialize bcda models")
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
