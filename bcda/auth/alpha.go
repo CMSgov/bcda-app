@@ -35,13 +35,10 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	hash := Hash{}
-	hashedSecret := hash.Generate(s)
-
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	aco.ClientID = localID
-	aco.AlphaSecret = hashedSecret
+	aco.AlphaSecret = string(NewHash(s))
 	db.Save(&aco)
 
 	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
@@ -148,12 +145,27 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return nil
 }
 
-// Manufactures an access token for the given credentials
-func (p AlphaAuthPlugin) AccessToken(credentials Credentials) (*jwt.Token, error) {
-	return nil, nil
+// AcessToken manufactures an access token for the given credentials
+func (p AlphaAuthPlugin) AccessToken(credentials Credentials) (string, error) {
+	if credentials.ClientSecret == "" || credentials.ClientID == "" {
+		return "", fmt.Errorf("missing or incomplete credentials")
+	}
+	aco, err := getACOByClientID(credentials.ClientID)
+	if err != nil {
+		return "", fmt.Errorf("invalid credentials; %s",err)
+	}
+	// when we have ClientSecret in ACO, adjust following line
+	Hash(/*aco.ClientSecret*/"hashed db value").IsHashOf(credentials.ClientSecret)
+	var user models.User
+	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
+		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
+	}
+	issuedAt := time.Now().Unix()
+	expiresAt := time.Now().Add(time.Hour * time.Duration(tokenTTL)).Unix()
+	return GenerateTokenString(uuid.NewRandom().String(), user.UUID.String(), aco.UUID.String(), issuedAt, expiresAt)
 }
 
-// generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
+// RequestAccessToken generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
 func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
 	var userUUID, acoUUID uuid.UUID
 	var user models.User

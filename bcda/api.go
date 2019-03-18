@@ -402,7 +402,7 @@ func getAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	// https://tools.ietf.org/html/rfc6749#section-5.1
 	// not included: recommended field expires_in
-	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token.Raw))
+	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token))
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")

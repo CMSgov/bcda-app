@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -130,4 +131,12 @@ func someRandomBytes(n int) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+func RandomBase64(n int) string {
+	b, err := someRandomBytes(20)
+	if err != nil {
+		return "not_a_random_base_64_string"
+	}
+	return base64.StdEncoding.EncodeToString(b)
 }

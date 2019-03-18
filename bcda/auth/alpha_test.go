@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
@@ -60,8 +61,7 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
 	var aco models.ACO
 	aco.UUID = acoUUID
 	connections["TestRegisterClient"].Find(&aco, "UUID = ?", acoUUID)
-	h := auth.Hash{}
-	assert.True(s.T(), h.Compare(aco.AlphaSecret, c.ClientSecret))
+	assert.True(s.T(), auth.Hash(aco.AlphaSecret).IsHashOf(c.ClientSecret))
 	defer connections["TestRegisterClient"].Delete(&aco)
 
 	c, err = s.p.RegisterClient(acoUUID.String())
@@ -161,6 +161,44 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
 	assert.False(token.Active)
 
 	db.Delete(&token, &user, &aco)
+}
+
+func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
+	const clientID = "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	// the following code should be removed when we actually have alpha client credentials
+	var aco models.ACO
+	err := database.GetGORMDbConnection().Find(&aco, "UUID = ?", clientID).Error
+	require.Nil(s.T(), err)
+	aco.ClientID = clientID
+	err = database.GetGORMDbConnection().Save(aco).Error
+	require.Nil(s.T(), err)
+	// end of code to remove
+	tsExpression := regexp.MustCompile(`[^\.\s]+\.{1}[^\.\s]+\.{1}[^\.\s]+`)
+
+	ts, err := s.p.AccessToken(auth.Credentials{ClientID: clientID, ClientSecret: "hashed db value"})
+	assert.Nil(s.T(), err)
+	assert.NotEmpty(s.T(), ts)
+	assert.Regexp(s.T(), tsExpression, ts)
+
+	ts, err = s.p.AccessToken(auth.Credentials{})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials")
+
+	ts, err = s.p.AccessToken(auth.Credentials{ClientID:uuid.NewRandom().String()})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials")
+
+	ts, err = s.p.AccessToken(auth.Credentials{ClientSecret:testUtils.RandomBase64(20)})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials")
+
+	ts, err = s.p.AccessToken(auth.Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "invalid credentials")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
