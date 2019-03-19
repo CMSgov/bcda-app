@@ -7,29 +7,37 @@ landing-page: live
 gradient: "blueberry-lime-background"
 subnav-link-gradient: "blueberry-lime-link"
 sections:
-  - Overview
+  - Getting Started
   - What We've Learned
-  - How Can I Learn More
   - About the Data
 ctas:
-  -
-    title: Visit the BCDA Google Group
+
+  - title: Visit the BCDA User Guide
+    link: ./user_guide.html
+  - title: Join the BCDA Google Group
     link: https://groups.google.com/forum/#!forum/bc-api
+    target: _blank
 
 ---
 
 
-## Overview
+# Overview
 
   The Beneficiary Claims Data API (BCDA) will enable Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their assigned or assignable beneficiaries. This includes Medicare claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care. When it is in production, the API will provide similar data to Claim and Claim Line Feed (CCLF) files, currently provided monthly to Shared Savings Program ACOs by CMS.
-  
-  As of January 2019, the Beneficiary Claims Data API is a work in progress.
 
+   Developers, analysts, and administrators at Shared Savings Program ACOs are invited to try out the BCDA sandbox experience. Learn more and obtain credentials by visiting the BCDA [user guide](./user_guide.html).
+   
    * We’re currently providing synthetic data that resembles the kinds of data Shared Savings Program ACOs will receive by connecting with this endpoint, so that they can try out different ways of interacting with the API before receiving live data.
 
    * We’re providing this test experience and documentation early so we can learn from Shared Savings Program ACOs and their vendor partners who need to access this information, about what works best for them. Through conversations and test drives, we strive to learn what ACOs need from bulk beneficiary claims data, and create a process that meets their needs.
 
-   * Developers, analysts, and administrators at Shared Savings Program ACOs are invited to participate in this pilot process by joining our Google Group.
+   * While the initial iteration of the sandbox focuses on Shared Savings Program ACOs, all ACOs and their vendor partners are invited to explore the sandbox and give their feedback.
+
+## Getting Started
+
+   * [User Guide](./user_guide.html)
+   * [Encryption Overview](./encryption.html)
+   * [Swagger Documentation](./api/v1/swagger)
 
 ## What has been learned so far from ACOs in the pilot?
 {:#what-we-ve-learned}
@@ -42,16 +50,6 @@ ctas:
    * Formatting data in accordance with robust Fast Health Interoperability Resource ([FHIR](https://www.hl7.org/fhir/overview.html){:target="_blank"}) specifications
 
    BCDA will continue to take an iterative approach to testing and learning from its users.
-
-
-* {:.bcda_callout .no_list #how-can-i-learn-more} ![Google Groups Logo](assets/img/google_logo.png){:#google_logo} **How can I learn more about BCDA?** 
-
-   * {:.no_list} The BCDA is still in development. Please join the [Google Group](https://groups.google.com/forum/#!forum/bc-api){:target="_blank"} to receive updates.
-
-   * {:.no_list} The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.
-
-   * {:.button .no_list}[Join the BCDA Google Group](https://groups.google.com/forum/#!forum/bc-api){:target="_blank"}
-
 
 
 ## About the Data

@@ -50,20 +50,29 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterClient() {
-	c, err := s.p.RegisterClient(auth.KnownFixtureACO)
+	cmsID := testUtils.RandomHexID()[0:4]
+	acoUUID, _ := models.CreateACO("TestRegisterClient", &cmsID)
+	c, err := s.p.RegisterClient(acoUUID.String())
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
-	assert.Equal(s.T(), auth.KnownFixtureACO, c.ClientID)
+	assert.NotEqual(s.T(), "", c.ClientSecret)
+	assert.Equal(s.T(), acoUUID.String(), c.ClientID)
+	var aco models.ACO
+	aco.UUID = acoUUID
+	connections["TestRegisterClient"].Find(&aco, "UUID = ?", acoUUID)
+	h := auth.Hash{}
+	assert.True(s.T(), h.Compare(aco.AlphaSecret, c.ClientSecret))
+	defer connections["TestRegisterClient"].Delete(&aco)
+
+	c, err = s.p.RegisterClient(acoUUID.String())
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), c.ClientID)
+	assert.Contains(s.T(), err.Error(), "has a secret")
 
 	c, err = s.p.RegisterClient("")
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c.ClientID)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
-
-	c, err = s.p.RegisterClient("correct length, but not a valid UUID")
-	assert.NotNil(s.T(), err)
-	assert.Empty(s.T(), c.ClientID)
-	assert.Contains(s.T(), err.Error(), "valid UUID string")
 
 	c, err = s.p.RegisterClient(uuid.NewRandom().String())
 	assert.NotNil(s.T(), err)
