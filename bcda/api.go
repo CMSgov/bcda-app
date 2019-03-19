@@ -391,18 +391,23 @@ func getAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.GetProvider().GetAccessToken(auth.Credentials{UserID: clientId, ClientSecret: secret})
+	token, err := auth.GetProvider().GetAccessToken(auth.Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
-	body := []byte(fmt.Sprintf(`{"access_token": "%s"}`, token.TokenString))
+	// https://tools.ietf.org/html/rfc6749#section-5.1
+	// not included: recommended field expires_in
+	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token.TokenString))
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+	log.WithField("client_id", clientId).Println("issued access token")
 }
 
 func getToken(w http.ResponseWriter, r *http.Request) {
