@@ -44,7 +44,7 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	aco.AlphaSecret = hashedSecret
 	db.Save(&aco)
 
-	return Credentials{ClientID: localID, ClientSecret: s}, nil
+	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
 }
 
 func generateClientSecret() (string, error) {
