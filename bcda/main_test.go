@@ -234,8 +234,8 @@ func (s *MainTestSuite) TestCreateToken() {
 }
 
 func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
-	originalAuthProvider := auth.GetProviderName()
-	defer auth.SetProvider(originalAuthProvider)
+	originalAuthProvider := auth.GetProviderName()  // remove with BCDA-1022
+	defer auth.SetProvider(originalAuthProvider)    // remove with BCDA-1022
 
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
