@@ -150,8 +150,8 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return nil
 }
 
-// AcessToken manufactures an access token for the given credentials
-func (p AlphaAuthPlugin) AccessToken(credentials Credentials) (string, error) {
+// MakeAccessToken manufactures an access token for the given credentials
+func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
 	if credentials.ClientSecret == "" || credentials.ClientID == "" {
 		return "", fmt.Errorf("missing or incomplete credentials")
 	}

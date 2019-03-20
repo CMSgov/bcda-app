@@ -82,8 +82,8 @@ type Provider interface {
 	// RevokeClientCredentials any existing Credentials for the given clientID
 	RevokeClientCredentials(clientID string) error
 
-	// AccessToken mints an access token for the given credentials
-	AccessToken(credentials Credentials) (string, error)
+	// MakeAccessToken mints an access token for the given credentials
+	MakeAccessToken(credentials Credentials) (string, error)
 
 	// RequestAccessToken mints an access token with a specific time-to-live for the given clientID
 	RequestAccessToken(credentials Credentials, ttl int) (Token, error)
