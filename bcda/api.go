@@ -19,12 +19,16 @@
      Security:
      - api_key:
 
-
      SecurityDefinitions:
      api_key:
           type: apiKey
           name: Authorization
           in: header
+     basic_auth:
+          type: basic
+          name: Authorization
+          in: header
+
  swagger:meta
 */
 package main
@@ -367,14 +371,15 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 
 	Get access token
 
-	Verifies Basic authentication credentials, and returns a JWT token that can be presented to the other API endpoints.
+	Verifies Basic authentication credentials, and returns a JWT bearer token that can be presented to the other API endpoints.
 
 	Produces:
 	- application/json
 
-	Security: basic_auth
-
 	Schemes: https
+
+	Security:
+		basic_auth:
 
 	Responses:
 		200: tokenResponse
