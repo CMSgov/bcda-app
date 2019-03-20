@@ -17,16 +17,14 @@
      - application/json
 
      Security:
-	 - api_key:
-	 - basic_auth:
+     - api_key:
+
 
      SecurityDefinitions:
      api_key:
           type: apiKey
           name: Authorization
-		  in: header
-	 basic_auth:
-		  type: basic
+          in: header
  swagger:meta
 */
 package main
