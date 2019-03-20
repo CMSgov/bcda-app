@@ -7,7 +7,7 @@
 <input type="text" id="code{{ nanosecond }}" style="position: absolute;left: -1000px;" value="{{ code }}"/>
 <div class="button" on>
     <p>
-        <a href="javascript:void()" onclick="copyText{{ nanosecond }}()" id="copybutton{{ nanosecond }}">
+        <a href="javascript:void(0)" onclick="copyText{{ nanosecond }}()" id="copybutton{{ nanosecond }}">
           Copy to clipboard
         </a>
     </p>
