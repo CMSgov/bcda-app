@@ -188,6 +188,20 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
+func (s *LoggingMiddlewareTestSuite) TestRedact() {
+	uri := "https://www.example.com/api/endpoint?Authorization=Bearer%20abcdef.12345"
+	redacted := logging.Redact(uri)
+	assert.Equal(s.T(), "https://www.example.com/api/endpoint?Authorization=Bearer%20<redacted>", redacted)
+
+	uri = "https://www.example.com/api/endpoint?Authorization=Bearer%20abcdef.12345&Authorization=Bearer%2019dgks8gfasdf&foo=bar"
+	redacted = logging.Redact(uri)
+	assert.Equal(s.T(), "https://www.example.com/api/endpoint?Authorization=Bearer%20<redacted>&Authorization=Bearer%20<redacted>&foo=bar", redacted)
+
+	uri = "https://www.example.com/api/endpoint?foo=bar"
+	redacted = logging.Redact(uri)
+	assert.Equal(s.T(), uri, redacted)
+}
+
 func TestLoggingMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(LoggingMiddlewareTestSuite))
 }
