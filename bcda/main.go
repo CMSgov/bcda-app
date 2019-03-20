@@ -14,8 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"

@@ -48,7 +48,7 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 }
 
 func generateClientSecret() (string, error) {
-	b := make([]byte, 20)
+	b := make([]byte, 40)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", err
