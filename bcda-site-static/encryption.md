@@ -16,7 +16,7 @@ ctas:
   - title: Visit the BCDA User Guide
     link: ./user_guide.html
   - title: View a decryption example
-    link: ./decryption.html
+    link: ./decryption_walkthrough.html
 ---
 
 # About File Encryption
