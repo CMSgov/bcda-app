@@ -11,10 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
 
@@ -25,7 +23,6 @@ import (
 )
 
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
-const TOKENHEADER string = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9."
 
 type MainTestSuite struct {
 	testUtils.AuthTestSuite
@@ -236,22 +233,6 @@ func (s *MainTestSuite) TestCreateToken() {
 	buf.Reset()
 }
 
-func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
-	assert := assert.New(s.T())
-	assert.NotNil(tokenInfo)
-	if len(tokenInfo) == 0 {
-		assert.FailNow("tokenInfo has no content")
-	}
-	lines := strings.Split(tokenInfo, "\n")
-	assert.Equal(3, len(lines))
-	expDate, err := time.Parse(time.RFC850, lines[0])
-	assert.Nil(err)
-	assert.NotNil(expDate)
-	assert.Regexp("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}", lines[1], "no correctly formatted token id in second line %s", lines[1])
-	assert.True(strings.HasPrefix(lines[2], TOKENHEADER), "incorrect token header %s", lines[2])
-	assert.InDelta(500, len(tokenInfo), 100, "encoded token string length should be 500+-100; it is %d\n%s", len(tokenInfo), lines[2])
-}
-
 func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
@@ -261,13 +242,7 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
-	var outputPattern *regexp.Regexp
-	switch auth.GetProvider().(type) {
-	case auth.AlphaAuthPlugin:
-		outputPattern = regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}\n.+\..+\..+\n`)
-	case auth.OktaAuthPlugin:
-		outputPattern = regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[!-~]{16}\n\[!-~]{32}n`)
-	}
+	outputPattern := regexp.MustCompile(`.+\n.+\n.+`)
 
 	// execute positive scenarios via CLI
 	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
@@ -312,22 +287,6 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	err = s.testApp.Run(args)
 	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-
-	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
-	// (this is required in order to validate the strings returned)
-
-	alphaTokenInfo, err := createAlphaToken(1, "Dev")
-	assert.Nil(err)
-	checkTokenInfo(s, alphaTokenInfo)
-
-	anotherTokenInfo, err := createAlphaToken(720, "Dev")
-	assert.Nil(err)
-	checkTokenInfo(s, anotherTokenInfo)
-
-	l1 := strings.Split(alphaTokenInfo, "\n")
-	l2 := strings.Split(anotherTokenInfo, "\n")
-	assert.NotEqual(l1[0], l2[0], "alpha expiration dates should be different (%s == %s)", l1[0], l2[0])
-	assert.NotEqual(l1[1], l2[1], "alpha token uuids should be different (%s == %s)", l1[1], l2[1])
 }
 
 func (s *MainTestSuite) TestArchiveExpiring() {
@@ -591,13 +550,6 @@ func (s *MainTestSuite) TestRevokeToken() {
 	assert := assert.New(s.T())
 
 	// Create a token
-	tokenInfo, err := createAlphaToken(720, "Small")
-	assert.Nil(err)
-	checkTokenInfo(s, tokenInfo)
-	alphaTokenData := strings.Split(tokenInfo, "\n")
-	alphaTokenString := alphaTokenData[2]
-
-	// Create a token
 	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	tokenString, err := createAccessToken(userUUID, "")
 	assert.Nil(err)
@@ -617,13 +569,6 @@ func (s *MainTestSuite) TestRevokeToken() {
 	err = s.testApp.Run(args)
 	assert.Equal("token contains an invalid number of segments", err.Error())
 	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Positive case - revoke a token passing in a valid token string (alpha)
-	args = []string{"bcda", "revoke-token", "--access-token", alphaTokenString}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Equal("Access token has been deactivated\n", buf.String())
 	buf.Reset()
 
 	// Positive case - revoke a token passing in a valid token string
@@ -647,61 +592,7 @@ func (s *MainTestSuite) TestStartApi() {
 }
 
 func (s *MainTestSuite) TestCreateAlphaToken() {
-	const ttl = 42
-	checkStructure(s, ttl, "dev")
-}
-
-func (s *MainTestSuite) TestCreateSmallAlphaToken() {
-	const ttl = 24
-	checkStructure(s, ttl, "Small")
-}
-
-func (s *MainTestSuite) TestCreateMediumAlphaToken() {
-	const ttl = 24 * 365
-	checkStructure(s, ttl, "MeDIum")
-}
-
-func (s *MainTestSuite) TestCreateLargeAlphaToken() {
-	endOfUnixTime, _ := time.Parse(time.RFC1123, "Tue, 19 Jan 2038 03:14:07 GMT")
-	ttl := int(time.Until(endOfUnixTime).Hours())
-	checkStructure(s, ttl, "Large")
-}
-
-func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
-	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.NotNil(s.T(), iat)
-	assert.NotNil(s.T(), exp)
-
-	delta, err := time.ParseDuration(fmt.Sprintf("%dh", ttl))
-	if err != nil {
-		assert.Fail(s.T(), "Can't parse ttl value of %s", ttl)
-	}
-
-	assert.True(s.T(), assert.WithinDuration(s.T(), iat, exp, delta, "expires date %s not within %s hours of issued at", exp.Format(time.RFC850), ttl))
-}
-
-func checkStructure(s *MainTestSuite, ttl int, acoSize string) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	tokenInfo, err := createAlphaToken(ttl, acoSize)
-	require.Nil(s.T(), err, "Unexpected error %v", err)
-	lines := strings.Split(tokenInfo, "\n")
-	assert.Equal(s.T(), 3, len(lines))
-	tokenString := lines[2]
-	require.NotEmpty(s.T(), tokenString)
-	//  need to handle credentials for different providers here; this will no longer always be a tokenString
-	switch auth.GetProvider().(type) {
-	case auth.AlphaAuthPlugin:
-		claims := s.AuthBackend.GetJWTClaims(tokenString)
-		require.NotNil(s.T(), claims)
-		acoUUID := claims["aco"].(string)
-		assert.NotNil(s.T(), acoUUID)
-		var count int
-		db.Table("acos_beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
-		assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
-		checkTTL(s, claims, ttl)
-	case auth.OktaAuthPlugin:
-		// nothing to see here; move along
-	}
+	msg, err := createAlphaToken(1000, "dev")
+	assert.NotEmpty(s.T(), msg)
+	assert.Nil(s.T(), err)
 }

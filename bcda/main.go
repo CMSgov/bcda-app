@@ -14,7 +14,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
@@ -423,11 +422,10 @@ func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
 	}
 }
 
-func createAlphaToken(ttl int, acoSize string) (s string, err error) {
-
+func createAlphaToken(ttl int, acoSize string) (string, error) {
 	aco, err := createAlphaEntities(acoSize)
 	if err != nil {
-		return
+		return "", err
 	}
 
 	creds, err := auth.GetProvider().RegisterClient(aco.UUID.String())
@@ -442,25 +440,9 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
 
-	// only Okta returns ClientSecret. Should be able to switch on concrete type
-	var result string
+	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 
-	switch auth.GetProvider().(type) {
-
-	case auth.AlphaAuthPlugin:
-		token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: creds.ClientID}, ttl)
-		if err != nil {
-			return "", err
-		}
-		expiresOn := time.Unix(token.ExpiresOn, 0).Format(time.RFC850)
-		tokenId := token.UUID.String()
-		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString)
-
-	case auth.OktaAuthPlugin:
-		result = fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
-	}
-
-	return result, err
+	return msg, nil
 }
 
 func getEnvInt(varName string, defaultVal int) int {
