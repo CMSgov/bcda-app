@@ -26,9 +26,9 @@ ctas:
 ## Gathering the tools
 To complete this decryption example, you will need:
 
-- The `token` given to you by the BCDA team, ready to paste into your browser
+- The `token` [from the user guide](./user_guide.html#authentication-and-authorization) ready to paste into your browser
 - A file containing the example RSA `private key` ([example RSA private key](https://github.com/CMSgov/bcda-app/blob/master/shared_files/ATO_private.pem){:target="_blank"}) download
-- You can write your own decryption code later based on the [documentation](./user_guide.html). We'll use the [python example decryption code](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/decrypt.py){:target="_blank"}, which requires:
+- You can write your own decryption code later based on the [documentation](./user_guide.html). This example uses the [python example decryption code](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/decrypt.py){:target="_blank"}, which requires:
     - [Python](https://www.python.org/downloads/){:target="_blank"} installed
     - [decrypt.py](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/decrypt.py){:target="_blank"} and [requirements.txt](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/requirements.txt){:target="_blank"} downloaded to the same directory
     - Run `pip install requirements.txt` from that same directory to download any required libraries
@@ -69,25 +69,25 @@ Notice that there's quite a bit of documentation here, from the parameter types 
 
 <img src="assets/img/decrypt_demo_05.png" alt="Explanation of Benefits response" width="600" />
 
-If you'd like to repeat this from the command line or implement this API call in code, look in the `Curl` section for the request we just made.  Not far below that under `Server response` you can see the response: an `HTTP` 202 success giving a link in the `content-location` header for status information on our EoB job.  
+If you'd like to repeat this from the command line or implement this API call in code, look in the `Curl` section for the request you just made.  Not far below that under `Server response` you can see the response: an `HTTP` 202 success giving a link in the `content-location` header for status information on our EoB job.
 
 - Note the job ID number at the end of this link.
 - Open the job status section in Swagger (click `/api/v1/jobs/{jobID}`)
 
 <img src="assets/img/decrypt_demo_06.png" alt="Requesting job status" width="600" />
 
-- Type the job ID we received
+- Type the job ID you received
 - Click `Execute`
 
 <img src="assets/img/decrypt_demo_07.png" alt="Job status response" width="600" />
 
-1. Depending on the size of the file, the job may take some time.  If the job is not yet complete, status information will be shown.  Simply wait a few seconds and click execute again until the job completes. You will then get a result for a completed job as shown below.  We can download the file from the URL provided.
-1. Take special note of the new `KeyMap` section of the response.  To decrypt the file, we will need the filename (the first part of the keymap) and the [symmetric key](./encryption.html#how-we-encrypt) (the second part of the keymap), as shown above.  There are no spaces in either one.
+1. Depending on the size of the file, the job may take some time.  If the job is not yet complete, status information will be shown.  Simply wait a few seconds and click execute again until the job completes. You will then get a result for a completed job as shown below.  You can download the file from the URL provided.
+1. Take special note of the new `KeyMap` section of the response.  To decrypt the file, you will need the filename (the first part of the keymap) and the [symmetric key](./encryption.html#how-we-encrypt) (the second part of the keymap), as shown above.  There are no spaces in either one.
 1. Sometimes one or more data points are unavailable.  When this happens, the `error` section will contain a separate filename and symmetric key with a list of the patients involved.
 
 - Copy these values from the `KeyMap` (filename and symmetric key) for later.
 
-Our last API task is to download the encrypted file. 
+Your last API task is to download the encrypted file.
 
 - Open the data file section in Swagger (click `/api/v1/jobs/{jobID}/{filename}`)
 - Paste the job ID and filename into the appropriate boxes
@@ -100,7 +100,7 @@ Our last API task is to download the encrypted file.
 <img src="assets/img/decrypt_demo_09.png" alt="Download file" width="600" />
 
 ## Decrypting a file
-After downloading the file, we'll move to the command line.  Navigate to the directory you saved `decrypt.py` and `requirements.txt` from the [Gathering the tools](#gathering-the-tools) section.
+After downloading the file, move to the command line.  Navigate to the directory you saved `decrypt.py` and `requirements.txt` from the [Gathering the tools](#gathering-the-tools) section.
 
 <img src="assets/img/decrypt_demo_10.png" alt="Directory with decryption tool" width="450" />
 
@@ -113,7 +113,7 @@ Verify that Python is running properly.
 
 <img src="assets/img/decrypt_demo_12.png" alt="Rename downloaded file" width="600" />
 
-You are now ready to decrypt the file!  Your sample decryption tool will print the decrypted contents to the console, so we'll send the output to a file.  Make sure to use the following syntax, with the entire command on the same line:
+You are now ready to decrypt the file!  Your sample decryption tool will print the decrypted contents to the console, so you can send the output to a file.  Make sure to use the following syntax, with the entire command on the same line:
 
     python decrypt.py 
         --pk   [location_of_private_key] 
