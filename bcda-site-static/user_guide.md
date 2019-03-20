@@ -27,10 +27,6 @@ ctas:
     
 ---
 
-{%- capture code -%}
-eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhY28iOiJkM2U1MGEwNC0zMzA0LTRkMDEtYWUwMC1jNGNlOTIzODBkMTEiLCJleHAiOjE2MTYwODk3NTYsImlhdCI6MTU1MzAxNzc1NiwiaWQiOiJlNzFmMDQyYi1hMWZiLTQ0MDItYTgzZS1lZDlhYThlMTg4NmEiLCJzdWIiOiI1MDlkMjYwMy0wNzhiLTQ2YzgtODVmYi1lYzU3ZWEyY2QzYmQifQ.W2YKCNQNHkUukW1gP76cXr3J0JVeuYXSbgZQ9pAf2Rb_dnJ_GRn8g7rGwoGZUkCCv9fEOGUrbDpjpPJbNJUiwUqcfXCWkdQxTEfimAx5orC6UiNorjqPuKmloALWmN-B7b_62-BJ62u0xR5glbHl7CV5buI9yzWVzbMgvwuUH3VY3B7FQ-MXL3aqLtNoqlmfXjnARb4PsFBBReyJseIPpIbCQB3fUfV3DFL6wRWk4AW_Sa1w4UamzCyZER398cXE9CvpTylyVVdZSoP_p3V7tVyi5xVC8Jjf_zY3wJi2nc0ONqLqyMET8vfItVdYmJ6R4ShdIVRzDHFln7mXYVwOVw
-{%- endcapture -%}
-
 # User Guide
 The [Beneficiary Claims Data API (BCDA)](https://sandbox.bcda.cms.gov) enables Accountable Care Organizations (ACOs) to retrieve claims data for their Medicare beneficiaries. This includes claims data for instances in which beneficiaries receive care outside of the ACO, allowing a full picture of patient care.
 
