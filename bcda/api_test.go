@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
@@ -643,6 +643,24 @@ func (s *APITestSuite) TestGetToken() {
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.NotEmpty(s.T(), s.rr.Body)
+}
+
+func (s *APITestSuite) TestAuthToken() {
+	s.SetupAuthBackend()
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+
+	handler := http.HandlerFunc(getAuthToken)
+	handler.ServeHTTP(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+
+	// // The following change in error status can be tested with alpha auth (presumably along with success paths)
+	// // once GetAccessToken() is implemented
+	// credential := base64.StdEncoding.EncodeToString([]byte("not_a_client_id:not_a_secret"))
+	// req.Header.Add("Authorization", "Basic "+credential)
+	// handler.ServeHTTP(s.rr, req)
+
+	// assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }
 
 func (s *APITestSuite) TestMetadata() {

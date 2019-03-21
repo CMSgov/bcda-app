@@ -85,6 +85,9 @@ type Provider interface {
 	// Request an access token with a specific time-to-live for the given clientID
 	RequestAccessToken(creds Credentials, ttl int) (Token, error)
 
+	// Verify credentials and return access token
+	GetAccessToken(creds Credentials) (Token, error)
+
 	// Revoke a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error
 
