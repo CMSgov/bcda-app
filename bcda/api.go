@@ -394,7 +394,7 @@ func getAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.GetProvider().AccessToken(auth.Credentials{ClientID: clientId, ClientSecret: secret})
+	token, err := auth.GetProvider().MakeAccessToken(auth.Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
