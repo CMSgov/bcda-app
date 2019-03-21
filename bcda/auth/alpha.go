@@ -148,6 +148,11 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return nil
 }
 
+// Verify credentials (client ID and secret) and return access token
+func (p AlphaAuthPlugin) GetAccessToken(creds Credentials) (Token, error) {
+	return Token{}, fmt.Errorf("GetAccessToken not implemented in Alpha")
+}
+
 // generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
 func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
 	var userUUID, acoUUID uuid.UUID

@@ -24,6 +24,11 @@
           type: apiKey
           name: Authorization
           in: header
+     basic_auth:
+          type: basic
+          name: Authorization
+          in: header
+
  swagger:meta
 */
 package main
@@ -361,6 +366,53 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 }
 
+/*
+	swagger:route POST /auth/token auth getAuthToken
+
+	Get access token
+
+	Verifies Basic authentication credentials, and returns a JWT bearer token that can be presented to the other API endpoints.
+
+	Produces:
+	- application/json
+
+	Schemes: https
+
+	Security:
+		basic_auth:
+
+	Responses:
+		200: tokenResponse
+		400: missingCredentials
+		401: invalidCredentials
+		500: serverError
+*/
+func getAuthToken(w http.ResponseWriter, r *http.Request) {
+	clientId, secret, ok := r.BasicAuth()
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	token, err := auth.GetProvider().GetAccessToken(auth.Credentials{ClientID: clientId, ClientSecret: secret})
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// https://tools.ietf.org/html/rfc6749#section-5.1
+	// not included: recommended field expires_in
+	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token.TokenString))
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+	log.WithField("client_id", clientId).Println("issued access token")
+}
+
 func getToken(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -479,19 +531,19 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-        swagger:route GET /_auth metadata getAuthInfo
+   swagger:route GET /_auth metadata getAuthInfo
 
-        Get details about auth
+   Get details about auth
 
-        Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
+   Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
 
-        Produces:
-        - application/json
+   Produces:
+   - application/json
 
-        Schemes: http, https
+   Schemes: http, https
 
-        Responses:
-                200: AuthResponse
+   Responses:
+           200: AuthResponse
 */
 func getAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)

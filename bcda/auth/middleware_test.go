@@ -24,6 +24,7 @@ import (
 )
 
 var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+var originalAuthProvider string
 
 type MiddlewareTestSuite struct {
 	testUtils.AuthTestSuite
@@ -44,6 +45,15 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	})
 
 	return router
+}
+
+func (s *MiddlewareTestSuite) SetupSuite() {
+	originalAuthProvider = auth.GetProviderName()
+	auth.SetProvider("alpha")
+}
+
+func (s *MiddlewareTestSuite) TeardownSuite() {
+	auth.SetProvider(originalAuthProvider)
 }
 
 func (s *MiddlewareTestSuite) SetupTest() {
