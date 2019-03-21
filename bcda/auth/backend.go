@@ -3,101 +3,83 @@ package auth
 import (
 	"crypto/rsa"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/secutils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var (
-	jwtExpirationDelta  string                    = os.Getenv("JWT_EXPIRATION_DELTA")
-	authBackendInstance *JWTAuthenticationBackend = nil
+	alphaBackend *AlphaBackend
 )
 
-type Hash struct{}
-
-func (c *Hash) Generate(s string) string {
-	sum := sha256.Sum256([]byte(s))
-	return fmt.Sprintf("%x", sum)
+func init() {
+	log.SetFormatter(&log.JSONFormatter{})
 }
 
-func (c *Hash) Compare(hash string, s string) bool {
-	return hash == c.Generate(s)
+// Hash is a cryptographically hashed string
+type Hash string
+
+// NewHash creates a hashed string from a source string, return it as a new Hash value.
+func NewHash(source string) Hash {
+	sum := sha256.Sum256([]byte(source))
+	return Hash(fmt.Sprintf("%x", sum))
 }
 
-type JWTAuthenticationBackend struct {
+// IsHashOf accepts an unhashed string, which it first hashes and then compares to itself
+func (h Hash) IsHashOf(source string) bool {
+	return h == NewHash(source)
+}
+
+func (h Hash) String() string {
+	return string(h)
+}
+
+// AlphaBackend is the authorization backend for the alpha plugin. Its purpose is to hold and control use of the
+// server's public and private keys.
+type AlphaBackend struct {
 	PrivateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
 }
 
-func InitAuthBackend() *JWTAuthenticationBackend {
-	if authBackendInstance == nil {
-		authBackendInstance = &JWTAuthenticationBackend{
+// InitAlphaBackend does first time initialization of the alphaBackend instance with its private and public key pair.
+// If the instance is already initialized, it simply returns the existing value.
+func InitAlphaBackend() *AlphaBackend {
+	if alphaBackend == nil {
+		alphaBackend = &AlphaBackend{
 			PrivateKey: getPrivateKey(),
 			PublicKey:  getPublicKey(),
 		}
 	}
-
-	return authBackendInstance
+	return alphaBackend
 }
 
-// For testing.  Probably no real use case.
-func (backend *JWTAuthenticationBackend) ResetAuthBackend() {
-
-	authBackendInstance = &JWTAuthenticationBackend{
+// ResetAlphaBackend sets the servers keys whether they are set or not. Used for testing.
+func (backend *AlphaBackend) ResetAlphaBackend() {
+	alphaBackend = &AlphaBackend{
 		PrivateKey: getPrivateKey(),
 		PublicKey:  getPublicKey(),
 	}
 }
 
-func (backend *JWTAuthenticationBackend) GenerateTokenString(userID, acoID string) (string, error) {
-	expirationDelta, err := strconv.Atoi(jwtExpirationDelta)
-	if err != nil {
-		expirationDelta = 72
-	}
-
-	token := jwt.New(jwt.SigningMethodRS512)
-	token.Claims = jwt.MapClaims{
-		"exp": time.Now().Add(time.Hour * time.Duration(expirationDelta)).Unix(),
-		"iat": time.Now().Unix(),
-		"sub": userID,
-		"aco": acoID,
-		"id":  uuid.NewRandom(),
-	}
-	return token.SignedString(backend.PrivateKey)
-}
-
-func (backend *JWTAuthenticationBackend) IsBlacklisted(jwtToken *jwt.Token) bool {
-	claims, _ := jwtToken.Claims.(jwt.MapClaims)
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var token Token
-	// Look for an inactive token with the uuid; if found, it is blacklisted or otherwise revoked
-	if db.Find(&token, "UUID = ? AND active = ?", claims["id"], false).RecordNotFound() {
-		return false
-	} else {
-		return true
-	}
-}
-
 // This method and its sibling, getPublicKey(), get the private key from the file system and environment variables.
-// They accesses external resources and so may panic and bubble up an error if the file is not present or otherwise corrupted
+// They accesses external resources and so may panic and bubble up an error if the file is not present or not readable.
 func getPrivateKey() *rsa.PrivateKey {
-	privateKeyFile, err := os.Open(os.Getenv("JWT_PRIVATE_KEY_FILE"))
-	if err != nil {
-		log.Panic(err)
+	fileName, ok := os.LookupEnv("JWT_PRIVATE_KEY_FILE")
+	if !ok {
+		log.Panic("no value in JWT_PRIVATE_KEY_FILE")
 	}
-	return secutils.OpenPrivateKeyFile(privateKeyFile)
+	log.Infof("opening %s", fileName)
+	/* #nosec -- Potential file inclusion via variable */
+	privateKeyFile, err := os.Open(fileName)
+	if err != nil {
+		log.Panicf("can't open private key file %s because %v", fileName, err)
+	}
+
+	return utils.OpenPrivateKeyFile(privateKeyFile)
 }
 
 // panics if file is not found, corrupted, or otherwise unreadable
@@ -106,74 +88,11 @@ func getPublicKey() *rsa.PublicKey {
 	if err != nil {
 		panic(err)
 	}
-	return secutils.OpenPublicKeyFile(publicKeyFile)
+	return utils.OpenPublicKeyFile(publicKeyFile)
 }
 
-func (backend *JWTAuthenticationBackend) GetJWTClaims(tokenString string) jwt.MapClaims {
-	token, err := backend.GetJWToken(tokenString)
-
-	// err is returned if anything goes wrong, including expired token
-	if err != nil {
-		return nil
-	}
-
-	return token.Claims.(jwt.MapClaims)
-}
-
-func (backend *JWTAuthenticationBackend) GetJWToken(tokenString string) (*jwt.Token, error) {
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return backend.PublicKey, nil
-	})
-	return token, err
-}
-
-// should be removed during BCDA-764; must be left in place until then
-func (backend *JWTAuthenticationBackend) CreateToken(user models.User) (token Token, tokenString string, err error) {
-	if user.UUID == nil || user.ACOID == nil {
-		err = errors.New("invalid user model parameter")
-		return
-	}
-
-	tokenID := uuid.NewRandom().String()
-	tokenString, err = TokenStringWithIDs(
-		tokenID,
-		user.UUID.String(),
-		user.ACOID.String(),
-	)
-	if err != nil {
-		panic(err)
-	}
-	// Get the claims of the token to find the token ID that was created
-	claims := backend.GetJWTClaims(tokenString)
-	tid, ok := claims["id"].(string)
-	if !ok || tid == "" {
-		err = fmt.Errorf(`missing claim "id"; got claims %v`, claims)
-		return
-	}
-
-	token = Token{
-		UUID:   uuid.Parse(tid),
-		UserID: user.UUID,
-		ACOID:  user.ACOID,
-		Value:  tokenString,
-		Active: true,
-	}
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	err = db.Create(&token).Error
-	if err != nil {
-		log.Errorf("unable to create token for aco %v because %s", user.ACOID, err)
-	}
-
-	return token, tokenString, err
-}
-
-func (backend *JWTAuthenticationBackend) SignJwtToken(token jwt.Token) (string, error) {
+// SignJwtToken signs a prepared JWT token, returning it as a base-64 encoded string suitable for use as a Bearer token.
+func (backend *AlphaBackend) SignJwtToken(token jwt.Token) (string, error) {
 	return token.SignedString(backend.PrivateKey)
 }
+
