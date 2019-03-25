@@ -83,14 +83,14 @@ type VersionResponse struct {
 	}
 }
 
-// JSON object containing an auth_provider field 
+// JSON object containing an auth_provider field
 // swagger:response AuthResponse
 type AuthResponse struct {
-        // in: body
-        Body struct {
-                // Required: true
-                Version string `json:"auth_provider"`
-        }
+	// in: body
+	Body struct {
+		// Required: true
+		Version string `json:"auth_provider"`
+	}
 }
 
 // FHIR CapabilityStatement in JSON format
@@ -135,3 +135,26 @@ type BulkRequestHeaders struct {
 	// enum: respond-async
 	Prefer string
 }
+
+// JSON with a valid JWT
+// swagger:response tokenResponse
+type TokenResponse struct {
+	// in: body
+	Body struct {
+		// Required: true
+		AccessToken string `json:"access_token"`
+		TokenType string `json:"token_type"`
+	}
+}
+
+// Missing credentials
+// swagger:response missingCredentials
+type MissingCredentials struct{}
+
+// Invalid credentials
+// swagger:response invalidCredentials
+type InvalidCredentials struct{}
+
+// Server error
+// swagger:response serverError
+type ServerError struct{}

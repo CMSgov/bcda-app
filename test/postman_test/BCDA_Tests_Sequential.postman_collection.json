@@ -474,6 +474,61 @@
 			"response": []
 		},
 		{
+			"name": "Get auth token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "242471cf-b883-4318-ab28-90181a59fd74",
+						"exec": [
+							"var env = pm.environment.get(\"env\");",
+							"pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
+							"pm.environment.set(\"clientSecret\", pm.globals.get(\"clientSecret\"));",
+							"pm.test(\"Status code is 401\", function() {",
+							"    pm.response.to.have.status(401);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{clientId}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{clientSecret}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/auth/token",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"auth",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Get token",
 			"event": [
 				{
