@@ -160,6 +160,7 @@ func isValidNDJSONText(data string) bool {
 		}
 		if !json.Valid([]byte(line)) {
 			isValid = false
+			fmt.Println(line)
 			break
 		}
 	}
