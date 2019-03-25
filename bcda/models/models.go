@@ -3,16 +3,17 @@ package models
 import (
 	"crypto/rsa"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/secutils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 )
 
 func InitializeGormModels() *gorm.DB {
-	fmt.Print("Initialize bcda models")
+	log.Println("Initialize bcda models")
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -98,7 +99,7 @@ func GetATOPublicKey() *rsa.PublicKey {
 		fmt.Println("failed to open file")
 		panic(err)
 	}
-	return secutils.OpenPublicKeyFile(atoPublicKeyFile)
+	return utils.OpenPublicKeyFile(atoPublicKeyFile)
 }
 
 func GetATOPrivateKey() *rsa.PrivateKey {
@@ -106,7 +107,7 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 	if err != nil {
 		panic(err)
 	}
-	return secutils.OpenPrivateKeyFile(atoPrivateKeyFile)
+	return utils.OpenPrivateKeyFile(atoPrivateKeyFile)
 }
 
 func CreateACO(name string, cmsID *string) (uuid.UUID, error) {

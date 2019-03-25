@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -56,7 +58,7 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	logFields["remote_addr"] = r.RemoteAddr
 	logFields["user_agent"] = r.UserAgent()
 
-	logFields["uri"] = fmt.Sprintf("%s://%s%s", scheme, r.Host, r.RequestURI)
+	logFields["uri"] = fmt.Sprintf("%s://%s%s", scheme, r.Host, Redact(r.RequestURI))
 
 	if ad, ok := r.Context().Value("ad").(auth.AuthData); ok {
 		logFields["aco_id"] = ad.ACOID
@@ -89,4 +91,13 @@ func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
 		"stack": string(stack),
 		"panic": fmt.Sprintf("%+v", v),
 	})
+}
+
+func Redact(uri string) string {
+	re := regexp.MustCompile(`Bearer%20([^&]+)(?:&|$)`)
+	submatches := re.FindAllStringSubmatch(uri, -1)
+	for _, match := range submatches {
+		uri = strings.Replace(uri, match[1], "<redacted>", 1)
+	}
+	return uri
 }

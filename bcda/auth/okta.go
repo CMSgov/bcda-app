@@ -85,6 +85,12 @@ func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return nil
 }
 
+
+// Manufactures an access token for the given credentials
+func (o OktaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	return "", nil
+}
+
 func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
 	clientID := creds.ClientID
 	// Also accept clientID via creds.UserID to match alpha auth implementation

@@ -35,20 +35,22 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	hash := Hash{}
-	hashedSecret := hash.Generate(s)
+	hashedSecret := NewHash(s)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	aco.ClientID = localID
-	aco.AlphaSecret = hashedSecret
-	db.Save(&aco)
+	aco.AlphaSecret = hashedSecret.String()
+	err = db.Save(&aco).Error
+	if err != nil {
+		return Credentials{}, err
+	}
 
-	return Credentials{ClientID: localID, ClientSecret: s}, nil
+	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
 }
 
 func generateClientSecret() (string, error) {
-	b := make([]byte, 20)
+	b := make([]byte, 40)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", err
@@ -148,7 +150,27 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 	return nil
 }
 
-// generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
+// MakeAccessToken manufactures an access token for the given credentials
+func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	if credentials.ClientSecret == "" || credentials.ClientID == "" {
+		return "", fmt.Errorf("missing or incomplete credentials")
+	}
+	aco, err := getACOByClientID(credentials.ClientID)
+	if err != nil {
+		return "", fmt.Errorf("invalid credentials; %s",err)
+	}
+	// when we have ClientSecret in ACO, adjust following line
+	Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret)
+	var user models.User
+	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
+		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
+	}
+	issuedAt := time.Now().Unix()
+	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
+	return GenerateTokenString(uuid.NewRandom().String(), user.UUID.String(), aco.UUID.String(), issuedAt, expiresAt)
+}
+
+// RequestAccessToken generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
 func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
 	var userUUID, acoUUID uuid.UUID
 	var user models.User
@@ -179,7 +201,8 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 		userUUID = user.UUID
 		acoUUID = user.ACOID
 	} else {
-		aco, err := getACOFromDB(creds.ClientID)
+		var aco models.ACO
+		aco, err = getACOFromDB(creds.ClientID)
 		if err != nil {
 			return token, err
 		}
@@ -296,7 +319,7 @@ func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return InitAuthBackend().PublicKey, nil
+		return InitAlphaBackend().PublicKey, nil
 	}
 
 	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)
