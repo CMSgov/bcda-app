@@ -73,7 +73,7 @@ def decrypt_file(private_key, encrypted_key, filepath):
     with open(filepath, 'rb') as fh:
         result = decrypt_cipher(fh, decrypted_key)
 
-    print(result.decode('utf-8'))
+    print(result)
 
 
 def get_private_key(loc):
