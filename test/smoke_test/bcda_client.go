@@ -287,7 +287,6 @@ func main() {
 						}
 
 						fmt.Println("Running the C# decryptor externally...")
-						fmt.Println(cmdArgs)
 
 						// C# puts a bunch of nonsense in the file the first time it runs so this run is just ignored.
 						// #nosec
