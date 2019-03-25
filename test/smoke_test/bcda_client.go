@@ -261,7 +261,7 @@ func main() {
 							"--key", string(encryptedKey),
 						}
 						fmt.Println("Running the Python decryptor externally...")
-						fmt.Println(cmdArgs)
+
 						// #nosec
 						if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
 							fmt.Fprintln(os.Stderr, "There was an error running the Python decryption util: ", err)
