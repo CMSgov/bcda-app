@@ -1,4 +1,4 @@
-FROM golang:1.11.5
+FROM golang:1.11-stretch
 
 RUN go get -u github.com/golang/dep/cmd/dep
 RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
@@ -11,6 +11,13 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
 RUN dep ensure
+
+RUN apt-get update
+RUN apt-get install libunwind8 icu-devtools python-pip -y
+RUN pip install -r decryption_utils/Python/requirements.txt
+
+RUN ./dotnet-install.sh
+ENV PATH "$PATH:/root/.dotnet/"
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 ENTRYPOINT []

@@ -14,7 +14,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
@@ -25,7 +24,6 @@ import (
 // App Name and usage.  Edit them here to prevent breaking tests
 const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
-const CreateACO = "create-aco"
 
 var (
 	qc      *que.Client
@@ -82,7 +80,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize, filePath string
+	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -143,7 +141,7 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     CreateACO,
+			Name:     "create-aco",
 			Category: "Authentication tools",
 			Usage:    "Create an ACO",
 			Flags: []cli.Flag{
@@ -152,9 +150,14 @@ func setUpApp() *cli.App {
 					Usage:       "Name of ACO",
 					Destination: &acoName,
 				},
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName)
+				acoUUID, err := createACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -195,20 +198,23 @@ func setUpApp() *cli.App {
 		{
 			Name:     "create-token",
 			Category: "Authentication tools",
-			Usage:    "Create an access token",
+			Usage:    "Create an access/session token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "user-id",
-					Usage:       "UUID of user",
-					Destination: &userID,
-				},
-			},
+					Name:        "id",
+					Usage:       "ID associated with token (either a user UUID, or client-id paired with the secret",
+					Destination: &tokenID,
+				}, cli.StringFlag{
+					Name:        "secret",
+					Usage:       "Credential secret for creating session tokens",
+					Destination: &tokenSecret,
+				}},
 			Action: func(c *cli.Context) error {
-				accessToken, err := createAccessToken(userID)
+				tokenValue, err := createAccessToken(tokenID, tokenSecret)
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(app.Writer, "%s\n", accessToken)
+				fmt.Fprintf(app.Writer, "%s\n", tokenValue)
 				return nil
 			},
 		},
@@ -345,19 +351,6 @@ func autoMigrate() {
 	fmt.Println("Completed Database Initialization")
 }
 
-func createACO(name string) (string, error) {
-	if name == "" {
-		return "", errors.New("ACO name (--name) must be provided")
-	}
-
-	acoUUID, err := models.CreateACO(name)
-	if err != nil {
-		return "", err
-	}
-
-	return acoUUID.String(), nil
-}
-
 func createUser(acoID, name, email string) (string, error) {
 	errMsgs := []string{}
 	var acoUUID uuid.UUID
@@ -390,32 +383,12 @@ func createUser(acoID, name, email string) (string, error) {
 	return user.UUID.String(), nil
 }
 
-func createAccessToken(userID string) (string, error) {
-	errMsgs := []string{}
-	var userUUID uuid.UUID
-
-	if userID == "" {
-		errMsgs = append(errMsgs, "User ID (--user-id) must be provided")
-	} else {
-		userUUID = uuid.Parse(userID)
-		if userUUID == nil {
-			errMsgs = append(errMsgs, "User ID must be a UUID")
-		}
+func createAccessToken(ID string, secret string) (string, error) {
+	if ID == "" {
+		return "", errors.New("ID (--id) must be provided")
 	}
 
-	if len(errMsgs) > 0 {
-		return "", errors.New(strings.Join(errMsgs, "\n"))
-	}
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var user models.User
-
-	if db.First(&user, "UUID = ?", userID).RecordNotFound() {
-		return "", fmt.Errorf("unable to locate User with id of %s", userID)
-	}
-
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: user.ACOID.String()}, 72)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: ID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}
@@ -449,11 +422,10 @@ func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
 	}
 }
 
-func createAlphaToken(ttl int, acoSize string) (s string, err error) {
-
+func createAlphaToken(ttl int, acoSize string) (string, error) {
 	aco, err := createAlphaEntities(acoSize)
 	if err != nil {
-		return
+		return "", err
 	}
 
 	creds, err := auth.GetProvider().RegisterClient(aco.UUID.String())
@@ -468,25 +440,9 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
 
-	// only Okta returns ClientSecret. Should be able to switch on concrete type
-	var result string
+	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 
-	switch auth.GetProvider().(type) {
-
-	case auth.AlphaAuthPlugin:
-		token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: creds.ClientID}, ttl)
-		if err != nil {
-			return "", err
-		}
-		expiresOn := time.Unix(token.ExpiresOn, 0).Format(time.RFC850)
-		tokenId := token.UUID.String()
-		result = fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, token.TokenString)
-
-	case auth.OktaAuthPlugin:
-		result = fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
-	}
-
-	return result, err
+	return msg, nil
 }
 
 func getEnvInt(varName string, defaultVal int) int {

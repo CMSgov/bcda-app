@@ -1,4 +1,4 @@
-package secutils
+package utils
 
 import (
 	"bufio"
@@ -71,4 +71,3 @@ func OpenPublicKeyFile(publicKeyFile *os.File) *rsa.PublicKey {
 	}
 	return rsaPub
 }
-

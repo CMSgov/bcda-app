@@ -9,8 +9,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/dgrijalva/jwt-go"
+
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 )
 
 type Mokta struct {
@@ -96,6 +97,10 @@ func (m *Mokta) GenerateNewClientSecret(clientID string) (string, error) {
 	return fakeClientSecret, nil
 }
 
+func (m *Mokta) DeactivateApplication(clientID string) error {
+	return nil
+}
+
 func randomClientID() string {
 	b, err := someRandomBytes(4)
 	if err != nil {
@@ -154,12 +159,7 @@ func (m *Mokta) NewCustomToken(overrides OktaToken) (string, error) {
 		"sub": values.Subject,
 	}
 
-	tokenString, err := token.SignedString(m.privateKey)
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return token.SignedString(m.privateKey)
 }
 
 func (m *Mokta) valuesWithOverrides(or OktaToken) OktaToken {

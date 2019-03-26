@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
@@ -51,7 +51,14 @@ func GetProvider() Provider {
 	}
 }
 
+type AuthData struct {
+	ACOID   string
+	UserID  string
+	TokenID string
+}
+
 type Credentials struct {
+	UserID       string
 	ClientID     string
 	ClientSecret string
 	Token        Token
@@ -60,30 +67,33 @@ type Credentials struct {
 
 // Provider defines operations performed through an authentication provider.
 type Provider interface {
-	// Ask the auth Provider to register a software client for the ACO identified by localID.
+	// RegisterClient adds a software client for the ACO identified by localID.
 	RegisterClient(localID string) (Credentials, error)
 
-	// Update data associated with the registered software client identified by clientID
+	// UpdateClient changes data associated with the registered software client identified by clientID
 	UpdateClient(params []byte) ([]byte, error)
 
-	// Delete the registered software client identified by clientID, revoking an active tokens
+	// DeleteClient deletes the registered software client identified by clientID, revoking an active tokens
 	DeleteClient(params []byte) error
 
-	// Generate new or replace existing Credentials for the given clientID
+	// GenerateClientCredentials new or replace existing Credentials for the given clientID
 	GenerateClientCredentials(clientID string, ttl int) (Credentials, error)
 
-	// Revoke any existing Credentials for the given clientID
-	RevokeClientCredentials(params []byte) error
+	// RevokeClientCredentials any existing Credentials for the given clientID
+	RevokeClientCredentials(clientID string) error
 
-	// Request an access token with a specific time-to-live for the given clientID
-	RequestAccessToken(creds Credentials, ttl int) (Token, error)
+	// MakeAccessToken mints an access token for the given credentials
+	MakeAccessToken(credentials Credentials) (string, error)
 
-	// Revoke a specific access token identified in a base64 encoded token string
+	// RequestAccessToken mints an access token with a specific time-to-live for the given clientID
+	RequestAccessToken(credentials Credentials, ttl int) (Token, error)
+
+	// RevokeAccessToken a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error
 
-	// Assert that a base64 encoded token string is valid for accessing the BCDA API
+	// ValidateJWT asserts that a base64 encoded token string is valid for accessing the BCDA API
 	ValidateJWT(tokenString string) error
 
-	// Decode a base64 encoded token string into a structured token
+	// DecodeJWT decodes a base64 encoded token string into a structured token
 	DecodeJWT(tokenString string) (*jwt.Token, error)
 }

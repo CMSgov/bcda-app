@@ -26,6 +26,9 @@ type OktaBackend interface {
 
 	// Renews client secret for an okta client
 	GenerateNewClientSecret(string) (string, error)
+
+	// Deactivates a client application so it cannot be used
+	DeactivateApplication(clientID string) error
 }
 
 type OktaAuthPlugin struct {
@@ -73,12 +76,28 @@ func (o OktaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cre
 	return c, nil
 }
 
-func (o OktaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	return errors.New("not yet implemented")
+func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
+	err := o.backend.DeactivateApplication(clientID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Manufactures an access token for the given credentials
+func (o OktaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	return "", nil
 }
 
 func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	if creds.ClientID == "" {
+	clientID := creds.ClientID
+	// Also accept clientID via creds.UserID to match alpha auth implementation
+	if clientID == "" {
+		clientID = creds.UserID
+	}
+
+	if clientID == "" {
 		return Token{}, fmt.Errorf("client ID required")
 	}
 
@@ -86,7 +105,7 @@ func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, e
 		return Token{}, fmt.Errorf("client secret required")
 	}
 
-	clientCreds := client.Credentials{ClientID: creds.ClientID, ClientSecret: creds.ClientSecret}
+	clientCreds := client.Credentials{ClientID: clientID, ClientSecret: creds.ClientSecret}
 	ot, err := o.backend.RequestAccessToken(clientCreds)
 
 	if err != nil {
@@ -106,11 +125,11 @@ func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	c := t.Claims.(jwt.MapClaims)
+	c := t.Claims.(*CommonClaims)
 
-	ok := c["iss"].(string) == o.backend.ServerID()
+	ok := c.Issuer == o.backend.ServerID()
 	if !ok {
-		return fmt.Errorf("invalid iss claim; %s <> %s", c["iss"].(string), o.backend.ServerID())
+		return fmt.Errorf("invalid iss claim; %s <> %s", c.Issuer, o.backend.ServerID())
 	}
 
 	err = c.Valid()
@@ -123,7 +142,7 @@ func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
 	// keep an in-memory cache of tokens we have revoked and check that
 	// use the introspection endpoint okta provides (expensive network call)
 
-	_, err = getACOByClientID(c["cid"].(string))
+	_, err = getACOByClientID(c.ClientID)
 	if err != nil {
 		return fmt.Errorf("invalid cid claim; %s", err)
 	}
@@ -150,7 +169,7 @@ func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		return &key, nil
 	}
 
-	return jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFinder)
+	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFinder)
 }
 
 func getACOByClientID(clientID string) (models.ACO, error) {

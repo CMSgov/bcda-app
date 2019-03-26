@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
+
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 )
 
 // https://github.com/go-chi/chi/blob/master/_examples/logging/main.go
@@ -55,15 +58,12 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	logFields["remote_addr"] = r.RemoteAddr
 	logFields["user_agent"] = r.UserAgent()
 
-	logFields["uri"] = fmt.Sprintf("%s://%s%s", scheme, r.Host, r.RequestURI)
+	logFields["uri"] = fmt.Sprintf("%s://%s%s", scheme, r.Host, Redact(r.RequestURI))
 
-	token := r.Context().Value("token")
-	if token != nil {
-		token := token.(*jwt.Token)
-		claims := token.Claims.(jwt.MapClaims)
-		logFields["aco"] = claims["aco"]
-		logFields["sub"] = claims["sub"]
-		logFields["token_id"] = claims["id"]
+	if ad, ok := r.Context().Value("ad").(auth.AuthData); ok {
+		logFields["aco_id"] = ad.ACOID
+		logFields["user_id"] = ad.UserID
+		logFields["token_id"] = ad.TokenID
 	}
 
 	entry.Logger = entry.Logger.WithFields(logFields)
@@ -91,4 +91,13 @@ func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
 		"stack": string(stack),
 		"panic": fmt.Sprintf("%+v", v),
 	})
+}
+
+func Redact(uri string) string {
+	re := regexp.MustCompile(`Bearer%20([^&]+)(?:&|$)`)
+	submatches := re.FindAllStringSubmatch(uri, -1)
+	for _, match := range submatches {
+		uri = strings.Replace(uri, match[1], "<redacted>", 1)
+	}
+	return uri
 }

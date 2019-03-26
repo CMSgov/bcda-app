@@ -24,6 +24,11 @@
           type: apiKey
           name: Authorization
           in: header
+     basic_auth:
+          type: basic
+          name: Authorization
+          in: header
+
  swagger:meta
 */
 package main
@@ -39,18 +44,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bgentry/que-go"
+	fhirmodels "github.com/eug48/fhir/models"
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/bgentry/que-go"
-	"github.com/dgrijalva/jwt-go"
-	fhirmodels "github.com/eug48/fhir/models"
-	"github.com/go-chi/chi"
-	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 //Setting a default here.  It may need to change.  It also shouldn't really be used much.
@@ -113,21 +118,21 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		claims jwt.MapClaims
-		err    error
+		ad  auth.AuthData
+		err error
 	)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	if claims, err = readTokenClaims(r); err != nil {
+	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
 	}
 
-	acoId, _ := claims["aco"].(string)
-	userId, _ := claims["sub"].(string)
+	acoID := ad.ACOID
+	userID := ad.UserID
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -135,13 +140,13 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newJob := models.Job{
-		ACOID:      uuid.Parse(acoId),
-		UserID:     uuid.Parse(userId),
+		ACOID:      uuid.Parse(acoID),
+		UserID:     uuid.Parse(userID),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
 	if result := db.Save(&newJob); result.Error != nil {
-		log.Error(err)
+		log.Error(result.Error.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -164,40 +169,41 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	beneficiaryIds := []string{}
-	rows, err := db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Rows()
-
-	var actualBeneficiaries int64
-	db.Table("beneficiaries").Select("patient_id").Where("aco_id = ?", acoId).Count(&actualBeneficiaries)
-	if err != nil {
-		log.Error(err)
+	var acoBeneficiaries []models.ACOBeneficiary
+	if err = db.Find(&acoBeneficiaries, "aco_id = ?", acoID).Error; err != nil {
+		log.Errorf("Error retrieving ACO-beneficiary with ACO ID %s: %s", acoID, err.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-	var id string
-	var jobCount = 0
-	var rowCount int64 = 0
-	maxBeneficiaries := getEnvInt("BCDA_FHIR_MAX_RECORDS", BCDA_FHIR_MAX_RECORDS_DEFAULT)
 
-	for rows.Next() {
-		rowCount++
-		err := rows.Scan(&id)
-		if err != nil {
-			log.Error(err)
+	beneficiaryIDs := []string{}
+	for _, acoBeneficiary := range acoBeneficiaries {
+		var beneficiary models.Beneficiary
+		if err = db.First(&beneficiary, acoBeneficiary.BeneficiaryID).Error; err != nil {
+			log.Errorf("Error retrieving beneficiary with ID %d: %s", acoBeneficiary.BeneficiaryID, err.Error())
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
-		beneficiaryIds = append(beneficiaryIds, id)
-		if len(beneficiaryIds) >= maxBeneficiaries || rowCount >= actualBeneficiaries {
+		beneficiaryIDs = append(beneficiaryIDs, beneficiary.BlueButtonID)
+	}
+
+	var jobIDs []string
+	var jobCount = 0
+	var rowCount = 0
+	maxBeneficiaries := getEnvInt("BCDA_FHIR_MAX_RECORDS", BCDA_FHIR_MAX_RECORDS_DEFAULT)
+
+	for _, id := range beneficiaryIDs {
+		rowCount++
+		jobIDs = append(jobIDs, id)
+		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaryIDs) {
 
 			args, err := json.Marshal(jobEnqueueArgs{
 				ID:             int(newJob.ID),
-				ACOID:          acoId,
-				UserID:         userId,
-				BeneficiaryIDs: beneficiaryIds,
+				ACOID:          acoID,
+				UserID:         userID,
+				BeneficiaryIDs: jobIDs,
 				ResourceType:   t,
 				// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 				Encrypt: encrypt,
@@ -221,12 +227,18 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			jobCount++
-			beneficiaryIds = []string{}
+			jobIDs = []string{}
 		}
 	}
 
 	if db.Model(&newJob).Update("job_count", jobCount).Error != nil {
 		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	if db.Model(&newJob).Update("job_count", jobCount).Error != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -398,6 +410,53 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 }
 
+/*
+	swagger:route POST /auth/token auth getAuthToken
+
+	Get access token
+
+	Verifies Basic authentication credentials, and returns a JWT bearer token that can be presented to the other API endpoints.
+
+	Produces:
+	- application/json
+
+	Schemes: https
+
+	Security:
+		basic_auth:
+
+	Responses:
+		200: tokenResponse
+		400: missingCredentials
+		401: invalidCredentials
+		500: serverError
+*/
+func getAuthToken(w http.ResponseWriter, r *http.Request) {
+	clientId, secret, ok := r.BasicAuth()
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	token, err := auth.GetProvider().MakeAccessToken(auth.Credentials{ClientID: clientId, ClientSecret: secret})
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// https://tools.ietf.org/html/rfc6749#section-5.1
+	// not included: recommended field expires_in
+	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token))
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+	log.WithField("client_id", clientId).Println("issued access token")
+}
+
 func getToken(w http.ResponseWriter, r *http.Request) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -545,32 +604,6 @@ func getAuthInfo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func readTokenClaims(r *http.Request) (jwt.MapClaims, error) {
-	var (
-		claims jwt.MapClaims
-		err    error
-	)
-
-	t := r.Context().Value("token")
-	if token, ok := t.(*jwt.Token); ok && token.Valid {
-		claims, err = auth.ClaimsFromToken(token)
-		if err != nil {
-			log.Error(err)
-			return nil, err
-		}
-	} else {
-		err = errors.New("missing or invalid token")
-		log.Error(err)
-		return nil, err
-	}
-
-	return claims, nil
-}
-
-func GetJobTimeout() time.Duration {
-	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
-}
-
 // swagger:model fileItem
 type fileItem struct {
 	// FHIR resource type of file contents
@@ -585,7 +618,7 @@ type fileItem struct {
 Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
 swagger:response completedJobResponse
 */
-//nolint
+// nolint
 type CompletedJobResponse struct {
 	// in: body
 	Body bulkResponseBody
@@ -604,4 +637,17 @@ type bulkResponseBody struct {
 	Errors []fileItem        `json:"error"`
 	KeyMap map[string]string `json:"KeyMap"`
 	JobID  uint
+}
+
+func readAuthData(r *http.Request) (data auth.AuthData, err error) {
+	var ok bool
+	data, ok = r.Context().Value("ad").(auth.AuthData)
+	if !ok {
+		err = errors.New("no auth data in context")
+	}
+	return
+}
+
+func GetJobTimeout() time.Duration {
+	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }

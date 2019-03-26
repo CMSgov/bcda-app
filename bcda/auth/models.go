@@ -1,7 +1,6 @@
 package auth
 
 import (
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
@@ -36,30 +35,17 @@ type Token struct {
 	Active      bool        `json:"active"`                                       // active
 	ACO         models.ACO  `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // ACO needed here because user can belong to multiple ACOs
 	ACOID       uuid.UUID   `gorm:"type:uuid" json:"aco_id"`
-	IssuedAt    int64       `json:"issued_at"`                                    // standard token claim; unix date
-	ExpiresOn   int64       `json:"expires_on"`                                   // standard token claim; unix date
-	TokenString string      `gorm:"-"`                                            // ignore; not for database
+	IssuedAt    int64       `json:"issued_at"`  // standard token claim; unix date
+	ExpiresOn   int64       `json:"expires_on"` // standard token claim; unix date
+	TokenString string      `gorm:"-"`          // ignore; not for database
 }
 
 // When getting a Token out of the database, reconstruct its string value and store it in TokenString.
 func (t *Token) AfterFind() error {
-	s, err := GenerateTokenString(t.UUID, t.UserID, t.ACOID, t.IssuedAt, t.ExpiresOn)
+	s, err := GenerateTokenString(t.UUID.String(), t.UserID.String(), t.ACOID.String(), t.IssuedAt, t.ExpiresOn)
 	if err == nil {
 		t.TokenString = s
 		return nil
 	}
 	return err
-}
-
-// Given all claim values, construct a token string.
-func GenerateTokenString(id, userID, acoID uuid.UUID, issuedAt int64, expiresOn int64) (string, error) {
-	token := jwt.New(jwt.SigningMethodRS512)
-	token.Claims = jwt.MapClaims{
-		"exp": expiresOn,
-		"iat": issuedAt,
-		"sub": userID.String(),
-		"aco": acoID.String(),
-		"id":  id.String(),
-	}
-	return token.SignedString(InitAuthBackend().PrivateKey)
 }

@@ -2,7 +2,6 @@ package auth_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,17 +9,16 @@ import (
 	"os"
 	"strconv"
 	"testing"
-	"time"
+
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/chi"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
@@ -30,6 +28,7 @@ type MiddlewareTestSuite struct {
 	server *httptest.Server
 	rr     *httptest.ResponseRecorder
 	token  string
+	ad     auth.AuthData
 }
 
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
@@ -45,19 +44,23 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	return router
 }
 
+func (s *MiddlewareTestSuite) SetupSuite() {
+	s.SetupAuthBackend()
+	models.InitializeGormModels()
+	auth.InitializeGormModels()
+}
+
 func (s *MiddlewareTestSuite) SetupTest() {
 	s.SetupAuthBackend()
-	validClaims := jwt.MapClaims{
-		"sub": "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F",
-		"aco": "DBBD1CE1-AE24-435C-807D-ED45953077D3",
-		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	tokenID := "d63205a8-d923-456b-a01b-0992fcb40968"
+	s.token, _ = auth.TokenStringWithIDs(tokenID, userID, acoID)
+	s.ad = auth.AuthData{
+		TokenID: tokenID,
+		UserID:  userID,
+		ACOID:   acoID,
 	}
-	validToken := *jwt.New(jwt.SigningMethodRS512)
-	validToken.Claims = validClaims
-	validTokenString, _ := s.AuthBackend.SignJwtToken(validToken)
-	s.token = validTokenString
 	s.server = httptest.NewServer(s.CreateRouter())
 	s.rr = httptest.NewRecorder()
 }
@@ -69,17 +72,16 @@ func (s *MiddlewareTestSuite) TearDownTest() {
 	s.server.Close()
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalidSigning() {
+func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidSignature() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
-	s.token = badToken
 
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
 	resp, err := client.Do(req)
 
 	fmt.Println(resp.StatusCode)
@@ -87,7 +89,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalidSigning() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalid() {
+func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -95,64 +97,30 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthInvalid() {
 
 	handler := auth.RequireTokenAuth(mockHandler)
 
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(userID, acoID, tokenID)
 	assert.Nil(s.T(), err)
 
-	token, err := s.AuthBackend.GetJWToken(tokenString)
+	token, err := auth.GetProvider().DecodeJWT(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Valid = false
 
+	ad := auth.AuthData{
+		UserID:  userID,
+		ACOID:   acoID,
+		TokenID: tokenID,
+	}
+
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, "token", token)
+	ctx = context.WithValue(ctx, "ad", ad)
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 401, s.rr.Code)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthBlackListed() {
-	req, err := http.NewRequest("GET", s.server.URL, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	handler := auth.RequireTokenAuth(mockHandler)
-
-	// Blacklisted Token test
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	// using fixture data
-	userID := "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73"
-	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	var user models.User
-	if db.Find(&user, "UUID = ?", userID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("Unable to find User"))
-	}
-	var aco models.ACO
-	if db.Find(&aco, "UUID = ?", acoID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("Unable to find ACO"))
-	}
-
-	notActiveToken := jwt.New(jwt.SigningMethodRS512)
-	notActiveToken.Claims = jwt.MapClaims{
-		"exp": 12345,
-		"iat": 123,
-		"sub": userID,
-		"aco": acoID,
-		"id":  "f5bd210a-5f95-4ba6-a167-2e9c95b5fbc1",
-	}
-
-	// The actual test
-	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", notActiveToken)
-	req = req.WithContext(ctx)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 401, s.rr.Code)
-
-}
-
-func (s *MiddlewareTestSuite) TestRequireTokenAuthValid() {
+func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
 	client := s.server.Client()
 
 	// Valid token should return a 200 response
@@ -170,7 +138,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthValid() {
 	assert.Equal(s.T(), 200, resp.StatusCode)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenAuthEmpty() {
+func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 	client := s.server.Client()
 
 	// Valid token should return a 200 response
@@ -188,7 +156,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthEmpty() {
 	assert.Equal(s.T(), 401, resp.StatusCode)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenJobMatchNotEqual() {
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -212,22 +180,22 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchNotEqual() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := s.AuthBackend.GetJWToken(tokenString)
+	token, err := auth.GetProvider().DecodeJWT(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", token)
+	// ctx = context.WithValue(ctx, "token", token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenJobMatchEqual() {
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -250,22 +218,29 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchEqual() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := s.AuthBackend.GetJWToken(tokenString)
+	token, err := auth.GetProvider().DecodeJWT(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
-	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", token)
+	ctx := context.WithValue(req.Context(), "token", token)
+	ad := auth.AuthData{
+		ACOID:   acoID,
+		UserID:  userID,
+		TokenID: tokenID,
+	}
+	ctx = context.WithValue(ctx, "ad", ad)
+
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 200, s.rr.Code)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
+// what is this testing? always returns 404 invalid token?
+func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -289,11 +264,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
+	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := s.AuthBackend.GetJWToken(tokenString)
+	token, err := auth.GetProvider().DecodeJWT(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Claims = nil
@@ -303,27 +278,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchNoClaims() {
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
-}
-
-func (s *MiddlewareTestSuite) TestClaimsFromToken() {
-	acoID, userID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := s.AuthBackend.GenerateTokenString(userID, acoID)
-	assert.Nil(s.T(), err)
-
-	token, err := s.AuthBackend.GetJWToken(tokenString)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), token)
-
-	// Test good claims
-	claims, err := auth.ClaimsFromToken(token)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), claims)
-
-	// Test invalid claims
-	token.Claims = nil
-	badclaims, err := auth.ClaimsFromToken(token)
-	assert.NotNil(s.T(), err)
-	assert.Equal(s.T(), jwt.MapClaims{}, badclaims)
 }
 
 func TestMiddlewareTestSuite(t *testing.T) {

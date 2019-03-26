@@ -37,12 +37,12 @@ func (c StandardClaims) Valid() error {
 	// default value in Go, let's not fail the verification for them.
 	if c.VerifyExpiresAt(now, false) == false {
 		delta := time.Unix(now, 0).Sub(time.Unix(c.ExpiresAt, 0))
-		vErr.Inner = fmt.Errorf("token is expired by %v", delta)
+		vErr.Inner = &ExpiredError{now, delta, c}
 		vErr.Errors |= ValidationErrorExpired
 	}
 
 	if c.VerifyIssuedAt(now, false) == false {
-		vErr.Inner = fmt.Errorf("Token used before issued")
+		vErr.Inner = fmt.Errorf("token used before issued")
 		vErr.Errors |= ValidationErrorIssuedAt
 	}
 

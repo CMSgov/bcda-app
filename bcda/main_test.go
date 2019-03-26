@@ -11,10 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
 
@@ -25,7 +23,6 @@ import (
 )
 
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
-const TOKENHEADER string = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9."
 
 type MainTestSuite struct {
 	testUtils.AuthTestSuite
@@ -44,6 +41,7 @@ func (s *MainTestSuite) SetupSuite() {
 
 func (s *MainTestSuite) SetupTest() {
 	s.testApp = setUpApp()
+	autoMigrate()
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -77,65 +75,6 @@ func (s *MainTestSuite) TestAutoMigrate() {
 	args := []string{"bcda", "sql-migrate"}
 	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
-}
-
-func (s *MainTestSuite) TestCreateACO() {
-
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	s.SetupAuthBackend()
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	assert := assert.New(s.T())
-
-	// Successful ACO creation
-	ACOName := "UNIT TEST ACO"
-	args := []string{"bcda", "create-aco", "--name", ACOName}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.NotNil(buf)
-	acoUUID := strings.TrimSpace(buf.String())
-	var testACO models.ACO
-	db.First(&testACO, "Name=?", "UNIT TEST ACO")
-	assert.Equal(testACO.UUID.String(), acoUUID)
-	buf.Reset()
-
-	// Negative tests
-
-	// No parameters
-	args = []string{"bcda", "create-aco"}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// No ACO Name
-	badACO := ""
-	args = []string{"bcda", "create-aco", "--name", badACO}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// ACO name without flag
-	args = []string{"bcda", "create-aco", ACOName}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Unexpected flag
-	args = []string{"bcda", "create-aco", "--abcd", "efg"}
-	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-	buf.Reset()
-
-	// we currently allow ACOs with duplicate names
 }
 
 func (s *MainTestSuite) TestCreateUser() {
@@ -243,70 +182,60 @@ func (s *MainTestSuite) TestCreateUser() {
 }
 
 func (s *MainTestSuite) TestCreateToken() {
-
-	// init
-	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	// Set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
+	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	badUUID := "not_a_uuid"
+	clientSecret := "not_a_secret"
 
-	// Test successful creation
-	args := []string{"bcda", "create-token", "--user-id", userUUID}
+	// Unexpected flag
+	args := []string{"bcda", "create-token", "--abcd", "efg"}
 	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.NotNil(buf)
-	accessTokenString := strings.TrimSpace(buf.String())
-	assert.NotNil(accessTokenString)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 	buf.Reset()
 
 	// No parameters
 	args = []string{"bcda", "create-token"}
 	err = s.testApp.Run(args)
-	assert.Equal("User ID (--user-id) must be provided", err.Error())
+	assert.Equal("ID (--id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	// Blank User UUID
-	args = []string{"bcda", "create-token", "--user-id", ""}
+	// Blank ID
+	args = []string{"bcda", "create-token", "--id", "", "--secret", clientSecret}
 	err = s.testApp.Run(args)
-	assert.Equal("User ID (--user-id) must be provided", err.Error())
+	assert.Equal("ID (--id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	// Bad User UUID
-	args = []string{"bcda", "create-token", "--user-id", BADUUID}
+	// Alpha auth section
+	originalAuthProvider := auth.GetProviderName()
+	defer auth.SetProvider(originalAuthProvider)
+	auth.SetProvider("alpha")
+	// Test alpha auth bad ID
+	args = []string{"bcda", "create-token", "--id", badUUID}
 	err = s.testApp.Run(args)
-	assert.Equal("User ID must be a UUID", err.Error())
-	assert.Equal(0, buf.Len())
+	assert.Contains(err.Error(), "must be a UUID")
 	buf.Reset()
 
-	// Unexpected flag
-	args = []string{"bcda", "create-token", "--abcd", "efg"}
+	// Test alpha auth successful creation
+	args = []string{"bcda", "create-token", "--id", userUUID}
 	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-}
-
-func checkTokenInfo(s *MainTestSuite, tokenInfo string) {
-	assert := assert.New(s.T())
-	assert.NotNil(tokenInfo)
-	if len(tokenInfo) == 0 {
-		assert.FailNow("tokenInfo has no content")
-	}
-	lines := strings.Split(tokenInfo, "\n")
-	assert.Equal(3, len(lines))
-	expDate, err := time.Parse(time.RFC850, lines[0])
 	assert.Nil(err)
-	assert.NotNil(expDate)
-	assert.Regexp("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}", lines[1], "no correctly formatted token id in second line %s", lines[1])
-	assert.True(strings.HasPrefix(lines[2], TOKENHEADER), "incorrect token header %s", lines[2])
-	assert.InDelta(500, len(tokenInfo), 100, "encoded token string length should be 500+-100; it is %d\n%s", len(tokenInfo), lines[2])
+	assert.NotNil(buf)
+	accessTokenString := strings.TrimSpace(buf.String())
+	assert.Nil(err)
+	assert.NotEmpty(accessTokenString)
+	buf.Reset()
 }
 
 func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
+	originalAuthProvider := auth.GetProviderName() // remove with BCDA-1022
+	defer auth.SetProvider(originalAuthProvider)   // remove with BCDA-1022
 
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
@@ -315,13 +244,8 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
-	var outputPattern *regexp.Regexp
-	switch auth.GetProvider().(type) {
-	case auth.AlphaAuthPlugin:
-		outputPattern = regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}\n.+\..+\..+\n`)
-	case auth.OktaAuthPlugin:
-		outputPattern = regexp.MustCompile(`[a-zA-Z]+, \d+-[a-zA-Z]{3}-\d{2} \d{2}:\d{2}:\d{2} [A-Z]+\n[!-~]{16}\n\[!-~]{32}n`)
-	}
+
+	outputPattern := regexp.MustCompile(`.+\n.+\n.+`)
 
 	// execute positive scenarios via CLI
 	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
@@ -366,28 +290,11 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	err = s.testApp.Run(args)
 	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-
-	// To execute all scenarios, invoke the rest of the tests directly (not by CLI)
-	// (this is required in order to validate the strings returned)
-
-	alphaTokenInfo, err := createAlphaToken(1, "Dev")
-	assert.Nil(err)
-	checkTokenInfo(s, alphaTokenInfo)
-
-	anotherTokenInfo, err := createAlphaToken(720, "Dev")
-	assert.Nil(err)
-	checkTokenInfo(s, anotherTokenInfo)
-
-	l1 := strings.Split(alphaTokenInfo, "\n")
-	l2 := strings.Split(anotherTokenInfo, "\n")
-	assert.NotEqual(l1[0], l2[0], "alpha expiration dates should be different (%s == %s)", l1[0], l2[0])
-	assert.NotEqual(l1[1], l2[1], "alpha token uuids should be different (%s == %s)", l1[1], l2[1])
 }
 
 func (s *MainTestSuite) TestArchiveExpiring() {
 
 	// init
-	autoMigrate()
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -463,7 +370,6 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 
 	// init
-	autoMigrate()
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -525,7 +431,7 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 	defer database.Close(db)
 
 	s.SetupAuthBackend()
-	acoUUID, err := createACO("ACO " + email)
+	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
@@ -573,7 +479,6 @@ func setupJobArchiveFile(s *MainTestSuite, email string, modified time.Time, acc
 func (s *MainTestSuite) TestCleanArchive() {
 
 	// init
-	autoMigrate()
 	const Threshold = 30
 	now := time.Now()
 
@@ -639,22 +544,17 @@ func (s *MainTestSuite) TestCleanArchive() {
 }
 
 func (s *MainTestSuite) TestRevokeToken() {
-
+	originalAuthProvider := auth.GetProviderName()
+	defer auth.SetProvider(originalAuthProvider)
+	auth.SetProvider("alpha")
 	// init
 	s.SetupAuthBackend()
 
 	assert := assert.New(s.T())
 
 	// Create a token
-	tokenInfo, err := createAlphaToken(720, "Small")
-	assert.Nil(err)
-	checkTokenInfo(s, tokenInfo)
-	alphaTokenData := strings.Split(tokenInfo, "\n")
-	alphaTokenString := alphaTokenData[2]
-
-	// Create a token
 	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	tokenString, err := createAccessToken(userUUID)
+	tokenString, err := createAccessToken(userUUID, "")
 	assert.Nil(err)
 
 	buf := new(bytes.Buffer)
@@ -672,13 +572,6 @@ func (s *MainTestSuite) TestRevokeToken() {
 	err = s.testApp.Run(args)
 	assert.Equal("token contains an invalid number of segments", err.Error())
 	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Positive case - revoke a token passing in a valid token string (alpha)
-	args = []string{"bcda", "revoke-token", "--access-token", alphaTokenString}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Equal("Access token has been deactivated\n", buf.String())
 	buf.Reset()
 
 	// Positive case - revoke a token passing in a valid token string
@@ -702,61 +595,7 @@ func (s *MainTestSuite) TestStartApi() {
 }
 
 func (s *MainTestSuite) TestCreateAlphaToken() {
-	const ttl = 42
-	checkStructure(s, ttl, "dev")
-}
-
-func (s *MainTestSuite) TestCreateSmallAlphaToken() {
-	const ttl = 24
-	checkStructure(s, ttl, "Small")
-}
-
-func (s *MainTestSuite) TestCreateMediumAlphaToken() {
-	const ttl = 24 * 365
-	checkStructure(s, ttl, "MeDIum")
-}
-
-func (s *MainTestSuite) TestCreateLargeAlphaToken() {
-	endOfUnixTime, _ := time.Parse(time.RFC1123, "Tue, 19 Jan 2038 03:14:07 GMT")
-	ttl := int(time.Until(endOfUnixTime).Hours())
-	checkStructure(s, ttl, "Large")
-}
-
-func checkTTL(s *MainTestSuite, claims jwt.MapClaims, ttl int) {
-	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.NotNil(s.T(), iat)
-	assert.NotNil(s.T(), exp)
-
-	delta, err := time.ParseDuration(fmt.Sprintf("%dh", ttl))
-	if err != nil {
-		assert.Fail(s.T(), "Can't parse ttl value of %s", ttl)
-	}
-
-	assert.True(s.T(), assert.WithinDuration(s.T(), iat, exp, delta, "expires date %s not within %s hours of issued at", exp.Format(time.RFC850), ttl))
-}
-
-func checkStructure(s *MainTestSuite, ttl int, acoSize string) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	tokenInfo, err := createAlphaToken(ttl, acoSize)
-	require.Nil(s.T(), err, "Unexpected error %v", err)
-	lines := strings.Split(tokenInfo, "\n")
-	assert.Equal(s.T(), 3, len(lines))
-	tokenString := lines[2]
-	require.NotEmpty(s.T(), tokenString)
-	//  need to handle credentials for different providers here; this will no longer always be a tokenString
-	switch auth.GetProvider().(type) {
-	case auth.AlphaAuthPlugin:
-		claims := s.AuthBackend.GetJWTClaims(tokenString)
-		require.NotNil(s.T(), claims)
-		acoUUID := claims["aco"].(string)
-		assert.NotNil(s.T(), acoUUID)
-		var count int
-		db.Table("beneficiaries").Where("aco_id = ?", acoUUID).Count(&count)
-		assert.Equal(s.T(), s.expectedSizes[strings.ToLower(acoSize)], count)
-		checkTTL(s, claims, ttl)
-	case auth.OktaAuthPlugin:
-		// nothing to see here; move along
-	}
+	msg, err := createAlphaToken(1000, "dev")
+	assert.NotEmpty(s.T(), msg)
+	assert.Nil(s.T(), err)
 }

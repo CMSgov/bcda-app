@@ -3,13 +3,15 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 
@@ -52,23 +54,26 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not load Blue Button keypair")
 	}
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-	// TODO Fix when Blue Button has a static cert: https://jira.cms.gov/browse/BLUEBUTTON-484
-	if os.Getenv("BB_SERVER_LOCATION") != "https://fhir.backend.bluebutton.hhsdevcloud.us" {
+
+	if strings.ToLower(os.Getenv("BB_CHECK_CERT")) != "false" {
 		caFile := os.Getenv("BB_CLIENT_CA_FILE")
 		/* #nosec */
 		caCert, err := ioutil.ReadFile(caFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "could not read CA file")
 		}
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			return nil, errors.New("could not append CA certificate(s)")
+		}
 		tlsConfig.RootCAs = caCertPool
 	} else {
 		tlsConfig.InsecureSkipVerify = true
+		logger.Warn("Blue Button certificate check disabled")
 	}
 
 	tlsConfig.BuildNameToCertificate()
@@ -152,7 +157,6 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 
 func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
-	// Populating header values: https://jira.cms.gov/browse/BCDA-334
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")

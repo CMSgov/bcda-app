@@ -1,48 +1,62 @@
 package auth
 
 import (
-	"encoding/json"
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"regexp"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type AlphaAuthPlugin struct{}
 
-// This implementation expects one value in params, an id the API knows this client by in string form
-// It returns a single string as well, being the clientID this implementation knows this client by
-// NB: Other implementations will probably expect more input, and will certainly return more data
 func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
-
-	// We'll check carefully in this method, because we're returning something to be used as an id
-	// Normally, a plugin would treat this value as a black box external key, but this implementation is
-	// intimate with the API. So, we're going to protect against accidental bad things
-	if len(localID) != 36 {
-		return Credentials{}, errors.New("you must provide a non-empty string 36 characters in length")
+	if localID == "" {
+		return Credentials{}, errors.New("provide a non-empty string")
 	}
 
-	if matched, err := regexp.MatchString("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$", localID); !matched || err != nil {
-		return Credentials{}, errors.New("expected a valid UUID string")
-	}
-
-	if _, err := getACOFromDB(localID); err != nil {
+	aco, err := getACOFromDB(localID)
+	if err != nil {
 		return Credentials{}, err
 	}
 
-	// return the aco UUID as our auth client id. why? because we have to return something that the API / CLI will
-	// use as our clientId for all the methods below. We could come up with yet another numbering scheme, or generate
-	// more UUIDs, but I can't see a benefit in that. Plus, we will know just looking at the DB that any aco
-	// whose client_id matches their UUID was created by this plugin.
-	return Credentials{ClientID: localID}, nil
+	if aco.AlphaSecret != "" {
+		return Credentials{}, fmt.Errorf("aco %s has a secret", localID)
+	}
+
+	s, err := generateClientSecret()
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	hashedSecret := NewHash(s)
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	aco.ClientID = localID
+	aco.AlphaSecret = hashedSecret.String()
+	err = db.Save(&aco).Error
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
+}
+
+func generateClientSecret() (string, error) {
+	b := make([]byte, 40)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", b), nil
 }
 
 func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
@@ -53,7 +67,6 @@ func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
 	return errors.New("not yet implemented")
 }
 
-// can treat as a no-op or call RequestAccessToken
 func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
 	aco, err := getACOFromDB(clientID)
 	if err != nil {
@@ -64,7 +77,7 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 		return Credentials{}, fmt.Errorf("ACO %s does not have a registered client", clientID)
 	}
 
-	err = p.RevokeClientCredentials([]byte(fmt.Sprintf(`{"clientID":"%s"}`, clientID)))
+	err = p.RevokeClientCredentials(clientID)
 	if err != nil {
 		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
 	}
@@ -82,10 +95,9 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 }
 
 // look up the active access token associated with id, and call RevokeAccessToken
-func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
-	clientID, err := GetParamString(params, "clientID")
-	if err != nil {
-		return err
+func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
+	if clientID == "" {
+		return errors.New("missing clientID argument")
 	}
 
 	db := database.GetGORMDbConnection()
@@ -96,15 +108,13 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	}()
 
 	var aco models.ACO
-	err = db.First(&aco, "client_id = ?", clientID).Error
-	if err != nil {
-		return errors.New("no ACO found for client ID")
+	if err := db.First(&aco, "client_id = ?", clientID).Error; err != nil {
+		return fmt.Errorf("no ACO found for client ID because %s", err)
 	}
 
 	var users []models.User
-	db.Find(&users, "aco_id = ?", aco.UUID)
-	if len(users) == 0 {
-		return errors.New("no users found in client's ACO")
+	if err := db.Find(&users, "aco_id = ?", aco.UUID).Error; err != nil || len(users) == 0 {
+		return fmt.Errorf("no users found in client's ACO because %s", err)
 	}
 
 	var (
@@ -140,39 +150,74 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(params []byte) error {
 	return nil
 }
 
-// generate a token for the id (which user? just have a single "user" (alpha2, alpha3, ...) per test cycle?)
-// params are currently acoId and ttl; not going to introduce user until we have clear use cases
-func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+// MakeAccessToken manufactures an access token for the given credentials
+func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	if credentials.ClientSecret == "" || credentials.ClientID == "" {
+		return "", fmt.Errorf("missing or incomplete credentials")
+	}
+	aco, err := getACOByClientID(credentials.ClientID)
+	if err != nil {
+		return "", fmt.Errorf("invalid credentials; %s", err)
+	}
+	// when we have ClientSecret in ACO, adjust following line
+	Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret)
+	var user models.User
+	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
+		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
+	}
+	issuedAt := time.Now().Unix()
+	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
+	return GenerateTokenString(uuid.NewRandom().String(), user.UUID.String(), aco.UUID.String(), issuedAt, expiresAt)
+}
 
+// RequestAccessToken generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
+func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
+	var userUUID, acoUUID uuid.UUID
+	var user models.User
+	var err error
 	token := Token{}
 
-	acoUUID := creds.ClientID
-	if acoUUID == "" {
-		return token, errors.New("no ACO ID provided")
-	}
-
-	aco, err := getACOFromDB(acoUUID)
-	if err != nil {
-		return token, err
-	}
-
-	// I arbitrarily decided to use the first user. An alternative would be to make a specific user
-	// that represents the client. I have no strong opinion here other than not creating stuff in the db
-	// unless we're willing to live with it forever.
-	var user models.User
-	if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
-		return token, errors.New("no user found for " + aco.UUID.String())
+	if creds.UserID == "" && creds.ClientID == "" {
+		return token, fmt.Errorf("must provide either UserID or ClientID")
 	}
 
 	if ttl < 0 {
 		return token, fmt.Errorf("invalid TTL: %d", ttl)
 	}
 
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	if creds.UserID != "" {
+		userUUID = uuid.Parse(creds.UserID)
+		if userUUID == nil {
+			return token, fmt.Errorf("user ID must be a UUID")
+		}
+
+		if db.First(&user, "UUID = ?", creds.UserID).RecordNotFound() {
+			return token, fmt.Errorf("unable to locate User with id of %s", creds.UserID)
+		}
+
+		userUUID = user.UUID
+		acoUUID = user.ACOID
+	} else {
+		var aco models.ACO
+		aco, err = getACOFromDB(creds.ClientID)
+		if err != nil {
+			return token, err
+		}
+
+		if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
+			return token, errors.New("no user found for " + aco.UUID.String())
+		}
+
+		userUUID = user.UUID
+		acoUUID = aco.UUID
+	}
+
 	token.UUID = uuid.NewRandom()
-	token.UserID = user.UUID
-	token.ACOID = aco.UUID
+	token.UserID = userUUID
+	token.ACOID = acoUUID
 	token.IssuedAt = time.Now().Unix()
 	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
 	token.Active = true
@@ -181,7 +226,7 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 		return Token{}, err
 	}
 
-	token.TokenString, err = GenerateTokenString(token.UUID, token.UserID, token.ACOID, token.IssuedAt, token.ExpiresOn)
+	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.UserID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
 	if err != nil {
 		return Token{}, err
 	}
@@ -195,8 +240,8 @@ func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 		return err
 	}
 
-	if c, ok := t.Claims.(jwt.MapClaims); ok {
-		return revokeAccessTokenByID(uuid.Parse(c["id"].(string)))
+	if c, ok := t.Claims.(*CommonClaims); ok {
+		return revokeAccessTokenByID(uuid.Parse(c.UUID))
 	}
 
 	return errors.New("could not read token claims")
@@ -220,10 +265,11 @@ func revokeAccessTokenByID(tokenID uuid.UUID) error {
 func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
+		log.Errorf("could not decode token %s because %s", tokenString, err)
 		return err
 	}
 
-	c := t.Claims.(jwt.MapClaims)
+	c := t.Claims.(*CommonClaims)
 
 	err = checkRequiredClaims(c)
 	if err != nil {
@@ -235,37 +281,37 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	_, err = getACOFromDB(c["aco"].(string))
+	_, err = getACOFromDB(c.ACOID)
 	if err != nil {
 		return err
 	}
 
 	b := isActive(t)
 	if !b {
-		return fmt.Errorf("token with id: %v is not active", c["id"])
+		return fmt.Errorf("token with id: %v is not active", c.UUID)
 	}
 
 	return nil
 }
 
-func checkRequiredClaims(claims jwt.MapClaims) error {
-	if claims["exp"] == nil ||
-		claims["iat"] == nil ||
-		claims["sub"] == nil ||
-		claims["aco"] == nil ||
-		claims["id"] == nil {
+func checkRequiredClaims(claims *CommonClaims) error {
+	if claims.ExpiresAt == 0 ||
+		claims.IssuedAt == 0 ||
+		claims.Subject == "" ||
+		claims.ACOID == "" ||
+		claims.UUID == "" {
 		return fmt.Errorf("missing one or more required claims")
 	}
 	return nil
 }
 
 func isActive(token *jwt.Token) bool {
-	c := token.Claims.(jwt.MapClaims)
+	c := token.Claims.(*CommonClaims)
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	var dbt Token
-	return !db.Find(&dbt, "UUID = ? AND active = ?", c["id"], true).RecordNotFound()
+	return !db.Find(&dbt, "UUID = ? AND active = ?", c.UUID, true).RecordNotFound()
 }
 
 func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
@@ -273,13 +319,10 @@ func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return InitAuthBackend().PublicKey, nil
+		return InitAlphaBackend().PublicKey, nil
 	}
-	t, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, keyFunc)
-	if err != nil {
-		return &jwt.Token{}, err
-	}
-	return t, nil
+
+	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)
 }
 
 func getACOFromDB(acoUUID string) (models.ACO, error) {
@@ -290,27 +333,8 @@ func getACOFromDB(acoUUID string) (models.ACO, error) {
 	)
 	defer database.Close(db)
 
-	if db.Find(&aco, "UUID = ?", acoUUID).RecordNotFound() {
+	if db.Find(&aco, "UUID = ?", uuid.Parse(acoUUID)).RecordNotFound() {
 		err = errors.New("no ACO record found for " + acoUUID)
 	}
 	return aco, err
-}
-
-func GetParamString(params []byte, name string) (string, error) {
-	var (
-		j   interface{}
-		err error
-	)
-
-	if err = json.Unmarshal(params, &j); err != nil {
-		return "", err
-	}
-	paramsMap := j.(map[string]interface{})
-
-	stringForName, ok := paramsMap[name].(string)
-	if !ok {
-		return "", errors.New("missing or otherwise invalid string value for " + name)
-	}
-
-	return stringForName, err
 }

@@ -3,16 +3,17 @@ package models
 import (
 	"crypto/rsa"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/secutils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
-	"os"
 )
 
 func InitializeGormModels() *gorm.DB {
-	fmt.Print("Initialize bcda models")
+	log.Println("Initialize bcda models")
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -26,7 +27,12 @@ func InitializeGormModels() *gorm.DB {
 		&User{},
 		&Job{},
 		&JobKey{},
+		&Beneficiary{},
+		&ACOBeneficiary{},
 	)
+
+	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
+	db.Model(&ACOBeneficiary{}).AddForeignKey("beneficiary_id", "beneficiaries(id)", "RESTRICT", "RESTRICT")
 
 	return db
 }
@@ -79,11 +85,32 @@ type JobKey struct {
 	FileName     string `gorm:"type:char(127)"`
 }
 
+// ACO-Beneficiary relationship models based on https://github.com/jinzhu/gorm/issues/719#issuecomment-168485989
 type ACO struct {
 	gorm.Model
-	UUID     uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	Name     string    `json:"name"`                                   // name
-	ClientID string    `json:"client_id"`                              // software client id
+	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
+	CMSID            *string   `gorm:"type:char(5)" json:"cms_id"`
+	Name             string    `json:"name"`
+	ClientID         string    `json:"client_id"`
+	AlphaSecret      string    `json:"alpha_secret"`
+	ACOBeneficiaries []*ACOBeneficiary
+}
+
+type Beneficiary struct {
+	gorm.Model
+	BlueButtonID string `gorm:"type: text"`
+}
+
+type ACOBeneficiary struct {
+	ACOID         uuid.UUID `gorm:"type:uuid"`
+	ACO           *ACO      `gorm:"foreignkey:ACOID"`
+	BeneficiaryID uint
+	Beneficiary   *Beneficiary `gorm:"foreignkey:BeneficiaryID;association_foreignkey:ID"`
+	// Join model needed for additional fields later, e.g., AttributionDate
+}
+
+func (*ACOBeneficiary) TableName() string {
+	return "acos_beneficiaries"
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {
@@ -101,7 +128,7 @@ func GetATOPublicKey() *rsa.PublicKey {
 		fmt.Println("failed to open file")
 		panic(err)
 	}
-	return secutils.OpenPublicKeyFile(atoPublicKeyFile)
+	return utils.OpenPublicKeyFile(atoPublicKeyFile)
 }
 
 func GetATOPrivateKey() *rsa.PrivateKey {
@@ -109,14 +136,14 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 	if err != nil {
 		panic(err)
 	}
-	return secutils.OpenPrivateKeyFile(atoPrivateKeyFile)
+	return utils.OpenPrivateKeyFile(atoPrivateKeyFile)
 }
 
-func CreateACO(name string) (uuid.UUID, error) {
+func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	aco := ACO{Name: name, UUID: uuid.NewRandom()}
+	aco := ACO{Name: name, CMSID: cmsID, UUID: uuid.NewRandom()}
 	db.Create(&aco)
 
 	return aco.UUID, db.Error
@@ -161,8 +188,9 @@ func CreateAlphaACO(db *gorm.DB) (ACO, error) {
 }
 
 func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
-	s := "insert into beneficiaries (patient_id, aco_id) select patient_id, '" + aco.UUID.String() +
-		"' from beneficiaries where aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
+	s := "insert into acos_beneficiaries (aco_id, beneficiary_id) select '" + aco.UUID.String() +
+		"', b.id from beneficiaries b join acos_beneficiaries ab on b.id = ab.beneficiary_id " +
+		"where ab.aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
 }
 

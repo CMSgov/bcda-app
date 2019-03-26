@@ -1,4 +1,4 @@
-package secutils
+package utils
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 type SecutilsTestSuite struct {
 	suite.Suite
 }
+
 //
 //func (s *SecutilsTestSuite) SetupTest() {
 //	publicKeyFile := os.Getenv("ATO_PUBLIC_KEY_FILE")
@@ -39,5 +40,3 @@ func (s *SecutilsTestSuite) TestOpenPublicKeyFile() {
 func TestSecutilsTestSuite(t *testing.T) {
 	suite.Run(t, new(SecutilsTestSuite))
 }
-
-
