@@ -157,7 +157,9 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 }
 
 func (s *RouterTestSuite) TestJobStatusRoute() {
-
+	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/api/v1/jobs/1")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 401, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestHTTPServerRedirect() {
