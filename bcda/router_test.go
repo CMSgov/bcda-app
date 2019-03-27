@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -16,50 +16,60 @@ import (
 
 type RouterTestSuite struct {
 	suite.Suite
-	apiServer  *httptest.Server
-	dataServer *httptest.Server
-	rr         *httptest.ResponseRecorder
+	apiRouter  http.Handler
+	dataRouter http.Handler
 }
 
 func (s *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
-	s.apiServer = httptest.NewServer(NewAPIRouter())
-	s.dataServer = httptest.NewServer(NewDataRouter())
+	s.apiRouter = NewAPIRouter()
+	s.dataRouter = NewDataRouter()
 }
 
-func (s *RouterTestSuite) TearDownTest() {
-	s.apiServer.Close()
-	s.dataServer.Close()
+func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
+	req := httptest.NewRequest("GET", route, nil)
+	rr := httptest.NewRecorder()
+	s.apiRouter.ServeHTTP(rr, req)
+	return rr.Result()
+}
+
+func (s *RouterTestSuite) postAPIRoute(route string, body io.Reader) *http.Response {
+	req := httptest.NewRequest("POST", route, body)
+	rr := httptest.NewRecorder()
+	s.apiRouter.ServeHTTP(rr, req)
+	return rr.Result()
+}
+
+func (s *RouterTestSuite) getDataRoute(route string) *http.Response {
+	req := httptest.NewRequest("GET", route, nil)
+	rr := httptest.NewRecorder()
+	s.dataRouter.ServeHTTP(rr, req)
+	return rr.Result()
 }
 
 func (s *RouterTestSuite) TestDefaultRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL)
-	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/")
 	assert.Equal(s.T(), 200, res.StatusCode)
-
-	bytes, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	assert.Nil(s.T(), err)
-	r := string(bytes)
-	assert.NotContains(s.T(), r, "404 page not found", "Default route returned wrong body")
-	assert.Contains(s.T(), r, "Beneficiary Claims Data API")
+	body, _ := ioutil.ReadAll(res.Body)
+	assert.NotContains(s.T(), string(body), "404 page not found", "Default route returned wrong body")
+	assert.Contains(s.T(), string(body), "Beneficiary Claims Data API")
 }
 
 func (s *RouterTestSuite) TestDataRoute() {
-	res, err := s.apiServer.Client().Get(s.dataServer.URL + "/data/test/test.ndjson")
-	assert.Nil(s.T(), err, fmt.Sprintf("error when getting data route: %s", err))
+	res := s.getDataRoute("/data/test/test.ndjson")
 	assert.Equal(s.T(), 401, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestAuthTokenRoute() {
-	res, err := s.apiServer.Client().Post(s.apiServer.URL+"/auth/token", "", nil)
-	assert.Nil(s.T(), err, fmt.Sprintf("error getting auth token route: %s", err))
+	res := s.postAPIRoute("/auth/token", nil)
 	assert.Equal(s.T(), 400, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestFileServerRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/api/v1/swagger")
-	assert.Nil(s.T(), err, fmt.Sprintf("error when getting swagger route: %s", err))
+	res := s.getAPIRoute("/api/v1/swagger")
+	assert.Equal(s.T(), 301, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/swagger/")
 	assert.Equal(s.T(), 200, res.StatusCode)
 
 	r := chi.NewRouter()
@@ -70,37 +80,32 @@ func (s *RouterTestSuite) TestFileServerRoute() {
 }
 
 func (s *RouterTestSuite) TestMetadataRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/api/v1/metadata")
-	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/api/v1/metadata")
 	assert.Equal(s.T(), 200, res.StatusCode)
 
 	bytes, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), string(bytes), "resourceType")
+	assert.Contains(s.T(), string(bytes), `"resourceType":"CapabilityStatement"`)
 }
 
 func (s *RouterTestSuite) TestTokenRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/api/v1/token")
-	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/api/v1/token")
 	assert.Equal(s.T(), 200, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestHealthRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/_health")
-	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/_health")
 	assert.Equal(s.T(), 200, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestVersionRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/_version")
-	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/_version")
 	assert.Equal(s.T(), 200, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestEOBExportRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/api/v1/ExplanationOfBenefit/$export")
-	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/api/v1/ExplanationOfBenefit/$export")
 	assert.Equal(s.T(), 401, res.StatusCode)
 }
 
@@ -109,25 +114,23 @@ func (s *RouterTestSuite) TestPatientExportRoute() {
 	defer os.Setenv("ENABLE_PATIENT_EXPORT", origPtExp)
 
 	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
-	apiServer := httptest.NewServer(NewAPIRouter())
-	client := apiServer.Client()
-	res, err := client.Get(apiServer.URL + "/api/v1/Patient/$export")
-	assert.Nil(s.T(), err)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	rr := httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res := rr.Result()
 	assert.Equal(s.T(), 401, res.StatusCode)
 
 	os.Setenv("ENABLE_PATIENT_EXPORT", "false")
-	apiServer.Config.Handler = NewAPIRouter()
-	res, err = client.Get(apiServer.URL + "/api/v1/Patient/$export")
-	assert.Nil(s.T(), err)
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
 	assert.Equal(s.T(), 404, res.StatusCode)
 
 	os.Unsetenv("ENABLE_PATIENT_EXPORT")
-	apiServer.Config.Handler = NewAPIRouter()
-	res, err = client.Get(apiServer.URL + "/api/v1/Patient/$export")
-	assert.Nil(s.T(), err)
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
 	assert.Equal(s.T(), 404, res.StatusCode)
-
-	apiServer.Close()
 }
 
 func (s *RouterTestSuite) TestCoverageExportRoute() {
@@ -135,30 +138,27 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 	defer os.Setenv("ENABLE_COVERAGE_EXPORT", origCovExp)
 
 	os.Setenv("ENABLE_COVERAGE_EXPORT", "true")
-	apiServer := httptest.NewServer(NewAPIRouter())
-	client := apiServer.Client()
-	res, err := client.Get(apiServer.URL + "/api/v1/Coverage/$export")
-	assert.Nil(s.T(), err)
+	req := httptest.NewRequest("GET", "/api/v1/Coverage/$export", nil)
+	rr := httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res := rr.Result()
 	assert.Equal(s.T(), 401, res.StatusCode)
 
 	os.Setenv("ENABLE_COVERAGE_EXPORT", "false")
-	apiServer.Config.Handler = NewAPIRouter()
-	res, err = client.Get(apiServer.URL + "/api/v1/Coverage/$export")
-	assert.Nil(s.T(), err)
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
 	assert.Equal(s.T(), 404, res.StatusCode)
 
 	os.Unsetenv("ENABLE_COVERAGE_EXPORT")
-	apiServer.Config.Handler = NewAPIRouter()
-	res, err = client.Get(apiServer.URL + "/api/v1/Coverage/$export")
-	assert.Nil(s.T(), err)
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
 	assert.Equal(s.T(), 404, res.StatusCode)
-
-	apiServer.Close()
 }
 
 func (s *RouterTestSuite) TestJobStatusRoute() {
-	res, err := s.apiServer.Client().Get(s.apiServer.URL + "/api/v1/jobs/1")
-	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/api/v1/jobs/1")
 	assert.Equal(s.T(), 401, res.StatusCode)
 }
 
