@@ -47,7 +47,7 @@ func (s *MiddlewareTestSuite) TestValidateBulkRequestHeaders() {
 		log.Fatal(err)
 	}
 
-	assert.Equal(s.T(), 200, resp.StatusCode)
+	assert.Equal(s.T(), 400, resp.StatusCode)
 }
 
 func (s *MiddlewareTestSuite) TestValidateBulkRequestHeadersInvalidAccept() {
