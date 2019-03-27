@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"errors"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
@@ -35,9 +37,9 @@ type Token struct {
 	Active      bool        `json:"active"`                                       // active
 	ACO         models.ACO  `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // ACO needed here because user can belong to multiple ACOs
 	ACOID       uuid.UUID   `gorm:"type:uuid" json:"aco_id"`
-	IssuedAt    int64       `json:"issued_at"`                                    // standard token claim; unix date
-	ExpiresOn   int64       `json:"expires_on"`                                   // standard token claim; unix date
-	TokenString string      `gorm:"-"`                                            // ignore; not for database
+	IssuedAt    int64       `json:"issued_at"`  // standard token claim; unix date
+	ExpiresOn   int64       `json:"expires_on"` // standard token claim; unix date
+	TokenString string      `gorm:"-"`          // ignore; not for database
 }
 
 // When getting a Token out of the database, reconstruct its string value and store it in TokenString.
@@ -48,4 +50,18 @@ func (t *Token) AfterFind() error {
 		return nil
 	}
 	return err
+}
+
+func GetACOByClientID(clientID string) (models.ACO, error) {
+	var (
+		db  = database.GetGORMDbConnection()
+		aco models.ACO
+		err error
+	)
+	defer database.Close(db)
+
+	if db.Find(&aco, "client_id = ?", clientID).RecordNotFound() {
+		err = errors.New("no ACO record found for " + clientID)
+	}
+	return aco, err
 }

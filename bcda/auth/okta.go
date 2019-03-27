@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
@@ -58,7 +56,7 @@ func (o OktaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) DeleteClient(params []byte) error {
+func (o OktaAuthPlugin) DeleteClient(clientID string) error {
 	return errors.New("not yet implemented")
 }
 
@@ -84,7 +82,6 @@ func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
 
 	return nil
 }
-
 
 // Manufactures an access token for the given credentials
 func (o OktaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
@@ -143,7 +140,7 @@ func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
 	// keep an in-memory cache of tokens we have revoked and check that
 	// use the introspection endpoint okta provides (expensive network call)
 
-	_, err = getACOByClientID(c.ClientID)
+	_, err = GetACOByClientID(c.ClientID)
 	if err != nil {
 		return fmt.Errorf("invalid cid claim; %s", err)
 	}
@@ -171,18 +168,4 @@ func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
 	}
 
 	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFinder)
-}
-
-func getACOByClientID(clientID string) (models.ACO, error) {
-	var (
-		db  = database.GetGORMDbConnection()
-		aco models.ACO
-		err error
-	)
-	defer database.Close(db)
-
-	if db.Find(&aco, "client_id = ?", clientID).RecordNotFound() {
-		err = errors.New("no ACO record found for " + clientID)
-	}
-	return aco, err
 }

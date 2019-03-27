@@ -48,7 +48,7 @@ func ParseToken(next http.Handler) http.Handler {
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
 			// okta token
 			if claims.ClientID != "" && claims.Subject == claims.ClientID {
-				var aco, err = getACOByClientID(claims.ClientID)
+				var aco, err = GetACOByClientID(claims.ClientID)
 				if err != nil {
 					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
 					next.ServeHTTP(w, r)
