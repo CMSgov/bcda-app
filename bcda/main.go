@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"strconv"
@@ -29,17 +30,6 @@ var (
 	qc      *que.Client
 	version = "latest"
 )
-
-// swagger:ignore
-type jobEnqueueArgs struct {
-	ID             int
-	ACOID          string
-	UserID         string
-	BeneficiaryIDs []string
-	ResourceType   string
-	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-	Encrypt bool
-}
 
 func init() {
 	createAPIDirs()
@@ -445,15 +435,9 @@ func createAlphaToken(ttl int, acoSize string) (string, error) {
 	return msg, nil
 }
 
+// This has 100+ references to refactor
 func getEnvInt(varName string, defaultVal int) int {
-	v := os.Getenv(varName)
-	if v != "" {
-		i, err := strconv.Atoi(v)
-		if err == nil {
-			return i
-		}
-	}
-	return defaultVal
+	return utils.GetEnvInt(varName, defaultVal)
 }
 
 func archiveExpiring(hrThreshold int) error {

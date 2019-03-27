@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -92,6 +93,7 @@ func EncryptAndMove(fromPath, toPath, fileName string, key *rsa.PublicKey, jobID
 	defer database.Close(db)
 	err = db.Create(&models.JobKey{JobID: jobID, EncryptedKey: encryptedKey, FileName: fileName}).Error
 	if err != nil {
+		fmt.Println(err)
 		log.Error(err)
 		return err
 	}

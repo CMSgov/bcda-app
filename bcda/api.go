@@ -44,7 +44,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -57,9 +56,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 )
-
-//Setting a default here.  It may need to change.  It also shouldn't really be used much.
-const BCDA_FHIR_MAX_RECORDS_DEFAULT = 10000
 
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
@@ -169,76 +165,25 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var acoBeneficiaries []models.ACOBeneficiary
-	if err = db.Find(&acoBeneficiaries, "aco_id = ?", acoID).Error; err != nil {
-		log.Errorf("Error retrieving ACO-beneficiary with ACO ID %s: %s", acoID, err.Error())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+	enqueueJobs, err := newJob.GetEnqueJobs(encrypt, t)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
-	beneficiaryIDs := []string{}
-	for _, acoBeneficiary := range acoBeneficiaries {
-		var beneficiary models.Beneficiary
-		if err = db.First(&beneficiary, acoBeneficiary.BeneficiaryID).Error; err != nil {
-			log.Errorf("Error retrieving beneficiary with ID %d: %s", acoBeneficiary.BeneficiaryID, err.Error())
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+	for _, j := range enqueueJobs {
+		if err = qc.Enqueue(j); err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
-		beneficiaryIDs = append(beneficiaryIDs, beneficiary.BlueButtonID)
 	}
 
-	var jobIDs []string
-	var jobCount = 0
-	var rowCount = 0
-	maxBeneficiaries := getEnvInt("BCDA_FHIR_MAX_RECORDS", BCDA_FHIR_MAX_RECORDS_DEFAULT)
-
-	for _, id := range beneficiaryIDs {
-		rowCount++
-		jobIDs = append(jobIDs, id)
-		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaryIDs) {
-
-			args, err := json.Marshal(jobEnqueueArgs{
-				ID:             int(newJob.ID),
-				ACOID:          acoID,
-				UserID:         userID,
-				BeneficiaryIDs: jobIDs,
-				ResourceType:   t,
-				// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-				Encrypt: encrypt,
-			})
-			if err != nil {
-				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
-				return
-			}
-
-			j := &que.Job{
-				Type: "ProcessJob",
-				Args: args,
-			}
-
-			if err = qc.Enqueue(j); err != nil {
-				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
-				return
-			}
-			jobCount++
-			jobIDs = []string{}
-		}
-	}
-
-	if db.Model(&newJob).Update("job_count", jobCount).Error != nil {
+	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	if db.Model(&newJob).Update("job_count", jobCount).Error != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return

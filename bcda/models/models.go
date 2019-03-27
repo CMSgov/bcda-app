@@ -2,15 +2,20 @@ package models
 
 import (
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
+
+//Setting a default here.  It may need to change.  It also shouldn't really be used much.
+const BCDA_FHIR_MAX_RECORDS_DEFAULT = 10000
 
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
@@ -77,6 +82,56 @@ func (job *Job) CheckCompleted() (bool, error) {
 	return false, nil
 }
 
+func (job *Job) GetEnqueJobs(encrypt bool, t string) (enqueJobs []*que.Job, err error) {
+	var jobIDs []string
+
+	var rowCount = 0
+	maxBeneficiaries := utils.GetEnvInt("BCDA_FHIR_MAX_RECORDS", BCDA_FHIR_MAX_RECORDS_DEFAULT)
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	var aco ACO
+	err = db.Find(&aco, "uuid = ?", job.ACOID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	beneficiaryIDs, err := aco.GetBeneficiaryIDs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range beneficiaryIDs {
+		rowCount++
+		jobIDs = append(jobIDs, id)
+		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaryIDs) {
+
+			args, err := json.Marshal(jobEnqueueArgs{
+				ID:             int(job.ID),
+				ACOID:          job.ACOID.String(),
+				UserID:         job.UserID.String(),
+				BeneficiaryIDs: jobIDs,
+				ResourceType:   t,
+				// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
+				Encrypt: encrypt,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			j := &que.Job{
+				Type: "ProcessJob",
+				Args: args,
+			}
+
+			enqueJobs = append(enqueJobs, j)
+
+			jobIDs = []string{}
+		}
+	}
+	return enqueJobs, nil
+}
+
 type JobKey struct {
 	gorm.Model
 	Job          Job  `gorm:"foreignkey:jobID"`
@@ -94,6 +149,24 @@ type ACO struct {
 	ClientID         string    `json:"client_id"`
 	AlphaSecret      string    `json:"alpha_secret"`
 	ACOBeneficiaries []*ACOBeneficiary
+}
+
+func (aco *ACO) GetBeneficiaryIDs() (beneficiaryIDs []string, err error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	beneficiaryJoin := "inner join beneficiaries on acos_beneficiaries.beneficiary_id = beneficiaries.id"
+	if err = db.Table("acos_beneficiaries").Joins(beneficiaryJoin).Where("acos_beneficiaries.aco_id = ?", aco.UUID).Pluck("beneficiaries.blue_button_id", &beneficiaryIDs).Error; err != nil {
+		log.Errorf("Error retrieving ACO-beneficiaries for ACO ID %s: %s", aco.UUID.String(), err.Error())
+		return nil, err
+	}
+	/*else if len(beneficiaryIDs) == 0{
+		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
+		return nil, errors.New(fmt.Sprintf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String()))
+	}
+
+	*/
+	return beneficiaryIDs, nil
 }
 
 type Beneficiary struct {
@@ -204,4 +277,16 @@ func CreateAlphaUser(db *gorm.DB, aco ACO) (User, error) {
 	db.Create(&user)
 
 	return user, db.Error
+}
+
+// This is not a persistent model so it is not necessary to include in GORM auto migrate.
+// swagger:ignore
+type jobEnqueueArgs struct {
+	ID             int
+	ACOID          string
+	UserID         string
+	BeneficiaryIDs []string
+	ResourceType   string
+	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
+	Encrypt bool
 }
