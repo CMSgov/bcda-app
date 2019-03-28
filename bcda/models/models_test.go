@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/CMSgov/bcda-app/bcda/testConstants"
 	"os"
 	"testing"
 
@@ -11,11 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
-
-const DEVACOUUID = "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
-const SMALLACOUUID = "3461C774-B48F-11E8-96F8-529269fb1459"
-const MEDIUMACOUUID = "C74C008D-42F8-4ED9-BF88-CEE659C7F692"
-const LARGEACOUUID = "8D80925A-027E-43DD-8AED-9A501CC4CD91"
 
 type ModelsTestSuite struct {
 	suite.Suite
@@ -183,7 +179,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	assert := s.Assert()
 
 	j := Job{
-		ACOID:      uuid.Parse(DEVACOUUID),
+		ACOID:      uuid.Parse(testConstants.DEVACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
@@ -204,7 +200,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 			s.T().Error(err)
 		}
 		assert.Equal(int(j.ID), jobArgs.ID)
-		assert.Equal("0c527d2e-2e8a-4808-b11d-0fa06baf8254", jobArgs.ACOID)
+		assert.Equal(testConstants.DEVACOUUID, jobArgs.ACOID)
 		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		assert.Equal("Patient", jobArgs.ResourceType)
 		assert.Equal(true, jobArgs.Encrypt)
@@ -212,7 +208,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	}
 
 	j = Job{
-		ACOID:      uuid.Parse(DEVACOUUID),
+		ACOID:      uuid.Parse(testConstants.DEVACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
@@ -244,7 +240,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert := s.Assert()
 	var aco, smallACO, mediumACO, largeACO ACO
-	acoUUID := uuid.Parse(DEVACOUUID)
+	acoUUID := uuid.Parse(testConstants.DEVACOUUID)
 
 	err := s.db.Find(&aco, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
@@ -254,7 +250,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.Equal(50, len(beneficiaryIDs))
 
 	// small ACO has 10 benes
-	acoUUID = uuid.Parse(SMALLACOUUID)
+	acoUUID = uuid.Parse(testConstants.SMALLACOUUID)
 	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaryIDs, err = smallACO.GetBeneficiaryIDs()
@@ -263,7 +259,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.Equal(10, len(beneficiaryIDs))
 
 	// Medium ACO has 25 benes
-	acoUUID = uuid.Parse(MEDIUMACOUUID)
+	acoUUID = uuid.Parse(testConstants.MEDIUMACOUUID)
 	err = s.db.Find(&mediumACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaryIDs, err = mediumACO.GetBeneficiaryIDs()
@@ -272,7 +268,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.Equal(25, len(beneficiaryIDs))
 
 	// Large ACO has 100 benes
-	acoUUID = uuid.Parse(LARGEACOUUID)
+	acoUUID = uuid.Parse(testConstants.LARGEACOUUID)
 	err = s.db.Find(&largeACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaryIDs, err = largeACO.GetBeneficiaryIDs()

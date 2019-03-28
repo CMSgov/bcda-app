@@ -319,14 +319,15 @@ func main() {
 							}
 						}
 						fmt.Println("done.")
+
 					} else {
 						fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
 						os.Exit(1)
 					}
-
-					break
-
 				}
+				break
+
+			} else {
 				fmt.Println("  => job is still pending. waiting...")
 			}
 		}

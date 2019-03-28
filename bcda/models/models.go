@@ -159,13 +159,11 @@ func (aco *ACO) GetBeneficiaryIDs() (beneficiaryIDs []string, err error) {
 	if err = db.Table("acos_beneficiaries").Joins(beneficiaryJoin).Where("acos_beneficiaries.aco_id = ?", aco.UUID).Pluck("beneficiaries.blue_button_id", &beneficiaryIDs).Error; err != nil {
 		log.Errorf("Error retrieving ACO-beneficiaries for ACO ID %s: %s", aco.UUID.String(), err.Error())
 		return nil, err
-	}
-	/*else if len(beneficiaryIDs) == 0{
+	} else if len(beneficiaryIDs) == 0 {
 		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
-		return nil, errors.New(fmt.Sprintf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String()))
+		return nil, fmt.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
 	}
 
-	*/
 	return beneficiaryIDs, nil
 }
 

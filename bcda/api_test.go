@@ -22,7 +22,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -109,7 +108,7 @@ func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 	handler := http.HandlerFunc(bulkEOBRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
