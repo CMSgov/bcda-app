@@ -161,7 +161,7 @@ func (aco *ACO) GetBeneficiaryIDs() (beneficiaryIDs []string, err error) {
 		return nil, err
 	} else if len(beneficiaryIDs) == 0 {
 		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
-		return nil, fmt.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
+		return nil, fmt.Errorf("retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
 	}
 
 	return beneficiaryIDs, nil
