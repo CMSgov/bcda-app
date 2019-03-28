@@ -90,8 +90,8 @@ func (s *RouterTestSuite) TestMetadataRoute() {
 }
 
 func (s *RouterTestSuite) TestTokenRoute() {
-	origCovExp := os.Getenv("ENABLE_COVERAGE_EXPORT")
-	defer os.Setenv("ENABLE_COVERAGE_EXPORT", origCovExp)
+	origDebug := os.Getenv("DEBUG")
+	defer os.Setenv("DEBUG", origDebug)
 
 	os.Setenv("DEBUG", "true")
 	req := httptest.NewRequest("GET", "/api/v1/token", nil)
