@@ -90,8 +90,28 @@ func (s *RouterTestSuite) TestMetadataRoute() {
 }
 
 func (s *RouterTestSuite) TestTokenRoute() {
-	res := s.getAPIRoute("/api/v1/token")
+	origCovExp := os.Getenv("ENABLE_COVERAGE_EXPORT")
+	defer os.Setenv("ENABLE_COVERAGE_EXPORT", origCovExp)
+
+	os.Setenv("DEBUG", "true")
+	req := httptest.NewRequest("GET", "/api/v1/token", nil)
+	rr := httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res := rr.Result()
 	assert.Equal(s.T(), 200, res.StatusCode)
+
+	os.Setenv("DEBUG", "false")
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
+	assert.Equal(s.T(), 404, res.StatusCode)
+
+	os.Unsetenv("DEBUG")
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
+	assert.Equal(s.T(), 404, res.StatusCode)
+
 }
 
 func (s *RouterTestSuite) TestHealthRoute() {
