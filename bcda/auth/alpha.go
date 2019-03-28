@@ -63,8 +63,23 @@ func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (p AlphaAuthPlugin) DeleteClient(params []byte) error {
-	return errors.New("not yet implemented")
+func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
+	aco, err := GetACOByClientID(clientID)
+	if err != nil {
+		return err
+	}
+
+	aco.ClientID = ""
+	aco.AlphaSecret = ""
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	err = db.Save(&aco).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
@@ -155,7 +170,7 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	if credentials.ClientSecret == "" || credentials.ClientID == "" {
 		return "", fmt.Errorf("missing or incomplete credentials")
 	}
-	aco, err := getACOByClientID(credentials.ClientID)
+	aco, err := GetACOByClientID(credentials.ClientID)
 	if err != nil {
 		return "", fmt.Errorf("invalid credentials; %s", err)
 	}

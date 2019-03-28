@@ -74,7 +74,7 @@ type Provider interface {
 	UpdateClient(params []byte) ([]byte, error)
 
 	// DeleteClient deletes the registered software client identified by clientID, revoking an active tokens
-	DeleteClient(params []byte) error
+	DeleteClient(clientID string) error
 
 	// GenerateClientCredentials new or replace existing Credentials for the given clientID
 	GenerateClientCredentials(clientID string, ttl int) (Credentials, error)
