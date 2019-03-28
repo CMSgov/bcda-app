@@ -234,8 +234,8 @@ func (s *MainTestSuite) TestCreateToken() {
 }
 
 func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
-	originalAuthProvider := auth.GetProviderName()  // remove with BCDA-1022
-	defer auth.SetProvider(originalAuthProvider)    // remove with BCDA-1022
+	originalAuthProvider := auth.GetProviderName() // remove with BCDA-1022
+	defer auth.SetProvider(originalAuthProvider)   // remove with BCDA-1022
 
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
@@ -552,33 +552,15 @@ func (s *MainTestSuite) TestRevokeToken() {
 
 	assert := assert.New(s.T())
 
-	// Create a token
-	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	tokenString, err := createAccessToken(userUUID, "")
-	assert.Nil(err)
-
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
 	// Negative case - attempt to revoke a token passing in a blank token string
 	args := []string{"bcda", "revoke-token", "--access-token", ""}
-	err = s.testApp.Run(args)
+	err := s.testApp.Run(args)
 	assert.Equal("Access token (--access-token) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
-
-	// Negative case - attempt to revoke a token passing in an invalid token string
-	args = []string{"bcda", "revoke-token", "--access-token", "abcdefg"}
-	err = s.testApp.Run(args)
-	assert.Equal("token contains an invalid number of segments", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Positive case - revoke a token passing in a valid token string
-	args = []string{"bcda", "revoke-token", "--access-token", tokenString}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Equal("Access token has been deactivated\n", buf.String())
 }
 
 func (s *MainTestSuite) TestStartApi() {
