@@ -87,8 +87,18 @@ func (s *AlphaAuthPluginTestSuite) TestUpdateClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
-	err := s.p.DeleteClient([]byte(`{}`))
-	assert.Equal(s.T(), "not yet implemented", err.Error())
+	cmsID := testUtils.RandomHexID()[0:4]
+	acoUUID, _ := models.CreateACO("TestRegisterClient", &cmsID)
+	c, _ := s.p.RegisterClient(acoUUID.String())
+	aco, _ := auth.GetACOByClientID(c.ClientID)
+	assert.NotEmpty(s.T(), aco.ClientID)
+	assert.NotEmpty(s.T(), aco.AlphaSecret)
+
+	err := s.p.DeleteClient(c.ClientID)
+	assert.Nil(s.T(), err)
+	aco, _ = auth.GetACOByClientID(c.ClientID)
+	assert.Empty(s.T(), aco.ClientID)
+	assert.Empty(s.T(), aco.AlphaSecret)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
