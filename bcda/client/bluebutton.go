@@ -91,29 +91,25 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 type BeneDataFunc func(string, string) (string, error)
 
 func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
-	params := url.Values{}
+	params := GetDefaultParams()
 	params.Set("_id", patientID)
-	params.Set("_format", "application/fhir+json")
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
 }
 
 func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (string, error) {
-	params := url.Values{}
+	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-	params.Set("_format", "application/fhir+json")
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, "")
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
-	params := url.Values{}
+	params := GetDefaultParams()
 	params.Set("patient", patientID)
-	params.Set("_format", "application/fhir+json")
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
-	params := url.Values{}
-	params.Set("_format", "application/fhir+json")
+	params := GetDefaultParams()
 	return bbc.getData(blueButtonBasePath+"/metadata/", params, "")
 }
 
@@ -190,4 +186,11 @@ func logRequest(req *http.Request, resp *http.Response, jobID string) {
 			"content_length": resp.ContentLength,
 		}).Infoln("Blue Button response")
 	}
+}
+
+func GetDefaultParams() (params url.Values) {
+	params = url.Values{}
+	params.Set("_format", "application/fhir+json")
+	params.Set("excludeSAMHSA", "true")
+	return params
 }

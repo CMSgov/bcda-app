@@ -184,6 +184,14 @@ func (s *BBTestSuite) TestGetBlueButtonMetadata() {
 	assert.Equal(s.T(), `{ "test": "ok" }`, m)
 }
 
+func (s *BBTestSuite) TestGetDefaultParams() {
+	params := client.GetDefaultParams()
+	assert.Equal(s.T(), "application/fhir+json", params.Get("_format"))
+	assert.Equal(s.T(), "true", params.Get("excludeSAMHSA"))
+	assert.Equal(s.T(), "", params.Get("patient"))
+	assert.Equal(s.T(), "", params.Get("beneficiary"))
+
+}
 func (s *BBTestSuite) TearDownTest() {
 	s.ts.Close()
 }
