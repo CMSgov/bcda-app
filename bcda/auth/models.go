@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"errors"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
@@ -48,4 +50,18 @@ func (t *Token) AfterFind() error {
 		return nil
 	}
 	return err
+}
+
+func GetACOByClientID(clientID string) (models.ACO, error) {
+	var (
+		db  = database.GetGORMDbConnection()
+		aco models.ACO
+		err error
+	)
+	defer database.Close(db)
+
+	if db.Find(&aco, "client_id = ?", clientID).RecordNotFound() {
+		err = errors.New("no ACO record found for " + clientID)
+	}
+	return aco, err
 }

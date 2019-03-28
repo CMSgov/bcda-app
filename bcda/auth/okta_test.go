@@ -64,7 +64,7 @@ func (s *OktaAuthPluginTestSuite) TestOktaUpdateClient() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestOktaDeleteClient() {
-	err := s.o.DeleteClient([]byte("{}"))
+	err := s.o.DeleteClient("")
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
