@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"strconv"
@@ -121,16 +121,16 @@ func setUpApp() *cli.App {
 
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
-					ReadTimeout:  time.Duration(testUtils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(testUtils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
-					IdleTimeout:  time.Duration(testUtils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				fileserver := &http.Server{
 					Handler:      NewDataRouter(),
-					ReadTimeout:  time.Duration(testUtils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(testUtils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
-					IdleTimeout:  time.Duration(testUtils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				smux := servicemux.New(":3000")
@@ -288,7 +288,7 @@ func setUpApp() *cli.App {
 			Category: "Archive files for jobs that are expiring",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
-				threshold := testUtils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
 				return archiveExpiring(threshold)
 			},
 		},
