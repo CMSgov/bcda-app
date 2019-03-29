@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"net/http"
 	"os"
 	"strconv"
@@ -120,16 +121,16 @@ func setUpApp() *cli.App {
 
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
-					ReadTimeout:  time.Duration(getEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(getEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
-					IdleTimeout:  time.Duration(getEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(testUtils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(testUtils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(testUtils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				fileserver := &http.Server{
 					Handler:      NewDataRouter(),
-					ReadTimeout:  time.Duration(getEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(getEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
-					IdleTimeout:  time.Duration(getEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(testUtils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(testUtils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
+					IdleTimeout:  time.Duration(testUtils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				smux := servicemux.New(":3000")
@@ -287,7 +288,7 @@ func setUpApp() *cli.App {
 			Category: "Archive files for jobs that are expiring",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
-				threshold := getEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+				threshold := testUtils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
 				return archiveExpiring(threshold)
 			},
 		},
@@ -443,17 +444,6 @@ func createAlphaToken(ttl int, acoSize string) (string, error) {
 	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 
 	return msg, nil
-}
-
-func getEnvInt(varName string, defaultVal int) int {
-	v := os.Getenv(varName)
-	if v != "" {
-		i, err := strconv.Atoi(v)
-		if err == nil {
-			return i
-		}
-	}
-	return defaultVal
 }
 
 func archiveExpiring(hrThreshold int) error {
