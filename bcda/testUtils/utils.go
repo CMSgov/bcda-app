@@ -7,13 +7,11 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
-
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/stretchr/testify/suite"
 )
 
 type AuthTestSuite struct {
@@ -140,15 +138,4 @@ func RandomBase64(n int) string {
 		return "not_a_random_base_64_string"
 	}
 	return base64.StdEncoding.EncodeToString(b)
-}
-
-func GetEnvInt(varName string, defaultVal int) int {
-	v := os.Getenv(varName)
-	if v != "" {
-		i, err := strconv.Atoi(v)
-		if err == nil {
-			return i
-		}
-	}
-	return defaultVal
 }
