@@ -254,7 +254,7 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	}
 	db.Save(&j)
 
-	complete, err := j.CheckCompleted()
+	complete, err := j.CheckCompletedAndCleanup()
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
@@ -274,7 +274,7 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	fmt.Println("About to queue up the job")
 	err = processJob(job)
 	assert.Nil(s.T(), err)
-	_, err = j.CheckCompleted()
+	_, err = j.CheckCompletedAndCleanup()
 	assert.Nil(s.T(), err)
 	var completedJob models.Job
 	err = db.First(&completedJob, "ID = ?", jobArgs.ID).Error

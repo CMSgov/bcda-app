@@ -174,7 +174,7 @@ func processJob(j *que.Job) error {
 
 	}
 
-	_, err = exportJob.CheckCompleted()
+	_, err = exportJob.CheckCompletedAndCleanup()
 	if err != nil {
 		log.Error(err)
 		return err

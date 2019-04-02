@@ -54,7 +54,7 @@ type Job struct {
 	JobKeys    []JobKey
 }
 
-func (job *Job) CheckCompleted() (bool, error) {
+func (job *Job) CheckCompletedAndCleanup() (bool, error) {
 
 	// Trivial case, no need to keep going
 	if job.Status == "Completed" {

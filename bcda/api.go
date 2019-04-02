@@ -238,7 +238,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	case "In Progress":
 		// Check the job status in case it is done and just needs a small poke
-		complete, err := job.CheckCompleted()
+		complete, err := job.CheckCompletedAndCleanup()
 
 		if err != nil {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
