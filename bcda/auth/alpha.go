@@ -301,11 +301,6 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	b := isActive(t)
-	if !b {
-		return fmt.Errorf("token with id: %v is not active", c.UUID)
-	}
-
 	return nil
 }
 
@@ -318,15 +313,6 @@ func checkRequiredClaims(claims *CommonClaims) error {
 		return fmt.Errorf("missing one or more required claims")
 	}
 	return nil
-}
-
-func isActive(token *jwt.Token) bool {
-	c := token.Claims.(*CommonClaims)
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var dbt Token
-	return !db.Find(&dbt, "UUID = ? AND active = ?", c.UUID, true).RecordNotFound()
 }
 
 func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
