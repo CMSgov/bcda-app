@@ -2,15 +2,20 @@ package models
 
 import (
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
+
+//Setting a default here.  It may need to change.  It also shouldn't really be used much.
+const BCDA_FHIR_MAX_RECORDS_DEFAULT = 10000
 
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
@@ -40,12 +45,91 @@ func InitializeGormModels() *gorm.DB {
 type Job struct {
 	gorm.Model
 	ACO        ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
-	ACOID      uuid.UUID `gorm:"primary_key; type:char(36)" json:"aco_id"`
+	ACOID      uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
 	User       User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
 	UserID     uuid.UUID `gorm:"type:char(36)"`
 	RequestURL string    `json:"request_url"` // request_url
 	Status     string    `json:"status"`      // status
+	JobCount   int
 	JobKeys    []JobKey
+}
+
+func (job *Job) CheckCompletedAndCleanup() (bool, error) {
+
+	// Trivial case, no need to keep going
+	if job.Status == "Completed" {
+		return true, nil
+	}
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var completedJobs int64
+	db.Model(&JobKey{}).Where("job_id = ?", job.ID).Count(&completedJobs)
+
+	if int(completedJobs) >= job.JobCount {
+
+		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), job.ID)
+		err := os.Remove(staging)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		return true, db.Model(&job).Update("status", "Completed").Error
+
+	}
+
+	return false, nil
+}
+
+func (job *Job) GetEnqueJobs(encrypt bool, t string) (enqueJobs []*que.Job, err error) {
+	var jobIDs []string
+
+	var rowCount = 0
+	maxBeneficiaries := utils.GetEnvInt("BCDA_FHIR_MAX_RECORDS", BCDA_FHIR_MAX_RECORDS_DEFAULT)
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	var aco ACO
+	err = db.Find(&aco, "uuid = ?", job.ACOID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	beneficiaryIDs, err := aco.GetBeneficiaryIDs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range beneficiaryIDs {
+		rowCount++
+		jobIDs = append(jobIDs, id)
+		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaryIDs) {
+
+			args, err := json.Marshal(jobEnqueueArgs{
+				ID:             int(job.ID),
+				ACOID:          job.ACOID.String(),
+				UserID:         job.UserID.String(),
+				BeneficiaryIDs: jobIDs,
+				ResourceType:   t,
+				// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
+				Encrypt: encrypt,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			j := &que.Job{
+				Type: "ProcessJob",
+				Args: args,
+			}
+
+			enqueJobs = append(enqueJobs, j)
+
+			jobIDs = []string{}
+		}
+	}
+	return enqueJobs, nil
 }
 
 type JobKey struct {
@@ -65,6 +149,22 @@ type ACO struct {
 	ClientID         string    `json:"client_id"`
 	AlphaSecret      string    `json:"alpha_secret"`
 	ACOBeneficiaries []*ACOBeneficiary
+}
+
+func (aco *ACO) GetBeneficiaryIDs() (beneficiaryIDs []string, err error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	beneficiaryJoin := "inner join beneficiaries on acos_beneficiaries.beneficiary_id = beneficiaries.id"
+	if err = db.Table("acos_beneficiaries").Joins(beneficiaryJoin).Where("acos_beneficiaries.aco_id = ?", aco.UUID).Pluck("beneficiaries.blue_button_id", &beneficiaryIDs).Error; err != nil {
+		log.Errorf("Error retrieving ACO-beneficiaries for ACO ID %s: %s", aco.UUID.String(), err.Error())
+		return nil, err
+	} else if len(beneficiaryIDs) == 0 {
+		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
+		return nil, fmt.Errorf("retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
+	}
+
+	return beneficiaryIDs, nil
 }
 
 type Beneficiary struct {
@@ -163,4 +263,16 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 		"', b.id from beneficiaries b join acos_beneficiaries ab on b.id = ab.beneficiary_id " +
 		"where ab.aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
+}
+
+// This is not a persistent model so it is not necessary to include in GORM auto migrate.
+// swagger:ignore
+type jobEnqueueArgs struct {
+	ID             int
+	ACOID          string
+	UserID         string
+	BeneficiaryIDs []string
+	ResourceType   string
+	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
+	Encrypt bool
 }
