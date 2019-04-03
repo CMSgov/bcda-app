@@ -41,7 +41,7 @@ func (s *TokenToolsTestSuite) TestTokenDurationOverride() {
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
 	os.Setenv("JWT_EXPIRATION_DELTA", "5")
 	auth.SetTokenDuration()
-	assert.Equal(s.T(), 5 * time.Minute, auth.TokenTTL)
+	assert.Equal(s.T(), 5*time.Minute, auth.TokenTTL)
 }
 
 func (s *TokenToolsTestSuite) TestTokenDurationEmptyOverride() {

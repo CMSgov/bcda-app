@@ -1,6 +1,9 @@
 package models
 
 import (
+	"encoding/json"
+	"github.com/CMSgov/bcda-app/bcda/testConstants"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -97,4 +100,180 @@ func (s *ModelsTestSuite) TestCreateUser() {
 
 func TestModelsTestSuite(t *testing.T) {
 	suite.Run(t, new(ModelsTestSuite))
+}
+
+func (s *ModelsTestSuite) TestJobCompleted() {
+
+	j := Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Pending",
+		JobCount:   1,
+	}
+	s.db.Save(&j)
+	completed, err := j.CheckCompletedAndCleanup()
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), completed)
+
+	err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+	assert.Nil(s.T(), err)
+	completed, err = j.CheckCompletedAndCleanup()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), completed)
+	s.db.Delete(&j)
+}
+func (s *ModelsTestSuite) TestJobDefaultCompleted() {
+
+	// Job is completed, but no keys exist.  This is fine, it is still complete
+	j := Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Completed",
+		JobCount:   10,
+	}
+	s.db.Save(&j)
+
+	completed, err := j.CheckCompletedAndCleanup()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), completed)
+	s.db.Delete(&j)
+
+}
+func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
+
+	j := Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Pending",
+		JobCount:   10,
+	}
+	s.db.Save(&j)
+	completed, err := j.CheckCompletedAndCleanup()
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), completed)
+
+	for i := 1; i <= 5; i++ {
+		err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+		assert.Nil(s.T(), err)
+	}
+	// JobKeys exist, but not enough to make the job complete
+	completed, err = j.CheckCompletedAndCleanup()
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), completed)
+
+	for i := 1; i <= 5; i++ {
+		err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+		assert.Nil(s.T(), err)
+	}
+	completed, err = j.CheckCompletedAndCleanup()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), completed)
+	s.db.Delete(&j)
+
+}
+
+func (s *ModelsTestSuite) TestGetEnqueJobs() {
+	assert := s.Assert()
+
+	j := Job{
+		ACOID:      uuid.Parse(testConstants.DEVACOUUID),
+		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
+
+	enqueueJobs, err := j.GetEnqueJobs(true, "Patient")
+
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	assert.Equal(1, len(enqueueJobs))
+	for _, queJob := range enqueueJobs {
+
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		assert.Equal(int(j.ID), jobArgs.ID)
+		assert.Equal(testConstants.DEVACOUUID, jobArgs.ACOID)
+		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
+		assert.Equal("Patient", jobArgs.ResourceType)
+		assert.Equal(true, jobArgs.Encrypt)
+		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+	}
+
+	j = Job{
+		ACOID:      uuid.Parse(testConstants.DEVACOUUID),
+		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Pending",
+	}
+
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
+	os.Setenv("BCDA_FHIR_MAX_RECORDS", "15")
+
+	enqueueJobs, err = j.GetEnqueJobs(true, "ExplanationOfBenefit")
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	assert.Equal(4, len(enqueueJobs))
+	enqueuedBenes := 0
+	for _, queJob := range enqueueJobs {
+
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
+		assert.True(len(jobArgs.BeneficiaryIDs) <= 15)
+	}
+	assert.Equal(50, enqueuedBenes)
+
+}
+
+func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
+	assert := s.Assert()
+	var aco, smallACO, mediumACO, largeACO ACO
+	acoUUID := uuid.Parse(testConstants.DEVACOUUID)
+
+	err := s.db.Find(&aco, "UUID = ?", acoUUID).Error
+	assert.Nil(err)
+	beneficiaryIDs, err := aco.GetBeneficiaryIDs()
+	assert.Nil(err)
+	assert.NotNil(beneficiaryIDs)
+	assert.Equal(50, len(beneficiaryIDs))
+
+	// small ACO has 10 benes
+	acoUUID = uuid.Parse(testConstants.SMALLACOUUID)
+	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
+	assert.Nil(err)
+	beneficiaryIDs, err = smallACO.GetBeneficiaryIDs()
+	assert.Nil(err)
+	assert.NotNil(beneficiaryIDs)
+	assert.Equal(10, len(beneficiaryIDs))
+
+	// Medium ACO has 25 benes
+	acoUUID = uuid.Parse(testConstants.MEDIUMACOUUID)
+	err = s.db.Find(&mediumACO, "UUID = ?", acoUUID).Error
+	assert.Nil(err)
+	beneficiaryIDs, err = mediumACO.GetBeneficiaryIDs()
+	assert.Nil(err)
+	assert.NotNil(beneficiaryIDs)
+	assert.Equal(25, len(beneficiaryIDs))
+
+	// Large ACO has 100 benes
+	acoUUID = uuid.Parse(testConstants.LARGEACOUUID)
+	err = s.db.Find(&largeACO, "UUID = ?", acoUUID).Error
+	assert.Nil(err)
+	beneficiaryIDs, err = largeACO.GetBeneficiaryIDs()
+	assert.Nil(err)
+	assert.NotNil(beneficiaryIDs)
+	assert.Equal(100, len(beneficiaryIDs))
+
 }
