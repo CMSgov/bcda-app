@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -57,9 +58,9 @@ func (s *MainTestSuite) TestGetEnvInt() {
 	os.Setenv("TEST_ENV_STRING", "blah")
 	os.Setenv("TEST_ENV_INT", "232")
 
-	assert.Equal(s.T(), 232, getEnvInt("TEST_ENV_INT", DEFAULT_VALUE))
-	assert.Equal(s.T(), DEFAULT_VALUE, getEnvInt("TEST_ENV_STRING", DEFAULT_VALUE))
-	assert.Equal(s.T(), DEFAULT_VALUE, getEnvInt("FAKE_ENV", DEFAULT_VALUE))
+	assert.Equal(s.T(), 232, utils.GetEnvInt("TEST_ENV_INT", DEFAULT_VALUE))
+	assert.Equal(s.T(), DEFAULT_VALUE, utils.GetEnvInt("TEST_ENV_STRING", DEFAULT_VALUE))
+	assert.Equal(s.T(), DEFAULT_VALUE, utils.GetEnvInt("FAKE_ENV", DEFAULT_VALUE))
 }
 
 func (s *MainTestSuite) TestSetup() {
