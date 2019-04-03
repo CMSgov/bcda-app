@@ -23,7 +23,9 @@ func init() {
 // Hash is a cryptographically hashed string
 type Hash string
 
-// NewHash creates a hashed string from a source string, return it as a new Hash value.
+// NewHash creates a hashed string from a source string, return it as a new Hash value.  While this is not
+// intended for production password hashing, as a matter of principle we intend to add a salt and implement
+// bcrypt or another hash appropriate for storing secrets in ticket BCDA-1130.
 func NewHash(source string) Hash {
 	sum := sha256.Sum256([]byte(source))
 	return Hash(fmt.Sprintf("%x", sum))
