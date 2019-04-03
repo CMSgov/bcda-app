@@ -105,6 +105,7 @@ func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (strin
 func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
+	params.Set("excludeSAMHSA", "true")
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID)
 }
 
@@ -191,6 +192,5 @@ func logRequest(req *http.Request, resp *http.Response, jobID string) {
 func GetDefaultParams() (params url.Values) {
 	params = url.Values{}
 	params.Set("_format", "application/fhir+json")
-	params.Set("excludeSAMHSA", "true")
 	return params
 }
