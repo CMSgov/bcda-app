@@ -182,7 +182,7 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	}
 	issuedAt := time.Now().Unix()
 	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
-	return GenerateTokenString(uuid.NewRandom().String(), user.UUID.String(), aco.UUID.String(), issuedAt, expiresAt)
+	return GenerateTokenString(uuid.NewRandom().String(), aco.UUID.String(), issuedAt, expiresAt)
 }
 
 // RequestAccessToken generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
@@ -213,7 +213,6 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 			return token, fmt.Errorf("unable to locate User with id of %s", creds.UserID)
 		}
 
-		userUUID = user.UUID
 		acoUUID = user.ACOID
 	} else {
 		var aco models.ACO
@@ -226,12 +225,10 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 			return token, errors.New("no user found for " + aco.UUID.String())
 		}
 
-		userUUID = user.UUID
 		acoUUID = aco.UUID
 	}
 
 	token.UUID = uuid.NewRandom()
-	token.UserID = userUUID
 	token.ACOID = acoUUID
 	token.IssuedAt = time.Now().Unix()
 	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
@@ -241,7 +238,7 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 		return Token{}, err
 	}
 
-	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.UserID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
+	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
 	if err != nil {
 		return Token{}, err
 	}
@@ -312,7 +309,6 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 func checkRequiredClaims(claims *CommonClaims) error {
 	if claims.ExpiresAt == 0 ||
 		claims.IssuedAt == 0 ||
-		claims.Subject == "" ||
 		claims.ACOID == "" ||
 		claims.UUID == "" {
 		return fmt.Errorf("missing one or more required claims")

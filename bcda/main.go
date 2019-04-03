@@ -574,11 +574,6 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 		return aco, err
 	}
 
-	if _, err = models.CreateAlphaUser(tx, aco); err != nil {
-		tx.Rollback()
-		return aco, err
-	}
-
 	if tx.Commit().Error != nil {
 		tx.Rollback()
 		return aco, tx.Error

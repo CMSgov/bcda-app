@@ -219,7 +219,6 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
 	assert.Nil(s.T(), t.ACOID)
-	assert.Nil(s.T(), t.UserID)
 	assert.Contains(s.T(), err.Error(), "must provide either UserID or ClientID")
 
 	t, err = s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, -1)
@@ -232,7 +231,6 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 	assert.IsType(s.T(), auth.Token{}, t)
 	assert.NotEmpty(s.T(), t.TokenString)
 	assert.NotNil(s.T(), t.ACOID)
-	assert.NotNil(s.T(), t.UserID)
 }
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	db := connections["TestRevokeAccessToken"]
@@ -259,7 +257,7 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	assert.NotNil(err)
 
 	// Revoke a token that doesn't exist
-	tokenString, _ := auth.TokenStringWithIDs(uuid.NewRandom().String(), uuid.NewRandom().String(), acoID)
+	tokenString, _ := auth.TokenStringWithIDs(uuid.NewRandom().String(), acoID)
 	err = s.p.RevokeAccessToken(tokenString)
 	assert.NotNil(err)
 	assert.True(gorm.IsRecordNotFoundError(err))
@@ -338,14 +336,12 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
-	userID := uuid.NewRandom().String()
 	acoID := uuid.NewRandom().String()
-	ts, _ := auth.TokenStringWithIDs(uuid.NewRandom().String(), userID, acoID)
+	ts, _ := auth.TokenStringWithIDs(uuid.NewRandom().String(), acoID)
 	t, err := s.p.DecodeJWT(ts)
 	c := t.Claims.(*auth.CommonClaims)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), &jwt.Token{}, t)
-	assert.Equal(s.T(), userID, c.Subject)
 	assert.Equal(s.T(), acoID, c.ACOID)
 }
 
