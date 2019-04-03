@@ -95,4 +95,3 @@ func getPublicKey() *rsa.PublicKey {
 func (backend *AlphaBackend) SignJwtToken(token jwt.Token) (string, error) {
 	return token.SignedString(backend.PrivateKey)
 }
-

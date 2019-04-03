@@ -31,17 +31,6 @@ var (
 	version = "latest"
 )
 
-// swagger:ignore
-type jobEnqueueArgs struct {
-	ID             int
-	ACOID          string
-	UserID         string
-	BeneficiaryIDs []string
-	ResourceType   string
-	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-	Encrypt bool
-}
-
 func init() {
 	createAPIDirs()
 	log.SetFormatter(&log.JSONFormatter{})
