@@ -99,6 +99,13 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 	assert.Empty(s.T(), aco.AlphaSecret)
 }
 
+func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
+	r, err := s.p.GenerateClientCredentials("", 0)
+	assert.Empty(s.T(), r)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "not implemented")
+}
+
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	cmsID := testUtils.RandomHexID()[0:4]
 	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
@@ -159,6 +166,12 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 	assert.NotEmpty(s.T(), t.TokenString)
 	assert.NotNil(s.T(), t.ACOID)
 	assert.NotNil(s.T(), t.UserID)
+}
+
+func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
+	err := s.p.RevokeAccessToken("token-value-is-not-significant-here")
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "not implemented")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {

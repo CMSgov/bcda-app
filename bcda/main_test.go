@@ -561,6 +561,13 @@ func (s *MainTestSuite) TestRevokeToken() {
 	assert.Equal("Access token (--access-token) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
+
+	// Expect (for the moment) that alpha auth does not implement
+	args = []string{"bcda", "revoke-token", "--access-token", "this-token-value-is-immaterial"}
+	err = s.testApp.Run(args)
+	assert.Contains(err.Error(), "not implemented")
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 }
 
 func (s *MainTestSuite) TestStartApi() {
