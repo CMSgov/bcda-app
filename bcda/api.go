@@ -38,6 +38,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"regexp"
@@ -594,5 +596,5 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 }
 
 func GetJobTimeout() time.Duration {
-	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }
