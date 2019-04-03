@@ -72,6 +72,7 @@ services:
       - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
       - BB_CHECK_CERT=false
       - BB_TIMEOUT_MS=500
+      - BCDA_FHIR_MAX_RECORDS=10000
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:

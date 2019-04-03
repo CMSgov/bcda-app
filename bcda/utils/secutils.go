@@ -71,4 +71,3 @@ func OpenPublicKeyFile(publicKeyFile *os.File) *rsa.PublicKey {
 	}
 	return rsaPub
 }
-

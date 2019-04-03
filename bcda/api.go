@@ -44,7 +44,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -76,6 +75,7 @@ import (
 		400: badRequestResponse
 		500: errorResponse
 */
+
 func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("ExplanationOfBenefit", w, r)
 }
@@ -127,7 +127,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	acoID := ad.ACOID
 	userID := ad.UserID
 
@@ -149,26 +148,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var acoBeneficiaries []models.ACOBeneficiary
-	if err = db.Find(&acoBeneficiaries, "aco_id = ?", acoID).Error; err != nil {
-		log.Errorf("Error retrieving ACO-beneficiary with ACO ID %s: %s", acoID, err.Error())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	beneficiaryIDs := []string{}
-	for _, acoBeneficiary := range acoBeneficiaries {
-		var beneficiary models.Beneficiary
-		if err = db.First(&beneficiary, acoBeneficiary.BeneficiaryID).Error; err != nil {
-			log.Errorf("Error retrieving beneficiary with ID %d: %s", acoBeneficiary.BeneficiaryID, err.Error())
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-		beneficiaryIDs = append(beneficiaryIDs, beneficiary.BlueButtonID)
-	}
-
 	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
 	// By default, our encryption process is enabled but for now we are giving users the ability to turn
 	// it off
@@ -179,27 +158,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		encrypt = false
 	}
 
-	args, err := json.Marshal(jobEnqueueArgs{
-		ID:             int(newJob.ID),
-		ACOID:          acoID,
-		UserID:         userID,
-		BeneficiaryIDs: beneficiaryIDs,
-		ResourceType:   t,
-		// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-		Encrypt: encrypt,
-	})
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	j := &que.Job{
-		Type: "ProcessJob",
-		Args: args,
-	}
-
 	if qc == nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -207,9 +165,26 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = qc.Enqueue(j); err != nil {
+	enqueueJobs, err := newJob.GetEnqueJobs(encrypt, t)
+	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	for _, j := range enqueueJobs {
+		if err = qc.Enqueue(j); err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -256,13 +231,27 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch job.Status {
+
+	case "Failed":
+		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
 	case "Pending":
 		fallthrough
 	case "In Progress":
-		w.Header().Set("X-Progress", job.Status)
-		w.WriteHeader(http.StatusAccepted)
-	case "Failed":
-		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
+		// Check the job status in case it is done and just needs a small poke
+		complete, err := job.CheckCompletedAndCleanup()
+
+		if err != nil {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+		if !complete {
+			w.Header().Set("X-Progress", job.Status)
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+		fallthrough
+
 	case "Completed":
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.CreatedAt.Add(GetJobTimeout()).Before(time.Now()) {
@@ -607,4 +596,3 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(getEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }
-
