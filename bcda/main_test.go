@@ -234,9 +234,6 @@ func (s *MainTestSuite) TestCreateToken() {
 }
 
 func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
-	originalAuthProvider := auth.GetProviderName()  // remove with BCDA-1022
-	defer auth.SetProvider(originalAuthProvider)    // remove with BCDA-1022
-
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -245,13 +242,14 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 
 	assert := assert.New(s.T())
 
-	outputPattern := regexp.MustCompile(`.+\n.+\n.+`)
+	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
 	// execute positive scenarios via CLI
 	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
+
 	buf.Reset()
 
 	// ttl is optional when using the CLI
@@ -259,6 +257,12 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
+	matches := outputPattern.FindSubmatch(buf.Bytes())
+	clientID := string(matches[1])
+	assert.NotEmpty(clientID)
+	aco, err := auth.GetACOByClientID(clientID)
+	assert.Nil(err)
+	assert.NotEmpty(aco.AlphaSecret)
 	buf.Reset()
 
 	args = []string{"bcda", "create-alpha-token", "--size", "DEV"}
