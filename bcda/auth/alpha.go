@@ -174,8 +174,9 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	if err != nil {
 		return "", fmt.Errorf("invalid credentials; %s", err)
 	}
-	// when we have ClientSecret in ACO, adjust following line
-	Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret)
+	if !Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret) {
+		return "", fmt.Errorf("invalid credentials")
+	}
 	var user models.User
 	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
 		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
