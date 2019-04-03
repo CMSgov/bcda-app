@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -188,8 +189,8 @@ func (s *MainTestSuite) TestCreateToken() {
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
-	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	badUUID := "not_a_uuid"
+	clientID := "3461C774-B48F-11E8-96F8-529269fb1459"
 	clientSecret := "not_a_secret"
 
 	// Unexpected flag
@@ -220,11 +221,11 @@ func (s *MainTestSuite) TestCreateToken() {
 	// Test alpha auth bad ID
 	args = []string{"bcda", "create-token", "--id", badUUID}
 	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), "must be a UUID")
+	assert.Contains(err.Error(), "invalid input syntax for type uuid")
 	buf.Reset()
 
 	// Test alpha auth successful creation
-	args = []string{"bcda", "create-token", "--id", userUUID}
+	args = []string{"bcda", "create-token", "--id", clientID, "--secret", clientSecret}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)

@@ -142,7 +142,7 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	const userID, acoID = "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	const acoID = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	t, err := s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, 720)
 	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
@@ -152,18 +152,12 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
 	assert.Nil(s.T(), t.ACOID)
-	assert.Contains(s.T(), err.Error(), "must provide either UserID or ClientID")
+	assert.Contains(s.T(), err.Error(), "must provide ClientID")
 
 	t, err = s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, -1)
 	assert.NotNil(s.T(), err)
 	assert.IsType(s.T(), auth.Token{}, t)
 	assert.Contains(s.T(), err.Error(), "invalid TTL")
-
-	t, err = s.p.RequestAccessToken(auth.Credentials{UserID: userID}, 720)
-	assert.Nil(s.T(), err)
-	assert.IsType(s.T(), auth.Token{}, t)
-	assert.NotEmpty(s.T(), t.TokenString)
-	assert.NotNil(s.T(), t.ACOID)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {

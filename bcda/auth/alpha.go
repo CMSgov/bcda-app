@@ -109,15 +109,13 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	return GenerateTokenString(uuid.NewRandom().String(), aco.UUID.String(), issuedAt, expiresAt)
 }
 
-// RequestAccessToken generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
+// RequestAccessToken generates a token for the ACO
 func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	var userUUID, acoUUID uuid.UUID
-	var user models.User
 	var err error
 	token := Token{}
 
-	if creds.UserID == "" && creds.ClientID == "" {
-		return token, fmt.Errorf("must provide either UserID or ClientID")
+	if creds.ClientID == "" {
+		return token, fmt.Errorf("must provide ClientID")
 	}
 
 	if ttl < 0 {
@@ -127,33 +125,14 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	if creds.UserID != "" {
-		userUUID = uuid.Parse(creds.UserID)
-		if userUUID == nil {
-			return token, fmt.Errorf("user ID must be a UUID")
-		}
-
-		if db.First(&user, "UUID = ?", creds.UserID).RecordNotFound() {
-			return token, fmt.Errorf("unable to locate User with id of %s", creds.UserID)
-		}
-
-		acoUUID = user.ACOID
-	} else {
-		var aco models.ACO
-		aco, err = getACOFromDB(creds.ClientID)
-		if err != nil {
-			return token, err
-		}
-
-		if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
-			return token, errors.New("no user found for " + aco.UUID.String())
-		}
-
-		acoUUID = aco.UUID
+	var aco models.ACO
+	aco, err = getACOFromDB(creds.ClientID)
+	if err != nil {
+		return token, err
 	}
 
 	token.UUID = uuid.NewRandom()
-	token.ACOID = acoUUID
+	token.ACOID = aco.UUID
 	token.IssuedAt = time.Now().Unix()
 	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
 	token.Active = true
