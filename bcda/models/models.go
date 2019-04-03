@@ -29,6 +29,7 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
+		&CCLF9{},
 	)
 
 	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
@@ -80,8 +81,20 @@ type ACOBeneficiary struct {
 	// Join model needed for additional fields later, e.g., AttributionDate
 }
 
+type CCLF9 struct {
+	gorm.Model
+	CurrentNum   string `json:"current_number"`
+	PrevNum      string `json:"previous_number"`
+	PrevsEfctDt  string `json:"effective_date"`
+	PrevsObsltDt string `json:"obsolete_date"`
+}
+
 func (*ACOBeneficiary) TableName() string {
 	return "acos_beneficiaries"
+}
+
+func (*CCLF9) TableName() string {
+	return "cclf9"
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {

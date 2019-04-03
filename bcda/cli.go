@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
@@ -82,6 +83,9 @@ func importCCLF8(filePath string) error {
 }
 
 func importCCLF9(filePath string) error {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
 	if filePath == "" {
 		return errors.New("file path (--file) must be provided")
 	}
@@ -113,14 +117,19 @@ func importCCLF9(filePath string) error {
 	for sc.Scan() {
 		b := sc.Bytes()
 		if len(bytes.TrimSpace(b)) > 0 {
-			fmt.Printf("\nXREF: %s\n", b[0:1])
-			fmt.Printf("Current identifier: %s\n", b[currIDStart:currIDEnd])
-			fmt.Printf("Previous identifier: %s\n", b[prevIDStart:prevIDEnd])
-			fmt.Printf("Previous identifier effective date: %s\n", b[prevIDEffDateStart:prevIDEffDateEnd])
-			fmt.Printf("Previous identifier obsolete date: %s\n", b[prevIDObsDateStart:prevIDObsDateEnd])
+
+			cclf9 := models.CCLF9{
+				CurrentNum:   string(b[currIDStart:currIDEnd]),
+				PrevNum:      string(b[prevIDStart:prevIDEnd]),
+				PrevsEfctDt:  string(b[prevIDEffDateStart:prevIDEffDateEnd]),
+				PrevsObsltDt: string(b[prevIDObsDateStart:prevIDObsDateEnd]),
+			}
+			err = db.Create(&cclf9).Error
+			if err != nil {
+				return err
+			}
 		}
 	}
-
 	return nil
 }
 
