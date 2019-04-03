@@ -638,7 +638,7 @@ See [Authentication and Authorization](#authentication-and-authorization) above.
 
 To start a coverage data export job, a GET request is made to the Coverage export endpoint. An access token as well as `Accept` and `Prefer` headers are required.
 
-The dollar sign ('$') before the word "export" in the URL indicates that the endpoint is an action rather than a resource. The format is defined by the [FHIR Bulk Data Export spec](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md).
+The dollar sign ('$') before the word "export" in the URL indicates that the endpoint is an action rather than a resource. The format is defined by the [FHIR Bulk Data Export spec](https://github.com/smart-on-fhir/fhir-bulk-data-docs/blob/master/export.md){:target="_blank"}.
 
 ###### Headers
 * `Authorization: Bearer {token}`
