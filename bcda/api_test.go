@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
@@ -27,6 +28,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+}
 
 type APITestSuite struct {
 	testUtils.AuthTestSuite
@@ -647,20 +653,55 @@ func (s *APITestSuite) TestGetToken() {
 
 func (s *APITestSuite) TestAuthToken() {
 	s.SetupAuthBackend()
+
+	// Missing authorization header
 	req := httptest.NewRequest("POST", "/auth/token", nil)
-
 	handler := http.HandlerFunc(getAuthToken)
+	fmt.Println("No authorization header")
 	handler.ServeHTTP(s.rr, req)
-
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
-	// // The following change in error status can be tested with alpha auth (presumably along with success paths)
-	// // once GetAccessToken() is implemented
-	// credential := base64.StdEncoding.EncodeToString([]byte("not_a_client_id:not_a_secret"))
-	// req.Header.Add("Authorization", "Basic "+credential)
-	// handler.ServeHTTP(s.rr, req)
+	// Malformed authorization header
+	s.rr = httptest.NewRecorder()
+	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
+	req.Header.Add("Accept", "application/json")
+	handler = http.HandlerFunc(getAuthToken)
+	fmt.Println("Malformed authorization header")
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
-	// assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+	// Invalid credentials
+	s.rr = httptest.NewRecorder()
+	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth("not_a_client", "not_a_secret")
+	req.Header.Add("Accept", "application/json")
+	fmt.Println("Invalid credentials")
+	handler = http.HandlerFunc(getAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+
+	// Success!?
+	s.rr = httptest.NewRecorder()
+	t := TokenResponse{}
+	outputPattern := regexp.MustCompile(`.+\n(.+)\n(.+)`)
+	tokenResp, _ := createAlphaToken(60, "Dev")
+	assert.Regexp(s.T(), outputPattern, tokenResp)
+	matches := outputPattern.FindSubmatch([]byte(tokenResp))
+	clientID := string(matches[1])
+	clientSecret := string(matches[2])
+	assert.NotEmpty(s.T(), clientID)
+	assert.NotEmpty(s.T(), clientSecret)
+
+	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler = http.HandlerFunc(getAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
+	assert.NotEmpty(s.T(), t)
+	assert.NotEmpty(s.T(), t.AccessToken)
 }
 
 func (s *APITestSuite) TestMetadata() {
