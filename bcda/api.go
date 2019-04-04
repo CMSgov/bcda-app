@@ -39,12 +39,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
@@ -118,9 +119,9 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		api_key
 
 	Responses:
-		202:BulkRequestResponse
-		400:ErrorModel
-		500:FHIRResponse
+		202: BulkRequestResponse
+		400: badRequestResponse
+		500: errorResponse
 */
 func bulkCoverageRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("Coverage", w, r)
