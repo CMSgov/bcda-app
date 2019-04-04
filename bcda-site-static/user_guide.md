@@ -626,7 +626,7 @@ The response will be the requested data as FHIR Patient resources in NDJSON form
 ```
 
 ### Beneficiary Coverage Data
-	The process of retrieving coverage data is very similar to all of the other exporting operations supported by this api.
+	The process of retrieving coverage data is very similar to all of the other exporting operations supported by this API.
 
 #### 1. Obtain an access token
 	See [Authentication and Authorization](#authentication-and-authorization) above.
