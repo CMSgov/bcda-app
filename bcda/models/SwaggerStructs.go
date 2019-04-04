@@ -128,7 +128,7 @@ type FileParam struct {
 	Filename string `json:"filename"`
 }
 
-// swagger:parameters bulkPatientRequest bulkEOBRequest
+// swagger:parameters bulkPatientRequest bulkEOBRequest bulkCoverageRequest
 type BulkRequestHeaders struct {
 	// required: true
 	// in: header
