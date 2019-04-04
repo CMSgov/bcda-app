@@ -1,0 +1,45 @@
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+	<!-- Metadata for Twitter -->
+	<meta name="twitter:title" content="{% if page.title %}{{ page.title | escape }}{% else %}{{ site.title | escape }}{% endif %}" />
+	<meta name="twitter:description" content="{{ page.excerpt | default: site.description | strip_html | normalize_whitespace | truncate: 160 | escape }}" />
+	<meta name="twitter:image" content="{{ layout.image | default: '/assets/img/default-share-image.jpg' | absolute_url }}" />
+	<meta name="twitter:site" content="{{ page.url }}" />
+	<meta name="twitter:card" content="summary_large_image">
+	<!-- Facebook / OpenGraph Metadata -->
+  <meta property="og:title" content="{% if page.title %}{{ page.title | escape }}{% else %}{{ site.title | escape }}{% endif %}" />
+	<meta property="og:description" content="{{ page.excerpt | default: site.description | strip_html | normalize_whitespace | truncate: 160 | escape }}" />
+	<meta property="og:image" content="{{ layout.image | default: '/assets/img/default-share-image.jpg' | absolute_url }}" />
+	<meta property="og:url" content="{{ page.url }}" />
+
+  <title>{% if page.title %}{{ page.title | escape }}{% else %}{{ site.title | escape }}{% endif %}</title>
+  <meta name="description" content="{{ page.excerpt | default: site.description | strip_html | normalize_whitespace | truncate: 160 | escape }}">
+
+  <link rel="shortcut icon" type="image/png"  href="{{ '/assets/img/favicon.png' | relative_url }}" />
+
+  <link rel="canonical" href="{{ page.url | replace:'index.html','' | absolute_url }}">
+
+  <link rel="stylesheet" href="{{ site.cssurl | relative_url }}" />
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.google-analytics.com/analytics.js"></script>
+    <script async src="/assets/js/autotrack.js"></script>
+    <script>
+        window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+        ga('create', 'UA-133491498-1', 'auto');
+
+        // Implementing the following trackers via auto track
+        // https://github.com/googleanalytics/autotrack
+        ga('require', 'eventTracker');
+        ga('require', 'impressionTracker');
+        ga('require', 'mediaQueryTracker');
+        ga('require', 'maxScrollTracker');
+        ga('require', 'outboundLinkTracker');
+        ga('require', 'urlChangeTracker');
+        ga('require', 'pageVisibilityTracker');
+
+        // send the pageview
+        ga('send', 'pageview');
+    </script>
+</head>

@@ -1,11 +1,8 @@
-release:
-	docker build -t release -f Dockerfiles/Dockerfile.release .
-	docker run --rm -e GITHUB_ACCESS_TOKEN='${GITHUB_ACCESS_TOKEN}' -e GITHUB_USER='${GITHUB_USER}' -e GITHUB_EMAIL='${GITHUB_EMAIL}' -e GITHUB_GPG_KEY_FILE='${GITHUB_GPG_KEY_FILE}' -v ${PWD}:/go/src/github.com/CMSgov/bcda-app release
-
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
 	docker-compose up -d documentation
+	docker-compose up -d static_site
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm \
 	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
@@ -15,28 +12,28 @@ package:
 	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+lint:
+	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
+	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
+
 smoke-test:
-	docker-compose up -d 
-	sleep 30
-	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from smoke_test smoke_test
+	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
 
 unit-test:
-	docker-compose up -d db queue
-	docker-compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from unit_test unit_test
+	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-ifeq ($(env), local)
-	docker-compose up -d
-	sleep 30
-endif
-	docker-compose -f docker-compose.test.yml build --no-cache postman_test
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)"
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" "clientId=$(clientId)" "clientSecret=$(clientSecret)"
+
+performance-test:
+	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
+	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
 	$(MAKE) smoke-test
@@ -49,8 +46,8 @@ load-fixtures:
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_beneficiaries.sql
 
 docker-build:
-	docker-compose build
-	docker-compose -f docker-compose.test.yml build
+	docker-compose build --force-rm
+	docker-compose -f docker-compose.test.yml build --force-rm
 
 docker-bootstrap: docker-build load-fixtures
 
@@ -72,4 +69,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test
+.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint

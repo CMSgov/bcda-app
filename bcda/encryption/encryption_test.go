@@ -77,7 +77,7 @@ func (s *EncryptionTestSuite) TestEncryptAndMove() {
 	}
 	fileName := "Coverage"
 	j := models.Job{
-		AcoID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",

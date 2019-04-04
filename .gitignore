@@ -9,3 +9,10 @@ test_results/*
 bcda/swaggerui/swagger.json
 bcdaworker/data/*
 bcdaworker/archive/*
+bcda/_site/*
+bcda-site-static/.sass-cache
+bcda-site-static/.jekyll-metadata
+bcdaworker/tmpdata/*
+.env.sh
+decryption_utils/C#/bin
+decryption_utils/C#/obj

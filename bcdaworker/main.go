@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pborman/uuid"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -14,7 +15,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx"
-	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -23,7 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 )
 
 var (
@@ -33,7 +34,7 @@ var (
 
 type jobEnqueueArgs struct {
 	ID             int
-	AcoID          string
+	ACOID          string
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
@@ -42,6 +43,7 @@ type jobEnqueueArgs struct {
 }
 
 func init() {
+	createWorkerDirs()
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
 
@@ -51,6 +53,14 @@ func init() {
 		log.SetOutput(file)
 	} else {
 		log.Info("Failed to open worker error log file; using default stderr")
+	}
+}
+
+func createWorkerDirs() {
+	staging := os.Getenv("FHIR_STAGING_DIR")
+	err := os.MkdirAll(staging, 0744)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -76,8 +86,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	exportJob.Status = "In Progress"
-	err = db.Save(exportJob).Error
+	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
 	if err != nil {
 		return err
 	}
@@ -100,63 +109,74 @@ func processJob(j *que.Job) error {
 		}
 	}
 
-	err = writeBBDataToFile(bb, jobArgs.AcoID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	fileName, err := writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 
+	// THis is only run AFTER completion of all the collection
 	if err != nil {
-		exportJob.Status = "Failed"
+
+		err = db.Model(&exportJob).Update("status", "Failed").Error
+		if err != nil {
+			return err
+		}
+
 	} else {
-		files, err := ioutil.ReadDir(staging)
+		_, err := ioutil.ReadDir(staging)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
 
-		for _, f := range files {
-			oldpath := staging + "/" + f.Name()
-			newpath := data + "/" + f.Name()
-			if _, err := os.Stat(data); os.IsNotExist(err) {
-				err = os.Mkdir(data, os.ModePerm)
-				if err != nil {
-					log.Error(err)
-					return err
-				}
+		oldpath := staging + "/" + fileName
+		newpath := data + "/" + fileName
+		if _, err := os.Stat(data); os.IsNotExist(err) {
+			err = os.Mkdir(data, os.ModePerm)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+		}
+
+		// TODO (knollfear): Remove this too when we stop supporting unencrypted files
+		if !jobArgs.Encrypt {
+			db := database.GetGORMDbConnection()
+			defer database.Close(db)
+			err = db.Create(&models.JobKey{JobID: uint(jobArgs.ID), EncryptedKey: []byte("NO_ENCRYPTION"), FileName: fileName}).Error
+			if err != nil {
+				log.Error(err)
+				return err
 			}
 
-			// TODO(rnagle): this condition should be removed when file encryption is ready for release
-			if !jobArgs.Encrypt {
-				err := os.Rename(oldpath, newpath)
-				if err != nil {
-					log.Error(err)
-					return err
-				}
+			err := os.Rename(oldpath, newpath)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+
+		} else {
+			// this will be the only code path after ATO
+			publicKey := exportJob.ACO.GetPublicKey()
+			if publicKey == nil {
+				fmt.Println("NO KEY EXISTS  THIS IS BAD")
 			} else {
-				// this will be the only code path after ATO
-				publicKey := exportJob.Aco.GetPublicKey()
-				if publicKey == nil {
-					fmt.Println("NO KEY EXISTS  THIS IS BAD")
-				}
-				err := encryption.EncryptAndMove(staging, data, f.Name(), exportJob.Aco.GetPublicKey(), exportJob.ID)
-				if err != nil {
-					log.Error(err)
-					return err
-				}
-				err = os.Remove(oldpath)
+				err := encryption.EncryptAndMove(staging, data, fileName, exportJob.ACO.GetPublicKey(), exportJob.ID)
 				if err != nil {
 					log.Error(err)
 					return err
 				}
 			}
+			err = os.Remove(oldpath)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+
 		}
-		err = os.Remove(staging)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-		exportJob.Status = "Completed"
+
 	}
 
-	err = db.Save(exportJob).Error
+	_, err = exportJob.CheckCompletedAndCleanup()
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 
@@ -165,13 +185,13 @@ func processJob(j *que.Job) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) error {
+func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) (fileName string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
 		err := errors.New("Blue Button client is required")
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	// TODO: Should this error be returned or written to file?
@@ -186,40 +206,49 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	default:
 		err := fmt.Errorf("Invalid resource type requested: %s", t)
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
 	if !re.Match([]byte(acoID)) {
 		err := errors.New("Invalid ACO ID")
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
-	f, err := os.Create(fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, acoID))
+	fileName = fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+	f, err := os.Create(fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 	if err != nil {
 		log.Error(err)
-		return err
+		return "", err
 	}
 
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
+	errorCount := 0
+	totalBeneIDs := float64(len(beneficiaryIDs))
+	failThreshold := getFailureThreshold()
 
 	for _, beneficiaryID := range beneficiaryIDs {
 		pData, err := bbFunc(beneficiaryID, jobID)
 		if err != nil {
 			log.Error(err)
+			errorCount++
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, beneficiaryID, acoID), jobID)
 		} else {
 			fhirBundleToResourceNDJSON(w, pData, t, beneficiaryID, acoID, jobID)
+		}
+		failPct := (float64(errorCount) / totalBeneIDs) * 100
+		if failPct >= failThreshold {
+			return "", errors.New("number of failed requests has exceeded threshold")
 		}
 	}
 
 	err = w.Flush()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = segment.End()
@@ -227,7 +256,20 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 		log.Error(err)
 	}
 
-	return nil
+	return fileName, nil
+}
+
+func getFailureThreshold() float64 {
+	exportFailPctStr := os.Getenv("EXPORT_FAIL_PCT")
+	exportFailPct, err := strconv.Atoi(exportFailPctStr)
+	if err != nil {
+		exportFailPct = 50
+	} else if exportFailPct < 0 {
+		exportFailPct = 0
+	} else if exportFailPct > 100 {
+		exportFailPct = 100
+	}
+	return float64(exportFailPct)
 }
 
 func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {

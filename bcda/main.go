@@ -3,22 +3,19 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/auth/plugin"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -28,54 +25,14 @@ import (
 // App Name and usage.  Edit them here to prevent breaking tests
 const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
-const CreateACO = "create-aco"
 
 var (
 	qc      *que.Client
 	version = "latest"
 )
 
-// swagger:ignore
-type jobEnqueueArgs struct {
-	ID             int
-	AcoID          string
-	UserID         string
-	BeneficiaryIDs []string
-	ResourceType   string
-	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-	Encrypt bool
-}
-
-// swagger:model fileItem
-type fileItem struct {
-	// KNOLL the type of File returned
-	Type string `json:"type"`
-	// The URL of the file
-	URL string `json:"url"`
-}
-
-/*
-Bulk Response Body for a completed Bulk Status Request
-swagger:response bulkResponseBody
-*/
-type bulkResponseBody struct {
-	// The Time of the Transaction Request
-	TransactionTime time.Time `json:"transactionTime"`
-	// The URL of the Response
-	RequestURL string `json:"request"`
-	// Is a token required for this response
-	RequiresAccessToken bool `json:"requiresAccessToken"`
-	// Files included in the payload
-	// collection format: csv
-	Files []fileItem `json:"output"`
-	// Errors encountered during processing
-	// collection format: csv
-	Errors []fileItem        `json:"error"`
-	KeyMap map[string]string `json:"KeyMap"`
-	JobID  uint
-}
-
 func init() {
+	createAPIDirs()
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_ERROR_LOG")
 
@@ -88,16 +45,15 @@ func init() {
 		log.Info("Failed to open error log file; using default stderr")
 	}
 	monitoring.GetMonitor()
+	log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
+
 }
 
-// a plugin instance is like a connection or an http request; it is ephemeral (the backend it interfaces to is not)
-func GetAuthProvider() auth.Provider {
-	v := os.Getenv("BCDA_AUTH_PROVIDER")
-	switch v {
-	case "Alpha":
-		return new(plugin.AlphaAuthPlugin) // could fallthrough here, but prefer to be explicit
-	default:
-		return new(plugin.AlphaAuthPlugin)
+func createAPIDirs() {
+	archive := os.Getenv("FHIR_ARCHIVE_DIR")
+	err := os.MkdirAll(archive, 0744)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -114,7 +70,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoID, userName, userEmail, userID, accessToken, ttl, threshold, acoSize string
+	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -143,18 +99,27 @@ func setUpApp() *cli.App {
 					autoMigrate()
 				}
 
+				// Accepts and redirects HTTP requests to HTTPS
+				srv := &http.Server{
+					Handler:      NewHTTPRouter(),
+					Addr:         ":3001",
+					ReadTimeout:  5 * time.Second,
+					WriteTimeout: 5 * time.Second,
+				}
+				go func() { log.Fatal(srv.ListenAndServe()) }()
+
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
-					ReadTimeout:  time.Duration(getEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(getEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
-					IdleTimeout:  time.Duration(getEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				fileserver := &http.Server{
 					Handler:      NewDataRouter(),
-					ReadTimeout:  time.Duration(getEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
-					WriteTimeout: time.Duration(getEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
-					IdleTimeout:  time.Duration(getEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
+					ReadTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("FILESERVER_WRITE_TIMEOUT", 360)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
 				smux := servicemux.New(":3000")
@@ -166,7 +131,7 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     CreateACO,
+			Name:     "create-aco",
 			Category: "Authentication tools",
 			Usage:    "Create an ACO",
 			Flags: []cli.Flag{
@@ -175,9 +140,14 @@ func setUpApp() *cli.App {
 					Usage:       "Name of ACO",
 					Destination: &acoName,
 				},
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName)
+				acoUUID, err := createACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -218,20 +188,23 @@ func setUpApp() *cli.App {
 		{
 			Name:     "create-token",
 			Category: "Authentication tools",
-			Usage:    "Create an access token",
+			Usage:    "Create an access/session token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "user-id",
-					Usage:       "UUID of user",
-					Destination: &userID,
-				},
-			},
+					Name:        "id",
+					Usage:       "ID associated with token (either a user UUID, or client-id paired with the secret",
+					Destination: &tokenID,
+				}, cli.StringFlag{
+					Name:        "secret",
+					Usage:       "Credential secret for creating session tokens",
+					Destination: &tokenSecret,
+				}},
 			Action: func(c *cli.Context) error {
-				accessToken, err := createAccessToken(userID)
+				tokenValue, err := createAccessToken(tokenID, tokenSecret)
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(app.Writer, "%s\n", accessToken)
+				fmt.Fprintf(app.Writer, "%s\n", tokenValue)
 				return nil
 			},
 		},
@@ -267,7 +240,7 @@ func setUpApp() *cli.App {
 				},
 				cli.StringFlag{
 					Name:        "size",
-					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', or 'Large'",
+					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'",
 					Destination: &acoSize,
 				},
 			},
@@ -304,7 +277,7 @@ func setUpApp() *cli.App {
 			Category: "Archive files for jobs that are expiring",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
-				threshold := getEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
 				return archiveExpiring(threshold)
 			},
 		},
@@ -327,6 +300,36 @@ func setUpApp() *cli.App {
 				return cleanupArchive(th)
 			},
 		},
+		{
+			Name:     "import-cclf8",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF8 file",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF8 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF8(filePath)
+			},
+		},
+		{
+			Name:     "import-cclf9",
+			Category: "Data import",
+			Usage:    "Import data from a CCLF9 file",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "file",
+					Usage:       "Path to CCLF9 file",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return importCCLF9(filePath)
+			},
+		},
 	}
 	return app
 }
@@ -336,19 +339,6 @@ func autoMigrate() {
 	models.InitializeGormModels()
 	auth.InitializeGormModels()
 	fmt.Println("Completed Database Initialization")
-}
-
-func createACO(name string) (string, error) {
-	if name == "" {
-		return "", errors.New("ACO name (--name) must be provided")
-	}
-
-	acoUUID, err := models.CreateACO(name)
-	if err != nil {
-		return "", err
-	}
-
-	return acoUUID.String(), nil
 }
 
 func createUser(acoID, name, email string) (string, error) {
@@ -383,42 +373,17 @@ func createUser(acoID, name, email string) (string, error) {
 	return user.UUID.String(), nil
 }
 
-func createAccessToken(userID string) (string, error) {
-	errMsgs := []string{}
-	var userUUID uuid.UUID
-
-	if userID == "" {
-		errMsgs = append(errMsgs, "User ID (--user-id) must be provided")
-	} else {
-		userUUID = uuid.Parse(userID)
-		if userUUID == nil {
-			errMsgs = append(errMsgs, "User ID must be a UUID")
-		}
+func createAccessToken(ID string, secret string) (string, error) {
+	if ID == "" {
+		return "", errors.New("ID (--id) must be provided")
 	}
 
-	if len(errMsgs) > 0 {
-		return "", errors.New(strings.Join(errMsgs, "\n"))
-	}
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var user models.User
-
-	if db.First(&user, "UUID = ?", userID).RecordNotFound() {
-		return "", fmt.Errorf("unable to locate User with id of %s", userID)
-	}
-
-	params := fmt.Sprintf(`{"clientID" : "%s", "ttl" : %d}`, user.AcoID.String(), 72)
-	jwtToken, err := GetAuthProvider().RequestAccessToken([]byte(params))
-	if err != nil {
-		return "", err
-	}
-	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: ID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}
 
-	return tokenString, nil
+	return token.TokenString, nil
 }
 
 func revokeAccessToken(accessToken string) error {
@@ -426,9 +391,7 @@ func revokeAccessToken(accessToken string) error {
 		return errors.New("Access token (--access-token) must be provided")
 	}
 
-	authProvider := GetAuthProvider()
-
-	return authProvider.RevokeAccessToken(accessToken)
+	return auth.GetProvider().RevokeAccessToken(accessToken)
 }
 
 func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
@@ -441,32 +404,25 @@ func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
 		"dev",
 		"small",
 		"medium",
-		"large":
+		"large",
+		"extra_large":
 		return i, nil
 	default:
-		return i, errors.New("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', or 'Large'")
+		return i, errors.New("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'")
 	}
 }
 
-func createAlphaToken(ttl int, acoSize string) (s string, err error) {
-
+func createAlphaToken(ttl int, acoSize string) (string, error) {
 	aco, err := createAlphaEntities(acoSize)
 	if err != nil {
-		return
+		return "", err
 	}
 
-	authProvider := GetAuthProvider()
-
-	params := fmt.Sprintf("{\"clientID\" : \"%s\"}", aco.UUID.String())
-	result, err := authProvider.RegisterClient([]byte(params))
+	creds, err := auth.GetProvider().RegisterClient(aco.UUID.String())
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID, err = plugin.GetParamString(result, "clientID")
-	if err != nil {
-		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
-	}
-
+	aco.ClientID = creds.ClientID
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	err = db.Save(&aco).Error
@@ -474,37 +430,9 @@ func createAlphaToken(ttl int, acoSize string) (s string, err error) {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
 
-	params = fmt.Sprintf("{\"clientID\" : \"%s\", \"ttl\" : %d}", aco.ClientID, ttl)
-	jwtToken, err := authProvider.RequestAccessToken([]byte(params))
-	if err != nil {
-		return "", err
-	}
-	// (re)produce the tokenString; JwtToken seems to only store the tokenString when it's been used to decode an incoming token
-	// TBD: have RequestAccessToken return the token string and decode the string here, or have it return a wrapped Token that has both?
-	tokenString, err := jwtToken.SignedString(auth.InitAuthBackend().PrivateKey)
-	if err != nil {
-		return "", err
-	}
+	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
 
-	// this code can get cleaned up with DecodeToken
-	claims := jwtToken.Claims.(jwt.MapClaims)
-	if claims == nil {
-		return "", errors.New("could not read any token claims")
-	}
-	expiresOn := time.Unix(claims["exp"].(int64), 0).Format(time.RFC850)
-	tokenId := claims["id"].(string)
-	return fmt.Sprintf("%s\n%s\n%s", expiresOn, tokenId, tokenString), err
-}
-
-func getEnvInt(varName string, defaultVal int) int {
-	v := os.Getenv(varName)
-	if v != "" {
-		i, err := strconv.Atoi(v)
-		if err == nil {
-			return i
-		}
-	}
-	return defaultVal
+	return msg, nil
 }
 
 func archiveExpiring(hrThreshold int) error {
@@ -519,15 +447,6 @@ func archiveExpiring(hrThreshold int) error {
 		return err
 	}
 
-	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
-	if _, err = os.Stat(expDir); os.IsNotExist(err) {
-		err = os.MkdirAll(expDir, os.ModePerm)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-
 	var lastJobError error
 	for _, j := range jobs {
 		t := j.CreatedAt
@@ -536,7 +455,7 @@ func archiveExpiring(hrThreshold int) error {
 
 			id := int(j.ID)
 			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+			expDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
 			err = os.Rename(jobDir, expDir)
 			if err != nil {
@@ -560,12 +479,6 @@ func archiveExpiring(hrThreshold int) error {
 func cleanupArchive(hrThreshold int) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
-	expDir := os.Getenv("FHIR_ARCHIVE_DIR")
-	if _, err := os.Stat(expDir); os.IsNotExist(err) {
-		// nothing to do if no base directory exists.
-		return nil
-	}
 
 	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
 

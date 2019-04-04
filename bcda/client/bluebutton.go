@@ -3,13 +3,15 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 
@@ -52,23 +54,26 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not load Blue Button keypair")
 	}
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-	// TODO Fix when Blue Button has a static cert: https://jira.cms.gov/browse/BLUEBUTTON-484
-	if os.Getenv("BB_SERVER_LOCATION") != "https://fhir.backend.bluebutton.hhsdevcloud.us" {
+
+	if strings.ToLower(os.Getenv("BB_CHECK_CERT")) != "false" {
 		caFile := os.Getenv("BB_CLIENT_CA_FILE")
 		/* #nosec */
 		caCert, err := ioutil.ReadFile(caFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "could not read CA file")
 		}
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			return nil, errors.New("could not append CA certificate(s)")
+		}
 		tlsConfig.RootCAs = caCertPool
 	} else {
 		tlsConfig.InsecureSkipVerify = true
+		logger.Warn("Blue Button certificate check disabled")
 	}
 
 	tlsConfig.BuildNameToCertificate()
@@ -86,29 +91,26 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 type BeneDataFunc func(string, string) (string, error)
 
 func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
-	params := url.Values{}
+	params := GetDefaultParams()
 	params.Set("_id", patientID)
-	params.Set("_format", "application/fhir+json")
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
 }
 
 func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (string, error) {
-	params := url.Values{}
+	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-	params.Set("_format", "application/fhir+json")
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, "")
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
-	params := url.Values{}
+	params := GetDefaultParams()
 	params.Set("patient", patientID)
-	params.Set("_format", "application/fhir+json")
+	params.Set("excludeSAMHSA", "true")
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
-	params := url.Values{}
-	params.Set("_format", "application/fhir+json")
+	params := GetDefaultParams()
 	return bbc.getData(blueButtonBasePath+"/metadata/", params, "")
 }
 
@@ -152,7 +154,6 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 
 func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
-	// Populating header values: https://jira.cms.gov/browse/BCDA-334
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
@@ -186,4 +187,10 @@ func logRequest(req *http.Request, resp *http.Response, jobID string) {
 			"content_length": resp.ContentLength,
 		}).Infoln("Blue Button response")
 	}
+}
+
+func GetDefaultParams() (params url.Values) {
+	params = url.Values{}
+	params.Set("_format", "application/fhir+json")
+	return params
 }

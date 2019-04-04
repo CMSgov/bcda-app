@@ -9,15 +9,16 @@ import (
 	"os"
 	"testing"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/logging"
 )
 
 type LoggingMiddlewareTestSuite struct {
@@ -36,17 +37,13 @@ func (s *LoggingMiddlewareTestSuite) CreateRouter() http.Handler {
 
 func contextToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		acoID := "dbbd1ce1-ae24-435c-807d-ed45953077d3"
-		subID := "82503a18-bf3b-436d-ba7b-bae09b7ffdff"
-		tokenID := "665341c9-7d0c-4844-b66f-5910d9d0822f"
-
-		token := jwt.New(jwt.SigningMethodRS512)
-		token.Claims = jwt.MapClaims{
-			"sub": subID,
-			"aco": acoID,
-			"id":  tokenID,
+		ad := auth.AuthData{
+			ACOID:   "dbbd1ce1-ae24-435c-807d-ed45953077d3",
+			UserID:  "82503a18-bf3b-436d-ba7b-bae09b7ffdff",
+			TokenID: "665341c9-7d0c-4844-b66f-5910d9d0822f",
 		}
-		ctx := context.WithValue(req.Context(), "token", token)
+
+		ctx := context.WithValue(req.Context(), "ad", ad)
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
@@ -67,7 +64,9 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	if err != nil {
 		s.Fail("Request error", err)
 	}
-	assert.Equal(s.T(), 200, resp.StatusCode)
+
+	assert := assert.New(s.T())
+	assert.Equal(200, resp.StatusCode)
 
 	server.Close()
 
@@ -78,25 +77,30 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	defer logFile.Close()
 
 	sc := bufio.NewScanner(logFile)
-	for sc.Scan() {
-		var logFields log.Fields
+	var logFields log.Fields
+	for i := 0; i < 2; i++ {
+		assert.True(sc.Scan())
+
 		err = json.Unmarshal(sc.Bytes(), &logFields)
 		if err != nil {
 			s.Fail("JSON unmarshal error", err)
 		}
-		assert.NotEmpty(s.T(), logFields["ts"])
+
+		assert.NotEmpty(logFields["ts"], "Log entry should have a value for field `ts`.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), "https", logFields["http_scheme"])
-		assert.Equal(s.T(), "HTTP/1.1", logFields["http_proto"])
-		assert.Equal(s.T(), "GET", logFields["http_method"])
-		assert.NotEmpty(s.T(), logFields["remote_addr"])
-		assert.NotEmpty(s.T(), logFields["user_agent"])
+		assert.Equal("HTTP/1.1", logFields["http_proto"], "Log entry should contain the HTTP protocol.")
+		assert.Equal("GET", logFields["http_method"], "Log entry should contain the HTTP method.")
+		assert.NotEmpty(logFields["remote_addr"], "Log entry should contain the remote address.")
+		assert.NotEmpty(logFields["user_agent"], "Log entry should contain the user agent.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), server.URL+"/", logFields["uri"])
-		assert.Equal(s.T(), "dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco"])
-		assert.Equal(s.T(), "82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["sub"])
-		assert.Equal(s.T(), "665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"])
+		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
+		assert.Equal("82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["user_id"], "Sub in log entry should match the token.")
+		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
 	}
+
+	assert.False(sc.Scan(), "There should be no additional log entries.")
 
 	os.Remove("bcda-req-test.log")
 	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
@@ -148,37 +152,54 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 	}
 	defer logFile.Close()
 
+	assert := assert.New(s.T())
 	sc := bufio.NewScanner(logFile)
-	lineNum := 0
-	for sc.Scan() {
-		lineNum++
-		var logFields log.Fields
+	var logFields log.Fields
+	for i := 0; i < 2; i++ {
+		assert.True(sc.Scan())
+
 		err = json.Unmarshal(sc.Bytes(), &logFields)
 		if err != nil {
 			s.Fail("JSON unmarshal error", err)
 		}
 
-		assert.NotEmpty(s.T(), logFields["ts"])
+		assert.NotEmpty(logFields["ts"], "Log entry should have a value for field `ts`.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), "https", logFields["http_scheme"])
-		assert.Equal(s.T(), "HTTP/1.1", logFields["http_proto"])
-		assert.Equal(s.T(), "GET", logFields["http_method"])
-		assert.NotEmpty(s.T(), logFields["remote_addr"])
-		assert.NotEmpty(s.T(), logFields["user_agent"])
+		assert.Equal("HTTP/1.1", logFields["http_proto"], "Log entry should contain the HTTP protocol.")
+		assert.Equal("GET", logFields["http_method"], "Log entry should contain the HTTP method.")
+		assert.NotEmpty(logFields["remote_addr"], "Log entry should contain the remote address.")
+		assert.NotEmpty(logFields["user_agent"], "Log entry should contain the user agent.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), server.URL+"/panic", logFields["uri"])
-		assert.Equal(s.T(), "dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco"])
-		assert.Equal(s.T(), "82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["sub"])
-		assert.Equal(s.T(), "665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"])
-		if lineNum == 2 {
-			assert.Equal(s.T(), "Test", logFields["panic"])
-			assert.NotEmpty(s.T(), logFields["stack"])
+		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
+		assert.Equal("82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["user_id"], "Sub in log entry should match the token.")
+		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
+		if i == 1 {
+			assert.Equal("Test", logFields["panic"])
+			assert.NotEmpty(logFields["stack"])
 		}
 	}
+
+	assert.False(sc.Scan(), "There should be no additional log entries.")
 
 	server.Close()
 	os.Remove("bcda-req-test.log")
 	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
+}
+
+func (s *LoggingMiddlewareTestSuite) TestRedact() {
+	uri := "https://www.example.com/api/endpoint?Authorization=Bearer%20abcdef.12345"
+	redacted := logging.Redact(uri)
+	assert.Equal(s.T(), "https://www.example.com/api/endpoint?Authorization=Bearer%20<redacted>", redacted)
+
+	uri = "https://www.example.com/api/endpoint?Authorization=Bearer%20abcdef.12345&Authorization=Bearer%2019dgks8gfasdf&foo=bar"
+	redacted = logging.Redact(uri)
+	assert.Equal(s.T(), "https://www.example.com/api/endpoint?Authorization=Bearer%20<redacted>&Authorization=Bearer%20<redacted>&foo=bar", redacted)
+
+	uri = "https://www.example.com/api/endpoint?foo=bar"
+	redacted = logging.Redact(uri)
+	assert.Equal(s.T(), uri, redacted)
 }
 
 func TestLoggingMiddlewareTestSuite(t *testing.T) {

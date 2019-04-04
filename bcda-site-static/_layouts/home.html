@@ -1,0 +1,62 @@
+---
+layout: default
+---
+<div class="ds-base">
+  <header class="blueberry-lime-gradient-background main-header ds-u-margin-bottom--2 ds-u-lg-margin-bottom--5">
+    <div class="api-pattern">
+      <div class="solid-container ds-u-padding-y--2 ds-u-lg-padding-y--5">
+        <div class="ds-l-container">
+          <div class="ds-l-row">
+            <div class="ds-u-color--white ds-l-sm-cold--12 ds-l-xl-col--10 ds-u-margin-left--auto ds-u-padding-x--4">
+
+
+                <h1 class="ds-display">{{ page.title | escape }}</h1>
+                <p class="ds-text--lead">
+                  {{ page.description | escape }}
+                </p>
+                <div class="ctas">
+                {% for item in page.ctas limit:2 %}
+                <a class="ds-c-button button--white" href="{{ item.link }}" aria-label="{{ item.title }}" target="{{item.target |default:'_self'}}">{{ item.title }} &rarr;</a>
+                {% endfor %}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  </header>
+</div>
+
+<section class="ds-l-container ds-base">
+  <div class="ds-l-row">
+
+    <aside class="ds-l-col--4 ds-u-margin-left--right ds-u-display--none ds-u-sm-display--block" role="complementary">
+      <nav class="subnav">
+        <h5 class="sr-only" id="page-sub-nav">Page navigation links</h5>
+        <ul class="ds-c-list ds-c-list--bare" id="mainNav" aria-labelledby="page-sub-nav">
+          {% for item in page.sections %}
+            <li><a href="#{{ item | slugify }}" aria-label="{{ item }} section, current page" class="ds-u-display--block {{ page.subnav-link-gradient }}" aria-label="{{ item }} section, current page">{{ item }}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+    </aside>
+
+
+    <article class="ds-l-col--12 ds-l-sm-col--7 {{ page.badge | slugify }}" id="main" role="main">
+      {{ content }}
+
+      <div class="bcda_callout">
+        <p><img src="assets/img/google_logo.png" alt="Google Groups Logo" id="google_logo"> <strong>Have questions?</strong></p>
+
+        <p>The BCDA Google Group is the best place to get your questions answered by the BCDA team. In this community you can sign up for feedback session opportunities, get answers to your questions, share your feedback and ideas, and get updates on the project.</p>
+        <div class="button">
+            <p ><a href="https://groups.google.com/forum/#!forum/bc-api" target="_blank">Join the BCDA Google Group</a></p>
+        </div>
+      </div>
+      <a href="#site-top" class="ds-c-button ds-u-margin-top--4">Back to top</a>
+    </article>
+
+
+  </div>
+</section>

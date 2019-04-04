@@ -2,120 +2,141 @@ package auth
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/dgrijalva/jwt-go/request"
-	"github.com/pborman/uuid"
 )
 
+// Puts the decoded token and identity values into the request context. Decoded values have been
+// verified to be tokens signed by our server and to have not expired. Additional authorization
+// occurs in RequireTokenAuth(). Only auth code should look at the token claims; API code should
+// rely on the values in AuthData. We do this to insulate API code from the differences among
+// Provider tokens.
 func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-
 		if authHeader == "" {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		authBackend := InitAuthBackend()
+		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
+		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
+		if len(authSubmatches) < 2 {
+			log.Warn("Invalid Authorization header value")
+			next.ServeHTTP(w, r)
+			return
+		}
 
-		var keyFunc jwt.Keyfunc = func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		tokenString := authSubmatches[1]
+		token, err := GetProvider().DecodeJWT(tokenString)
+		if err != nil {
+			log.Errorf("Unable to decode Authorization header value; %s", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		var ad AuthData
+		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
+			// okta token
+			if claims.ClientID != "" && claims.Subject == claims.ClientID {
+				var aco, err = GetACOByClientID(claims.ClientID)
+				if err != nil {
+					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				db := database.GetGORMDbConnection()
+				defer database.Close(db)
+
+				var user models.User
+				if db.First(&user, "ACOID = ?", aco.UUID).RecordNotFound() {
+					log.Errorf("no user for ACO with id of %v", aco.UUID)
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				ad.TokenID = claims.Id
+				ad.ACOID = aco.UUID.String()
+				ad.UserID = user.UUID.String()
 			} else {
-				return authBackend.PublicKey, nil
+				ad.TokenID = claims.UUID
+				ad.ACOID = claims.ACOID
+				ad.UserID = claims.Subject
 			}
 		}
-
-		token, err := request.ParseFromRequest(r, request.OAuth2Extractor, keyFunc)
-
-		if err == nil {
-			ctx := context.WithValue(r.Context(), "token", token)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		} else {
-			next.ServeHTTP(w, r)
-		}
+		ctx := context.WithValue(r.Context(), "token", token)
+		ctx = context.WithValue(ctx, "ad", ad)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authBackend := InitAuthBackend()
-		tokenValue := r.Context().Value("token")
-
-		if tokenValue == nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-			responseutils.WriteError(oo, w, http.StatusUnauthorized)
+		token := r.Context().Value("token")
+		if token == nil {
+			log.Error("No token found")
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
-		token := tokenValue.(*jwt.Token)
-
-		if token.Valid {
-			blacklisted := authBackend.IsBlacklisted(token)
-			if !blacklisted {
-				ctx := context.WithValue(r.Context(), "token", token)
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
-			} else {
-				log.Error("Blacklisted Token with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
-			}
-
-		} else {
-			log.Error("Invalid Token with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
-		}
-
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusUnauthorized)
-	})
-}
-
-func RequireTokenACOMatch(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenValue := r.Context().Value("token")
-
-		if tokenValue == nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-			responseutils.WriteError(oo, w, http.StatusUnauthorized)
-			return
-		}
-
-		if token, ok := tokenValue.(*jwt.Token); ok && token.Valid {
-			claims, err := ClaimsFromToken(token)
+		if token, ok := token.(*jwt.Token); ok {
+			err := GetProvider().ValidateJWT(token.Raw)
 			if err != nil {
 				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+				respond(w, http.StatusUnauthorized)
 				return
 			}
 
-			aco, _ := claims["aco"].(string)
-
-			re := regexp.MustCompile("/([a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12})(?:-error)?.ndjson")
-			urlUUID := re.FindStringSubmatch(r.URL.String())[1]
-
-			if uuid.Equal(uuid.Parse(aco), uuid.Parse(string(urlUUID))) {
-				next.ServeHTTP(w, r)
-			} else {
-				log.Error("Token for incorrect ACO with ID: %v was rejected", token.Claims.(jwt.MapClaims)["id"])
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-				responseutils.WriteError(oo, w, http.StatusNotFound)
-				return
-			}
+			next.ServeHTTP(w, r)
 		}
 	})
 }
 
-func ClaimsFromToken(token *jwt.Token) (jwt.MapClaims, error) {
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		return claims, nil
-	}
-	return jwt.MapClaims{}, errors.New("Error determining token claims")
+func RequireTokenJobMatch(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ad, ok := r.Context().Value("ad").(AuthData)
+		if !ok {
+			log.Error()
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)
+			responseutils.WriteError(oo, w, http.StatusNotFound)
+			return
+		}
+
+		jobID := chi.URLParam(r, "jobID")
+		i, err := strconv.Atoi(jobID)
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)
+			responseutils.WriteError(oo, w, http.StatusNotFound)
+			return
+		}
+
+		db := database.GetGORMDbConnection()
+		defer database.Close(db)
+
+		var job models.Job
+		err = db.Find(&job, "id = ? and aco_id = ?", i, ad.ACOID).Error
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)
+			responseutils.WriteError(oo, w, http.StatusNotFound)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func respond(w http.ResponseWriter, status int) {
+	oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+	responseutils.WriteError(oo, w, status)
 }

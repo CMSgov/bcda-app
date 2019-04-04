@@ -1,0 +1,8 @@
+FROM jekyll/builder
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda-site-static
+COPY ./bcda-site-static .
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda-site-static
+RUN ["bundle", "install"]
+CMD ["bundle", "exec", "jekyll", "build"]

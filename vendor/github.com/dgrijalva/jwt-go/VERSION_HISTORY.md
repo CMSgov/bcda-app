@@ -1,5 +1,12 @@
 ## `jwt-go` Version History
 
+#### 4.0.0
+
+* **Compatibility Breaking Changes**: See MIGRATION_GUIDE.md for tips on updating your code
+	* Changed text in some errors to match go formatting standards. If you need to switch on error type, it's best to compare directly against the variables in the library rather than comparing their text.
+	* When a token is expired, the `Inner` error value will now be of type `ExipredError`
+	* Dropping (official) support for go1.6 or older. Older versions dating back to 1.4 _may_ continue to work, but are not being considered or tested against.
+
 #### 3.2.0
 
 * Added method `ParseUnverified` to allow users to split up the tasks of parsing and validation

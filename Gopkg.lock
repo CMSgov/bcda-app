@@ -18,15 +18,12 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:e210d035ad4156d715a4d6f2a8ddd788bf74a992cb7785a925f22f734c6794c5"
+  branch = "release_4_0_0"
+  digest = "1:4eafcd2abd69154b2f4c708895e0212c5de8ee9a3021e1ef94786f2981a5be69"
   name = "github.com/dgrijalva/jwt-go"
-  packages = [
-    ".",
-    "request",
-  ]
+  packages = ["."]
   pruneopts = "UT"
-  revision = "0b96aaa707760d6ab28d9b9d1913ff5993328bae"
+  revision = "3c771ce311b7f51c2fa84ef4438cce09c9984444"
 
 [[projects]]
   branch = "master"
@@ -48,6 +45,14 @@
   ]
   pruneopts = "UT"
   revision = "cca4135d8dddff765463feaf1118047a9e506b4a"
+
+[[projects]]
+  branch = "master"
+  digest = "1:cddf81f7eefbb8bf6cf65fe56c3b3c01784d5ca2f133bd5adfc4912497b5176b"
+  name = "github.com/influxdata/tdigest"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "bf2b5ad3c0a925c44a0d2842c5d8182113cd248e"
 
 [[projects]]
   digest = "1:e95ccab7a6a9b39ed25607a8334213fa8b88869d721ec87b56f102c516fca075"
@@ -94,6 +99,18 @@
   revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 
 [[projects]]
+  branch = "master"
+  digest = "1:84a5a2b67486d5d67060ac393aa255d05d24ed5ee41daecd5635ec22657b6492"
+  name = "github.com/mailru/easyjson"
+  packages = [
+    "buffer",
+    "jlexer",
+    "jwriter",
+  ]
+  pruneopts = "UT"
+  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
+
+[[projects]]
   digest = "1:01f60ec456e70c9be269902c08fa189a9d47056a419c4a91a02f19df5e36ab59"
   name = "github.com/newrelic/go-agent"
   packages = [
@@ -133,6 +150,22 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:68cecd4c1137f77dfa2db1f13a0ceef2b5606d6b69d66fa69f7df1b2f2fe9afc"
+  name = "github.com/shurcooL/httpfs"
+  packages = ["vfsutil"]
+  pruneopts = "UT"
+  revision = "74dc9339e414ad069a8d04bba7e7aafd08043a25"
+
+[[projects]]
+  branch = "master"
+  digest = "1:98450c86949b8cdc4637b80c1c686ca955e503d3fbae9296d1f49c532895d281"
+  name = "github.com/shurcooL/vfsgen"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "6a9ea43bcacdf716a5c1b38efff722c07adf0069"
+
+[[projects]]
   digest = "1:68ae7a24476fe166c77ab60dace5945a0cd0c97bf714f27dd5cb66e5bde7fb82"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -167,6 +200,29 @@
   ]
   pruneopts = "UT"
   revision = "2db35c88b92a1631e987089b5485a95e68bc5d3a"
+
+[[projects]]
+  branch = "master"
+  digest = "1:be87c1e6f0a15e5b1c45036b9382cdd63057a8b65e10ff2fe2bda23886a99c6a"
+  name = "github.com/tsenart/go-tsz"
+  packages = [
+    ".",
+    "testdata",
+  ]
+  pruneopts = "UT"
+  revision = "0bd30b3df1c328dfc87ed857cdf695c3c7d2cb09"
+
+[[projects]]
+  digest = "1:f06cad29ccbaefa5eba382f7b5e442a92170f367f8093a4b39b09b0fbe0277df"
+  name = "github.com/tsenart/vegeta"
+  packages = [
+    "lib",
+    "lib/lttb",
+    "lib/plot",
+  ]
+  pruneopts = "UT"
+  revision = "c120b942b43950d4237e41f31152706fbc3d4c0d"
+  version = "v12.1.0"
 
 [[projects]]
   digest = "1:189a0e6e9c657bb662bafc41a796360d11c88eed7614b1b6f003b8fbc8847e5e"
@@ -245,7 +301,6 @@
   input-imports = [
     "github.com/bgentry/que-go",
     "github.com/dgrijalva/jwt-go",
-    "github.com/dgrijalva/jwt-go/request",
     "github.com/eug48/fhir/models",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
@@ -259,7 +314,10 @@
     "github.com/soheilhy/cmux",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
+    "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
+    "github.com/tsenart/vegeta/lib",
+    "github.com/tsenart/vegeta/lib/plot",
     "github.com/urfave/cli",
   ]
   solver-name = "gps-cdcl"

@@ -2,15 +2,16 @@ package auth_test
 
 import (
 	"testing"
+	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type ModelsTestSuite struct {
@@ -19,7 +20,6 @@ type ModelsTestSuite struct {
 }
 
 func (s *ModelsTestSuite) SetupTest() {
-	// Setup the DB
 	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.SetupAuthBackend()
@@ -30,35 +30,38 @@ func (s *ModelsTestSuite) TearDownTest() {
 }
 
 func (s *ModelsTestSuite) TestTokenCreation() {
-	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	tokenUUID := uuid.NewRandom()
+	acoUUID := uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+	userUUID := uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
+	issuedAt := time.Now().Unix()
+	expiresOn := time.Now().Add(time.Hour * time.Duration(72)).Unix()
 
-	tokenString, err := s.AuthBackend.GenerateTokenString(
-		userUUID,
-		acoUUID,
+	tokenString, err := auth.GenerateTokenString(
+		tokenUUID.String(),
+		userUUID.String(),
+		acoUUID.String(),
+		issuedAt,
+		expiresOn,
 	)
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), tokenString)
 
-	var user models.User
-	s.db.Find(&user, "UUID = ?", userUUID)
-
 	// Get the claims of the token to find the token ID that was created
-	claims := s.AuthBackend.GetJWTClaims(tokenString)
-	tokenUUID := claims["id"].(string)
 	token := auth.Token{
-		UUID:   uuid.Parse(tokenUUID),
-		UserID: user.UUID,
-		Value:  tokenString,
-		Active: true,
+		UUID:      tokenUUID,
+		UserID:    userUUID,
+		Active:    true,
+		ACOID:     acoUUID,
+		IssuedAt:  issuedAt,
+		ExpiresOn: expiresOn,
 	}
 	s.db.Create(&token)
 
 	var savedToken auth.Token
 	s.db.Find(&savedToken, "UUID = ?", tokenUUID)
 	assert.NotNil(s.T(), savedToken)
-	assert.Equal(s.T(), token.Value, savedToken.Value)
+	assert.Equal(s.T(), tokenString, savedToken.TokenString)
 }
 
 func TestModelsTestSuite(t *testing.T) {
