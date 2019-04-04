@@ -83,10 +83,11 @@ type ACOBeneficiary struct {
 
 type CCLF9 struct {
 	gorm.Model
-	CurrentNum   string `json:"current_number"`
-	PrevNum      string `json:"previous_number"`
-	PrevsEfctDt  string `json:"effective_date"`
-	PrevsObsltDt string `json:"obsolete_date"`
+	XrefIndicator string `json:"xref_indicator"`
+	CurrentNum    string `json:"current_number"`
+	PrevNum       string `json:"previous_number"`
+	PrevsEfctDt   string `json:"effective_date"`
+	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
 func (*ACOBeneficiary) TableName() string {

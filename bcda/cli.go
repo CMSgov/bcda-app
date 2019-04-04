@@ -119,10 +119,11 @@ func importCCLF9(filePath string) error {
 		if len(bytes.TrimSpace(b)) > 0 {
 
 			cclf9 := models.CCLF9{
-				CurrentNum:   string(b[currIDStart:currIDEnd]),
-				PrevNum:      string(b[prevIDStart:prevIDEnd]),
-				PrevsEfctDt:  string(b[prevIDEffDateStart:prevIDEffDateEnd]),
-				PrevsObsltDt: string(b[prevIDObsDateStart:prevIDObsDateEnd]),
+				XrefIndicator: string(b[0:1]),
+				CurrentNum:    string(b[currIDStart:currIDEnd]),
+				PrevNum:       string(b[prevIDStart:prevIDEnd]),
+				PrevsEfctDt:   string(b[prevIDEffDateStart:prevIDEffDateEnd]),
+				PrevsObsltDt:  string(b[prevIDObsDateStart:prevIDObsDateEnd]),
 			}
 			err = db.Create(&cclf9).Error
 			if err != nil {
