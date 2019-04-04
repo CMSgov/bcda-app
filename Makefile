@@ -16,8 +16,12 @@ lint:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
+smoke-test: clientId ?= $(shell tail -n2 /tmp/creds|head -n 1)
+smoke-test: clientSecret ?= $(shell tail -n1 /tmp/creds)
 smoke-test:
-	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
+	docker exec -it bcda-app_api_1 sh -c 'tmp/bcda create-alpha-token --size dev' > /tmp/creds
+	CLIENT_ID=$(clientId) CLIENT_SECRET=$(clientSecret) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh 
+	rm /tmp/creds
 
 unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh

@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,9 +15,9 @@ import (
 )
 
 var (
-	accessToken, apiHost, proto, endpoint string
-	timeout                               int
-	encrypt                               bool
+	accessToken, apiHost, proto, endpoint, clientID, clientSecret string
+	timeout                                                       int
+	encrypt                                                       bool
 )
 
 type OutputCollection []Output
@@ -28,8 +27,15 @@ type Output struct {
 	Type string `json:"type"`
 }
 
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+}
+
 func init() {
 	flag.StringVar(&accessToken, "token", "", "access token used to make request to bcda")
+	flag.StringVar(&clientID, "clientID", "", "client id for retrieving an access token")
+	flag.StringVar(&clientSecret, "clientSecret", "", "client secret for retrieving an access token")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
@@ -38,31 +44,37 @@ func init() {
 	flag.Parse()
 
 	if accessToken == "" {
+		if clientID == "" && clientSecret == "" {
+			panic(fmt.Errorf("Must provide a token or credentials for retrieving a token"))
+		}
+
 		fmt.Println("Access Token not supplied.  Retrieving one to use.")
 		accessToken = getAccessToken()
 	}
 }
 
 func getAccessToken() string {
-	client := &http.Client{}
-	req, err := http.NewRequest(
-		"GET", fmt.Sprintf("%s://%s/api/v1/token", proto, apiHost), nil)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s://%s/auth/token", proto, apiHost), nil)
 	if err != nil {
 		panic(err)
 	}
-	resp, err := client.Do(req)
+
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+
+	resp, err := client().Do(req)
 	if err != nil {
 		panic(err)
 	}
 
 	defer resp.Body.Close()
 
-	respData, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
+	var t = TokenResponse{}
+	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
+		panic("unexpected token response format")
 	}
 
-	return string(respData)
+	return t.AccessToken
 }
 
 func startJob(resourceType string) *http.Response {
@@ -330,4 +342,8 @@ func main() {
 		fmt.Printf("error: failed to start %s data aggregation job\n", endpoint)
 		os.Exit(1)
 	}
+}
+
+func client() *http.Client {
+	return &http.Client{Timeout: time.Second * 10}
 }
