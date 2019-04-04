@@ -9,7 +9,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -83,86 +82,11 @@ func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
 }
 
 func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
-	aco, err := getACOFromDB(clientID)
-	if err != nil {
-		return Credentials{}, fmt.Errorf(`no ACO found for client ID %s because %s`, clientID, err)
-	}
-
-	if aco.ClientID == "" {
-		return Credentials{}, fmt.Errorf("ACO %s does not have a registered client", clientID)
-	}
-
-	err = p.RevokeClientCredentials(clientID)
-	if err != nil {
-		return Credentials{}, fmt.Errorf("unable to revoke existing credentials for ACO %s because %s", clientID, err)
-	}
-
-	if ttl < 0 {
-		return Credentials{}, errors.New("invalid TTL")
-	}
-
-	token, err := p.RequestAccessToken(Credentials{ClientID: clientID}, ttl)
-	if err != nil {
-		return Credentials{}, fmt.Errorf("unable to generate new credentials for ACO %s because %s", clientID, err)
-	}
-
-	return Credentials{Token: token}, err
+	return Credentials{}, fmt.Errorf("GenerateClientCredentials is not implemented for alpha auth")
 }
 
-// look up the active access token associated with id, and call RevokeAccessToken
 func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
-	if clientID == "" {
-		return errors.New("missing clientID argument")
-	}
-
-	db := database.GetGORMDbConnection()
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Infof("error closing db connection in %s because %s", "alpha plugin", err)
-		}
-	}()
-
-	var aco models.ACO
-	if err := db.First(&aco, "client_id = ?", clientID).Error; err != nil {
-		return fmt.Errorf("no ACO found for client ID because %s", err)
-	}
-
-	var users []models.User
-	if err := db.Find(&users, "aco_id = ?", aco.UUID).Error; err != nil || len(users) == 0 {
-		return fmt.Errorf("no users found in client's ACO because %s", err)
-	}
-
-	var (
-		userIDs []uuid.UUID
-		tokens  []Token
-	)
-	for _, u := range users {
-		userIDs = append(userIDs, u.UUID)
-	}
-
-	db.Find(&tokens, "user_id in (?) and active = true", userIDs)
-	if len(tokens) == 0 {
-		log.Info("No tokens found to revoke for users in client's ACO.")
-		return nil
-	}
-
-	var errs []string
-	revokedCount := 0
-	for _, t := range tokens {
-		err := revokeAccessTokenByID(t.UUID)
-		if err != nil {
-			log.Error(err)
-			errs = append(errs, err.Error())
-		} else {
-			revokedCount = revokedCount + 1
-		}
-	}
-	log.Infof("%d token(s) revoked.", revokedCount)
-	if len(errs) > 0 {
-		return fmt.Errorf("%d of %d token(s) could not be revoked due to errors", len(errs), len(tokens))
-	}
-
-	return nil
+	return fmt.Errorf("RevokeClientCredentials is not implemented for alpha auth")
 }
 
 // MakeAccessToken manufactures an access token for the given credentials
@@ -251,31 +175,7 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 }
 
 func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
-	t, err := p.DecodeJWT(tokenString)
-	if err != nil {
-		return err
-	}
-
-	if c, ok := t.Claims.(*CommonClaims); ok {
-		return revokeAccessTokenByID(uuid.Parse(c.UUID))
-	}
-
-	return errors.New("could not read token claims")
-}
-
-func revokeAccessTokenByID(tokenID uuid.UUID) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var token Token
-	if db.First(&token, "UUID = ? and active = true", tokenID).RecordNotFound() {
-		return gorm.ErrRecordNotFound
-	}
-
-	token.Active = false
-	db.Save(&token)
-
-	return db.Error
+	return fmt.Errorf("RevokeAccessToken is not implemented for alpha auth")
 }
 
 func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {

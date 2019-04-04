@@ -23,8 +23,9 @@ var (
 type OutputCollection []Output
 
 type Output struct {
-	Url  string `json:"url"`
-	Type string `json:"type"`
+	Url          string `json:"url"`
+	Type         string `json:"type"`
+	EncryptedKey string `json:"encryptedKey"`
 }
 
 type TokenResponse struct {
@@ -219,124 +220,128 @@ func main() {
 					}
 				}
 
-				fmt.Printf("fetching: %s\n", data[0].Url)
-				download := get(data[0].Url)
-				if download.StatusCode == 200 {
-					filename := "/tmp/" + path.Base(data[0].Url)
-					fmt.Printf("writing download to disk: %s\n", filename)
-					writeFile(download, filename)
+				for _, fileItem := range data {
+					fmt.Printf("fetching: %s\n", fileItem.Url)
+					download := get(fileItem.Url)
+					if download.StatusCode == 200 {
+						filename := "/tmp/" + path.Base(fileItem.Url)
+						fmt.Printf("writing download to disk: %s\n", filename)
+						writeFile(download, filename)
 
-					fmt.Println("validating file...")
-					fi, err := os.Stat(filename)
-					if err != nil {
-						panic(err)
-					}
-					if fi.Size() <= 0 {
-						fmt.Println("Error: file is empty!.")
-						os.Exit(1)
-					}
-
-					if encrypt {
-						fmt.Println("decrypting the file...")
-						encryptedKey := string(encryptData[path.Base(data[0].Url)])
-
-						privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
-
-						// execute the golang decryptor
-						var cmdOut []byte
-						cmdName := "go"
-						cmdArgs := []string{
-							"run", "../../decryption_utils/Go/decrypt.go",
-							"--file", filename,
-							"--pk", privateKeyFile,
-							"--key", encryptedKey,
+						fmt.Println("validating file...")
+						fi, err := os.Stat(filename)
+						if err != nil {
+							panic(err)
 						}
-						fmt.Println("Running the go decryptor externally...")
-						// #nosec
-						if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
-							fmt.Fprintln(os.Stderr, "There was an error running the go decryption util: ", err)
-							os.Exit(1)
-						}
-						output := string(cmdOut)
-
-						fmt.Println("validating Go decryptor content...")
-						if !isValidNDJSONText(output) {
-							fmt.Println("Error: file is not in valid NDJSON format!")
+						if fi.Size() <= 0 {
+							fmt.Println("Error: file is empty!.")
 							os.Exit(1)
 						}
 
-						// execute the Python decryptor
-						cmdName = "python"
-						cmdArgs = []string{
-							"../../decryption_utils/Python/decrypt.py",
-							"--file", filename,
-							"--pk", privateKeyFile,
-							"--key", string(encryptedKey),
-						}
-						fmt.Println("Running the Python decryptor externally...")
+						if encrypt {
+							fmt.Println("decrypting the file...")
+							encryptedKey := string(encryptData[path.Base(data[0].Url)])
 
-						// #nosec
-						if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
-							fmt.Fprintln(os.Stderr, "There was an error running the Python decryption util: ", err)
-							os.Exit(1)
-						}
+							privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
 
-						output = string(cmdOut)
+							// execute the golang decryptor
+							var cmdOut []byte
+							cmdName := "go"
+							cmdArgs := []string{
+								"run", "../../decryption_utils/Go/decrypt.go",
+								"--file", filename,
+								"--pk", privateKeyFile,
+								"--key", encryptedKey,
+							}
+							fmt.Println("Running the go decryptor externally...")
+							// #nosec
+							if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
+								fmt.Fprintln(os.Stderr, "There was an error running the go decryption util: ", err)
+								os.Exit(1)
+							}
+							output := string(cmdOut)
 
-						fmt.Println("validating Python decryptor content...")
-						if !isValidNDJSONText(output) {
-							fmt.Println("Error: file is not in valid NDJSON format!")
-							os.Exit(1)
-						}
+							fmt.Println("validating Go decryptor content...")
+							if !isValidNDJSONText(output) {
+								fmt.Println("Error: file is not in valid NDJSON format!")
+								os.Exit(1)
+							}
 
-						// execute the C# decryptor
-						cmdName = "dotnet"
-						cmdArgs = []string{"run",
-							"--project", "../../decryption_utils/C#",
-							"decrypt.cs",
-							"--file", filename,
-							"--pk", privateKeyFile,
-							"--key", encryptedKey,
-						}
+							// execute the Python decryptor
+							cmdName = "python"
+							cmdArgs = []string{
+								"../../decryption_utils/Python/decrypt.py",
+								"--file", filename,
+								"--pk", privateKeyFile,
+								"--key", string(encryptedKey),
+							}
+							fmt.Println("Running the Python decryptor externally...")
 
-						fmt.Println("Running the C# decryptor externally...")
+							// #nosec
+							if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
+								fmt.Fprintln(os.Stderr, "There was an error running the Python decryption util: ", err)
+								os.Exit(1)
+							}
 
-						// C# puts a bunch of nonsense in the file the first time it runs so this run is just ignored.
-						// #nosec
-						if _, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
-							fmt.Fprintln(os.Stderr, "There was an error running the C# decryption util: ", err)
-							os.Exit(1)
-						}
-						// #nosec
-						if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
-							fmt.Fprintln(os.Stderr, "There was an error running the C# decryption util: ", err)
-							os.Exit(1)
-						}
-						output = string(cmdOut)
+							output = string(cmdOut)
 
-						fmt.Println("validating C# decryptor content...")
-						if !isValidNDJSONText(output) {
-							fmt.Println("Error: file is not in valid NDJSON format!")
-							os.Exit(1)
+							fmt.Println("validating Python decryptor content...")
+							if !isValidNDJSONText(output) {
+								fmt.Println("Error: file is not in valid NDJSON format!")
+								os.Exit(1)
+							}
+
+							// execute the C# decryptor
+							cmdName = "dotnet"
+							cmdArgs = []string{"run",
+								"--project", "../../decryption_utils/C#",
+								"decrypt.cs",
+								"--file", filename,
+								"--pk", privateKeyFile,
+								"--key", encryptedKey,
+							}
+
+							fmt.Println("Running the C# decryptor externally...")
+
+							// C# puts a bunch of nonsense in the file the first time it runs so this run is just ignored.
+							// #nosec
+							if _, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
+								fmt.Fprintln(os.Stderr, "There was an error running the C# decryption util: ", err)
+								os.Exit(1)
+							}
+							// #nosec
+							if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
+								fmt.Fprintln(os.Stderr, "There was an error running the C# decryption util: ", err)
+								os.Exit(1)
+							}
+							output = string(cmdOut)
+
+							fmt.Println("validating C# decryptor content...")
+							if !isValidNDJSONText(output) {
+								fmt.Println("Error: file is not in valid NDJSON format!")
+								os.Exit(1)
+							}
+
+						} else {
+
+							fmt.Println("validating file content...")
+							if !isValidNDJSONFile(filename) {
+								fmt.Println("Error: file is not in valid NDJSON format!")
+								os.Exit(1)
+							}
 						}
+						fmt.Println("done.")
 
 					} else {
-
-						fmt.Println("validating file content...")
-						if !isValidNDJSONFile(filename) {
-							fmt.Println("Error: file is not in valid NDJSON format!")
-							os.Exit(1)
-						}
+						fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
+						os.Exit(1)
 					}
-					fmt.Println("done.")
-				} else {
-					fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
-					os.Exit(1)
 				}
-
 				break
+
+			} else {
+				fmt.Println("  => job is still pending. waiting...")
 			}
-			fmt.Println("  => job is still pending. waiting...")
 		}
 	} else {
 		fmt.Printf("error: failed to start %s data aggregation job\n", endpoint)

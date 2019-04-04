@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 )
@@ -15,4 +16,15 @@ func FromEnv(key, otherwise string) string {
 		return otherwise
 	}
 	return s
+}
+
+func GetEnvInt(varName string, defaultVal int) int {
+	v := os.Getenv(varName)
+	if v != "" {
+		i, err := strconv.Atoi(v)
+		if err == nil {
+			return i
+		}
+	}
+	return defaultVal
 }

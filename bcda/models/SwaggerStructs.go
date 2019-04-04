@@ -128,7 +128,7 @@ type FileParam struct {
 	Filename string `json:"filename"`
 }
 
-// swagger:parameters bulkPatientRequest bulkEOBRequest
+// swagger:parameters bulkPatientRequest bulkEOBRequest bulkCoverageRequest
 type BulkRequestHeaders struct {
 	// required: true
 	// in: header
@@ -143,7 +143,7 @@ type TokenResponse struct {
 	Body struct {
 		// Required: true
 		AccessToken string `json:"access_token"`
-		TokenType string `json:"token_type"`
+		TokenType   string `json:"token_type"`
 	}
 }
 
