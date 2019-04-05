@@ -11,18 +11,18 @@ import (
 
 func IsDatabaseOK() bool {
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Error("Health check: database connection error: ", err.Error())
+		return false
+	}
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Infof("failed to close db connection at bcda/health/health.go#IsDatabaseOK() because %s", err)
 		}
 	}()
-	if err != nil {
-		log.Error("Database connection check encountered an error:", err.Error())
-		return false
-	}
 
-	if db.Ping() != nil {
-		log.Error("Database connection check could not reach database")
+	if err := db.Ping(); err != nil {
+		log.Error("Health check: database ping error: ", err.Error())
 		return false
 	}
 
@@ -32,13 +32,13 @@ func IsDatabaseOK() bool {
 func IsBlueButtonOK() bool {
 	bbc, err := client.NewBlueButtonClient()
 	if err != nil {
-		log.Error("Blue Button connection check could not create client due to error:", err.Error())
+		log.Error("Health check: Blue Button client error: ", err.Error())
 		return false
 	}
 
 	_, err = bbc.GetMetadata()
 	if err != nil {
-		log.Error("Blue Button connection check encountered an error:", err.Error())
+		log.Error("Health check: Blue Button connection error: ", err.Error())
 		return false
 	}
 
