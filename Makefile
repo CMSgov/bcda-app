@@ -1,5 +1,3 @@
-clientId ?= $(shell tail -n2 /tmp/creds|head -n 1)
-clientSecret ?= $(shell tail -n1 /tmp/creds)
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
@@ -18,22 +16,28 @@ lint:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
+# The following vars (client*) are used by both smoke-test and postman to pass credentials for obtaining an access token
+# The clientId and clientSecret values can be overridden by environmental variables e.g.:
+#    export clientId=1234; export clientSecret=abcd; make postman env=local
+# or 
+#    clientId=1234 clientSecret=abcd make postman env=local
+#
+# Unless both these values are overridden, new credentials will be created using create-alpha-token
+clientTemp := $(shell docker exec -it bcda-app_api_1 sh -c 'tmp/bcda create-alpha-token --size dev'|tail -n2)
+clientId ?= $(shell echo $(clientTemp) |awk '{print $$1}')
+clientSecret ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:
-	docker exec -it bcda-app_api_1 sh -c 'tmp/bcda create-alpha-token --size dev' > /tmp/creds
 	CLIENT_ID=$(clientId) CLIENT_SECRET=$(clientSecret) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh 
-	rm /tmp/creds
-
-unit-test:
-	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	docker exec -it bcda-app_api_1 sh -c 'tmp/bcda create-alpha-token --size dev' > /tmp/creds
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(clientId) --global-var clientSecret=$(clientSecret)
-	rm /tmp/creds
+
+unit-test:
+	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
