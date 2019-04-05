@@ -17,18 +17,30 @@ func IsDatabaseOK() bool {
 		}
 	}()
 	if err != nil {
+		log.Error("Database connection check encountered an error:", err.Error())
 		return false
 	}
 
-	return db.Ping() == nil
+	if db.Ping() != nil {
+		log.Error("Database connection check could not reach database")
+		return false
+	}
+
+	return true
 }
 
 func IsBlueButtonOK() bool {
 	bbc, err := client.NewBlueButtonClient()
 	if err != nil {
+		log.Error("Blue Button connection check could not create client due to error:", err.Error())
 		return false
 	}
 
 	_, err = bbc.GetMetadata()
-	return err == nil
+	if err != nil {
+		log.Error("Blue Button connection check encountered an error:", err.Error())
+		return false
+	}
+
+	return true
 }
