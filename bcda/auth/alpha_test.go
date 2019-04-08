@@ -1,7 +1,6 @@
 package auth_test
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -103,74 +101,9 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
 	r, err := s.p.GenerateClientCredentials("", 0)
-	assert.Equal(s.T(), auth.Credentials{}, r)
+	assert.Empty(s.T(), r)
 	assert.NotNil(s.T(), err)
-
-	aco := models.ACO{
-		UUID: uuid.NewRandom(),
-		Name: "Gen Client Creds Test",
-	}
-	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
-	assert.Nil(s.T(), err, "wtf? %v", err)
-	// we know that we use aco.UUID as the ClientID
-	clientID := aco.UUID.String()
-
-	r, err = s.p.GenerateClientCredentials(clientID, 720)
-	assert.Equal(s.T(), auth.Credentials{}, r)
-	assert.Contains(s.T(), err.Error(), "have a registered client")
-
-	// quick and dirty register client
-	aco.ClientID = aco.UUID.String()
-	err = connections["TestGenerateClientCredentials"].Save(&aco).Error
-	assert.Nil(s.T(), err, "wtf? %v", err)
-	email := fmt.Sprintf("%s@genclientcredstest.com", testUtils.RandomHexID())
-	user, err := models.CreateUser("Fake User", email, aco.UUID)
-	assert.Nil(s.T(), err, "wtf? %v", err)
-
-	r, err = s.p.GenerateClientCredentials(clientID, 0)
-	assert.NotNil(s.T(), r)
-	assert.Nil(s.T(), err)
-
-	connections["TestGenerateClientCredentials"].Delete(&user, &aco)
-}
-
-func (s *AlphaAuthPluginTestSuite) TestRevokeClientCredentials() {
-	acoID := uuid.NewRandom()
-	var aco = models.ACO{
-		UUID:     acoID,
-		Name:     "RevokeClientCredentials Test ACO",
-		ClientID: acoID.String(),
-	}
-	db := connections["TestRevokeClientCredentials"]
-	db.Save(&aco)
-
-	email := fmt.Sprintf("%s@revokeclientcredentialstest.com", testUtils.RandomHexID())
-	var user = models.User{
-		UUID:  uuid.NewRandom(),
-		Name:  "RevokeClientCredentials Test User",
-		Email: email,
-		ACO:   aco,
-		ACOID: aco.UUID,
-	}
-	db.Save(&user)
-
-	clientID := user.ACOID.String()
-	_, err := s.p.GenerateClientCredentials(clientID, 0)
-	if err != nil {
-		assert.FailNow(s.T(), fmt.Sprintf(`can't create client credentials for %s because %s`, user.ACOID.String(), err))
-	}
-
-	assert := assert.New(s.T())
-
-	err = s.p.RevokeClientCredentials(aco.ClientID)
-	assert.Nil(err)
-
-	var token auth.Token
-	err = db.First(&token, "user_id = ?", user.UUID).Error
-	require.Nil(s.T(), err)
-	assert.False(token.Active)
-
-	db.Delete(&token, &user, &aco)
+	assert.Contains(s.T(), err.Error(), "not implemented")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
@@ -234,35 +167,11 @@ func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
 	assert.NotNil(s.T(), t.ACOID)
 	assert.NotNil(s.T(), t.UserID)
 }
+
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
-	db := connections["TestRevokeAccessToken"]
-
-	const userID, acoID = "EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73", "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	assert := assert.New(s.T())
-
-	// Good Revoke test
-	token, err := s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, 720)
-	if err != nil {
-		assert.FailNow("no access token for %s because %s", acoID, err.Error())
-	}
-
-	err = s.p.RevokeAccessToken(userID)
-	assert.NotNil(err)
-
-	err = s.p.RevokeAccessToken(token.TokenString)
-	assert.Nil(err)
-	var tokenFromDB jwt.Token
-	assert.False(db.Find(&tokenFromDB, "UUID = ? AND active = false", token.UUID).RecordNotFound())
-
-	// Revoke the token again, you can't
-	err = s.p.RevokeAccessToken(token.TokenString)
-	assert.NotNil(err)
-
-	// Revoke a token that doesn't exist
-	tokenString, _ := auth.TokenStringWithIDs(uuid.NewRandom().String(), uuid.NewRandom().String(), acoID)
-	err = s.p.RevokeAccessToken(tokenString)
-	assert.NotNil(err)
-	assert.True(gorm.IsRecordNotFoundError(err))
+	err := s.p.RevokeAccessToken("token-value-is-not-significant-here")
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "not implemented")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {

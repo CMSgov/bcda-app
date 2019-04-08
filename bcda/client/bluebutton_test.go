@@ -20,8 +20,9 @@ type BBTestSuite struct {
 
 func (s *BBTestSuite) SetupTest() {
 	s.ts = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/fhir+json")
-		fmt.Fprint(w, `{ "test": "ok" }`)
+		w.Header().Set("Content-Type", r.URL.Query().Get("_format"))
+		response := fmt.Sprintf("{ \"test\": \"ok\"; \"url\": %v}", r.URL.String())
+		fmt.Fprint(w, response)
 	}))
 
 	os.Setenv("BB_SERVER_LOCATION", s.ts.URL)
@@ -163,27 +164,39 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 func (s *BBTestSuite) TestGetBlueButtonPatientData() {
 	p, err := s.bbClient.GetPatientData("012345", "543210")
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), `{ "test": "ok" }`, p)
+	assert.Contains(s.T(), p, `{ "test": "ok"`)
+	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonCoverageData() {
 	c, err := s.bbClient.GetCoverageData("012345", "543210")
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), `{ "test": "ok" }`, c)
+	assert.Contains(s.T(), c, `{ "test": "ok"`)
+	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
 	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), `{ "test": "ok" }`, e)
+
+	assert.Contains(s.T(), e, `{ "test": "ok"`)
+	assert.Contains(s.T(), e, "excludeSAMHSA=true")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), `{ "test": "ok" }`, m)
+	assert.Contains(s.T(), m, `{ "test": "ok"`)
+	assert.NotContains(s.T(), m, "excludeSAMHSA=true")
 }
 
+func (s *BBTestSuite) TestGetDefaultParams() {
+	params := client.GetDefaultParams()
+	assert.Equal(s.T(), "application/fhir+json", params.Get("_format"))
+	assert.Equal(s.T(), "", params.Get("patient"))
+	assert.Equal(s.T(), "", params.Get("beneficiary"))
+
+}
 func (s *BBTestSuite) TearDownTest() {
 	s.ts.Close()
 }

@@ -192,7 +192,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 	// ctx = context.WithValue(ctx, "token", token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 404, s.rr.Code)
+	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
@@ -277,7 +277,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	ctx = context.WithValue(ctx, "token", token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), 404, s.rr.Code)
+	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
 func TestMiddlewareTestSuite(t *testing.T) {
