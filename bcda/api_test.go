@@ -667,7 +667,7 @@ func (s *APITestSuite) TestAuthToken() {
 	s.SetupAuthBackend()
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 
-	handler := http.HandlerFunc(getAuthToken)
+	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)

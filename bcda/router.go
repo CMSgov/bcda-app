@@ -32,7 +32,7 @@ func NewAPIRouter() http.Handler {
 			r.Get(m.WrapHandler("/token", getToken))
 		}
 	})
-	r.Post(m.WrapHandler("/auth/token", getAuthToken))
+	r.Post(m.WrapHandler("/auth/token", auth.GetAuthToken))
 	r.Get(m.WrapHandler("/_version", getVersion))
 	r.Get(m.WrapHandler("/_health", healthCheck))
 	r.Get(m.WrapHandler("/_auth", getAuthInfo))
