@@ -129,6 +129,9 @@ func (s *CLITestSuite) TestImportCCLF8() {
 }
 
 func (s *CLITestSuite) TestImportCCLF9() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
 	assert := assert.New(s.T())
 
 	args := []string{"bcda", "import-cclf9"}
@@ -150,6 +153,15 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	args = []string{"bcda", "import-cclf9", "--file", "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
+
+	var savedCCLF9 models.CCLF9
+	db.Find(&savedCCLF9, "id = ?", "6")
+	assert.NotNil(savedCCLF9)
+	assert.Equal("M", savedCCLF9.XrefIndicator)
+	assert.Equal("1A69B98CD35", savedCCLF9.CurrentNum)
+	assert.Equal("1A69B98CD34", savedCCLF9.PrevNum)
+	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
+	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 }
 
 func (s *CLITestSuite) TestGetCCLFFileMetadata() {
