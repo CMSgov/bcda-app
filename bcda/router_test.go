@@ -17,12 +17,14 @@ import (
 type RouterTestSuite struct {
 	suite.Suite
 	apiRouter  http.Handler
+	authRouter http.Handler
 	dataRouter http.Handler
 }
 
 func (s *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
 	s.apiRouter = NewAPIRouter()
+	s.authRouter = NewAuthRouter()
 	s.dataRouter = NewDataRouter()
 }
 
@@ -37,6 +39,13 @@ func (s *RouterTestSuite) postAPIRoute(route string, body io.Reader) *http.Respo
 	req := httptest.NewRequest("POST", route, body)
 	rr := httptest.NewRecorder()
 	s.apiRouter.ServeHTTP(rr, req)
+	return rr.Result()
+}
+
+func (s *RouterTestSuite) postAuthRoute(route string, body io.Reader) *http.Response {
+	req := httptest.NewRequest("POST", route, body)
+	rr := httptest.NewRecorder()
+	s.authRouter.ServeHTTP(rr, req)
 	return rr.Result()
 }
 
@@ -61,7 +70,7 @@ func (s *RouterTestSuite) TestDataRoute() {
 }
 
 func (s *RouterTestSuite) TestAuthTokenRoute() {
-	res := s.postAPIRoute("/auth/token", nil)
+	res := s.postAuthRoute("/auth/token", nil)
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 

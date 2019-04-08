@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -108,8 +109,15 @@ func setUpApp() *cli.App {
 				}
 				go func() { log.Fatal(srv.ListenAndServe()) }()
 
-				api := &http.Server{
+				auth := &http.Server{
 					Handler:      NewAPIRouter(),
+					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+				}
+
+				api := &http.Server{
+					Handler:      NewAuthRouter(),
 					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
 					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
 					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
@@ -124,6 +132,7 @@ func setUpApp() *cli.App {
 
 				smux := servicemux.New(":3000")
 				smux.AddServer(fileserver, "/data")
+				smux.AddServer(auth, "/auth")
 				smux.AddServer(api, "")
 				smux.Serve()
 

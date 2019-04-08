@@ -29,10 +29,17 @@ func NewAPIRouter() http.Handler {
 		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
 	})
-	r.Post(m.WrapHandler("/auth/token", auth.GetAuthToken))
 	r.Get(m.WrapHandler("/_version", getVersion))
 	r.Get(m.WrapHandler("/_health", healthCheck))
 	r.Get(m.WrapHandler("/_auth", getAuthInfo))
+	return r
+}
+
+func NewAuthRouter() http.Handler {
+	r := chi.NewRouter()
+	m := monitoring.GetMonitor()
+	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
+	r.Post(m.WrapHandler("/auth/token", auth.GetAuthToken))
 	return r
 }
 
