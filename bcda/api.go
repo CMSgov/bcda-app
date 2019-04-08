@@ -39,12 +39,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
@@ -104,6 +105,24 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("Patient", w, r)
 }
 
+/*
+	swagger:route GET /api/v1/Coverage/$export bulkData bulkCoverageRequest
+
+	Start coverage data export
+
+	Initiates a job to collect data from the Blue Button API for your ACO.
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		api_key
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		500: errorResponse
+*/
 func bulkCoverageRequest(w http.ResponseWriter, r *http.Request) {
 	bulkRequest("Coverage", w, r)
 }
