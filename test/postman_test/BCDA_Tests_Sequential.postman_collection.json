@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "bbea2e3d-26cf-47f7-9699-ab08793d8416",
+		"_postman_id": "6bf9123a-922b-4c7c-8e61-7f5dac093f0e",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -484,9 +484,22 @@
 							"var env = pm.environment.get(\"env\");",
 							"pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
 							"pm.environment.set(\"clientSecret\", pm.globals.get(\"clientSecret\"));",
-							"pm.test(\"Status code is 401\", function() {",
-							"    pm.response.to.have.status(401);",
-							"});"
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var responseJSON;",
+							"try {",
+							"   responseJSON = JSON.parse(responseBody);",
+							"   tests['response is valid JSON'] = true;",
+							"}",
+							"catch (e) {",
+							"   responseJSON = {};",
+							"   tests['response is valid JSON'] = false;",
+							"}",
+							"",
+							"pm.environment.set(\"token\", responseJSON.access_token);",
+							""
 						],
 						"type": "text/javascript"
 					}
@@ -498,18 +511,25 @@
 					"basic": [
 						{
 							"key": "password",
-							"value": "{{clientId}}",
+							"value": "{{clientSecret}}",
 							"type": "string"
 						},
 						{
 							"key": "username",
-							"value": "{{clientSecret}}",
+							"value": "{{clientId}}",
 							"type": "string"
 						}
 					]
 				},
 				"method": "POST",
-				"header": [],
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
 				"body": {
 					"mode": "raw",
 					"raw": ""
@@ -522,62 +542,6 @@
 					],
 					"path": [
 						"auth",
-						"token"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get token",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "f5145875-0310-4092-a8f3-4891a45e402a",
-						"exec": [
-							"var env = pm.environment.get(\"env\");",
-							"pm.environment.set(\"token\", pm.globals.get(\"token\"));",
-							"if (env === \"local\" || env === \"dev\" || env === \"test\") {",
-							"    pm.test(\"Status code is 200\", function() {",
-							"        pm.response.to.have.status(200);",
-							"    });",
-							"    ",
-							"if (env === \"local\" || env === \"dev\") {",
-							"    // Set token for use in other tests",
-							"    pm.environment.set(\"token\", pm.response.text());",
-							"    ",
-							"    }",
-							"} else {",
-							"     pm.test(\"Status code is 404\", function() {",
-							"        pm.response.to.have.status(404);",
-							"    });",
-							"",
-							"}"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "GET",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/token",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
 						"token"
 					]
 				}

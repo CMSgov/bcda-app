@@ -117,6 +117,10 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), ts)
 	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
+	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: cc.ClientID, ClientSecret: "not_the_right_secret"})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "invalid credentials")
 	connections["TestAccessToken"].Where("client_id = ?", cc.ClientID).Delete(&models.ACO{})
 	connections["TestAccessToken"].Delete(&user)
 
@@ -231,19 +235,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	}
 	noSuchTokenIDString, _ := s.AuthBackend.SignJwtToken(noSuchTokenID)
 	err = s.p.ValidateJWT(noSuchTokenIDString)
-	assert.Contains(s.T(), err.Error(), "is not active")
-
-	invalidTokenID := *jwt.New(jwt.SigningMethodRS512)
-	invalidTokenID.Claims = jwt.MapClaims{
-		"sub": userID,
-		"aco": acoID,
-		"id":  uuid.NewRandom().String(),
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
-	}
-	invalidTokenIDString, _ := s.AuthBackend.SignJwtToken(invalidTokenID)
-	err = s.p.ValidateJWT(invalidTokenIDString)
-	assert.Contains(s.T(), err.Error(), "is not active")
+	assert.Nil(s.T(), err)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {

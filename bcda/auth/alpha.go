@@ -98,8 +98,9 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	if err != nil {
 		return "", fmt.Errorf("invalid credentials; %s", err)
 	}
-	// when we have ClientSecret in ACO, adjust following line
-	Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret)
+	if !Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret) {
+		return "", fmt.Errorf("invalid credentials")
+	}
 	var user models.User
 	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
 		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
@@ -201,11 +202,6 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	b := isActive(t)
-	if !b {
-		return fmt.Errorf("token with id: %v is not active", c.UUID)
-	}
-
 	return nil
 }
 
@@ -218,15 +214,6 @@ func checkRequiredClaims(claims *CommonClaims) error {
 		return fmt.Errorf("missing one or more required claims")
 	}
 	return nil
-}
-
-func isActive(token *jwt.Token) bool {
-	c := token.Claims.(*CommonClaims)
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var dbt Token
-	return !db.Find(&dbt, "UUID = ? AND active = ?", c.UUID, true).RecordNotFound()
 }
 
 func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {

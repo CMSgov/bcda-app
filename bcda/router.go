@@ -28,9 +28,6 @@ func NewAPIRouter() http.Handler {
 		}
 		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
-		if os.Getenv("DEBUG") == "true" {
-			r.Get(m.WrapHandler("/token", getToken))
-		}
 	})
 	r.Post(m.WrapHandler("/auth/token", auth.GetAuthToken))
 	r.Get(m.WrapHandler("/_version", getVersion))
