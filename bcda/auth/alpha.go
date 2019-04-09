@@ -122,9 +122,6 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 		return token, fmt.Errorf("invalid TTL: %d", ttl)
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	var aco models.ACO
 	aco, err = getACOFromDB(creds.ClientID)
 	if err != nil {
@@ -136,10 +133,6 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 	token.IssuedAt = time.Now().Unix()
 	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
 	token.Active = true
-
-	if err = db.Create(&token).Error; err != nil {
-		return Token{}, err
-	}
 
 	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
 	if err != nil {
@@ -177,11 +170,6 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 		return err
 	}
 
-	b := isActive(t)
-	if !b {
-		return fmt.Errorf("token with id: %v is not active", c.UUID)
-	}
-
 	return nil
 }
 
@@ -193,15 +181,6 @@ func checkRequiredClaims(claims *CommonClaims) error {
 		return fmt.Errorf("missing one or more required claims")
 	}
 	return nil
-}
-
-func isActive(token *jwt.Token) bool {
-	c := token.Claims.(*CommonClaims)
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var dbt Token
-	return !db.Find(&dbt, "UUID = ? AND active = ?", c.UUID, true).RecordNotFound()
 }
 
 func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {

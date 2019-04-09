@@ -203,14 +203,14 @@ func (s *MainTestSuite) TestCreateToken() {
 	// No parameters
 	args = []string{"bcda", "create-token"}
 	err = s.testApp.Run(args)
-	assert.Equal("ID (--id) must be provided", err.Error())
+	assert.Equal("ID (--id) must be a valid UUID", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Blank ID
 	args = []string{"bcda", "create-token", "--id", "", "--secret", clientSecret}
 	err = s.testApp.Run(args)
-	assert.Equal("ID (--id) must be provided", err.Error())
+	assert.Equal("ID (--id) must be a valid UUID", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
@@ -221,7 +221,7 @@ func (s *MainTestSuite) TestCreateToken() {
 	// Test alpha auth bad ID
 	args = []string{"bcda", "create-token", "--id", badUUID}
 	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), "invalid input syntax for type uuid")
+	assert.Contains(err.Error(), "must be a valid UUID")
 	buf.Reset()
 
 	// Test alpha auth successful creation

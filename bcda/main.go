@@ -193,7 +193,7 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "id",
-					Usage:       "ID associated with token (either a user UUID, or client-id paired with the secret",
+					Usage:       "Client ID associated with token",
 					Destination: &tokenID,
 				}, cli.StringFlag{
 					Name:        "secret",
@@ -375,8 +375,8 @@ func createUser(acoID, name, email string) (string, error) {
 }
 
 func createAccessToken(ID string, secret string) (string, error) {
-	if ID == "" {
-		return "", errors.New("ID (--id) must be provided")
+	if uuid.Parse(ID) == nil {
+		return "", errors.New("ID (--id) must be a valid UUID")
 	}
 
 	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: ID, ClientSecret: secret}, 72)
