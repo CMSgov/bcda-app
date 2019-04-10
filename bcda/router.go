@@ -36,18 +36,7 @@ func NewAPIRouter() http.Handler {
 }
 
 func NewAuthRouter() http.Handler {
-	r := chi.NewRouter()
-	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
-	r.Post(m.WrapHandler("/auth/token", auth.GetAuthToken))
-	// TODO: remove conditional when new authentication implemented for administrative endpoints
-	if os.Getenv("DEBUG") == "true" {
-		r.Get(m.WrapHandler("/auth/group", auth.GetAuthGroups))
-		r.Post(m.WrapHandler("/auth/group", auth.CreateAuthGroup))
-		r.Put(m.WrapHandler("/auth/group", auth.EditAuthGroup))
-		r.Delete(m.WrapHandler("/auth/group", auth.DeactivateAuthGroup))
-	}
-	return r
+	return auth.NewAuthRouter(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 }
 
 func NewDataRouter() http.Handler {

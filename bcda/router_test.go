@@ -1,12 +1,10 @@
 package main
 
 import (
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/go-chi/chi"
@@ -18,14 +16,12 @@ import (
 type RouterTestSuite struct {
 	suite.Suite
 	apiRouter  http.Handler
-	authRouter http.Handler
 	dataRouter http.Handler
 }
 
 func (s *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
 	s.apiRouter = NewAPIRouter()
-	s.authRouter = NewAuthRouter()
 	s.dataRouter = NewDataRouter()
 }
 
@@ -33,13 +29,6 @@ func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
 	req := httptest.NewRequest("GET", route, nil)
 	rr := httptest.NewRecorder()
 	s.apiRouter.ServeHTTP(rr, req)
-	return rr.Result()
-}
-
-func (s *RouterTestSuite) getAuthRoute(verb string, route string, body io.Reader) *http.Response {
-	req := httptest.NewRequest(strings.ToUpper(verb), route, body)
-	rr := httptest.NewRecorder()
-	s.authRouter.ServeHTTP(rr, req)
 	return rr.Result()
 }
 
@@ -61,31 +50,6 @@ func (s *RouterTestSuite) TestDefaultRoute() {
 func (s *RouterTestSuite) TestDataRoute() {
 	res := s.getDataRoute("/data/test/test.ndjson")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestGetAuthGroupRoute() {
-	res := s.getAuthRoute("GET", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestPostAuthGroupRoute() {
-	res := s.getAuthRoute("POST", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestPutAuthGroupRoute() {
-	res := s.getAuthRoute("PUT", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestDeleteAuthGroupRoute() {
-	res := s.getAuthRoute("DELETE", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestAuthTokenRoute() {
-	res := s.getAuthRoute("POST", "/auth/token", nil)
-	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestFileServerRoute() {
