@@ -8,7 +8,7 @@ import (
 )
 
 /*
-	swagger:route POST /auth/token auth getAuthToken
+	swagger:route POST /auth/token auth GetAuthToken
 
 	Get access token
 
@@ -52,4 +52,20 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 	log.WithField("client_id", clientId).Println("issued access token")
+}
+
+func GetAuthGroups(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+}
+
+func CreateAuthGroup(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
+}
+
+func EditAuthGroup(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
+}
+
+func DeactivateAuthGroup(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 }

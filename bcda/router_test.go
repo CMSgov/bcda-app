@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi"
@@ -35,15 +36,8 @@ func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
 	return rr.Result()
 }
 
-func (s *RouterTestSuite) postAPIRoute(route string, body io.Reader) *http.Response {
-	req := httptest.NewRequest("POST", route, body)
-	rr := httptest.NewRecorder()
-	s.apiRouter.ServeHTTP(rr, req)
-	return rr.Result()
-}
-
-func (s *RouterTestSuite) postAuthRoute(route string, body io.Reader) *http.Response {
-	req := httptest.NewRequest("POST", route, body)
+func (s *RouterTestSuite) getAuthRoute(verb string, route string, body io.Reader) *http.Response {
+	req := httptest.NewRequest(strings.ToUpper(verb), route, body)
 	rr := httptest.NewRecorder()
 	s.authRouter.ServeHTTP(rr, req)
 	return rr.Result()
@@ -69,8 +63,28 @@ func (s *RouterTestSuite) TestDataRoute() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestGetAuthGroupRoute() {
+	res := s.getAuthRoute("GET", "/auth/group", nil)
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestPostAuthGroupRoute() {
+	res := s.getAuthRoute("POST", "/auth/group", nil)
+	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestPutAuthGroupRoute() {
+	res := s.getAuthRoute("PUT", "/auth/group", nil)
+	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestDeleteAuthGroupRoute() {
+	res := s.getAuthRoute("DELETE", "/auth/group", nil)
+	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestAuthTokenRoute() {
-	res := s.postAuthRoute("/auth/token", nil)
+	res := s.getAuthRoute("POST", "/auth/token", nil)
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
