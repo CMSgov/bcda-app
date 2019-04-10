@@ -213,29 +213,17 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	err = s.p.ValidateJWT(missingClaimsString)
 	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
 
-	noSuchTokenID := *jwt.New(jwt.SigningMethodRS512)
-	noSuchTokenID.Claims = jwt.MapClaims{
+	expiredToken := *jwt.New(jwt.SigningMethodRS512)
+	expiredToken.Claims = jwt.MapClaims{
 		"sub": userID,
 		"aco": acoID,
 		"id":  uuid.NewRandom().String(),
 		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+		"exp": time.Now().Add(time.Duration(-99999)).Unix(),
 	}
-	noSuchTokenIDString, _ := s.AuthBackend.SignJwtToken(noSuchTokenID)
-	err = s.p.ValidateJWT(noSuchTokenIDString)
-	assert.Contains(s.T(), err.Error(), "is not active")
-
-	invalidTokenID := *jwt.New(jwt.SigningMethodRS512)
-	invalidTokenID.Claims = jwt.MapClaims{
-		"sub": userID,
-		"aco": acoID,
-		"id":  uuid.NewRandom().String(),
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
-	}
-	invalidTokenIDString, _ := s.AuthBackend.SignJwtToken(invalidTokenID)
-	err = s.p.ValidateJWT(invalidTokenIDString)
-	assert.Contains(s.T(), err.Error(), "is not active")
+	expiredTokenString, _ := s.AuthBackend.SignJwtToken(expiredToken)
+	err = s.p.ValidateJWT(expiredTokenString)
+	assert.NotNil(s.T(), err)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
