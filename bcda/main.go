@@ -375,8 +375,8 @@ func createUser(acoID, name, email string) (string, error) {
 }
 
 func createAccessToken(ID string, secret string) (string, error) {
-	if uuid.Parse(ID) == nil {
-		return "", errors.New("ID (--id) must be a valid UUID")
+	if ID == "" {
+		return "", errors.New("ID (--id) must be provided")
 	}
 
 	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: ID, ClientSecret: secret}, 72)

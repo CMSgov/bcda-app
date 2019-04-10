@@ -94,6 +94,11 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	if credentials.ClientSecret == "" || credentials.ClientID == "" {
 		return "", fmt.Errorf("missing or incomplete credentials")
 	}
+
+	if uuid.Parse(credentials.ClientID) == nil {
+		return "", fmt.Errorf("ClientID must be a valid UUID")
+	}
+
 	aco, err := GetACOByClientID(credentials.ClientID)
 	if err != nil {
 		return "", fmt.Errorf("invalid credentials; %s", err)
@@ -116,6 +121,10 @@ func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, 
 
 	if creds.ClientID == "" {
 		return token, fmt.Errorf("must provide ClientID")
+	}
+
+	if uuid.Parse(creds.ClientID) == nil {
+		return token, fmt.Errorf("ClientID must be a valid UUID")
 	}
 
 	if ttl < 0 {

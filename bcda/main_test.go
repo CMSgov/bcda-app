@@ -203,14 +203,14 @@ func (s *MainTestSuite) TestCreateToken() {
 	// No parameters
 	args = []string{"bcda", "create-token"}
 	err = s.testApp.Run(args)
-	assert.Equal("ID (--id) must be a valid UUID", err.Error())
+	assert.Equal("ID (--id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Blank ID
 	args = []string{"bcda", "create-token", "--id", "", "--secret", clientSecret}
 	err = s.testApp.Run(args)
-	assert.Equal("ID (--id) must be a valid UUID", err.Error())
+	assert.Equal("ID (--id) must be provided", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
