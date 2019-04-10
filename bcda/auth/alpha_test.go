@@ -219,11 +219,11 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"aco": acoID,
 		"id":  uuid.NewRandom().String(),
 		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Duration(-99999)).Unix(),
+		"exp": time.Now().Add(time.Duration(-1) * time.Minute).Unix(),
 	}
 	expiredTokenString, _ := s.AuthBackend.SignJwtToken(expiredToken)
 	err = s.p.ValidateJWT(expiredTokenString)
-	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "Token is expired")
 }
 
 func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
