@@ -130,31 +130,6 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
-func (s *APITestSuite) TestBulkEOBRequestUserDoesNotExist() {
-	acoID := "dbbd1ce1-ae24-435c-807d-ed45953077d3"
-	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffdff"
-	tokenID := "665341c9-7d0c-4844-b66f-5910d9d0822f"
-	ad := auth.AuthData{ACOID: acoID, UserID: userID, TokenID: tokenID}
-
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
-
-	handler := http.HandlerFunc(bulkEOBRequest)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
-}
-
 func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	qc = nil
 
