@@ -89,31 +89,6 @@ func (s *RouterTestSuite) TestMetadataRoute() {
 	assert.Contains(s.T(), string(bytes), `"resourceType":"CapabilityStatement"`)
 }
 
-func (s *RouterTestSuite) TestTokenRoute() {
-	origDebug := os.Getenv("DEBUG")
-	defer os.Setenv("DEBUG", origDebug)
-
-	os.Setenv("DEBUG", "true")
-	req := httptest.NewRequest("GET", "/api/v1/token", nil)
-	rr := httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res := rr.Result()
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
-
-	os.Setenv("DEBUG", "false")
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
-	os.Unsetenv("DEBUG")
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
-}
-
 func (s *RouterTestSuite) TestHealthRoute() {
 	res := s.getAPIRoute("/_health")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
