@@ -201,7 +201,7 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "id",
-					Usage:       "ID associated with token (either a user UUID, or client-id paired with the secret",
+					Usage:       "Client ID associated with token",
 					Destination: &tokenID,
 				}, cli.StringFlag{
 					Name:        "secret",
@@ -387,7 +387,7 @@ func createAccessToken(ID string, secret string) (string, error) {
 		return "", errors.New("ID (--id) must be provided")
 	}
 
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: ID, ClientSecret: secret}, 72)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: ID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}
@@ -560,11 +560,6 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 	}
 
 	if err = models.AssignAlphaBeneficiaries(tx, aco, acoSize); err != nil {
-		tx.Rollback()
-		return aco, err
-	}
-
-	if _, err = models.CreateAlphaUser(tx, aco); err != nil {
 		tx.Rollback()
 		return aco, err
 	}
