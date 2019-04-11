@@ -17,17 +17,15 @@
      - application/json
 
      Security:
-     - api_key:
+     - bearer_token: []
 
      SecurityDefinitions:
-     api_key:
+     bearer_token:
           type: apiKey
-          name: Authorization
+          name: For bulkData endpoints. 1) Put your credentials in Basic Authentication, 2) get your token from /auth/token, 3) put your token here, after the word "Bearer"
           in: header
      basic_auth:
           type: basic
-          name: Authorization
-          in: header
 
  swagger:meta
 */
@@ -71,7 +69,7 @@ import (
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token
 
 	Responses:
 		202: BulkRequestResponse
@@ -94,7 +92,7 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token
 
 	Responses:
 		202: BulkRequestResponse
@@ -116,7 +114,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token
 
 	Responses:
 		202: BulkRequestResponse
@@ -227,7 +225,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	Schemes: http, https
 
 	Security:
-		api_key:
+		bearer_token:
 
 	Responses:
 		202: jobStatusResponse
@@ -361,7 +359,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	Schemes: http, https
 
 	Security:
-		api_key:
+		bearer_token:
 
 	Responses:
 		200: ExplanationOfBenefitNDJSON
@@ -412,7 +410,7 @@ func getAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	// https://tools.ietf.org/html/rfc6749#section-5.1
 	// not included: recommended field expires_in
-	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token))
+	body := []byte(fmt.Sprintf(`{"bearer_token": "%s","token_type":"bearer"}`, token))
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
