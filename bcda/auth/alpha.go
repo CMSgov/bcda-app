@@ -106,10 +106,6 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	if !Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret) {
 		return "", fmt.Errorf("invalid credentials")
 	}
-	var user models.User
-	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
-		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
-	}
 	issuedAt := time.Now().Unix()
 	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
 	return GenerateTokenString(uuid.NewRandom().String(), aco.UUID.String(), issuedAt, expiresAt)
