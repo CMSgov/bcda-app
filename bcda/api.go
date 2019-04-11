@@ -376,37 +376,6 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 }
 
-func getToken(w http.ResponseWriter, r *http.Request) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var aco models.ACO
-	err := db.First(&aco, "name = ?", "ACO Dev").Error
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	// Generates a token for 'ACO Dev' and its first user
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: aco.UUID.String()}, 72)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write([]byte(token.TokenString))
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-}
-
 /*
 	swagger:route GET /api/v1/metadata metadata metadata
 
