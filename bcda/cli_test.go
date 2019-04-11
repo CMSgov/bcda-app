@@ -180,54 +180,65 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 func (s *CLITestSuite) TestSortCCLFFiles() {
 	assert := assert.New(s.T())
 	var cclf0, cclf8, cclf9 []cclfFileMetadata
+	var skipped int
 
 	filePath := "../shared_files/cclf/"
-	err := filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9))
+	err := filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
 	assert.Nil(err)
 	assert.Equal(1, len(cclf8))
 	assert.Equal(1, len(cclf9))
 	assert.Equal(0, len(cclf0))
+	assert.Equal(0, skipped)
 
 	cclf0, cclf8, cclf9 = nil, nil, nil
+	skipped = 0
 
 	filePath = "../shared_files/cclf_BadFileNames/"
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9))
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
 	assert.Nil(err)
 	assert.Equal(1, len(cclf8))
 	assert.Equal(0, len(cclf9))
 	assert.Equal(0, len(cclf0))
+	assert.Equal(2, skipped)
 
 	cclf0, cclf8, cclf9 = nil, nil, nil
+	skipped = 0
 
 	filePath = "../shared_files/cclf0/"
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9))
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
 	assert.Nil(err)
 	assert.Equal(0, len(cclf8))
 	assert.Equal(0, len(cclf9))
 	assert.Equal(3, len(cclf0))
+	assert.Equal(0, skipped)
 
 	cclf0, cclf8, cclf9 = nil, nil, nil
+	skipped = 0
 
 	filePath = "../shared_files/cclf8/"
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9))
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
 	assert.Nil(err)
 	assert.Equal(5, len(cclf8))
 	assert.Equal(0, len(cclf9))
 	assert.Equal(0, len(cclf0))
+	assert.Equal(0, skipped)
 
 	cclf0, cclf8, cclf9 = nil, nil, nil
+	skipped = 0
 
 	filePath = "../shared_files/cclf9/"
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9))
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
 	assert.Nil(err)
 	assert.Equal(0, len(cclf8))
 	assert.Equal(4, len(cclf9))
 	assert.Equal(0, len(cclf0))
+	assert.Equal(0, skipped)
 
 	cclf0, cclf8, cclf9 = nil, nil, nil
+	skipped = 0
 
 	filePath = "../shared_files/cclf_All/"
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9))
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
 	assert.Nil(err)
 	assert.Equal(5, len(cclf8))
 	assert.Equal(4, len(cclf9))
@@ -256,6 +267,8 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Failed to import 0 files.")
+	assert.Contains(buf.String(), "Skipped 0 files.")
+
 	buf.Reset()
 
 	// dir has 3 files, but 2 will be ignored because of bad file names.
@@ -265,6 +278,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 1 files.")
 	assert.Contains(buf.String(), "Failed to import 0 files.")
+	assert.Contains(buf.String(), "Skipped 2 files.")
 	buf.Reset()
 
 }

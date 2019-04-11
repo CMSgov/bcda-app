@@ -149,12 +149,12 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	return metadata, nil
 }
 
-func importCCLFDirectory(filePath string) (success, failure int, err error) {
+func importCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	var cclf0, cclf8, cclf9 []cclfFileMetadata
 
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9))
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	for _, file := range cclf8 {
 		//todo match cclf0 and validate
@@ -176,11 +176,15 @@ func importCCLFDirectory(filePath string) (success, failure int, err error) {
 		log.Info(fmt.Sprintf("Successfully imported CCLF9 file: %v", file))
 		success += 1
 	}
-
-	return success, failure, nil
+	if failure > 0 {
+		err = errors.New("one or more files failed to import correctly")
+	} else {
+		err = nil
+	}
+	return success, failure, skipped, err
 }
 
-func sortCCLFFiles(cclf0, cclf8, cclf9 *[]cclfFileMetadata) filepath.WalkFunc {
+func sortCCLFFiles(cclf0, cclf8, cclf9 *[]cclfFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -194,6 +198,7 @@ func sortCCLFFiles(cclf0, cclf8, cclf9 *[]cclfFileMetadata) filepath.WalkFunc {
 		if err != nil {
 			// skipping files with a bad name.  An unknown file in this dir isn't a blocker
 			log.Error(err)
+			*skipped = *skipped + 1
 			return nil
 		}
 		if metadata.cclfNum == 0 {

@@ -312,8 +312,8 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				success, failure, err := importCCLFDirectory(filePath)
-				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  See logs for more details.", success, failure)
+				success, failure, skipped, err := importCCLFDirectory(filePath)
+				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				return err
 			},
 		},
