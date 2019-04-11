@@ -36,7 +36,7 @@ func NewAPIRouter() http.Handler {
 }
 
 func NewAuthRouter() http.Handler {
-	return auth.NewAuthRouter(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
+	return auth.NewAuthRouter(logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 }
 
 func NewDataRouter() http.Handler {
