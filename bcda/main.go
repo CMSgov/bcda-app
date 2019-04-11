@@ -423,10 +423,12 @@ func createAlphaToken(ttl int, acoSize string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID = creds.ClientID
+
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	err = db.Save(&aco).Error
+	// Only update aco.ClientID.  Other attributes of this ACO (AlphaSecret) may have been altered in the database by the
+	// RegisterClient() call above, so we should not save these potentially stale values.
+	err = db.Model(&aco).Update("client_id", creds.ClientID).Error
 	if err != nil {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}

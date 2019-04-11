@@ -5,16 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type AlphaAuthPluginTestSuite struct {
@@ -117,6 +116,10 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), ts)
 	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
+	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: cc.ClientID, ClientSecret: "not_the_right_secret"})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "invalid credentials")
 	connections["TestAccessToken"].Where("client_id = ?", cc.ClientID).Delete(&models.ACO{})
 	connections["TestAccessToken"].Delete(&user)
 
