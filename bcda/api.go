@@ -149,7 +149,10 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	acoID := ad.ACOID
-	userID := ad.UserID
+	user := models.User{}
+	// Arbitrarily use the first user in order to satisfy foreign key constraint "jobs_user_id_fkey" until user is removed from jobs table
+	db.First(&user)
+	userID := user.UUID
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -158,7 +161,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	newJob := models.Job{
 		ACOID:      uuid.Parse(acoID),
-		UserID:     uuid.Parse(userID),
+		UserID:     userID,
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}

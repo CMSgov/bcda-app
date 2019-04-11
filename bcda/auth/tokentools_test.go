@@ -53,11 +53,8 @@ func (s *TokenToolsTestSuite) TestTokenDurationEmptyOverride() {
 }
 
 func (s *TokenToolsTestSuite) TestUnavailableSigner() {
-	var (
-		userUUID = "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-		acoUUID  = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	)
-	token, err := auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
+	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	token, err := auth.TokenStringWithIDs(uuid.NewRandom().String(), acoUUID)
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
@@ -67,7 +64,7 @@ func (s *TokenToolsTestSuite) TestUnavailableSigner() {
 	s.AuthBackend.PrivateKey = nil
 	defer s.AuthBackend.ResetAlphaBackend()
 	assert.Panics(s.T(), func() {
-		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
+		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), acoUUID)
 	})
 }
 

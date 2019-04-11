@@ -94,6 +94,11 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	if credentials.ClientSecret == "" || credentials.ClientID == "" {
 		return "", fmt.Errorf("missing or incomplete credentials")
 	}
+
+	if uuid.Parse(credentials.ClientID) == nil {
+		return "", fmt.Errorf("ClientID must be a valid UUID")
+	}
+
 	aco, err := GetACOByClientID(credentials.ClientID)
 	if err != nil {
 		return "", fmt.Errorf("invalid credentials; %s", err)
@@ -101,72 +106,41 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	if !Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret) {
 		return "", fmt.Errorf("invalid credentials")
 	}
-	var user models.User
-	if database.GetGORMDbConnection().First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
-		return "", fmt.Errorf("invalid credentials; unable to locate User for ACO with id of %s", aco.UUID)
-	}
 	issuedAt := time.Now().Unix()
 	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
-	return GenerateTokenString(uuid.NewRandom().String(), user.UUID.String(), aco.UUID.String(), issuedAt, expiresAt)
+	return GenerateTokenString(uuid.NewRandom().String(), aco.UUID.String(), issuedAt, expiresAt)
 }
 
-// RequestAccessToken generate a token for the ACO, either for a specified UserID or (if not provided) any user in the ACO
+// RequestAccessToken generates a token for the ACO
 func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	var userUUID, acoUUID uuid.UUID
-	var user models.User
 	var err error
 	token := Token{}
 
-	if creds.UserID == "" && creds.ClientID == "" {
-		return token, fmt.Errorf("must provide either UserID or ClientID")
+	if creds.ClientID == "" {
+		return token, fmt.Errorf("must provide ClientID")
+	}
+
+	if uuid.Parse(creds.ClientID) == nil {
+		return token, fmt.Errorf("ClientID must be a valid UUID")
 	}
 
 	if ttl < 0 {
 		return token, fmt.Errorf("invalid TTL: %d", ttl)
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	if creds.UserID != "" {
-		userUUID = uuid.Parse(creds.UserID)
-		if userUUID == nil {
-			return token, fmt.Errorf("user ID must be a UUID")
-		}
-
-		if db.First(&user, "UUID = ?", creds.UserID).RecordNotFound() {
-			return token, fmt.Errorf("unable to locate User with id of %s", creds.UserID)
-		}
-
-		userUUID = user.UUID
-		acoUUID = user.ACOID
-	} else {
-		var aco models.ACO
-		aco, err = getACOFromDB(creds.ClientID)
-		if err != nil {
-			return token, err
-		}
-
-		if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
-			return token, errors.New("no user found for " + aco.UUID.String())
-		}
-
-		userUUID = user.UUID
-		acoUUID = aco.UUID
+	var aco models.ACO
+	aco, err = getACOFromDB(creds.ClientID)
+	if err != nil {
+		return token, err
 	}
 
 	token.UUID = uuid.NewRandom()
-	token.UserID = userUUID
-	token.ACOID = acoUUID
+	token.ACOID = aco.UUID
 	token.IssuedAt = time.Now().Unix()
 	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
 	token.Active = true
 
-	if err = db.Create(&token).Error; err != nil {
-		return Token{}, err
-	}
-
-	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.UserID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
+	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
 	if err != nil {
 		return Token{}, err
 	}
@@ -208,7 +182,6 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 func checkRequiredClaims(claims *CommonClaims) error {
 	if claims.ExpiresAt == 0 ||
 		claims.IssuedAt == 0 ||
-		claims.Subject == "" ||
 		claims.ACOID == "" ||
 		claims.UUID == "" {
 		return fmt.Errorf("missing one or more required claims")
