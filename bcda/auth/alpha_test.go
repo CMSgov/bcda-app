@@ -20,9 +20,9 @@ var connections = make(map[string]*gorm.DB)
 
 type AlphaAuthPluginTestSuite struct {
 	suite.Suite
-	p auth.AlphaAuthPlugin
-	abe *auth.AlphaBackend
-	reset func()
+	p       auth.AlphaAuthPlugin
+	backend *auth.AlphaBackend
+	reset   func()
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
@@ -32,7 +32,7 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 		private()
 		public()
 	}
-	s.abe = auth.InitAlphaBackend()
+	s.backend = auth.InitAlphaBackend()
 	models.InitializeGormModels()
 	auth.InitializeGormModels()
 }
@@ -195,7 +195,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 
 	validToken := *jwt.New(jwt.SigningMethodRS512)
 	validToken.Claims = validClaims
-	validTokenString, _ := s.abe.SignJwtToken(validToken)
+	validTokenString, _ := s.backend.SignJwtToken(validToken)
 	err := s.p.ValidateJWT(validTokenString)
 	assert.Nil(s.T(), err)
 
@@ -207,7 +207,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
-	unknownAcoString, _ := s.abe.SignJwtToken(unknownAco)
+	unknownAcoString, _ := s.backend.SignJwtToken(unknownAco)
 	err = s.p.ValidateJWT(unknownAcoString)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "no ACO record found")
@@ -228,7 +228,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"aco": acoID,
 		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
 	}
-	missingClaimsString, _ := s.abe.SignJwtToken(missingClaims)
+	missingClaimsString, _ := s.backend.SignJwtToken(missingClaims)
 	err = s.p.ValidateJWT(missingClaimsString)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
@@ -240,10 +240,11 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"aco": acoID,
 		"id":  uuid.NewRandom().String(),
 		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
+		"exp": time.Now().Add(time.Duration(-1) * time.Minute).Unix(),
 	}
-	expiredTokenString, _ := s.abe.SignJwtToken(expiredToken)
+	expiredTokenString, _ := s.backend.SignJwtToken(expiredToken)
 	err = s.p.ValidateJWT(expiredTokenString)
+	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "Token is expired")
 }
 
@@ -253,8 +254,8 @@ func (s *AlphaAuthPluginTestSuite) TestDecodeJWT() {
 	t, err := s.p.DecodeJWT(ts)
 	assert.NotNil(s.T(), t)
 	assert.Nil(s.T(), err)
-	c := t.Claims.(*auth.CommonClaims)
 	assert.IsType(s.T(), &jwt.Token{}, t)
+	c := t.Claims.(*auth.CommonClaims)
 	assert.Equal(s.T(), acoID, c.ACOID)
 }
 
