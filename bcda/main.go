@@ -310,33 +310,20 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "import-cclf8",
+			Name:     "import-cclf-directory",
 			Category: "Data import",
-			Usage:    "Import data from a CCLF8 file",
+			Usage:    "Import all CCLF files in the directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "file",
-					Usage:       "Path to CCLF8 file",
+					Name:        "directory",
+					Usage:       "Directory where CCLF Files are located",
 					Destination: &filePath,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return importCCLF8(filePath)
-			},
-		},
-		{
-			Name:     "import-cclf9",
-			Category: "Data import",
-			Usage:    "Import data from a CCLF9 file",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "file",
-					Usage:       "Path to CCLF9 file",
-					Destination: &filePath,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				return importCCLF9(filePath)
+				success, failure, skipped, err := importCCLFDirectory(filePath)
+				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+				return err
 			},
 		},
 	}
