@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -108,6 +109,13 @@ func setUpApp() *cli.App {
 				}
 				go func() { log.Fatal(srv.ListenAndServe()) }()
 
+				auth := &http.Server{
+					Handler:      NewAuthRouter(),
+					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+				}
+
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
 					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
@@ -124,6 +132,7 @@ func setUpApp() *cli.App {
 
 				smux := servicemux.New(":3000")
 				smux.AddServer(fileserver, "/data")
+				smux.AddServer(auth, "/auth")
 				smux.AddServer(api, "")
 				smux.Serve()
 
@@ -192,7 +201,7 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "id",
-					Usage:       "ID associated with token (either a user UUID, or client-id paired with the secret",
+					Usage:       "Client ID associated with token",
 					Destination: &tokenID,
 				}, cli.StringFlag{
 					Name:        "secret",
@@ -378,7 +387,7 @@ func createAccessToken(ID string, secret string) (string, error) {
 		return "", errors.New("ID (--id) must be provided")
 	}
 
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: ID, ClientSecret: secret}, 72)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: ID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}
@@ -422,10 +431,12 @@ func createAlphaToken(ttl int, acoSize string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID = creds.ClientID
+
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	err = db.Save(&aco).Error
+	// Only update aco.ClientID.  Other attributes of this ACO (AlphaSecret) may have been altered in the database by the
+	// RegisterClient() call above, so we should not save these potentially stale values.
+	err = db.Model(&aco).Update("client_id", creds.ClientID).Error
 	if err != nil {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
@@ -549,11 +560,6 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 	}
 
 	if err = models.AssignAlphaBeneficiaries(tx, aco, acoSize); err != nil {
-		tx.Rollback()
-		return aco, err
-	}
-
-	if _, err = models.CreateAlphaUser(tx, aco); err != nil {
 		tx.Rollback()
 		return aco, err
 	}
