@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -33,13 +32,6 @@ func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
 	return rr.Result()
 }
 
-func (s *RouterTestSuite) postAPIRoute(route string, body io.Reader) *http.Response {
-	req := httptest.NewRequest("POST", route, body)
-	rr := httptest.NewRecorder()
-	s.apiRouter.ServeHTTP(rr, req)
-	return rr.Result()
-}
-
 func (s *RouterTestSuite) getDataRoute(route string) *http.Response {
 	req := httptest.NewRequest("GET", route, nil)
 	rr := httptest.NewRecorder()
@@ -58,11 +50,6 @@ func (s *RouterTestSuite) TestDefaultRoute() {
 func (s *RouterTestSuite) TestDataRoute() {
 	res := s.getDataRoute("/data/test/test.ndjson")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestAuthTokenRoute() {
-	res := s.postAPIRoute("/auth/token", nil)
-	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestFileServerRoute() {

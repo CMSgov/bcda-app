@@ -55,7 +55,7 @@ func (s *MiddlewareTestSuite) SetupTest() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	tokenID := "d63205a8-d923-456b-a01b-0992fcb40968"
-	s.token, _ = auth.TokenStringWithIDs(tokenID, userID, acoID)
+	s.token, _ = auth.TokenStringWithIDs(tokenID, acoID)
 	s.ad = auth.AuthData{
 		TokenID: tokenID,
 		UserID:  userID,
@@ -97,8 +97,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 
 	handler := auth.RequireTokenAuth(mockHandler)
 
-	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(userID, acoID, tokenID)
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)
@@ -107,7 +107,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	token.Valid = false
 
 	ad := auth.AuthData{
-		UserID:  userID,
 		ACOID:   acoID,
 		TokenID: tokenID,
 	}
@@ -180,8 +179,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)
@@ -218,8 +217,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
+	acoID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)
@@ -229,7 +228,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	ctx := context.WithValue(req.Context(), "token", token)
 	ad := auth.AuthData{
 		ACOID:   acoID,
-		UserID:  userID,
 		TokenID: tokenID,
 	}
 	ctx = context.WithValue(ctx, "ad", ad)
@@ -264,8 +262,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)

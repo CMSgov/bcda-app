@@ -27,7 +27,6 @@ create table jobs (
 
 create table tokens (
   uuid uuid not null primary key,
-  user_id uuid not null references users,
   value text not null,
   active boolean not null default false
 );

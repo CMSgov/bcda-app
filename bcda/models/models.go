@@ -265,18 +265,6 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 	return db.Exec(s).Error
 }
 
-// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
-func CreateAlphaUser(db *gorm.DB, aco ACO) (User, error) {
-	var count int
-	db.Table("users").Count(&count)
-	user := User{UUID: uuid.NewRandom(),
-		Name:  fmt.Sprintf("Alpha User%d", count),
-		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), ACOID: aco.UUID}
-	db.Create(&user)
-
-	return user, db.Error
-}
-
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
 // swagger:ignore
 type jobEnqueueArgs struct {
