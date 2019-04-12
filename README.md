@@ -145,7 +145,7 @@ See docker-compose.yml for the password.
 
 Use docker to run the CLI against an API instance
 ```
-docker exec -it bcda-app_api_1 bash -c 'tmp/bcda -h'
+docker exec -it bcda-app_api_1 sh -c 'tmp/bcda -h'
 ```
 
 If you have no data in your database, you can load the fixture data with
