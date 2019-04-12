@@ -9,16 +9,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
+
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type CLITestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	testApp *cli.App
 }
 
@@ -35,7 +35,6 @@ func (s *CLITestSuite) TestCreateACO() {
 	// init
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	s.SetupAuthBackend()
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
