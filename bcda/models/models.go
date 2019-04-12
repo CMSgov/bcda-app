@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -34,10 +35,14 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
+		&CCLFFile{},
+		&CCLFBeneficiary{},
 	)
 
 	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
 	db.Model(&ACOBeneficiary{}).AddForeignKey("beneficiary_id", "beneficiaries(id)", "RESTRICT", "RESTRICT")
+
+	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
 
 	return db
 }
@@ -144,7 +149,7 @@ type JobKey struct {
 type ACO struct {
 	gorm.Model
 	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
-	CMSID            *string   `gorm:"type:char(5)" json:"cms_id"`
+	CMSID            *string   `gorm:"type:char(5);unique" json:"cms_id"`
 	Name             string    `json:"name"`
 	ClientID         string    `json:"client_id"`
 	AlphaSecret      string    `json:"alpha_secret"`
@@ -263,6 +268,37 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 		"', b.id from beneficiaries b join acos_beneficiaries ab on b.id = ab.beneficiary_id " +
 		"where ab.aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
+}
+
+// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
+func CreateAlphaUser(db *gorm.DB, aco ACO) (User, error) {
+	var count int
+	db.Table("users").Count(&count)
+	user := User{UUID: uuid.NewRandom(),
+		Name:  fmt.Sprintf("Alpha User%d", count),
+		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), ACOID: aco.UUID}
+	db.Create(&user)
+
+	return user, db.Error
+}
+
+type CCLFFile struct {
+	gorm.Model
+	CCLFNum         int       `gorm:"not null"`
+	Name            string    `gorm:"not null;unique"`
+	ACOCMSID        string    `gorm:"column:aco_cms_id"`
+	Timestamp       time.Time `gorm:"not null"`
+	PerformanceYear int       `gorm:"not null"`
+}
+
+// "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
+// https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
+type CCLFBeneficiary struct {
+	gorm.Model
+	FileID        uint   `gorm:"not null"`
+	HICN          string `gorm:"type:varchar(11);not null"`
+	MBI           string `gorm:"type:char(11);not null"`
+	BeneficiaryID uint
 }
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
