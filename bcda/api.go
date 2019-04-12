@@ -16,9 +16,6 @@
      - application/fhir+json
      - application/json
 
-     Security:
-     - bearer_token: []
-
      SecurityDefinitions:
      bearer_token:
           type: apiKey
@@ -69,7 +66,7 @@ import (
 	- application/fhir+json
 
 	Security:
-		bearer_token
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -92,7 +89,7 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		bearer_token
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -114,7 +111,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		bearer_token
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
