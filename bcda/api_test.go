@@ -34,14 +34,23 @@ type TokenResponse struct {
 }
 
 type APITestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	rr *httptest.ResponseRecorder
 	db *gorm.DB
+	reset func()
+}
+
+func (s *APITestSuite) SetupSuite() {
+	s.reset = testUtils.SetUnitTestKeysForAuth()  // needed until token endpoint moves to auth
+}
+
+func (s *APITestSuite) TearDownSuite() {
+	s.reset()
 }
 
 func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
-	auth.InitializeGormModels()
+	auth.InitializeGormModels()                   // needed until token endpoint moves to auth
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
@@ -395,7 +404,6 @@ func (s *APITestSuite) TestJobStatusFailed() {
 }
 
 // https://stackoverflow.com/questions/34585957/postgresql-9-3-how-to-insert-upper-case-uuid-into-table
-// depends on auth backend for encryption publickey
 func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -633,7 +641,6 @@ func (s *APITestSuite) TestServeData() {
 }
 
 func (s *APITestSuite) TestAuthTokenMissingAuthHeader() {
-	s.SetupAuthBackend()
 
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 	handler := http.HandlerFunc(auth.GetAuthToken)
@@ -642,8 +649,6 @@ func (s *APITestSuite) TestAuthTokenMissingAuthHeader() {
 }
 
 func (s *APITestSuite) TestAuthTokenMalformedAuthHeader() {
-	s.SetupAuthBackend()
-
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
 	req.Header.Add("Accept", "application/json")
@@ -653,8 +658,6 @@ func (s *APITestSuite) TestAuthTokenMalformedAuthHeader() {
 }
 
 func (s *APITestSuite) TestAuthTokenBadCredentials() {
-	s.SetupAuthBackend()
-
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 	req.SetBasicAuth("not_a_client", "not_a_secret")
 	req.Header.Add("Accept", "application/json")
@@ -664,8 +667,6 @@ func (s *APITestSuite) TestAuthTokenBadCredentials() {
 }
 
 func (s *APITestSuite) TestAuthTokenSuccess() {
-	s.SetupAuthBackend()
-
 	// Create and verify new credentials
 	t := TokenResponse{}
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n(.+)`)
