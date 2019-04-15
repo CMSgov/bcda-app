@@ -232,16 +232,11 @@
   revision = "8e01ec4cd3e2d84ab2fe90d8210528ffbb06d8ff"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b7cda6bf367836ce3675325f6f7aec675af1ff2fde841524800f499a1acf0ee2"
+  digest = "1:3f3a05ae0b95893d90b9b3b5afdb79a9b3d96e4e36e099d841ae602e4aca0da8"
   name = "golang.org/x/crypto"
-  packages = [
-    "bcrypt",
-    "blowfish",
-    "ssh/terminal",
-  ]
+  packages = ["ssh/terminal"]
   pruneopts = "UT"
-  revision = "88737f569e3a9c7ab309cdc09a07fe7fc87233c3"
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
   branch = "master"
@@ -315,7 +310,6 @@
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
     "github.com/pborman/uuid",
-    "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
     "github.com/soheilhy/cmux",
     "github.com/stretchr/testify/assert",
@@ -325,7 +319,6 @@
     "github.com/tsenart/vegeta/lib",
     "github.com/tsenart/vegeta/lib/plot",
     "github.com/urfave/cli",
-    "golang.org/x/crypto/bcrypt",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
