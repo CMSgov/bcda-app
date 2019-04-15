@@ -58,7 +58,7 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 	}
 
 	if fileMetadata.cclfNum != 0 {
-		return nil, errors.New("invalid CCLF8 filename")
+		return nil, errors.New("invalid CCLF0 filename")
 	}
 
 	file, err := os.Open(filepath.Clean(fileMetadata.filePath))
@@ -70,22 +70,24 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 
 	const (
 		fileNumStart, fileNumEnd           = 0, 13
-		totalRecordStart, totalRecordEnd   = 36, 55
-		recordLengthStart, recordLengthEnd = 57, 69
+		totalRecordStart, totalRecordEnd   = 35, 55
+		recordLengthStart, recordLengthEnd = 56, 69
 	)
 
 	sc := bufio.NewScanner(file)
 	for sc.Scan() {
 		b := sc.Bytes()
 		if len(bytes.TrimSpace(b)) > 0 {
-			filetype := string(b[fileNumStart:fileNumEnd])
-
+			filetype := string(bytes.TrimSpace(b[fileNumStart:fileNumEnd]))
 			if filetype == "CCLF8" || filetype == "CCLF9" {
 				if validator == nil {
 					validator = make(map[string]cclfFileValidator)
 				}
-				count, err := strconv.Atoi(string(b[totalRecordStart:totalRecordEnd]))
-				length, err := strconv.Atoi(string(b[recordLengthStart:recordLengthEnd]))
+				count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
+				if err != nil {
+					return nil, err
+				}
+				length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
 				if err != nil {
 					return nil, err
 				}
@@ -231,11 +233,16 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	for _, file := range cclf0 {
 		aco := file.acoID
 		cclfValidator, err := importCCLF0(file)
+		if err != nil {
+			log.Error(err)
+			return 0, 0, 0, err
+		}
 
 		for _, file = range cclf8 {
 			if file.acoID == aco {
 				err = importCCLF8(file, cclfValidator)
 				if err != nil {
+					log.Error(err)
 					failure++
 					continue
 				}
@@ -247,6 +254,7 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 			if file.acoID == aco {
 				err = importCCLF9(file, cclfValidator)
 				if err != nil {
+					log.Error(err)
 					failure++
 					continue
 				}
