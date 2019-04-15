@@ -215,8 +215,6 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 
 	metadata.cclfNum = cclfNum
 	metadata.acoID = filenameMatches[2]
-	log.Info("!!!!!!!!!!! CCLF_NUM IS: ", metadata.cclfNum)
-	log.Info("!!!!!!!!!!!! ACO_ID IS: ", metadata.acoID)
 	metadata.timestamp = t
 
 	return metadata, nil
