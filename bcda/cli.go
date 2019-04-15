@@ -48,7 +48,7 @@ type cclfFileMetadata struct {
 
 type cclfFileValidator struct {
 	totalRecordCount int
-	recordLength     int
+	maxRecordLength  int
 }
 
 func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, error) {
@@ -89,7 +89,7 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 				if err != nil {
 					return nil, err
 				}
-				validator[filetype] = cclfFileValidator{totalRecordCount: count, recordLength: length}
+				validator[filetype] = cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
 			}
 		}
 	}
@@ -124,7 +124,7 @@ func importCCLF8(fileMetadata cclfFileMetadata, cclfFileValidator map[string]ccl
 	for sc.Scan() {
 		b := sc.Bytes()
 		bytelength := len(bytes.TrimSpace(b))
-		if bytelength == validator.recordLength {
+		if bytelength <= validator.maxRecordLength {
 			count++
 			// currently only errors if there are more records than we expect.
 			if count > validator.totalRecordCount {
@@ -168,7 +168,7 @@ func importCCLF9(fileMetadata cclfFileMetadata, cclfFileValidator map[string]ccl
 	for sc.Scan() {
 		b := sc.Bytes()
 		bytelength := len(bytes.TrimSpace(b))
-		if bytelength == validator.recordLength {
+		if bytelength <= validator.maxRecordLength {
 			count++
 			// currently only errors if there are more records than we expect.
 			if count > validator.totalRecordCount {
