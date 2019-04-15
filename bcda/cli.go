@@ -126,7 +126,7 @@ func importCCLF8(fileMetadata cclfFileMetadata, cclfFileValidator map[string]ccl
 	for sc.Scan() {
 		b := sc.Bytes()
 		bytelength := len(bytes.TrimSpace(b))
-		if bytelength <= validator.maxRecordLength {
+		if bytelength > 0 && bytelength <= validator.maxRecordLength {
 			count++
 			// currently only errors if there are more records than we expect.
 			if count > validator.totalRecordCount {
@@ -170,7 +170,7 @@ func importCCLF9(fileMetadata cclfFileMetadata, cclfFileValidator map[string]ccl
 	for sc.Scan() {
 		b := sc.Bytes()
 		bytelength := len(bytes.TrimSpace(b))
-		if bytelength <= validator.maxRecordLength {
+		if bytelength > 0 && bytelength <= validator.maxRecordLength {
 			count++
 			// currently only errors if there are more records than we expect.
 			if count > validator.totalRecordCount {
