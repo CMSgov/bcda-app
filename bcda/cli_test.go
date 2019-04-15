@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -175,5 +178,80 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("A0001", metadata.acoID)
 	assert.Equal(9, metadata.cclfNum)
 	assert.Equal(expTime, metadata.timestamp)
+	assert.Nil(err)
+}
+func (s *CLITestSuite) TestDeleteDirectory() {
+	assert := assert.New(s.T())
+	dirToDelete := "../shared_files/doomedDirectory"
+	s.makeDirToDelete(dirToDelete)
+	defer os.Remove(dirToDelete)
+
+	f, err := os.Open(dirToDelete)
+	assert.Nil(err)
+	files, err := f.Readdir(-1)
+	assert.Nil(err)
+	assert.Equal(4, len(files))
+
+	filesDeleted, err := deleteDirectory(dirToDelete)
+	assert.Equal(4, filesDeleted)
+	assert.Nil(err)
+
+	f, err = os.Open(dirToDelete)
+	assert.Nil(err)
+	files, err = f.Readdir(-1)
+	assert.Nil(err)
+	assert.Equal(0, len(files))
+
+	filesDeleted, err = deleteDirectory("This/Does/not/Exist")
+	assert.Equal(0, filesDeleted)
+	assert.NotNil(err)
+}
+
+func (s *CLITestSuite) TestDeleteDirectoryContents() {
+	assert := assert.New(s.T())
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	dirToDelete := "../shared_files/doomedDirectory"
+	s.makeDirToDelete(dirToDelete)
+	defer os.Remove(dirToDelete)
+
+	os.Setenv("TESTDELETEDIRECTORY", dirToDelete)
+
+	args := []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
+	buf.Reset()
+
+	// Unknown Variable
+	args = []string{"bcda", "delete-dir-contents", "--envvar", "UNKNOWNENVVAR12345"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.NotContains(buf.String(), "Successfully Deleted")
+	buf.Reset()
+
+	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
+	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.NotContains(buf.String(), "Successfully Deleted")
+	buf.Reset()
+
+}
+
+func (s *CLITestSuite) makeDirToDelete(filePath string) {
+	assert := assert.New(s.T())
+	dirToDelete := filePath
+	err := os.Mkdir(dirToDelete, os.ModePerm)
+	assert.Nil(err)
+
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe1.txt"))
+	assert.Nil(err)
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe2.txt"))
+	assert.Nil(err)
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe3.txt"))
+	assert.Nil(err)
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe4.txt"))
 	assert.Nil(err)
 }

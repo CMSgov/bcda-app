@@ -70,7 +70,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath string
+	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, envVar string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -274,7 +274,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "archive-job-files",
-			Category: "Archive files for jobs that are expiring",
+			Category: "Cleanup",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
 				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
@@ -283,7 +283,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "cleanup-archive",
-			Category: "Cleanup archive for jobs that have expired",
+			Category: "Cleanup",
 			Usage:    "Removes job directory and files from archive and updates job status to Expired",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -328,6 +328,29 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				return importCCLF9(filePath)
+			},
+		},
+		{
+			Name:     "delete-dir-contents",
+			Category: "Cleanup",
+			Usage:    "Delete the files in a directory specified by the passed Environment Variable",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "envvar",
+					Usage:       "Name of Env Var that determines the dir to delete",
+					Destination: &envVar,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				dirToDelete := os.Getenv(envVar)
+				if dirToDelete == "" {
+					return errors.New("please specify a valid environment variable")
+				}
+				filesDeleted, err := deleteDirectory(dirToDelete)
+				if filesDeleted > 0 {
+					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
+				}
+				return err
 			},
 		},
 	}
