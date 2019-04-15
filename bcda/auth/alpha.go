@@ -34,7 +34,10 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	hashedSecret := NewHash(s)
+	hashedSecret, err := NewHash(s)
+	if err != nil {
+		return Credentials{}, err
+	}
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
