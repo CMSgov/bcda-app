@@ -2,15 +2,15 @@ package auth
 
 import (
 	"crypto/rsa"
+	"crypto/sha256"
+	"fmt"
 	"os"
 
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/bcrypt"
-)
 
-const bcryptCost int = 10
+	"github.com/CMSgov/bcda-app/bcda/utils"
+)
 
 var (
 	alphaBackend *AlphaBackend
@@ -23,22 +23,17 @@ func init() {
 // Hash is a cryptographically hashed string
 type Hash string
 
-// NewHash creates a hashed string from a source string, return it as a new Hash value.
-func NewHash(source string) (Hash, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(source), bcryptCost)
-	if err != nil {
-		// Could this lead to downstream logging of secrets?  A review of the source says no.  The most likely error seems to be
-		//   an invalid cost.
-		return "", err
-	}
-	return Hash(string(hash)), nil
+// NewHash creates a hashed string from a source string, return it as a new Hash value.  While this is not
+// intended for production password hashing, as a matter of principle we intend to add a salt and implement
+// bcrypt or another hash appropriate for storing secrets in ticket BCDA-1130.
+func NewHash(source string) Hash {
+	sum := sha256.Sum256([]byte(source))
+	return Hash(fmt.Sprintf("%x", sum))
 }
 
 // IsHashOf accepts an unhashed string, which it first hashes and then compares to itself
 func (h Hash) IsHashOf(source string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(h), []byte(source))
-	// Noted that this swallows any errors by returning false, which seems appropriate in the context.
-	return err == nil
+	return h == NewHash(source)
 }
 
 func (h Hash) String() string {

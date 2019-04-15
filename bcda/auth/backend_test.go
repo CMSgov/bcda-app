@@ -42,17 +42,9 @@ func (s *BackendTestSuite) TestInitAuthBackend() {
 
 func (s *BackendTestSuite) TestHashCompare() {
 	uuidString := uuid.NewRandom().String()
-	hash, err := auth.NewHash(uuidString)
-	assert.Nil(s.T(), err)
+	hash := auth.NewHash(uuidString)
 	assert.True(s.T(), hash.IsHashOf(uuidString))
 	assert.False(s.T(), hash.IsHashOf(uuid.NewRandom().String()))
-}
-
-func (s *BackendTestSuite) TestHashUnique() {
-	uuidString := uuid.NewRandom().String()
-	hash1, _ := auth.NewHash(uuidString)
-	hash2, _ := auth.NewHash(uuidString)
-	assert.NotEqual(s.T(), hash1.String(), hash2.String())
 }
 
 func (s *BackendTestSuite) TestPrivateKey() {
