@@ -2,16 +2,17 @@ package main
 
 import (
 	"bytes"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
-	"path/filepath"
-	"strings"
-	"testing"
-	"time"
 )
 
 type CLITestSuite struct {
@@ -104,6 +105,56 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 }
 
+func (s *CLITestSuite) TestImportCCLF0() {
+	assert := assert.New(s.T())
+
+	filePath := "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	metadata, err := getCCLFFileMetadata(filePath)
+	metadata.filePath = filePath
+	assert.Nil(err)
+
+	cclf8_filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	cclf8_metadata, err := getCCLFFileMetadata(cclf8_filePath)
+	cclf8_metadata.filePath = cclf8_filePath
+	assert.Nil(err)
+
+	cclf9_filePath := "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
+	cclf9_metadata, err := getCCLFFileMetadata(cclf9_filePath)
+	cclf9_metadata.filePath = cclf9_filePath
+	assert.Nil(err)
+
+	// positive
+	cclfValidator, err := importCCLF0(metadata)
+	assert.Nil(err)
+	err = importCCLF8(cclf8_metadata, cclfValidator)
+	assert.Nil(err)
+	err = importCCLF9(cclf9_metadata, cclfValidator)
+	assert.Nil(err)
+
+	// negative
+	metadata.cclfNum = 8
+	_, err = importCCLF0(metadata)
+	assert.NotNil(err)
+
+	metadata.cclfNum = 0
+	metadata.filePath = ""
+	_, err = importCCLF0(metadata)
+	assert.NotNil(err)
+
+	filePath = "../shared_files/cclf0/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	metadata, err = getCCLFFileMetadata(filePath)
+	metadata.filePath = filePath
+	assert.Nil(err)
+	cclfValidator, err = importCCLF0(metadata)
+	assert.Nil(err)
+
+	err = importCCLF8(cclf8_metadata, cclfValidator)
+	assert.EqualError(err, "maximum record count reached: did not match cclf0 validation")
+
+	err = importCCLF9(cclf9_metadata, cclfValidator)
+	assert.EqualError(err, "incorrect record length: did not match cclf0 validation")
+}
+
 func (s *CLITestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 
@@ -111,16 +162,19 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	metadata, err := getCCLFFileMetadata(filePath)
 	metadata.filePath = filePath
 	assert.Nil(err)
-	err = importCCLF8(metadata)
+
+	validator := make(map[string]cclfFileValidator)
+	validator["CCLF8"] = cclfFileValidator{totalRecordCount: 1000, maxRecordLength: 1000}
+	err = importCCLF8(metadata, validator)
 	assert.Nil(err)
 
 	metadata.cclfNum = 9
-	err = importCCLF8(metadata)
+	err = importCCLF8(metadata, validator)
 	assert.NotNil(err)
 
 	metadata.cclfNum = 8
 	metadata.filePath = ""
-	err = importCCLF8(metadata)
+	err = importCCLF8(metadata, validator)
 	assert.NotNil(err)
 
 }
@@ -132,16 +186,19 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	metadata, err := getCCLFFileMetadata(filePath)
 	metadata.filePath = filePath
 	assert.Nil(err)
-	err = importCCLF9(metadata)
+
+	validator := make(map[string]cclfFileValidator)
+	validator["CCLF9"] = cclfFileValidator{totalRecordCount: 1000, maxRecordLength: 1000}
+	err = importCCLF9(metadata, validator)
 	assert.Nil(err)
 
 	metadata.cclfNum = 8
-	err = importCCLF9(metadata)
+	err = importCCLF9(metadata, validator)
 	assert.NotNil(err)
 
 	metadata.cclfNum = 9
 	metadata.filePath = ""
-	err = importCCLF9(metadata)
+	err = importCCLF9(metadata, validator)
 	assert.NotNil(err)
 }
 
@@ -170,6 +227,14 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal(expTime, metadata.timestamp)
 	assert.Nil(err)
 
+	expTime, _ = time.Parse(time.RFC3339, "2019-01-19T20:13:01Z")
+	metadata, err = getCCLFFileMetadata("/path/T.A0002.ACO.ZC0Y18.D190119.T2013010")
+	assert.Equal("test", metadata.env)
+	assert.Equal("A0002", metadata.acoID)
+	assert.Equal(0, metadata.cclfNum)
+	assert.Equal(expTime, metadata.timestamp)
+	assert.Nil(err)
+
 	metadata, err = getCCLFFileMetadata("/cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
 	assert.NotNil(err)
 
@@ -187,7 +252,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	assert.Nil(err)
 	assert.Equal(1, len(cclf8))
 	assert.Equal(1, len(cclf9))
-	assert.Equal(0, len(cclf0))
+	assert.Equal(1, len(cclf0))
 	assert.Equal(0, skipped)
 
 	cclf0, cclf8, cclf9 = nil, nil, nil
@@ -198,7 +263,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	assert.Nil(err)
 	assert.Equal(1, len(cclf8))
 	assert.Equal(0, len(cclf9))
-	assert.Equal(0, len(cclf0))
+	assert.Equal(1, len(cclf0))
 	assert.Equal(2, skipped)
 
 	cclf0, cclf8, cclf9 = nil, nil, nil
