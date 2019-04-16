@@ -45,6 +45,11 @@ func NewHash(source string) (Hash, error) {
 
 // IsHashOf accepts an unhashed string, which it first hashes and then compares to itself
 func (h Hash) IsHashOf(source string) bool {
+	// Avoid comparing with an empty source so that a hash of an empty string is never successful
+	if source == "" {
+		return false
+	}
+
 	hashAndPass := strings.Split(h.String(), ":")
 	if len(hashAndPass) != 2 {
 		return false

@@ -55,6 +55,12 @@ func (s *BackendTestSuite) TestHashUnique() {
 	assert.NotEqual(s.T(), hash1.String(), hash2.String())
 }
 
+func (s *BackendTestSuite) TestHashEmpty() {
+	hash, err := auth.NewHash("")
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), hash.IsHashOf(""))
+}
+
 func (s *BackendTestSuite) TestPrivateKey() {
 	privateKey := s.AuthBackend.PrivateKey
 	assert.NotNil(s.T(), privateKey)
