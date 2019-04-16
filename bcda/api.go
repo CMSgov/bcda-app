@@ -3,8 +3,12 @@
 
  The Beneficiary Claims Data API (BCDA) allows downloading of claims data in accordance with the FHIR Bulk Data Export specification.
 
- If you have a token you can use this page to explore the API.  To do this click the green "Authorize" button below and enter "Bearer {YOUR_TOKEN}"
- in the "Value" field and click authorize.  Until you click logout your token will be presented with every request made.  To make requests click on the
+ If you have Client ID and Secret you can use this page to explore the API.  To do this:
+  1. Click the green "Authorize" button below and enter your ID and secret in the Basic Authentication username and passsword boxes.
+  2. Request a bearer token from /auth/token
+  3. Click the green "Authorize" button below and put "Bearer {YOUR_TOKEN}" in the bearer_token box.
+
+Until you click logout your token will be presented with every request made.  To make requests click on the
  "Try it out" button for the desired endpoint.
 
 
@@ -19,7 +23,7 @@
      SecurityDefinitions:
      bearer_token:
           type: apiKey
-          name: For bulkData endpoints. 1) Put your credentials in Basic Authentication, 2) get your token from /auth/token, 3) put your token here, after the word "Bearer"
+          name: The bulkData endpoints require a Bearer Token. 1) Put your credentials in Basic Authentication, 2) Request a bearer token from /auth/token, 3) Put "Bearer {TOKEN}" in this field (no quotes) using the bearer token retrieved in step 2
           in: header
      basic_auth:
           type: basic
