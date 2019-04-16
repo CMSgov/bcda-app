@@ -270,18 +270,6 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 	return db.Exec(s).Error
 }
 
-// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
-func CreateAlphaUser(db *gorm.DB, aco ACO) (User, error) {
-	var count int
-	db.Table("users").Count(&count)
-	user := User{UUID: uuid.NewRandom(),
-		Name:  fmt.Sprintf("Alpha User%d", count),
-		Email: fmt.Sprintf("alpha.user.%d@nosuchdomain.com", count), ACOID: aco.UUID}
-	db.Create(&user)
-
-	return user, db.Error
-}
-
 type CCLFFile struct {
 	gorm.Model
 	CCLFNum         int       `gorm:"not null"`
