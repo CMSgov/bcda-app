@@ -71,7 +71,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, envVar string
+	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -329,25 +329,21 @@ func setUpApp() *cli.App {
 		{
 			Name:     "delete-dir-contents",
 			Category: "Cleanup",
-			Usage:    "Delete the files in a directory specified by the passed Environment Variable",
+			Usage:    "Delete all of the files in a directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "envvar",
-					Usage:       "Name of Env Var that determines the dir to delete",
-					Destination: &envVar,
+					Name:        "dirToDelete",
+					Usage:       "Name of the directory to delete the files from",
+					Destination: &dirToDelete,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				dirToDelete := os.Getenv(envVar)
-				if dirToDelete == "" {
-					return errors.New("please specify a valid environment variable")
-				}
 				fi, err := os.Stat(dirToDelete)
 				if err != nil {
 					return err
 				}
 				if !fi.IsDir() {
-					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", envVar)
+					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", dirToDelete)
 				}
 				filesDeleted, err := deleteDirectoryContents(dirToDelete)
 				if filesDeleted > 0 {

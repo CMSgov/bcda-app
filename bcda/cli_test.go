@@ -321,16 +321,14 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	s.makeDirToDelete(dirToDelete)
 	defer os.Remove(dirToDelete)
 
-	os.Setenv("TESTDELETEDIRECTORY", dirToDelete)
-
-	args := []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
+	args := []string{"bcda", "delete-dir-contents", "--dirToDelete", dirToDelete}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
 	buf.Reset()
 
-	// Unknown Variable
-	args = []string{"bcda", "delete-dir-contents", "--envvar", "UNKNOWNENVVAR12345"}
+	// File, not a directory
+	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
 	assert.NotContains(buf.String(), "Successfully Deleted")
