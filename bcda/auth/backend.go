@@ -1,16 +1,24 @@
 package auth
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
+
+const hashIter int = 10000
+const hashBytes int = 64
+const saltSize int = 32
 
 var (
 	alphaBackend *AlphaBackend
@@ -23,17 +31,33 @@ func init() {
 // Hash is a cryptographically hashed string
 type Hash string
 
-// NewHash creates a hashed string from a source string, return it as a new Hash value.  While this is not
-// intended for production password hashing, as a matter of principle we intend to add a salt and implement
-// bcrypt or another hash appropriate for storing secrets in ticket BCDA-1130.
-func NewHash(source string) Hash {
-	sum := sha256.Sum256([]byte(source))
-	return Hash(fmt.Sprintf("%x", sum))
+// NewHash creates a hashed string from a source string, return it as a new Hash value.
+func NewHash(source string) (Hash, error) {
+	salt := make([]byte, saltSize)
+	_, err := rand.Read(salt)
+	if err != nil {
+		return Hash(""), err
+	}
+
+	h := pbkdf2.Key([]byte(source), salt, hashIter, hashBytes, sha512.New)
+	return Hash(fmt.Sprintf("%s:%s", base64.StdEncoding.EncodeToString(salt), base64.StdEncoding.EncodeToString(h))), nil
 }
 
 // IsHashOf accepts an unhashed string, which it first hashes and then compares to itself
 func (h Hash) IsHashOf(source string) bool {
-	return h == NewHash(source)
+	hashAndPass := strings.Split(h.String(), ":")
+	if len(hashAndPass) != 2 {
+		return false
+	}
+
+	hash := hashAndPass[1]
+	salt, err := base64.StdEncoding.DecodeString(hashAndPass[0])
+	if err != nil {
+		return false
+	}
+
+	sourceHash := pbkdf2.Key([]byte(source), salt, hashIter, hashBytes, sha512.New)
+	return hash == base64.StdEncoding.EncodeToString(sourceHash)
 }
 
 func (h Hash) String() string {
