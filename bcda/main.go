@@ -342,7 +342,14 @@ func setUpApp() *cli.App {
 				if dirToDelete == "" {
 					return errors.New("please specify a valid environment variable")
 				}
-				filesDeleted, err := deleteDirectory(dirToDelete)
+				fi, err := os.Stat(dirToDelete)
+				if err != nil {
+					return err
+				}
+				if !fi.IsDir() {
+					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", envVar)
+				}
+				filesDeleted, err := deleteDirectoryContents(dirToDelete)
 				if filesDeleted > 0 {
 					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
 				}

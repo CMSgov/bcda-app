@@ -297,7 +297,7 @@ func (s *CLITestSuite) TestDeleteDirectory() {
 	assert.Nil(err)
 	assert.Equal(4, len(files))
 
-	filesDeleted, err := deleteDirectory(dirToDelete)
+	filesDeleted, err := deleteDirectoryContents(dirToDelete)
 	assert.Equal(4, filesDeleted)
 	assert.Nil(err)
 
@@ -307,7 +307,7 @@ func (s *CLITestSuite) TestDeleteDirectory() {
 	assert.Nil(err)
 	assert.Equal(0, len(files))
 
-	filesDeleted, err = deleteDirectory("This/Does/not/Exist")
+	filesDeleted, err = deleteDirectoryContents("This/Does/not/Exist")
 	assert.Equal(0, filesDeleted)
 	assert.NotNil(err)
 }

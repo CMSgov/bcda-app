@@ -212,8 +212,9 @@ func sortCCLFFiles(cclf0, cclf8, cclf9 *[]cclfFileMetadata, skipped *int) filepa
 	}
 }
 
-func deleteDirectory(dirToDelete string) (filesDeleted int, err error) {
+func deleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
 	log.Info(fmt.Sprintf("preparing to delete directory '%v'", dirToDelete))
+	// #nosec
 	f, err := os.Open(dirToDelete)
 	if err != nil {
 		return 0, err
