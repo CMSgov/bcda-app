@@ -170,9 +170,6 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
-
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := cclfFileMetadata{
@@ -189,7 +186,7 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
-	db.First(&file, "aco_cms_id = ?", acoID)
+	db.First(&file, "aco_id = ?", acoID)
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
