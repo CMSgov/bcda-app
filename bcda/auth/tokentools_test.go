@@ -14,17 +14,26 @@ import (
 )
 
 type TokenToolsTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	originalEnvValue string
+	abe *auth.AlphaBackend
+	reset func()
 }
 
 func (s *TokenToolsTestSuite) SetupSuite() {
 	s.originalEnvValue = os.Getenv("JWT_EXPIRATION_DELTA")
-	s.SetupAuthBackend()
+	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
+	public  := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
+	s.reset = func() {
+		private()
+		public()
+	}
+	s.abe = auth.InitAlphaBackend()
 }
 
 func (s *TokenToolsTestSuite) TearDownSuite() {
 	os.Setenv("JWT_EXPIRATION_DELTA", s.originalEnvValue)
+	s.reset()
 }
 
 func (s *TokenToolsTestSuite) AfterTest() {
@@ -60,9 +69,9 @@ func (s *TokenToolsTestSuite) TestUnavailableSigner() {
 	assert.NotNil(s.T(), token)
 
 	// Wipe the keys
-	s.AuthBackend.PublicKey = nil
-	s.AuthBackend.PrivateKey = nil
-	defer s.AuthBackend.ResetAlphaBackend()
+	s.abe.PublicKey = nil
+	s.abe.PrivateKey = nil
+	defer s.abe.ResetAlphaBackend()
 	assert.Panics(s.T(), func() {
 		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), acoUUID)
 	})

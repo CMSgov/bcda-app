@@ -11,15 +11,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	que "github.com/bgentry/que-go"
+	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type MockBlueButtonClient struct {
@@ -28,7 +29,16 @@ type MockBlueButtonClient struct {
 }
 
 type MainTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
+	reset func()
+}
+
+func (s *MainTestSuite) SetupSuite() {
+	s.reset = testUtils.SetUnitTestKeysForAuth()
+}
+
+func (s *MainTestSuite) TearDownSuite() {
+	s.reset()
 }
 
 func (s *MainTestSuite) SetupTest() {
@@ -37,7 +47,6 @@ func (s *MainTestSuite) SetupTest() {
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
 	models.InitializeGormModels()
-
 }
 
 func (s *MainTestSuite) TearDownTest() {

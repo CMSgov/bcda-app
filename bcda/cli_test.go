@@ -2,21 +2,23 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
+
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type CLITestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	testApp *cli.App
 }
 
@@ -33,7 +35,6 @@ func (s *CLITestSuite) TestCreateACO() {
 	// init
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	s.SetupAuthBackend()
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
@@ -340,4 +341,77 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Skipped 2 files.")
 	buf.Reset()
 
+}
+func (s *CLITestSuite) TestDeleteDirectory() {
+	assert := assert.New(s.T())
+	dirToDelete := "../shared_files/doomedDirectory"
+	s.makeDirToDelete(dirToDelete)
+	defer os.Remove(dirToDelete)
+
+	f, err := os.Open(dirToDelete)
+	assert.Nil(err)
+	files, err := f.Readdir(-1)
+	assert.Nil(err)
+	assert.Equal(4, len(files))
+
+	filesDeleted, err := deleteDirectoryContents(dirToDelete)
+	assert.Equal(4, filesDeleted)
+	assert.Nil(err)
+
+	f, err = os.Open(dirToDelete)
+	assert.Nil(err)
+	files, err = f.Readdir(-1)
+	assert.Nil(err)
+	assert.Equal(0, len(files))
+
+	filesDeleted, err = deleteDirectoryContents("This/Does/not/Exist")
+	assert.Equal(0, filesDeleted)
+	assert.NotNil(err)
+}
+
+func (s *CLITestSuite) TestDeleteDirectoryContents() {
+	assert := assert.New(s.T())
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	dirToDelete := "../shared_files/doomedDirectory"
+	s.makeDirToDelete(dirToDelete)
+	defer os.Remove(dirToDelete)
+
+	args := []string{"bcda", "delete-dir-contents", "--dirToDelete", dirToDelete}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
+	buf.Reset()
+
+	// File, not a directory
+	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.NotContains(buf.String(), "Successfully Deleted")
+	buf.Reset()
+
+	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
+	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.NotContains(buf.String(), "Successfully Deleted")
+	buf.Reset()
+
+}
+
+func (s *CLITestSuite) makeDirToDelete(filePath string) {
+	assert := assert.New(s.T())
+	dirToDelete := filePath
+	err := os.Mkdir(dirToDelete, os.ModePerm)
+	assert.Nil(err)
+
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe1.txt"))
+	assert.Nil(err)
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe2.txt"))
+	assert.Nil(err)
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe3.txt"))
+	assert.Nil(err)
+	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe4.txt"))
+	assert.Nil(err)
 }

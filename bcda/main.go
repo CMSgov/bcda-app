@@ -71,7 +71,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath string
+	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -283,7 +283,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "archive-job-files",
-			Category: "Archive files for jobs that are expiring",
+			Category: "Cleanup",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
 				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
@@ -292,7 +292,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "cleanup-archive",
-			Category: "Cleanup archive for jobs that have expired",
+			Category: "Cleanup",
 			Usage:    "Removes job directory and files from archive and updates job status to Expired",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -323,6 +323,32 @@ func setUpApp() *cli.App {
 			Action: func(c *cli.Context) error {
 				success, failure, skipped, err := importCCLFDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+				return err
+			},
+		},
+		{
+			Name:     "delete-dir-contents",
+			Category: "Cleanup",
+			Usage:    "Delete all of the files in a directory",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "dirToDelete",
+					Usage:       "Name of the directory to delete the files from",
+					Destination: &dirToDelete,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				fi, err := os.Stat(dirToDelete)
+				if err != nil {
+					return err
+				}
+				if !fi.IsDir() {
+					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", dirToDelete)
+				}
+				filesDeleted, err := deleteDirectoryContents(dirToDelete)
+				if filesDeleted > 0 {
+					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
+				}
 				return err
 			},
 		},
