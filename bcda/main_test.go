@@ -27,7 +27,7 @@ import (
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
 
 type MainTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	testApp       *cli.App
 	expectedSizes map[string]int
 }
@@ -39,6 +39,8 @@ func (s *MainTestSuite) SetupSuite() {
 		"medium": 25,
 		"large":  100,
 	}
+	testUtils.SetUnitTestKeysForAuth()
+	auth.InitAlphaBackend()      // should be a provider thing ... inside GetProvider()?
 }
 
 func (s *MainTestSuite) SetupTest() {
@@ -436,7 +438,6 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	s.SetupAuthBackend()
 	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
@@ -554,7 +555,6 @@ func (s *MainTestSuite) TestRevokeToken() {
 	defer auth.SetProvider(originalAuthProvider)
 	auth.SetProvider("alpha")
 	// init
-	s.SetupAuthBackend()
 
 	assert := assert.New(s.T())
 
