@@ -193,7 +193,6 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	metadata, err := getCCLFFileMetadata(filePath)
 	metadata.filePath = filePath
 	assert.Nil(err)
-
 	err = importCCLF8(metadata)
 	assert.Nil(err)
 
@@ -209,7 +208,6 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	metadata, err := getCCLFFileMetadata(filePath)
 	metadata.filePath = filePath
 	assert.Nil(err)
-
 	err = importCCLF9(metadata)
 	assert.Nil(err)
 
@@ -359,7 +357,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	buf.Reset()
 
-	// dir has 4 files, but 2 will be ignored because of bad file names
+	// dir has 4 files, but 2 will be ignored because of bad file names.
 	args = []string{"bcda", "import-cclf-directory", "--directory", "../shared_files/cclf_BadFileNames/"}
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
