@@ -170,6 +170,9 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
+
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := cclfFileMetadata{
@@ -372,14 +375,15 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert := assert.New(s.T())
 
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
+
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
 
 	args := []string{"bcda", "import-cclf-directory", "--directory", "../shared_files/cclf/"}
 	err := s.testApp.Run(args)
