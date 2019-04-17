@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	log "github.com/sirupsen/logrus"
 )
 
 func createACO(name, cmsID string) (string, error) {
@@ -210,4 +210,30 @@ func sortCCLFFiles(cclf0, cclf8, cclf9 *[]cclfFileMetadata, skipped *int) filepa
 		}
 		return nil
 	}
+}
+
+func deleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
+	log.Info(fmt.Sprintf("preparing to delete directory '%v'", dirToDelete))
+	f, err := os.Open(filepath.Clean(dirToDelete))
+	if err != nil {
+		return 0, err
+	}
+	files, err := f.Readdir(-1)
+	if err != nil {
+		return 0, err
+	}
+	err = f.Close()
+	if err != nil {
+		return 0, err
+	}
+
+	for _, file := range files {
+		log.Info(fmt.Sprintf("deleting %v", file.Name()))
+		err = os.Remove(filepath.Join(dirToDelete, file.Name()))
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return len(files), nil
 }
