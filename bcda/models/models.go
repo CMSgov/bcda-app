@@ -10,6 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -34,6 +35,7 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
+		&Group{},
 	)
 
 	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
@@ -263,6 +265,33 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 		"', b.id from beneficiaries b join acos_beneficiaries ab on b.id = ab.beneficiary_id " +
 		"where ab.aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
+}
+
+type Group struct {
+	gorm.Model
+	ID   string         `gorm:"primary_key" json:"id"`
+	Data postgres.Jsonb `json:"data"`
+}
+
+type GroupData struct {
+	Name      string
+	Users     []string
+	Scopes    []string
+	Resources []Resource
+	Systems   []System
+}
+
+type Resource struct {
+	ID     string
+	Name   string
+	Scopes []string
+}
+
+type System struct {
+	ClientID   string
+	SoftwareID string
+	ClientName string
+	ClientURI  string
 }
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
