@@ -84,10 +84,12 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 				}
 				count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
 				if err != nil {
+					log.Error(err)
 					return nil, err
 				}
 				length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
 				if err != nil {
+					log.Error(err)
 					return nil, err
 				}
 				validator[filetype] = cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
@@ -210,6 +212,10 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	if err != nil {
 		return 0, 0, 0, err
+	}
+
+	if len(cclfmap) == 0 {
+		return 0, 0, 0, errors.New("Failed to find any CCLF files in directory")
 	}
 
 	for _, cclflist := range cclfmap {

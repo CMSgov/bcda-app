@@ -106,57 +106,85 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 }
 
-/*
 func (s *CLITestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
-	filePath := "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
-	metadata, err := getCCLFFileMetadata(filePath)
-	metadata.filePath = filePath
+	cclf0filePath := "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0metadata, err := getCCLFFileMetadata(cclf0filePath)
+	cclf0metadata.filePath = cclf0filePath
 	assert.Nil(err)
 
-	cclf8_filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
-	cclf8_metadata, err := getCCLFFileMetadata(cclf8_filePath)
-	cclf8_metadata.filePath = cclf8_filePath
+	cclf8filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	cclf8metadata, err := getCCLFFileMetadata(cclf8filePath)
+	cclf8metadata.filePath = cclf8filePath
 	assert.Nil(err)
 
-	cclf9_filePath := "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
-	cclf9_metadata, err := getCCLFFileMetadata(cclf9_filePath)
-	cclf9_metadata.filePath = cclf9_filePath
+	cclf9filePath := "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
+	cclf9metadata, err := getCCLFFileMetadata(cclf9filePath)
+	cclf9metadata.filePath = cclf9filePath
 	assert.Nil(err)
 
 	// positive
-	cclfValidator, err := importCCLF0(metadata)
+	_, err = importCCLF0(cclf0metadata)
 	assert.Nil(err)
-	err = importCCLF8(cclf8_metadata, cclfValidator)
+	err = importCCLF8(cclf8metadata)
 	assert.Nil(err)
-	err = importCCLF9(cclf9_metadata, cclfValidator)
+	err = importCCLF9(cclf9metadata)
 	assert.Nil(err)
 
 	// negative
-	metadata.cclfNum = 8
-	_, err = importCCLF0(metadata)
+	cclf0metadata = cclfFileMetadata{}
+	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
 
-	metadata.cclfNum = 0
-	metadata.filePath = ""
-	_, err = importCCLF0(metadata)
+	// missing cclf8 and or 9 from cclf0
+	cclf0filePath = "../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0metadata, err = getCCLFFileMetadata(cclf0filePath)
+	cclf0metadata.filePath = cclf0filePath
+	assert.Nil(err)
+	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
-
-	filePath = "../shared_files/cclf0/T.A0001.ACO.ZC0Y18.D181120.T1000011"
-	metadata, err = getCCLFFileMetadata(filePath)
-	metadata.filePath = filePath
-	assert.Nil(err)
-	cclfValidator, err = importCCLF0(metadata)
-	assert.Nil(err)
-
-	err = importCCLF8(cclf8_metadata, cclfValidator)
-	assert.EqualError(err, "maximum record count reached: did not match cclf0 validation")
-
-	err = importCCLF9(cclf9_metadata, cclfValidator)
-	assert.EqualError(err, "incorrect record length: did not match cclf0 validation")
 }
-*/
+
+func (s *CLITestSuite) TestValidate() {
+	assert := assert.New(s.T())
+
+	cclf0filePath := "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0metadata, err := getCCLFFileMetadata(cclf0filePath)
+	cclf0metadata.filePath = cclf0filePath
+	assert.Nil(err)
+
+	cclf8filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	cclf8metadata, err := getCCLFFileMetadata(cclf8filePath)
+	cclf8metadata.filePath = cclf8filePath
+	assert.Nil(err)
+
+	cclf9filePath := "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
+	cclf9metadata, err := getCCLFFileMetadata(cclf9filePath)
+	cclf9metadata.filePath = cclf9filePath
+	assert.Nil(err)
+
+	// positive
+	cclfvalidator, err := importCCLF0(cclf0metadata)
+	assert.Nil(err)
+	err = validate(cclf8metadata, cclfvalidator)
+	assert.Nil(err)
+	err = validate(cclf9metadata, cclfvalidator)
+	assert.Nil(err)
+
+	// negative
+	cclf0filePath = "../shared_files/cclf0/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0metadata, err = getCCLFFileMetadata(cclf0filePath)
+	cclf0metadata.filePath = cclf0filePath
+	assert.Nil(err)
+
+	cclfvalidator, err = importCCLF0(cclf0metadata)
+	assert.Nil(err)
+	err = validate(cclf8metadata, cclfvalidator)
+	assert.NotNil(err)
+	err = validate(cclf9metadata, cclfvalidator)
+	assert.NotNil(err)
+}
 
 func (s *CLITestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
