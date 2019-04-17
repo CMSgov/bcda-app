@@ -52,21 +52,19 @@ type cclfFileValidator struct {
 }
 
 func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, error) {
-	var validator map[string]cclfFileValidator
-	if fileMetadata.filePath == "" {
-		return nil, errors.New("file path (--file) must be provided")
-	}
-
-	if fileMetadata.cclfNum != 0 {
-		return nil, errors.New("invalid CCLF0 filename")
+	if (cclfFileMetadata{}) == fileMetadata {
+		err := errors.New("File CCLF0 not found")
+		log.Error(err)
+		return nil, err
 	}
 
 	file, err := os.Open(filepath.Clean(fileMetadata.filePath))
 	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
 
-	fmt.Printf("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
+	log.Infof("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
 
 	const (
 		fileNumStart, fileNumEnd           = 0, 13
@@ -74,6 +72,7 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 		recordLengthStart, recordLengthEnd = 56, 69
 	)
 
+	var validator map[string]cclfFileValidator
 	sc := bufio.NewScanner(file)
 	for sc.Scan() {
 		b := sc.Bytes()
@@ -95,24 +94,29 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 			}
 		}
 	}
+
+	if len(validator) < 2 {
+		err := fmt.Errorf("Failed to parse CCLF8 and CCLF9 from file: %v", fileMetadata)
+		log.Error(err)
+		return nil, err
+	}
 	return validator, nil
 }
 
-func importCCLF8(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
-	if fileMetadata.filePath == "" {
-		return errors.New("file path (--file) must be provided")
-	}
-
+func importCCLF8(fileMetadata cclfFileMetadata) error {
 	if fileMetadata.cclfNum != 8 {
-		return errors.New("invalid CCLF8 filename")
+		err := errors.New("invalid CCLF8 file number")
+		log.Error(err)
+		return err
 	}
 
 	file, err := os.Open(filepath.Clean(fileMetadata.filePath))
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 
-	fmt.Printf("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
+	log.Infof("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
 
 	const (
 		mbiStart, mbiEnd   = 0, 11
@@ -120,41 +124,30 @@ func importCCLF8(fileMetadata cclfFileMetadata, cclfFileValidator map[string]ccl
 	)
 
 	sc := bufio.NewScanner(file)
-	count := 0
-	validator := cclfFileValidator["CCLF8"]
-
 	for sc.Scan() {
 		b := sc.Bytes()
-		bytelength := len(bytes.TrimSpace(b))
-		if bytelength > 0 && bytelength <= validator.maxRecordLength {
-			count++
-			// currently only errors if there are more records than we expect.
-			if count > validator.totalRecordCount {
-				return errors.New("maximum record count reached: did not match cclf0 validation")
-			}
+		if len(bytes.TrimSpace(b)) > 0 {
 			fmt.Printf("\nMBI: %s\n", b[mbiStart:mbiEnd])
 			fmt.Printf("HICN: %s\n", b[hicnStart:hicnEnd])
-		} else {
-			return errors.New("incorrect record length: did not match cclf0 validation")
 		}
 	}
 	return nil
 }
 
-func importCCLF9(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
-	if fileMetadata.filePath == "" {
-		return errors.New("file path (--file) must be provided")
-	}
+func importCCLF9(fileMetadata cclfFileMetadata) error {
 	if fileMetadata.cclfNum != 9 {
-		return errors.New("invalid CCLF9 filename")
+		err := errors.New("invalid CCLF9 file number")
+		log.Error(err)
+		return err
 	}
 
 	file, err := os.Open(filepath.Clean(fileMetadata.filePath))
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 
-	fmt.Printf("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
+	log.Infof("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
 
 	const (
 		currIDStart, currIDEnd               = 1, 12
@@ -164,25 +157,14 @@ func importCCLF9(fileMetadata cclfFileMetadata, cclfFileValidator map[string]ccl
 	)
 
 	sc := bufio.NewScanner(file)
-	count := 0
-	validator := cclfFileValidator["CCLF9"]
-
 	for sc.Scan() {
 		b := sc.Bytes()
-		bytelength := len(bytes.TrimSpace(b))
-		if bytelength > 0 && bytelength <= validator.maxRecordLength {
-			count++
-			// currently only errors if there are more records than we expect.
-			if count > validator.totalRecordCount {
-				return errors.New("maximum record count reached: did not match cclf0 validation")
-			}
+		if len(bytes.TrimSpace(b)) > 0 {
 			fmt.Printf("\nXREF: %s\n", b[0:1])
 			fmt.Printf("Current identifier: %s\n", b[currIDStart:currIDEnd])
 			fmt.Printf("Previous identifier: %s\n", b[prevIDStart:prevIDEnd])
 			fmt.Printf("Previous identifier effective date: %s\n", b[prevIDEffDateStart:prevIDEffDateEnd])
 			fmt.Printf("Previous identifier obsolete date: %s\n", b[prevIDObsDateStart:prevIDObsDateEnd])
-		} else {
-			return errors.New("incorrect record length: did not match cclf0 validation")
 		}
 	}
 	return nil
@@ -195,13 +177,13 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	filenameRegexp := regexp.MustCompile(`(T|P)\.(A\d{4})\.ACO\.ZC(0|8|9)Y\d{2}\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 5 {
-		return metadata, errors.New("invalid filename")
+		return metadata, fmt.Errorf("invalid filename for file: %s", filePath)
 	}
 
 	filenameDate := filenameMatches[4]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
-		return metadata, fmt.Errorf("failed to parse date '%s' from filename", filenameDate)
+		return metadata, fmt.Errorf("failed to parse date '%s' from file: %s", filenameDate, filePath)
 	}
 
 	cclfNum, err := strconv.Atoi(filenameMatches[3])
@@ -223,47 +205,62 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 }
 
 func importCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
-	var cclf0, cclf8, cclf9 []cclfFileMetadata
+	var cclfmap = make(map[string][]cclfFileMetadata)
 
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclf0, &cclf8, &cclf9, &skipped))
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	for _, file := range cclf0 {
-		aco := file.acoID
-		cclfValidator, err := importCCLF0(file)
-		if err != nil {
-			log.Error(err)
-			return 0, 0, 0, err
+	for _, cclflist := range cclfmap {
+		var cclf0, cclf8, cclf9 cclfFileMetadata
+		for _, cclf := range cclflist {
+			if cclf.cclfNum == 0 {
+				cclf0 = cclf
+			} else if cclf.cclfNum == 8 {
+				cclf8 = cclf
+			} else if cclf.cclfNum == 9 {
+				cclf9 = cclf
+			}
 		}
 
-		for _, file = range cclf8 {
-			if file.acoID == aco {
-				err = importCCLF8(file, cclfValidator)
-				if err != nil {
-					log.Error(err)
-					failure++
-					continue
-				}
-				log.Info(fmt.Sprintf("Successfully imported CCLF8 file: %v", file))
+		cclfvalidator, err := importCCLF0(cclf0)
+		if err != nil {
+			log.Errorf("Failed to import CCLF0 file: %v, Skipping CCLF8 file:%v and CCLF9 file:%v ", cclf0, cclf8, cclf9)
+			failure++
+			skipped += 2
+			continue
+		} else {
+			log.Info(fmt.Sprintf("Successfully imported CCLF0 file: %v", cclf0))
+			success++
+		}
+		err = validate(cclf8, cclfvalidator)
+		if err != nil {
+			log.Errorf("Failed to validate CCLF8 file: %v", cclf8)
+			failure++
+		} else {
+			if err = importCCLF8(cclf8); err != nil {
+				log.Errorf("Failed to import CCLF8 file: %v ", cclf8)
+				failure++
+			} else {
+				log.Info(fmt.Sprintf("Successfully imported CCLF8 file: %v", cclf8))
 				success++
 			}
 		}
-		for _, file = range cclf9 {
-			if file.acoID == aco {
-				err = importCCLF9(file, cclfValidator)
-				if err != nil {
-					log.Error(err)
-					failure++
-					continue
-				}
-				log.Info(fmt.Sprintf("Successfully imported CCLF9 file: %v", file))
+		err = validate(cclf9, cclfvalidator)
+		if err != nil {
+			log.Errorf("Failed to validate CCLF9 file: %v", cclf9)
+			failure++
+		} else {
+			if err = importCCLF9(cclf9); err != nil {
+				log.Errorf("Failed to import CCLF9 file: %v ", cclf9)
+				failure++
+			} else {
+				log.Info(fmt.Sprintf("Successfully imported CCLF9 file: %v", cclf9))
 				success++
 			}
 		}
 	}
-
 	if failure > 0 {
 		err = errors.New("one or more files failed to import correctly")
 	} else {
@@ -272,9 +269,10 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	return success, failure, skipped, err
 }
 
-func sortCCLFFiles(cclf0, cclf8, cclf9 *[]cclfFileMetadata, skipped *int) filepath.WalkFunc {
+func sortCCLFFiles(cclfmap *map[string][]cclfFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			log.Error(err)
 			return err
 		}
 		// Directories are not CCLF files
@@ -289,13 +287,60 @@ func sortCCLFFiles(cclf0, cclf8, cclf9 *[]cclfFileMetadata, skipped *int) filepa
 			*skipped = *skipped + 1
 			return nil
 		}
-		if metadata.cclfNum == 0 {
-			*cclf0 = append(*cclf0, metadata)
-		} else if metadata.cclfNum == 8 {
-			*cclf8 = append(*cclf8, metadata)
-		} else if metadata.cclfNum == 9 {
-			*cclf9 = append(*cclf9, metadata)
+
+		// if we get multiple sets of files relating to the same aco for attribution purposes, concat the year
+		key := fmt.Sprintf(metadata.acoID+"_%d", metadata.timestamp.Year())
+		if (*cclfmap)[key] != nil {
+			(*cclfmap)[key] = append((*cclfmap)[key], metadata)
+		} else {
+			(*cclfmap)[key] = []cclfFileMetadata{metadata}
 		}
 		return nil
 	}
+}
+
+func validate(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
+	if (cclfFileMetadata{}) == fileMetadata {
+		err := errors.New("File not found")
+		log.Error(err)
+		return err
+	}
+
+	file, err := os.Open(filepath.Clean(fileMetadata.filePath))
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	sc := bufio.NewScanner(file)
+	count := 0
+	var key string
+
+	if fileMetadata.cclfNum == 8 {
+		key = "CCLF8"
+	} else if fileMetadata.cclfNum == 9 {
+		key = "CCLF9"
+	}
+
+	validator := cclfFileValidator[key]
+
+	for sc.Scan() {
+		b := sc.Bytes()
+		bytelength := len(bytes.TrimSpace(b))
+		if bytelength > 0 && bytelength <= validator.maxRecordLength {
+			count++
+
+			// currently only errors if there are more records than we expect.
+			if count > validator.totalRecordCount {
+				err := fmt.Errorf("Maximum record count reached for file %s, Expected record count: %d, Actual record count: %d ", key, validator.totalRecordCount, count)
+				log.Error(err)
+				return err
+			}
+		} else {
+			err := fmt.Errorf("Incorrect record length for file %s, Expected record length: %d, Actual record length: %d", key, validator.maxRecordLength, bytelength)
+			log.Error(err)
+			return err
+		}
+	}
+	return nil
 }
