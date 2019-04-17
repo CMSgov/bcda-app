@@ -25,6 +25,8 @@ services:
       - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
       - BCDA_AUTH_PROVIDER=${BCDA_AUTH_PROVIDER}
       - OKTA_OAUTH_SERVER_ID=${OKTA_OAUTH_SERVER_ID}
+      - CLIENT_ID
+      - CLIENT_SECRET
 
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app

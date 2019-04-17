@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
@@ -27,15 +28,29 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+}
+
 type APITestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	rr *httptest.ResponseRecorder
 	db *gorm.DB
+	reset func()
+}
+
+func (s *APITestSuite) SetupSuite() {
+	s.reset = testUtils.SetUnitTestKeysForAuth()  // needed until token endpoint moves to auth
+}
+
+func (s *APITestSuite) TearDownSuite() {
+	s.reset()
 }
 
 func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
-	auth.InitializeGormModels()
+	auth.InitializeGormModels()                   // needed until token endpoint moves to auth
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
@@ -128,31 +143,6 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Display)
-}
-
-func (s *APITestSuite) TestBulkEOBRequestUserDoesNotExist() {
-	acoID := "dbbd1ce1-ae24-435c-807d-ed45953077d3"
-	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffdff"
-	tokenID := "665341c9-7d0c-4844-b66f-5910d9d0822f"
-	ad := auth.AuthData{ACOID: acoID, UserID: userID, TokenID: tokenID}
-
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
-
-	handler := http.HandlerFunc(bulkEOBRequest)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
@@ -414,7 +404,6 @@ func (s *APITestSuite) TestJobStatusFailed() {
 }
 
 // https://stackoverflow.com/questions/34585957/postgresql-9-3-how-to-insert-upper-case-uuid-into-table
-// depends on auth backend for encryption publickey
 func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -651,34 +640,54 @@ func (s *APITestSuite) TestServeData() {
 	assert.Contains(s.T(), s.rr.Body.String(), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
 }
 
-// this test depends on the auth backend being set up properly
-func (s *APITestSuite) TestGetToken() {
-	s.SetupAuthBackend()
-	req := httptest.NewRequest("GET", "/api/v1/token", nil)
+func (s *APITestSuite) TestAuthTokenMissingAuthHeader() {
 
-	handler := http.HandlerFunc(getToken)
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.NotEmpty(s.T(), s.rr.Body)
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
-func (s *APITestSuite) TestAuthToken() {
-	s.SetupAuthBackend()
+func (s *APITestSuite) TestAuthTokenMalformedAuthHeader() {
 	req := httptest.NewRequest("POST", "/auth/token", nil)
-
-	handler := http.HandlerFunc(getAuthToken)
+	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
-
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
 
-	// // The following change in error status can be tested with alpha auth (presumably along with success paths)
-	// // once GetAccessToken() is implemented
-	// credential := base64.StdEncoding.EncodeToString([]byte("not_a_client_id:not_a_secret"))
-	// req.Header.Add("Authorization", "Basic "+credential)
-	// handler.ServeHTTP(s.rr, req)
+func (s *APITestSuite) TestAuthTokenBadCredentials() {
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth("not_a_client", "not_a_secret")
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+}
 
-	// assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
+func (s *APITestSuite) TestAuthTokenSuccess() {
+	// Create and verify new credentials
+	t := TokenResponse{}
+	outputPattern := regexp.MustCompile(`.+\n(.+)\n(.+)`)
+	tokenResp, _ := createAlphaToken(60, "Dev")
+	assert.Regexp(s.T(), outputPattern, tokenResp)
+	matches := outputPattern.FindSubmatch([]byte(tokenResp))
+	clientID := string(matches[1])
+	clientSecret := string(matches[2])
+	assert.NotEmpty(s.T(), clientID)
+	assert.NotEmpty(s.T(), clientSecret)
+
+	// Test success
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
+	assert.NotEmpty(s.T(), t)
+	assert.NotEmpty(s.T(), t.AccessToken)
 }
 
 func (s *APITestSuite) TestMetadata() {

@@ -14,17 +14,26 @@ import (
 )
 
 type TokenToolsTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	originalEnvValue string
+	abe *auth.AlphaBackend
+	reset func()
 }
 
 func (s *TokenToolsTestSuite) SetupSuite() {
 	s.originalEnvValue = os.Getenv("JWT_EXPIRATION_DELTA")
-	s.SetupAuthBackend()
+	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
+	public  := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
+	s.reset = func() {
+		private()
+		public()
+	}
+	s.abe = auth.InitAlphaBackend()
 }
 
 func (s *TokenToolsTestSuite) TearDownSuite() {
 	os.Setenv("JWT_EXPIRATION_DELTA", s.originalEnvValue)
+	s.reset()
 }
 
 func (s *TokenToolsTestSuite) AfterTest() {
@@ -53,21 +62,18 @@ func (s *TokenToolsTestSuite) TestTokenDurationEmptyOverride() {
 }
 
 func (s *TokenToolsTestSuite) TestUnavailableSigner() {
-	var (
-		userUUID = "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-		acoUUID  = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	)
-	token, err := auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
+	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	token, err := auth.TokenStringWithIDs(uuid.NewRandom().String(), acoUUID)
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
 	// Wipe the keys
-	s.AuthBackend.PublicKey = nil
-	s.AuthBackend.PrivateKey = nil
-	defer s.AuthBackend.ResetAlphaBackend()
+	s.abe.PublicKey = nil
+	s.abe.PrivateKey = nil
+	defer s.abe.ResetAlphaBackend()
 	assert.Panics(s.T(), func() {
-		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), userUUID, acoUUID)
+		_, _ = auth.TokenStringWithIDs(uuid.NewRandom().String(), acoUUID)
 	})
 }
 

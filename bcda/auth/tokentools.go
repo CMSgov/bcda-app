@@ -26,23 +26,22 @@ type CommonClaims struct {
 }
 
 // TokenStringWithIDs generates a tokenstring that expires in tokenTTL time
-func TokenStringWithIDs(tokenID, userID, acoID string) (string, error) {
-	return TokenStringExpiration(tokenID, userID, acoID, TokenTTL)
+func TokenStringWithIDs(tokenID, acoID string) (string, error) {
+	return TokenStringExpiration(tokenID, acoID, TokenTTL)
 }
 
 // TokenStringExpiration generates a tokenstring that expires after a specific duration from now.
 // If duration is <= 0, the token will be expired upon creation
-func TokenStringExpiration(tokenID, userID, acoID string, duration time.Duration) (string, error) {
-	return GenerateTokenString(tokenID, userID, acoID, time.Now().Unix(), time.Now().Add(duration).Unix())
+func TokenStringExpiration(tokenID, acoID string, duration time.Duration) (string, error) {
+	return GenerateTokenString(tokenID, acoID, time.Now().Unix(), time.Now().Add(duration).Unix())
 }
 
 // GenerateTokenString construct a token string for which all claims are specified in the call.
-func GenerateTokenString(id, userID, acoID string, issuedAt int64, expiresAt int64) (string, error) {
+func GenerateTokenString(id, acoID string, issuedAt int64, expiresAt int64) (string, error) {
 	token := jwt.New(jwt.SigningMethodRS512)
 	token.Claims = jwt.MapClaims{
 		"exp": expiresAt,
 		"iat": issuedAt,
-		"sub": userID,
 		"aco": acoID,
 		"id":  id,
 	}

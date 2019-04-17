@@ -3,8 +3,12 @@
 
  The Beneficiary Claims Data API (BCDA) allows downloading of claims data in accordance with the FHIR Bulk Data Export specification.
 
- If you have a token you can use this page to explore the API.  To do this click the green "Authorize" button below and enter "Bearer {YOUR_TOKEN}"
- in the "Value" field and click authorize.  Until you click logout your token will be presented with every request made.  To make requests click on the
+ If you have Client ID and Secret you can use this page to explore the API.  To do this:
+  1. Click the green "Authorize" button below and enter your ID and secret in the Basic Authentication username and passsword boxes.
+  2. Request a bearer token from /auth/token
+  3. Click the green "Authorize" button below and put "Bearer {YOUR_TOKEN}" in the bearer_token box.
+
+Until you click logout your token will be presented with every request made.  To make requests click on the
  "Try it out" button for the desired endpoint.
 
 
@@ -16,18 +20,13 @@
      - application/fhir+json
      - application/json
 
-     Security:
-     - api_key:
-
      SecurityDefinitions:
-     api_key:
+     bearer_token:
           type: apiKey
-          name: Authorization
+          name: The bulkData endpoints require a Bearer Token. 1) Put your credentials in Basic Authentication, 2) Request a bearer token from /auth/token, 3) Put "Bearer {TOKEN}" in this field (no quotes) using the bearer token retrieved in step 2
           in: header
      basic_auth:
           type: basic
-          name: Authorization
-          in: header
 
  swagger:meta
 */
@@ -71,7 +70,7 @@ import (
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -94,7 +93,7 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -116,7 +115,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -149,7 +148,10 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	acoID := ad.ACOID
-	userID := ad.UserID
+	user := models.User{}
+	// Arbitrarily use the first user in order to satisfy foreign key constraint "jobs_user_id_fkey" until user is removed from jobs table
+	db.First(&user)
+	userID := user.UUID
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -158,7 +160,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	newJob := models.Job{
 		ACOID:      uuid.Parse(acoID),
-		UserID:     uuid.Parse(userID),
+		UserID:     userID,
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
@@ -227,7 +229,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	Schemes: http, https
 
 	Security:
-		api_key:
+		bearer_token:
 
 	Responses:
 		202: jobStatusResponse
@@ -361,7 +363,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	Schemes: http, https
 
 	Security:
-		api_key:
+		bearer_token:
 
 	Responses:
 		200: ExplanationOfBenefitNDJSON
@@ -374,84 +376,6 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
 	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
-}
-
-/*
-	swagger:route POST /auth/token auth getAuthToken
-
-	Get access token
-
-	Verifies Basic authentication credentials, and returns a JWT bearer token that can be presented to the other API endpoints.
-
-	Produces:
-	- application/json
-
-	Schemes: https
-
-	Security:
-		basic_auth:
-
-	Responses:
-		200: tokenResponse
-		400: missingCredentials
-		401: invalidCredentials
-		500: serverError
-*/
-func getAuthToken(w http.ResponseWriter, r *http.Request) {
-	clientId, secret, ok := r.BasicAuth()
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
-	token, err := auth.GetProvider().MakeAccessToken(auth.Credentials{ClientID: clientId, ClientSecret: secret})
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	// https://tools.ietf.org/html/rfc6749#section-5.1
-	// not included: recommended field expires_in
-	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token))
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
-	_, err = w.Write(body)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-	log.WithField("client_id", clientId).Println("issued access token")
-}
-
-func getToken(w http.ResponseWriter, r *http.Request) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var aco models.ACO
-	err := db.First(&aco, "name = ?", "ACO Dev").Error
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	// Generates a token for 'ACO Dev' and its first user
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: aco.UUID.String()}, 72)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write([]byte(token.TokenString))
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
 }
 
 /*

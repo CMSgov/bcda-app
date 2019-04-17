@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ import (
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
 
 type MainTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	testApp       *cli.App
 	expectedSizes map[string]int
 }
@@ -38,6 +39,8 @@ func (s *MainTestSuite) SetupSuite() {
 		"medium": 25,
 		"large":  100,
 	}
+	testUtils.SetUnitTestKeysForAuth()
+	auth.InitAlphaBackend()      // should be a provider thing ... inside GetProvider()?
 }
 
 func (s *MainTestSuite) SetupTest() {
@@ -188,8 +191,8 @@ func (s *MainTestSuite) TestCreateToken() {
 	s.testApp.Writer = buf
 
 	assert := assert.New(s.T())
-	userUUID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	badUUID := "not_a_uuid"
+	clientID := "3461C774-B48F-11E8-96F8-529269fb1459"
 	clientSecret := "not_a_secret"
 
 	// Unexpected flag
@@ -220,11 +223,11 @@ func (s *MainTestSuite) TestCreateToken() {
 	// Test alpha auth bad ID
 	args = []string{"bcda", "create-token", "--id", badUUID}
 	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), "must be a UUID")
+	assert.Contains(err.Error(), "must be a valid UUID")
 	buf.Reset()
 
 	// Test alpha auth successful creation
-	args = []string{"bcda", "create-token", "--id", userUUID}
+	args = []string{"bcda", "create-token", "--id", clientID, "--secret", clientSecret}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
@@ -235,9 +238,6 @@ func (s *MainTestSuite) TestCreateToken() {
 }
 
 func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
-	originalAuthProvider := auth.GetProviderName() // remove with BCDA-1022
-	defer auth.SetProvider(originalAuthProvider)   // remove with BCDA-1022
-
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -246,13 +246,14 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 
 	assert := assert.New(s.T())
 
-	outputPattern := regexp.MustCompile(`.+\n.+\n.+`)
+	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
 	// execute positive scenarios via CLI
 	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
+
 	buf.Reset()
 
 	// ttl is optional when using the CLI
@@ -260,6 +261,12 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
+	matches := outputPattern.FindSubmatch(buf.Bytes())
+	clientID := string(matches[1])
+	assert.NotEmpty(clientID)
+	aco, err := auth.GetACOByClientID(clientID)
+	assert.Nil(err)
+	assert.NotEmpty(aco.AlphaSecret)
 	buf.Reset()
 
 	args = []string{"bcda", "create-alpha-token", "--size", "DEV"}
@@ -431,7 +438,6 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	s.SetupAuthBackend()
 	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
@@ -549,7 +555,6 @@ func (s *MainTestSuite) TestRevokeToken() {
 	defer auth.SetProvider(originalAuthProvider)
 	auth.SetProvider("alpha")
 	// init
-	s.SetupAuthBackend()
 
 	assert := assert.New(s.T())
 

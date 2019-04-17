@@ -15,14 +15,16 @@ import (
 )
 
 type ModelsTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	db *gorm.DB
 }
 
+func (s *ModelsTestSuite) SetupSuite() {
+	testUtils.SetUnitTestKeysForAuth()
+}
+
 func (s *ModelsTestSuite) SetupTest() {
-	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
-	s.SetupAuthBackend()
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
@@ -32,13 +34,11 @@ func (s *ModelsTestSuite) TearDownTest() {
 func (s *ModelsTestSuite) TestTokenCreation() {
 	tokenUUID := uuid.NewRandom()
 	acoUUID := uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	userUUID := uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F")
 	issuedAt := time.Now().Unix()
 	expiresOn := time.Now().Add(time.Hour * time.Duration(72)).Unix()
 
 	tokenString, err := auth.GenerateTokenString(
 		tokenUUID.String(),
-		userUUID.String(),
 		acoUUID.String(),
 		issuedAt,
 		expiresOn,
@@ -50,7 +50,6 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	// Get the claims of the token to find the token ID that was created
 	token := auth.Token{
 		UUID:      tokenUUID,
-		UserID:    userUUID,
 		Active:    true,
 		ACOID:     acoUUID,
 		IssuedAt:  issuedAt,

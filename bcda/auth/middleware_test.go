@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"testing"
 
@@ -18,13 +17,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 var mockHandler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
 
 type MiddlewareTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	server *httptest.Server
 	rr     *httptest.ResponseRecorder
 	token  string
@@ -45,17 +43,14 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 }
 
 func (s *MiddlewareTestSuite) SetupSuite() {
-	s.SetupAuthBackend()
 	models.InitializeGormModels()
-	auth.InitializeGormModels()
 }
 
 func (s *MiddlewareTestSuite) SetupTest() {
-	s.SetupAuthBackend()
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	tokenID := "d63205a8-d923-456b-a01b-0992fcb40968"
-	s.token, _ = auth.TokenStringWithIDs(tokenID, userID, acoID)
+	s.token, _ = auth.TokenStringWithIDs(tokenID, acoID)
 	s.ad = auth.AuthData{
 		TokenID: tokenID,
 		UserID:  userID,
@@ -66,9 +61,6 @@ func (s *MiddlewareTestSuite) SetupTest() {
 }
 
 func (s *MiddlewareTestSuite) TearDownTest() {
-	for _, f := range s.TmpFiles {
-		os.Remove(f)
-	}
 	s.server.Close()
 }
 
@@ -84,7 +76,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidSignature() {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
 	resp, err := client.Do(req)
 
-	fmt.Println(resp.StatusCode)
+	assert.NotNil(s.T(), resp)
+	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 401, resp.StatusCode)
 	assert.Nil(s.T(), err)
 }
@@ -97,8 +90,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 
 	handler := auth.RequireTokenAuth(mockHandler)
 
-	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(userID, acoID, tokenID)
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)
@@ -107,7 +100,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	token.Valid = false
 
 	ad := auth.AuthData{
-		UserID:  userID,
 		ACOID:   acoID,
 		TokenID: tokenID,
 	}
@@ -180,8 +172,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)
@@ -218,8 +210,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
+	acoID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)
@@ -229,7 +221,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	ctx := context.WithValue(req.Context(), "token", token)
 	ad := auth.AuthData{
 		ACOID:   acoID,
-		UserID:  userID,
 		TokenID: tokenID,
 	}
 	ctx = context.WithValue(ctx, "ad", ad)
@@ -264,8 +255,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, userID, tokenID := uuid.NewRandom().String(), uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(tokenID, userID, acoID)
+	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
 	token, err := auth.GetProvider().DecodeJWT(tokenString)

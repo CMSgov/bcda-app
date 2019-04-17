@@ -28,15 +28,15 @@ func NewAPIRouter() http.Handler {
 		}
 		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
-		if os.Getenv("DEBUG") == "true" {
-			r.Get(m.WrapHandler("/token", getToken))
-		}
 	})
-	r.Post(m.WrapHandler("/auth/token", getAuthToken))
 	r.Get(m.WrapHandler("/_version", getVersion))
 	r.Get(m.WrapHandler("/_health", healthCheck))
 	r.Get(m.WrapHandler("/_auth", getAuthInfo))
 	return r
+}
+
+func NewAuthRouter() http.Handler {
+	return auth.NewAuthRouter(logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 }
 
 func NewDataRouter() http.Handler {

@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -70,7 +71,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath string
+	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -108,6 +109,13 @@ func setUpApp() *cli.App {
 				}
 				go func() { log.Fatal(srv.ListenAndServe()) }()
 
+				auth := &http.Server{
+					Handler:      NewAuthRouter(),
+					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
+					WriteTimeout: time.Duration(utils.GetEnvInt("API_WRITE_TIMEOUT", 20)) * time.Second,
+					IdleTimeout:  time.Duration(utils.GetEnvInt("API_IDLE_TIMEOUT", 120)) * time.Second,
+				}
+
 				api := &http.Server{
 					Handler:      NewAPIRouter(),
 					ReadTimeout:  time.Duration(utils.GetEnvInt("API_READ_TIMEOUT", 10)) * time.Second,
@@ -124,6 +132,7 @@ func setUpApp() *cli.App {
 
 				smux := servicemux.New(":3000")
 				smux.AddServer(fileserver, "/data")
+				smux.AddServer(auth, "/auth")
 				smux.AddServer(api, "")
 				smux.Serve()
 
@@ -192,7 +201,7 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "id",
-					Usage:       "ID associated with token (either a user UUID, or client-id paired with the secret",
+					Usage:       "Client ID associated with token",
 					Destination: &tokenID,
 				}, cli.StringFlag{
 					Name:        "secret",
@@ -274,7 +283,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "archive-job-files",
-			Category: "Archive files for jobs that are expiring",
+			Category: "Cleanup",
 			Usage:    "Updates job statuses and moves files to an inaccessible location",
 			Action: func(c *cli.Context) error {
 				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
@@ -283,7 +292,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "cleanup-archive",
-			Category: "Cleanup archive for jobs that have expired",
+			Category: "Cleanup",
 			Usage:    "Removes job directory and files from archive and updates job status to Expired",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -301,33 +310,46 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "import-cclf8",
+			Name:     "import-cclf-directory",
 			Category: "Data import",
-			Usage:    "Import data from a CCLF8 file",
+			Usage:    "Import all CCLF files in the directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "file",
-					Usage:       "Path to CCLF8 file",
+					Name:        "directory",
+					Usage:       "Directory where CCLF Files are located",
 					Destination: &filePath,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return importCCLF8(filePath)
+				success, failure, skipped, err := importCCLFDirectory(filePath)
+				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+				return err
 			},
 		},
 		{
-			Name:     "import-cclf9",
-			Category: "Data import",
-			Usage:    "Import data from a CCLF9 file",
+			Name:     "delete-dir-contents",
+			Category: "Cleanup",
+			Usage:    "Delete all of the files in a directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "file",
-					Usage:       "Path to CCLF9 file",
-					Destination: &filePath,
+					Name:        "dirToDelete",
+					Usage:       "Name of the directory to delete the files from",
+					Destination: &dirToDelete,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return importCCLF9(filePath)
+				fi, err := os.Stat(dirToDelete)
+				if err != nil {
+					return err
+				}
+				if !fi.IsDir() {
+					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", dirToDelete)
+				}
+				filesDeleted, err := deleteDirectoryContents(dirToDelete)
+				if filesDeleted > 0 {
+					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
+				}
+				return err
 			},
 		},
 	}
@@ -378,7 +400,7 @@ func createAccessToken(ID string, secret string) (string, error) {
 		return "", errors.New("ID (--id) must be provided")
 	}
 
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{UserID: ID, ClientSecret: secret}, 72)
+	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: ID, ClientSecret: secret}, 72)
 	if err != nil {
 		return "", err
 	}
@@ -422,10 +444,12 @@ func createAlphaToken(ttl int, acoSize string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
-	aco.ClientID = creds.ClientID
+
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	err = db.Save(&aco).Error
+	// Only update aco.ClientID.  Other attributes of this ACO (AlphaSecret) may have been altered in the database by the
+	// RegisterClient() call above, so we should not save these potentially stale values.
+	err = db.Model(&aco).Update("client_id", creds.ClientID).Error
 	if err != nil {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
 	}
@@ -549,11 +573,6 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 	}
 
 	if err = models.AssignAlphaBeneficiaries(tx, aco, acoSize); err != nil {
-		tx.Rollback()
-		return aco, err
-	}
-
-	if _, err = models.CreateAlphaUser(tx, aco); err != nil {
 		tx.Rollback()
 		return aco, err
 	}
