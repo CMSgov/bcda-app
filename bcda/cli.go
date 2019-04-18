@@ -272,7 +272,7 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 				log.Errorf("Failed to import CCLF9 file: %v ", cclf9)
 				failure++
 			} else {
-				log.Info(fmt.Sprintf("Successfully imported CCLF9 file: %v", cclf9))
+				log.Infof(fmt.Sprintf("Successfully imported CCLF9 file: %v", cclf9))
 				success++
 			}
 		}
@@ -336,6 +336,10 @@ func validate(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFi
 		key = "CCLF8"
 	} else if fileMetadata.cclfNum == 9 {
 		key = "CCLF9"
+	} else {
+		err := fmt.Errorf("Unknown file type when validating file: %v,", fileMetadata)
+		log.Error(err)
+		return err
 	}
 
 	validator := cclfFileValidator[key]

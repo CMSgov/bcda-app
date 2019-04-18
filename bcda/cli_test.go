@@ -121,10 +121,6 @@ func (s *CLITestSuite) TestImportCCLF0() {
 	// positive
 	_, err := importCCLF0(cclf0metadata)
 	assert.Nil(err)
-	err = importCCLF8(cclf8metadata)
-	assert.Nil(err)
-	err = importCCLF9(cclf9metadata)
-	assert.Nil(err)
 
 	// negative
 	cclf0metadata = cclfFileMetadata{}
