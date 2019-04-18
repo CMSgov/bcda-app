@@ -15,14 +15,16 @@ import (
 )
 
 type ModelsTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	db *gorm.DB
 }
 
+func (s *ModelsTestSuite) SetupSuite() {
+	testUtils.SetUnitTestKeysForAuth()
+}
+
 func (s *ModelsTestSuite) SetupTest() {
-	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
-	s.SetupAuthBackend()
 }
 
 func (s *ModelsTestSuite) TearDownTest() {

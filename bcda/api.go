@@ -3,8 +3,12 @@
 
  The Beneficiary Claims Data API (BCDA) allows downloading of claims data in accordance with the FHIR Bulk Data Export specification.
 
- If you have a token you can use this page to explore the API.  To do this click the green "Authorize" button below and enter "Bearer {YOUR_TOKEN}"
- in the "Value" field and click authorize.  Until you click logout your token will be presented with every request made.  To make requests click on the
+ If you have Client ID and Secret you can use this page to explore the API.  To do this:
+  1. Click the green "Authorize" button below and enter your ID and secret in the Basic Authentication username and passsword boxes.
+  2. Request a bearer token from /auth/token
+  3. Click the green "Authorize" button below and put "Bearer {YOUR_TOKEN}" in the bearer_token box.
+
+Until you click logout your token will be presented with every request made.  To make requests click on the
  "Try it out" button for the desired endpoint.
 
 
@@ -16,18 +20,13 @@
      - application/fhir+json
      - application/json
 
-     Security:
-     - api_key:
-
      SecurityDefinitions:
-     api_key:
+     bearer_token:
           type: apiKey
-          name: Authorization
+          name: The bulkData endpoints require a Bearer Token. 1) Put your credentials in Basic Authentication, 2) Request a bearer token from /auth/token, 3) Put "Bearer {TOKEN}" in this field (no quotes) using the bearer token retrieved in step 2
           in: header
      basic_auth:
           type: basic
-          name: Authorization
-          in: header
 
  swagger:meta
 */
@@ -71,7 +70,7 @@ import (
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -94,7 +93,7 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -116,7 +115,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	- application/fhir+json
 
 	Security:
-		api_key
+		bearer_token:
 
 	Responses:
 		202: BulkRequestResponse
@@ -230,7 +229,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	Schemes: http, https
 
 	Security:
-		api_key:
+		bearer_token:
 
 	Responses:
 		202: jobStatusResponse
@@ -364,7 +363,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	Schemes: http, https
 
 	Security:
-		api_key:
+		bearer_token:
 
 	Responses:
 		200: ExplanationOfBenefitNDJSON
