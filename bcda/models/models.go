@@ -36,12 +36,9 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
-<<<<<<< HEAD
 		&Group{},
-=======
 		&CCLFFile{},
 		&CCLFBeneficiary{},
->>>>>>> master
 	)
 
 	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
