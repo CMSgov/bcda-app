@@ -268,7 +268,6 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 }
 
 type Group struct {
-	gorm.Model
 	ID   string         `gorm:"primary_key" json:"id"`
 	Data postgres.Jsonb `json:"data"`
 }

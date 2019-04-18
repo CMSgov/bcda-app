@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/testConstants"
-
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/testConstants"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -293,5 +293,13 @@ func (s *ModelsTestSuite) TestGroupStructs() {
 	}
 	groupData := GroupData{Name: name, Users: users, Scopes: scopes, Resources: resources, Systems: systems}
 
+	rawGroupData, err := json.Marshal(groupData)
+	assert.Nil(s.T(), err)
+
+	group := Group{ID: id, Data: postgres.Jsonb{RawMessage: rawGroupData}}
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	err = db.Save(&group).Error
+	assert.Nil(s.T(), err)
 	// rawGroupData := json.RawMessage(`{"name":"ACO Corp Systems","users":["00uiqolo7fEFSfif70h7","l0vckYyfyow4TZ0zOKek","HqtEi2khroEZkH4sdIzj",...],"scopes":["user-admin","system-admin"],"resources":[{"id":"xxx","name":"BCDA API","scopes":["bcda-api"]},{"id":"eft","name":"EFT CCLF","scopes":["eft-app:download","eft-data:read"]}],"systems":[{"client_id":"4tuhiOIFIwriIOH3zn","software_id":"4NRB1-0XZABZI9E6-5SM3R","client_name":"ACO System A","client_uri":"https://www.acocorpsite.com"}])}`)
 }
