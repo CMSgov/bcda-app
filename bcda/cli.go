@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,9 +10,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	log "github.com/sirupsen/logrus"
 )
 
 func createACO(name, cmsID string) (string, error) {
@@ -39,12 +40,13 @@ func createACO(name, cmsID string) (string, error) {
 }
 
 type cclfFileMetadata struct {
+	name      string
 	env       string
 	acoID     string
 	cclfNum   int
+	perfYear  int
 	timestamp time.Time
 	filePath  string
-	perfYear  int
 }
 
 type cclfFileValidator struct {
@@ -110,8 +112,15 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 }
 
 func importCCLF8(fileMetadata cclfFileMetadata) error {
+	fmt.Printf("Importing CCLF8 file %s...\n", fileMetadata.name)
+	log.Infof("Importing CCLF8 file %s...", fileMetadata.name)
+
+	if fileMetadata.filePath == "" {
+		return errors.New("file path must be provided")
+	}
+
 	if fileMetadata.cclfNum != 8 {
-		err := errors.New("invalid CCLF8 file number")
+		err := fmt.Errorf("expected CCLF file number 8, but was %d", fileMetadata.cclfNum)
 		log.Error(err)
 		return err
 	}
@@ -122,7 +131,21 @@ func importCCLF8(fileMetadata cclfFileMetadata) error {
 		return err
 	}
 
-	log.Infof("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
+	cclf8File := models.CCLFFile{
+		CCLFNum:         8,
+		Name:            fileMetadata.name,
+		ACOCMSID:        fileMetadata.acoID,
+		Timestamp:       fileMetadata.timestamp,
+		PerformanceYear: fileMetadata.perfYear,
+	}
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	err = db.Create(&cclf8File).Error
+	if err != nil {
+		return errors.Wrap(err, "could not create CCLF8 file record")
+	}
 
 	const (
 		mbiStart, mbiEnd   = 0, 11
@@ -133,10 +156,21 @@ func importCCLF8(fileMetadata cclfFileMetadata) error {
 	for sc.Scan() {
 		b := sc.Bytes()
 		if len(bytes.TrimSpace(b)) > 0 {
-			fmt.Printf("\nMBI: %s\n", b[mbiStart:mbiEnd])
-			fmt.Printf("HICN: %s\n", b[hicnStart:hicnEnd])
+			err = db.Create(&models.CCLFBeneficiary{
+				FileID: cclf8File.ID,
+				MBI:    string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
+				HICN:   string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
+				//TODO: BeneficiaryID
+			}).Error
+			if err != nil {
+				return errors.Wrap(err, "could not create CCLF8 beneficiary record")
+			}
 		}
 	}
+
+	fmt.Printf("Imported CCLF8 file %s.\n", fileMetadata.name)
+	log.Infof("Imported CCLF8 file %s.", fileMetadata.name)
+
 	return nil
 }
 
@@ -191,7 +225,7 @@ func importCCLF9(fileMetadata cclfFileMetadata) error {
 
 func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
-	// CCLF8/9 filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
+	// CCLF filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
 	// Prefix: T = test, P = prod; A**** = ACO ID; ZC* = CCLF file number; Y** = performance year
 	filenameRegexp := regexp.MustCompile(`(T|P)\.(A\d{4})\.ACO\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
@@ -221,6 +255,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 		metadata.env = "production"
 	}
 
+	metadata.name = filenameMatches[0]
 	metadata.cclfNum = cclfNum
 	metadata.acoID = filenameMatches[2]
 	metadata.timestamp = t

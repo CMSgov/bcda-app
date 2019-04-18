@@ -159,17 +159,67 @@ func (s *CLITestSuite) TestValidate() {
 
 func (s *CLITestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
 
-	filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
-	metadata, err := getCCLFFileMetadata(filePath)
-	metadata.filePath = filePath
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
+
+	acoID := "A0001"
+	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	metadata := cclfFileMetadata{
+		name:      "T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		env:       "test",
+		acoID:     acoID,
+		cclfNum:   8,
+		perfYear:  18,
+		timestamp: fileTime,
+		filePath:  "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+	}
+
+	err := importCCLF8(metadata)
 	assert.Nil(err)
-	err = importCCLF8(metadata)
-	assert.Nil(err)
+
+	file := models.CCLFFile{}
+	db.First(&file, "aco_cms_id = ?", acoID)
+	assert.NotNil(file)
+	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
+	assert.Equal(acoID, file.ACOCMSID)
+	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(18, file.PerformanceYear)
+
+	beneficiaries := []models.CCLFBeneficiary{}
+	db.Find(&beneficiaries, "file_id = ?", file.ID)
+	assert.Equal(6, len(beneficiaries))
+	assert.Equal("203031401M", beneficiaries[0].HICN)
+	assert.Equal("1A69B98CD30", beneficiaries[0].MBI)
+	assert.Equal("203031402A", beneficiaries[1].HICN)
+	assert.Equal("1A69B98CD31", beneficiaries[1].MBI)
+	assert.Equal("203031403A", beneficiaries[2].HICN)
+	assert.Equal("1A69B98CD32", beneficiaries[2].MBI)
+	assert.Equal("203031404A", beneficiaries[3].HICN)
+	assert.Equal("1A69B98CD33", beneficiaries[3].MBI)
+	assert.Equal("203031405C7", beneficiaries[4].HICN)
+	assert.Equal("1A69B98CD34", beneficiaries[4].MBI)
+	assert.Equal("203031406M", beneficiaries[5].HICN)
+	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
+}
+
+func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
+	metadata := cclfFileMetadata{}
+	assert := assert.New(s.T())
 
 	metadata.cclfNum = 9
+	metadata.filePath = "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	err := importCCLF8(metadata)
+	assert.NotNil(err)
+	assert.EqualError(err, "expected CCLF file number 8, but was 9")
+
+	metadata.cclfNum = 8
+	metadata.filePath = ""
 	err = importCCLF8(metadata)
 	assert.NotNil(err)
+	assert.EqualError(err, "file path must be provided")
 }
 
 func (s *CLITestSuite) TestImportCCLF9() {
@@ -334,6 +384,12 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert := assert.New(s.T())
 
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
+
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -347,6 +403,8 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Skipped 0 files.")
 
 	buf.Reset()
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
 
 	// dir has 4 files, but 2 will be ignored because of bad file names.
 	args = []string{"bcda", "import-cclf-directory", "--directory", "../shared_files/cclf_BadFileNames/"}
