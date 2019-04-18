@@ -55,6 +55,9 @@ type cclfFileValidator struct {
 }
 
 func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, error) {
+	fmt.Printf("Importing CCLF0 file %s...\n", fileMetadata.name)
+	log.Infof("Importing CCLF0 file %s...", fileMetadata.name)
+
 	if (cclfFileMetadata{}) == fileMetadata {
 		err := errors.New("File CCLF0 not found")
 		log.Error(err)
@@ -108,6 +111,9 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 		log.Error(err)
 		return nil, err
 	}
+	fmt.Printf("Imported CCLF0 file %s.\n", fileMetadata.name)
+	log.Infof("Imported CCLF0 file %s.", fileMetadata.name)
+
 	return validator, nil
 }
 
@@ -115,8 +121,10 @@ func importCCLF8(fileMetadata cclfFileMetadata) error {
 	fmt.Printf("Importing CCLF8 file %s...\n", fileMetadata.name)
 	log.Infof("Importing CCLF8 file %s...", fileMetadata.name)
 
-	if fileMetadata.filePath == "" {
-		return errors.New("file path must be provided")
+	if (cclfFileMetadata{}) == fileMetadata {
+		err := errors.New("File CCLF8 not found")
+		log.Error(err)
+		return err
 	}
 
 	if fileMetadata.cclfNum != 8 {
@@ -175,14 +183,17 @@ func importCCLF8(fileMetadata cclfFileMetadata) error {
 }
 
 func importCCLF9(fileMetadata cclfFileMetadata) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	fmt.Printf("Importing CCLF9 file %s...\n", fileMetadata.name)
+	log.Infof("Importing CCLF9 file %s...", fileMetadata.name)
 
-	if fileMetadata.filePath == "" {
-		return errors.New("file path (--file) must be provided")
+	if (cclfFileMetadata{}) == fileMetadata {
+		err := errors.New("File CCLF9 not found")
+		log.Error(err)
+		return err
 	}
+
 	if fileMetadata.cclfNum != 9 {
-		err := errors.New("invalid CCLF9 file number")
+		err := fmt.Errorf("expected CCLF file number 9, but was %d", fileMetadata.cclfNum)
 		log.Error(err)
 		return err
 	}
@@ -193,7 +204,21 @@ func importCCLF9(fileMetadata cclfFileMetadata) error {
 		return err
 	}
 
-	log.Infof("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
+	cclf9File := models.CCLFFile{
+		CCLFNum:         9,
+		Name:            fileMetadata.name,
+		ACOCMSID:        fileMetadata.acoID,
+		Timestamp:       fileMetadata.timestamp,
+		PerformanceYear: fileMetadata.perfYear,
+	}
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	err = db.Create(&cclf9File).Error
+	if err != nil {
+		return errors.Wrap(err, "could not create CCLF9 file record")
+	}
 
 	const (
 		currIDStart, currIDEnd               = 1, 12
@@ -216,10 +241,13 @@ func importCCLF9(fileMetadata cclfFileMetadata) error {
 			}
 			err = db.Create(&cclf9).Error
 			if err != nil {
-				return err
+				return errors.Wrap(err, "could not create CCLF9 record")
 			}
 		}
 	}
+	fmt.Printf("Imported CCLF9 file %s.\n", fileMetadata.name)
+	log.Infof("Imported CCLF9 file %s.", fileMetadata.name)
+
 	return nil
 }
 
