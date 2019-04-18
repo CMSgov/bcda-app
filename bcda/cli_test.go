@@ -110,22 +110,16 @@ func (s *CLITestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
 	cclf0filePath := "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
-	cclf0metadata, err := getCCLFFileMetadata(cclf0filePath)
-	cclf0metadata.filePath = cclf0filePath
-	assert.Nil(err)
+	cclf0metadata := cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 
 	cclf8filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
-	cclf8metadata, err := getCCLFFileMetadata(cclf8filePath)
-	cclf8metadata.filePath = cclf8filePath
-	assert.Nil(err)
+	cclf8metadata := cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18}
 
 	cclf9filePath := "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
-	cclf9metadata, err := getCCLFFileMetadata(cclf9filePath)
-	cclf9metadata.filePath = cclf9filePath
-	assert.Nil(err)
+	cclf9metadata := cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 9, timestamp: time.Now(), filePath: cclf9filePath, perfYear: 18}
 
 	// positive
-	_, err = importCCLF0(cclf0metadata)
+	_, err := importCCLF0(cclf0metadata)
 	assert.Nil(err)
 	err = importCCLF8(cclf8metadata)
 	assert.Nil(err)
@@ -139,9 +133,12 @@ func (s *CLITestSuite) TestImportCCLF0() {
 
 	// missing cclf8 and or 9 from cclf0
 	cclf0filePath = "../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011"
-	cclf0metadata, err = getCCLFFileMetadata(cclf0filePath)
-	cclf0metadata.filePath = cclf0filePath
-	assert.Nil(err)
+	cclf0metadata = cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
+	_, err = importCCLF0(cclf0metadata)
+	assert.NotNil(err)
+
+	cclf0filePath = "../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012"
+	cclf0metadata = cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
 }
@@ -150,19 +147,13 @@ func (s *CLITestSuite) TestValidate() {
 	assert := assert.New(s.T())
 
 	cclf0filePath := "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
-	cclf0metadata, err := getCCLFFileMetadata(cclf0filePath)
-	cclf0metadata.filePath = cclf0filePath
-	assert.Nil(err)
+	cclf0metadata := cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 
 	cclf8filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
-	cclf8metadata, err := getCCLFFileMetadata(cclf8filePath)
-	cclf8metadata.filePath = cclf8filePath
-	assert.Nil(err)
+	cclf8metadata := cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18}
 
 	cclf9filePath := "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
-	cclf9metadata, err := getCCLFFileMetadata(cclf9filePath)
-	cclf9metadata.filePath = cclf9filePath
-	assert.Nil(err)
+	cclf9metadata := cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 9, timestamp: time.Now(), filePath: cclf9filePath, perfYear: 18}
 
 	// positive
 	cclfvalidator, err := importCCLF0(cclf0metadata)
@@ -174,9 +165,7 @@ func (s *CLITestSuite) TestValidate() {
 
 	// negative
 	cclf0filePath = "../shared_files/cclf0/T.A0001.ACO.ZC0Y18.D181120.T1000011"
-	cclf0metadata, err = getCCLFFileMetadata(cclf0filePath)
-	cclf0metadata.filePath = cclf0filePath
-	assert.Nil(err)
+	cclf0metadata = cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 
 	cclfvalidator, err = importCCLF0(cclf0metadata)
 	assert.Nil(err)
@@ -265,7 +254,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	filePath := "../shared_files/cclf/"
 	err := filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
-	assert.Equal(3, len(cclfmap["A0001_2018"]))
+	assert.Equal(3, len(cclfmap["A0001_18"]))
 	assert.Equal(0, skipped)
 
 	cclfmap = make(map[string][]cclfFileMetadata)
@@ -273,7 +262,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	filePath = "../shared_files/cclf_BadFileNames/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
-	cclflist := cclfmap["A0001_2018"]
+	cclflist := cclfmap["A0001_18"]
 	assert.Equal(2, len(cclflist))
 	assert.Equal(2, skipped)
 	for _, cclf := range cclflist {
@@ -285,7 +274,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	filePath = "../shared_files/cclf0/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
-	cclflist = cclfmap["A0001_2018"]
+	cclflist = cclfmap["A0001_18"]
 	assert.Equal(3, len(cclflist))
 	assert.Equal(0, skipped)
 	for _, cclf := range cclflist {
@@ -297,7 +286,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	filePath = "../shared_files/cclf8/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
-	cclflist = cclfmap["A0001_2018"]
+	cclflist = cclfmap["A0001_18"]
 	assert.Equal(5, len(cclflist))
 	assert.Equal(0, skipped)
 	for _, cclf := range cclflist {
@@ -309,7 +298,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	filePath = "../shared_files/cclf9/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
-	cclflist = cclfmap["A0001_2018"]
+	cclflist = cclfmap["A0001_18"]
 	assert.Equal(4, len(cclflist))
 	assert.Equal(0, skipped)
 	for _, cclf := range cclflist {
@@ -321,7 +310,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	filePath = "../shared_files/cclf_All/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
-	cclflist = cclfmap["A0001_2018"]
+	cclflist = cclfmap["A0001_18"]
 	assert.Equal(12, len(cclflist))
 	assert.Equal(0, skipped)
 	var cclf0, cclf8, cclf9 []cclfFileMetadata

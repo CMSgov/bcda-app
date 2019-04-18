@@ -44,6 +44,7 @@ type cclfFileMetadata struct {
 	cclfNum   int
 	timestamp time.Time
 	filePath  string
+	perfYear  int
 }
 
 type cclfFileValidator struct {
@@ -63,8 +64,6 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 		log.Error(err)
 		return nil, err
 	}
-
-	log.Infof("File contains %s data for ACO %s at %s.\n", fileMetadata.env, fileMetadata.acoID, fileMetadata.timestamp)
 
 	const (
 		fileNumStart, fileNumEnd           = 0, 13
@@ -97,8 +96,13 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 		}
 	}
 
-	if len(validator) < 2 {
-		err := fmt.Errorf("Failed to parse CCLF8 and CCLF9 from file: %v", fileMetadata)
+	if _, ok := validator["CCLF8"]; !ok {
+		err := fmt.Errorf("Failed to parse CCLF8 from CCLF0 file: %v", fileMetadata)
+		log.Error(err)
+		return nil, err
+	}
+	if _, ok := validator["CCLF9"]; !ok {
+		err := fmt.Errorf("Failed to parse CCLF9 from CCLF0 file: %v", fileMetadata)
 		log.Error(err)
 		return nil, err
 	}
@@ -176,21 +180,26 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF8/9 filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
 	// Prefix: T = test, P = prod; A**** = ACO ID; ZC* = CCLF file number; Y** = performance year
-	filenameRegexp := regexp.MustCompile(`(T|P)\.(A\d{4})\.ACO\.ZC(0|8|9)Y\d{2}\.(D\d{6}\.T\d{6})\d`)
+	filenameRegexp := regexp.MustCompile(`(T|P)\.(A\d{4})\.ACO\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 5 {
 		return metadata, fmt.Errorf("invalid filename for file: %s", filePath)
 	}
 
-	filenameDate := filenameMatches[4]
-	t, err := time.Parse("D060102.T150405", filenameDate)
-	if err != nil || t.IsZero() {
-		return metadata, fmt.Errorf("failed to parse date '%s' from file: %s", filenameDate, filePath)
-	}
-
 	cclfNum, err := strconv.Atoi(filenameMatches[3])
 	if err != nil {
 		return metadata, err
+	}
+
+	perfYear, err := strconv.Atoi(filenameMatches[4])
+	if err != nil {
+		return metadata, err
+	}
+
+	filenameDate := filenameMatches[5]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil || t.IsZero() {
+		return metadata, fmt.Errorf("failed to parse date '%s' from file: %s", filenameDate, filePath)
 	}
 
 	if filenameMatches[1] == "T" {
@@ -202,6 +211,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	metadata.cclfNum = cclfNum
 	metadata.acoID = filenameMatches[2]
 	metadata.timestamp = t
+	metadata.perfYear = perfYear
 
 	return metadata, nil
 }
@@ -232,12 +242,12 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 
 		cclfvalidator, err := importCCLF0(cclf0)
 		if err != nil {
-			log.Errorf("Failed to import CCLF0 file: %v, Skipping CCLF8 file:%v and CCLF9 file:%v ", cclf0, cclf8, cclf9)
+			log.Errorf("Failed to import CCLF0 file: %v, Skipping CCLF8 file: %v and CCLF9 file: %v ", cclf0, cclf8, cclf9)
 			failure++
 			skipped += 2
 			continue
 		} else {
-			log.Info(fmt.Sprintf("Successfully imported CCLF0 file: %v", cclf0))
+			log.Infof("Successfully imported CCLF0 file: %v", cclf0)
 			success++
 		}
 		err = validate(cclf8, cclfvalidator)
@@ -249,7 +259,7 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 				log.Errorf("Failed to import CCLF8 file: %v ", cclf8)
 				failure++
 			} else {
-				log.Info(fmt.Sprintf("Successfully imported CCLF8 file: %v", cclf8))
+				log.Infof("Successfully imported CCLF8 file: %v", cclf8)
 				success++
 			}
 		}
@@ -295,7 +305,7 @@ func sortCCLFFiles(cclfmap *map[string][]cclfFileMetadata, skipped *int) filepat
 		}
 
 		// if we get multiple sets of files relating to the same aco for attribution purposes, concat the year
-		key := fmt.Sprintf(metadata.acoID+"_%d", metadata.timestamp.Year())
+		key := fmt.Sprintf(metadata.acoID+"_%d", metadata.perfYear)
 		if (*cclfmap)[key] != nil {
 			(*cclfmap)[key] = append((*cclfmap)[key], metadata)
 		} else {
