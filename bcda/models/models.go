@@ -35,6 +35,7 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
+		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
 	)
@@ -183,6 +184,16 @@ type ACOBeneficiary struct {
 	BeneficiaryID uint
 	Beneficiary   *Beneficiary `gorm:"foreignkey:BeneficiaryID;association_foreignkey:ID"`
 	// Join model needed for additional fields later, e.g., AttributionDate
+}
+
+type CCLFBeneficiaryXref struct {
+	gorm.Model
+	FileID        uint   `gorm:"not null"`
+	XrefIndicator string `json:"xref_indicator"`
+	CurrentNum    string `json:"current_number"`
+	PrevNum       string `json:"previous_number"`
+	PrevsEfctDt   string `json:"effective_date"`
+	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
 func (*ACOBeneficiary) TableName() string {
