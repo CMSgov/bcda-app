@@ -59,7 +59,7 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 	log.Infof("Importing CCLF0 file %s...", fileMetadata.name)
 
 	if (cclfFileMetadata{}) == fileMetadata {
-		err := errors.New("File CCLF0 not found")
+		err := errors.New("file CCLF0 not found")
 		log.Error(err)
 		return nil, err
 	}
@@ -102,12 +102,12 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 	}
 
 	if _, ok := validator["CCLF8"]; !ok {
-		err := fmt.Errorf("Failed to parse CCLF8 from CCLF0 file: %v", fileMetadata)
+		err := fmt.Errorf("failed to parse CCLF8 from CCLF0 file: %v", fileMetadata)
 		log.Error(err)
 		return nil, err
 	}
 	if _, ok := validator["CCLF9"]; !ok {
-		err := fmt.Errorf("Failed to parse CCLF9 from CCLF0 file: %v", fileMetadata)
+		err := fmt.Errorf("failed to parse CCLF9 from CCLF0 file: %v", fileMetadata)
 		log.Error(err)
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func importCCLF8(fileMetadata cclfFileMetadata) error {
 	log.Infof("Importing CCLF8 file %s...", fileMetadata.name)
 
 	if (cclfFileMetadata{}) == fileMetadata {
-		err := errors.New("File CCLF8 not found")
+		err := errors.New("file CCLF8 not found")
 		log.Error(err)
 		return err
 	}
@@ -187,7 +187,7 @@ func importCCLF9(fileMetadata cclfFileMetadata) error {
 	log.Infof("Importing CCLF9 file %s...", fileMetadata.name)
 
 	if (cclfFileMetadata{}) == fileMetadata {
-		err := errors.New("File CCLF9 not found")
+		err := errors.New("file CCLF9 not found")
 		log.Error(err)
 		return err
 	}
@@ -301,7 +301,7 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	}
 
 	if len(cclfmap) == 0 {
-		return 0, 0, 0, errors.New("Failed to find any CCLF files in directory")
+		return 0, 0, 0, errors.New("failed to find any CCLF files in directory")
 	}
 
 	for _, cclflist := range cclfmap {
@@ -318,7 +318,7 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 
 		cclfvalidator, err := importCCLF0(cclf0)
 		if err != nil {
-			log.Errorf("Failed to import CCLF0 file: %v, Skipping CCLF8 file: %v and CCLF9 file: %v ", cclf0, cclf8, cclf9)
+			log.Errorf("failed to import CCLF0 file: %v, Skipping CCLF8 file: %v and CCLF9 file: %v ", cclf0, cclf8, cclf9)
 			failure++
 			skipped += 2
 			continue
@@ -328,11 +328,11 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}
 		err = validate(cclf8, cclfvalidator)
 		if err != nil {
-			log.Errorf("Failed to validate CCLF8 file: %v", cclf8)
+			log.Errorf("failed to validate CCLF8 file: %v", cclf8)
 			failure++
 		} else {
 			if err = importCCLF8(cclf8); err != nil {
-				log.Errorf("Failed to import CCLF8 file: %v ", cclf8)
+				log.Errorf("failed to import CCLF8 file: %v ", cclf8)
 				failure++
 			} else {
 				log.Infof("Successfully imported CCLF8 file: %v", cclf8)
@@ -341,11 +341,11 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}
 		err = validate(cclf9, cclfvalidator)
 		if err != nil {
-			log.Errorf("Failed to validate CCLF9 file: %v", cclf9)
+			log.Errorf("failed to validate CCLF9 file: %v", cclf9)
 			failure++
 		} else {
 			if err = importCCLF9(cclf9); err != nil {
-				log.Errorf("Failed to import CCLF9 file: %v ", cclf9)
+				log.Errorf("failed to import CCLF9 file: %v ", cclf9)
 				failure++
 			} else {
 				log.Infof(fmt.Sprintf("Successfully imported CCLF9 file: %v", cclf9))
@@ -393,7 +393,7 @@ func sortCCLFFiles(cclfmap *map[string][]cclfFileMetadata, skipped *int) filepat
 
 func validate(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
 	if (cclfFileMetadata{}) == fileMetadata {
-		err := errors.New("File not found")
+		err := errors.New("file not found")
 		log.Error(err)
 		return err
 	}
@@ -413,7 +413,7 @@ func validate(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFi
 	} else if fileMetadata.cclfNum == 9 {
 		key = "CCLF9"
 	} else {
-		err := fmt.Errorf("Unknown file type when validating file: %v,", fileMetadata)
+		err := fmt.Errorf("unknown file type when validating file: %v,", fileMetadata)
 		log.Error(err)
 		return err
 	}
@@ -428,12 +428,12 @@ func validate(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFi
 
 			// currently only errors if there are more records than we expect.
 			if count > validator.totalRecordCount {
-				err := fmt.Errorf("Maximum record count reached for file %s, Expected record count: %d, Actual record count: %d ", key, validator.totalRecordCount, count)
+				err := fmt.Errorf("maximum record count reached for file %s, Expected record count: %d, Actual record count: %d ", key, validator.totalRecordCount, count)
 				log.Error(err)
 				return err
 			}
 		} else {
-			err := fmt.Errorf("Incorrect record length for file %s, Expected record length: %d, Actual record length: %d", key, validator.maxRecordLength, bytelength)
+			err := fmt.Errorf("incorrect record length for file %s, Expected record length: %d, Actual record length: %d", key, validator.maxRecordLength, bytelength)
 			log.Error(err)
 			return err
 		}

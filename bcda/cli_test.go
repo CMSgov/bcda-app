@@ -218,7 +218,7 @@ func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
 	metadata = cclfFileMetadata{}
 	err = importCCLF8(metadata)
 	assert.NotNil(err)
-	assert.EqualError(err, "File CCLF8 not found")
+	assert.EqualError(err, "file CCLF8 not found")
 }
 
 func (s *CLITestSuite) TestImportCCLF9() {
@@ -227,6 +227,7 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	defer database.Close(db)
 
 	db.Unscoped().Delete(&models.CCLF9{})
+	db.Unscoped().Delete(&models.CCLFFile{})
 
 	acoID := "A0002"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -274,7 +275,7 @@ func (s *CLITestSuite) TestImportCCLF9_InvalidMetadata() {
 	metadata = cclfFileMetadata{}
 	err = importCCLF9(metadata)
 	assert.NotNil(err)
-	assert.EqualError(err, "File CCLF9 not found")
+	assert.EqualError(err, "file CCLF9 not found")
 }
 
 func (s *CLITestSuite) TestGetCCLFFileMetadata() {
