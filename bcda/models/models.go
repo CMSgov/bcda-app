@@ -278,24 +278,24 @@ type Group struct {
 }
 
 type GroupData struct {
-	Name      string
-	Users     []string
-	Scopes    []string
-	Resources []Resource
-	Systems   []System
+	Name      string     `json:"name"`
+	Users     []string   `json:"users"`
+	Scopes    []string   `json:"scopes"`
+	Resources []Resource `json:"resources"`
+	Systems   []System   `json:"systems"`
 }
 
 type Resource struct {
-	ID     string
-	Name   string
-	Scopes []string
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
 }
 
 type System struct {
-	ClientID   string
-	SoftwareID string
-	ClientName string
-	ClientURI  string
+	ClientID   string `json:"client_id"`
+	SoftwareID string `json:"software_id"`
+	ClientName string `json:"client_name"`
+	ClientURI  string `json:"client_uri"`
 }
 
 type CCLFFile struct {
