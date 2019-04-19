@@ -51,7 +51,7 @@ Use your credentials to get an access token.
 - In the Basic authorization section
     - Enter your `Client ID` in the `Username` box
     - Enter your `Client Secret` in the `Password` box
-    - Click `Close`
+    - Click `Authorize`
 
 <img src="assets/img/decrypt_walkthrough_02.png" alt="Available authorizations" width="350" />
 
@@ -63,7 +63,7 @@ Use your credentials to get an access token.
 
 <img src="assets/img/decrypt_walkthrough_04.png" alt="Getting a token" width="600" />
 
-Present this token to get full access to the API.
+If you're successful, your token will appear as pictured in the `response body`.  You can now present this token to get full access to the API.
 
 - Copy your new token
 - Click the `Authorize` button

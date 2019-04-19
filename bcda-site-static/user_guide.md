@@ -48,18 +48,19 @@ The Beneficiary Claims Data API is currently accessible as an open sandbox envir
 
 To get a token that can be used with protected endpoints, `POST` the following credentials using [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication) to `/auth/token`:
 
-#### Client ID: 09869a7f-46ce-4908-a914-6129d080a2ae
-
-#### Client Secret: 64916fe96f71adc79c5735e49f4e72f18ff941d0dd62cf43ee1ae0857e204f173ba10e4250c12c48
+* Client ID: `09869a7f-46ce-4908-a914-6129d080a2ae`
+* Client Secret: `64916fe96f71adc79c5735e49f4e72f18ff941d0dd62cf43ee1ae0857e204f173ba10e4250c12c48`
 
 ##### Request
 `POST /auth/token`
 
 ###### Headers
-* `Accept: application/fhir+json`
+* `Accept: application/json`
 * `Authorization: Basic MDk4NjlhN2YtNDZjZS00OTA4LWE5MTQtNjEyOWQwODBhMmFlOjY0OTE2ZmU5NmY3MWFkYzc5YzU3MzVlNDlmNGU3MmYxOGZmOTQxZDBkZDYyY2Y0M2VlMWFlMDg1N2UyMDRmMTczYmExMGU0MjUwYzEyYzQ4`
 
-The authorization header includes the Client ID and Client Secret separated by a ":" and [base-64 encoded](https://en.wikipedia.org/wiki/Basic_access_authentication).
+The authorization header includes:
+* The word "Basic" followed by a space
+* The Client ID and Client Secret, separated by a ":", and encoded with [base-64](https://en.wikipedia.org/wiki/Basic_access_authentication).
 
 ###### cURL command
 ``` sh
@@ -69,7 +70,7 @@ ZDBkZDYyY2Y0M2VlMWFlMDg1N2UyMDRmMTczYmExMGU0MjUwYzEyYzQ4"
 ```
 
 ##### Response
-You will receive a `200 OK` response with an access token if your credentials were accepted.
+You will receive a `200 OK` response and an access token if your credentials were accepted.
 
 
 ## Encryption
