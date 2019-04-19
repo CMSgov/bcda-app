@@ -36,11 +36,8 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
-<<<<<<< HEAD
 		&Group{},
-=======
 		&CCLFBeneficiaryXref{},
->>>>>>> master
 		&CCLFFile{},
 		&CCLFBeneficiary{},
 	)
