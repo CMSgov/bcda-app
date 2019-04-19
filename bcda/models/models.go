@@ -35,7 +35,7 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
-		&CCLF9{},
+		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
 	)
@@ -186,8 +186,9 @@ type ACOBeneficiary struct {
 	// Join model needed for additional fields later, e.g., AttributionDate
 }
 
-type CCLF9 struct {
+type CCLFBeneficiaryXref struct {
 	gorm.Model
+	FileID        uint   `gorm:"not null"`
 	XrefIndicator string `json:"xref_indicator"`
 	CurrentNum    string `json:"current_number"`
 	PrevNum       string `json:"previous_number"`
@@ -197,10 +198,6 @@ type CCLF9 struct {
 
 func (*ACOBeneficiary) TableName() string {
 	return "acos_beneficiaries"
-}
-
-func (*CCLF9) TableName() string {
-	return "cclf9"
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {

@@ -231,8 +231,8 @@ func importCCLF9(fileMetadata cclfFileMetadata) error {
 	for sc.Scan() {
 		b := sc.Bytes()
 		if len(bytes.TrimSpace(b)) > 0 {
-
-			cclf9 := models.CCLF9{
+			cclf9 := models.CCLFBeneficiaryXref{
+				FileID:        cclf9File.ID,
 				XrefIndicator: string(b[0:1]),
 				CurrentNum:    string(b[currIDStart:currIDEnd]),
 				PrevNum:       string(b[prevIDStart:prevIDEnd]),
@@ -241,7 +241,7 @@ func importCCLF9(fileMetadata cclfFileMetadata) error {
 			}
 			err = db.Create(&cclf9).Error
 			if err != nil {
-				return errors.Wrap(err, "could not create CCLF9 record")
+				return errors.Wrap(err, "could not create CCLF9 cross reference record")
 			}
 		}
 	}

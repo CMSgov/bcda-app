@@ -203,6 +203,9 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	assert.Equal("1A69B98CD34", beneficiaries[4].MBI)
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
+
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
 }
 
 func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
@@ -226,7 +229,7 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLF9{})
+	db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
 	db.Unscoped().Delete(&models.CCLFFile{})
 
 	acoID := "A0002"
@@ -252,7 +255,7 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	assert.Equal(fileTime, file.Timestamp)
 	assert.Equal(18, file.PerformanceYear)
 
-	var savedCCLF9 models.CCLF9
+	var savedCCLF9 models.CCLFBeneficiaryXref
 	db.Find(&savedCCLF9, "id = ?", "6")
 	assert.NotNil(savedCCLF9)
 	assert.Equal("M", savedCCLF9.XrefIndicator)
@@ -260,6 +263,9 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	assert.Equal("1A69B98CD34", savedCCLF9.PrevNum)
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
+
+	db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
+	db.Unscoped().Delete(&models.CCLFFile{})
 }
 
 func (s *CLITestSuite) TestImportCCLF9_InvalidMetadata() {
