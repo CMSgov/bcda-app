@@ -79,7 +79,7 @@ The `KeyMap` object within our job status response has keys, values: `"<filename
 
 When you receive the final job status response, you should save the keys associated with the files so that they are available to you when you are ready to decrypt the file(s). You should also save the `output.url` and the `error.url`.
 
-When you are ready to decrypt the files, you make a request to `output.url` for the data file, and to `error.url` for the error file. These are protected endpoints, so you must use your credentials to obtain and use a token.
+When you are ready to decrypt the files, you make a request to `output.url` for the data file, and to `error.url` for the error file. These are protected endpoints, so you must obtain and use a token.  The process for obtaining a token is described [here](./decryption_walkthrough.html#getting-a-token).
 
 To decrypt the files, you must use the same algorithm (AES-GCM), and follow these steps:
 

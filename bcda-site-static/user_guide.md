@@ -48,19 +48,35 @@ The Beneficiary Claims Data API is currently accessible as an open sandbox envir
 
 To get a token that can be used with protected endpoints, `POST` the following credentials using [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication) to `/auth/token`:
 
-* Client ID: `09869a7f-46ce-4908-a914-6129d080a2ae`
-* Client Secret: `64916fe96f71adc79c5735e49f4e72f18ff941d0dd62cf43ee1ae0857e204f173ba10e4250c12c48`
+Client ID: 
+{%- capture client_id -%}
+09869a7f-46ce-4908-a914-6129d080a2ae
+{%- endcapture -%}
+
+{% include copy_snippet.md code=client_id %}
+
+Client Secret: 
+{%- capture client_secret -%}
+64916fe96f71adc79c5735e49f4e72f18ff941d0dd62cf43ee1ae0857e204f173ba10e4250c12c48
+{%- endcapture -%}
+
+{% include copy_snippet.md code=client_secret %}
+
+Encoded Basic authentication:
+{%- capture auth_header -%}
+Basic MDk4NjlhN2YtNDZjZS00OTA4LWE5MTQtNjEyOWQwODBhMmFlOjY0OTE2ZmU5NmY3MWFkYzc5YzU3MzVlNDlmNGU3MmYxOGZmOTQxZDBkZDYyY2Y0M2VlMWFlMDg1N2UyMDRmMTczYmExMGU0MjUwYzEyYzQ4
+{%- endcapture -%}
+
+{% include copy_snippet.md code=auth_header %}
 
 ##### Request
 `POST /auth/token`
 
 ###### Headers
 * `Accept: application/json`
-* `Authorization: Basic MDk4NjlhN2YtNDZjZS00OTA4LWE5MTQtNjEyOWQwODBhMmFlOjY0OTE2ZmU5NmY3MWFkYzc5YzU3MzVlNDlmNGU3MmYxOGZmOTQxZDBkZDYyY2Y0M2VlMWFlMDg1N2UyMDRmMTczYmExMGU0MjUwYzEyYzQ4`
+* `Authorization: <Encoded Basic authentication>`
 
-The authorization header includes:
-* The word "Basic" followed by a space
-* The Client ID and Client Secret, separated by a ":", and encoded with [base-64](https://en.wikipedia.org/wiki/Basic_access_authentication).
+
 
 ###### cURL command
 ``` sh

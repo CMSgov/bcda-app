@@ -45,7 +45,7 @@ You will be interacting with the [BCDA API](./user_guide.html) in your browser u
 
 ## Getting a token
 
-Use your credentials to get an access token.
+Use your credentials to get an access token. If you need credentials, use [these](./user_guide.html#authentication-and-authorization).
 
 - Click the `Authorize` button
 - In the Basic authorization section
@@ -63,14 +63,14 @@ Use your credentials to get an access token.
 
 <img src="assets/img/decrypt_walkthrough_04.png" alt="Getting a token" width="600" />
 
-If you're successful, your token will appear as pictured in the `response body`.  You can now present this token to get full access to the API.
+If you're successful, your token will appear as pictured in the `response body`.  You can now use this token to get full access to the API.
 
-- Copy your new token
+- Copy your new token to your clipboard
 - Click the `Authorize` button
 - In the `bearer_token` box:
-    - Type "bearer"
+    - Type "Bearer"
     - Add a space
-    - Paste your `token`
+    - Paste your `token` (Ctrl + V)
 
 <img src="assets/img/decrypt_walkthrough_05.png" alt="Authorization dialog" width="350" />
 
@@ -104,6 +104,7 @@ If you'd like to repeat this from the command line or implement this API call in
 <img src="assets/img/decrypt_walkthrough_10.png" alt="Job status response" width="600" />
 
 1. Depending on the size of the file, the job may take some time.  If the job is not yet complete, status information will be shown.  Simply wait a few seconds and click execute again until the job completes. You will then get a result for a completed job as shown below.  You can download the file from the URL provided.
+1. Your token will expire after a few minutes, and you may need to [get another from `/auth/token`](./decryption_walkthrough.html#getting-a-token) if it expires before you are finished interacting with the API.
 1. Take special note of the new `KeyMap` section of the response.  To decrypt the file, you will need the filename (the first part of the keymap) and the [symmetric key](./encryption.html#how-we-encrypt) (the second part of the keymap), as shown above.  There are no spaces in either one.
 1. Sometimes one or more data points are unavailable.  When this happens, the `error` section will contain a separate filename and symmetric key with a list of the patients involved.
 
@@ -161,7 +162,7 @@ Take a look at the result.  If you do not see unencrypted [NDJSON](http://ndjson
 - Has your token expired?  Use your credentials to get a new token from `/auth/token`.
 - Is it possible you clicked on `Logout`?  Is the lock on the `Authorize` icon not closed?  Click it again, and after pasting your token in the `bearer_token` box, make sure to click the `Authorize` button.
 - Are there any spaces or newlines in your token?  Remove them and paste it as a single line.
-- Do you get an HTTP 504 `GATEWAY_TIMEOUT` error?  Make sure to add the word "bearer" (and a space) before the token, as demonstrated in the [exploring the API](#exploring-the-api-with-swagger) section.
+- Do you get an HTTP 504 `GATEWAY_TIMEOUT` error?  Make sure to add the word "Bearer" (and a space) before the token, as demonstrated in the [exploring the API](#exploring-the-api-with-swagger) section.
 
 ### Python not installed
 - Is this your first time running Python on your system?  You might be interested in [this Windows installation guide](https://www.howtogeek.com/197947/how-to-install-python-on-windows/){:target="_blank"}
