@@ -32,7 +32,7 @@ To complete this decryption example, you will need:
 - You can write your own decryption code later based on the [documentation](./user_guide.html). This example uses the [python example decryption code](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/decrypt.py){:target="_blank"}, which requires:
     - [Python](https://www.python.org/downloads/){:target="_blank"} installed
     - [decrypt.py](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/decrypt.py){:target="_blank"} and [requirements.txt](https://github.com/CMSgov/bcda-app/blob/master/encryption_utils/Python/requirements.txt){:target="_blank"} downloaded to the same directory
-    - Run `pip install requirements.txt` from that same directory to download any required libraries
+    - Run `pip install -r requirements.txt` from that same directory to download any required libraries
 
 
 ## Exploring the API with Swagger
@@ -157,7 +157,7 @@ Take a look at the result.  If you do not see unencrypted [NDJSON](http://ndjson
 ### Authentication problems in Swagger
 - Did you use the credentials (Client ID and Client Secret) from the [user guide](./user_guide.html) with Basic authorization?
 - After entering your credentials, did you get an access token from `/auth/token`?
-- Did you put your access token in the `bearer_token` section of the authorization dialog.
+- Did you put your access token in the `bearer_token` section of the authorization dialog?
 - Has your token expired?  Use your credentials to get a new token from `/auth/token`.
 - Is it possible you clicked on `Logout`?  Is the lock on the `Authorize` icon not closed?  Click it again, and after pasting your token in the `bearer_token` box, make sure to click the `Authorize` button.
 - Are there any spaces or newlines in your token?  Remove them and paste it as a single line.
