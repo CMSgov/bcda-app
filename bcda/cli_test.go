@@ -181,7 +181,7 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
-	db.First(&file, "aco_cms_id = ?", acoID)
+	db.First(&file, "name = ?", metadata.name)
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
@@ -245,7 +245,7 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
-	db.First(&file, "aco_cms_id = ?", acoID)
+	db.First(&file, "name = ?", cclf9metadata.name)
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
