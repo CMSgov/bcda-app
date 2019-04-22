@@ -79,7 +79,7 @@ If you're successful, your token will appear as pictured in the `response body`.
 <img src="assets/img/decrypt_walkthrough_06.png" alt="API menu" width="600" />
 
 ## Requesting a file
-There are two types of encrypted files that can be downloaded: Patient and Explanation of Benefit (EoB). The example below id is for downloading the EoB.
+There are three types of encrypted files that can be downloaded: Coverage, Explanation of Benefit (EoB), and Patient. The example below id is for downloading the EoB.
 
 - Click the `/api/v1/ExplanationOfBenefit/$export` link
 
