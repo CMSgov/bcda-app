@@ -280,13 +280,13 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 }
 
 func (s *ModelsTestSuite) TestGroupStructs() {
-	id := "A12345"
+	groupID := "A12345"
 	name := "ACO Corp Systems"
 	users := []string{"00uiqolo7fEFSfif70h7", "l0vckYyfyow4TZ0zOKek", "HqtEi2khroEZkH4sdIzj"}
 	scopes := []string{"user-admin", "system-admin"}
 	resources := []Resource{
-		Resource{ID: "xxx", Name: "BCDA API", Scopes: []string{"bcda-api"}},
-		Resource{ID: "eft", Name: "EFT CCLF", Scopes: []string{"eft-app:download", "eft-data:read"}},
+		Resource{GroupID: "xxx", Name: "BCDA API", Scopes: []string{"bcda-api"}},
+		Resource{GroupID: "eft", Name: "EFT CCLF", Scopes: []string{"eft-app:download", "eft-data:read"}},
 	}
 	systems := []System{
 		System{ClientID: "4tuhiOIFIwriIOH3zn", SoftwareID: "4NRB1-0XZABZI9E6-5SM3R", ClientName: "ACO System A", ClientURI: "https://www.acocorpsite.com"},
@@ -296,7 +296,7 @@ func (s *ModelsTestSuite) TestGroupStructs() {
 	rawGroupData, err := json.Marshal(groupData)
 	assert.Nil(s.T(), err)
 
-	group := Group{ID: id, Data: postgres.Jsonb{RawMessage: rawGroupData}}
+	group := Group{GroupID: groupID, Data: postgres.Jsonb{RawMessage: rawGroupData}}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	err = db.Save(&group).Error
