@@ -13,7 +13,7 @@ Until you click logout your token will be presented with every request made.  To
 
 
      Version: 1.0.0
-     License: https://github.com/CMSgov/bcda-app/blob/master/LICENSE.md
+     License: Public Domain https://github.com/CMSgov/bcda-app/blob/master/LICENSE.md
      Contact: bcapi@cms.hhs.gov
 
      Produces:
