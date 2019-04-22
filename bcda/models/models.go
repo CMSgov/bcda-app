@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -35,6 +36,7 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
+		&Group{},
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
@@ -279,6 +281,33 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 		"', b.id from beneficiaries b join acos_beneficiaries ab on b.id = ab.beneficiary_id " +
 		"where ab.aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
+}
+
+type Group struct {
+	gorm.Model
+	GroupID string         `json:"group_id"`
+	Data    postgres.Jsonb `json:"data"`
+}
+
+type GroupData struct {
+	Name      string     `json:"name"`
+	Users     []string   `json:"users"`
+	Scopes    []string   `json:"scopes"`
+	Resources []Resource `json:"resources"`
+	Systems   []System   `json:"systems"`
+}
+
+type Resource struct {
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
+}
+
+type System struct {
+	ClientID   string `json:"client_id"`
+	SoftwareID string `json:"software_id"`
+	ClientName string `json:"client_name"`
+	ClientURI  string `json:"client_uri"`
 }
 
 type CCLFFile struct {
