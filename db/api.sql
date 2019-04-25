@@ -40,3 +40,19 @@ create table acos_beneficiaries (
   aco_id uuid not null,
   beneficiary_id int not null
 );
+
+create table cclf_files (
+    id serial primary key,
+    cclf_num integer not null,
+    name varchar not null,
+    aco_cms_id char(5),
+    "timestamp" timestamp with time zone not null,
+    performance_year integer not null
+);
+
+create table cclf_beneficiaries (
+    id serial primary key,
+    file_id integer not null,
+    hicn varchar(11) not null,
+    mbi char(11) not null
+);
