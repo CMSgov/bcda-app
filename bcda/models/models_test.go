@@ -303,6 +303,14 @@ func (s *ModelsTestSuite) TestGroupAndSystemAndEncryptionKey() {
 	db.Preload("Systems").First(&group)
 	assert.NotEmpty(s.T(), group.Systems)
 
+	systemID := group.Systems[0].ID
+	encryptionKey := EncryptionKey{Body: "a public key", SystemID: systemID}
+	err = db.Save(&encryptionKey).Error
+	assert.Nil(s.T(), err)
+	system = System{}
+	db.Preload("EncryptionKeys").First(&system)
+	assert.NotEmpty(s.T(), system.EncryptionKeys)
+
 	jsonData := group.Data
 	byteData, err := jsonData.MarshalJSON()
 	assert.Nil(s.T(), err)

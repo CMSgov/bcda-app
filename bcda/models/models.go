@@ -51,6 +51,8 @@ func InitializeGormModels() *gorm.DB {
 
 	db.Model(&System{}).AddForeignKey("group_id", "groups(group_id)", "RESTRICT", "RESTRICT")
 
+	db.Model(&EncryptionKey{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")
+
 	return db
 }
 
@@ -309,11 +311,12 @@ type Resource struct {
 
 type System struct {
 	gorm.Model
-	GroupID    string `json:"group_id"`
-	ClientID   string `json:"client_id"`
-	SoftwareID string `json:"software_id"`
-	ClientName string `json:"client_name"`
-	ClientURI  string `json:"client_uri"`
+	GroupID        string          `json:"group_id"`
+	ClientID       string          `json:"client_id"`
+	SoftwareID     string          `json:"software_id"`
+	ClientName     string          `json:"client_name"`
+	ClientURI      string          `json:"client_uri"`
+	EncryptionKeys []EncryptionKey `gorm:"foreignkey:SystemID" json:"encryption_keys"`
 }
 
 type CCLFFile struct {
