@@ -40,6 +40,7 @@ func InitializeGormModels() *gorm.DB {
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
+		&EncryptionKey{},
 	)
 
 	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
@@ -339,4 +340,11 @@ type jobEnqueueArgs struct {
 	ResourceType   string
 	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 	Encrypt bool
+}
+
+type EncryptionKey struct {
+	gorm.Model
+	Body    string    `json:"body"`
+	ACO     ACO       `gorm:"foreignkey:ACOUUID"`
+	ACOUUID uuid.UUID `json:"aco_uuid"`
 }
