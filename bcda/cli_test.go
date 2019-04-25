@@ -215,16 +215,10 @@ func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
 	metadata := cclfFileMetadata{}
 	assert := assert.New(s.T())
 
-	metadata.cclfNum = 9
-	metadata.filePath = "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	metadata = cclfFileMetadata{}
 	err := importCCLF8(metadata)
 	assert.NotNil(err)
-	assert.EqualError(err, "expected CCLF file number 8, but was 9")
-
-	metadata = cclfFileMetadata{}
-	err = importCCLF8(metadata)
-	assert.NotNil(err)
-	assert.EqualError(err, "file CCLF8 not found")
+	assert.EqualError(err, "CCLF file not found")
 }
 
 func (s *CLITestSuite) TestImportCCLF9() {
@@ -275,16 +269,10 @@ func (s *CLITestSuite) TestImportCCLF9_InvalidMetadata() {
 	metadata := cclfFileMetadata{}
 	assert := assert.New(s.T())
 
-	metadata.cclfNum = 8
-	metadata.filePath = "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
+	metadata = cclfFileMetadata{}
 	err := importCCLF9(metadata)
 	assert.NotNil(err)
-	assert.EqualError(err, "expected CCLF file number 9, but was 8")
-
-	metadata = cclfFileMetadata{}
-	err = importCCLF9(metadata)
-	assert.NotNil(err)
-	assert.EqualError(err, "file CCLF9 not found")
+	assert.EqualError(err, "CCLF file not found")
 }
 
 func (s *CLITestSuite) TestGetCCLFFileMetadata() {

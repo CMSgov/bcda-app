@@ -191,7 +191,7 @@ func importCCLF(fileMetadata cclfFileMetadata, importFunc func(uint, []byte, *go
 	log.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata.name)
 
 	if (cclfFileMetadata{}) == fileMetadata {
-		err := fmt.Errorf("file CCLF%d not found", fileMetadata.cclfNum)
+		err := errors.New("CCLF file not found")
 		log.Error(err)
 		return err
 	}
