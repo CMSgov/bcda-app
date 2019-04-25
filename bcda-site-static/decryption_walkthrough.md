@@ -45,7 +45,7 @@ You will be interacting with the [BCDA API](./user_guide.html) in your browser u
 
 ## Getting a token
 
-[Use your credentials to get an access token](./user_guide.html#authentication-and-authorization){:target="_blank"}.
+[Use your credentials from the previous step](./user_guide.html#authentication-and-authorization){:target="_blank"} to get an access token in this step.
 
 - Click the `Authorize` button
 - In the Basic authorization section
