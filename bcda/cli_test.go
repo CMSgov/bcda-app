@@ -179,7 +179,9 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	}
 
 	err := importCCLF8(metadata)
-	assert.Nil(err)
+	if err != nil {
+		s.FailNow("importCCLF8() error: %s", err.Error())
+	}
 
 	file := models.CCLFFile{}
 	db.First(&file, "name = ?", metadata.name)
