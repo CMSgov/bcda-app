@@ -49,6 +49,8 @@ func InitializeGormModels() *gorm.DB {
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
 
+	db.Model(&System{}).AddForeignKey("group_id", "groups(group_id)", "RESTRICT", "RESTRICT")
+
 	return db
 }
 
@@ -287,8 +289,8 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 
 type Group struct {
 	gorm.Model
-	GroupID string         `json:"group_id"`
-	Systems []System       `gorm:"foreignkey:GroupID" json:"systems"`
+	GroupID string         `gorm:"unique;not null" json:"group_id"`
+	Systems []System       `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"systems"`
 	Data    postgres.Jsonb `json:"data"`
 }
 
@@ -347,7 +349,6 @@ type jobEnqueueArgs struct {
 
 type EncryptionKey struct {
 	gorm.Model
-	Body    string    `json:"body"`
-	ACO     ACO       `gorm:"foreignkey:ACOUUID"`
-	ACOUUID uuid.UUID `json:"aco_uuid"`
+	Body     string `json:"body"`
+	SystemID uint   `json:"system_id"`
 }

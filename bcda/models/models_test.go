@@ -279,7 +279,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 
 }
 
-func (s *ModelsTestSuite) TestGroupAndSystems() {
+func (s *ModelsTestSuite) TestGroupAndSystemAndEncryptionKey() {
 	groupID := "A12345"
 	name := "ACO Corp Systems"
 	users := []string{"00uiqolo7fEFSfif70h7", "l0vckYyfyow4TZ0zOKek", "HqtEi2khroEZkH4sdIzj"}
@@ -297,9 +297,9 @@ func (s *ModelsTestSuite) TestGroupAndSystems() {
 	group := Group{GroupID: groupID, Data: postgres.Jsonb{RawMessage: rawGroupData}}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	err = db.Save(&system).Error
-	assert.Nil(s.T(), err)
 	err = db.Save(&group).Error
+	assert.Nil(s.T(), err)
+	err = db.Save(&system).Error
 	assert.Nil(s.T(), err)
 	group = Group{}
 	db.First(&group)
