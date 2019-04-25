@@ -40,6 +40,7 @@ func InitializeGormModels() *gorm.DB {
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
+		&System{},
 		&EncryptionKey{},
 	)
 
@@ -287,6 +288,7 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 type Group struct {
 	gorm.Model
 	GroupID string         `json:"group_id"`
+	Systems []System       `gorm:"foreignkey:GroupID" json:"systems"`
 	Data    postgres.Jsonb `json:"data"`
 }
 
@@ -295,7 +297,6 @@ type GroupData struct {
 	Users     []string   `json:"users"`
 	Scopes    []string   `json:"scopes"`
 	Resources []Resource `json:"resources"`
-	Systems   []System   `json:"systems"`
 }
 
 type Resource struct {
@@ -305,6 +306,8 @@ type Resource struct {
 }
 
 type System struct {
+	gorm.Model
+	GroupID    string `json:"group_id"`
 	ClientID   string `json:"client_id"`
 	SoftwareID string `json:"software_id"`
 	ClientName string `json:"client_name"`
