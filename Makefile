@@ -54,6 +54,7 @@ load-fixtures:
 	sleep 5
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_beneficiaries.sql
+	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_cclf_files_beneficiaries.sql
 
 docker-build:
 	docker-compose build --force-rm

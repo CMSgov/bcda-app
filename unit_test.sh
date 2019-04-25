@@ -20,6 +20,7 @@ usql $DB_HOST_URL -c 'create database bcda_test;'
 usql $TEST_DB_URL -f db/api.sql
 usql $TEST_DB_URL -f db/fixtures.sql
 usql $TEST_DB_URL -f db/test_synthetic_beneficiaries.sql
+usql $TEST_DB_URL -f db/test_synthetic_cclf_files_beneficiaries.sql
 usql $TEST_DB_URL -f db/worker.sql
 
 echo "Running unit tests and placing results/coverage in test_results/${timestamp} on host..."
