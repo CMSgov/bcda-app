@@ -279,7 +279,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 
 }
 
-func (s *ModelsTestSuite) TestGroupStructs() {
+func (s *ModelsTestSuite) TestGroupAndSystems() {
 	groupID := "A12345"
 	name := "ACO Corp Systems"
 	users := []string{"00uiqolo7fEFSfif70h7", "l0vckYyfyow4TZ0zOKek", "HqtEi2khroEZkH4sdIzj"}
@@ -288,19 +288,22 @@ func (s *ModelsTestSuite) TestGroupStructs() {
 		Resource{ID: "xxx", Name: "BCDA API", Scopes: []string{"bcda-api"}},
 		Resource{ID: "eft", Name: "EFT CCLF", Scopes: []string{"eft-app:download", "eft-data:read"}},
 	}
-	systems := []System{
-		System{ClientID: "4tuhiOIFIwriIOH3zn", SoftwareID: "4NRB1-0XZABZI9E6-5SM3R", ClientName: "ACO System A", ClientURI: "https://www.acocorpsite.com"},
-	}
-	groupData := GroupData{Name: name, Users: users, Scopes: scopes, Resources: resources, Systems: systems}
+	groupData := GroupData{Name: name, Users: users, Scopes: scopes, Resources: resources}
 
 	rawGroupData, err := json.Marshal(groupData)
 	assert.Nil(s.T(), err)
 
+	system := System{GroupID: groupID, ClientID: "4tuhiOIFIwriIOH3zn", SoftwareID: "4NRB1-0XZABZI9E6-5SM3R", ClientName: "ACO System A", ClientURI: "https://www.acocorpsite.com"}
 	group := Group{GroupID: groupID, Data: postgres.Jsonb{RawMessage: rawGroupData}}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
+	err = db.Save(&system).Error
+	assert.Nil(s.T(), err)
 	err = db.Save(&group).Error
 	assert.Nil(s.T(), err)
+	group = Group{}
+	db.First(&group)
+	assert.NotEmpty(s.T(), group.Systems)
 
 	jsonData := group.Data
 	byteData, err := jsonData.MarshalJSON()
