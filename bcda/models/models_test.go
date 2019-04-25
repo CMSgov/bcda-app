@@ -294,15 +294,13 @@ func (s *ModelsTestSuite) TestGroupAndSystemAndEncryptionKey() {
 	assert.Nil(s.T(), err)
 
 	system := System{GroupID: groupID, ClientID: "4tuhiOIFIwriIOH3zn", SoftwareID: "4NRB1-0XZABZI9E6-5SM3R", ClientName: "ACO System A", ClientURI: "https://www.acocorpsite.com"}
-	group := Group{GroupID: groupID, Data: postgres.Jsonb{RawMessage: rawGroupData}}
+	group := Group{GroupID: groupID, Systems: []System{system}, Data: postgres.Jsonb{RawMessage: rawGroupData}}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	err = db.Save(&group).Error
 	assert.Nil(s.T(), err)
-	err = db.Save(&system).Error
-	assert.Nil(s.T(), err)
 	group = Group{}
-	db.First(&group)
+	db.Preload("Systems").First(&group)
 	assert.NotEmpty(s.T(), group.Systems)
 
 	jsonData := group.Data
