@@ -311,12 +311,12 @@ type Resource struct {
 
 type System struct {
 	gorm.Model
-	GroupID        string          `json:"group_id"`
-	ClientID       string          `json:"client_id"`
-	SoftwareID     string          `json:"software_id"`
-	ClientName     string          `json:"client_name"`
-	ClientURI      string          `json:"client_uri"`
-	EncryptionKeys []EncryptionKey `gorm:"foreignkey:SystemID" json:"encryption_keys"`
+	GroupID        string `json:"group_id"`
+	ClientID       string `json:"client_id"`
+	SoftwareID     string `json:"software_id"`
+	ClientName     string `json:"client_name"`
+	ClientURI      string `json:"client_uri"`
+	EncryptionKeys []*EncryptionKey
 }
 
 type CCLFFile struct {
@@ -353,5 +353,6 @@ type jobEnqueueArgs struct {
 type EncryptionKey struct {
 	gorm.Model
 	Body     string `json:"body"`
+	System   System `gorm:"foreignkey:SystemID;association_foreignkey:ID"`
 	SystemID uint   `json:"system_id"`
 }
