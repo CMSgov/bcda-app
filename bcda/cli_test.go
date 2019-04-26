@@ -26,6 +26,7 @@ type CLITestSuite struct {
 
 func (s *CLITestSuite) SetupTest() {
 	s.testApp = setUpApp()
+	models.InitializeGormModels()
 }
 
 func TestCLITestSuite(t *testing.T) {
