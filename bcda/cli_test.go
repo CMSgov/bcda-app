@@ -310,10 +310,9 @@ func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
 }
 
 func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
-	metadata := cclfFileMetadata{}
 	assert := assert.New(s.T())
 
-	metadata = cclfFileMetadata{}
+	metadata := cclfFileMetadata{}
 	err := importCCLF8(metadata)
 	assert.NotNil(err)
 	assert.EqualError(err, "CCLF file not found")
@@ -408,10 +407,9 @@ func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
 }
 
 func (s *CLITestSuite) TestImportCCLF9_InvalidMetadata() {
-	metadata := cclfFileMetadata{}
 	assert := assert.New(s.T())
 
-	metadata = cclfFileMetadata{}
+	metadata := cclfFileMetadata{}
 	err := importCCLF9(metadata)
 	assert.NotNil(err)
 	assert.EqualError(err, "CCLF file not found")
