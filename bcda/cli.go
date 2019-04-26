@@ -89,6 +89,7 @@ func importCCLF0(fileMetadata cclfFileMetadata) (map[string]cclfFileValidator, e
 			log.Error(err)
 			return nil, err
 		}
+		defer rc.Close()
 		sc := bufio.NewScanner(rc)
 		for sc.Scan() {
 			b := sc.Bytes()
@@ -234,6 +235,7 @@ func importCCLF(fileMetadata cclfFileMetadata, importFunc func(uint, []byte, *go
 			log.Error(err)
 			return err
 		}
+		defer rc.Close()
 		sc := bufio.NewScanner(rc)
 		for sc.Scan() {
 			b := sc.Bytes()
@@ -430,6 +432,7 @@ func validate(fileMetadata cclfFileMetadata, cclfFileValidator map[string]cclfFi
 			log.Error(err)
 			return err
 		}
+		defer rc.Close()
 		sc := bufio.NewScanner(rc)
 		for sc.Scan() {
 			b := sc.Bytes()
