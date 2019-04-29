@@ -33,7 +33,11 @@ var (
 )
 
 func init() {
-	createAPIDirs()
+	isEtlMode := os.Getenv("BCDA_ETL_MODE")
+	if isEtlMode != "true" {
+		createAPIDirs()
+	}
+
 	log.SetFormatter(&log.JSONFormatter{})
 	filePath := os.Getenv("BCDA_ERROR_LOG")
 
@@ -45,8 +49,11 @@ func init() {
 	} else {
 		log.Info("Failed to open error log file; using default stderr")
 	}
-	monitoring.GetMonitor()
-	log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
+
+	if isEtlMode != "true" {	
+		monitoring.GetMonitor()
+		log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
+	}
 
 }
 
