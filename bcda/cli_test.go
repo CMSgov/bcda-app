@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
@@ -328,7 +327,6 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 
 	metadata, err = getCCLFFileMetadata("/cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
 	assert.NotNil(err)
-
 }
 
 func (s *CLITestSuite) TestSortCCLFFiles() {
@@ -387,8 +385,27 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	cclflist = cclfmap["A0001_18"]
 	assert.Equal(4, len(cclflist))
 	assert.Equal(0, skipped)
+	modtimeBefore := cclflist[0].deliveryDate
+	modtimeAfter := time.Now().Truncate(time.Second)
 	for _, cclf := range cclflist {
 		assert.Equal(9, cclf.cclfNum)
+		assert.Equal(modtimeBefore, cclf.deliveryDate)
+
+		// change the modification time for all the files
+		err := os.Chtimes(cclf.filePath, modtimeAfter, modtimeAfter)
+		if err != nil {
+			s.FailNow("Failed to change modified time for file", err)
+		}
+	}
+
+	cclfmap = make(map[string][]*cclfFileMetadata)
+	filePath = "../shared_files/cclf9/"
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
+	assert.Nil(err)
+	cclflist = cclfmap["A0001_18"]
+	for _, cclf := range cclflist {
+		// check for the new modification time
+		assert.Equal(modtimeAfter, cclf.deliveryDate)
 	}
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
@@ -507,7 +524,7 @@ func (s *CLITestSuite) TestCleanupCCLF() {
 
 	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
 	if err != nil {
-		log.Fatal(err)
+		s.FailNow("failed to get the PENDING_DELETION_DIR env variable", err)
 	}
 	for _, file := range files {
 		assert.NotEqual(s.T(), "T.A0001.ACO.ZC0Y18.D181120.T1000011", file.Name())
@@ -592,12 +609,12 @@ func (s *CLITestSuite) makeDirToDelete(filePath string) {
 func (s *CLITestSuite) setPendingDeletionDir() {
 	err := os.Setenv("PENDING_DELETION_DIR", "/go/src/github.com/CMSgov/bcda-app/bcda/pending_delete_dir")
 	if err != nil {
-		log.Fatal(err)
+		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
 	}
 	cclfDeletion := os.Getenv("PENDING_DELETION_DIR")
 	err = os.MkdirAll(cclfDeletion, 0744)
 	if err != nil {
-		log.Fatal(err)
+		s.FailNow("failed to create the pending deletion directory,", err)
 	}
 }
 
@@ -605,7 +622,7 @@ func (s *CLITestSuite) resetFiles(resetPath string) {
 	err := filepath.Walk(os.Getenv("PENDING_DELETION_DIR"),
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				log.Fatal(err)
+				s.FailNow("error in walkfunc,", err)
 			}
 
 			if info.IsDir() {
@@ -613,11 +630,11 @@ func (s *CLITestSuite) resetFiles(resetPath string) {
 			}
 			err = os.Rename(path, resetPath+info.Name())
 			if err != nil {
-				log.Fatal(err)
+				s.FailNow("error in moving files,", err)
 			}
 			return nil
 		})
 	if err != nil {
-		log.Fatal(err)
+		s.FailNow("error in walkfunc,", err)
 	}
 }

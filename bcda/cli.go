@@ -327,7 +327,6 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 			continue
 		} else {
 			log.Infof("Successfully imported CCLF0 file: %v", cclf0)
-			cclf0.imported = true
 			success++
 		}
 		err = validate(cclf8, cclfvalidator)
@@ -358,6 +357,7 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 				success++
 			}
 		}
+		cclf0.imported = cclf8 != nil && cclf8.imported && cclf9 != nil && cclf9.imported
 	}
 	cleanupCCLF(cclfmap)
 
@@ -490,19 +490,23 @@ func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) {
 			if !cclf.imported {
 				// check the timestamp on the failed files
 				elapsed := time.Since(cclf.deliveryDate).Hours()
-				if int(elapsed) > (24 - deleteThresholdHr) {
+				if int(elapsed) > deleteThresholdHr {
 					err := os.Rename(cclf.filePath, newpath)
 					if err != nil {
-						err := fmt.Errorf("File: %v failed to cleanup properly", cclf)
+						err := fmt.Errorf("file: %v failed to cleanup properly", cclf)
 						log.Error(err)
+					} else {
+						log.Infof("file: %v never ingested, moved to the pending deletion dir", cclf)
 					}
 				}
 			} else {
 				// move the successful files to the deletion dir
 				err := os.Rename(cclf.filePath, newpath)
 				if err != nil {
-					err := fmt.Errorf("File: %v failed to cleanup properly", cclf)
+					err := fmt.Errorf("file: %v failed to cleanup properly", cclf)
 					log.Error(err)
+				} else {
+					log.Infof("file: %v successfully ingested, moved to the pending deletion dir", cclf)
 				}
 			}
 		}
