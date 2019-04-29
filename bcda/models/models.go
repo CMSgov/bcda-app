@@ -311,12 +311,12 @@ type Resource struct {
 
 type System struct {
 	gorm.Model
-	GroupID        string `json:"group_id"`
-	ClientID       string `json:"client_id"`
-	SoftwareID     string `json:"software_id"`
-	ClientName     string `json:"client_name"`
-	ClientURI      string `json:"client_uri"`
-	EncryptionKeys []*EncryptionKey
+	GroupID        string          `json:"group_id"`
+	ClientID       string          `json:"client_id"`
+	SoftwareID     string          `json:"software_id"`
+	ClientName     string          `json:"client_name"`
+	ClientURI      string          `json:"client_uri"`
+	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
 }
 
 type CCLFFile struct {

@@ -8,7 +8,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testConstants"
 	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -279,43 +278,70 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 
 }
 
-func (s *ModelsTestSuite) TestGroupAndSystemAndEncryptionKey() {
-	groupID := "A12345"
-	name := "ACO Corp Systems"
-	users := []string{"00uiqolo7fEFSfif70h7", "l0vckYyfyow4TZ0zOKek", "HqtEi2khroEZkH4sdIzj"}
-	scopes := []string{"user-admin", "system-admin"}
-	resources := []Resource{
-		Resource{ID: "xxx", Name: "BCDA API", Scopes: []string{"bcda-api"}},
-		Resource{ID: "eft", Name: "EFT CCLF", Scopes: []string{"eft-app:download", "eft-data:read"}},
-	}
-	groupData := GroupData{Name: name, Users: users, Scopes: scopes, Resources: resources}
+func (s *ModelsTestSuite) TestGroupModel() {
+	groupBytes := []byte(`{  
+		"group_id":"A12345",
+		"data":{  
+			"name":"ACO Corp Systems",
+			"users":[  
+				"00uiqolo7fEFSfif70h7",
+				"l0vckYyfyow4TZ0zOKek",
+				"HqtEi2khroEZkH4sdIzj"
+			],
+			"scopes":[  
+				"user-admin",
+				"system-admin"
+			],
+			"resources":[  
+				{  
+					"id":"xxx",
+					"name":"BCDA API",
+					"scopes":[  
+						"bcda-api"
+					]
+				},
+				{  
+					"id":"eft",
+					"name":"EFT CCLF",
+					"scopes":[  
+						"eft-app:download",
+						"eft-data:read"
+					]
+				}
+			]
+		},
+		"systems":[  
+			{  
+				"client_id":"4tuhiOIFIwriIOH3zn",
+				"software_id":"4NRB1-0XZABZI9E6-5SM3R",
+				"client_name":"ACO System A",
+				"client_uri":"https://www.acocorpsite.com"
+			}
+		]
+	}`)
 
-	rawGroupData, err := json.Marshal(groupData)
+	group := Group{}
+	err := json.Unmarshal(groupBytes, &group)
 	assert.Nil(s.T(), err)
-
-	system := System{GroupID: groupID, ClientID: "4tuhiOIFIwriIOH3zn", SoftwareID: "4NRB1-0XZABZI9E6-5SM3R", ClientName: "ACO System A", ClientURI: "https://www.acocorpsite.com"}
-	group := Group{GroupID: groupID, Systems: []System{system}, Data: postgres.Jsonb{RawMessage: rawGroupData}}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	err = db.Save(&group).Error
 	assert.Nil(s.T(), err)
 	group = Group{}
 	db.Preload("Systems").First(&group)
-	assert.NotEmpty(s.T(), group.Systems)
+	assert.NotEmpty(s.T(), &group)
+}
 
-	systemID := group.Systems[0].ID
-	encryptionKey := EncryptionKey{Body: "a public key", SystemID: systemID}
+func (s *ModelsTestSuite) TestEncryptionKeyModel() {
+	encryptionKeyBytes := []byte(`{"body": "this is a public key", "system_id": 1}`)
+	encryptionKey := EncryptionKey{}
+	err := json.Unmarshal(encryptionKeyBytes, &encryptionKey)
+	assert.Nil(s.T(), err)
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	system := System{EncryptionKeys: []EncryptionKey{encryptionKey}}
+	group := Group{Systems: []System{system}}
+	db.Save(&group)
 	err = db.Save(&encryptionKey).Error
 	assert.Nil(s.T(), err)
-	system = System{}
-	db.Preload("EncryptionKeys").First(&system)
-	assert.NotEmpty(s.T(), system.EncryptionKeys)
-
-	jsonData := group.Data
-	byteData, err := jsonData.MarshalJSON()
-	assert.Nil(s.T(), err)
-	groupData2 := GroupData{}
-	err = json.Unmarshal(byteData, &groupData2)
-	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), groupData2, groupData)
 }
