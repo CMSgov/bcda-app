@@ -46,7 +46,7 @@ Not familiar with APIs? Here are some great introductions:
 ## Authentication and Authorization
 The Beneficiary Claims Data API is currently accessible as an open sandbox environment, which returns sample NDJSON files with synthetic beneficiary data. You can use the generic credentials below to view our implementation of the API, write a process for decrypting the payload, and learn the shape of the data before working with production files that include PII and PHI. There is no beneficiary PII or PHI in the files you can access via the sandbox.
 
-To get a token that can be used with protected endpoints, `POST` the following credentials using [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication){:target="_blank"} to `/auth/token`:
+To get a token that can be used with protected endpoints, `POST` the following credentials using [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication){:target="_blank"} to `https://sandbox.bcda.cms.gov/auth/token`:
 
 Client ID: 
 {%- capture client_id -%}
