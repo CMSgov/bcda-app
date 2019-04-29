@@ -3,6 +3,7 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -28,6 +29,7 @@ type APIClient interface {
 	GetExplanationOfBenefitData(patientID, jobID string) (string, error)
 	GetPatientData(patientID, jobID string) (string, error)
 	GetCoverageData(beneficiaryID, jobID string) (string, error)
+	GetBlueButtonIdentifier(patientID string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -93,6 +95,14 @@ type BeneDataFunc func(string, string) (string, error)
 func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
+	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
+}
+
+func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string, error) {
+	params := GetDefaultParams()
+	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
+	//
+	params.Set("identifier", fmt.Sprintf("http://bluebutton.cms.hhs.gov/identifier#hicnHash|%v", hashedHICN))
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
 }
 

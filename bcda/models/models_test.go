@@ -310,3 +310,13 @@ func (s *ModelsTestSuite) TestGroupStructs() {
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), groupData2, groupData)
 }
+
+// Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
+func (s *ModelsTestSuite) TestHashHICN() {
+	cclfBeneficiary := CCLFBeneficiary{HICN: "1000067585", MBI: "NOTHING"}
+	HICNHash := cclfBeneficiary.GetHashedHICN()
+	assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
+	cclfBeneficiary.HICN = "123456789"
+	HICNHash = cclfBeneficiary.GetHashedHICN()
+	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
+}
