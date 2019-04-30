@@ -16,7 +16,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
-const hashIter int = 10000
+// The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
+// Note that changing hashIter will result in invalidating existing stored hashes (e.g. credentials).
+const hashIter int = 40000
 const hashBytes int = 64
 const saltSize int = 32
 
