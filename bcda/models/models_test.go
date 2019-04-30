@@ -308,16 +308,16 @@ func (s *ModelsTestSuite) TestGroupModel() {
 						"eft-data:read"
 					]
 				}
+			],
+			"systems":[  
+				{  
+					"client_id":"4tuhiOIFIwriIOH3zn",
+					"software_id":"4NRB1-0XZABZI9E6-5SM3R",
+					"client_name":"ACO System A",
+					"client_uri":"https://www.acocorpsite.com"
+				}
 			]
-		},
-		"systems":[  
-			{  
-				"client_id":"4tuhiOIFIwriIOH3zn",
-				"software_id":"4NRB1-0XZABZI9E6-5SM3R",
-				"client_name":"ACO System A",
-				"client_uri":"https://www.acocorpsite.com"
-			}
-		]
+		}
 	}`)
 
 	group := Group{}
@@ -327,9 +327,6 @@ func (s *ModelsTestSuite) TestGroupModel() {
 	defer database.Close(db)
 	err = db.Save(&group).Error
 	assert.Nil(s.T(), err)
-	group = Group{}
-	db.Preload("Systems").First(&group)
-	assert.NotEmpty(s.T(), &group)
 }
 
 func (s *ModelsTestSuite) TestEncryptionKeyModel() {
@@ -339,9 +336,8 @@ func (s *ModelsTestSuite) TestEncryptionKeyModel() {
 	assert.Nil(s.T(), err)
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	system := System{EncryptionKeys: []EncryptionKey{encryptionKey}}
-	group := Group{Systems: []System{system}}
-	db.Save(&group)
+	db.Save(&Group{GroupID: "A00000"})
+	db.Save(&System{GroupID: "A00000"})
 	err = db.Save(&encryptionKey).Error
 	assert.Nil(s.T(), err)
 }

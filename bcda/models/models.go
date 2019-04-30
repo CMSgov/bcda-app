@@ -292,7 +292,6 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 type Group struct {
 	gorm.Model
 	GroupID string         `gorm:"unique;not null" json:"group_id"`
-	Systems []System       `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"systems"`
 	Data    postgres.Jsonb `json:"data"`
 }
 
@@ -300,6 +299,7 @@ type GroupData struct {
 	Name      string     `json:"name"`
 	Users     []string   `json:"users"`
 	Scopes    []string   `json:"scopes"`
+	Systems   []System   `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"systems"`
 	Resources []Resource `json:"resources"`
 }
 
