@@ -49,11 +49,15 @@ func init() {
 	} else {
 		log.Info("Failed to open error log file; using default stderr")
 	}
-
+   
 	if isEtlMode != "true" {	
+                log.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
 		log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 	}
+        else {
+		log.Info("BCDA application is running in ETL mode.")
+  	}
 
 }
 
