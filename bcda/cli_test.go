@@ -654,7 +654,7 @@ func (s *CLITestSuite) TestCleanupCCLF() {
 
 	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
 	if err != nil {
-		s.FailNow("failed to get the PENDING_DELETION_DIR env variable", err)
+		s.FailNow("failed to read directory", err)
 	}
 	for _, file := range files {
 		assert.NotEqual(s.T(), "T.A0001.ACO.ZC0Y18.D181120.T1000011", file.Name())
