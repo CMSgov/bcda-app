@@ -1,7 +1,12 @@
 package auth_test
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 
@@ -11,17 +16,95 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type BackendTestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
+	AuthBackend *auth.AlphaBackend
+	TmpFiles    []string
 	expectedSizes map[string]int
 }
 
 func (s *BackendTestSuite) SetupSuite() {
 	models.InitializeGormModels()
 	auth.InitializeGormModels()
+}
+
+func (s *BackendTestSuite) CreateTempFile() (*os.File, error) {
+	tmpfile, err := ioutil.TempFile("", "bcda_backend_test_")
+	if err != nil {
+		return &os.File{}, err
+	}
+
+	return tmpfile, nil
+}
+
+func (s *BackendTestSuite) SavePrivateKey(f *os.File, key *rsa.PrivateKey) {
+	var privateKey = &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+
+	err := pem.Encode(f, privateKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (s *BackendTestSuite) SavePubKey(f *os.File, pubkey rsa.PublicKey) {
+	asn1Bytes, err := x509.MarshalPKIXPublicKey(&pubkey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var pemkey = &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: asn1Bytes,
+	}
+
+	err = pem.Encode(f, pemkey)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (s *BackendTestSuite) SetupAuthBackend() {
+	reader := rand.Reader
+	bitSize := 1024
+
+	key, err := rsa.GenerateKey(reader, bitSize)
+	if err != nil {
+		log.Fatal(err)
+	}
+	publicKey := key.PublicKey
+
+	privKeyFile, err := s.CreateTempFile()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.Setenv("JWT_PRIVATE_KEY_FILE", privKeyFile.Name())
+	if err != nil {
+		log.Panic(err)
+	}
+	s.TmpFiles = append(s.TmpFiles, privKeyFile.Name())
+	s.SavePrivateKey(privKeyFile, key)
+	defer privKeyFile.Close()
+
+	pubKeyFile, err := s.CreateTempFile()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.Setenv("JWT_PUBLIC_KEY_FILE", pubKeyFile.Name())
+	if err != nil {
+		log.Panic(err)
+	}
+	s.TmpFiles = append(s.TmpFiles, pubKeyFile.Name())
+	s.SavePubKey(pubKeyFile, publicKey)
+	defer pubKeyFile.Close()
+
+	s.AuthBackend = auth.InitAlphaBackend()
 }
 
 func (s *BackendTestSuite) SetupTest() {
@@ -80,7 +163,6 @@ func (s *BackendTestSuite) TestPrivateKey() {
 	// File contains not a key
 	os.Setenv("JWT_PRIVATE_KEY_FILE", "../static/badPrivate.pem")
 	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
-
 }
 
 func (s *BackendTestSuite) TestPublicKey() {
@@ -102,7 +184,6 @@ func (s *BackendTestSuite) TestPublicKey() {
 	// File contains not a key
 	os.Setenv("JWT_PUBLIC_KEY_FILE", "../static/badPublic.pem")
 	assert.Panics(s.T(), s.AuthBackend.ResetAlphaBackend)
-
 }
 
 func TestBackendTestSuite(t *testing.T) {

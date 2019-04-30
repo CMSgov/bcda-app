@@ -44,13 +44,50 @@ Not familiar with APIs? Here are some great introductions:
 * [An Intro to APIs](https://www.codenewbie.org/blogs/an-intro-to-apis){:target="_blank"}
 
 ## Authentication and Authorization
-The Beneficiary Claims Data API is currently accessible as an open sandbox environment, which returns sample NDJSON files with synthetic beneficiary data. You can use the generic access token below to view our implementation of the API, write a process for decrypting the payload, and learn the shape of the data before working with production files that include PII and PHI. There is no beneficiary PII or PHI in the files you can access via the sandbox.
+The Beneficiary Claims Data API is currently accessible as an open sandbox environment, which returns sample NDJSON files with synthetic beneficiary data. You can use the generic credentials below to view our implementation of the API, write a process for decrypting the payload, and learn the shape of the data before working with production files that include PII and PHI. There is no beneficiary PII or PHI in the files you can access via the sandbox.
 
-{%- capture code -%}
-eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhY28iOiJkM2U1MGEwNC0zMzA0LTRkMDEtYWUwMC1jNGNlOTIzODBkMTEiLCJleHAiOjE2MTYwODk3NTYsImlhdCI6MTU1MzAxNzc1NiwiaWQiOiJlNzFmMDQyYi1hMWZiLTQ0MDItYTgzZS1lZDlhYThlMTg4NmEiLCJzdWIiOiI1MDlkMjYwMy0wNzhiLTQ2YzgtODVmYi1lYzU3ZWEyY2QzYmQifQ.W2YKCNQNHkUukW1gP76cXr3J0JVeuYXSbgZQ9pAf2Rb_dnJ_GRn8g7rGwoGZUkCCv9fEOGUrbDpjpPJbNJUiwUqcfXCWkdQxTEfimAx5orC6UiNorjqPuKmloALWmN-B7b_62-BJ62u0xR5glbHl7CV5buI9yzWVzbMgvwuUH3VY3B7FQ-MXL3aqLtNoqlmfXjnARb4PsFBBReyJseIPpIbCQB3fUfV3DFL6wRWk4AW_Sa1w4UamzCyZER398cXE9CvpTylyVVdZSoP_p3V7tVyi5xVC8Jjf_zY3wJi2nc0ONqLqyMET8vfItVdYmJ6R4ShdIVRzDHFln7mXYVwOVw
+To get a token that can be used with protected endpoints, `POST` the following credentials using [Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication){:target="_blank"} to `https://sandbox.bcda.cms.gov/auth/token`:
+
+Client ID: 
+{%- capture client_id -%}
+09869a7f-46ce-4908-a914-6129d080a2ae
 {%- endcapture -%}
 
-{% include copy_snippet.md code=code %}
+{% include copy_snippet.md code=client_id %}
+
+Client Secret: 
+{%- capture client_secret -%}
+64916fe96f71adc79c5735e49f4e72f18ff941d0dd62cf43ee1ae0857e204f173ba10e4250c12c48
+{%- endcapture -%}
+
+{% include copy_snippet.md code=client_secret %}
+
+Encoded Basic authentication:
+{%- capture auth_header -%}
+Basic MDk4NjlhN2YtNDZjZS00OTA4LWE5MTQtNjEyOWQwODBhMmFlOjY0OTE2ZmU5NmY3MWFkYzc5YzU3MzVlNDlmNGU3MmYxOGZmOTQxZDBkZDYyY2Y0M2VlMWFlMDg1N2UyMDRmMTczYmExMGU0MjUwYzEyYzQ4
+{%- endcapture -%}
+
+{% include copy_snippet.md code=auth_header %}
+
+##### Request
+`POST /auth/token`
+
+###### Headers
+* `Accept: application/json`
+* `Authorization: <Encoded Basic authentication>`
+
+
+
+###### cURL command
+``` sh
+curl -X POST "http://sandbox.bcda.cms.gov/auth/token" -H "accept: application/json" -H "authorization: Basic MDk4NjlhN2YtNDZjZS00OTA4LWE5MTQtNjEyOWQwODBhMmFlOj\
+Y0OTE2ZmU5NmY3MWFkYzc5YzU3MzVlNDlmNGU3MmYxOGZmOTQx\
+ZDBkZDYyY2Y0M2VlMWFlMDg1N2UyMDRmMTczYmExMGU0MjUwYzEyYzQ4"
+```
+
+##### Response
+You will receive a `200 OK` response and an access token if your credentials were accepted.
+
 
 ## Encryption
 All data files are encrypted. Learn more about the [encryption strategy](./encryption.html).

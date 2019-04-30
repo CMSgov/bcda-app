@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -34,10 +36,16 @@ func InitializeGormModels() *gorm.DB {
 		&JobKey{},
 		&Beneficiary{},
 		&ACOBeneficiary{},
+		&Group{},
+		&CCLFBeneficiaryXref{},
+		&CCLFFile{},
+		&CCLFBeneficiary{},
 	)
 
 	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
 	db.Model(&ACOBeneficiary{}).AddForeignKey("beneficiary_id", "beneficiaries(id)", "RESTRICT", "RESTRICT")
+
+	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
 
 	return db
 }
@@ -144,7 +152,7 @@ type JobKey struct {
 type ACO struct {
 	gorm.Model
 	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
-	CMSID            *string   `gorm:"type:char(5)" json:"cms_id"`
+	CMSID            *string   `gorm:"type:char(5);unique" json:"cms_id"`
 	Name             string    `json:"name"`
 	ClientID         string    `json:"client_id"`
 	AlphaSecret      string    `json:"alpha_secret"`
@@ -178,6 +186,16 @@ type ACOBeneficiary struct {
 	BeneficiaryID uint
 	Beneficiary   *Beneficiary `gorm:"foreignkey:BeneficiaryID;association_foreignkey:ID"`
 	// Join model needed for additional fields later, e.g., AttributionDate
+}
+
+type CCLFBeneficiaryXref struct {
+	gorm.Model
+	FileID        uint   `gorm:"not null"`
+	XrefIndicator string `json:"xref_indicator"`
+	CurrentNum    string `json:"current_number"`
+	PrevNum       string `json:"previous_number"`
+	PrevsEfctDt   string `json:"effective_date"`
+	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
 func (*ACOBeneficiary) TableName() string {
@@ -263,6 +281,52 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 		"', b.id from beneficiaries b join acos_beneficiaries ab on b.id = ab.beneficiary_id " +
 		"where ab.aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
 	return db.Exec(s).Error
+}
+
+type Group struct {
+	gorm.Model
+	GroupID string         `json:"group_id"`
+	Data    postgres.Jsonb `json:"data"`
+}
+
+type GroupData struct {
+	Name      string     `json:"name"`
+	Users     []string   `json:"users"`
+	Scopes    []string   `json:"scopes"`
+	Resources []Resource `json:"resources"`
+	Systems   []System   `json:"systems"`
+}
+
+type Resource struct {
+	ID     string   `json:"id"`
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
+}
+
+type System struct {
+	ClientID   string `json:"client_id"`
+	SoftwareID string `json:"software_id"`
+	ClientName string `json:"client_name"`
+	ClientURI  string `json:"client_uri"`
+}
+
+type CCLFFile struct {
+	gorm.Model
+	CCLFNum         int       `gorm:"not null"`
+	Name            string    `gorm:"not null;unique"`
+	ACOCMSID        string    `gorm:"column:aco_cms_id"`
+	Timestamp       time.Time `gorm:"not null"`
+	PerformanceYear int       `gorm:"not null"`
+}
+
+// "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
+// https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
+type CCLFBeneficiary struct {
+	gorm.Model
+	FileID        uint   `gorm:"not null"`
+	HICN          string `gorm:"type:varchar(11);not null"`
+	MBI           string `gorm:"type:char(11);not null"`
+	BeneficiaryID uint
 }
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.

@@ -2,12 +2,13 @@ package models
 
 import (
 	"encoding/json"
-	"github.com/CMSgov/bcda-app/bcda/testConstants"
 	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/testConstants"
 	"github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -276,4 +277,36 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.NotNil(beneficiaryIDs)
 	assert.Equal(100, len(beneficiaryIDs))
 
+}
+
+func (s *ModelsTestSuite) TestGroupStructs() {
+	groupID := "A12345"
+	name := "ACO Corp Systems"
+	users := []string{"00uiqolo7fEFSfif70h7", "l0vckYyfyow4TZ0zOKek", "HqtEi2khroEZkH4sdIzj"}
+	scopes := []string{"user-admin", "system-admin"}
+	resources := []Resource{
+		Resource{ID: "xxx", Name: "BCDA API", Scopes: []string{"bcda-api"}},
+		Resource{ID: "eft", Name: "EFT CCLF", Scopes: []string{"eft-app:download", "eft-data:read"}},
+	}
+	systems := []System{
+		System{ClientID: "4tuhiOIFIwriIOH3zn", SoftwareID: "4NRB1-0XZABZI9E6-5SM3R", ClientName: "ACO System A", ClientURI: "https://www.acocorpsite.com"},
+	}
+	groupData := GroupData{Name: name, Users: users, Scopes: scopes, Resources: resources, Systems: systems}
+
+	rawGroupData, err := json.Marshal(groupData)
+	assert.Nil(s.T(), err)
+
+	group := Group{GroupID: groupID, Data: postgres.Jsonb{RawMessage: rawGroupData}}
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	err = db.Save(&group).Error
+	assert.Nil(s.T(), err)
+
+	jsonData := group.Data
+	byteData, err := jsonData.MarshalJSON()
+	assert.Nil(s.T(), err)
+	groupData2 := GroupData{}
+	err = json.Unmarshal(byteData, &groupData2)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), groupData2, groupData)
 }

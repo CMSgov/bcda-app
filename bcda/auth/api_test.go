@@ -2,18 +2,18 @@ package auth_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 type TokenResponse struct {
@@ -22,9 +22,25 @@ type TokenResponse struct {
 }
 
 type AuthAPITestSuite struct {
-	testUtils.AuthTestSuite
+	suite.Suite
 	rr *httptest.ResponseRecorder
 	db *gorm.DB
+backend *auth.AlphaBackend
+reset   func()
+}
+
+func (s *AuthAPITestSuite) SetupSuite() {
+	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
+	public  := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
+	s.reset = func() {
+		private()
+		public()
+	}
+	s.backend = auth.InitAlphaBackend()
+}
+
+func (s *AuthAPITestSuite) TearDownSuite() {
+	s.reset()
 }
 
 func (s *AuthAPITestSuite) SetupTest() {
@@ -39,13 +55,11 @@ func (s *AuthAPITestSuite) TearDownTest() {
 }
 
 func (s *AuthAPITestSuite) TestAuthToken() {
-	s.SetupAuthBackend()
 	devACOID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 
 	// Missing authorization header
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 	handler := http.HandlerFunc(auth.GetAuthToken)
-	fmt.Println("No authorization header")
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
@@ -55,7 +69,6 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
 	req.Header.Add("Accept", "application/json")
 	handler = http.HandlerFunc(auth.GetAuthToken)
-	fmt.Println("Malformed authorization header")
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
@@ -64,7 +77,6 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	req = httptest.NewRequest("POST", "/auth/token", nil)
 	req.SetBasicAuth("not_a_client", "not_a_secret")
 	req.Header.Add("Accept", "application/json")
-	fmt.Println("Invalid credentials")
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)

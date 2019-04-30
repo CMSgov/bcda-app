@@ -1,8 +1,8 @@
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
-	docker-compose up -d documentation
-	docker-compose up -d static_site
+	docker-compose up documentation
+	docker-compose up static_site
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm \
 	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
@@ -54,6 +54,7 @@ load-fixtures:
 	sleep 5
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_beneficiaries.sql
+	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_cclf_files_beneficiaries.sql
 
 docker-build:
 	docker-compose build --force-rm
