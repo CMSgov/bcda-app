@@ -54,8 +54,7 @@ func init() {
                 log.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
 		log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
-	}
-        else {
+	} else {
 		log.Info("BCDA application is running in ETL mode.")
   	}
 
