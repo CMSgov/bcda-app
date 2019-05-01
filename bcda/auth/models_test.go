@@ -1,6 +1,8 @@
 package auth_test
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
@@ -61,6 +64,81 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	s.db.Find(&savedToken, "UUID = ?", tokenUUID)
 	assert.NotNil(s.T(), savedToken)
 	assert.Equal(s.T(), tokenString, savedToken.TokenString)
+}
+
+func (s *ModelsTestSuite) TestGenerateSystemKeyPair() {
+	group := models.Group{GroupID: "abcdef123456"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := models.System{
+		GroupID:  group.GroupID,
+		ClientID: "1234",
+	}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	privateKeyStr, err := auth.GenerateSystemKeyPair("1234")
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), privateKeyStr)
+
+	privKeyBlock, _ := pem.Decode([]byte(privateKeyStr))
+	privateKey, err := x509.ParsePKCS1PrivateKey(privKeyBlock.Bytes)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	var pubEncrKey models.EncryptionKey
+	err = s.db.First(&pubEncrKey, "system_id = ?", system.ID).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	pubKeyBlock, _ := pem.Decode([]byte(pubEncrKey.Body))
+	publicKey, err := x509.ParsePKIXPublicKey(pubKeyBlock.Bytes)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	assert.Equal(s.T(), &privateKey.PublicKey, publicKey)
+
+	s.db.Unscoped().Delete(&pubEncrKey)
+	s.db.Unscoped().Delete(&system)
+	s.db.Unscoped().Delete(&group)
+}
+
+func (s *ModelsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
+	group := models.Group{GroupID: "bcdefa234561"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := models.System{
+		GroupID:  group.GroupID,
+		ClientID: "2345",
+	}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	encrKey := models.EncryptionKey{
+		SystemID: system.ID,
+	}
+	err = s.db.Create(&encrKey).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	privateKey, err := auth.GenerateSystemKeyPair("2345")
+	assert.EqualError(s.T(), err, "encryption keypair already exists for system with client ID 2345")
+	assert.Empty(s.T(), privateKey)
+
+	s.db.Unscoped().Delete(&system)
+	s.db.Unscoped().Delete(&group)
 }
 
 func TestModelsTestSuite(t *testing.T) {

@@ -1,11 +1,16 @@
 package auth
 
 import (
-	"errors"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -62,4 +67,57 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 		err = errors.New("no ACO record found for " + clientID)
 	}
 	return aco, err
+}
+
+/*
+ GenerateSystemKeyPair creates a keypair for a system, based on the provided client ID.
+ The public key is saved to the database and the private key is returned.
+*/
+func GenerateSystemKeyPair(clientID string) (string, error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var system models.System
+	err := db.Preload("EncryptionKeys").First(&system, "client_id = ?", clientID).Error
+	if err != nil {
+		return "", errors.Wrapf(err, "could not find system for client ID %s", clientID)
+	}
+
+	if len(system.EncryptionKeys) > 0 {
+		return "", fmt.Errorf("encryption keypair already exists for system with client ID %s", clientID)
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not create key for client %s", clientID)
+	}
+
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not marshal public key for client %s", clientID)
+	}
+
+	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+
+	encryptionKey := models.EncryptionKey{
+		Body:     string(publicKeyBytes),
+		SystemID: system.ID,
+	}
+
+	err = db.Create(&encryptionKey).Error
+	if err != nil {
+		return "", errors.Wrapf(err, "could not save key for client %s", clientID)
+	}
+
+	privateKeyBytes := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		},
+	)
+
+	return string(privateKeyBytes), nil
 }
