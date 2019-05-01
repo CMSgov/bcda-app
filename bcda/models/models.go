@@ -27,7 +27,7 @@ func InitializeGormModels() *gorm.DB {
 	defer database.Close(db)
 
 	// Migrate the schema
-	// Add your new models herehttps://www.usajobs.gov/GetJob/ViewDetails/531221300
+	// Add your new models here
 	// This should probably not be called in production
 	// What happens when you need to make a database change, there's already data you need to preserve, and
 	// you need to run a script to migrate existing data to its new home or shape?
