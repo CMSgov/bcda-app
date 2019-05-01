@@ -353,13 +353,13 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	defer db.Close()
 
 	// find another record with this HICN.  If it has a value use it.
-	// By default, null values sort as if larger than any non-null value; that is, NULLS FIRST is the default for DESC order, and NULLS LAST otherwise.
-	db.Debug().Where("hicn = ?", cclfBeneficiary.HICN).Order("blue_button_id").First(&oldRecord)
+	// Find the first record with a matching HICN and an non empty BlueButtonID
+	db.Where("hicn = ? and blue_button_id <> ''", cclfBeneficiary.HICN).First(&oldRecord)
 	if oldRecord.BlueButtonID != "" {
 		return oldRecord.BlueButtonID, nil
 	}
+
 	// didn't find a local value, need to ask BlueButton
-	fmt.Println("Looking for an ID at Blue BUtton ****************************************")
 	jsonData, err := bb.GetBlueButtonIdentifier(client.HashHICN(cclfBeneficiary.HICN))
 	if err != nil {
 		return "", err

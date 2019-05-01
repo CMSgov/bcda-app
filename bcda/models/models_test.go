@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"os"
@@ -378,9 +379,17 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	defer db.Unscoped().Delete(&cclfFile)
 	assert.NotNil(cclfFile.ID)
 	cclfBeneficiary.FileID = cclfFile.ID
-	cclfBeneficiary.BlueButtonID = "DB_VALUE"
-	err = db.Debug().Create(&cclfBeneficiary).Error
+	// Save a blank one, this shouldn't affect pulling a val from the DB later
+	cclfBeneficiary.BlueButtonID = ""
+	err = db.Create(&cclfBeneficiary).Error
+	fmt.Println(cclfBeneficiary.ID)
 	defer db.Unscoped().Delete(&cclfBeneficiary)
+	cclfBeneficiary.ID = 0
+	cclfBeneficiary.BlueButtonID = "DB_VALUE"
+	err = db.Create(&cclfBeneficiary).Error
+	fmt.Println(cclfBeneficiary.ID)
+	defer db.Unscoped().Delete(&cclfBeneficiary)
+
 	assert.Nil(err)
 	newCCLFBeneficiary := CCLFBeneficiary{HICN: cclfBeneficiary.HICN, MBI: "NOT_AN_MBI"}
 	newBBID, err := newCCLFBeneficiary.GetBlueButtonID(&bbc)
