@@ -4,14 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type ModelsTestSuite struct {
@@ -61,6 +61,16 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	s.db.Find(&savedToken, "UUID = ?", tokenUUID)
 	assert.NotNil(s.T(), savedToken)
 	assert.Equal(s.T(), tokenString, savedToken.TokenString)
+}
+
+func (s *ModelsTestSuite) TestRevokeSystemKeyPair() {
+	encryptionKey := models.EncryptionKey{SystemID: 1}
+	s.db.Save(&models.Group{GroupID: "A00001"})
+	s.db.Save(&models.System{GroupID: "A00001"})
+	s.db.Save(&encryptionKey)
+	encryptionKey, err := auth.RevokeSystemKeyPair(encryptionKey.ID)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), encryptionKey.DeletedAt)
 }
 
 func TestModelsTestSuite(t *testing.T) {

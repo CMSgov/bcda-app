@@ -3,12 +3,11 @@ package auth
 import (
 	"errors"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -62,4 +61,23 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 		err = errors.New("no ACO record found for " + clientID)
 	}
 	return aco, err
+}
+
+// RevokeSystemKeyPair soft deletes the specified encryption key so that it can no longer be used
+func RevokeSystemKeyPair(encryptionKeyID uint) (models.EncryptionKey, error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	encryptionKey := models.EncryptionKey{}
+
+	err := db.Find(&encryptionKey, encryptionKeyID).Error
+	if err != nil {
+		return encryptionKey, err
+	}
+
+	err = db.Delete(&encryptionKey).Error
+	if err != nil {
+		return encryptionKey, err
+	}
+
+	return encryptionKey, nil
 }
