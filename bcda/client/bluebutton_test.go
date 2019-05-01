@@ -197,6 +197,17 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 	assert.Equal(s.T(), "", params.Get("beneficiary"))
 
 }
+
+// Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
+func (s *BBTestSuite) TestHashHICN() {
+	HICN := "1000067585"
+	HICNHash := client.HashHICN(HICN)
+	assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
+	HICN = "123456789"
+	HICNHash = client.HashHICN(HICN)
+	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
+}
+
 func (s *BBTestSuite) TearDownTest() {
 	s.ts.Close()
 }

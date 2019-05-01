@@ -2,8 +2,6 @@ package models
 
 import (
 	"crypto/rsa"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -18,7 +16,6 @@ import (
 	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 //Setting a default here.  It may need to change.  It also shouldn't really be used much.
@@ -328,49 +325,53 @@ type CCLFFile struct {
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
 	gorm.Model
+	CCLFFile     CCLFFile
 	FileID       uint   `gorm:"not null"`
 	HICN         string `gorm:"type:varchar(11);not null"`
 	MBI          string `gorm:"type:char(11);not null"`
 	BlueButtonID string `gorm:"type: text"`
 }
 
-// https://github.cms.gov/gist/llimllib/40cd070a255b3b063dff34a7864869bb
-func (cclfBeneficiary *CCLFBeneficiary) getHashedHICN() (hash string) {
-	pepper, err := hex.DecodeString("b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9")
-	// not sure how this can happen
-	if err != nil {
-		return ""
+// This method will ensure that a valid BlueButton ID is returned.
+// If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
+func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
+	// If this is set already, just give it back.
+	if cclfBeneficiary.BlueButtonID != "" {
+		return cclfBeneficiary.BlueButtonID, nil
 	}
-	return hex.EncodeToString(pbkdf2.Key([]byte(cclfBeneficiary.HICN), pepper, 1000, 32, sha256.New))
-}
+	var oldRecord CCLFBeneficiary
+	db := database.GetGORMDbConnection()
+	defer db.Close()
 
-func (cclfBeneficiary *CCLFBeneficiary) SetBlueButtonID() err {
-	bb := new(client.BlueButtonClient)
-	jsonData, err := bb.GetBlueButtonIdentifier(cclfBeneficiary.getHashedHICN())
-	if err != nil {
-		return err
+	// find another record with this HICN.  If it has a value use it.
+	// By default, null values sort as if larger than any non-null value; that is, NULLS FIRST is the default for DESC order, and NULLS LAST otherwise.
+	db.First(&oldRecord).Not("ID", cclfBeneficiary.ID).Where("HICN = ?", cclfBeneficiary.HICN).Order("BlueButtonID")
+	if oldRecord.BlueButtonID != "" {
+		return oldRecord.BlueButtonID, nil
 	}
-
+	// didn't find a local value, need to ask BlueButton
+	fmt.Println("Looking for an ID at Blue BUtton ****************************************")
+	jsonData, err := bb.GetBlueButtonIdentifier(client.HashHICN(cclfBeneficiary.HICN))
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(jsonData)
 	var patient Patient
 	err = json.Unmarshal([]byte(jsonData), &patient)
 	if err != nil {
 		log.Error(err)
-		return err
+		return "", err
 	}
 
-	blueButtonID := patient.Entry.Resource.ID
-	fullURL := patient.Entry.FullUrl
+	blueButtonID = patient.Entry[0].Resource.ID
+	fullURL := patient.Entry[0].FullUrl
 	if !strings.Contains(fullURL, blueButtonID) {
 		err = fmt.Errorf("patient identifier not found in the URL")
 		log.Error(err)
-		return err
+		return "", err
 	}
 
-	cclfBeneficiary.BlueButtonID = blueButtonID
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-
-	return db.Save(&cclfBeneficiary).Error
+	return blueButtonID, nil
 }
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.

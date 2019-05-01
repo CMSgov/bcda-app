@@ -2,8 +2,11 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testConstants"
@@ -311,12 +314,46 @@ func (s *ModelsTestSuite) TestGroupStructs() {
 	assert.Equal(s.T(), groupData2, groupData)
 }
 
-// Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
-func (s *ModelsTestSuite) TestHashHICN() {
-	cclfBeneficiary := CCLFBeneficiary{HICN: "1000067585", MBI: "NOTHING"}
-	HICNHash := cclfBeneficiary.GetHashedHICN()
-	assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
-	cclfBeneficiary.HICN = "123456789"
-	HICNHash = cclfBeneficiary.GetHashedHICN()
-	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
+func (s *ModelsTestSuite) TestGetBlueButtonID() {
+	assert := s.Assert()
+	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
+	bbc := testUtils.BlueButtonClient{}
+
+	bbc.On("GetBlueButtonIdentifier", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "HASHED_VALUE")).Twice()
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	// New never seen before hicn, asks the mock blue button client for the value
+	blueButtonID, err := cclfBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("HASHED_VALUE", blueButtonID)
+	cclfBeneficiary.BlueButtonID = "HASHED_VALUE"
+	blueButtonID = ""
+
+	// trivial case.  The object has a BB ID set on it already, this does nothing
+	assert.Equal("", blueButtonID)
+	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("HASHED_VALUE", blueButtonID)
+
+	// A record with the same values exists.  Grab that value.
+	cclfFile := CCLFFile{
+		Name:            "HASHTEST",
+		CCLFNum:         8,
+		ACOCMSID:        "12345",
+		PerformanceYear: 2019,
+		Timestamp:       time.Now(),
+	}
+	db.Save(&cclfFile)
+	defer db.Unscoped().Delete(&cclfFile)
+	assert.NotNil(cclfFile.ID)
+	cclfBeneficiary.FileID = cclfFile.ID
+	err = db.Save(&cclfBeneficiary).Error
+	defer db.Unscoped().Delete(&cclfBeneficiary)
+	assert.Nil(err)
+	newCCLFBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOT_AN_MBI"}
+	newBBID, err := newCCLFBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("HASHED_VALUE", newBBID)
+
 }
