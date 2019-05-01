@@ -364,7 +364,6 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(jsonData)
 	var patient Patient
 	err = json.Unmarshal([]byte(jsonData), &patient)
 	if err != nil {

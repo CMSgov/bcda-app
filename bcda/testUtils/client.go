@@ -25,12 +25,12 @@ func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string,
 }
 
 func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
-	args := bbc.Called(patientID)
+	args := bbc.Called(patientID, jobID)
 	return args.String(0), args.Error(1)
 }
 
 func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (string, error) {
-	args := bbc.Called(beneficiaryID)
+	args := bbc.Called(beneficiaryID, jobID)
 	return args.String(0), args.Error(1)
 }
 
