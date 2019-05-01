@@ -319,24 +319,23 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
 	bbc := testUtils.BlueButtonClient{}
 
-	bbc.On("GetBlueButtonIdentifier", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "HASHED_VALUE")).Twice()
+	bbc.On("GetBlueButtonIdentifier", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
 	// New never seen before hicn, asks the mock blue button client for the value
 	blueButtonID, err := cclfBeneficiary.GetBlueButtonID(&bbc)
 	assert.Nil(err)
-	assert.Equal("HASHED_VALUE", blueButtonID)
-	cclfBeneficiary.BlueButtonID = "HASHED_VALUE"
-	blueButtonID = ""
+	assert.Equal("BB_VALUE", blueButtonID)
 
 	// trivial case.  The object has a BB ID set on it already, this does nothing
-	assert.Equal("", blueButtonID)
+	cclfBeneficiary.BlueButtonID = "LOCAL_VAL"
+	blueButtonID = ""
 	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
 	assert.Nil(err)
-	assert.Equal("HASHED_VALUE", blueButtonID)
+	assert.Equal("LOCAL_VAL", blueButtonID)
 
-	// A record with the same values exists.  Grab that value.
+	// A record with the same HICN value exists.  Grab that value.
 	cclfFile := CCLFFile{
 		Name:            "HASHTEST",
 		CCLFNum:         8,
@@ -348,12 +347,14 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	defer db.Unscoped().Delete(&cclfFile)
 	assert.NotNil(cclfFile.ID)
 	cclfBeneficiary.FileID = cclfFile.ID
-	err = db.Save(&cclfBeneficiary).Error
+	cclfBeneficiary.BlueButtonID = "DB_VALUE"
+	err = db.Debug().Create(&cclfBeneficiary).Error
 	defer db.Unscoped().Delete(&cclfBeneficiary)
 	assert.Nil(err)
-	newCCLFBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOT_AN_MBI"}
+	newCCLFBeneficiary := CCLFBeneficiary{HICN: cclfBeneficiary.HICN, MBI: "NOT_AN_MBI"}
 	newBBID, err := newCCLFBeneficiary.GetBlueButtonID(&bbc)
 	assert.Nil(err)
-	assert.Equal("HASHED_VALUE", newBBID)
-
+	assert.Equal("DB_VALUE", newBBID)
+	// Should be making only a single call to BB for all 3 attempts.
+	bbc.AssertNumberOfCalls(s.T(), "GetBlueButtonIdentifier", 1)
 }

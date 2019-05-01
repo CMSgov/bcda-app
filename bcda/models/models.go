@@ -345,7 +345,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 
 	// find another record with this HICN.  If it has a value use it.
 	// By default, null values sort as if larger than any non-null value; that is, NULLS FIRST is the default for DESC order, and NULLS LAST otherwise.
-	db.First(&oldRecord).Not("ID", cclfBeneficiary.ID).Where("HICN = ?", cclfBeneficiary.HICN).Order("BlueButtonID")
+	db.Debug().Where("hicn = ?", cclfBeneficiary.HICN).Order("blue_button_id").First(&oldRecord)
 	if oldRecord.BlueButtonID != "" {
 		return oldRecord.BlueButtonID, nil
 	}

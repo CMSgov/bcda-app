@@ -19,8 +19,18 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetBlueButtonIdentifier(patientID string) (string, error) {
+func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string, error) {
+	args := bbc.Called(hashedHICN)
+	return args.String(0), args.Error(1)
+}
+
+func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
 	args := bbc.Called(patientID)
+	return args.String(0), args.Error(1)
+}
+
+func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (string, error) {
+	args := bbc.Called(beneficiaryID)
 	return args.String(0), args.Error(1)
 }
 
