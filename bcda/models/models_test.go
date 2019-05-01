@@ -361,7 +361,6 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 
 	// trivial case.  The object has a BB ID set on it already, this does nothing
 	cclfBeneficiary.BlueButtonID = "LOCAL_VAL"
-	blueButtonID = ""
 	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
 	assert.Nil(err)
 	assert.Equal("LOCAL_VAL", blueButtonID)
@@ -381,6 +380,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	cclfBeneficiary.BlueButtonID = ""
 	err = db.Create(&cclfBeneficiary).Error
 	defer db.Unscoped().Delete(&cclfBeneficiary)
+	assert.Nil(err)
 	cclfBeneficiary.ID = 0
 	cclfBeneficiary.BlueButtonID = "DB_VALUE"
 	err = db.Create(&cclfBeneficiary).Error
