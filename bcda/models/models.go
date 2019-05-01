@@ -42,12 +42,18 @@ func InitializeGormModels() *gorm.DB {
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
+		&System{},
+		&EncryptionKey{},
 	)
 
 	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
 	db.Model(&ACOBeneficiary{}).AddForeignKey("beneficiary_id", "beneficiaries(id)", "RESTRICT", "RESTRICT")
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
+
+	db.Model(&System{}).AddForeignKey("group_id", "groups(group_id)", "RESTRICT", "RESTRICT")
+
+	db.Model(&EncryptionKey{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")
 
 	return db
 }
@@ -287,7 +293,7 @@ func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
 
 type Group struct {
 	gorm.Model
-	GroupID string         `json:"group_id"`
+	GroupID string         `gorm:"unique;not null" json:"group_id"`
 	Data    postgres.Jsonb `json:"data"`
 }
 
@@ -295,8 +301,8 @@ type GroupData struct {
 	Name      string     `json:"name"`
 	Users     []string   `json:"users"`
 	Scopes    []string   `json:"scopes"`
+	Systems   []System   `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"systems"`
 	Resources []Resource `json:"resources"`
-	Systems   []System   `json:"systems"`
 }
 
 type Resource struct {
@@ -306,10 +312,13 @@ type Resource struct {
 }
 
 type System struct {
-	ClientID   string `json:"client_id"`
-	SoftwareID string `json:"software_id"`
-	ClientName string `json:"client_name"`
-	ClientURI  string `json:"client_uri"`
+	gorm.Model
+	GroupID        string          `json:"group_id"`
+	ClientID       string          `json:"client_id"`
+	SoftwareID     string          `json:"software_id"`
+	ClientName     string          `json:"client_name"`
+	ClientURI      string          `json:"client_uri"`
+	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
 }
 
 type CCLFFile struct {
@@ -384,4 +393,11 @@ type jobEnqueueArgs struct {
 	ResourceType   string
 	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
 	Encrypt bool
+}
+
+type EncryptionKey struct {
+	gorm.Model
+	Body     string `json:"body"`
+	System   System `gorm:"foreignkey:SystemID;association_foreignkey:ID"`
+	SystemID uint   `json:"system_id"`
 }
