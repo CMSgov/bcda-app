@@ -17,9 +17,9 @@ import (
 )
 
 // The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
-// Note that changing hashIter will result in invalidating existing stored hashes (e.g. credentials).
+// Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
 const hashIter int = 40000
-const hashBytes int = 64
+const hashKeyLen int = 64
 const saltSize int = 32
 
 var (
@@ -41,7 +41,7 @@ func NewHash(source string) (Hash, error) {
 		return Hash(""), err
 	}
 
-	h := pbkdf2.Key([]byte(source), salt, hashIter, hashBytes, sha512.New)
+	h := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
 	return Hash(fmt.Sprintf("%s:%s", base64.StdEncoding.EncodeToString(salt), base64.StdEncoding.EncodeToString(h))), nil
 }
 
@@ -63,7 +63,7 @@ func (h Hash) IsHashOf(source string) bool {
 		return false
 	}
 
-	sourceHash := pbkdf2.Key([]byte(source), salt, hashIter, hashBytes, sha512.New)
+	sourceHash := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
 	return hash == base64.StdEncoding.EncodeToString(sourceHash)
 }
 
