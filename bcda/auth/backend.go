@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -37,6 +38,10 @@ type Hash string
 // The HashValue consists of the salt and hash separated by a colon ( : )
 // If the source of randomness fails it returns an error.
 func NewHash(source string) (Hash, error) {
+	if source == "" {
+		return Hash(""), errors.New("empty string provided to hash function")
+	}
+
 	salt := make([]byte, saltSize)
 	_, err := rand.Read(salt)
 	if err != nil {
