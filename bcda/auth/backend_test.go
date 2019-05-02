@@ -167,7 +167,7 @@ func (s *BackendTestSuite) TestHashCompatibility() {
 
 func (s *BackendTestSuite) TestHashEmpty() {
 	hash, err := auth.NewHash("")
-	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), err)
 	assert.False(s.T(), hash.IsHashOf(""))
 }
 
