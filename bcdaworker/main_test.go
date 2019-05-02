@@ -8,25 +8,17 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
-
-type MockBlueButtonClient struct {
-	mock.Mock
-	client.BlueButtonClient
-}
 
 type MainTestSuite struct {
 	suite.Suite
@@ -60,7 +52,7 @@ func TestMainTestSuite(t *testing.T) {
 func TestWriteEOBDataToFile(t *testing.T) {
 	os.Setenv("FHIR_STAGING_DIR", "data/test")
 
-	bbc := MockBlueButtonClient{}
+	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	beneficiaryIDs := []string{"10000", "11000"}
 	jobID := "1"
@@ -71,7 +63,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	testUtils.CreateStaging(jobID)
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
-		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.getData("ExplanationOfBenefit", beneficiaryIDs[i]))
+		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryIDs[i]))
 	}
 
 	_, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
@@ -117,7 +109,7 @@ func TestWriteEOBDataToFileNoClient(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
-	bbc := MockBlueButtonClient{}
+	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
 	beneficiaryIDs := []string{"10000", "11000"}
 
@@ -131,11 +123,11 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "70")
 
-	bbc := MockBlueButtonClient{}
+	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefitData", "10000").Return("", errors.New("error"))
 	bbc.On("GetExplanationOfBenefitData", "11000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefitData", "12000").Return(bbc.getData("ExplanationOfBenefit", "12000"))
+	bbc.On("GetExplanationOfBenefitData", "12000").Return(bbc.GetData("ExplanationOfBenefit", "12000"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	beneficiaryIDs := []string{"10000", "11000", "12000"}
 	jobID := "1"
@@ -167,7 +159,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "60")
 
-	bbc := MockBlueButtonClient{}
+	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefitData", "10000").Return("", errors.New("error"))
 	bbc.On("GetExplanationOfBenefitData", "11000").Return("", errors.New("error"))
@@ -231,23 +223,6 @@ func TestAppendErrorToFile(t *testing.T) {
 	assert.Equal(t, ooResp+"\n", string(fData))
 
 	os.Remove(filePath)
-}
-
-func (bbc *MockBlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
-	args := bbc.Called(patientID)
-	return args.String(0), args.Error(1)
-}
-
-// Returns copy of a static json file (From Blue Button Sandbox originally) after replacing the patient ID of 20000000000001 with the requested identifier
-
-func (bbc *MockBlueButtonClient) getData(endpoint, patientID string) (string, error) {
-
-	fData, err := ioutil.ReadFile("../shared_files/synthetic_beneficiary_data/" + endpoint)
-	if err != nil {
-		return "", err
-	}
-	cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
-	return cleanData, err
 }
 
 func (s *MainTestSuite) TestProcessJobEOB() {
