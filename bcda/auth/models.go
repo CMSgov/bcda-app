@@ -79,5 +79,6 @@ func RevokeSystemKeyPair(encryptionKeyID uint) (models.EncryptionKey, error) {
 		return encryptionKey, err
 	}
 
+	db.Unscoped().Find(&encryptionKey, encryptionKeyID)
 	return encryptionKey, nil
 }
