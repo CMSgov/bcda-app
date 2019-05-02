@@ -185,7 +185,7 @@ func processJob(j *que.Job) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) (fileName string, error error) {
+func writeBBDataToFile(bb client.APIClient, acoID string, cclfbeneficiaryIDs []string, jobID, t string) (fileName string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -228,10 +228,14 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 
 	w := bufio.NewWriter(f)
 	errorCount := 0
-	totalBeneIDs := float64(len(beneficiaryIDs))
+	totalBeneIDs := float64(len(cclfbeneficiaryIDs))
 	failThreshold := getFailureThreshold()
-
-	for _, beneficiaryID := range beneficiaryIDs {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
+		var cclfBeneficiary models.CCLFBeneficiary
+		db.First(&cclfBeneficiary, cclfBeneficiaryID)
+		blueButtonID = cclfBeneficiary.
 		pData, err := bbFunc(beneficiaryID, jobID)
 		if err != nil {
 			log.Error(err)
