@@ -67,11 +67,16 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 }
 
 func (s *ModelsTestSuite) TestRevokeSystemKeyPair() {
-	system := models.System{GroupID: "A00001"}
-	s.db.Save(&models.Group{GroupID: "A00001"})
+	group := models.Group{GroupID: "A00001"}
+	s.db.Save(&group)
+	defer s.db.Unscoped().Delete(&group)
+	system := models.System{GroupID: group.GroupID}
 	s.db.Save(&system)
+	defer s.db.Unscoped().Delete(&system)
 	encryptionKey := models.EncryptionKey{SystemID: system.ID}
 	s.db.Save(&encryptionKey)
+	defer s.db.Unscoped().Delete(&encryptionKey)
+
 	err := auth.RevokeSystemKeyPair(system.ID)
 	assert.Nil(s.T(), err)
 	assert.Empty(s.T(), system.EncryptionKeys)
