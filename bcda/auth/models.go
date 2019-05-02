@@ -7,13 +7,12 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -67,6 +66,32 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 		err = errors.New("no ACO record found for " + clientID)
 	}
 	return aco, err
+}
+
+// RevokeSystemKeyPair soft deletes the active encryption key
+// for the specified system so that it can no longer be used
+func RevokeSystemKeyPair(systemID uint) error {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	var system models.System
+
+	err := db.Preload("EncryptionKeys").Find(&system, systemID).Error
+	if err != nil {
+		return err
+	}
+
+	var encryptionKey models.EncryptionKey
+	err = db.Find(&encryptionKey, system.EncryptionKeys[0].ID).Error
+	if err != nil {
+		return err
+	}
+
+	err = db.Delete(&encryptionKey).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 /*
