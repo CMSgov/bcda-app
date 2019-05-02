@@ -4,7 +4,9 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -332,10 +334,52 @@ type CCLFFile struct {
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
 	gorm.Model
-	FileID        uint   `gorm:"not null"`
-	HICN          string `gorm:"type:varchar(11);not null"`
-	MBI           string `gorm:"type:char(11);not null"`
-	BeneficiaryID uint
+	CCLFFile     CCLFFile
+	FileID       uint   `gorm:"not null"`
+	HICN         string `gorm:"type:varchar(11);not null"`
+	MBI          string `gorm:"type:char(11);not null"`
+	BlueButtonID string `gorm:"type: text"`
+}
+
+// This method will ensure that a valid BlueButton ID is returned.
+// If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
+func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
+	// If this is set already, just give it back.
+	if cclfBeneficiary.BlueButtonID != "" {
+		return cclfBeneficiary.BlueButtonID, nil
+	}
+	var oldRecord CCLFBeneficiary
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	// find another record with this HICN.  If it has a value use it.
+	// Find the first record with a matching HICN and an non empty BlueButtonID
+	db.Where("hicn = ? and blue_button_id <> ''", cclfBeneficiary.HICN).First(&oldRecord)
+	if oldRecord.BlueButtonID != "" {
+		return oldRecord.BlueButtonID, nil
+	}
+
+	// didn't find a local value, need to ask BlueButton
+	jsonData, err := bb.GetBlueButtonIdentifier(client.HashHICN(cclfBeneficiary.HICN))
+	if err != nil {
+		return "", err
+	}
+	var patient Patient
+	err = json.Unmarshal([]byte(jsonData), &patient)
+	if err != nil {
+		log.Error(err)
+		return "", err
+	}
+
+	blueButtonID = patient.Entry[0].Resource.ID
+	fullURL := patient.Entry[0].FullUrl
+	if !strings.Contains(fullURL, blueButtonID) {
+		err = fmt.Errorf("patient identifier not found in the URL")
+		log.Error(err)
+		return "", err
+	}
+
+	return blueButtonID, nil
 }
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
