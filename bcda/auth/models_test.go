@@ -68,8 +68,9 @@ func (s *ModelsTestSuite) TestRevokeSystemKeyPair() {
 	s.db.Save(&models.Group{GroupID: "A00001"})
 	s.db.Save(&models.System{GroupID: "A00001"})
 	s.db.Save(&encryptionKey)
-	encryptionKey, err := auth.RevokeSystemKeyPair(encryptionKey.ID)
+	err := auth.RevokeSystemKeyPair(encryptionKey.ID)
 	assert.Nil(s.T(), err)
+	s.db.Unscoped().Find(&encryptionKey)
 	assert.NotNil(s.T(), encryptionKey.DeletedAt)
 }
 
