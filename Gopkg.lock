@@ -232,11 +232,15 @@
   revision = "8e01ec4cd3e2d84ab2fe90d8210528ffbb06d8ff"
 
 [[projects]]
-  digest = "1:3f3a05ae0b95893d90b9b3b5afdb79a9b3d96e4e36e099d841ae602e4aca0da8"
+  branch = "master"
+  digest = "1:35ce874cf16f78a2da908ab28b0277497e36603d289db00d39da5200bc8ace08"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "pbkdf2",
+    "ssh/terminal",
+  ]
   pruneopts = "UT"
-  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+  revision = "a29dc8fdc73485234dbef99ebedb95d2eced08de"
 
 [[projects]]
   branch = "master"
@@ -310,6 +314,7 @@
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
     "github.com/pborman/uuid",
+    "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
     "github.com/soheilhy/cmux",
     "github.com/stretchr/testify/assert",
@@ -319,6 +324,7 @@
     "github.com/tsenart/vegeta/lib",
     "github.com/tsenart/vegeta/lib/plot",
     "github.com/urfave/cli",
+    "golang.org/x/crypto/pbkdf2",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

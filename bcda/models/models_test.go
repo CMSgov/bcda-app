@@ -2,8 +2,11 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testConstants"
@@ -340,4 +343,54 @@ func (s *ModelsTestSuite) TestEncryptionKeyModel() {
 	db.Save(&System{GroupID: "A00000"})
 	err = db.Save(&encryptionKey).Error
 	assert.Nil(s.T(), err)
+}
+
+func (s *ModelsTestSuite) TestGetBlueButtonID() {
+	assert := s.Assert()
+	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
+	bbc := testUtils.BlueButtonClient{}
+
+	bbc.On("GetBlueButtonIdentifier", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	// New never seen before hicn, asks the mock blue button client for the value
+	blueButtonID, err := cclfBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("BB_VALUE", blueButtonID)
+
+	// trivial case.  The object has a BB ID set on it already, this does nothing
+	cclfBeneficiary.BlueButtonID = "LOCAL_VAL"
+	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("LOCAL_VAL", blueButtonID)
+
+	// A record with the same HICN value exists.  Grab that value.
+	cclfFile := CCLFFile{
+		Name:            "HASHTEST",
+		CCLFNum:         8,
+		ACOCMSID:        "12345",
+		PerformanceYear: 2019,
+		Timestamp:       time.Now(),
+	}
+	db.Save(&cclfFile)
+	defer db.Unscoped().Delete(&cclfFile)
+	cclfBeneficiary.FileID = cclfFile.ID
+	// Save a blank one, this shouldn't affect pulling a val from the DB later
+	cclfBeneficiary.BlueButtonID = ""
+	err = db.Create(&cclfBeneficiary).Error
+	defer db.Unscoped().Delete(&cclfBeneficiary)
+	assert.Nil(err)
+	cclfBeneficiary.ID = 0
+	cclfBeneficiary.BlueButtonID = "DB_VALUE"
+	err = db.Create(&cclfBeneficiary).Error
+	defer db.Unscoped().Delete(&cclfBeneficiary)
+
+	assert.Nil(err)
+	newCCLFBeneficiary := CCLFBeneficiary{HICN: cclfBeneficiary.HICN, MBI: "NOT_AN_MBI"}
+	newBBID, err := newCCLFBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("DB_VALUE", newBBID)
+	// Should be making only a single call to BB for all 3 attempts.
+	bbc.AssertNumberOfCalls(s.T(), "GetBlueButtonIdentifier", 1)
 }
