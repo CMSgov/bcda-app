@@ -33,7 +33,9 @@ func init() {
 // Hash is a cryptographically hashed string
 type Hash string
 
-// NewHash creates a hashed string from a source string, return it as a new Hash value.
+// NewHash creates a Hash value from a source string
+// The HashValue consists of the salt and hash separated by a colon ( : )
+// If the source of randomness fails it returns an error.
 func NewHash(source string) (Hash, error) {
 	salt := make([]byte, saltSize)
 	_, err := rand.Read(salt)

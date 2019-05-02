@@ -171,6 +171,11 @@ func (s *BackendTestSuite) TestHashEmpty() {
 	assert.False(s.T(), hash.IsHashOf(""))
 }
 
+func (s *BackendTestSuite) TestHashInvalid() {
+	hash := auth.Hash("INVALID_NUMBER_OF_SEGMENTS:RFbxyt3Fa/zQTZ324QbgTRv/yj5cXdaq5CdVDBvliN8=:8c7EH5a/I76UFgwO0F8GRTD1pfqDvrbrwN5qbuvKUZO90BuBm4WQFQynhnKE1gtvmF5xJlyoEPeqnK44TfSMuQ==")
+	assert.False(s.T(), hash.IsHashOf("811ab5dd-df67-4f3a-88bf-46ed91efbf73"))
+}
+
 func (s *BackendTestSuite) TestPrivateKey() {
 	privateKey := s.AuthBackend.PrivateKey
 	assert.NotNil(s.T(), privateKey)
