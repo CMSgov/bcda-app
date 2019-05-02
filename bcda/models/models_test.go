@@ -5,6 +5,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -333,16 +334,26 @@ func (s *ModelsTestSuite) TestGroupModel() {
 }
 
 func (s *ModelsTestSuite) TestEncryptionKeyModel() {
-	encryptionKeyBytes := []byte(`{"body": "this is a public key", "system_id": 1}`)
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	group := Group{GroupID: "A00000"}
+	db.Save(&group)
+
+	system := System{GroupID: "A00000"}
+	db.Save(&system)
+
+	systemIDStr := strconv.FormatUint(uint64(system.ID), 10)
+	encryptionKeyBytes := []byte(`{"body": "this is a public key", "system_id": ` + systemIDStr + `}`)
 	encryptionKey := EncryptionKey{}
 	err := json.Unmarshal(encryptionKeyBytes, &encryptionKey)
 	assert.Nil(s.T(), err)
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	db.Save(&Group{GroupID: "A00000"})
-	db.Save(&System{GroupID: "A00000"})
+
 	err = db.Save(&encryptionKey).Error
 	assert.Nil(s.T(), err)
+
+	s.db.Unscoped().Delete(&system)
+	s.db.Unscoped().Delete(&group)
 }
 
 func (s *ModelsTestSuite) TestGetBlueButtonID() {
