@@ -70,31 +70,30 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 }
 
 /*
- GenerateSystemKeyPair creates a keypair for a system, based on the provided client ID.
- The public key is saved to the database and the private key is returned.
+ GenerateSystemKeyPair creates a keypair for a system. The public key is saved to the database and the private key is returned.
 */
-func GenerateSystemKeyPair(clientID string) (string, error) {
+func GenerateSystemKeyPair(systemID uint) (string, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
 	var system models.System
-	err := db.Preload("EncryptionKeys").First(&system, "client_id = ?", clientID).Error
+	err := db.Preload("EncryptionKeys").First(&system, systemID).Error
 	if err != nil {
-		return "", errors.Wrapf(err, "could not find system for client ID %s", clientID)
+		return "", errors.Wrapf(err, "could not find system ID %d", systemID)
 	}
 
 	if len(system.EncryptionKeys) > 0 {
-		return "", fmt.Errorf("encryption keypair already exists for system with client ID %s", clientID)
+		return "", fmt.Errorf("encryption keypair already exists for system ID %d", systemID)
 	}
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not create key for client %s", clientID)
+		return "", errors.Wrapf(err, "could not create key for system ID %d", systemID)
 	}
 
 	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
 	if err != nil {
-		return "", errors.Wrapf(err, "could not marshal public key for client %s", clientID)
+		return "", errors.Wrapf(err, "could not marshal public key for system ID %d", systemID)
 	}
 
 	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
@@ -109,7 +108,7 @@ func GenerateSystemKeyPair(clientID string) (string, error) {
 
 	err = db.Create(&encryptionKey).Error
 	if err != nil {
-		return "", errors.Wrapf(err, "could not save key for client %s", clientID)
+		return "", errors.Wrapf(err, "could not save key for system ID %d", systemID)
 	}
 
 	privateKeyBytes := pem.EncodeToMemory(

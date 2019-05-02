@@ -3,6 +3,7 @@ package auth_test
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"strconv"
 	"testing"
 	"time"
 
@@ -73,16 +74,13 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair() {
 		s.FailNow(err.Error())
 	}
 
-	system := models.System{
-		GroupID:  group.GroupID,
-		ClientID: "1234",
-	}
+	system := models.System{GroupID:  group.GroupID}
 	err = s.db.Create(&system).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 
-	privateKeyStr, err := auth.GenerateSystemKeyPair("1234")
+	privateKeyStr, err := auth.GenerateSystemKeyPair(system.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), privateKeyStr)
 
@@ -116,10 +114,7 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 		s.FailNow(err.Error())
 	}
 
-	system := models.System{
-		GroupID:  group.GroupID,
-		ClientID: "2345",
-	}
+	system := models.System{GroupID:  group.GroupID}
 	err = s.db.Create(&system).Error
 	if err != nil {
 		s.FailNow(err.Error())
@@ -133,8 +128,9 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 		s.FailNow(err.Error())
 	}
 
-	privateKey, err := auth.GenerateSystemKeyPair("2345")
-	assert.EqualError(s.T(), err, "encryption keypair already exists for system with client ID 2345")
+	privateKey, err := auth.GenerateSystemKeyPair(system.ID)
+	systemIDStr := strconv.FormatUint(uint64(system.ID), 10)
+	assert.EqualError(s.T(), err, "encryption keypair already exists for system ID " + systemIDStr)
 	assert.Empty(s.T(), privateKey)
 
 	s.db.Unscoped().Delete(&system)
