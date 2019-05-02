@@ -63,13 +63,20 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 	return aco, err
 }
 
-// RevokeSystemKeyPair soft deletes the specified encryption key so that it can no longer be used
-func RevokeSystemKeyPair(encryptionKeyID uint) error {
+// RevokeSystemKeyPair soft deletes the active encryption key
+// for the specified system so that it can no longer be used
+func RevokeSystemKeyPair(systemID uint) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	encryptionKey := models.EncryptionKey{}
+	var system models.System
 
-	err := db.Find(&encryptionKey, encryptionKeyID).Error
+	err := db.Preload("EncryptionKeys").Find(&system, systemID).Error
+	if err != nil {
+		return err
+	}
+
+	var encryptionKey models.EncryptionKey
+	err = db.Find(&encryptionKey, system.EncryptionKeys[0].ID).Error
 	if err != nil {
 		return err
 	}
