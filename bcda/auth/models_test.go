@@ -7,15 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jinzhu/gorm"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type ModelsTestSuite struct {
@@ -67,6 +66,24 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	assert.Equal(s.T(), tokenString, savedToken.TokenString)
 }
 
+func (s *ModelsTestSuite) TestRevokeSystemKeyPair() {
+	group := models.Group{GroupID: "A00001"}
+	s.db.Save(&group)
+	defer s.db.Unscoped().Delete(&group)
+	system := models.System{GroupID: group.GroupID}
+	s.db.Save(&system)
+	defer s.db.Unscoped().Delete(&system)
+	encryptionKey := models.EncryptionKey{SystemID: system.ID}
+	s.db.Save(&encryptionKey)
+	defer s.db.Unscoped().Delete(&encryptionKey)
+
+	err := auth.RevokeSystemKeyPair(system.ID)
+	assert.Nil(s.T(), err)
+	assert.Empty(s.T(), system.EncryptionKeys)
+	s.db.Unscoped().Find(&encryptionKey)
+	assert.NotNil(s.T(), encryptionKey.DeletedAt)
+}
+
 func (s *ModelsTestSuite) TestGenerateSystemKeyPair() {
 	group := models.Group{GroupID: "abcdef123456"}
 	err := s.db.Create(&group).Error
@@ -74,7 +91,7 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair() {
 		s.FailNow(err.Error())
 	}
 
-	system := models.System{GroupID:  group.GroupID}
+	system := models.System{GroupID: group.GroupID}
 	err = s.db.Create(&system).Error
 	if err != nil {
 		s.FailNow(err.Error())
@@ -114,7 +131,7 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 		s.FailNow(err.Error())
 	}
 
-	system := models.System{GroupID:  group.GroupID}
+	system := models.System{GroupID: group.GroupID}
 	err = s.db.Create(&system).Error
 	if err != nil {
 		s.FailNow(err.Error())
@@ -130,7 +147,7 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 
 	privateKey, err := auth.GenerateSystemKeyPair(system.ID)
 	systemIDStr := strconv.FormatUint(uint64(system.ID), 10)
-	assert.EqualError(s.T(), err, "encryption keypair already exists for system ID " + systemIDStr)
+	assert.EqualError(s.T(), err, "encryption keypair already exists for system ID "+systemIDStr)
 	assert.Empty(s.T(), privateKey)
 
 	s.db.Unscoped().Delete(&system)
