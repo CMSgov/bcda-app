@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
@@ -19,9 +20,10 @@ import (
 
 // The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
 // Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
-const hashIter int = 40000
+const hashIter int = 90000
 const hashKeyLen int = 64
 const saltSize int = 32
+const hashMinTime = 1*time.Second
 
 var (
 	alphaBackend *AlphaBackend
@@ -48,7 +50,15 @@ func NewHash(source string) (Hash, error) {
 		return Hash(""), err
 	}
 
+	start := time.Now()
 	h := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
+	hashCreationTime := time.Since(start)
+
+	if hashCreationTime < hashMinTime {
+		// This log should be the source of a Splunk alert for production environments
+		log.Warningf("hash creation took less than minimum time (actual time: %s; target time: %s)--please increase hashIter in /bcda/auth/backend.go", hashCreationTime, hashMinTime)
+	}
+
 	return Hash(fmt.Sprintf("%s:%s", base64.StdEncoding.EncodeToString(salt), base64.StdEncoding.EncodeToString(h))), nil
 }
 

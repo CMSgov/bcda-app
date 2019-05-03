@@ -5,16 +5,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
-	"time"
-
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -140,28 +137,9 @@ func (s *BackendTestSuite) TestHashUnique() {
 	assert.NotEqual(s.T(), hash1.String(), hash2.String())
 }
 
-func (s *BackendTestSuite) TestHashTime() {
-	uuidString := uuid.NewRandom().String()
-
-	start := time.Now()
-	hash, _ := auth.NewHash(uuidString)
-	hashCreationTime := time.Since(start)
-
-	start = time.Now()
-	hash.IsHashOf(uuidString)
-	hashComparisonTime := time.Since(start)
-
-	// Intentionally printing actual execution times even when within parameters
-	fmt.Printf("Hash creation took %s\nHash comparison took %s\n", hashCreationTime, hashComparisonTime)
-	// Lower limit has some padding.  Current number of iterations is tuned to take about 1s on a 2.8 GHz Intel Core i7
-	assert.True(s.T(), hashComparisonTime > 500*time.Millisecond, "Hash comparison took %s; target time > .5s")
-	// Upper limit is generous, so that there's no trouble passing tests on slower virtual environments.
-	assert.True(s.T(), hashComparisonTime < 5*time.Second, "Hash comparison took %s, target time < 5s")
-}
-
 func (s *BackendTestSuite) TestHashCompatibility() {
-	uuidString := "811ab5dd-df67-4f3a-88bf-46ed91efbf73"
-	hash := auth.Hash("RFbxyt3Fa/zQTZ324QbgTRv/yj5cXdaq5CdVDBvliN8=:8c7EH5a/I76UFgwO0F8GRTD1pfqDvrbrwN5qbuvKUZO90BuBm4WQFQynhnKE1gtvmF5xJlyoEPeqnK44TfSMuQ==")
+	uuidString := "96c5a0cd-b284-47ac-be6e-f33b14dc4697"
+	hash := auth.Hash("d3H4fX/uEk1jOW2gYrFezyuJoSv4ay2x3gH5C25KpWM=:kVqFm1he5S4R1/10oIkVNFot40VB3wTa+DXTp4TrwvyXHkQO7Dxjjo/OqwemiYP8p3UQ8r/HkmTQrSS99UXzaQ==")
 	assert.True(s.T(), hash.IsHashOf(uuidString), "Possible change in hashing parameters or algorithm.  Known input/output does not match.  Merging this code will result in invalidating credentials.")
 }
 
@@ -172,8 +150,8 @@ func (s *BackendTestSuite) TestHashEmpty() {
 }
 
 func (s *BackendTestSuite) TestHashInvalid() {
-	hash := auth.Hash("INVALID_NUMBER_OF_SEGMENTS:RFbxyt3Fa/zQTZ324QbgTRv/yj5cXdaq5CdVDBvliN8=:8c7EH5a/I76UFgwO0F8GRTD1pfqDvrbrwN5qbuvKUZO90BuBm4WQFQynhnKE1gtvmF5xJlyoEPeqnK44TfSMuQ==")
-	assert.False(s.T(), hash.IsHashOf("811ab5dd-df67-4f3a-88bf-46ed91efbf73"))
+	hash := auth.Hash("INVALID_NUMBER_OF_SEGMENTS:d3H4fX/uEk1jOW2gYrFezyuJoSv4ay2x3gH5C25KpWM=:kVqFm1he5S4R1/10oIkVNFot40VB3wTa+DXTp4TrwvyXHkQO7Dxjjo/OqwemiYP8p3UQ8r/HkmTQrSS99UXzaQ==")
+	assert.False(s.T(), hash.IsHashOf("96c5a0cd-b284-47ac-be6e-f33b14dc4697"))
 }
 
 func (s *BackendTestSuite) TestPrivateKey() {
