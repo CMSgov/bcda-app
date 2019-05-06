@@ -172,8 +172,8 @@ func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
 	defer database.Close(db)
 	var cclfFile CCLFFile
 	// should I put a filter here to make sure it isn't too old?
-	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("Timestamp, desc").First(&cclfFile).RecordNotFound() {
-		log.Error("Unable to find CCLF8 File for ACO %s", aco.CMSID)
+	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+		log.Errorf("Unable to find CCLF8 File for ACO %v", aco.CMSID)
 		return cclfBeneficiaryIDs, fmt.Errorf("unable to find cclfFile")
 	}
 
@@ -376,6 +376,11 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		return "", err
 	}
 
+	if len(patient.Entry) == 0 {
+		err = fmt.Errorf("patient identifier not found at BlueButton for cclfBenficiary ID: %v", cclfBeneficiary.ID)
+		log.Error(err)
+		return "", err
+	}
 	blueButtonID = patient.Entry[0].Resource.ID
 	fullURL := patient.Entry[0].FullUrl
 	if !strings.Contains(fullURL, blueButtonID) {
