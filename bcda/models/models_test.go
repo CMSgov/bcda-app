@@ -255,7 +255,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 
 	// small ACO has 10 benes
 	acoUUID = uuid.Parse(testConstants.SMALLACOUUID)
-	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
+	err = s.db.Find(&smallACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaryIDs, err = smallACO.GetBeneficiaryIDs()
 	assert.Nil(err)

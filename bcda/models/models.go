@@ -168,12 +168,16 @@ type ACO struct {
 }
 
 func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
+	if aco.CMSID == nil {
+		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
+		return cclfBeneficiaryIDs, fmt.Errorf("no CMS ID set for this ACO")
+	}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	var cclfFile CCLFFile
 	// should I put a filter here to make sure it isn't too old?
-	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
-		log.Errorf("Unable to find CCLF8 File for ACO %v", aco.CMSID)
+	if db.Debug().Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
 		return cclfBeneficiaryIDs, fmt.Errorf("unable to find cclfFile")
 	}
 

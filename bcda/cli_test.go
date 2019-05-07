@@ -209,8 +209,8 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -253,8 +253,8 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 }
 
 func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
@@ -262,8 +262,8 @@ func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -306,8 +306,8 @@ func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 }
 
 func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
@@ -324,8 +324,8 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 
 	acoID := "A0002"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -359,8 +359,8 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 }
 
 func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
@@ -368,8 +368,8 @@ func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 
 	acoID := "A0002"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -403,8 +403,8 @@ func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
+	//db.Unscoped().Delete(&models.CCLFFile{})
 }
 
 func (s *CLITestSuite) TestImportCCLF9_InvalidMetadata() {
