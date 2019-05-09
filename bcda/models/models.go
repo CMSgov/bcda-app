@@ -339,6 +339,16 @@ type CCLFFile struct {
 	PerformanceYear int       `gorm:"not null"`
 }
 
+func (cclfFile *CCLFFile) Delete() error {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	err := db.Unscoped().Where("file_id = ?", cclfFile.ID).Delete(&CCLFBeneficiary{}).Error
+	if err != nil {
+		return err
+	}
+	return db.Unscoped().Delete(&cclfFile).Error
+}
+
 // "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
