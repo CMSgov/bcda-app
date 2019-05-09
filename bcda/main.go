@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/cclf"
+	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"net/http"
 	"os"
 	"strconv"
@@ -49,14 +51,14 @@ func init() {
 	} else {
 		log.Info("Failed to open error log file; using default stderr")
 	}
-   
-	if isEtlMode != "true" {	
-                log.Info("BCDA application is running in API mode.")
+
+	if isEtlMode != "true" {
+		log.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
 		log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 	} else {
 		log.Info("BCDA application is running in ETL mode.")
-  	}
+	}
 
 }
 
@@ -81,7 +83,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = version
-	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete string
+	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -166,7 +168,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName, acoCMSID)
+				acoUUID, err := cclf.CreateACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -331,7 +333,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				success, failure, skipped, err := importCCLFDirectory(filePath)
+				success, failure, skipped, err := cclf.ImportCCLFDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				return err
 			},
@@ -355,10 +357,31 @@ func setUpApp() *cli.App {
 				if !fi.IsDir() {
 					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", dirToDelete)
 				}
-				filesDeleted, err := deleteDirectoryContents(dirToDelete)
+				filesDeleted, err := cclf.DeleteDirectoryContents(dirToDelete)
 				if filesDeleted > 0 {
 					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
 				}
+				return err
+			},
+		},
+		{
+			Name:     "import-cclf-package",
+			Category: "Cleanup",
+			Usage:    "Delete all of the files in a directory",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "acoSize",
+					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'",
+					Destination: &acoSize,
+				},
+				cli.StringFlag{
+					Name:        "environment",
+					Usage:       "Which set of files to use.  ",
+					Destination: &environment,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				err := cclfUtils.ImportCCLFPackage(acoSize, environment)
 				return err
 			},
 		},

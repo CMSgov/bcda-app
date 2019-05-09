@@ -1,4 +1,4 @@
-package main
+package cclf
 
 import (
 	"archive/zip"
@@ -19,7 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-func createACO(name, cmsID string) (string, error) {
+func CreateACO(name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
@@ -300,7 +300,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	return metadata, nil
 }
 
-func importCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
+func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	var cclfmap = make(map[string][]*cclfFileMetadata)
 
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
@@ -472,7 +472,7 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 	return nil
 }
 
-func deleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
+func DeleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
 	log.Info(fmt.Sprintf("preparing to delete directory '%v'", dirToDelete))
 	f, err := os.Open(filepath.Clean(dirToDelete))
 	if err != nil {
