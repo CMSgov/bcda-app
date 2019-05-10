@@ -24,6 +24,7 @@ const hashIter int = 90000
 const hashKeyLen int = 64
 const saltSize int = 32
 const hashMinTime = 1*time.Second
+const hashMaxTime = 3*time.Second
 
 var (
 	alphaBackend *AlphaBackend
@@ -54,9 +55,13 @@ func NewHash(source string) (Hash, error) {
 	h := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
 	hashCreationTime := time.Since(start)
 
-	if hashCreationTime < hashMinTime {
+	switch {
+	case hashCreationTime < hashMinTime:
 		// This log should be the source of a Splunk alert for production environments
 		log.Warningf("hash creation took less than minimum time (actual time: %s; target time: %s)--please increase hashIter in /bcda/auth/backend.go", hashCreationTime, hashMinTime)
+	case hashCreationTime > hashMaxTime:
+		// This log should be the source of a Splunk alert for production environments
+		log.Warningf("hash creation took more than maximum time (actual time: %s; target time: %s)--please decrease hashIter in /bcda/auth/backend.go", hashCreationTime, hashMaxTime)
 	}
 
 	return Hash(fmt.Sprintf("%s:%s", base64.StdEncoding.EncodeToString(salt), base64.StdEncoding.EncodeToString(h))), nil
