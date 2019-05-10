@@ -178,7 +178,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enqueueJobs, err := newJob.GetEnqueJobs(true, t)
+	enqueueJobs, err := newJob.GetEnqueJobs(t)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)

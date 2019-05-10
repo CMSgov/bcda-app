@@ -38,8 +38,6 @@ type jobEnqueueArgs struct {
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
-	// TODO(rnagle): remove `Encrypt` when file encryption functionality is ready for release
-	Encrypt bool
 }
 
 func init() {
@@ -127,7 +125,6 @@ func processJob(j *que.Job) error {
 		}
 
 		oldpath := staging + "/" + fileName
-		newpath := data + "/" + fileName
 		if _, err := os.Stat(data); os.IsNotExist(err) {
 			err = os.Mkdir(data, os.ModePerm)
 			if err != nil {
@@ -136,42 +133,21 @@ func processJob(j *que.Job) error {
 			}
 		}
 
-		// TODO (knollfear): Remove this too when we stop supporting unencrypted files
-		if !jobArgs.Encrypt {
-			db := database.GetGORMDbConnection()
-			defer database.Close(db)
-			err = db.Create(&models.JobKey{JobID: uint(jobArgs.ID), EncryptedKey: []byte("NO_ENCRYPTION"), FileName: fileName}).Error
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-
-			err := os.Rename(oldpath, newpath)
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-
+		publicKey := exportJob.ACO.GetPublicKey()
+		if publicKey == nil {
+			fmt.Println("NO KEY EXISTS  THIS IS BAD")
 		} else {
-			// this will be the only code path after ATO
-			publicKey := exportJob.ACO.GetPublicKey()
-			if publicKey == nil {
-				fmt.Println("NO KEY EXISTS  THIS IS BAD")
-			} else {
-				err := encryption.EncryptAndMove(staging, data, fileName, exportJob.ACO.GetPublicKey(), exportJob.ID)
-				if err != nil {
-					log.Error(err)
-					return err
-				}
-			}
-			err = os.Remove(oldpath)
+			err := encryption.EncryptAndMove(staging, data, fileName, exportJob.ACO.GetPublicKey(), exportJob.ID)
 			if err != nil {
 				log.Error(err)
 				return err
 			}
-
 		}
-
+		err = os.Remove(oldpath)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 	}
 
 	_, err = exportJob.CheckCompletedAndCleanup()
