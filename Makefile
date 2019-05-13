@@ -22,8 +22,8 @@ lint:
 # or 
 #    CLIENT_ID=1234 CLIENT_SECRET=abcd make postman env=local
 #
-# Unless both these values are overridden, new credentials will be created using create-alpha-token
-clientTemp := $(shell docker-compose run api sh -c 'tmp/bcda create-alpha-token --size dev'|tail -n2)
+# Unless both these values are overridden, new credentials will be created using generate-client-credentials
+clientTemp := $(shell docker-compose run api sh -c 'tmp/bcda generate-client-credentials --aco-id 0c527d2e-2e8a-4808-b11d-0fa06baf8254'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:

@@ -112,10 +112,7 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
-	r, err := s.p.GenerateClientCredentials("", 0)
-	assert.Empty(s.T(), r)
-	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "not implemented")
+	// TODO
 }
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {

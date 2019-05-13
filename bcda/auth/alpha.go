@@ -82,7 +82,30 @@ func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
 }
 
 func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
-	return Credentials{}, fmt.Errorf("GenerateClientCredentials is not implemented for alpha auth")
+
+        aco, err := getACOFromDB(clientID)
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        s, err := generateClientSecret()
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        hashedSecret := NewHash(s)
+
+        db := database.GetGORMDbConnection()
+        defer database.Close(db)
+        aco.ClientID = clientID
+        aco.AlphaSecret = hashedSecret.String()
+        err = db.Save(&aco).Error
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        return Credentials{ClientName: aco.Name, ClientID: clientID, ClientSecret: s}, nil
+
 }
 
 func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {

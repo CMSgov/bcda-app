@@ -282,6 +282,45 @@ func setUpApp() *cli.App {
 				return nil
 			},
 		},
+                {
+                        Name:     "generate-client-credentials",
+                        Category: "Authentication tools",
+                        Usage:    "Generate new credentials for an ACO client specified by ACO ID",
+                        Flags: []cli.Flag{
+                                cli.StringFlag{      
+                                        Name:        "ttl",
+                                        Usage:       "Set custom Time To Live in hours",                                
+                                        Destination: &ttl,
+                                },
+                                cli.StringFlag{      
+                                        Name:        "aco-id",
+                                        Usage:       "UUID of user's ACO",
+                                        Destination: &acoID,
+                                },
+                        },
+                        Action: func(c *cli.Context) error {
+
+                                if ttl == "" {
+                                        ttl = os.Getenv("JWT_EXPIRATION_DELTA")
+                                        if ttl == "" {
+                                                ttl = "72"
+                                        }
+                                }
+        			ttlInt, err := strconv.Atoi(ttl)
+			        if err != nil || ttlInt <= 0 {
+					return fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
+        			}
+                                
+                                // Generate new credentials
+				creds, err := auth.GetProvider().GenerateClientCredentials(acoID, ttlInt)
+                                if err != nil {
+                                        return err
+                                }
+				msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+                                fmt.Fprintf(app.Writer, "%s\n", msg)
+                                return nil
+                        },
+                },
 		{
 			Name:     "sql-migrate",
 			Category: "Database tools",
