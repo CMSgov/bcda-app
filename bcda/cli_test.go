@@ -234,7 +234,7 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"),file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	beneficiaries := []models.CCLFBeneficiary{}
@@ -287,7 +287,7 @@ func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"),file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	beneficiaries := []models.CCLFBeneficiary{}
@@ -347,7 +347,7 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"),file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
@@ -391,7 +391,7 @@ func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"),file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
@@ -423,14 +423,14 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.EqualError(err, "invalid filename for file: /path/to/file")
 
 	metadata, err := getCCLFFileMetadata("/path/T.A0000.ACO.ZC8Y18.D190117.T9909420")
-	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420")
+	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 
 	expTime, _ := time.Parse(time.RFC3339, "2019-01-17T21:09:42Z")
 	metadata, err = getCCLFFileMetadata("/path/T.A0000.ACO.ZC8Y18.D190117.T2109420")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0000", metadata.acoID)
 	assert.Equal(8, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -439,7 +439,7 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("production", metadata.env)
 	assert.Equal("A0001", metadata.acoID)
 	assert.Equal(9, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -448,7 +448,7 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0002", metadata.acoID)
 	assert.Equal(0, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -519,7 +519,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	modtimeAfter := time.Now().Truncate(time.Second)
 	for _, cclf := range cclflist {
 		assert.Equal(9, cclf.cclfNum)
-		assert.Equal(modtimeBefore, cclf.deliveryDate)
+		assert.Equal(modtimeBefore.Format("010203040506"), cclf.deliveryDate.Format("010203040506"))
 
 		// change the modification time for all the files
 		err := os.Chtimes(cclf.filePath, modtimeAfter, modtimeAfter)
@@ -535,7 +535,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	cclflist = cclfmap["A0001_18"]
 	for _, cclf := range cclflist {
 		// check for the new modification time
-		assert.Equal(modtimeAfter, cclf.deliveryDate)
+		assert.Equal(modtimeAfter.Format("010203040506"), cclf.deliveryDate.Format("010203040506"))
 	}
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
