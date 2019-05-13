@@ -272,7 +272,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
-	db.Find(&savedCCLF9, "id = ?", "6")
+	db.First(&savedCCLF9, "current_num = ? and file_id = ?", "1A69B98CD35", file.ID)
 	assert.NotNil(savedCCLF9)
 	assert.Equal("M", savedCCLF9.XrefIndicator)
 	assert.Equal("1A69B98CD35", savedCCLF9.CurrentNum)
