@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -34,7 +35,10 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	sourcedir := fmt.Sprintf("../shared_files/syntheticCCLFFiles/%s/%s", environment, acoSize)
 	destdir := "tempCCLFDir/"
 	if _, err := os.Stat(destdir); os.IsNotExist(err) {
-		os.Mkdir(destdir, os.ModePerm)
+		err = os.Mkdir(destdir, os.ModePerm)
+		if err != nil {
+			return err
+		}
 	}
 
 	dateString := fmt.Sprintf("%s.D%s.T%s", time.Now().Format("06"), time.Now().Format("060102"), time.Now().Format("1504059"))
@@ -45,10 +49,16 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	}
 	for _, file := range files {
 		err = copyFiles(fmt.Sprintf("%s/%s", sourcedir, file.Name()), fmt.Sprintf("%s/%s%s", destdir, file.Name(), dateString))
+		if err != nil {
+			return err
+		}
 	}
 
 	success, failure, skipped, err := cclf.ImportCCLFDirectory(destdir)
-	fmt.Println("Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Completed CCLF import.  Successfully imported %d files.  Failed to import %d files.  Skipped %d files.  See logs for more details.\n", success, failure, skipped)
 	if success == 3 {
 		_, err = cclf.DeleteDirectoryContents(destdir)
 		return err
@@ -68,7 +78,7 @@ func copyFiles(src, dst string) error {
 		return fmt.Errorf("%s is not a regular file", src)
 	}
 
-	source, err := os.Open(src)
+	source, err := os.Open(filepath.Clean(src))
 	if err != nil {
 		return err
 	}

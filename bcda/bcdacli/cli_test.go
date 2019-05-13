@@ -1,8 +1,10 @@
-package main
+package bcdacli
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -26,13 +28,13 @@ import (
 
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
 
-type MainTestSuite struct {
+type CLITestSuite struct {
 	suite.Suite
 	testApp       *cli.App
 	expectedSizes map[string]int
 }
 
-func (s *MainTestSuite) SetupSuite() {
+func (s *CLITestSuite) SetupSuite() {
 	s.expectedSizes = map[string]int{
 		"dev":    50,
 		"small":  10,
@@ -40,23 +42,23 @@ func (s *MainTestSuite) SetupSuite() {
 		"large":  100,
 	}
 	testUtils.SetUnitTestKeysForAuth()
-	auth.InitAlphaBackend()      // should be a provider thing ... inside GetProvider()?
+	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
 }
 
-func (s *MainTestSuite) SetupTest() {
-	s.testApp = setUpApp()
+func (s *CLITestSuite) SetupTest() {
+	s.testApp = GetApp()
 	autoMigrate()
 }
 
-func (s *MainTestSuite) TearDownTest() {
+func (s *CLITestSuite) TearDownTest() {
 	testUtils.PrintSeparator()
 }
 
-func TestMainTestSuite(t *testing.T) {
-	suite.Run(t, new(MainTestSuite))
+func TestCLITestSuite(t *testing.T) {
+	suite.Run(t, new(CLITestSuite))
 }
 
-func (s *MainTestSuite) TestGetEnvInt() {
+func (s *CLITestSuite) TestGetEnvInt() {
 	const DEFAULT_VALUE = 200
 	os.Setenv("TEST_ENV_STRING", "blah")
 	os.Setenv("TEST_ENV_INT", "232")
@@ -66,14 +68,14 @@ func (s *MainTestSuite) TestGetEnvInt() {
 	assert.Equal(s.T(), DEFAULT_VALUE, utils.GetEnvInt("FAKE_ENV", DEFAULT_VALUE))
 }
 
-func (s *MainTestSuite) TestSetup() {
+func (s *CLITestSuite) TestSetup() {
 	assert.Equal(s.T(), 1, 1)
 	app := setUpApp()
-	assert.Equal(s.T(), app.Name, Name)
-	assert.Equal(s.T(), app.Usage, Usage)
+	assert.Equal(s.T(), app.Name, constants.Name)
+	assert.Equal(s.T(), app.Usage, constants.Usage)
 }
 
-func (s *MainTestSuite) TestAutoMigrate() {
+func (s *CLITestSuite) TestAutoMigrate() {
 	// Plenty of other tests will rely on this happening
 	// Other tests run these lines so as long as this doesn't error it sb fine
 	args := []string{"bcda", "sql-migrate"}
@@ -81,7 +83,7 @@ func (s *MainTestSuite) TestAutoMigrate() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *MainTestSuite) TestCreateUser() {
+func (s *CLITestSuite) TestCreateUser() {
 
 	// init
 	db := database.GetGORMDbConnection()
@@ -185,7 +187,7 @@ func (s *MainTestSuite) TestCreateUser() {
 	assert.Equal(0, buf.Len())
 }
 
-func (s *MainTestSuite) TestCreateToken() {
+func (s *CLITestSuite) TestCreateToken() {
 	// Set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -237,7 +239,7 @@ func (s *MainTestSuite) TestCreateToken() {
 	buf.Reset()
 }
 
-func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
+func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	// Due to the way the resulting token is returned to the user, not all scenarios can be executed via CLI
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -300,7 +302,7 @@ func (s *MainTestSuite) TestCreateAlphaTokenCLI() {
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 }
 
-func (s *MainTestSuite) TestArchiveExpiring() {
+func (s *CLITestSuite) TestArchiveExpiring() {
 
 	// init
 	db := database.GetGORMDbConnection()
@@ -375,7 +377,7 @@ func (s *MainTestSuite) TestArchiveExpiring() {
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
 }
 
-func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
+func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 
 	// init
 	db := database.GetGORMDbConnection()
@@ -434,11 +436,11 @@ func (s *MainTestSuite) TestArchiveExpiringWithThreshold() {
 	os.Remove(dataPath)
 }
 
-func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
+func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	acoUUID, err := createACO("ACO "+email, "")
+	acoUUID, err := cclf.CreateACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
@@ -462,7 +464,7 @@ func setupArchivedJob(s *MainTestSuite, email string, modified time.Time) int {
 	return int(j.ID)
 }
 
-func setupJobArchiveFile(s *MainTestSuite, email string, modified time.Time, accessed time.Time) (int, *os.File) {
+func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, accessed time.Time) (int, *os.File) {
 	// directory structure is FHIR_ARCHIVE_DIR/<JobId>/<datafile>.ndjson
 	// for reference, see main.archiveExpiring() and its companion tests above
 	jobId := setupArchivedJob(s, email, modified)
@@ -483,7 +485,7 @@ func setupJobArchiveFile(s *MainTestSuite, email string, modified time.Time, acc
 	return jobId, jobFile
 }
 
-func (s *MainTestSuite) TestCleanArchive() {
+func (s *CLITestSuite) TestCleanArchive() {
 
 	// init
 	const Threshold = 30
@@ -550,7 +552,7 @@ func (s *MainTestSuite) TestCleanArchive() {
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
 }
 
-func (s *MainTestSuite) TestRevokeToken() {
+func (s *CLITestSuite) TestRevokeToken() {
 	originalAuthProvider := auth.GetProviderName()
 	defer auth.SetProvider(originalAuthProvider)
 	auth.SetProvider("alpha")
@@ -576,7 +578,7 @@ func (s *MainTestSuite) TestRevokeToken() {
 	buf.Reset()
 }
 
-func (s *MainTestSuite) TestStartApi() {
+func (s *CLITestSuite) TestStartApi() {
 
 	// Negative case
 	originalQueueDbUrl := os.Getenv("QUEUE_DATABASE_URL")
@@ -589,8 +591,173 @@ func (s *MainTestSuite) TestStartApi() {
 	// We cannot test the positive case because we don't want to start the HTTP Server in unit test environment
 }
 
-func (s *MainTestSuite) TestCreateAlphaToken() {
-	msg, err := createAlphaToken(1000, "dev")
-	assert.NotEmpty(s.T(), msg)
-	assert.Nil(s.T(), err)
+func (s *CLITestSuite) TestCreateACO() {
+
+	// init
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	assert := assert.New(s.T())
+
+	// Successful ACO creation
+	ACOName := "Unit Test ACO 1"
+	args := []string{"bcda", "create-aco", "--name", ACOName}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.NotNil(buf)
+	acoUUID := strings.TrimSpace(buf.String())
+	var testACO models.ACO
+	db.First(&testACO, "Name=?", ACOName)
+	assert.Equal(testACO.UUID.String(), acoUUID)
+	buf.Reset()
+
+	ACO2Name := "Unit Test ACO 2"
+	aco2ID := "A9999"
+	args = []string{"bcda", "create-aco", "--name", ACO2Name, "--cms-id", aco2ID}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+	assert.NotNil(buf)
+	acoUUID = strings.TrimSpace(buf.String())
+	var testACO2 models.ACO
+	db.First(&testACO2, "Name=?", ACO2Name)
+	assert.Equal(testACO2.UUID.String(), acoUUID)
+	assert.Equal(*testACO2.CMSID, aco2ID)
+	buf.Reset()
+
+	// Negative tests
+
+	// No parameters
+	args = []string{"bcda", "create-aco"}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	// No ACO Name
+	badACO := ""
+	args = []string{"bcda", "create-aco", "--name", badACO}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	// ACO name without flag
+	args = []string{"bcda", "create-aco", ACOName}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	// Unexpected flag
+	args = []string{"bcda", "create-aco", "--abcd", "efg"}
+	err = s.testApp.Run(args)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	buf.Reset()
+
+	// Invalid CMS ID
+	args = []string{"bcda", "create-aco", "--name", ACOName, "--cms-id", "ABCDE"}
+	err = s.testApp.Run(args)
+	assert.Equal("ACO CMS ID (--cms-id) is invalid", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+}
+
+func (s *CLITestSuite) TestImportCCLFDirectory() {
+	assert := assert.New(s.T())
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	testUtils.SetPendingDeletionDir(s.Suite)
+
+	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), "Completed CCLF import.")
+	assert.Contains(buf.String(), "Successfully imported 3 files.")
+	assert.Contains(buf.String(), "Failed to import 0 files.")
+	assert.Contains(buf.String(), "Skipped 0 files.")
+
+	buf.Reset()
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
+	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/")
+
+	// dir has 4 files, but 2 will be ignored because of bad file names.
+	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_BadFileNames/"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.Contains(buf.String(), "Completed CCLF import.")
+	assert.Contains(buf.String(), "Successfully imported 2 files.")
+	assert.Contains(buf.String(), "Failed to import 1 files.")
+	assert.Contains(buf.String(), "Skipped 2 files.")
+	buf.Reset()
+
+	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_BadFileNames/")
+}
+
+func (s *CLITestSuite) TestDeleteDirectoryContents() {
+	assert := assert.New(s.T())
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	dirToDelete := "../../shared_files/doomedDirectory"
+	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
+	defer os.Remove(dirToDelete)
+
+	args := []string{"bcda", "delete-dir-contents", "--dirToDelete", dirToDelete}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
+	buf.Reset()
+
+	// File, not a directory
+	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.NotContains(buf.String(), "Successfully Deleted")
+	buf.Reset()
+
+	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
+	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
+	err = s.testApp.Run(args)
+	assert.NotNil(err)
+	assert.NotContains(buf.String(), "Successfully Deleted")
+	buf.Reset()
+
+}
+
+func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
+	assert := assert.New(s.T())
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	db.Unscoped().Delete(&models.CCLFBeneficiary{})
+	db.Unscoped().Delete(&models.CCLFFile{})
+
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_split/"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), "Completed CCLF import.")
+	assert.Contains(buf.String(), "Successfully imported 3 files.")
+	assert.Contains(buf.String(), "Failed to import 0 files.")
+	assert.Contains(buf.String(), "Skipped 0 files.")
+
+	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_split/")
 }

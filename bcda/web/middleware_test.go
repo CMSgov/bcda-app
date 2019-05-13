@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"context"
@@ -163,11 +163,11 @@ func TestMiddlewareTestSuite(t *testing.T) {
 }
 
 func mockTLSServerContext() context.Context {
-	crt, err := ioutil.ReadFile("../shared_files/localhost.crt")
+	crt, err := ioutil.ReadFile("../../shared_files/localhost.crt")
 	if err != nil {
 		panic(err)
 	}
-	key, err := ioutil.ReadFile("../shared_files/localhost.key")
+	key, err := ioutil.ReadFile("../../shared_files/localhost.key")
 	if err != nil {
 		panic(err)
 	}
