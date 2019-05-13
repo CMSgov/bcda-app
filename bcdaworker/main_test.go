@@ -38,6 +38,8 @@ func (s *MainTestSuite) SetupTest() {
 	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/bb-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
+	os.Setenv("ATO_PUBLIC_KEY_FILE", "../shared_files/ATO_public.pem")
+	os.Setenv("ATO_PRIVATE_KEY_FILE", "../shared_files/ATO_private.pem")
 	models.InitializeGormModels()
 }
 
