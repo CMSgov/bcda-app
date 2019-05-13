@@ -89,6 +89,7 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	var aco ACO
 	s.db.Find(&aco, "aco_id = ?", cmsID)
 	assert.NotNil(aco)
+	origKey := aco.PublicKey
 
 	// Setup key
 	pubKey := GetATOPublicKey()
@@ -103,12 +104,12 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	// Save and verify
 	aco.PublicKey = string(publicKeyBytes)
 	s.db.Save(&aco)
-	s.db.Find(&aco, "UUID = ?", acoUUID)
+	s.db.Find(&aco, "aco_id = ?", cmsID)
 	assert.NotNil(aco)
 	assert.NotEmpty(aco.PublicKey)
 	assert.Equal(publicKeyBytes, []byte(aco.PublicKey))
 
-	aco.PublicKey = ""
+	aco.PublicKey = origKey
 	s.db.Save(&aco)
 }
 
