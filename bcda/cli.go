@@ -128,14 +128,14 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 	}
 
 	if _, ok := validator["CCLF8"]; !ok {
-		fmt.Printf("Failed to parse CCLF8 from CCLF0 file: %v.\n", fileMetadata)
-		err := fmt.Errorf("failed to parse CCLF8 from CCLF0 file: %v", fileMetadata)
+		fmt.Printf("Failed to parse CCLF8 from CCLF0 file: %#v.\n", fileMetadata)
+		err := fmt.Errorf("failed to parse CCLF8 from CCLF0 file: %#v", fileMetadata)
 		log.Error(err)
 		return nil, err
 	}
 	if _, ok := validator["CCLF9"]; !ok {
-		fmt.Printf("Failed to parse CCLF9 from CCLF0 file: %v.\n", fileMetadata)
-		err := fmt.Errorf("failed to parse CCLF9 from CCLF0 file: %v", fileMetadata)
+		fmt.Printf("Failed to parse CCLF9 from CCLF0 file: %#v.\n", fileMetadata)
+		err := fmt.Errorf("failed to parse CCLF9 from CCLF0 file: %#v", fileMetadata)
 		log.Error(err)
 		return nil, err
 	}
@@ -363,8 +363,8 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}
 		cclfvalidator, err := importCCLF0(cclf0)
 		if err != nil {
-			fmt.Printf("Failed to import CCLF0 file: %v, Skipping CCLF8 file: %v and CCLF9 file: %v.\n ", cclf0, cclf8, cclf9)
-			log.Errorf("Failed to import CCLF0 file: %v, Skipping CCLF8 file: %v and CCLF9 file: %v ", cclf0, cclf8, cclf9)
+			fmt.Printf("Failed to import CCLF0 file: %#v, Skipping CCLF8 file: %#v and CCLF9 file: %#v.\n ", cclf0, cclf8, cclf9)
+			log.Errorf("Failed to import CCLF0 file: %#v, Skipping CCLF8 file: %#v and CCLF9 file: %#v ", cclf0, cclf8, cclf9)
 			failure++
 			skipped += 2
 			continue
@@ -373,13 +373,13 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}
 		err = validate(cclf8, cclfvalidator)
 		if err != nil {
-			fmt.Printf("Failed to validate CCLF8 file: %v.\n", cclf8)
-			log.Errorf("Failed to validate CCLF8 file: %v", cclf8)
+			fmt.Printf("Failed to validate CCLF8 file: %#v.\n", cclf8)
+			log.Errorf("Failed to validate CCLF8 file: %#v", cclf8)
 			failure++
 		} else {
 			if err = importCCLF8(cclf8); err != nil {
-				fmt.Printf("Failed to import CCLF8 file: %v.\n", cclf8)
-				log.Errorf("Failed to import CCLF8 file: %v ", cclf8)
+				fmt.Printf("Failed to import CCLF8 file: %#v.\n", cclf8)
+				log.Errorf("Failed to import CCLF8 file: %#v ", cclf8)
 				failure++
 			} else {
 				cclf8.imported = true
@@ -388,13 +388,13 @@ func importCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}
 		err = validate(cclf9, cclfvalidator)
 		if err != nil {
-			fmt.Printf("Failed to validate CCLF9 file: %v.\n", cclf9)
-			log.Errorf("Failed to validate CCLF9 file: %v", cclf9)
+			fmt.Printf("Failed to validate CCLF9 file: %#v.\n", cclf9)
+			log.Errorf("Failed to validate CCLF9 file: %#v", cclf9)
 			failure++
 		} else {
 			if err = importCCLF9(cclf9); err != nil {
-				fmt.Printf("Failed to import CCLF9 file: %v.\n", cclf9)
-				log.Errorf("Failed to import CCLF9 file: %v ", cclf9)
+				fmt.Printf("Failed to import CCLF9 file: %#v.\n", cclf9)
+				log.Errorf("Failed to import CCLF9 file: %#v ", cclf9)
 				failure++
 			} else {
 				cclf9.imported = true
@@ -431,15 +431,15 @@ func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepa
 		metadata.deliveryDate = info.ModTime()
 		if err != nil {
 			// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-			fmt.Printf("Unknown file found: %v.\n", metadata)
-			log.Errorf("Unknown file found: %v", metadata)
+			fmt.Printf("Unknown file found: %#v.\n", metadata)
+			log.Errorf("Unknown file found: %#v", metadata)
 			*skipped = *skipped + 1
 
 			newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), info.Name())
 			err = os.Rename(metadata.filePath, newpath)
 			if err != nil {
-				fmt.Printf("Error moving unknown file: %v to pending deletion dir.\n", metadata)
-				err  = fmt.Errorf("error moving unknown file: %v to pending deletion dir", metadata)
+				fmt.Printf("Error moving unknown file: %#v to pending deletion dir.\n", metadata)
+				err  = fmt.Errorf("error moving unknown file: %#v to pending deletion dir", metadata)
 				log.Error(err)
 				return err
 			}
@@ -474,8 +474,8 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 	} else if fileMetadata.cclfNum == 9 {
 		key = "CCLF9"
 	} else {
-		fmt.Printf("Unknown file type when validating file: %v.\n", fileMetadata)
-		err := fmt.Errorf("unknown file type when validating file: %v", fileMetadata)
+		fmt.Printf("Unknown file type when validating file: %#v.\n", fileMetadata)
+		err := fmt.Errorf("unknown file type when validating file: %#v", fileMetadata)
 		log.Error(err)
 		return err
 	}
@@ -575,8 +575,8 @@ func deleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
 func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) {
 	for _, cclflist := range cclfmap {
 		for _, cclf := range cclflist {
-			fmt.Printf("Cleaning up file %v.\n", cclf)
-			log.Infof("Cleaning up file %v", cclf)
+			fmt.Printf("Cleaning up file %#v.\n", cclf)
+			log.Infof("Cleaning up file %#v", cclf)
 			newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), cclf.name)
 			if !cclf.imported {
 				// check the timestamp on the failed files
@@ -584,22 +584,22 @@ func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) {
 				if int(elapsed) > deleteThresholdHr {
 					err := os.Rename(cclf.filePath, newpath)
 					if err != nil {
-						fmt.Printf("File: %v failed to cleanup properly.\n", cclf)
-						log.Errorf("File: %v failed to cleanup properly", cclf)
+						fmt.Printf("File: %#v failed to cleanup properly.\n", cclf)
+						log.Errorf("File: %#v failed to cleanup properly", cclf)
 					} else {
-						fmt.Printf("File: %v never ingested, moved to the pending deletion dir.\n", cclf)
-						log.Infof("File: %v never ingested, moved to the pending deletion dir", cclf)
+						fmt.Printf("File: %#v never ingested, moved to the pending deletion dir.\n", cclf)
+						log.Infof("File: %#v never ingested, moved to the pending deletion dir", cclf)
 					}
 				}
 			} else {
 				// move the successful files to the deletion dir
 				err := os.Rename(cclf.filePath, newpath)
 				if err != nil {
-					fmt.Printf("File: %v failed to cleanup properly.\n", cclf)
-					log.Errorf("File: %v failed to cleanup properly", cclf)
+					fmt.Printf("File: %#v failed to cleanup properly.\n", cclf)
+					log.Errorf("File: %#v failed to cleanup properly", cclf)
 				} else {
-					fmt.Printf("File: %v successfully ingested, moved to the pending deletion dir.\n", cclf)
-					log.Infof("File: %v successfully ingested, moved to the pending deletion dir", cclf)
+					fmt.Printf("File: %#v successfully ingested, moved to the pending deletion dir.\n", cclf)
+					log.Infof("File: %#v successfully ingested, moved to the pending deletion dir", cclf)
 				}
 			}
 		}
