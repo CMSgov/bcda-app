@@ -15,9 +15,21 @@ func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
+
 	// Serve up the swagger ui folder
-	FileServer(r, "/api/v1/swagger", http.Dir("../swaggerui"))
-	FileServer(r, "/", http.Dir("../_site"))
+	swagger_path := "./swaggerui"
+	if _, err := os.Stat(swagger_path); os.IsNotExist(err) {
+		swagger_path = "../swaggerui"
+	}
+	FileServer(r, "/api/v1/swagger", http.Dir(swagger_path))
+
+	// Serve up the static site
+	jekyll_path := "./_site"
+	if _, err := os.Stat(jekyll_path); os.IsNotExist(err) {
+		jekyll_path = "../_site"
+	}
+	FileServer(r, "/", http.Dir(jekyll_path))
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {

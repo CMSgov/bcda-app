@@ -505,3 +505,7 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }
+
+func SetQC(client *que.Client) {
+	qc = client
+}

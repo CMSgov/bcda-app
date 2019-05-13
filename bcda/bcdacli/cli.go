@@ -66,6 +66,8 @@ func setUpApp() *cli.App {
 
 				qc = que.NewClient(pgxpool)
 
+				web.SetQC(qc)
+
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
 				if os.Getenv("DEBUG") == "true" {
 					autoMigrate()
