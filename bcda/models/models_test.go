@@ -191,7 +191,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	enqueueJobs, err := j.GetEnqueJobs(true, "Patient")
+	enqueueJobs, err := j.GetEnqueJobs("Patient")
 
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -207,7 +207,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 		assert.Equal(constants.DEVACOUUID, jobArgs.ACOID)
 		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		assert.Equal("Patient", jobArgs.ResourceType)
-		assert.Equal(true, jobArgs.Encrypt)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
 
@@ -222,7 +221,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	defer s.db.Delete(&j)
 	os.Setenv("BCDA_FHIR_MAX_RECORDS", "15")
 
-	enqueueJobs, err = j.GetEnqueJobs(true, "ExplanationOfBenefit")
+	enqueueJobs, err = j.GetEnqueJobs("ExplanationOfBenefit")
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(4, len(enqueueJobs))

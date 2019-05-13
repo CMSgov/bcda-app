@@ -155,7 +155,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	beneficiaries := []models.CCLFBeneficiary{}
@@ -208,7 +208,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	beneficiaries := []models.CCLFBeneficiary{}
@@ -268,7 +268,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
@@ -312,7 +312,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
