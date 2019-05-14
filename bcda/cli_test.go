@@ -519,7 +519,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	modtimeAfter := time.Now().Truncate(time.Second)
 	for _, cclf := range cclflist {
 		assert.Equal(9, cclf.cclfNum)
-		assert.Equal(modtimeBefore, cclf.deliveryDate)
+		assert.Equal(modtimeBefore.Format("010203040506"), cclf.deliveryDate.Format("010203040506"))
 
 		// change the modification time for all the files
 		err := os.Chtimes(cclf.filePath, modtimeAfter, modtimeAfter)
