@@ -27,7 +27,7 @@ type AlphaAuthPluginTestSuite struct {
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
-	public  := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
+	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
 	s.reset = func() {
 		private()
 		public()
@@ -112,10 +112,17 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
-	r, err := s.p.GenerateClientCredentials("", 0)
-	assert.Empty(s.T(), r)
+	validClientID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	c, err := s.p.GenerateClientCredentials(validClientID, 0)
+	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", c.ClientSecret)
+	assert.Equal(s.T(), validClientID, c.ClientID)
+
+	invalidClientID := "IDontexist"
+	c, err = s.p.GenerateClientCredentials(invalidClientID, 0)
 	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "not implemented")
+	assert.Equal(s.T(), "", c.ClientSecret)
+	assert.Equal(s.T(), "", c.ClientID)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
@@ -232,7 +239,6 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	err = s.p.ValidateJWT(missingClaimsString)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
-
 
 	expiredToken := *jwt.New(jwt.SigningMethodRS512)
 	expiredToken.Claims = jwt.MapClaims{
