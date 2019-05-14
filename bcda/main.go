@@ -49,14 +49,14 @@ func init() {
 	} else {
 		log.Info("Failed to open error log file; using default stderr")
 	}
-   
-	if isEtlMode != "true" {	
-                log.Info("BCDA application is running in API mode.")
+
+	if isEtlMode != "true" {
+		log.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
 		log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 	} else {
 		log.Info("BCDA application is running in ETL mode.")
-  	}
+	}
 
 }
 
@@ -282,51 +282,37 @@ func setUpApp() *cli.App {
 				return nil
 			},
 		},
-                {
-                        Name:     "generate-client-credentials",
-                        Category: "Authentication tools",
-                        Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
-                        Flags: []cli.Flag{
-                                cli.StringFlag{      
-                                        Name:        "ttl",
-                                        Usage:       "Set custom Time To Live in minutes",                                
-                                        Destination: &ttl,
-                                },
-                                cli.StringFlag{      
-                                        Name:        "cms-id",
-                                        Usage:       "CMS ID of ACO",
-                                        Destination: &acoCMSID,
-                                },
-                        },
-                        Action: func(c *cli.Context) error {
-
-                                if ttl == "" {
-                                        ttl = os.Getenv("JWT_EXPIRATION_DELTA")
-                                        if ttl == "" {
-                                                ttl = "72"
-                                        }
-                                }
-        			ttlInt, err := strconv.Atoi(ttl)
-			        if err != nil || ttlInt <= 0 {
-					return fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
-        			}
+		{
+			Name:     "generate-client-credentials",
+			Category: "Authentication tools",
+			Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+			},
+			Action: func(c *cli.Context) error {
 
 				// Get ACO by CMS ID (since GenerateClientCredentials interface expects a Client ID)
 				aco, err := auth.GetACOByCMSID(acoCMSID)
-                                if err != nil {
-                                        return err
-                                }                               
+				if err != nil {
+					return err
+				}
 
-                                // Generate new credentials
-				creds, err := auth.GetProvider().GenerateClientCredentials(aco.UUID.String(), ttlInt)
-                                if err != nil {
-                                        return err
-                                }
+				// Generate new credentials
+				// TODO: GenerateClientCredentials interface to be updated as part of BCDA-1304
+				//       Passing in a ttl of 0 for now, since it is not used.
+				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID, 0)
+				if err != nil {
+					return err
+				}
 				msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
-                                fmt.Fprintf(app.Writer, "%s\n", msg)
-                                return nil
-                        },
-                },
+				fmt.Fprintf(app.Writer, "%s\n", msg)
+				return nil
+			},
+		},
 		{
 			Name:     "sql-migrate",
 			Category: "Database tools",

@@ -40,7 +40,7 @@ func (s *MainTestSuite) SetupSuite() {
 		"large":  100,
 	}
 	testUtils.SetUnitTestKeysForAuth()
-	auth.InitAlphaBackend()      // should be a provider thing ... inside GetProvider()?
+	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
 }
 
 func (s *MainTestSuite) SetupTest() {
@@ -239,52 +239,33 @@ func (s *MainTestSuite) TestCreateToken() {
 
 func (s *MainTestSuite) TestGenerateClientCredentialsCLI() {
 
-        // set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-        buf := new(bytes.Buffer)
-        s.testApp.Writer = buf
-        assert := assert.New(s.T())
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+	assert := assert.New(s.T())
 
-        outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
+	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
-        // execute positive scenarios via CLI
-        args := []string{"bcda", "generate-client-credentials", "--ttl", "720", "--cms-id", "A9994"}
-        err := s.testApp.Run(args)
-        assert.Nil(err)
-        assert.Regexp(outputPattern, buf.String())
+	// execute positive scenarios via CLI
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Regexp(outputPattern, buf.String())
 
-        buf.Reset()
+	buf.Reset()
 
-        // ttl is optional when using the CLI
-        args = []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
-        err = s.testApp.Run(args)
-        assert.Nil(err)
-        assert.Regexp(outputPattern, buf.String())
-        matches := outputPattern.FindSubmatch(buf.Bytes())
-        clientID := string(matches[1])
-        assert.NotEmpty(clientID)
-        aco, err := auth.GetACOByClientID(clientID)
-        assert.Nil(err)
-        assert.NotEmpty(aco.AlphaSecret)
-        buf.Reset()
-
-        // Execute CLI with invalid ACO CMS ID
-        args = []string{"bcda", "generate-client-credentials", "--cms-id", "BLAH"}
-        err = s.testApp.Run(args)
-        assert.Equal("no ACO record found for BLAH", err.Error())
-        assert.Equal(0, buf.Len())
-        buf.Reset()
+	// Execute CLI with invalid ACO CMS ID
+	args = []string{"bcda", "generate-client-credentials", "--cms-id", "BLAH"}
+	err = s.testApp.Run(args)
+	assert.Equal("no ACO record found for BLAH", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
 
 	// Execute CLI with invalid inputs
-        args = []string{"bcda", "generate-client-credentials", "--ttl", "ABCD", "--cms-id", "A9994"}
-        err = s.testApp.Run(args)
-        assert.Equal("invalid argument 'ABCD' for --ttl; should be an integer > 0", err.Error())
-        assert.Equal(0, buf.Len())
-        buf.Reset()
-
-        args = []string{"bcda", "generate-client-credentials", "--abcd", "efg"}
-        err = s.testApp.Run(args)
-        assert.Equal("flag provided but not defined: -abcd", err.Error())
-        assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	args = []string{"bcda", "generate-client-credentials", "--abcd", "efg"}
+	err = s.testApp.Run(args)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 
 }
 

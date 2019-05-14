@@ -16,15 +16,20 @@ lint:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
+#
 # The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token
 # The CLIENT_ID and CLIENT_SECRET values can be overridden by environmental variables e.g.:
 #    export CLIENT_ID=1234; export CLIENT_SECRET=abcd; make postman env=local
 # or 
 #    CLIENT_ID=1234 CLIENT_SECRET=abcd make postman env=local
 #
-# Unless both these values are overridden, new credentials will be created using generate-client-credentials
-# If the values for CLIENT_ID and CLIENT_SECRET are not overwritten, then by default, generate-client-credentials is called using ACO CMS ID "A9994".  
+# If the values for CLIENT_ID and CLIENT_SECRET are not overwritten, then by default, generate-client-credentials is called using ACO CMS ID "A9994" (to generate credentials for the `ACO Dev` which has a CMS ID of A9994 in our test data)
 # This can be overridden using the same technique above (exporting the env var and running make).
+# For example:
+#    export ACO_CMS_ID=A9999; make postman env=local
+# or
+#    ACO_CMS_ID=A9999 make postman env=local
+#
 ACO_CMS_ID ?= A9994
 clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda generate-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
