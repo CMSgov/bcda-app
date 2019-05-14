@@ -304,7 +304,7 @@ func setUpApp() *cli.App {
                                 // Generate new credentials
 				// TODO: GenerateClientCredentials interface to be updated as part of BCDA-1304
 				//       Passing in a ttl of 0 for now, since it is not used. 
-				creds, err := auth.GetProvider().GenerateClientCredentials(aco.UUID.String(), 0)
+				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID, 0)
                                 if err != nil {
                                         return err
                                 }
