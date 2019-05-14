@@ -113,6 +113,4 @@ func copyFiles(src, dst string) error {
 	}
 	_, err = io.Copy(writer, source)
 	return err
-
-	return err
 }
