@@ -247,24 +247,11 @@ func (s *MainTestSuite) TestGenerateClientCredentialsCLI() {
         outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
         // execute positive scenarios via CLI
-        args := []string{"bcda", "generate-client-credentials", "--ttl", "720", "--cms-id", "A9994"}
+        args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
         err := s.testApp.Run(args)
         assert.Nil(err)
         assert.Regexp(outputPattern, buf.String())
 
-        buf.Reset()
-
-        // ttl is optional when using the CLI
-        args = []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
-        err = s.testApp.Run(args)
-        assert.Nil(err)
-        assert.Regexp(outputPattern, buf.String())
-        matches := outputPattern.FindSubmatch(buf.Bytes())
-        clientID := string(matches[1])
-        assert.NotEmpty(clientID)
-        aco, err := auth.GetACOByClientID(clientID)
-        assert.Nil(err)
-        assert.NotEmpty(aco.AlphaSecret)
         buf.Reset()
 
         // Execute CLI with invalid ACO CMS ID
@@ -275,12 +262,6 @@ func (s *MainTestSuite) TestGenerateClientCredentialsCLI() {
         buf.Reset()
 
 	// Execute CLI with invalid inputs
-        args = []string{"bcda", "generate-client-credentials", "--ttl", "ABCD", "--cms-id", "A9994"}
-        err = s.testApp.Run(args)
-        assert.Equal("invalid argument 'ABCD' for --ttl; should be an integer > 0", err.Error())
-        assert.Equal(0, buf.Len())
-        buf.Reset()
-
         args = []string{"bcda", "generate-client-credentials", "--abcd", "efg"}
         err = s.testApp.Run(args)
         assert.Equal("flag provided but not defined: -abcd", err.Error())

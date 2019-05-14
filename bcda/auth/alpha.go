@@ -16,8 +16,40 @@ import (
 type AlphaAuthPlugin struct{}
 
 func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
-	// generate client credentials if they don't already exist
-	return generateClientCredentials(localID, false)
+
+        if localID == "" {
+                return Credentials{}, errors.New("provide a non-empty string")
+        }
+
+        aco, err := getACOFromDB(localID)
+        if err != nil {
+                return Credentials{}, err
+        }
+
+	if aco.AlphaSecret != "" {
+        	return Credentials{}, fmt.Errorf("aco %s has a secret", localID)
+        }
+
+        s, err := generateClientSecret()
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        hashedSecret, err := NewHash(s)
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        db := database.GetGORMDbConnection()
+        defer database.Close(db)
+        aco.ClientID = localID
+        aco.AlphaSecret = hashedSecret.String()
+        err = db.Save(&aco).Error
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
 }
 
 func generateClientSecret() (string, error) {
@@ -54,8 +86,35 @@ func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
 }
 
 func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
-	// generate client credentials, overwriting them if they already exist
-	return generateClientCredentials(clientID, true)
+
+        if clientID == "" {
+                return Credentials{}, errors.New("provide a non-empty string")
+        }
+
+        aco, err := getACOFromDB(clientID)
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        s, err := generateClientSecret()
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        hashedSecret, err := NewHash(s)
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        db := database.GetGORMDbConnection()
+        defer database.Close(db)
+        aco.AlphaSecret = hashedSecret.String()
+        err = db.Save(&aco).Error
+        if err != nil {
+                return Credentials{}, err
+        }
+
+        return Credentials{ClientName: aco.Name, ClientID: clientID, ClientSecret: s}, nil
 }
 
 func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
@@ -185,45 +244,4 @@ func getACOFromDB(acoUUID string) (models.ACO, error) {
 		err = errors.New("no ACO record found for " + acoUUID)
 	}
 	return aco, err
-}
-
-// Generate and store client credentials for provided clientID
-// If credentials already exist, do nothing if overwrite=false
-// If overwrite=true, generate new credentials regardless of whether or not they exist
-func generateClientCredentials(clientID string, overwrite bool) (Credentials, error){
-	if clientID == "" {
-                return Credentials{}, errors.New("provide a non-empty string")
-        }
-
-        aco, err := getACOFromDB(clientID)
-        if err != nil {
-                return Credentials{}, err
-        }
-
-	if !overwrite {
-	        if aco.AlphaSecret != "" {
-        	        return Credentials{}, fmt.Errorf("aco %s has a secret", clientID)
-        	}
-	}
-
-        s, err := generateClientSecret()
-        if err != nil {
-                return Credentials{}, err
-        }
-
-	hashedSecret, err := NewHash(s)
-	if err != nil {
-		return Credentials{}, err
-	}
-
-        db := database.GetGORMDbConnection()
-        defer database.Close(db)
-        aco.ClientID = clientID
-        aco.AlphaSecret = hashedSecret.String()
-        err = db.Save(&aco).Error
-        if err != nil {
-                return Credentials{}, err
-        }
-
-        return Credentials{ClientName: aco.Name, ClientID: clientID, ClientSecret: s}, nil
 }

@@ -288,28 +288,12 @@ func setUpApp() *cli.App {
                         Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
                         Flags: []cli.Flag{
                                 cli.StringFlag{      
-                                        Name:        "ttl",
-                                        Usage:       "Set custom Time To Live in minutes",                                
-                                        Destination: &ttl,
-                                },
-                                cli.StringFlag{      
                                         Name:        "cms-id",
                                         Usage:       "CMS ID of ACO",
                                         Destination: &acoCMSID,
                                 },
                         },
                         Action: func(c *cli.Context) error {
-
-                                if ttl == "" {
-                                        ttl = os.Getenv("JWT_EXPIRATION_DELTA")
-                                        if ttl == "" {
-                                                ttl = "72"
-                                        }
-                                }
-        			ttlInt, err := strconv.Atoi(ttl)
-			        if err != nil || ttlInt <= 0 {
-					return fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
-        			}
 
 				// Get ACO by CMS ID (since GenerateClientCredentials interface expects a Client ID)
 				aco, err := auth.GetACOByCMSID(acoCMSID)
@@ -318,7 +302,9 @@ func setUpApp() *cli.App {
                                 }                               
 
                                 // Generate new credentials
-				creds, err := auth.GetProvider().GenerateClientCredentials(aco.UUID.String(), ttlInt)
+				// TODO: GenerateClientCredentials interface to be updated as part of BCDA-1304
+				//       Passing in a ttl of 0 for now, since it is not used. 
+				creds, err := auth.GetProvider().GenerateClientCredentials(aco.UUID.String(), 0)
                                 if err != nil {
                                         return err
                                 }
