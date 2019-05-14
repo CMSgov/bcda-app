@@ -112,7 +112,17 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteClient() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestGenerateClientCredentials() {
-	// TODO
+        validClientID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+        c, err := s.p.GenerateClientCredentials(validClientID, 0)
+        assert.Nil(s.T(), err)
+        assert.NotEqual(s.T(), "", c.ClientSecret)
+	assert.Equal(s.T(), validClientID, c.ClientID)
+
+        invalidClientID := "IDontexist"
+        c, err = s.p.GenerateClientCredentials(invalidClientID, 0)
+	assert.NotNil(s.T(), err)
+	assert.Equal(s.T(), "", c.ClientSecret)
+        assert.Equal(s.T(), "", c.ClientID)	
 }
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
