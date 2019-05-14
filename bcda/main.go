@@ -285,17 +285,17 @@ func setUpApp() *cli.App {
                 {
                         Name:     "generate-client-credentials",
                         Category: "Authentication tools",
-                        Usage:    "Generate new credentials for an ACO client specified by ACO ID",
+                        Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
                         Flags: []cli.Flag{
                                 cli.StringFlag{      
                                         Name:        "ttl",
-                                        Usage:       "Set custom Time To Live in hours",                                
+                                        Usage:       "Set custom Time To Live in minutes",                                
                                         Destination: &ttl,
                                 },
                                 cli.StringFlag{      
-                                        Name:        "aco-id",
-                                        Usage:       "UUID of user's ACO",
-                                        Destination: &acoID,
+                                        Name:        "cms-id",
+                                        Usage:       "CMS ID of ACO",
+                                        Destination: &acoCMSID,
                                 },
                         },
                         Action: func(c *cli.Context) error {
@@ -310,9 +310,15 @@ func setUpApp() *cli.App {
 			        if err != nil || ttlInt <= 0 {
 					return fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
         			}
-                                
+
+				// Get ACO by CMS ID (since GenerateClientCredentials interface expects a Client ID)
+				aco, err := auth.GetACOByCMSID(acoCMSID)
+                                if err != nil {
+                                        return err
+                                }                               
+
                                 // Generate new credentials
-				creds, err := auth.GetProvider().GenerateClientCredentials(acoID, ttlInt)
+				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID, ttlInt)
                                 if err != nil {
                                         return err
                                 }
