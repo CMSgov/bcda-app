@@ -15,9 +15,12 @@ func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
+
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui"))
-	FileServer(r, "/", http.Dir("./_site"))
+	if os.Getenv("DEPLOYMENT_TARGET") != "prod"{
+		FileServer(r, "/", http.Dir("./_site"))
+	}
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
