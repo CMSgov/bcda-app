@@ -1,6 +1,8 @@
 package models
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -49,7 +51,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.Equal(ACOName, aco.Name)
 	assert.Equal("", aco.ClientID)
 	assert.Equal(cmsID, *aco.CMSID)
-	assert.NotNil(aco.GetPublicKey())
+	assert.Nil(aco.GetPublicKey())
 	assert.NotNil(GetATOPrivateKey())
 	// should confirm the keys are a matched pair? i.e., encrypt something with one and decrypt with the other
 	// the auth provider determines what the clientID contains (formatting, alphabet used, etc).
@@ -87,7 +89,7 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	// Setup ACO
 	cmsID := "A9994"
 	var aco ACO
-	s.db.Find(&aco, "aco_id = ?", cmsID)
+	s.db.Find(&aco, "cms_id = ?", cmsID)
 	assert.NotNil(aco)
 	origKey := aco.PublicKey
 
@@ -104,11 +106,83 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	// Save and verify
 	aco.PublicKey = string(publicKeyBytes)
 	s.db.Save(&aco)
-	s.db.Find(&aco, "aco_id = ?", cmsID)
+	s.db.Find(&aco, "cms_id = ?", cmsID)
 	assert.NotNil(aco)
 	assert.NotEmpty(aco.PublicKey)
 	assert.Equal(publicKeyBytes, []byte(aco.PublicKey))
 
+	aco.PublicKey = origKey
+	s.db.Save(&aco)
+}
+
+func (s *ModelsTestSuite) TestACOPublicKeyEmpty() {
+	assert := s.Assert()
+	emptyPEM := "-----BEGIN RSA PUBLIC KEY-----    -----END RSA PUBLIC KEY-----"
+	validPEM :=
+`-----BEGIN RSA PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
+lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
+IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
+z2v9wLlK4zPAs3pLln3R/4NnGFKw2Eku2JVFTotQ03gSmSzesZixicw8LxgYKbNV
+oyTpERFansw6BbCJe7AP90rmaxCx80NiewFq+7ncqMbCMcqeUuCwk8MjS6bjvpcC
+htFCqeRi6AAUDRg0pcG8yoM+jo13Z5RJPOIf3ofohncfH5wr5Q7qiOCE5VH4I7cp
+OwIDAQAB
+-----END RSA PUBLIC KEY-----`
+	emptyPubKey := ACO{PublicKey: ""}
+	emptyPubKey2 := ACO{PublicKey: emptyPEM}
+	nonEmptyPEM := ACO{PublicKey: validPEM}
+
+	k := emptyPubKey.GetPublicKey()
+	assert.Nil(k,"Empty string does not yield nil public key")
+	k = emptyPubKey2.GetPublicKey()
+	assert.Nil(k,"Empty PEM key does not yield nil public key")
+	k = nonEmptyPEM.GetPublicKey()
+	assert.NotNil(k, "Valid PEM key yields nil public key")
+}
+
+func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
+	assert := s.Assert()
+
+	// Setup ACO
+	cmsID := "A9994"
+	var aco ACO
+	s.db.Find(&aco, "cms_id = ?", cmsID)
+	assert.NotNil(aco)
+	origKey := aco.PublicKey
+
+	// Setup key
+	keyPair, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.Nil(err, "error creating random test keypair")
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
+	assert.Nil(err, "unable to marshal public key")
+	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+	assert.NotNil(publicKeyBytes, "unexpectedly empty public key byte slice")
+
+	// Save
+	aco.PublicKey = string(publicKeyBytes)
+	s.db.Save(&aco)
+	s.db.Find(&aco, "cms_id = ?", cmsID)
+	assert.NotNil(aco)
+	assert.NotNil(aco.PublicKey)
+
+	// Retrieve and verify
+	storedKey := aco.GetPublicKey()
+	if storedKey == nil {
+		assert.FailNow("no stored key was found")
+	}
+	storedPublicKeyPKIX, err := x509.MarshalPKIXPublicKey(storedKey)
+	assert.Nil(err, "unable to marshal saved public key")
+	storedPublicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: storedPublicKeyPKIX,
+	})
+	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
+	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
+
+	// Clean up
 	aco.PublicKey = origKey
 	s.db.Save(&aco)
 }

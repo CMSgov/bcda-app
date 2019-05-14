@@ -2,10 +2,13 @@ package models
 
 import (
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -210,8 +213,30 @@ func (*ACOBeneficiary) TableName() string {
 }
 
 func (aco *ACO) GetPublicKey() *rsa.PublicKey {
-	// todo implement a real thing.  But for now we can use this.
-	return GetATOPublicKey()
+	emptyPEMRegex := "-----BEGIN RSA PUBLIC KEY-----(\\W*)-----END RSA PUBLIC KEY-----"
+	emptyPEM, err := regexp.MatchString(emptyPEMRegex, aco.PublicKey)
+	if err != nil {
+		return nil
+	}
+	if aco.PublicKey == "" || emptyPEM {
+		return nil
+	}
+
+	block, _ := pem.Decode([]byte(aco.PublicKey))
+	if block == nil {
+		return nil
+	}
+
+	publicKeyImported, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil
+	}
+
+	rsaPub, ok := publicKeyImported.(*rsa.PublicKey)
+	if !ok {
+		return nil
+	}
+	return rsaPub
 }
 
 // This exists to provide a known static keys used for ACO's in our alpha tests.
