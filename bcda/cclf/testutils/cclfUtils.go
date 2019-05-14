@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const DestDir = "tempCCLFDir/"
+
 // ImportCCLFPackage will copy the appropriate synthetic CCLF files, rename them,
 // begin the import of those files and delete them from the place they were copied to after successful import.
 
@@ -40,9 +42,9 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	if err != nil {
 		return err
 	}
-	destdir := "tempCCLFDir/"
-	if _, err := os.Stat(destdir); os.IsNotExist(err) {
-		err = os.Mkdir(destdir, os.ModePerm)
+
+	if _, err := os.Stat(DestDir); os.IsNotExist(err) {
+		err = os.Mkdir(DestDir, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -55,19 +57,19 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		return err
 	}
 	for _, file := range files {
-		err = copyFiles(fmt.Sprintf("%s/%s", sourcedir, file.Name()), fmt.Sprintf("%s/%s%s", destdir, file.Name(), dateString))
+		err = copyFiles(fmt.Sprintf("%s/%s", sourcedir, file.Name()), fmt.Sprintf("%s/%s%s", DestDir, file.Name(), dateString))
 		if err != nil {
 			return err
 		}
 	}
 
-	success, failure, skipped, err := cclf.ImportCCLFDirectory(destdir)
+	success, failure, skipped, err := cclf.ImportCCLFDirectory(DestDir)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Completed CCLF import.  Successfully imported %d files.  Failed to import %d files.  Skipped %d files.  See logs for more details.\n", success, failure, skipped)
 	if success == 3 {
-		_, err = cclf.DeleteDirectoryContents(destdir)
+		_, err = cclf.DeleteDirectoryContents(DestDir)
 		return err
 	} else {
 		err = errors.New("did not import 3 files")

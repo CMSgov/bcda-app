@@ -1,9 +1,11 @@
 package testutils
 
 import (
+	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"os"
 	"testing"
 )
 
@@ -35,5 +37,11 @@ func (s *CCLFUtilTestSuite) TestImport() {
 	assert := assert.New(s.T())
 	err := ImportCCLFPackage("dev", "test")
 	assert.Nil(err)
-	// MOAR TESTS HERE TO CHECK
+}
+
+func (s *CCLFUtilTestSuite) TearDownTest() {
+	err := os.RemoveAll(DestDir)
+	if err != nil {
+		fmt.Println("Failed to delete CCLF DestDir")
+	}
 }
