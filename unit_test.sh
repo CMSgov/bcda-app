@@ -20,8 +20,22 @@ usql $DB_HOST_URL -c 'create database bcda_test;'
 usql $TEST_DB_URL -f db/api.sql
 usql $TEST_DB_URL -f db/fixtures.sql
 usql $TEST_DB_URL -f db/test_synthetic_beneficiaries.sql
-usql $TEST_DB_URL -f db/test_synthetic_cclf_files_beneficiaries.sql
 usql $TEST_DB_URL -f db/worker.sql
+
+echo "Migrating Database with GORM migration"
+
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda sql-migrate
+
+echo "Database migration complete"
+
+echo "Importing CCLF Files to seed data"
+
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-cclf-package --acoSize dev --environment test
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-cclf-package --acoSize small --environment test
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-cclf-package --acoSize medium --environment test
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-cclf-package --acoSize large --environment test
+
+echo "Successfully imported all CCLF Files"
 
 echo "Running unit tests and placing results/coverage in test_results/${timestamp} on host..."
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL gotestsum --junitfile test_results/${timestamp}/junit.xml -- -race ./... -coverprofile test_results/${timestamp}/testcoverage.out 2>&1 | tee test_results/${timestamp}/testresults.out
