@@ -5,14 +5,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
-
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -20,8 +19,8 @@ import (
 
 type BackendTestSuite struct {
 	suite.Suite
-	AuthBackend *auth.AlphaBackend
-	TmpFiles    []string
+	AuthBackend   *auth.AlphaBackend
+	TmpFiles      []string
 	expectedSizes map[string]int
 }
 
@@ -123,11 +122,36 @@ func (s *BackendTestSuite) TestInitAuthBackend() {
 	assert.IsType(s.T(), &rsa.PublicKey{}, s.AuthBackend.PublicKey)
 }
 
-func (s *BackendTestSuite) TestHashCompare() {
+func (s *BackendTestSuite) TestHashComparable() {
 	uuidString := uuid.NewRandom().String()
-	hash := auth.NewHash(uuidString)
+	hash, err := auth.NewHash(uuidString)
+	assert.Nil(s.T(), err)
 	assert.True(s.T(), hash.IsHashOf(uuidString))
 	assert.False(s.T(), hash.IsHashOf(uuid.NewRandom().String()))
+}
+
+func (s *BackendTestSuite) TestHashUnique() {
+	uuidString := uuid.NewRandom().String()
+	hash1, _ := auth.NewHash(uuidString)
+	hash2, _ := auth.NewHash(uuidString)
+	assert.NotEqual(s.T(), hash1.String(), hash2.String())
+}
+
+func (s *BackendTestSuite) TestHashCompatibility() {
+	uuidString := "96c5a0cd-b284-47ac-be6e-f33b14dc4697"
+	hash := auth.Hash("d3H4fX/uEk1jOW2gYrFezyuJoSv4ay2x3gH5C25KpWM=:kVqFm1he5S4R1/10oIkVNFot40VB3wTa+DXTp4TrwvyXHkQO7Dxjjo/OqwemiYP8p3UQ8r/HkmTQrSS99UXzaQ==")
+	assert.True(s.T(), hash.IsHashOf(uuidString), "Possible change in hashing parameters or algorithm.  Known input/output does not match.  Merging this code will result in invalidating credentials.")
+}
+
+func (s *BackendTestSuite) TestHashEmpty() {
+	hash, err := auth.NewHash("")
+	assert.NotNil(s.T(), err)
+	assert.False(s.T(), hash.IsHashOf(""))
+}
+
+func (s *BackendTestSuite) TestHashInvalid() {
+	hash := auth.Hash("INVALID_NUMBER_OF_SEGMENTS:d3H4fX/uEk1jOW2gYrFezyuJoSv4ay2x3gH5C25KpWM=:kVqFm1he5S4R1/10oIkVNFot40VB3wTa+DXTp4TrwvyXHkQO7Dxjjo/OqwemiYP8p3UQ8r/HkmTQrSS99UXzaQ==")
+	assert.False(s.T(), hash.IsHashOf("96c5a0cd-b284-47ac-be6e-f33b14dc4697"))
 }
 
 func (s *BackendTestSuite) TestPrivateKey() {

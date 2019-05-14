@@ -282,6 +282,37 @@ func setUpApp() *cli.App {
 				return nil
 			},
 		},
+                {
+                        Name:     "generate-client-credentials",
+                        Category: "Authentication tools",
+                        Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
+                        Flags: []cli.Flag{
+                                cli.StringFlag{      
+                                        Name:        "cms-id",
+                                        Usage:       "CMS ID of ACO",
+                                        Destination: &acoCMSID,
+                                },
+                        },
+                        Action: func(c *cli.Context) error {
+
+				// Get ACO by CMS ID (since GenerateClientCredentials interface expects a Client ID)
+				aco, err := auth.GetACOByCMSID(acoCMSID)
+                                if err != nil {
+                                        return err
+                                }                               
+
+                                // Generate new credentials
+				// TODO: GenerateClientCredentials interface to be updated as part of BCDA-1304
+				//       Passing in a ttl of 0 for now, since it is not used. 
+				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID, 0)
+                                if err != nil {
+                                        return err
+                                }
+				msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+                                fmt.Fprintf(app.Writer, "%s\n", msg)
+                                return nil
+                        },
+                },
 		{
 			Name:     "sql-migrate",
 			Category: "Database tools",

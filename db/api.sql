@@ -3,7 +3,9 @@ create table acos (
   cms_id char(5) unique null,
   name text not null,
   created_at timestamp with time zone not null default now(),
-  updated_at timestamp with time zone not null default now()
+  updated_at timestamp with time zone not null default now(),
+  client_id text null,
+  alpha_secret text null
 );
 
 create table users (
