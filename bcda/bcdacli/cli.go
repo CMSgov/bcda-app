@@ -337,7 +337,7 @@ func setUpApp() *cli.App {
 				},
 				cli.StringFlag{
 					Name:        "environment",
-					Usage:       "Which set of files to use.  ",
+					Usage:       "Which set of files to use",
 					Destination: &environment,
 				},
 			},
