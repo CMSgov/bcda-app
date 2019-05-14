@@ -318,7 +318,7 @@ func setUpApp() *cli.App {
                                 }                               
 
                                 // Generate new credentials
-				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID, ttlInt)
+				creds, err := auth.GetProvider().GenerateClientCredentials(aco.UUID.String(), ttlInt)
                                 if err != nil {
                                         return err
                                 }
