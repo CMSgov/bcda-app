@@ -15,7 +15,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 
@@ -28,6 +27,10 @@ import (
 	"github.com/urfave/cli"
 )
 
+// App Name and usage.  Edit them here to prevent breaking tests
+const Name = "bcda"
+const Usage = "Beneficiary Claims Data API CLI"
+
 var (
 	qc      *que.Client
 	version = "latest"
@@ -39,8 +42,8 @@ func GetApp() *cli.App {
 
 func setUpApp() *cli.App {
 	app := cli.NewApp()
-	app.Name = constants.Name
-	app.Usage = constants.Usage
+	app.Name = Name
+	app.Usage = Usage
 	app.Version = version
 	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
 	app.Commands = []cli.Command{

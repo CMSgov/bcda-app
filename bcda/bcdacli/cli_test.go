@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -71,8 +70,8 @@ func (s *CLITestSuite) TestGetEnvInt() {
 func (s *CLITestSuite) TestSetup() {
 	assert.Equal(s.T(), 1, 1)
 	app := setUpApp()
-	assert.Equal(s.T(), app.Name, constants.Name)
-	assert.Equal(s.T(), app.Usage, constants.Usage)
+	assert.Equal(s.T(), app.Name, Name)
+	assert.Equal(s.T(), app.Usage, Usage)
 }
 
 func (s *CLITestSuite) TestAutoMigrate() {
