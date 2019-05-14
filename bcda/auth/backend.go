@@ -1,16 +1,30 @@
 package auth
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
+
+// The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
+// Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
+const hashIter int = 90000
+const hashKeyLen int = 64
+const saltSize int = 32
+const hashMinTime = 1*time.Second
+const hashMaxTime = 3*time.Second
 
 var (
 	alphaBackend *AlphaBackend
@@ -23,17 +37,56 @@ func init() {
 // Hash is a cryptographically hashed string
 type Hash string
 
-// NewHash creates a hashed string from a source string, return it as a new Hash value.  While this is not
-// intended for production password hashing, as a matter of principle we intend to add a salt and implement
-// bcrypt or another hash appropriate for storing secrets in ticket BCDA-1130.
-func NewHash(source string) Hash {
-	sum := sha256.Sum256([]byte(source))
-	return Hash(fmt.Sprintf("%x", sum))
+// NewHash creates a Hash value from a source string
+// The HashValue consists of the salt and hash separated by a colon ( : )
+// If the source of randomness fails it returns an error.
+func NewHash(source string) (Hash, error) {
+	if source == "" {
+		return Hash(""), errors.New("empty string provided to hash function")
+	}
+
+	salt := make([]byte, saltSize)
+	_, err := rand.Read(salt)
+	if err != nil {
+		return Hash(""), err
+	}
+
+	start := time.Now()
+	h := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
+	hashCreationTime := time.Since(start)
+
+	switch {
+	case hashCreationTime < hashMinTime:
+		// This log should be the source of a Splunk alert for production environments
+		log.Warningf("hash creation took less than minimum time (actual time: %s; target time: %s)--please increase hashIter in /bcda/auth/backend.go", hashCreationTime, hashMinTime)
+	case hashCreationTime > hashMaxTime:
+		// This log should be the source of a Splunk alert for production environments
+		log.Warningf("hash creation took more than maximum time (actual time: %s; target time: %s)--please decrease hashIter in /bcda/auth/backend.go", hashCreationTime, hashMaxTime)
+	}
+
+	return Hash(fmt.Sprintf("%s:%s", base64.StdEncoding.EncodeToString(salt), base64.StdEncoding.EncodeToString(h))), nil
 }
 
 // IsHashOf accepts an unhashed string, which it first hashes and then compares to itself
 func (h Hash) IsHashOf(source string) bool {
-	return h == NewHash(source)
+	// Avoid comparing with an empty source so that a hash of an empty string is never successful
+	if source == "" {
+		return false
+	}
+
+	hashAndPass := strings.Split(h.String(), ":")
+	if len(hashAndPass) != 2 {
+		return false
+	}
+
+	hash := hashAndPass[1]
+	salt, err := base64.StdEncoding.DecodeString(hashAndPass[0])
+	if err != nil {
+		return false
+	}
+
+	sourceHash := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
+	return hash == base64.StdEncoding.EncodeToString(sourceHash)
 }
 
 func (h Hash) String() string {
