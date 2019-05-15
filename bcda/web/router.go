@@ -23,6 +23,7 @@ func NewAPIRouter() http.Handler {
 	}
 	FileServer(r, "/api/v1/swagger", http.Dir(swagger_path))
 
+	// Don't even load up the route in production
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		// Serve up the static site
 		jekyll_path := "./_site"

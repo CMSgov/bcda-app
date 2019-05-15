@@ -52,7 +52,7 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 	if err != nil {
 		s.FailNow("err in setting env var", err)
 	}
-
+	// Need a new router because the one in the test setup is not right.
 	s.apiRouter = NewAPIRouter()
 	res := s.getAPIRoute("/")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
