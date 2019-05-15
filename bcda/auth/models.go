@@ -68,6 +68,20 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 	return aco, err
 }
 
+func GetACOByCMSID(cmsID string) (models.ACO, error) {
+        var (
+                db  = database.GetGORMDbConnection()
+                aco models.ACO
+                err error
+        )
+        defer database.Close(db)
+
+        if db.Find(&aco, "cms_id = ?", cmsID).RecordNotFound() {
+                err = errors.New("no ACO record found for " + cmsID)
+        }
+        return aco, err
+}
+
 // RevokeSystemKeyPair soft deletes the active encryption key
 // for the specified system so that it can no longer be used
 func RevokeSystemKeyPair(systemID uint) error {

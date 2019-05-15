@@ -423,7 +423,7 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.EqualError(err, "invalid filename for file: /path/to/file")
 
 	metadata, err := getCCLFFileMetadata("/path/T.A0000.ACO.ZC8Y18.D190117.T9909420")
-	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420")
+	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 
 	expTime, _ := time.Parse(time.RFC3339, "2019-01-17T21:09:42Z")
 	metadata, err = getCCLFFileMetadata("/path/T.A0000.ACO.ZC8Y18.D190117.T2109420")
