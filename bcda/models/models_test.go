@@ -85,12 +85,12 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	assert := s.Assert()
 
 	// Setup ACO
-	cmsID := "A9994"
-	var aco ACO
-	err := s.db.Find(&aco, "cms_id = ?", cmsID).Error
+	cmsID := "A4444"
+	aco := ACO{Name: "Pub Key Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+	err := s.db.Create(&aco).Error
 	assert.Nil(err)
 	assert.NotEmpty(aco)
-	origKey := aco.PublicKey
+	defer s.db.Delete(&aco)
 
 	// Setup key
 	pubKey := GetATOPublicKey()
@@ -106,15 +106,11 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	aco.PublicKey = string(publicKeyBytes)
 	err = s.db.Save(&aco).Error
 	assert.Nil(err)
-	err = s.db.Find(&aco, "cms_id = ?", cmsID).Error
+	err = s.db.First(&aco, "cms_id = ?", cmsID).Error
 	assert.Nil(err)
 	assert.NotEmpty(aco)
 	assert.NotEmpty(aco.PublicKey)
 	assert.Equal(publicKeyBytes, []byte(aco.PublicKey))
-
-	aco.PublicKey = origKey
-	err = s.db.Save(&aco).Error
-	assert.Nil(err)
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {
