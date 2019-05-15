@@ -351,7 +351,7 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0000", metadata.acoID)
 	assert.Equal(8, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -360,7 +360,7 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("production", metadata.env)
 	assert.Equal("A0001", metadata.acoID)
 	assert.Equal(9, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -369,7 +369,7 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0002", metadata.acoID)
 	assert.Equal(0, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -440,7 +440,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 	modtimeAfter := time.Now().Truncate(time.Second)
 	for _, cclf := range cclflist {
 		assert.Equal(9, cclf.cclfNum)
-		assert.Equal(modtimeBefore, cclf.deliveryDate)
+		assert.Equal(modtimeBefore.Format("010203040506"), cclf.deliveryDate.Format("010203040506"))
 
 		// change the modification time for all the files
 		err := os.Chtimes(cclf.filePath, modtimeAfter, modtimeAfter)
@@ -456,7 +456,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 	cclflist = cclfmap["A0001_18"]
 	for _, cclf := range cclflist {
 		// check for the new modification time
-		assert.Equal(modtimeAfter, cclf.deliveryDate)
+		assert.Equal(modtimeAfter.Format("010203040506"), cclf.deliveryDate.Format("010203040506"))
 	}
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
