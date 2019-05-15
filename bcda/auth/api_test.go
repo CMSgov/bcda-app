@@ -55,7 +55,13 @@ func (s *AuthAPITestSuite) TearDownTest() {
 }
 
 func (s *AuthAPITestSuite) TestAuthToken() {
-	devACOID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	var aco models.ACO
+	cmsID := "A1234"
+	devACOID, err := models.CreateACO("Token Test ACO", &cmsID)
+	assert.Nil(s.T(), err)
+	err = s.db.First(&aco, "uuid = ?", devACOID).Error
+	assert.Nil(s.T(), err)
+	defer s.db.Delete(&aco)
 
 	// Missing authorization header
 	req := httptest.NewRequest("POST", "/auth/token", nil)
@@ -84,7 +90,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	// Success!?
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterClient(devACOID)
+	creds, err := auth.GetProvider().RegisterClient(devACOID.String())
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)

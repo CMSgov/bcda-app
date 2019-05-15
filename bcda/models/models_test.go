@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"os"
 	"strconv"
 	"testing"
@@ -52,7 +53,9 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.Equal(ACOName, aco.Name)
 	assert.Equal("", aco.ClientID)
 	assert.Equal(cmsID, *aco.CMSID)
-	assert.Nil(aco.GetPublicKey())
+	pubKey, err := aco.GetPublicKey()
+	assert.NotNil(err)
+	assert.Nil(pubKey)
 	assert.NotNil(GetATOPrivateKey())
 	// should confirm the keys are a matched pair? i.e., encrypt something with one and decrypt with the other
 	// the auth provider determines what the clientID contains (formatting, alphabet used, etc).
@@ -133,12 +136,40 @@ OwIDAQAB
 	emptyPubKey2 := ACO{PublicKey: emptyPEM}
 	nonEmptyPEM := ACO{PublicKey: validPEM}
 
-	k := emptyPubKey.GetPublicKey()
-	assert.Nil(k, "Empty string does not yield nil public key")
-	k = emptyPubKey2.GetPublicKey()
-	assert.Nil(k, "Empty PEM key does not yield nil public key")
-	k = nonEmptyPEM.GetPublicKey()
-	assert.NotNil(k, "Valid PEM key yields nil public key")
+	k, err := emptyPubKey.GetPublicKey()
+	assert.NotNil(err)
+	assert.Nil(k, "Empty string does not yield nil public key!")
+	k, err = emptyPubKey2.GetPublicKey()
+	assert.NotNil(err)
+	assert.Nil(k, "Empty PEM key does not yield nil public key!")
+	k, err = nonEmptyPEM.GetPublicKey()
+	assert.Nil(err)
+	assert.NotNil(k, "Valid PEM key yields nil public key!")
+}
+
+func (s *ModelsTestSuite) TestACOPublicKeyFixtures() {
+	assert := s.Assert()
+	acoUUID1 := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	acoUUID2 := "0C527D2E-2E8A-4808-B11D-0FA06BAF8254"
+
+	var aco1 ACO
+	var aco2 ACO
+	err := s.db.First(&aco1, "uuid = ?", acoUUID1).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco1, "This ACO (DBBD1CE1-AE24-435C-807D-ED45953077D3) is in the fixtures; why is it not being found?")
+	assert.NotEmpty(aco1.PublicKey, "The fixture (DBBD1CE1-AE24-435C-807D-ED45953077D3) has data in the public_key column; why is it not being returned?")
+	fmt.Println(aco1.PublicKey)
+	pubKey, err := aco1.GetPublicKey()
+	assert.Nil(err)
+	assert.NotNil(pubKey, "Public key for DBBD1CE1-AE24-435C-807D-ED45953077D3 is unexpectedly nil.  Was there a parsing error in aco.GetPublicKey?")
+
+	err = s.db.First(&aco2, "uuid = ?", acoUUID2).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco2, "This ACO (0C527D2E-2E8A-4808-B11D-0FA06BAF8254) is in the fixtures; why is it not being found?")
+	assert.NotEmpty(aco2.PublicKey, "The fixture (0C527D2E-2E8A-4808-B11D-0FA06BAF8254) has data in the public_key column; why is it not being returned?")
+	pubKey, err = aco2.GetPublicKey()
+	assert.Nil(err)
+	assert.NotNil(pubKey, "Public key for 0C527D2E-2E8A-4808-B11D-0FA06BAF8254 is unexpectedly nil.  Was there a parsing error in aco.GetPublicKey?")
 }
 
 func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
@@ -170,7 +201,10 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	assert.NotNil(aco.PublicKey)
 
 	// Retrieve and verify
-	storedKey := aco.GetPublicKey()
+	storedKey, err := aco.GetPublicKey()
+	if err != nil {
+		assert.FailNow("error getting stored key")
+	}
 	if storedKey == nil {
 		assert.FailNow("no stored key was found")
 	}

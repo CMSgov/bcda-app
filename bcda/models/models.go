@@ -64,9 +64,9 @@ func InitializeGormModels() *gorm.DB {
 type Job struct {
 	gorm.Model
 	ACO        ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
-	ACOID      uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
+	ACOID      uuid.UUID `gorm:"type:uuid" json:"aco_id"`
 	User       User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
-	UserID     uuid.UUID `gorm:"type:char(36)"`
+	UserID     uuid.UUID `gorm:"type:uuid"`
 	RequestURL string    `json:"request_url"` // request_url
 	Status     string    `json:"status"`      // status
 	JobCount   int
@@ -160,7 +160,7 @@ type JobKey struct {
 // ACO-Beneficiary relationship models based on https://github.com/jinzhu/gorm/issues/719#issuecomment-168485989
 type ACO struct {
 	gorm.Model
-	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
+	UUID             uuid.UUID `gorm:"primary_key;type:uuid" json:"uuid"`
 	CMSID            *string   `gorm:"type:char(5);unique" json:"cms_id"`
 	Name             string    `json:"name"`
 	ClientID         string    `json:"client_id"`
@@ -212,31 +212,31 @@ func (*ACOBeneficiary) TableName() string {
 	return "acos_beneficiaries"
 }
 
-func (aco *ACO) GetPublicKey() *rsa.PublicKey {
+func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
 	emptyPEMRegex := "-----BEGIN RSA PUBLIC KEY-----(\\W*)-----END RSA PUBLIC KEY-----"
 	emptyPEM, err := regexp.MatchString(emptyPEMRegex, aco.PublicKey)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("regex error searching for empty keys")
 	}
 	if aco.PublicKey == "" || emptyPEM {
-		return nil
+		return nil, fmt.Errorf("empty key")
 	}
 
 	block, _ := pem.Decode([]byte(aco.PublicKey))
 	if block == nil {
-		return nil
+		return nil, fmt.Errorf("not able to decode PEM-formatted public key")
 	}
 
 	publicKeyImported, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("unable to parse public key: %s", err.Error())
 	}
 
 	rsaPub, ok := publicKeyImported.(*rsa.PublicKey)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("not able to cast key as *rsa.PublicKey")
 	}
-	return rsaPub
+	return rsaPub, nil
 }
 
 // This exists to provide a known static keys used for ACO's in our alpha tests.
@@ -272,7 +272,7 @@ func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 
 type User struct {
 	gorm.Model
-	UUID  uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
+	UUID  uuid.UUID `gorm:"primary_key; type:uuid" json:"uuid"` // uuid
 	Name  string    `json:"name"`                                   // name
 	Email string    `json:"email"`                                  // email
 	ACO   ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"`
