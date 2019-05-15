@@ -360,7 +360,7 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "import-cclf-package",
+			Name:     "import-synthetic-cclf-package",
 			Category: "Data import",
 			Usage:    "Import a package of synthetic CCLF files",
 			Flags: []cli.Flag{
