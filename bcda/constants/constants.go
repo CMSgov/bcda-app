@@ -1,4 +1,4 @@
-package testConstants
+package constants
 
 const DEVACOUUID = "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 const SMALLACOUUID = "3461C774-B48F-11E8-96F8-529269fb1459"

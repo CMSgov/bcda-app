@@ -154,6 +154,12 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	s.db.Unscoped().Delete(&group)
 }
 
+func (s *ModelsTestSuite) TestCreateAlphaToken() {
+	msg, err := auth.CreateAlphaToken(1000, "dev")
+	assert.NotEmpty(s.T(), msg)
+	assert.Nil(s.T(), err)
+}
+
 func TestModelsTestSuite(t *testing.T) {
 	suite.Run(t, new(ModelsTestSuite))
 }
