@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"encoding/json"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,15 +24,15 @@ type TokenResponse struct {
 
 type AuthAPITestSuite struct {
 	suite.Suite
-	rr *httptest.ResponseRecorder
-	db *gorm.DB
-backend *auth.AlphaBackend
-reset   func()
+	rr      *httptest.ResponseRecorder
+	db      *gorm.DB
+	backend *auth.AlphaBackend
+	reset   func()
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
 	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
-	public  := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
+	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
 	s.reset = func() {
 		private()
 		public()
@@ -55,7 +56,11 @@ func (s *AuthAPITestSuite) TearDownTest() {
 }
 
 func (s *AuthAPITestSuite) TestAuthToken() {
-	devACOID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	var aco models.ACO
+	err := s.db.Where("uuid = ?", constants.DEVACOUUID).First(&aco).Error
+	assert.Nil(s.T(), err)
+	aco.AlphaSecret = ""
+	s.db.Save(&aco)
 
 	// Missing authorization header
 	req := httptest.NewRequest("POST", "/auth/token", nil)
@@ -84,7 +89,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	// Success!?
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterClient(devACOID)
+	creds, err := auth.GetProvider().RegisterClient(constants.DEVACOUUID)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)

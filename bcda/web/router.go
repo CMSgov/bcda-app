@@ -23,13 +23,14 @@ func NewAPIRouter() http.Handler {
 	}
 	FileServer(r, "/api/v1/swagger", http.Dir(swagger_path))
 
-	// Serve up the static site
-	jekyll_path := "./_site"
-	if _, err := os.Stat(jekyll_path); os.IsNotExist(err) {
-		jekyll_path = "../_site"
+	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
+		// Serve up the static site
+		jekyll_path := "./_site"
+		if _, err := os.Stat(jekyll_path); os.IsNotExist(err) {
+			jekyll_path = "../_site"
+		}
+		FileServer(r, "/", http.Dir(jekyll_path))
 	}
-	FileServer(r, "/", http.Dir(jekyll_path))
-
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {

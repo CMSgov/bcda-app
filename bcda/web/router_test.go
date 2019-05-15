@@ -47,6 +47,22 @@ func (s *RouterTestSuite) TestDefaultRoute() {
 	assert.Contains(s.T(), string(body), "Beneficiary Claims Data API")
 }
 
+func (s *RouterTestSuite) TestDefaultProdRoute() {
+	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
+	if err != nil {
+		s.FailNow("err in setting env var", err)
+	}
+
+	s.apiRouter = NewAPIRouter()
+	res := s.getAPIRoute("/")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	err = os.Unsetenv("DEPLOYMENT_TARGET")
+	if err != nil {
+		s.FailNow("err in setting env var", err)
+	}
+}
+
 func (s *RouterTestSuite) TestDataRoute() {
 	res := s.getDataRoute("/data/test/test.ndjson")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
