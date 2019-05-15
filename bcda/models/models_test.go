@@ -6,12 +6,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testConstants"
@@ -87,11 +88,12 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	assert := s.Assert()
 
 	// Setup ACO
-	cmsID := "A9994"
-	var aco ACO
-	s.db.Find(&aco, "cms_id = ?", cmsID)
-	assert.NotNil(aco)
-	origKey := aco.PublicKey
+	cmsID := "A4444"
+	aco := ACO{Name: "Pub Key Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+	err := s.db.Create(&aco).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco)
+	defer s.db.Delete(&aco)
 
 	// Setup key
 	pubKey := GetATOPublicKey()
@@ -105,21 +107,20 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 
 	// Save and verify
 	aco.PublicKey = string(publicKeyBytes)
-	s.db.Save(&aco)
-	s.db.Find(&aco, "cms_id = ?", cmsID)
-	assert.NotNil(aco)
+	err = s.db.Save(&aco).Error
+	assert.Nil(err)
+	err = s.db.First(&aco, "cms_id = ?", cmsID).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco)
 	assert.NotEmpty(aco.PublicKey)
 	assert.Equal(publicKeyBytes, []byte(aco.PublicKey))
-
-	aco.PublicKey = origKey
-	s.db.Save(&aco)
 }
 
 func (s *ModelsTestSuite) TestACOPublicKeyEmpty() {
 	assert := s.Assert()
 	emptyPEM := "-----BEGIN RSA PUBLIC KEY-----    -----END RSA PUBLIC KEY-----"
 	validPEM :=
-`-----BEGIN RSA PUBLIC KEY-----
+		`-----BEGIN RSA PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
 lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
 IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
@@ -133,9 +134,9 @@ OwIDAQAB
 	nonEmptyPEM := ACO{PublicKey: validPEM}
 
 	k := emptyPubKey.GetPublicKey()
-	assert.Nil(k,"Empty string does not yield nil public key")
+	assert.Nil(k, "Empty string does not yield nil public key")
 	k = emptyPubKey2.GetPublicKey()
-	assert.Nil(k,"Empty PEM key does not yield nil public key")
+	assert.Nil(k, "Empty PEM key does not yield nil public key")
 	k = nonEmptyPEM.GetPublicKey()
 	assert.NotNil(k, "Valid PEM key yields nil public key")
 }
