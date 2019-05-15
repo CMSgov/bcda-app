@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"time"
 
 	vegeta "github.com/tsenart/vegeta/lib"
@@ -16,7 +15,6 @@ import (
 // might add a with metrics bool option
 var (
 	appTestToken, workerTestToken, apiHost, proto, endpoint, reportFilePath string
-	encrypt                                                                 bool
 	freq, duration                                                          int
 )
 
@@ -29,7 +27,6 @@ func init() {
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
 	flag.StringVar(&reportFilePath, "report_path", "../../test_results/performance", "path to write the result.html")
-	flag.BoolVar(&encrypt, "encrypt", true, "whether to disable encryption")
 	flag.Parse()
 
 	// create folder if doesn't exist for storing the results
@@ -67,9 +64,6 @@ func main() {
 
 func makeTarget(accessToken string) vegeta.Targeter {
 	url := fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, endpoint)
-	if !encrypt {
-		url = fmt.Sprintf("%s?encrypt=false", url)
-	}
 
 	header := map[string][]string{
 		"Prefer":        {"respond-async"},
@@ -87,7 +81,7 @@ func makeTarget(accessToken string) vegeta.Targeter {
 
 func runAPITest(target vegeta.Targeter) *plot.Plot {
 	fmt.Printf("running api performance for: %s\n", endpoint)
-	title := plot.Title(fmt.Sprintf("apiTest_%s encrypt: %s", endpoint, strconv.FormatBool(encrypt)))
+	title := plot.Title(fmt.Sprintf("apiTest_%s", endpoint))
 	p := plot.New(title)
 	defer p.Close()
 
@@ -101,7 +95,7 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 
 func runWorkerTest(target vegeta.Targeter) *plot.Plot {
 	fmt.Printf("running worker performance for: %s\n", endpoint)
-	title := plot.Title(fmt.Sprintf("workerTest_%s encrypt: %s", endpoint, strconv.FormatBool(encrypt)))
+	title := plot.Title(fmt.Sprintf("workerTest_%s", endpoint))
 	p := plot.New(title)
 	defer p.Close()
 
@@ -128,9 +122,6 @@ func writeResults(filename string, buf bytes.Buffer) {
 	data := buf.Bytes()
 	if len(data) > 0 {
 		var s string
-		if encrypt {
-			s = "_encrypt"
-		}
 		fn := fmt.Sprintf("%s/%s%s.html", reportFilePath, filename, s)
 		fmt.Printf("Writing results: %s\n", fn)
 		err := ioutil.WriteFile(fn, data, 0644)

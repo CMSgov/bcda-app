@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -35,13 +36,13 @@ type TokenResponse struct {
 
 type APITestSuite struct {
 	suite.Suite
-	rr *httptest.ResponseRecorder
-	db *gorm.DB
+	rr    *httptest.ResponseRecorder
+	db    *gorm.DB
 	reset func()
 }
 
 func (s *APITestSuite) SetupSuite() {
-	s.reset = testUtils.SetUnitTestKeysForAuth()  // needed until token endpoint moves to auth
+	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
 }
 
 func (s *APITestSuite) TearDownSuite() {
@@ -50,7 +51,7 @@ func (s *APITestSuite) TearDownSuite() {
 
 func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
-	auth.InitializeGormModels()                   // needed until token endpoint moves to auth
+	auth.InitializeGormModels() // needed until token endpoint moves to auth
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
@@ -60,6 +61,8 @@ func (s *APITestSuite) TearDownTest() {
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
+	assert.Nil(s.T(), err)
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	user, err := models.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -176,6 +179,8 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 }
 
 func (s *APITestSuite) TestBulkPatientRequest() {
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
+	assert.Nil(s.T(), err)
 	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
 	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
 
@@ -626,7 +631,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 }
 
 func (s *APITestSuite) TestServeData() {
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	os.Setenv("FHIR_PAYLOAD_DIR", "../../bcdaworker/data/test")
 	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
 	rctx := chi.NewRouteContext()
@@ -670,7 +675,7 @@ func (s *APITestSuite) TestAuthTokenSuccess() {
 	// Create and verify new credentials
 	t := TokenResponse{}
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n(.+)`)
-	tokenResp, _ := createAlphaToken(60, "Dev")
+	tokenResp, _ := auth.CreateAlphaToken(60, "Dev")
 	assert.Regexp(s.T(), outputPattern, tokenResp)
 	matches := outputPattern.FindSubmatch([]byte(tokenResp))
 	clientID := string(matches[1])

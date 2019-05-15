@@ -1,117 +1,38 @@
-package main
+package cclf
 
 import (
-	"bytes"
-	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/urfave/cli"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-type CLITestSuite struct {
+const BASE_FILE_PATH = "../../shared_files/"
+
+type CCLFTestSuite struct {
 	suite.Suite
-	testApp *cli.App
 }
 
-func (s *CLITestSuite) SetupTest() {
-	s.testApp = setUpApp()
+func (s *CCLFTestSuite) SetupTest() {
 	models.InitializeGormModels()
 }
 
-func TestCLITestSuite(t *testing.T) {
-	suite.Run(t, new(CLITestSuite))
+func TestCCLFTestSuite(t *testing.T) {
+	suite.Run(t, new(CCLFTestSuite))
 }
 
-func (s *CLITestSuite) TestCreateACO() {
-
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
+func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
-	// Successful ACO creation
-	ACOName := "Unit Test ACO 1"
-	args := []string{"bcda", "create-aco", "--name", ACOName}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.NotNil(buf)
-	acoUUID := strings.TrimSpace(buf.String())
-	var testACO models.ACO
-	db.First(&testACO, "Name=?", ACOName)
-	assert.Equal(testACO.UUID.String(), acoUUID)
-	buf.Reset()
-
-	ACO2Name := "Unit Test ACO 2"
-	aco2ID := "A9999"
-	args = []string{"bcda", "create-aco", "--name", ACO2Name, "--cms-id", aco2ID}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.NotNil(buf)
-	acoUUID = strings.TrimSpace(buf.String())
-	var testACO2 models.ACO
-	db.First(&testACO2, "Name=?", ACO2Name)
-	assert.Equal(testACO2.UUID.String(), acoUUID)
-	assert.Equal(*testACO2.CMSID, aco2ID)
-	buf.Reset()
-
-	// Negative tests
-
-	// No parameters
-	args = []string{"bcda", "create-aco"}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// No ACO Name
-	badACO := ""
-	args = []string{"bcda", "create-aco", "--name", badACO}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// ACO name without flag
-	args = []string{"bcda", "create-aco", ACOName}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Unexpected flag
-	args = []string{"bcda", "create-aco", "--abcd", "efg"}
-	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-	buf.Reset()
-
-	// Invalid CMS ID
-	args = []string{"bcda", "create-aco", "--name", ACOName, "--cms-id", "ABCDE"}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO CMS ID (--cms-id) is invalid", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-}
-
-func (s *CLITestSuite) TestImportCCLF0() {
-	assert := assert.New(s.T())
-
-	cclf0filePath := "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0filePath := BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011"
 	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 
 	// positive
@@ -126,21 +47,21 @@ func (s *CLITestSuite) TestImportCCLF0() {
 	assert.NotNil(err)
 
 	// missing cclf8 and or 9 from cclf0
-	cclf0filePath = "../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
 
-	cclf0filePath = "../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012"
+	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
 }
 
-func (s *CLITestSuite) TestImportCCLF0_SplitFiles() {
+func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 	assert := assert.New(s.T())
 
-	cclf0filePath := "../shared_files/cclf_split/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0filePath := BASE_FILE_PATH + "cclf_split/T.A0001.ACO.ZC0Y18.D181120.T1000011"
 	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 
 	validator, err := importCCLF0(cclf0metadata)
@@ -149,13 +70,13 @@ func (s *CLITestSuite) TestImportCCLF0_SplitFiles() {
 	assert.Equal(cclfFileValidator{totalRecordCount: 6, maxRecordLength: 54}, validator["CCLF9"])
 }
 
-func (s *CLITestSuite) TestValidate() {
+func (s *CCLFTestSuite) TestValidate() {
 	assert := assert.New(s.T())
 
-	cclf8filePath := "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	cclf8filePath := BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
 	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18}
 
-	cclf9filePath := "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
+	cclf9filePath := BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010"
 	cclf9metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 9, timestamp: time.Now(), filePath: cclf9filePath, perfYear: 18}
 
 	// positive
@@ -173,14 +94,14 @@ func (s *CLITestSuite) TestValidate() {
 	assert.NotNil(err)
 }
 
-func (s *CLITestSuite) TestValidate_SplitFiles() {
+func (s *CCLFTestSuite) TestValidate_SplitFiles() {
 	assert := assert.New(s.T())
 
 	cclf8Metadata := &cclfFileMetadata{
 		acoID:     "A0001",
 		cclfNum:   8,
 		timestamp: time.Now(),
-		filePath:  "../shared_files/cclf_split/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		filePath:  BASE_FILE_PATH + "cclf_split/T.A0001.ACO.ZC8Y18.D181120.T1000009",
 		perfYear:  18,
 	}
 
@@ -188,7 +109,7 @@ func (s *CLITestSuite) TestValidate_SplitFiles() {
 		acoID:     "A0001",
 		cclfNum:   8,
 		timestamp: time.Now(),
-		filePath:  "../shared_files/cclf_split/T.A0001.ACO.ZC9Y18.D181120.T1000010",
+		filePath:  BASE_FILE_PATH + "cclf_split/T.A0001.ACO.ZC9Y18.D181120.T1000010",
 		perfYear:  18,
 	}
 
@@ -204,13 +125,16 @@ func (s *CLITestSuite) TestValidate_SplitFiles() {
 	assert.Nil(err)
 }
 
-func (s *CLITestSuite) TestImportCCLF8() {
+func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	var existngCCLFFiles []models.CCLFFile
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -221,7 +145,7 @@ func (s *CLITestSuite) TestImportCCLF8() {
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		filePath:  BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009",
 	}
 
 	err := importCCLF8(metadata)
@@ -234,7 +158,7 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	beneficiaries := []models.CCLFBeneficiary{}
@@ -253,17 +177,22 @@ func (s *CLITestSuite) TestImportCCLF8() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 }
 
-func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
+func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	var existngCCLFFiles []models.CCLFFile
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -274,7 +203,7 @@ func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  "../shared_files/cclf_split/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		filePath:  BASE_FILE_PATH + "cclf_split/T.A0001.ACO.ZC8Y18.D181120.T1000009",
 	}
 
 	err := importCCLF8(metadata)
@@ -287,7 +216,7 @@ func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	beneficiaries := []models.CCLFBeneficiary{}
@@ -306,11 +235,13 @@ func (s *CLITestSuite) TestImportCCLF8_SplitFiles() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 }
 
-func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
+func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 	assert := assert.New(s.T())
 
 	var metadata *cclfFileMetadata
@@ -319,13 +250,16 @@ func (s *CLITestSuite) TestImportCCLF8_InvalidMetadata() {
 	assert.EqualError(err, "CCLF file not found")
 }
 
-func (s *CLITestSuite) TestImportCCLF9() {
+func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	var existngCCLFFiles []models.CCLFFile
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 
 	acoID := "A0002"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -334,7 +268,7 @@ func (s *CLITestSuite) TestImportCCLF9() {
 		acoID:     acoID,
 		cclfNum:   9,
 		timestamp: fileTime,
-		filePath:  "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010",
+		filePath:  BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010",
 		perfYear:  18,
 		name:      "T.A0001.ACO.ZC9Y18.D181120.T1000010",
 	}
@@ -347,11 +281,11 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
-	db.Find(&savedCCLF9, "id = ?", "6")
+	db.First(&savedCCLF9, "current_num = ? and file_id = ?", "1A69B98CD35", file.ID)
 	assert.NotNil(savedCCLF9)
 	assert.Equal("M", savedCCLF9.XrefIndicator)
 	assert.Equal("1A69B98CD35", savedCCLF9.CurrentNum)
@@ -359,17 +293,22 @@ func (s *CLITestSuite) TestImportCCLF9() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 }
 
-func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
+func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	var existngCCLFFiles []models.CCLFFile
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 
 	acoID := "A0002"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -378,7 +317,7 @@ func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
 		acoID:     acoID,
 		cclfNum:   9,
 		timestamp: fileTime,
-		filePath:  "../shared_files/cclf_split/T.A0001.ACO.ZC9Y18.D181120.T1000010",
+		filePath:  BASE_FILE_PATH + "cclf_split/T.A0001.ACO.ZC9Y18.D181120.T1000010",
 		perfYear:  18,
 		name:      "T.A0001.ACO.ZC9Y18.D181120.T1000010",
 	}
@@ -391,7 +330,7 @@ func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime, file.Timestamp)
+	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
@@ -403,11 +342,13 @@ func (s *CLITestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	//db.Unscoped().Delete(&models.CCLFBeneficiaryXref{})
-	//db.Unscoped().Delete(&models.CCLFFile{})
+	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		cclfFile.Delete()
+	}
 }
 
-func (s *CLITestSuite) TestImportCCLF9_InvalidMetadata() {
+func (s *CCLFTestSuite) TestImportCCLF9_InvalidMetadata() {
 	assert := assert.New(s.T())
 
 	var metadata *cclfFileMetadata
@@ -416,21 +357,21 @@ func (s *CLITestSuite) TestImportCCLF9_InvalidMetadata() {
 	assert.EqualError(err, "CCLF file not found")
 }
 
-func (s *CLITestSuite) TestGetCCLFFileMetadata() {
+func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert := assert.New(s.T())
 
 	_, err := getCCLFFileMetadata("/path/to/file")
 	assert.EqualError(err, "invalid filename for file: /path/to/file")
 
 	metadata, err := getCCLFFileMetadata("/path/T.A0000.ACO.ZC8Y18.D190117.T9909420")
-	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420")
+	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 
 	expTime, _ := time.Parse(time.RFC3339, "2019-01-17T21:09:42Z")
 	metadata, err = getCCLFFileMetadata("/path/T.A0000.ACO.ZC8Y18.D190117.T2109420")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0000", metadata.acoID)
 	assert.Equal(8, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -439,7 +380,7 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("production", metadata.env)
 	assert.Equal("A0001", metadata.acoID)
 	assert.Equal(9, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -448,7 +389,7 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0002", metadata.acoID)
 	assert.Equal(0, metadata.cclfNum)
-	assert.Equal(expTime, metadata.timestamp)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
@@ -459,12 +400,12 @@ func (s *CLITestSuite) TestGetCCLFFileMetadata() {
 	assert.NotNil(err)
 }
 
-func (s *CLITestSuite) TestSortCCLFFiles() {
+func (s *CCLFTestSuite) TestSortCCLFFiles() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string][]*cclfFileMetadata)
 	var skipped int
 
-	filePath := "../shared_files/cclf/"
+	filePath := BASE_FILE_PATH + "cclf/"
 	err := filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	assert.Equal(3, len(cclfmap["A0001_18"]))
@@ -472,7 +413,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
 	skipped = 0
-	filePath = "../shared_files/cclf_BadFileNames/"
+	filePath = BASE_FILE_PATH + "cclf_BadFileNames/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	cclflist := cclfmap["A0001_18"]
@@ -481,11 +422,11 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	for _, cclf := range cclflist {
 		assert.NotEqual(s.T(), 9, cclf.cclfNum)
 	}
-	s.resetFiles("../shared_files/cclf_BadFileNames/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
 	skipped = 0
-	filePath = "../shared_files/cclf0/"
+	filePath = BASE_FILE_PATH + "cclf0/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	cclflist = cclfmap["A0001_18"]
@@ -497,7 +438,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
 	skipped = 0
-	filePath = "../shared_files/cclf8/"
+	filePath = BASE_FILE_PATH + "cclf8/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	cclflist = cclfmap["A0001_18"]
@@ -509,7 +450,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
 	skipped = 0
-	filePath = "../shared_files/cclf9/"
+	filePath = BASE_FILE_PATH + "cclf9/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	cclflist = cclfmap["A0001_18"]
@@ -519,7 +460,7 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	modtimeAfter := time.Now().Truncate(time.Second)
 	for _, cclf := range cclflist {
 		assert.Equal(9, cclf.cclfNum)
-		assert.Equal(modtimeBefore, cclf.deliveryDate)
+		assert.Equal(modtimeBefore.Format("010203040506"), cclf.deliveryDate.Format("010203040506"))
 
 		// change the modification time for all the files
 		err := os.Chtimes(cclf.filePath, modtimeAfter, modtimeAfter)
@@ -529,18 +470,18 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	}
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
-	filePath = "../shared_files/cclf9/"
+	filePath = BASE_FILE_PATH + "cclf9/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	cclflist = cclfmap["A0001_18"]
 	for _, cclf := range cclflist {
 		// check for the new modification time
-		assert.Equal(modtimeAfter, cclf.deliveryDate)
+		assert.Equal(modtimeAfter.Format("010203040506"), cclf.deliveryDate.Format("010203040506"))
 	}
 
 	cclfmap = make(map[string][]*cclfFileMetadata)
 	skipped = 0
-	filePath = "../shared_files/cclf_All/"
+	filePath = BASE_FILE_PATH + "cclf_All/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	cclflist = cclfmap["A0001_18"]
@@ -562,49 +503,9 @@ func (s *CLITestSuite) TestSortCCLFFiles() {
 	assert.Equal(3, len(cclf0))
 }
 
-func (s *CLITestSuite) TestImportCCLFDirectory() {
-	assert := assert.New(s.T())
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	s.setPendingDeletionDir()
-
-	args := []string{"bcda", "import-cclf-directory", "--directory", "../shared_files/cclf/"}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 3 files.")
-	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 0 files.")
-
-	buf.Reset()
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
-	s.resetFiles("../shared_files/cclf/")
-
-	// dir has 4 files, but 2 will be ignored because of bad file names.
-	args = []string{"bcda", "import-cclf-directory", "--directory", "../shared_files/cclf_BadFileNames/"}
-	err = s.testApp.Run(args)
-	assert.NotNil(err)
-	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Failed to import 1 files.")
-	assert.Contains(buf.String(), "Skipped 2 files.")
-	buf.Reset()
-
-	s.resetFiles("../shared_files/cclf_BadFileNames/")
-}
-func (s *CLITestSuite) TestCleanupCCLF() {
+func (s *CCLFTestSuite) TestCleanupCCLF() {
 	cclfmap := make(map[string][]*cclfFileMetadata)
-	s.setPendingDeletionDir()
+	testUtils.SetPendingDeletionDir(s.Suite)
 
 	// failed import: file that's within the threshold - stay put
 	acoID := "A0001"
@@ -616,7 +517,7 @@ func (s *CLITestSuite) TestCleanupCCLF() {
 		cclfNum:      8,
 		perfYear:     18,
 		timestamp:    fileTime,
-		filePath:     "../shared_files/cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011",
+		filePath:     BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC0Y18.D181120.T1000011",
 		imported:     false,
 		deliveryDate: time.Now(),
 	}
@@ -631,7 +532,7 @@ func (s *CLITestSuite) TestCleanupCCLF() {
 		cclfNum:      8,
 		perfYear:     18,
 		timestamp:    fileTime,
-		filePath:     "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		filePath:     BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009",
 		imported:     false,
 		deliveryDate: fileTime,
 	}
@@ -646,7 +547,7 @@ func (s *CLITestSuite) TestCleanupCCLF() {
 		cclfNum:   9,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  "../shared_files/cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010",
+		filePath:  BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC9Y18.D181120.T1000010",
 		imported:  true,
 	}
 	cclfmap["A0001_18"] = []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata}
@@ -659,36 +560,13 @@ func (s *CLITestSuite) TestCleanupCCLF() {
 	for _, file := range files {
 		assert.NotEqual(s.T(), "T.A0001.ACO.ZC0Y18.D181120.T1000011", file.Name())
 	}
-	s.resetFiles("../shared_files/cclf/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/")
 }
 
-func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
+func (s *CCLFTestSuite) TestDeleteDirectory() {
 	assert := assert.New(s.T())
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
-
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	args := []string{"bcda", "import-cclf-directory", "--directory", "../shared_files/cclf_split/"}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 3 files.")
-	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 0 files.")
-
-	s.resetFiles("../shared_files/cclf_split/")
-}
-
-func (s *CLITestSuite) TestDeleteDirectory() {
-	assert := assert.New(s.T())
-	dirToDelete := "../shared_files/doomedDirectory"
-	s.makeDirToDelete(dirToDelete)
+	dirToDelete := BASE_FILE_PATH + "doomedDirectory"
+	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
 	defer os.Remove(dirToDelete)
 
 	f, err := os.Open(dirToDelete)
@@ -697,7 +575,7 @@ func (s *CLITestSuite) TestDeleteDirectory() {
 	assert.Nil(err)
 	assert.Equal(4, len(files))
 
-	filesDeleted, err := deleteDirectoryContents(dirToDelete)
+	filesDeleted, err := DeleteDirectoryContents(dirToDelete)
 	assert.Equal(4, filesDeleted)
 	assert.Nil(err)
 
@@ -707,87 +585,7 @@ func (s *CLITestSuite) TestDeleteDirectory() {
 	assert.Nil(err)
 	assert.Equal(0, len(files))
 
-	filesDeleted, err = deleteDirectoryContents("This/Does/not/Exist")
+	filesDeleted, err = DeleteDirectoryContents("This/Does/not/Exist")
 	assert.Equal(0, filesDeleted)
 	assert.NotNil(err)
-}
-
-func (s *CLITestSuite) TestDeleteDirectoryContents() {
-	assert := assert.New(s.T())
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	dirToDelete := "../shared_files/doomedDirectory"
-	s.makeDirToDelete(dirToDelete)
-	defer os.Remove(dirToDelete)
-
-	args := []string{"bcda", "delete-dir-contents", "--dirToDelete", dirToDelete}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
-	buf.Reset()
-
-	// File, not a directory
-	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
-	err = s.testApp.Run(args)
-	assert.NotNil(err)
-	assert.NotContains(buf.String(), "Successfully Deleted")
-	buf.Reset()
-
-	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
-	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
-	err = s.testApp.Run(args)
-	assert.NotNil(err)
-	assert.NotContains(buf.String(), "Successfully Deleted")
-	buf.Reset()
-
-}
-
-func (s *CLITestSuite) makeDirToDelete(filePath string) {
-	assert := assert.New(s.T())
-	dirToDelete := filePath
-	err := os.Mkdir(dirToDelete, os.ModePerm)
-	assert.Nil(err)
-
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe1.txt"))
-	assert.Nil(err)
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe2.txt"))
-	assert.Nil(err)
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe3.txt"))
-	assert.Nil(err)
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe4.txt"))
-	assert.Nil(err)
-}
-
-func (s *CLITestSuite) setPendingDeletionDir() {
-	err := os.Setenv("PENDING_DELETION_DIR", "/go/src/github.com/CMSgov/bcda-app/bcda/pending_delete_dir")
-	if err != nil {
-		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
-	}
-	cclfDeletion := os.Getenv("PENDING_DELETION_DIR")
-	err = os.MkdirAll(cclfDeletion, 0744)
-	if err != nil {
-		s.FailNow("failed to create the pending deletion directory,", err)
-	}
-}
-
-func (s *CLITestSuite) resetFiles(resetPath string) {
-	err := filepath.Walk(os.Getenv("PENDING_DELETION_DIR"),
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				s.FailNow("error in walkfunc,", err)
-			}
-
-			if info.IsDir() {
-				return nil
-			}
-			err = os.Rename(path, resetPath+info.Name())
-			if err != nil {
-				s.FailNow("error in moving files,", err)
-			}
-			return nil
-		})
-	if err != nil {
-		s.FailNow("error in walkfunc,", err)
-	}
 }

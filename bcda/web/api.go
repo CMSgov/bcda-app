@@ -1,36 +1,4 @@
-/*
- Package main Beneficiary Claims Data API
-
- The Beneficiary Claims Data API (BCDA) allows downloading of claims data in accordance with the FHIR Bulk Data Export specification.
-
- If you have a Client ID and Secret you can use this page to explore the API.  To do this:
-  1. Click the green "Authorize" button below and enter your Client ID and secret in the Basic Authentication username and passsword boxes.
-  2. Request a bearer token from /auth/token
-  3. Click the green "Authorize" button below and put "Bearer {YOUR_TOKEN}" in the bearer_token box.
-
-Until you click logout your token will be presented with every request made.  To make requests click on the
- "Try it out" button for the desired endpoint.
-
-
-     Version: 1.0.0
-     License: Public Domain https://github.com/CMSgov/bcda-app/blob/master/LICENSE.md
-     Contact: bcapi@cms.hhs.gov
-
-     Produces:
-     - application/fhir+json
-     - application/json
-
-     SecurityDefinitions:
-     bearer_token:
-          type: apiKey
-          name: The bulkData endpoints require a Bearer Token. 1) Put your credentials in Basic Authentication, 2) Request a bearer token from /auth/token, 3) Put "Bearer {TOKEN}" in this field (no quotes) using the bearer token retrieved in step 2
-          in: header
-     basic_auth:
-          type: basic
-
- swagger:meta
-*/
-package main
+package web
 
 import (
 	"encoding/hex"
@@ -46,6 +14,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
+	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -57,6 +26,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+)
+
+var (
+	qc      *que.Client
+	version = "latest"
 )
 
 /*
@@ -171,16 +145,6 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: this checks for ?encrypt=false appended to the bulk data request URL
-	// By default, our encryption process is enabled but for now we are giving users the ability to turn
-	// it off
-	// Eventually, we will remove the ability for users to turn it off and it will remain on always
-	var encrypt = true
-	param, ok := r.URL.Query()["encrypt"]
-	if ok && strings.ToLower(param[0]) == "false" {
-		encrypt = false
-	}
-
 	if qc == nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -188,7 +152,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enqueueJobs, err := newJob.GetEnqueJobs(encrypt, t)
+	enqueueJobs, err := newJob.GetEnqueJobs(t)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -540,4 +504,8 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 
 func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+}
+
+func SetQC(client *que.Client) {
+	qc = client
 }

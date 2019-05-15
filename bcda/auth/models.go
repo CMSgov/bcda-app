@@ -68,6 +68,20 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 	return aco, err
 }
 
+func GetACOByCMSID(cmsID string) (models.ACO, error) {
+	var (
+		db  = database.GetGORMDbConnection()
+		aco models.ACO
+		err error
+	)
+	defer database.Close(db)
+
+	if db.Find(&aco, "cms_id = ?", cmsID).RecordNotFound() {
+		err = errors.New("no ACO record found for " + cmsID)
+	}
+	return aco, err
+}
+
 // RevokeSystemKeyPair soft deletes the active encryption key
 // for the specified system so that it can no longer be used
 func RevokeSystemKeyPair(systemID uint) error {
@@ -144,4 +158,64 @@ func GenerateSystemKeyPair(systemID uint) (string, error) {
 	)
 
 	return string(privateKeyBytes), nil
+}
+func CreateAlphaToken(ttl int, acoSize string) (string, error) {
+	aco, err := createAlphaEntities(acoSize)
+	if err != nil {
+		return "", err
+	}
+
+	creds, err := GetProvider().RegisterClient(aco.UUID.String())
+	if err != nil {
+		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
+	}
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	// Only update aco.ClientID.  Other attributes of this ACO (AlphaSecret) may have been altered in the database by the
+	// RegisterClient() call above, so we should not save these potentially stale values.
+	err = db.Model(&aco).Update("client_id", creds.ClientID).Error
+	if err != nil {
+		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())
+	}
+
+	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+
+	return msg, nil
+}
+
+func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			if tx.Error != nil {
+				tx.Rollback()
+			}
+			err = fmt.Errorf("createAlphaEntities failed because %s", r)
+		}
+	}()
+
+	if tx.Error != nil {
+		return aco, tx.Error
+	}
+
+	aco, err = models.CreateAlphaACO(tx)
+	if err != nil {
+		tx.Rollback()
+		return aco, err
+	}
+
+	if err = models.AssignAlphaBeneficiaries(tx, aco, acoSize); err != nil {
+		tx.Rollback()
+		return aco, err
+	}
+
+	if tx.Commit().Error != nil {
+		tx.Rollback()
+		return aco, tx.Error
+	}
+
+	return aco, nil
 }

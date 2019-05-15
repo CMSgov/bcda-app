@@ -1,7 +1,9 @@
 package models
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"os"
@@ -9,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/testConstants"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -77,6 +79,38 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	}
 	err = s.db.Save(&aco).Error
 	assert.NotNil(err)
+}
+
+func (s *ModelsTestSuite) TestACOPublicKeySave() {
+	assert := s.Assert()
+
+	// Setup ACO
+	cmsID := "A4444"
+	aco := ACO{Name: "Pub Key Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+	err := s.db.Create(&aco).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco)
+	defer s.db.Delete(&aco)
+
+	// Setup key
+	pubKey := GetATOPublicKey()
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(pubKey)
+	assert.Nil(err, "unable to marshal public key")
+	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+	assert.NotNil(publicKeyBytes, "unexpectedly empty public key byte slice")
+
+	// Save and verify
+	aco.PublicKey = string(publicKeyBytes)
+	err = s.db.Save(&aco).Error
+	assert.Nil(err)
+	err = s.db.First(&aco, "cms_id = ?", cmsID).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco)
+	assert.NotEmpty(aco.PublicKey)
+	assert.Equal(publicKeyBytes, []byte(aco.PublicKey))
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {
@@ -183,7 +217,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	assert := s.Assert()
 
 	j := Job{
-		ACOID:      uuid.Parse(testConstants.DEVACOUUID),
+		ACOID:      uuid.Parse(constants.DEVACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
@@ -191,7 +225,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	enqueueJobs, err := j.GetEnqueJobs(true, "Patient")
+	enqueueJobs, err := j.GetEnqueJobs("Patient")
 
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -204,15 +238,14 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 			s.T().Error(err)
 		}
 		assert.Equal(int(j.ID), jobArgs.ID)
-		assert.Equal(testConstants.DEVACOUUID, jobArgs.ACOID)
+		assert.Equal(constants.DEVACOUUID, jobArgs.ACOID)
 		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		assert.Equal("Patient", jobArgs.ResourceType)
-		assert.Equal(true, jobArgs.Encrypt)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
 
 	j = Job{
-		ACOID:      uuid.Parse(testConstants.DEVACOUUID),
+		ACOID:      uuid.Parse(constants.DEVACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
@@ -222,7 +255,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	defer s.db.Delete(&j)
 	os.Setenv("BCDA_FHIR_MAX_RECORDS", "15")
 
-	enqueueJobs, err = j.GetEnqueJobs(true, "ExplanationOfBenefit")
+	enqueueJobs, err = j.GetEnqueJobs("ExplanationOfBenefit")
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(4, len(enqueueJobs))
@@ -244,7 +277,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert := s.Assert()
 	var aco, smallACO, mediumACO, largeACO ACO
-	acoUUID := uuid.Parse(testConstants.DEVACOUUID)
+	acoUUID := uuid.Parse(constants.DEVACOUUID)
 
 	err := s.db.Find(&aco, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
@@ -254,8 +287,8 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.Equal(50, len(beneficiaryIDs))
 
 	// small ACO has 10 benes
-	acoUUID = uuid.Parse(testConstants.SMALLACOUUID)
-	err = s.db.Find(&smallACO, "UUID = ?", acoUUID).Error
+	acoUUID = uuid.Parse(constants.SMALLACOUUID)
+	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaryIDs, err = smallACO.GetBeneficiaryIDs()
 	assert.Nil(err)
@@ -263,7 +296,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.Equal(10, len(beneficiaryIDs))
 
 	// Medium ACO has 25 benes
-	acoUUID = uuid.Parse(testConstants.MEDIUMACOUUID)
+	acoUUID = uuid.Parse(constants.MEDIUMACOUUID)
 	err = s.db.Find(&mediumACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaryIDs, err = mediumACO.GetBeneficiaryIDs()
@@ -272,7 +305,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.Equal(25, len(beneficiaryIDs))
 
 	// Large ACO has 100 benes
-	acoUUID = uuid.Parse(testConstants.LARGEACOUUID)
+	acoUUID = uuid.Parse(constants.LARGEACOUUID)
 	err = s.db.Find(&largeACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaryIDs, err = largeACO.GetBeneficiaryIDs()

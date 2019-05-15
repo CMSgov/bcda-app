@@ -98,7 +98,7 @@ func (job *Job) CheckCompletedAndCleanup() (bool, error) {
 	return false, nil
 }
 
-func (job *Job) GetEnqueJobs(encrypt bool, t string) (enqueJobs []*que.Job, err error) {
+func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 	var jobIDs []string
 
 	var rowCount = 0
@@ -128,8 +128,6 @@ func (job *Job) GetEnqueJobs(encrypt bool, t string) (enqueJobs []*que.Job, err 
 				UserID:         job.UserID.String(),
 				BeneficiaryIDs: jobIDs,
 				ResourceType:   t,
-				// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-				Encrypt: encrypt,
 			})
 			if err != nil {
 				return nil, err
@@ -164,6 +162,7 @@ type ACO struct {
 	Name             string    `json:"name"`
 	ClientID         string    `json:"client_id"`
 	AlphaSecret      string    `json:"alpha_secret"`
+	PublicKey        string    `json:"public_key"`
 	ACOBeneficiaries []*ACOBeneficiary
 }
 
@@ -414,8 +413,6 @@ type jobEnqueueArgs struct {
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
-	// TODO: remove `Encrypt` when file encryption disable functionality is ready to be deprecated
-	Encrypt bool
 }
 
 type EncryptionKey struct {
