@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"context"
@@ -35,13 +35,13 @@ type TokenResponse struct {
 
 type APITestSuite struct {
 	suite.Suite
-	rr *httptest.ResponseRecorder
-	db *gorm.DB
+	rr    *httptest.ResponseRecorder
+	db    *gorm.DB
 	reset func()
 }
 
 func (s *APITestSuite) SetupSuite() {
-	s.reset = testUtils.SetUnitTestKeysForAuth()  // needed until token endpoint moves to auth
+	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
 }
 
 func (s *APITestSuite) TearDownSuite() {
@@ -50,7 +50,7 @@ func (s *APITestSuite) TearDownSuite() {
 
 func (s *APITestSuite) SetupTest() {
 	models.InitializeGormModels()
-	auth.InitializeGormModels()                   // needed until token endpoint moves to auth
+	auth.InitializeGormModels() // needed until token endpoint moves to auth
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
@@ -626,7 +626,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 }
 
 func (s *APITestSuite) TestServeData() {
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	os.Setenv("FHIR_PAYLOAD_DIR", "../../bcdaworker/data/test")
 	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
 	rctx := chi.NewRouteContext()
@@ -670,7 +670,7 @@ func (s *APITestSuite) TestAuthTokenSuccess() {
 	// Create and verify new credentials
 	t := TokenResponse{}
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n(.+)`)
-	tokenResp, _ := createAlphaToken(60, "Dev")
+	tokenResp, _ := auth.CreateAlphaToken(60, "Dev")
 	assert.Regexp(s.T(), outputPattern, tokenResp)
 	matches := outputPattern.FindSubmatch([]byte(tokenResp))
 	clientID := string(matches[1])

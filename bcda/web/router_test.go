@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"io/ioutil"
@@ -48,18 +48,18 @@ func (s *RouterTestSuite) TestDefaultRoute() {
 }
 
 func (s *RouterTestSuite) TestDefaultProdRoute() {
-	err := os.Setenv("DEPLOYMENT_TARGET","prod")
+	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	if err != nil {
-		s.FailNow("err in setting env var",err)
+		s.FailNow("err in setting env var", err)
 	}
-
+	// Need a new router because the one in the test setup does not use the environment variable set in this test.
 	s.apiRouter = NewAPIRouter()
 	res := s.getAPIRoute("/")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 	err = os.Unsetenv("DEPLOYMENT_TARGET")
 	if err != nil {
-		s.FailNow("err in setting env var",err)
+		s.FailNow("err in setting env var", err)
 	}
 }
 

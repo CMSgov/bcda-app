@@ -1,4 +1,4 @@
-package main
+package cclf
 
 import (
 	"archive/zip"
@@ -19,7 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-func createACO(name, cmsID string) (string, error) {
+func CreateACO(name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
@@ -110,14 +110,14 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 					count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
 					if err != nil {
 						fmt.Printf("Failed to parse %s record count from CCLF0 file.\n", filetype)
-						err = errors.Wrapf(err,"failed to parse %s record count from CCLF0 file", filetype)
+						err = errors.Wrapf(err, "failed to parse %s record count from CCLF0 file", filetype)
 						log.Error(err)
 						return nil, err
 					}
 					length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
 					if err != nil {
 						fmt.Printf("Failed to parse %s record length from CCLF0 file.\n", filetype)
-						err = errors.Wrapf(err,"failed to parse %s record length from CCLF0 file", filetype)
+						err = errors.Wrapf(err, "failed to parse %s record length from CCLF0 file", filetype)
 						log.Error(err)
 						return nil, err
 					}
@@ -299,7 +299,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	cclfNum, err := strconv.Atoi(filenameMatches[3])
 	if err != nil {
 		fmt.Printf("Failed to parse cclf num from file: %s.\n", filePath)
-		err = errors.Wrapf(err,"failed to parse cclf num from file: %s", filePath)
+		err = errors.Wrapf(err, "failed to parse cclf num from file: %s", filePath)
 		log.Error(err)
 		return metadata, err
 	}
@@ -307,7 +307,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	perfYear, err := strconv.Atoi(filenameMatches[4])
 	if err != nil {
 		fmt.Printf("Failed to parse performance year from file: %s.\n", filePath)
-		err = errors.Wrapf(err,"failed to parse performance year from file: %s", filePath)
+		err = errors.Wrapf(err, "failed to parse performance year from file: %s", filePath)
 		log.Error(err)
 		return metadata, err
 	}
@@ -316,7 +316,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, filePath)
-		err = errors.Wrapf(err,"failed to parse date '%s' from file: %s", filenameDate, filePath)
+		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filePath)
 		log.Error(err)
 		return metadata, err
 	}
@@ -336,7 +336,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	return metadata, nil
 }
 
-func importCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
+func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	var cclfmap = make(map[string][]*cclfFileMetadata)
 
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
@@ -418,7 +418,7 @@ func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepa
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("Error in sorting cclf file: %v.\n", info.Name())
-			err = errors.Wrapf(err,"error in sorting cclf file: %v,", info.Name())
+			err = errors.Wrapf(err, "error in sorting cclf file: %v,", info.Name())
 			log.Error(err)
 			return err
 		}
@@ -439,7 +439,7 @@ func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepa
 			err = os.Rename(metadata.filePath, newpath)
 			if err != nil {
 				fmt.Printf("Error moving unknown file: %#v to pending deletion dir.\n", metadata)
-				err  = fmt.Errorf("error moving unknown file: %#v to pending deletion dir", metadata)
+				err = fmt.Errorf("error moving unknown file: %#v to pending deletion dir", metadata)
 				log.Error(err)
 				return err
 			}
@@ -530,7 +530,7 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 	return nil
 }
 
-func deleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
+func DeleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
 	fmt.Printf("Preparing to delete directory %v.\n", dirToDelete)
 	log.Infof("Preparing to delete directory %v", dirToDelete)
 	f, err := os.Open(filepath.Clean(dirToDelete))
@@ -550,7 +550,7 @@ func deleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
 	err = f.Close()
 	if err != nil {
 		fmt.Printf("Error closing dir: %s.\n", f.Name())
-		err = errors.Wrapf(err,"error closing dir: %s", f.Name())
+		err = errors.Wrapf(err, "error closing dir: %s", f.Name())
 		log.Error(err)
 		return 0, err
 	}
@@ -561,7 +561,7 @@ func deleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
 		err = os.Remove(filepath.Join(dirToDelete, file.Name()))
 		if err != nil {
 			fmt.Printf("Error deleting file: %s from dir: %s.\n", file.Name(), dirToDelete)
-			err = errors.Wrapf(err,"error deleting file: %s from dir: %s", file.Name(), dirToDelete)
+			err = errors.Wrapf(err, "error deleting file: %s from dir: %s", file.Name(), dirToDelete)
 			log.Error(err)
 			return 0, err
 		}

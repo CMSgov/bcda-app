@@ -1,0 +1,11 @@
+CCLF1        |PartAClaimsHeaderFil|10                  |2
+CCLF2        |Part A Claims Revenu|10                  |4
+CCLF3        |Part A Procedure Cod|10                  |6
+CCLF4        |Part A Diagnosis Cod|10                  |8
+CCLF5        |Part B Physicians Fi|10                  |10
+CCLF6        |Part B DME File     |10                  |12
+CCLF7        |Part D File         |10                  |14
+CCLF8        |Beneficiary Demogra |50                  |100
+CCLF9        |BENE XREF File      |2                   |100
+CCLFA        |Part A BE and Demo  |10                  |16
+CCLFB        |Part B BE and Demo  |10                  |18

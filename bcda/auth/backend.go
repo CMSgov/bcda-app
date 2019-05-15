@@ -23,8 +23,8 @@ import (
 const hashIter int = 90000
 const hashKeyLen int = 64
 const saltSize int = 32
-const hashMinTime = 1*time.Second
-const hashMaxTime = 3*time.Second
+const hashMinTime = 1 * time.Second
+const hashMaxTime = 3 * time.Second
 
 var (
 	alphaBackend *AlphaBackend
