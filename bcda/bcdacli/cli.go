@@ -15,7 +15,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 
@@ -28,6 +27,10 @@ import (
 	"github.com/urfave/cli"
 )
 
+// App Name and usage.  Edit them here to prevent breaking tests
+const Name = "bcda"
+const Usage = "Beneficiary Claims Data API CLI"
+
 var (
 	qc      *que.Client
 	version = "latest"
@@ -39,8 +42,8 @@ func GetApp() *cli.App {
 
 func setUpApp() *cli.App {
 	app := cli.NewApp()
-	app.Name = constants.Name
-	app.Usage = constants.Usage
+	app.Name = Name
+	app.Usage = Usage
 	app.Version = version
 	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
 	app.Commands = []cli.Command{
@@ -246,6 +249,37 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
+			Name:     "generate-client-credentials",
+			Category: "Authentication tools",
+			Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+			},
+			Action: func(c *cli.Context) error {
+
+				// Get ACO by CMS ID (since GenerateClientCredentials interface expects a Client ID)
+				aco, err := auth.GetACOByCMSID(acoCMSID)
+				if err != nil {
+					return err
+				}
+
+				// Generate new credentials
+				// TODO: GenerateClientCredentials interface to be updated as part of BCDA-1304
+				//       Passing in a ttl of 0 for now, since it is not used.
+				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID, 0)
+				if err != nil {
+					return err
+				}
+				msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+				fmt.Fprintf(app.Writer, "%s\n", msg)
+				return nil
+			},
+		},
+		{
 			Name:     "sql-migrate",
 			Category: "Database tools",
 			Usage:    "Migrate GORM schema changes to the DB",
@@ -337,7 +371,7 @@ func setUpApp() *cli.App {
 				},
 				cli.StringFlag{
 					Name:        "environment",
-					Usage:       "Which set of files to use",
+					Usage:       "Which set of files to use.  ",
 					Destination: &environment,
 				},
 			},

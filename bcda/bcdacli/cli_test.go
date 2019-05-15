@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -71,8 +70,8 @@ func (s *CLITestSuite) TestGetEnvInt() {
 func (s *CLITestSuite) TestSetup() {
 	assert.Equal(s.T(), 1, 1)
 	app := setUpApp()
-	assert.Equal(s.T(), app.Name, constants.Name)
-	assert.Equal(s.T(), app.Usage, constants.Usage)
+	assert.Equal(s.T(), app.Name, Name)
+	assert.Equal(s.T(), app.Usage, Usage)
 }
 
 func (s *CLITestSuite) TestAutoMigrate() {
@@ -237,6 +236,36 @@ func (s *CLITestSuite) TestCreateToken() {
 	assert.Nil(err)
 	assert.NotEmpty(accessTokenString)
 	buf.Reset()
+}
+func (s *CLITestSuite) TestGenerateClientCredentialsCLI() {
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+	assert := assert.New(s.T())
+
+	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
+
+	// execute positive scenarios via CLI
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Regexp(outputPattern, buf.String())
+	buf.Reset()
+
+	// Execute CLI with invalid ACO CMS ID
+	args = []string{"bcda", "generate-client-credentials", "--cms-id", "BLAH"}
+	err = s.testApp.Run(args)
+	assert.Equal("no ACO record found for BLAH", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	// Execute CLI with invalid inputs
+	args = []string{"bcda", "generate-client-credentials", "--abcd", "efg"}
+	err = s.testApp.Run(args)
+	assert.Equal("flag provided but not defined: -abcd", err.Error())
+	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+
 }
 
 func (s *CLITestSuite) TestCreateAlphaTokenCLI() {

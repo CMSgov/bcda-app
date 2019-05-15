@@ -1,7 +1,9 @@
 package models
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"os"
@@ -77,6 +79,38 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	}
 	err = s.db.Save(&aco).Error
 	assert.NotNil(err)
+}
+
+func (s *ModelsTestSuite) TestACOPublicKeySave() {
+	assert := s.Assert()
+
+	// Setup ACO
+	cmsID := "A4444"
+	aco := ACO{Name: "Pub Key Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+	err := s.db.Create(&aco).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco)
+	defer s.db.Delete(&aco)
+
+	// Setup key
+	pubKey := GetATOPublicKey()
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(pubKey)
+	assert.Nil(err, "unable to marshal public key")
+	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+	assert.NotNil(publicKeyBytes, "unexpectedly empty public key byte slice")
+
+	// Save and verify
+	aco.PublicKey = string(publicKeyBytes)
+	err = s.db.Save(&aco).Error
+	assert.Nil(err)
+	err = s.db.First(&aco, "cms_id = ?", cmsID).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco)
+	assert.NotEmpty(aco.PublicKey)
+	assert.Equal(publicKeyBytes, []byte(aco.PublicKey))
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {
