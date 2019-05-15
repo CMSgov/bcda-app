@@ -162,7 +162,7 @@ type ACO struct {
 	Name             string    `json:"name"`
 	ClientID         string    `json:"client_id"`
 	AlphaSecret      string    `json:"alpha_secret"`
-	PublicKey		 string	   `json:"public_key"`
+	PublicKey        string    `json:"public_key"`
 	ACOBeneficiaries []*ACOBeneficiary
 }
 
