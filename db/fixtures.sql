@@ -1,4 +1,5 @@
-insert into acos values ('DBBD1CE1-AE24-435C-807D-ED45953077D3', null, 'ACO Lorem Ipsum',
+insert into acos(uuid, cms_id, name, client_id, public_key)
+     values ('DBBD1CE1-AE24-435C-807D-ED45953077D3', null, 'ACO Lorem Ipsum', 'DBBD1CE1-AE24-435C-807D-ED45953077D3',
  '-----BEGIN PUBLIC KEY-----
  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
  I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
@@ -7,17 +8,29 @@ insert into acos values ('DBBD1CE1-AE24-435C-807D-ED45953077D3', null, 'ACO Lore
  lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
  XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
  HwIDAQAB
- -----END PUBLIC KEY-----', default, default, 'DBBD1CE1-AE24-435C-807D-ED45953077D3', null);
--- The above public key is paired with the published sample private key in shared_files/ATO_private.pem and is necessary
---   for several unit tests, as well as smoke and Postman tests
-insert into acos values ('A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', null, 'ACO Sit Amet', default, default, 'A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', null);
-insert into acos values ('c14822fa-19ee-402c-9248-32af98419fe3', null, 'ACO Revoked', default, default, 'c14822fa-19ee-402c-9248-32af98419fe3', null);
-insert into acos values ('82f55b6a-728e-4c8b-807e-535caad7b139', null, 'ACO Not Revoked', default, default, '82f55b6a-728e-4c8b-807e-535caad7b139', null);
-insert into acos values ('3461C774-B48F-11E8-96F8-529269fb1459', 'A9990', 'ACO Small', default,default, '3461C774-B48F-11E8-96F8-529269fb1459', null),
-                        ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', 'A9991', 'ACO Medium', default, default, 'C74C008D-42F8-4ED9-BF88-CEE659C7F692', null),
-                        ('8D80925A-027E-43DD-8AED-9A501CC4CD91', 'A9992', 'ACO Large', default, default, '8D80925A-027E-43DD-8AED-9A501CC4CD91', null),
-                        ('55954dba-d4d9-438d-bd03-453da4993fe9', 'A9993', 'ACO Extra Large', default, default, '55954dba-d4d9-438d-bd03-453da4993fe9', null);
-insert into acos values ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', default, default, '0c527d2e-2e8a-4808-b11d-0fa06baf8254', null);
+ -----END PUBLIC KEY-----'),
+            ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', '0c527d2e-2e8a-4808-b11d-0fa06baf8254',
+ '-----BEGIN PUBLIC KEY-----
+ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
+ I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
+ /CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL
+ cN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ
+ lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
+ XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
+ HwIDAQAB
+ -----END PUBLIC KEY-----');
+-- The above public keys are paired with the published sample private key in shared_files/ATO_private.pem and are necessary
+--   for unit, smoke, and Postman tests
+
+insert into acos(uuid, cms_id, name, client_id)
+     values ('A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', null, 'ACO Sit Amet', 'A40404F7-1EF2-485A-9B71-40FE7ACDCBC2'),
+            ('c14822fa-19ee-402c-9248-32af98419fe3', null, 'ACO Revoked',  'c14822fa-19ee-402c-9248-32af98419fe3'),
+            ('82f55b6a-728e-4c8b-807e-535caad7b139', null, 'ACO Not Revoked', '82f55b6a-728e-4c8b-807e-535caad7b139'),
+            ('3461C774-B48F-11E8-96F8-529269fb1459', 'A9990', 'ACO Small', '3461C774-B48F-11E8-96F8-529269fb1459'),
+            ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', 'A9991', 'ACO Medium', 'C74C008D-42F8-4ED9-BF88-CEE659C7F692'),
+            ('8D80925A-027E-43DD-8AED-9A501CC4CD91', 'A9992', 'ACO Large', '8D80925A-027E-43DD-8AED-9A501CC4CD91'),
+            ('55954dba-d4d9-438d-bd03-453da4993fe9', 'A9993', 'ACO Extra Large', '55954dba-d4d9-438d-bd03-453da4993fe9');
+
 
 insert into users values ('82503A18-BF3B-436D-BA7B-BAE09B7FFD2F', 'User One', 'userone@email.com', 'DBBD1CE1-AE24-435C-807D-ED45953077D3', default, default);
 insert into users values ('EFE6E69A-CD6B-4335-A2F2-4DBEDCCD3E73', 'User Two', 'usertwo@email.com', 'DBBD1CE1-AE24-435C-807D-ED45953077D3', default, default);
