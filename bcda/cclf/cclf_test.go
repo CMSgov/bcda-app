@@ -134,7 +134,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 
 	acoID := "A0001"
@@ -181,7 +181,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 }
 
@@ -194,7 +194,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 
 	acoID := "A0001"
@@ -241,7 +241,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 }
 
@@ -263,7 +263,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 
 	acoID := "A0002"
@@ -282,7 +282,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
-	db.Last(&file, "name = ?", cclf9metadata.name)
+	db.Where("name = ?", cclf9metadata.name).Last(&file)
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
@@ -290,7 +290,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
-	db.Last(&savedCCLF9, "current_num = ? and file_id = ?", "1A69B98CD35", file.ID)
+	db.Where("current_num = ? and file_id = ?", "1A69B98CD35", file.ID).Last(&savedCCLF9)
 	assert.NotNil(savedCCLF9)
 	assert.Equal("M", savedCCLF9.XrefIndicator)
 	assert.Equal("1A69B98CD35", savedCCLF9.CurrentNum)
@@ -301,7 +301,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 }
 
@@ -314,7 +314,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 
 	acoID := "A0002"
@@ -333,7 +333,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
-	db.Last(&file, "name = ?", cclf9metadata.name)
+	db.Where("name = ?", cclf9metadata.name).Last(&file)
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
@@ -352,7 +352,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
-		assert.Nil(s.T(), err)
+		assert.Nil(err)
 	}
 }
 
@@ -428,7 +428,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 	assert.Equal(2, len(cclflist))
 	assert.Equal(2, skipped)
 	for _, cclf := range cclflist {
-		assert.NotEqual(s.T(), 9, cclf.cclfNum)
+		assert.NotEqual(9, cclf.cclfNum)
 	}
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
 
@@ -512,6 +512,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 }
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {
+	assert := assert.New(s.T())
 	cclfmap := make(map[string][]*cclfFileMetadata)
 	testUtils.SetPendingDeletionDir(s.Suite)
 
@@ -566,7 +567,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		s.FailNow("failed to read directory: %s", os.Getenv("PENDING_DELETION_DIR"), err)
 	}
 	for _, file := range files {
-		assert.NotEqual(s.T(), "T.A0001.ACO.ZC0Y18.D181120.T1000011", file.Name())
+		assert.NotEqual("T.A0001.ACO.ZC0Y18.D181120.T1000011", file.Name())
 	}
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/")
 }
