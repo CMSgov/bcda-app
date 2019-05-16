@@ -131,9 +131,10 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 
 	acoID := "A0001"
@@ -177,9 +178,10 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 }
 
@@ -189,9 +191,10 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 
 	acoID := "A0001"
@@ -235,9 +238,10 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 }
 
@@ -256,9 +260,10 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 
 	acoID := "A0002"
@@ -293,9 +298,10 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 }
 
@@ -305,9 +311,10 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 
 	acoID := "A0002"
@@ -342,9 +349,10 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 }
 

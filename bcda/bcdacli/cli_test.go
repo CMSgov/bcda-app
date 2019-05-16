@@ -703,9 +703,10 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -724,9 +725,10 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	buf.Reset()
 
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/")
@@ -782,9 +784,10 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
-		cclfFile.Delete()
+		err := cclfFile.Delete()
+		assert.Nil(s.T(), err)
 	}
 
 	buf := new(bytes.Buffer)
