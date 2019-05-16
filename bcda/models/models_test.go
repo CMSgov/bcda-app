@@ -174,7 +174,7 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	assert := s.Assert()
 
 	// Setup ACO
-	cmsID := "A4444"
+	cmsID := "A4445"
 	aco := ACO{Name: "Pub Key Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
 	err := s.db.Create(&aco).Error
 	assert.Nil(err)
