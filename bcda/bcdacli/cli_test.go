@@ -703,7 +703,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -725,7 +725,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	buf.Reset()
 
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -784,7 +784,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)

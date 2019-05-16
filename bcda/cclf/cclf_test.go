@@ -131,7 +131,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -178,7 +178,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -191,7 +191,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -238,7 +238,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -260,7 +260,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -282,7 +282,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
-	db.First(&file, "name = ?", cclf9metadata.name)
+	db.Last(&file, "name = ?", cclf9metadata.name)
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
@@ -290,7 +290,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Equal(18, file.PerformanceYear)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
-	db.First(&savedCCLF9, "current_num = ? and file_id = ?", "1A69B98CD35", file.ID)
+	db.Last(&savedCCLF9, "current_num = ? and file_id = ?", "1A69B98CD35", file.ID)
 	assert.NotNil(savedCCLF9)
 	assert.Equal("M", savedCCLF9.XrefIndicator)
 	assert.Equal("1A69B98CD35", savedCCLF9.CurrentNum)
@@ -298,7 +298,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -311,7 +311,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
@@ -333,7 +333,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
-	db.First(&file, "name = ?", cclf9metadata.name)
+	db.Last(&file, "name = ?", cclf9metadata.name)
 	assert.NotNil(file)
 	assert.Equal("T.A0001.ACO.ZC9Y18.D181120.T1000010", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
@@ -349,7 +349,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Where("cms_num = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(s.T(), err)
