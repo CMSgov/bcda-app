@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"os"
 	"strconv"
 	"testing"
@@ -47,7 +46,8 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.NotNil(acoUUID)
 
 	var aco ACO
-	s.db.Find(&aco, "UUID = ?", acoUUID)
+	err = s.db.Find(&aco, "UUID = ?", acoUUID).Error
+	assert.Nil(err)
 	assert.NotNil(aco)
 	assert.Equal(ACOName, aco.Name)
 	assert.Equal("", aco.ClientID)
@@ -157,7 +157,6 @@ func (s *ModelsTestSuite) TestACOPublicKeyFixtures() {
 	assert.Nil(err)
 	assert.NotEmpty(aco1, "This ACO (DBBD1CE1-AE24-435C-807D-ED45953077D3) is in the fixtures; why is it not being found?")
 	assert.NotEmpty(aco1.PublicKey, "The fixture (DBBD1CE1-AE24-435C-807D-ED45953077D3) has data in the public_key column; why is it not being returned?")
-	fmt.Println(aco1.PublicKey)
 	pubKey, err := aco1.GetPublicKey()
 	assert.Nil(err)
 	assert.NotNil(pubKey, "Public key for DBBD1CE1-AE24-435C-807D-ED45953077D3 is unexpectedly nil.  Was there a parsing error in aco.GetPublicKey?")
@@ -175,11 +174,12 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	assert := s.Assert()
 
 	// Setup ACO
-	cmsID := "A9994"
-	var aco ACO
-	s.db.Find(&aco, "cms_id = ?", cmsID)
-	assert.NotNil(aco)
-	origKey := aco.PublicKey
+	cmsID := "A4444"
+	aco := ACO{Name: "Pub Key Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+	err := s.db.Create(&aco).Error
+	assert.Nil(err)
+	assert.NotEmpty(aco)
+	defer s.db.Delete(&aco)
 
 	// Setup key
 	keyPair, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -194,7 +194,8 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 
 	// Save
 	aco.PublicKey = string(publicKeyBytes)
-	s.db.Save(&aco)
+	err = s.db.Save(&aco).Error
+	assert.Nil(err)
 	s.db.Find(&aco, "cms_id = ?", cmsID)
 	assert.NotNil(aco)
 	assert.NotNil(aco.PublicKey)
@@ -215,10 +216,6 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	})
 	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
 	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
-
-	// Clean up
-	aco.PublicKey = origKey
-	s.db.Save(&aco)
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {
