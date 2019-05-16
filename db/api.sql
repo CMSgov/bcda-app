@@ -56,5 +56,6 @@ create table cclf_beneficiaries (
     id serial primary key,
     file_id integer not null,
     hicn varchar(11) not null,
-    mbi char(11) not null
+    mbi char(11) not null,
+    blue_button_id text
 );
