@@ -6,7 +6,7 @@ create table acos (
   updated_at timestamp with time zone not null default now(),
   client_id text null,
   alpha_secret text null,
-  public_key text
+  public_key text null
 );
 
 create table users (
