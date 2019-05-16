@@ -360,9 +360,9 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "import-cclf-package",
-			Category: "Cleanup",
-			Usage:    "Delete all of the files in a directory",
+			Name:     "import-synthetic-cclf-package",
+			Category: "Data import",
+			Usage:    "Import a package of synthetic CCLF files",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "acoSize",

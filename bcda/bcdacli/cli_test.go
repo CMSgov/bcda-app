@@ -252,7 +252,6 @@ func (s *CLITestSuite) TestGenerateClientCredentialsCLI() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
-
 	buf.Reset()
 
 	// Execute CLI with invalid ACO CMS ID
