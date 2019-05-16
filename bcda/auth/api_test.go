@@ -2,10 +2,11 @@ package auth_test
 
 import (
 	"encoding/json"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
