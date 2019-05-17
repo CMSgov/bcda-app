@@ -2,10 +2,13 @@ package models
 
 import (
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -218,9 +221,31 @@ func (*ACOBeneficiary) TableName() string {
 	return "acos_beneficiaries"
 }
 
-func (aco *ACO) GetPublicKey() *rsa.PublicKey {
-	// todo implement a real thing.  But for now we can use this.
-	return GetATOPublicKey()
+func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
+	emptyPEMRegex := "-----BEGIN RSA PUBLIC KEY-----(\\W*)-----END RSA PUBLIC KEY-----"
+	emptyPEM, err := regexp.MatchString(emptyPEMRegex, aco.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("regex error searching for empty keys")
+	}
+	if aco.PublicKey == "" || emptyPEM {
+		return nil, fmt.Errorf("empty key")
+	}
+
+	block, _ := pem.Decode([]byte(aco.PublicKey))
+	if block == nil {
+		return nil, fmt.Errorf("not able to decode PEM-formatted public key")
+	}
+
+	publicKeyImported, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse public key: %s", err.Error())
+	}
+
+	rsaPub, ok := publicKeyImported.(*rsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("not able to cast key as *rsa.PublicKey")
+	}
+	return rsaPub, nil
 }
 
 // This exists to provide a known static keys used for ACO's in our alpha tests.
