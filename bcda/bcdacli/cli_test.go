@@ -3,7 +3,6 @@ package bcdacli
 import (
 	"bytes"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/cclf"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/cclf"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 

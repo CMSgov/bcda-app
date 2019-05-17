@@ -133,11 +133,19 @@ func processJob(j *que.Job) error {
 			}
 		}
 
-		publicKey := exportJob.ACO.GetPublicKey()
-		if publicKey == nil {
-			fmt.Println("NO KEY EXISTS  THIS IS BAD")
+		var aco models.ACO
+		err = db.Model(&exportJob).Association("ACO").Find(&aco).Error
+		if err != nil {
+			log.Error("error getting ACO for job:", err.Error())
+		}
+		if aco.PublicKey == "" {
+			log.Error("no public key found for ACO", aco.UUID.String())
+		}
+		publicKey, err := aco.GetPublicKey()
+		if err != nil {
+			log.Error("error getting public key: ", err.Error(), aco.PublicKey)
 		} else {
-			err := encryption.EncryptAndMove(staging, data, fileName, exportJob.ACO.GetPublicKey(), exportJob.ID)
+			err := encryption.EncryptAndMove(staging, data, fileName, publicKey, exportJob.ID)
 			if err != nil {
 				log.Error(err)
 				return err
