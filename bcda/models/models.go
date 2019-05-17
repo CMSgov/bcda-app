@@ -174,8 +174,8 @@ func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	var cclfFile CCLFFile
-	// should I put a filter here to make sure it isn't too old?
-	if db.Debug().Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+	// todo add a filter here to make sure the file is up to date.
+	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
 		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
 		return cclfBeneficiaryIDs, fmt.Errorf("unable to find cclfFile")
 	}
