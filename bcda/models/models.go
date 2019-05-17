@@ -181,7 +181,7 @@ func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
 	}
 
 	if err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFile.ID).Pluck("ID", &cclfBeneficiaryIDs).Error; err != nil {
-		log.Errorf("Error retrieving ACO-beneficiaries for ACO ID %s: %s", aco.UUID.String(), err.Error())
+		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
 		return nil, err
 	} else if len(cclfBeneficiaryIDs) == 0 {
 		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
