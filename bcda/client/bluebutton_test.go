@@ -1,20 +1,21 @@
-package client_test
+package client
 
 import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type BBTestSuite struct {
 	suite.Suite
-	bbClient *client.BlueButtonClient
+	bbClient *BlueButtonClient
 	ts       *httptest.Server
 }
 
@@ -30,7 +31,7 @@ func (s *BBTestSuite) SetupTest() {
 	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 
-	if bbClient, err := client.NewBlueButtonClient(); err != nil {
+	if bbClient, err := NewBlueButtonClient(map[string]string{JOBIDKEY: "543210", CMSIDKEY: "A00234"}); err != nil {
 		s.Fail("Failed to create Blue Button client", err)
 	} else {
 		s.bbClient = bbClient
@@ -44,13 +45,13 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_CERT_FILE")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
@@ -63,13 +64,13 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
@@ -82,13 +83,13 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_KEY_FILE")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
@@ -101,13 +102,13 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not load Blue Button keypair")
@@ -125,13 +126,13 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 
 	os.Unsetenv("BB_CLIENT_CA_FILE")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read CA file")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read CA file")
@@ -149,34 +150,34 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = NewBlueButtonClient(map[string]string{})
 	assert.Nil(bbc)
 	assert.NotNil(err)
 	assert.EqualError(err, "could not append CA certificate(s)")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonPatientData() {
-	p, err := s.bbClient.GetPatientData("012345", "543210")
+	p, err := s.bbClient.GetPatientData("012345")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `{ "test": "ok"`)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonCoverageData() {
-	c, err := s.bbClient.GetCoverageData("012345", "543210")
+	c, err := s.bbClient.GetCoverageData("012345")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), c, `{ "test": "ok"`)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
-	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
+	e, err := s.bbClient.GetExplanationOfBenefitData("012345")
 	assert.Nil(s.T(), err)
 
 	assert.Contains(s.T(), e, `{ "test": "ok"`)
@@ -191,7 +192,7 @@ func (s *BBTestSuite) TestGetBlueButtonMetadata() {
 }
 
 func (s *BBTestSuite) TestGetDefaultParams() {
-	params := client.GetDefaultParams()
+	params := GetDefaultParams()
 	assert.Equal(s.T(), "application/fhir+json", params.Get("_format"))
 	assert.Equal(s.T(), "", params.Get("patient"))
 	assert.Equal(s.T(), "", params.Get("beneficiary"))
@@ -201,11 +202,44 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 // Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
 func (s *BBTestSuite) TestHashHICN() {
 	HICN := "1000067585"
-	HICNHash := client.HashHICN(HICN)
+	HICNHash := HashHICN(HICN)
 	assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
 	HICN = "123456789"
-	HICNHash = client.HashHICN(HICN)
+	HICNHash = HashHICN(HICN)
 	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
+}
+
+func (s *BBTestSuite) TestAddRequestHeaders() {
+
+	bbServer := os.Getenv("BB_SERVER_LOCATION")
+
+	req, err := http.NewRequest("GET", bbServer, nil)
+	assert.Nil(s.T(), err)
+	reqID := uuid.NewRandom()
+	assert.Nil(s.T(), err)
+
+	params := url.Values{}
+	params.Set("_format", "application/fhir+json")
+
+	req.URL.RawQuery = params.Encode()
+	s.bbClient.addRequestHeaders(req, reqID)
+
+	assert.Equal(s.T(), reqID.String(), req.Header.Get("BlueButton-OriginalQueryId"))
+	assert.Equal(s.T(), "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
+	assert.Equal(s.T(), "", req.Header.Get("BlueButton-BeneficiaryId"))
+	assert.Equal(s.T(), "", req.Header.Get("BlueButton-OriginatingIpAddress"))
+
+	assert.Equal(s.T(), "", req.Header.Get("keep-alive"))
+	assert.Equal(s.T(), "https", req.Header.Get("X-Forwarded-Proto"))
+	assert.Equal(s.T(), "", req.Header.Get("X-Forwarded-Host"))
+
+	assert.Equal(s.T(), req.URL.String(), req.Header.Get("BlueButton-OriginalUrl"))
+	assert.Equal(s.T(), req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
+	assert.Equal(s.T(), "", req.Header.Get("BlueButton-BackendCall"))
+
+	assert.Equal(s.T(), "543210", req.Header.Get(JOBIDKEY))
+	assert.Equal(s.T(), "A00234", req.Header.Get(CMSIDKEY))
+
 }
 
 func (s *BBTestSuite) TearDownTest() {

@@ -411,6 +411,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 type jobEnqueueArgs struct {
 	ID             int
 	ACOID          string
+	CMSID          string
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string

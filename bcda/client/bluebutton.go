@@ -27,16 +27,19 @@ var logger *logrus.Logger
 
 const blueButtonBasePath = "/v1/fhir"
 const blueButtonPepper = "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9"
+const JOBIDKEY = "BCDA-JOBID"
+const CMSIDKEY = "BCDA-CMSID"
 
 type APIClient interface {
-	GetExplanationOfBenefitData(patientID, jobID string) (string, error)
-	GetPatientData(patientID, jobID string) (string, error)
-	GetCoverageData(beneficiaryID, jobID string) (string, error)
+	GetExplanationOfBenefitData(patientID string) (string, error)
+	GetPatientData(patientID string) (string, error)
+	GetCoverageData(beneficiaryID string) (string, error)
 	GetBlueButtonIdentifier(hashedHICN string) (string, error)
 }
 
 type BlueButtonClient struct {
-	httpClient http.Client
+	httpClient   http.Client
+	headerParams map[string]string
 }
 
 func init() {
@@ -54,7 +57,7 @@ func init() {
 	}
 }
 
-func NewBlueButtonClient() (*BlueButtonClient, error) {
+func NewBlueButtonClient(headerParams map[string]string) (*BlueButtonClient, error) {
 	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
@@ -90,43 +93,43 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	}
 	client := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
 
-	return &BlueButtonClient{*client}, nil
+	return &BlueButtonClient{*client, headerParams}, nil
 }
 
-type BeneDataFunc func(string, string) (string, error)
+type BeneDataFunc func(string) (string, error)
 
-func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
+func (bbc *BlueButtonClient) GetPatientData(patientID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
-	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
+	return bbc.getData(blueButtonBasePath+"/Patient/", params)
 }
 
 func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string, error) {
 	params := GetDefaultParams()
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
 	params.Set("identifier", fmt.Sprintf("http://bluebutton.cms.hhs.gov/identifier#hicnHash|%v", hashedHICN))
-	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
+	return bbc.getData(blueButtonBasePath+"/Patient/", params)
 }
 
-func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-	return bbc.getData(blueButtonBasePath+"/Coverage/", params, "")
+	return bbc.getData(blueButtonBasePath+"/Coverage/", params)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
-	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID)
+	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	params := GetDefaultParams()
-	return bbc.getData(blueButtonBasePath+"/metadata/", params, "")
+	return bbc.getData(blueButtonBasePath+"/metadata/", params)
 }
 
-func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID string) (string, error) {
+func (bbc *BlueButtonClient) getData(path string, params url.Values) (string, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(path, nil, nil)
 	defer m.End(txn)
@@ -142,10 +145,10 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 
 	req.URL.RawQuery = params.Encode()
 
-	addRequestHeaders(req, reqID)
+	bbc.addRequestHeaders(req, reqID)
 
 	resp, err := bbc.httpClient.Do(req)
-	logRequest(req, resp, jobID)
+	bbc.logRequest(req, resp)
 	if err != nil {
 		return "", err
 	}
@@ -164,7 +167,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 	return string(data), nil
 }
 
-func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
+func (bbc *BlueButtonClient) addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
@@ -179,14 +182,19 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
 	req.Header.Add("BlueButton-BackendCall", "")
+
+	// Add in the headers requested when the client was created.
+	for k, v := range bbc.headerParams {
+		req.Header.Add(k, v)
+	}
 }
 
-func logRequest(req *http.Request, resp *http.Response, jobID string) {
+func (bbc *BlueButtonClient) logRequest(req *http.Request, resp *http.Response) {
 	logger.WithFields(logrus.Fields{
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
-		"job_id":      jobID,
+		"job_id":      bbc.headerParams[JOBIDKEY],
 	}).Infoln("Blue Button request")
 
 	if resp != nil {
@@ -195,7 +203,7 @@ func logRequest(req *http.Request, resp *http.Response, jobID string) {
 			"bb_query_id":    resp.Header.Get("BlueButton-OriginalQueryId"),
 			"bb_query_ts":    resp.Header.Get("BlueButton-OriginalQueryTimestamp"),
 			"bb_uri":         resp.Header.Get("BlueButton-OriginalUrl"),
-			"job_id":         jobID,
+			"job_id":         bbc.headerParams[JOBIDKEY],
 			"content_length": resp.ContentLength,
 		}).Infoln("Blue Button response")
 	}

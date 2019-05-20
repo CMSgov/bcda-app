@@ -84,18 +84,25 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
+	var aco models.ACO
+	err = db.First(&aco, "uuid = ?", exportJob.ACOID).Error
 	if err != nil {
 		return err
 	}
 
-	bb, err := client.NewBlueButtonClient()
+	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
+	if err != nil {
+		return err
+	}
+	jobID := strconv.Itoa(jobArgs.ID)
+
+	headerParams := map[string]string{client.JOBIDKEY: jobID, client.CMSIDKEY: *aco.CMSID}
+	bb, err := client.NewBlueButtonClient(headerParams)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	jobID := strconv.Itoa(jobArgs.ID)
 	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	data := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
 
@@ -216,7 +223,7 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 	failThreshold := getFailureThreshold()
 
 	for _, beneficiaryID := range beneficiaryIDs {
-		pData, err := bbFunc(beneficiaryID, jobID)
+		pData, err := bbFunc(beneficiaryID)
 		if err != nil {
 			log.Error(err)
 			errorCount++
