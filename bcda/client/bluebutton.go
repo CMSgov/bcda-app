@@ -234,10 +234,14 @@ func encode(v url.Values) string {
 		keyEscaped := url.QueryEscape(k)
 		for _, v := range vs {
 			if buf.Len() > 0 {
+				/* #nosec */
 				buf.WriteByte('&')
 			}
+			/* #nosec */
 			buf.WriteString(keyEscaped)
+			/* #nosec */
 			buf.WriteByte('=')
+			/* #nosec */
 			buf.WriteString(url.QueryEscape(v))
 		}
 	}
