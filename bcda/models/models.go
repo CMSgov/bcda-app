@@ -2,13 +2,14 @@ package models
 
 import (
 	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/pkg/errors"
+	"io"
+	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -213,30 +214,30 @@ func (*ACOBeneficiary) TableName() string {
 }
 
 func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
-	emptyPEMRegex := "-----BEGIN RSA PUBLIC KEY-----(\\W*)-----END RSA PUBLIC KEY-----"
-	emptyPEM, err := regexp.MatchString(emptyPEMRegex, aco.PublicKey)
+	return rsautils.ReadPublicKey(aco.PublicKey)
+}
+
+func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	k, err := ioutil.ReadAll(publicKey)
 	if err != nil {
-		return nil, fmt.Errorf("regex error searching for empty keys")
-	}
-	if aco.PublicKey == "" || emptyPEM {
-		return nil, fmt.Errorf("empty key")
+		return errors.Wrap(err, "cannot read public key for ACO " + aco.UUID.String())
 	}
 
-	block, _ := pem.Decode([]byte(aco.PublicKey))
-	if block == nil {
-		return nil, fmt.Errorf("not able to decode PEM-formatted public key")
+	key, err := rsautils.ReadPublicKey(string(k))
+	if err != nil || key == nil {
+		return errors.Wrap(err, "invalid public key for ACO " + aco.UUID.String())
 	}
 
-	publicKeyImported, err := x509.ParsePKIXPublicKey(block.Bytes)
+	aco.PublicKey = string(k)
+	err = db.Save(&aco).Error
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse public key: %s", err.Error())
+		return errors.Wrap(err, "cannot save public key for ACO " + aco.UUID.String())
 	}
 
-	rsaPub, ok := publicKeyImported.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("not able to cast key as *rsa.PublicKey")
-	}
-	return rsaPub, nil
+	return nil
 }
 
 // This exists to provide a known static keys used for ACO's in our alpha tests.
