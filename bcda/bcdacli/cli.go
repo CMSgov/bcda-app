@@ -190,36 +190,36 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				if acoCMSID == "" {
-					fmt.Fprintf(app.Writer, "cms-id is required")
+					fmt.Fprintf(app.Writer, "cms-id is required\n")
 					return errors.New("cms-id is required")
 				}
 
 				if filePath == "" {
-					fmt.Fprintf(app.Writer, "key-file is required")
+					fmt.Fprintf(app.Writer, "key-file is required\n")
 					return errors.New("key-file is required")
 				}
 
 				aco, err := auth.GetACOByCMSID(acoCMSID)
 				if err != nil {
-					fmt.Fprintf(app.Writer, "Unable to find ACO %s: %s", acoCMSID, err.Error())
+					fmt.Fprintf(app.Writer, "Unable to find ACO %s: %s\n", acoCMSID, err.Error())
 					return err
 				}
 
 				/* #nosec -- Potential file inclusion via variable */
 				f, err := os.Open(filepath.Clean(filePath))
 				if err != nil {
-					fmt.Fprintf(app.Writer, "Unable to open file %s: %s", filePath, err.Error())
+					fmt.Fprintf(app.Writer, "Unable to open file %s: %s\n", filePath, err.Error())
 					return err
 				}
 				reader := bufio.NewReader(f)
 
 				err = aco.SavePublicKey(reader)
 				if err != nil {
-					fmt.Fprintf(app.Writer, "Unable to save public key for ACO %s: %s", acoCMSID, err.Error())
+					fmt.Fprintf(app.Writer, "Unable to save public key for ACO %s: %s\n", acoCMSID, err.Error())
 					return err
 				}
 
-				fmt.Fprintf(app.Writer, "Public key saved for ACO %s", acoCMSID)
+				fmt.Fprintf(app.Writer, "Public key saved for ACO %s\n", acoCMSID)
 				return nil
 			},
 		},
