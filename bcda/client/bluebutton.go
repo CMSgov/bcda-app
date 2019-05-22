@@ -102,11 +102,9 @@ func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, er
 }
 
 func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string, error) {
-	params := url.Values{}
+	params := GetDefaultParams()
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
 	params.Set("identifier", fmt.Sprintf("http://bluebutton.cms.hhs.gov/identifier#hicnHash|%v", hashedHICN))
-	// This is intentionally not set by the default values because it needs to be second due to a bug at Blue Button (20190520)
-	params.Set("_format", "application/fhir+json")
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
 }
 
@@ -142,7 +140,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 		return "", err
 	}
 
-	req.URL.RawQuery = encode(params)
+	req.URL.RawQuery = params.Encode()
 
 	addRequestHeaders(req, reqID)
 
@@ -216,34 +214,4 @@ func HashHICN(toHash string) (hashedValue string) {
 		return ""
 	}
 	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, 1000, 32, sha256.New))
-}
-
-// Copied from go URL Package, but removes sorting because BlueButton is particular about the order of params
-func encode(v url.Values) string {
-	if v == nil {
-		return ""
-	}
-	var buf strings.Builder
-	keys := make([]string, 0, len(v))
-	for k := range v {
-		keys = append(keys, k)
-	}
-
-	for _, k := range keys {
-		vs := v[k]
-		keyEscaped := url.QueryEscape(k)
-		for _, v := range vs {
-			if buf.Len() > 0 {
-				/* #nosec */
-				buf.WriteByte('&')
-			}
-			/* #nosec */
-			buf.WriteString(keyEscaped)
-			/* #nosec */
-			buf.WriteByte('=')
-			/* #nosec */
-			buf.WriteString(url.QueryEscape(v))
-		}
-	}
-	return buf.String()
 }

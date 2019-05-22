@@ -403,7 +403,8 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	// didn't find a local value, need to ask BlueButton
-	jsonData, err := bb.GetBlueButtonIdentifier(client.HashHICN(cclfBeneficiary.HICN))
+	hashed_hicn := client.HashHICN(cclfBeneficiary.HICN)
+	jsonData, err := bb.GetBlueButtonIdentifier(hashed_hicn)
 	if err != nil {
 		return "", err
 	}
@@ -419,10 +420,32 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		log.Error(err)
 		return "", err
 	}
+	var foundHicn = false
+	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
-	fullURL := patient.Entry[0].FullUrl
-	if !strings.Contains(fullURL, blueButtonID) {
-		err = fmt.Errorf("patient identifier not found in the URL")
+	for _, identifier := range patient.Entry[0].Resource.Identifier {
+		if strings.Contains(identifier.System, "hicn-hash") {
+			if identifier.Value != hashed_hicn {
+				foundHicn = false
+			} else {
+				foundHicn = true
+			}
+		} else if strings.Contains(identifier.System, "bene_id") {
+			if identifier.Value != blueButtonID {
+				foundBlueButtonID = false
+			} else {
+				foundBlueButtonID = true
+			}
+		}
+
+	}
+	if !foundHicn {
+		err = fmt.Errorf("hashed hicn not found in the identifiers")
+		log.Error(err)
+		return "", err
+	}
+	if !foundBlueButtonID {
+		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
 		log.Error(err)
 		return "", err
 	}

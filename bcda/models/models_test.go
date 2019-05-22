@@ -498,7 +498,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	assert := s.Assert()
 	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
 	bbc := testUtils.BlueButtonClient{}
-
+	bbc.HICN = &cclfBeneficiary.HICN
 	bbc.On("GetBlueButtonIdentifier", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()
