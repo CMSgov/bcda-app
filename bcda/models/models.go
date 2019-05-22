@@ -187,8 +187,8 @@ func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
 		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
 		return nil, err
 	} else if len(cclfBeneficiaryIDs) == 0 {
-		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
-		return nil, fmt.Errorf("retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
+		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
+		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
 	}
 
 	return cclfBeneficiaryIDs, nil
@@ -403,8 +403,8 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	// didn't find a local value, need to ask BlueButton
-	hashed_hicn := client.HashHICN(cclfBeneficiary.HICN)
-	jsonData, err := bb.GetBlueButtonIdentifier(hashed_hicn)
+	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
+	jsonData, err := bb.GetBlueButtonIdentifier(hashedHICN)
 	if err != nil {
 		return "", err
 	}
@@ -420,26 +420,22 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		log.Error(err)
 		return "", err
 	}
-	var foundHicn = false
+	var foundHICN = false
 	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
 	for _, identifier := range patient.Entry[0].Resource.Identifier {
 		if strings.Contains(identifier.System, "hicn-hash") {
-			if identifier.Value != hashed_hicn {
-				foundHicn = false
-			} else {
-				foundHicn = true
+			if identifier.Value == hashedHICN {
+				foundHICN = true
 			}
 		} else if strings.Contains(identifier.System, "bene_id") {
-			if identifier.Value != blueButtonID {
-				foundBlueButtonID = false
-			} else {
+			if identifier.Value == blueButtonID {
 				foundBlueButtonID = true
 			}
 		}
 
 	}
-	if !foundHicn {
+	if !foundHICN {
 		err = fmt.Errorf("hashed hicn not found in the identifiers")
 		log.Error(err)
 		return "", err
