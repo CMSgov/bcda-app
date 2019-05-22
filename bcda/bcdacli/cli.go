@@ -1,6 +1,7 @@
 package bcdacli
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
@@ -8,6 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -167,6 +169,57 @@ func setUpApp() *cli.App {
 					return err
 				}
 				fmt.Fprintf(app.Writer, "%s\n", userUUID)
+				return nil
+			},
+		},
+		{
+			Name: "save-public-key",
+			Category: "Authentication tools",
+			Usage: "Upload an ACO's public key to the database",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+				cli.StringFlag{
+					Name: "key-file",
+					Usage: "Location of public key in PEM format",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				if acoCMSID == "" {
+					fmt.Fprintf(app.Writer, "cms-id is required")
+					return errors.New("cms-id is required")
+				}
+
+				if filePath == "" {
+					fmt.Fprintf(app.Writer, "key-file is required")
+					return errors.New("key-file is required")
+				}
+
+				aco, err := auth.GetACOByCMSID(acoCMSID)
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to find ACO %s: %s", acoCMSID, err.Error())
+					return err
+				}
+
+				/* #nosec -- Potential file inclusion via variable */
+				f, err := os.Open(filepath.Clean(filePath))
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to open file %s: %s", filePath, err.Error())
+					return err
+				}
+				reader := bufio.NewReader(f)
+
+				err = aco.SavePublicKey(reader)
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to save public key for ACO %s: %s", acoCMSID, err.Error())
+					return err
+				}
+
+				fmt.Fprintf(app.Writer, "Public key saved for ACO %s", acoCMSID)
 				return nil
 			},
 		},
