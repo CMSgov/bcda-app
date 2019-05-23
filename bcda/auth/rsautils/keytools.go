@@ -5,25 +5,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"regexp"
 )
 
 const RSAKEYMINBITS = 2048
 
 func ReadPublicKey (publicKey string) (*rsa.PublicKey, error) {
-	if publicKey == "" {
-		return nil, fmt.Errorf("empty string provided")
-	}
-
-	emptyPEMRegex := "-----BEGIN RSA PUBLIC KEY-----(\\W*)-----END RSA PUBLIC KEY-----"
-	emptyPEM, err := regexp.MatchString(emptyPEMRegex, publicKey)
-	if err != nil {
-		return nil, fmt.Errorf("regex error searching for empty keys")
-	}
-	if emptyPEM {
-		return nil, fmt.Errorf("empty key")
-	}
-
 	block, _ := pem.Decode([]byte(publicKey))
 	if block == nil {
 		return nil, fmt.Errorf("not able to decode PEM-formatted public key")
