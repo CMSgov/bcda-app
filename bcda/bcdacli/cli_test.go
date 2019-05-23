@@ -703,8 +703,12 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	var existngCCLFFiles []models.CCLFFile
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		err := cclfFile.Delete()
+		assert.Nil(err)
+	}
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
@@ -721,8 +725,13 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Skipped 0 files.")
 
 	buf.Reset()
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		err := cclfFile.Delete()
+		assert.Nil(err)
+	}
+
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/")
 
 	// dir has 4 files, but 2 will be ignored because of bad file names.
@@ -775,8 +784,12 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Unscoped().Delete(&models.CCLFBeneficiary{})
-	db.Unscoped().Delete(&models.CCLFFile{})
+	var existngCCLFFiles []models.CCLFFile
+	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	for _, cclfFile := range existngCCLFFiles {
+		err := cclfFile.Delete()
+		assert.Nil(err)
+	}
 
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
