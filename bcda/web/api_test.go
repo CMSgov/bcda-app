@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -60,6 +61,8 @@ func (s *APITestSuite) TearDownTest() {
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
+	assert.Nil(s.T(), err)
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	user, err := models.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -176,6 +179,8 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 }
 
 func (s *APITestSuite) TestBulkPatientRequest() {
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
+	assert.Nil(s.T(), err)
 	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
 	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
 
