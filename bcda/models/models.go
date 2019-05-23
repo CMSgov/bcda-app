@@ -170,20 +170,29 @@ type ACO struct {
 	ACOBeneficiaries []*ACOBeneficiary
 }
 
-func (aco *ACO) GetBeneficiaryIDs() (beneficiaryIDs []string, err error) {
+func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
+	if aco.CMSID == nil {
+		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
+		return cclfBeneficiaryIDs, fmt.Errorf("no CMS ID set for this ACO")
+	}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
-	beneficiaryJoin := "inner join beneficiaries on acos_beneficiaries.beneficiary_id = beneficiaries.id"
-	if err = db.Table("acos_beneficiaries").Joins(beneficiaryJoin).Where("acos_beneficiaries.aco_id = ?", aco.UUID).Pluck("beneficiaries.blue_button_id", &beneficiaryIDs).Error; err != nil {
-		log.Errorf("Error retrieving ACO-beneficiaries for ACO ID %s: %s", aco.UUID.String(), err.Error())
-		return nil, err
-	} else if len(beneficiaryIDs) == 0 {
-		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
-		return nil, fmt.Errorf("retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
+	var cclfFile CCLFFile
+	// todo add a filter here to make sure the file is up to date.
+	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
+		return cclfBeneficiaryIDs, fmt.Errorf("unable to find cclfFile")
 	}
 
-	return beneficiaryIDs, nil
+	if err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFile.ID).Pluck("ID", &cclfBeneficiaryIDs).Error; err != nil {
+		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
+		return nil, err
+	} else if len(cclfBeneficiaryIDs) == 0 {
+		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
+		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
+	}
+
+	return cclfBeneficiaryIDs, nil
 }
 
 type Beneficiary struct {
@@ -355,6 +364,16 @@ type CCLFFile struct {
 	PerformanceYear int       `gorm:"not null"`
 }
 
+func (cclfFile *CCLFFile) Delete() error {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	err := db.Unscoped().Where("file_id = ?", cclfFile.ID).Delete(&CCLFBeneficiary{}).Error
+	if err != nil {
+		return err
+	}
+	return db.Unscoped().Delete(&cclfFile).Error
+}
+
 // "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
@@ -385,7 +404,8 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	// didn't find a local value, need to ask BlueButton
-	jsonData, err := bb.GetBlueButtonIdentifier(client.HashHICN(cclfBeneficiary.HICN))
+	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
+	jsonData, err := bb.GetBlueButtonIdentifier(hashedHICN)
 	if err != nil {
 		return "", err
 	}
@@ -396,10 +416,33 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		return "", err
 	}
 
+	if len(patient.Entry) == 0 {
+		err = fmt.Errorf("patient identifier not found at BlueButton for cclfBenficiary ID: %v", cclfBeneficiary.ID)
+		log.Error(err)
+		return "", err
+	}
+	var foundHICN = false
+	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
-	fullURL := patient.Entry[0].FullUrl
-	if !strings.Contains(fullURL, blueButtonID) {
-		err = fmt.Errorf("patient identifier not found in the URL")
+	for _, identifier := range patient.Entry[0].Resource.Identifier {
+		if strings.Contains(identifier.System, "hicn-hash") {
+			if identifier.Value == hashedHICN {
+				foundHICN = true
+			}
+		} else if strings.Contains(identifier.System, "bene_id") {
+			if identifier.Value == blueButtonID {
+				foundBlueButtonID = true
+			}
+		}
+
+	}
+	if !foundHICN {
+		err = fmt.Errorf("hashed hicn not found in the identifiers")
+		log.Error(err)
+		return "", err
+	}
+	if !foundBlueButtonID {
+		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
 		log.Error(err)
 		return "", err
 	}

@@ -12,6 +12,7 @@ import (
 type BlueButtonClient struct {
 	mock.Mock
 	client.BlueButtonClient
+	HICN *string
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
@@ -46,5 +47,9 @@ func (bbc *BlueButtonClient) GetData(endpoint, patientID string) (string, error)
 		}
 	}
 	cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
+	if bbc.HICN != nil {
+		cleanData = strings.Replace(cleanData, "c945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe", client.HashHICN(*bbc.HICN), -1)
+	}
+
 	return cleanData, err
 }
