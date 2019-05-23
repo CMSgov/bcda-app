@@ -37,6 +37,7 @@ func (s *MainTestSuite) TearDownSuite() {
 
 func (s *MainTestSuite) SetupTest() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/bb-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
@@ -56,8 +57,6 @@ func TestMainTestSuite(t *testing.T) {
 func TestWriteEOBDataToFile(t *testing.T) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
-
 	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	jobID := "1"
@@ -132,7 +131,7 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
+
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "70")
@@ -183,7 +182,6 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "60")
@@ -250,7 +248,7 @@ func TestGetFailureThreshold(t *testing.T) {
 }
 
 func TestAppendErrorToFile(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
+
 	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
