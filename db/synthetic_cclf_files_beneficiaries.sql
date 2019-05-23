@@ -60042,7 +60042,7 @@ BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
 VALUES (DEFAULT, 8, 'T.A9994.ACO.ZC0Y19.D190215.T0800590', 'A9994', '19', '2019-02-15 08:00:59.0')
 RETURNING id INTO fileid;
-INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000079035', '','19990000000001'),
+INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi, blue_button_id) VALUES (DEFAULT, fileid, '1000079035', '','19990000000001'),
 (DEFAULT, fileid, '1000003701', '','19990000000002'),
 (DEFAULT, fileid, '1000050699', '','19990000000003'),
 (DEFAULT, fileid, '1000089833', '','19990000000004'),
