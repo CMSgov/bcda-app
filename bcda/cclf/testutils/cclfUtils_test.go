@@ -35,7 +35,7 @@ func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 
 func (s *CCLFUtilTestSuite) TestImport() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage("dev", "test")
+	err := ImportCCLFPackage("dev", "unit-test")
 	assert.Nil(err)
 }
 
