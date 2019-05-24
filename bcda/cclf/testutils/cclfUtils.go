@@ -33,7 +33,11 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		return errors.New("invalid argument for aco size")
 	}
 
-	if environment != "test" {
+	switch environment {
+	case
+		"test",
+		"unit-test":
+	default:
 		return errors.New("invalid argument for environment")
 	}
 

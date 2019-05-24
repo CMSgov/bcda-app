@@ -1,10 +1,10 @@
 -- Create CCLF files and beneficiaries
--- ACO Small: A9995, 2500
+-- ACO Small: A9990, 2500
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9995.ACO.ZC0Y19.D190315.T0800011', 'A9995', '19', '2019-03-15 08:00:01.1')
+VALUES (DEFAULT, 8, 'T.A9990.ACO.ZC0Y19.D190315.T0800011', 'A9990', '19', '2019-03-15 08:00:01.1')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000079035', ''),
 (DEFAULT, fileid, '1000003701', ''),
@@ -2508,12 +2508,12 @@ INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid,
 (DEFAULT, fileid, '1000039146', '');
 END$$;
 
--- ACO Medium: A9996, 7500
+-- ACO Medium: A9991, 7500
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9996.ACO.ZC0Y19.D190315.T0819000', 'A9996', '19', '2019-03-15 08:19:00.0')
+VALUES (DEFAULT, 8, 'T.A9991.ACO.ZC0Y19.D190315.T0819000', 'A9991', '19', '2019-03-15 08:19:00.0')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000098473', ''),
 (DEFAULT, fileid, '1000043943', ''),
@@ -10017,12 +10017,12 @@ INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid,
 (DEFAULT, fileid, '1000040051', '');
 END$$;
 
--- ACO Large: A9997, 20000
+-- ACO Large: A9992, 20000
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9997.ACO.ZC0Y19.D190315.T0902300', 'A9997', '19', '2019-03-15 09:02:30.0')
+VALUES (DEFAULT, 8, 'T.A9992.ACO.ZC0Y19.D190315.T0902300', 'A9992', '19', '2019-03-15 09:02:30.0')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000087197', ''),
 (DEFAULT, fileid, '1000039977', ''),
@@ -30026,12 +30026,12 @@ INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid,
 (DEFAULT, fileid, '1000071678', '');
 END$$;
 
--- ACO Extra Large: A9998, 30000
+-- ACO Extra Large: A9993, 30000
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9998.ACO.ZC0Y19.D190412.T0800019', 'A9998', '19', '2019-04-12 08:00:01.9')
+VALUES (DEFAULT, 8, 'T.A9993.ACO.ZC0Y19.D190412.T0800019', 'A9993', '19', '2019-04-12 08:00:01.9')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000079035', ''),
 (DEFAULT, fileid, '1000003701', ''),
@@ -60042,8 +60042,7 @@ BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
 VALUES (DEFAULT, 8, 'T.A9994.ACO.ZC0Y19.D190215.T0800590', 'A9994', '19', '2019-02-15 08:00:59.0')
 RETURNING id INTO fileid;
-INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi, blue_button_id) VALUES
-(DEFAULT, fileid, '1000079035', '','19990000000001'),
+INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi, blue_button_id) VALUES (DEFAULT, fileid, '1000079035', '','19990000000001'),
 (DEFAULT, fileid, '1000003701', '','19990000000002'),
 (DEFAULT, fileid, '1000050699', '','19990000000003'),
 (DEFAULT, fileid, '1000089833', '','19990000000004'),
