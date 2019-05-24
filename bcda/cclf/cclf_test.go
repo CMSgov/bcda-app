@@ -2,6 +2,7 @@ package cclf
 
 import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -130,12 +131,8 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err := deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -149,7 +146,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 		filePath:  BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009",
 	}
 
-	err := importCCLF8(metadata)
+	err = importCCLF8(metadata)
 	if err != nil {
 		s.FailNow("importCCLF8() error: %s", err.Error())
 	}
@@ -178,11 +175,8 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err = deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
@@ -190,12 +184,8 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err := deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -209,7 +199,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 		filePath:  BASE_FILE_PATH + "cclf_split/T.A0001.ACO.ZC8Y18.D181120.T1000009",
 	}
 
-	err := importCCLF8(metadata)
+	err = importCCLF8(metadata)
 	if err != nil {
 		s.FailNow("importCCLF8() error: %s", err.Error())
 	}
@@ -238,11 +228,8 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err = deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
@@ -259,12 +246,8 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err := deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 
 	acoID := "A0002"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -278,7 +261,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 		name:      "T.A0001.ACO.ZC9Y18.D181120.T1000010",
 	}
 
-	err := importCCLF9(cclf9metadata)
+	err = importCCLF9(cclf9metadata)
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
@@ -298,11 +281,8 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err = deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
@@ -310,12 +290,8 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err := deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 
 	acoID := "A0002"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -329,7 +305,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 		name:      "T.A0001.ACO.ZC9Y18.D181120.T1000010",
 	}
 
-	err := importCCLF9(cclf9metadata)
+	err = importCCLF9(cclf9metadata)
 	assert.Nil(err)
 
 	file := models.CCLFFile{}
@@ -349,11 +325,8 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Equal("1960-01-01", savedCCLF9.PrevsEfctDt)
 	assert.Equal("2010-05-11", savedCCLF9.PrevsObsltDt)
 
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	err = deleteFilesByACO("A0001", db)
+	assert.Nil(err)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF9_InvalidMetadata() {
@@ -597,4 +570,16 @@ func (s *CCLFTestSuite) TestDeleteDirectory() {
 	filesDeleted, err = DeleteDirectoryContents("This/Does/not/Exist")
 	assert.Equal(0, filesDeleted)
 	assert.NotNil(err)
+}
+
+func deleteFilesByACO(acoID string, db *gorm.DB) error {
+	var files []models.CCLFFile
+	db.Where("aco_cms_id = ?", acoID).Find(&files)
+	for _, cclfFile := range files {
+		err := cclfFile.Delete()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
