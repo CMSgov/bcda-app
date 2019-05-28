@@ -274,7 +274,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	assert.Equal("key-file is required", err.Error())
 	assert.Contains(buf.String(), "")
 
-	// Non-existant ACO
+	// Non-existent ACO
 	args = []string{"bcda", "save-public-key", "--cms-id", "ABCDE", "--key-file", "../../shared_files/ATO_public.pem"}
 	err = s.testApp.Run(args)
 	assert.NotNil(err)
