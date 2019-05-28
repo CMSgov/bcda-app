@@ -342,7 +342,7 @@ func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
 	// execute positive scenarios via CLI
-	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "Dev"}
+	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--cms-id", "T0001"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
@@ -350,7 +350,7 @@ func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	buf.Reset()
 
 	// ttl is optional when using the CLI
-	args = []string{"bcda", "create-alpha-token", "--size", "Dev"}
+	args = []string{"bcda", "create-alpha-token", "--cms-id", "T0002"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
@@ -362,7 +362,7 @@ func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	assert.NotEmpty(aco.AlphaSecret)
 	buf.Reset()
 
-	args = []string{"bcda", "create-alpha-token", "--size", "DEV"}
+	args = []string{"bcda", "create-alpha-token", "--cms-id", "T0003"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
@@ -371,19 +371,19 @@ func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	// Execute CLI with invalid inputs
 	args = []string{"bcda", "create-alpha-token"}
 	err = s.testApp.Run(args)
-	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'", err.Error())
+	assert.Equal("expected CMS ACO ID format for alpha ACOs is 'T' followed by four digits (e.g., 'T1234')", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	args = []string{"bcda", "create-alpha-token", "--ttl", "ABCD", "--size", "Dev"}
+	args = []string{"bcda", "create-alpha-token", "--ttl", "ABCD", "--cms-id", "T0001"}
 	err = s.testApp.Run(args)
 	assert.Equal("invalid argument 'ABCD' for --ttl; should be an integer > 0", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	args = []string{"bcda", "create-alpha-token", "--ttl", "720", "--size", "ABCD"}
+	args = []string{"bcda", "create-alpha-token", "--ttl", "720", "--cms-id", "ABCD"}
 	err = s.testApp.Run(args)
-	assert.Equal("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'", err.Error())
+	assert.Equal("expected CMS ACO ID format for alpha ACOs is 'T' followed by four digits (e.g., 'T1234')", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 

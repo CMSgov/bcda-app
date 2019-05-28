@@ -159,8 +159,8 @@ func GenerateSystemKeyPair(systemID uint) (string, error) {
 
 	return string(privateKeyBytes), nil
 }
-func CreateAlphaToken(ttl int, acoSize string) (string, error) {
-	aco, err := createAlphaEntities(acoSize)
+func CreateAlphaToken(ttl int, acoCMSID string) (string, error) {
+	aco, err := createAlphaEntities(acoCMSID)
 	if err != nil {
 		return "", err
 	}
@@ -184,7 +184,7 @@ func CreateAlphaToken(ttl int, acoSize string) (string, error) {
 	return msg, nil
 }
 
-func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
+func createAlphaEntities(acoCMSID string) (aco models.ACO, err error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	tx := db.Begin()
@@ -201,13 +201,8 @@ func createAlphaEntities(acoSize string) (aco models.ACO, err error) {
 		return aco, tx.Error
 	}
 
-	aco, err = models.CreateAlphaACO(tx)
+	aco, err = models.CreateAlphaACO(acoCMSID, tx)
 	if err != nil {
-		tx.Rollback()
-		return aco, err
-	}
-
-	if err = models.AssignAlphaBeneficiaries(tx, aco, acoSize); err != nil {
 		tx.Rollback()
 		return aco, err
 	}
