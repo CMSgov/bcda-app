@@ -176,7 +176,7 @@ func processJob(j *que.Job) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []string, jobID, t string) (fileName string, error error) {
+func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []string, jobID, t string) (fileName string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -219,17 +219,28 @@ func writeBBDataToFile(bb client.APIClient, acoID string, beneficiaryIDs []strin
 
 	w := bufio.NewWriter(f)
 	errorCount := 0
-	totalBeneIDs := float64(len(beneficiaryIDs))
+	totalBeneIDs := float64(len(cclfBeneficiaryIDs))
 	failThreshold := getFailureThreshold()
-
-	for _, beneficiaryID := range beneficiaryIDs {
-		pData, err := bbFunc(beneficiaryID)
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
+		var cclfBeneficiary models.CCLFBeneficiary
+		db.First(&cclfBeneficiary, cclfBeneficiaryID)
+		blueButtonID, err := cclfBeneficiary.GetBlueButtonID(bb)
 		if err != nil {
 			log.Error(err)
 			errorCount++
-			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, beneficiaryID, acoID), jobID)
+			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
+		}
+		cclfBeneficiary.BlueButtonID = blueButtonID
+		db.Save(&cclfBeneficiary)
+		pData, err := bbFunc(blueButtonID)
+		if err != nil {
+			log.Error(err)
+			errorCount++
+			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
 		} else {
-			fhirBundleToResourceNDJSON(w, pData, t, beneficiaryID, acoID, jobID)
+			fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoID, jobID)
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {

@@ -1,10 +1,10 @@
 -- Create CCLF files and beneficiaries
--- ACO Small: A9995, 2500
+-- ACO Small: A9990, 2500
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9995.ACO.ZC0Y19.D190315.T0800011', 'A9995', '19', '2019-03-15 08:00:01.1')
+VALUES (DEFAULT, 8, 'T.A9990.ACO.ZC0Y19.D190315.T0800011', 'A9990', '19', '2019-03-15 08:00:01.1')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000079035', ''),
 (DEFAULT, fileid, '1000003701', ''),
@@ -2508,12 +2508,12 @@ INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid,
 (DEFAULT, fileid, '1000039146', '');
 END$$;
 
--- ACO Medium: A9996, 7500
+-- ACO Medium: A9991, 7500
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9995.ACO.ZC0Y19.D190315.T0819000', 'A9995', '19', '2019-03-15 08:19:00.0')
+VALUES (DEFAULT, 8, 'T.A9991.ACO.ZC0Y19.D190315.T0819000', 'A9991', '19', '2019-03-15 08:19:00.0')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000098473', ''),
 (DEFAULT, fileid, '1000043943', ''),
@@ -10017,12 +10017,12 @@ INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid,
 (DEFAULT, fileid, '1000040051', '');
 END$$;
 
--- ACO Large: A9997, 20000
+-- ACO Large: A9992, 20000
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9995.ACO.ZC0Y19.D190315.T0902300', 'A9995', '19', '2019-03-15 09:02:30.0')
+VALUES (DEFAULT, 8, 'T.A9992.ACO.ZC0Y19.D190315.T0902300', 'A9992', '19', '2019-03-15 09:02:30.0')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000087197', ''),
 (DEFAULT, fileid, '1000039977', ''),
@@ -30026,12 +30026,12 @@ INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid,
 (DEFAULT, fileid, '1000071678', '');
 END$$;
 
--- ACO Extra Large: A9998, 30000
+-- ACO Extra Large: A9993, 30000
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9995.ACO.ZC0Y19.D190412.T0800019', 'A9995', '19', '2019-04-12 08:00:01.9')
+VALUES (DEFAULT, 8, 'T.A9993.ACO.ZC0Y19.D190412.T0800019', 'A9993', '19', '2019-04-12 08:00:01.9')
 RETURNING id INTO fileid;
 INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000079035', ''),
 (DEFAULT, fileid, '1000003701', ''),
@@ -60035,61 +60035,61 @@ INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid,
 (DEFAULT, fileid, '1000071678', '');
 END$$;
 
--- ACO Dev: A9999, 50
+-- ACO Dev: A9994, 50
 DO $$
 DECLARE fileid int;
 BEGIN
 INSERT INTO cclf_files (id, cclf_num, name, aco_cms_id, performance_year, timestamp)
-VALUES (DEFAULT, 8, 'T.A9995.ACO.ZC0Y19.D190215.T0800590', 'A9995', '19', '2019-02-15 08:00:59.0')
+VALUES (DEFAULT, 8, 'T.A9994.ACO.ZC0Y19.D190215.T0800590', 'A9994', '19', '2019-02-15 08:00:59.0')
 RETURNING id INTO fileid;
-INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi) VALUES (DEFAULT, fileid, '1000079035', ''),
-(DEFAULT, fileid, '1000003701', ''),
-(DEFAULT, fileid, '1000050699', ''),
-(DEFAULT, fileid, '1000089833', ''),
-(DEFAULT, fileid, '1000065301', ''),
-(DEFAULT, fileid, '1000012463', ''),
-(DEFAULT, fileid, '1000045736', ''),
-(DEFAULT, fileid, '1000080799', ''),
-(DEFAULT, fileid, '1000019234', ''),
-(DEFAULT, fileid, '1000087392', ''),
-(DEFAULT, fileid, '1000037297', ''),
-(DEFAULT, fileid, '1000008815', ''),
-(DEFAULT, fileid, '1000057704', ''),
-(DEFAULT, fileid, '1000080122', ''),
-(DEFAULT, fileid, '1000029479', ''),
-(DEFAULT, fileid, '1000006784', ''),
-(DEFAULT, fileid, '1000083630', ''),
-(DEFAULT, fileid, '1000073969', ''),
-(DEFAULT, fileid, '1000020580', ''),
-(DEFAULT, fileid, '1000087124', ''),
-(DEFAULT, fileid, '1000080494', ''),
-(DEFAULT, fileid, '1000007444', ''),
-(DEFAULT, fileid, '1000074722', ''),
-(DEFAULT, fileid, '1000058954', ''),
-(DEFAULT, fileid, '1000078644', ''),
-(DEFAULT, fileid, '1000040513', ''),
-(DEFAULT, fileid, '1000059187', ''),
-(DEFAULT, fileid, '1000074090', ''),
-(DEFAULT, fileid, '1000010589', ''),
-(DEFAULT, fileid, '1000014533', ''),
-(DEFAULT, fileid, '1000044670', ''),
-(DEFAULT, fileid, '1000096760', ''),
-(DEFAULT, fileid, '1000095313', ''),
-(DEFAULT, fileid, '1000082635', ''),
-(DEFAULT, fileid, '1000022317', ''),
-(DEFAULT, fileid, '1000087084', ''),
-(DEFAULT, fileid, '1000089761', ''),
-(DEFAULT, fileid, '1000035570', ''),
-(DEFAULT, fileid, '1000081374', ''),
-(DEFAULT, fileid, '1000060127', ''),
-(DEFAULT, fileid, '1000056370', ''),
-(DEFAULT, fileid, '1000098668', ''),
-(DEFAULT, fileid, '1000031984', ''),
-(DEFAULT, fileid, '1000080192', ''),
-(DEFAULT, fileid, '1000074155', ''),
-(DEFAULT, fileid, '1000068681', ''),
-(DEFAULT, fileid, '1000035383', ''),
-(DEFAULT, fileid, '1000035842', ''),
-(DEFAULT, fileid, '1000061468', ''),
-(DEFAULT, fileid, '1000093295', '');
+INSERT INTO cclf_beneficiaries (id, file_id, hicn, mbi, blue_button_id) VALUES (DEFAULT, fileid, '1000079035', '','19990000000001'),
+(DEFAULT, fileid, '1000003701', '','19990000000002'),
+(DEFAULT, fileid, '1000050699', '','19990000000003'),
+(DEFAULT, fileid, '1000089833', '','19990000000004'),
+(DEFAULT, fileid, '1000065301', '','19990000000005'),
+(DEFAULT, fileid, '1000012463', '','19990000000006'),
+(DEFAULT, fileid, '1000045736', '','19990000000007'),
+(DEFAULT, fileid, '1000080799', '','19990000000008'),
+(DEFAULT, fileid, '1000019234', '','19990000000009'),
+(DEFAULT, fileid, '1000087392', '','19990000000010'),
+(DEFAULT, fileid, '1000037297', '','19990000000011'),
+(DEFAULT, fileid, '1000008815', '','19990000000012'),
+(DEFAULT, fileid, '1000057704', '','19990000000013'),
+(DEFAULT, fileid, '1000080122', '','19990000000014'),
+(DEFAULT, fileid, '1000029479', '','19990000000015'),
+(DEFAULT, fileid, '1000006784', '','19990000000016'),
+(DEFAULT, fileid, '1000083630', '','19990000000017'),
+(DEFAULT, fileid, '1000073969', '','19990000000018'),
+(DEFAULT, fileid, '1000020580', '','19990000000019'),
+(DEFAULT, fileid, '1000087124', '','19990000000020'),
+(DEFAULT, fileid, '1000080494', '','19990000000021'),
+(DEFAULT, fileid, '1000007444', '','19990000000022'),
+(DEFAULT, fileid, '1000074722', '','19990000000023'),
+(DEFAULT, fileid, '1000058954', '','19990000000024'),
+(DEFAULT, fileid, '1000078644', '','19990000000025'),
+(DEFAULT, fileid, '1000040513', '','19990000000026'),
+(DEFAULT, fileid, '1000059187', '','19990000000027'),
+(DEFAULT, fileid, '1000074090', '','19990000000028'),
+(DEFAULT, fileid, '1000010589', '','19990000000029'),
+(DEFAULT, fileid, '1000014533', '','19990000000030'),
+(DEFAULT, fileid, '1000044670', '','19990000000031'),
+(DEFAULT, fileid, '1000096760', '','19990000000032'),
+(DEFAULT, fileid, '1000095313', '','19990000000033'),
+(DEFAULT, fileid, '1000082635', '','19990000000034'),
+(DEFAULT, fileid, '1000022317', '','19990000000035'),
+(DEFAULT, fileid, '1000087084', '','19990000000036'),
+(DEFAULT, fileid, '1000089761', '','19990000000037'),
+(DEFAULT, fileid, '1000035570', '','19990000000038'),
+(DEFAULT, fileid, '1000081374', '','19990000000039'),
+(DEFAULT, fileid, '1000060127', '','19990000000040'),
+(DEFAULT, fileid, '1000056370', '','19990000000041'),
+(DEFAULT, fileid, '1000098668', '','19990000000042'),
+(DEFAULT, fileid, '1000031984', '','19990000000043'),
+(DEFAULT, fileid, '1000080192', '','19990000000044'),
+(DEFAULT, fileid, '1000074155', '','19990000000045'),
+(DEFAULT, fileid, '1000068681', '','19990000000046'),
+(DEFAULT, fileid, '1000035383', '','19990000000047'),
+(DEFAULT, fileid, '1000035842', '','19990000000048'),
+(DEFAULT, fileid, '1000061468', '','19990000000049'),
+(DEFAULT, fileid, '1000093295', '','19990000000050');
 END$$;

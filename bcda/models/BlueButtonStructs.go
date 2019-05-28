@@ -9,8 +9,11 @@ type Patient struct {
 	// uuid identifier of this request
 	ID    string `json:"id"`
 	Entry []struct {
-		FullUrl  string `json:"fullUrl"`
 		Resource struct {
+			Identifier []struct {
+				System string `json:"system"`
+				Value  string `json:"value"`
+			} `json:"identifier"`
 			ID string `json:"id"`
 		} `json:"resource"`
 	} `json:"entry"`

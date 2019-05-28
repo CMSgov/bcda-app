@@ -2,13 +2,14 @@ package models
 
 import (
 	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/pkg/errors"
+	"io"
+	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -39,8 +40,6 @@ func InitializeGormModels() *gorm.DB {
 		&User{},
 		&Job{},
 		&JobKey{},
-		&Beneficiary{},
-		&ACOBeneficiary{},
 		&Group{},
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
@@ -48,9 +47,6 @@ func InitializeGormModels() *gorm.DB {
 		&System{},
 		&EncryptionKey{},
 	)
-
-	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
-	db.Model(&ACOBeneficiary{}).AddForeignKey("beneficiary_id", "beneficiaries(id)", "RESTRICT", "RESTRICT")
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
 
@@ -160,42 +156,37 @@ type JobKey struct {
 // ACO-Beneficiary relationship models based on https://github.com/jinzhu/gorm/issues/719#issuecomment-168485989
 type ACO struct {
 	gorm.Model
-	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
-	CMSID            *string   `gorm:"type:char(5);unique" json:"cms_id"`
-	Name             string    `json:"name"`
-	ClientID         string    `json:"client_id"`
-	AlphaSecret      string    `json:"alpha_secret"`
-	PublicKey        string    `json:"public_key"`
-	ACOBeneficiaries []*ACOBeneficiary
+	UUID        uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
+	CMSID       *string   `gorm:"type:char(5);unique" json:"cms_id"`
+	Name        string    `json:"name"`
+	ClientID    string    `json:"client_id"`
+	AlphaSecret string    `json:"alpha_secret"`
+	PublicKey   string    `json:"public_key"`
 }
 
-func (aco *ACO) GetBeneficiaryIDs() (beneficiaryIDs []string, err error) {
+func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
+	if aco.CMSID == nil {
+		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
+		return cclfBeneficiaryIDs, fmt.Errorf("no CMS ID set for this ACO")
+	}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
-	beneficiaryJoin := "inner join beneficiaries on acos_beneficiaries.beneficiary_id = beneficiaries.id"
-	if err = db.Table("acos_beneficiaries").Joins(beneficiaryJoin).Where("acos_beneficiaries.aco_id = ?", aco.UUID).Pluck("beneficiaries.blue_button_id", &beneficiaryIDs).Error; err != nil {
-		log.Errorf("Error retrieving ACO-beneficiaries for ACO ID %s: %s", aco.UUID.String(), err.Error())
-		return nil, err
-	} else if len(beneficiaryIDs) == 0 {
-		log.Errorf("Retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
-		return nil, fmt.Errorf("retrieved 0 ACO-beneficiaries for ACO ID %s", aco.UUID.String())
+	var cclfFile CCLFFile
+	// todo add a filter here to make sure the file is up to date.
+	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
+		return cclfBeneficiaryIDs, fmt.Errorf("unable to find cclfFile")
 	}
 
-	return beneficiaryIDs, nil
-}
+	if err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFile.ID).Pluck("ID", &cclfBeneficiaryIDs).Error; err != nil {
+		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
+		return nil, err
+	} else if len(cclfBeneficiaryIDs) == 0 {
+		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
+		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
+	}
 
-type Beneficiary struct {
-	gorm.Model
-	BlueButtonID string `gorm:"type: text"`
-}
-
-type ACOBeneficiary struct {
-	ACOID         uuid.UUID `gorm:"type:uuid"`
-	ACO           *ACO      `gorm:"foreignkey:ACOID"`
-	BeneficiaryID uint
-	Beneficiary   *Beneficiary `gorm:"foreignkey:BeneficiaryID;association_foreignkey:ID"`
-	// Join model needed for additional fields later, e.g., AttributionDate
+	return cclfBeneficiaryIDs, nil
 }
 
 type CCLFBeneficiaryXref struct {
@@ -208,35 +199,31 @@ type CCLFBeneficiaryXref struct {
 	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
-func (*ACOBeneficiary) TableName() string {
-	return "acos_beneficiaries"
+func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
+	return rsautils.ReadPublicKey(aco.PublicKey)
 }
 
-func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
-	emptyPEMRegex := "-----BEGIN RSA PUBLIC KEY-----(\\W*)-----END RSA PUBLIC KEY-----"
-	emptyPEM, err := regexp.MatchString(emptyPEMRegex, aco.PublicKey)
+func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	k, err := ioutil.ReadAll(publicKey)
 	if err != nil {
-		return nil, fmt.Errorf("regex error searching for empty keys")
-	}
-	if aco.PublicKey == "" || emptyPEM {
-		return nil, fmt.Errorf("empty key")
+		return errors.Wrap(err, "cannot read public key for ACO "+aco.UUID.String())
 	}
 
-	block, _ := pem.Decode([]byte(aco.PublicKey))
-	if block == nil {
-		return nil, fmt.Errorf("not able to decode PEM-formatted public key")
+	key, err := rsautils.ReadPublicKey(string(k))
+	if err != nil || key == nil {
+		return errors.Wrap(err, "invalid public key for ACO "+aco.UUID.String())
 	}
 
-	publicKeyImported, err := x509.ParsePKIXPublicKey(block.Bytes)
+	aco.PublicKey = string(k)
+	err = db.Save(&aco).Error
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse public key: %s", err.Error())
+		return errors.Wrap(err, "cannot save public key for ACO "+aco.UUID.String())
 	}
 
-	rsaPub, ok := publicKeyImported.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("not able to cast key as *rsa.PublicKey")
-	}
-	return rsaPub, nil
+	return nil
 }
 
 // This exists to provide a known static keys used for ACO's in our alpha tests.
@@ -354,6 +341,16 @@ type CCLFFile struct {
 	PerformanceYear int       `gorm:"not null"`
 }
 
+func (cclfFile *CCLFFile) Delete() error {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	err := db.Unscoped().Where("file_id = ?", cclfFile.ID).Delete(&CCLFBeneficiary{}).Error
+	if err != nil {
+		return err
+	}
+	return db.Unscoped().Delete(&cclfFile).Error
+}
+
 // "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
@@ -384,7 +381,8 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	// didn't find a local value, need to ask BlueButton
-	jsonData, err := bb.GetBlueButtonIdentifier(client.HashHICN(cclfBeneficiary.HICN))
+	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
+	jsonData, err := bb.GetBlueButtonIdentifier(hashedHICN)
 	if err != nil {
 		return "", err
 	}
@@ -395,10 +393,33 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		return "", err
 	}
 
+	if len(patient.Entry) == 0 {
+		err = fmt.Errorf("patient identifier not found at BlueButton for cclfBenficiary ID: %v", cclfBeneficiary.ID)
+		log.Error(err)
+		return "", err
+	}
+	var foundHICN = false
+	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
-	fullURL := patient.Entry[0].FullUrl
-	if !strings.Contains(fullURL, blueButtonID) {
-		err = fmt.Errorf("patient identifier not found in the URL")
+	for _, identifier := range patient.Entry[0].Resource.Identifier {
+		if strings.Contains(identifier.System, "hicn-hash") {
+			if identifier.Value == hashedHICN {
+				foundHICN = true
+			}
+		} else if strings.Contains(identifier.System, "bene_id") {
+			if identifier.Value == blueButtonID {
+				foundBlueButtonID = true
+			}
+		}
+
+	}
+	if !foundHICN {
+		err = fmt.Errorf("hashed hicn not found in the identifiers")
+		log.Error(err)
+		return "", err
+	}
+	if !foundBlueButtonID {
+		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
 		log.Error(err)
 		return "", err
 	}

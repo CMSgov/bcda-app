@@ -34,6 +34,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -85,7 +86,7 @@ func createETLDirs() {
 	pendingDeletionPath := os.Getenv("PENDING_DELETION_DIR")
 	err := os.MkdirAll(pendingDeletionPath, 0744)
 	if err != nil {
-		log.Fatal("Could not create CCLF file pending deletion directory", err.Error())
+		log.Fatal(errors.Wrap(err, "Could not create CCLF file pending deletion directory"))
 	}
 }
 

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -8,6 +9,7 @@ import (
 	"encoding/pem"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,7 +88,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.NotNil(err)
 }
 
-func (s *ModelsTestSuite) TestACOPublicKeySave() {
+func (s *ModelsTestSuite) TestACOPublicKeyColumn() {
 	assert := s.Assert()
 
 	// Setup ACO
@@ -116,6 +118,97 @@ func (s *ModelsTestSuite) TestACOPublicKeySave() {
 	assert.NotEmpty(aco)
 	assert.NotEmpty(aco.PublicKey)
 	assert.Equal(publicKeyBytes, []byte(aco.PublicKey))
+}
+
+func (s *ModelsTestSuite) TestACOSavePublicKey() {
+	assert := s.Assert()
+
+	// Setup ACO
+	cmsID := "A4445"
+	aco := ACO{Name: "Pub Key Save Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+	err := s.db.Create(&aco).Error
+	assert.Nil(err)
+	defer s.db.Delete(&aco)
+
+	// Setup key
+	keyPair, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.Nil(err, "error creating random test keypair")
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
+	assert.Nil(err, "unable to marshal public key")
+	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+	assert.NotNil(publicKeyBytes, "unexpectedly empty public key byte slice")
+
+	// Save key
+	err = aco.SavePublicKey(bytes.NewReader(publicKeyBytes))
+	if err != nil {
+		assert.FailNow("error saving key: " + err.Error())
+	}
+
+	// Retrieve and verify
+	err = s.db.Find(&aco, "cms_id = ?", cmsID).Error
+	assert.Nil(err, "unable to retrieve ACO from database")
+	assert.NotNil(aco)
+	assert.NotNil(aco.PublicKey)
+
+	// Retrieve and verify
+	storedKey, err := aco.GetPublicKey()
+	assert.Nil(err)
+	assert.NotNil(storedKey)
+	storedPublicKeyPKIX, err := x509.MarshalPKIXPublicKey(storedKey)
+	assert.Nil(err, "unable to marshal saved public key")
+	storedPublicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: storedPublicKeyPKIX,
+	})
+	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
+	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
+}
+
+func (s *ModelsTestSuite) TestACOSavePublicKeyInvalidKey() {
+	assert := s.Assert()
+
+	// Setup ACO
+	cmsID := "A4447"
+	aco := ACO{Name: "Pub Key Save Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+	err := s.db.Create(&aco).Error
+	assert.Nil(err)
+	defer s.db.Delete(&aco)
+
+	emptyPEM := "-----BEGIN RSA PUBLIC KEY-----    -----END RSA PUBLIC KEY-----"
+	invalidPEM :=
+		`-----BEGIN RSA PUBLIC KEY-----
+z2v9wLlK4zPAs3pLln3R/4NnGFKw2Eku2JVFTotQ03gSmSzesZixicw8LxgYKbNV
+oyTpERFansw6BbCJe7AP90rmaxCx80NiewFq+7ncqMbCMcqeUuCwk8MjS6bjvpcC
+htFCqeRi6AAUDRg0pcG8yoM+jo13Z5RJPOIf3ofohncfH5wr5Q7qiOCE5VH4I7cp
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
+lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
+IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
+OwIDAQAB
+-----END RSA PUBLIC KEY-----`
+	keyPair, err := rsa.GenerateKey(rand.Reader, 512)
+	assert.Nil(err, "unable to generate key pair")
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
+	assert.Nil(err, "unable to marshal public key")
+	lowBitPubKey := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+	assert.NotNil(lowBitPubKey, "unexpectedly empty public key byte slice")
+
+	err = aco.SavePublicKey(strings.NewReader(""))
+	assert.NotNil(err, "empty string should not be saved")
+
+	err = aco.SavePublicKey(strings.NewReader(emptyPEM))
+	assert.NotNil(err, "empty PEM should not be saved")
+
+	err = aco.SavePublicKey(strings.NewReader(invalidPEM))
+	assert.NotNil(err, "invalid PEM should not be saved")
+
+	err = aco.SavePublicKey(bytes.NewReader(lowBitPubKey))
+	assert.NotNil(err, "insecure public key should not be saved")
 }
 
 func (s *ModelsTestSuite) TestACOPublicKeyEmpty() {
@@ -174,7 +267,7 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	assert := s.Assert()
 
 	// Setup ACO
-	cmsID := "A4445"
+	cmsID := "A4446"
 	aco := ACO{Name: "Pub Key Test ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
 	err := s.db.Create(&aco).Error
 	assert.Nil(err)
@@ -498,7 +591,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	assert := s.Assert()
 	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
 	bbc := testUtils.BlueButtonClient{}
-
+	bbc.HICN = &cclfBeneficiary.HICN
 	bbc.On("GetBlueButtonIdentifier", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()

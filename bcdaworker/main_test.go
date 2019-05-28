@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
@@ -36,6 +38,7 @@ func (s *MainTestSuite) TearDownSuite() {
 
 func (s *MainTestSuite) SetupTest() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
+	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/bb-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
@@ -53,23 +56,31 @@ func TestMainTestSuite(t *testing.T) {
 }
 
 func TestWriteEOBDataToFile(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
-
+	db := database.GetGORMDbConnection()
+	defer db.Close()
 	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
-	beneficiaryIDs := []string{"10000", "11000"}
 	jobID := "1"
 	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
+	db.Create(&cclfFile)
+	defer db.Delete(&cclfFile)
 
 	// clean out the data dir before beginning this test
 	os.RemoveAll(staging)
 	testUtils.CreateStaging(jobID)
-
+	beneficiaryIDs := []string{"1000003701", "1000050699"}
+	var cclfBeneficiaryIDs []string
 	for i := 0; i < len(beneficiaryIDs); i++ {
-		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryIDs[i]))
+		beneficiaryID := beneficiaryIDs[i]
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: beneficiaryID, MBI: "whatever", BlueButtonID: beneficiaryID}
+		db.Create(&cclfBeneficiary)
+		defer db.Delete(&cclfBeneficiary)
+		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryID))
 	}
 
-	_, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -121,7 +132,7 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
+
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "70")
@@ -133,10 +144,25 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	bbc.On("GetExplanationOfBenefitData", "12000").Return(bbc.GetData("ExplanationOfBenefit", "12000"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	beneficiaryIDs := []string{"10000", "11000", "12000"}
+	var cclfBeneficiaryIDs []string
+
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
+	db.Create(&cclfFile)
+	defer db.Delete(&cclfFile)
+
+	for i := 0; i < len(beneficiaryIDs); i++ {
+		beneficiaryID := beneficiaryIDs[i]
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: beneficiaryID, MBI: "whatever", BlueButtonID: beneficiaryID}
+		db.Create(&cclfBeneficiary)
+		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+		defer db.Delete(&cclfBeneficiary)
+	}
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	fileName, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
+	fileName, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -157,21 +183,35 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "60")
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefitData", "10000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefitData", "11000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefitData", "1000089833").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefitData", "1000065301").Return("", errors.New("error"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
-	beneficiaryIDs := []string{"10000", "11000", "12000"}
+	beneficiaryIDs := []string{"1000089833", "1000065301", "1000012463"}
+	var cclfBeneficiaryIDs []string
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
+	db.Create(&cclfFile)
+	defer db.Delete(&cclfFile)
+
+	for i := 0; i < len(beneficiaryIDs); i++ {
+		beneficiaryID := beneficiaryIDs[i]
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: beneficiaryID, MBI: "whatever", BlueButtonID: beneficiaryID}
+		db.Create(&cclfBeneficiary)
+		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+		defer db.Delete(&cclfBeneficiary)
+	}
+
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	_, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	assert.Equal(t, "number of failed requests has exceeded threshold", err.Error())
 
 	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
@@ -180,12 +220,12 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 		t.Fail()
 	}
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(t, "GetExplanationOfBenefitData", "12000")
+	bbc.AssertNotCalled(t, "GetExplanationOfBenefitData", "1000012463")
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(filePath)
@@ -209,7 +249,7 @@ func TestGetFailureThreshold(t *testing.T) {
 }
 
 func TestAppendErrorToFile(t *testing.T) {
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
+
 	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
