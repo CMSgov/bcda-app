@@ -205,7 +205,6 @@ func setUpApp() *cli.App {
 					return err
 				}
 
-				/* #nosec -- Potential file inclusion via variable */
 				f, err := os.Open(filepath.Clean(filePath))
 				if err != nil {
 					fmt.Fprintf(app.Writer, "Unable to open file %s: %s\n", filePath, err.Error())
