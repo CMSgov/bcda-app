@@ -419,12 +419,12 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "acoSize",
-					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'",
+					Usage:       "Set the size of the ACO.  Must be one of 'dev', 'small', 'medium', 'large', or 'extra-large'",
 					Destination: &acoSize,
 				},
 				cli.StringFlag{
 					Name:        "environment",
-					Usage:       "Which set of files to use.  ",
+					Usage:       "Which set of files to use.",
 					Destination: &environment,
 				},
 			},
