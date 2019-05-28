@@ -40,8 +40,6 @@ func InitializeGormModels() *gorm.DB {
 		&User{},
 		&Job{},
 		&JobKey{},
-		&Beneficiary{},
-		&ACOBeneficiary{},
 		&Group{},
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
@@ -49,9 +47,6 @@ func InitializeGormModels() *gorm.DB {
 		&System{},
 		&EncryptionKey{},
 	)
-
-	db.Model(&ACOBeneficiary{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
-	db.Model(&ACOBeneficiary{}).AddForeignKey("beneficiary_id", "beneficiaries(id)", "RESTRICT", "RESTRICT")
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
 
@@ -167,7 +162,6 @@ type ACO struct {
 	ClientID         string    `json:"client_id"`
 	AlphaSecret      string    `json:"alpha_secret"`
 	PublicKey        string    `json:"public_key"`
-	ACOBeneficiaries []*ACOBeneficiary
 }
 
 func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
@@ -195,19 +189,6 @@ func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
 	return cclfBeneficiaryIDs, nil
 }
 
-type Beneficiary struct {
-	gorm.Model
-	BlueButtonID string `gorm:"type: text"`
-}
-
-type ACOBeneficiary struct {
-	ACOID         uuid.UUID `gorm:"type:uuid"`
-	ACO           *ACO      `gorm:"foreignkey:ACOID"`
-	BeneficiaryID uint
-	Beneficiary   *Beneficiary `gorm:"foreignkey:BeneficiaryID;association_foreignkey:ID"`
-	// Join model needed for additional fields later, e.g., AttributionDate
-}
-
 type CCLFBeneficiaryXref struct {
 	gorm.Model
 	FileID        uint   `gorm:"not null"`
@@ -216,10 +197,6 @@ type CCLFBeneficiaryXref struct {
 	PrevNum       string `json:"previous_number"`
 	PrevsEfctDt   string `json:"effective_date"`
 	PrevsObsltDt  string `json:"obsolete_date"`
-}
-
-func (*ACOBeneficiary) TableName() string {
-	return "acos_beneficiaries"
 }
 
 func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
