@@ -31,7 +31,7 @@ func (s *BBTestSuite) SetupTest() {
 	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/bb-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 
-	if bbClient, err := NewBlueButtonClient(map[string]string{jobIDKey: "543210", cmsIDKey: "A00234"}); err != nil {
+	if bbClient, err := NewBlueButtonClient(map[string]string{JobIDKey: "543210", CMSIDKey: "A00234"}); err != nil {
 		s.Fail("Failed to create Blue Button client", err)
 	} else {
 		s.bbClient = bbClient
@@ -237,8 +237,8 @@ func (s *BBTestSuite) TestAddRequestHeaders() {
 	assert.Equal(s.T(), req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
 	assert.Equal(s.T(), "", req.Header.Get("BlueButton-BackendCall"))
 
-	assert.Equal(s.T(), "543210", req.Header.Get(jobIDKey))
-	assert.Equal(s.T(), "A00234", req.Header.Get(cmsIDKey))
+	assert.Equal(s.T(), "543210", req.Header.Get(JobIDKey))
+	assert.Equal(s.T(), "A00234", req.Header.Get(CMSIDKey))
 
 }
 

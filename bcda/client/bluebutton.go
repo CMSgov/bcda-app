@@ -27,8 +27,8 @@ var logger *logrus.Logger
 
 const blueButtonBasePath = "/v1/fhir"
 const blueButtonPepper = "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9"
-const jobIDKey = "BCDA-JOBID"
-const cmsIDKey = "BCDA-CMSID"
+const JobIDKey = "BCDA-JOBID"
+const CMSIDKey = "BCDA-CMSID"
 
 type APIClient interface {
 	GetExplanationOfBenefitData(patientID string) (string, error)
@@ -194,7 +194,7 @@ func (bbc *BlueButtonClient) logRequest(req *http.Request, resp *http.Response) 
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
-		"job_id":      bbc.headerParams[jobIDKey],
+		"job_id":      bbc.headerParams[JobIDKey],
 	}).Infoln("Blue Button request")
 
 	if resp != nil {
@@ -203,7 +203,7 @@ func (bbc *BlueButtonClient) logRequest(req *http.Request, resp *http.Response) 
 			"bb_query_id":    resp.Header.Get("BlueButton-OriginalQueryId"),
 			"bb_query_ts":    resp.Header.Get("BlueButton-OriginalQueryTimestamp"),
 			"bb_uri":         resp.Header.Get("BlueButton-OriginalUrl"),
-			"job_id":         bbc.headerParams[jobIDKey],
+			"job_id":         bbc.headerParams[JobIDKey],
 			"content_length": resp.ContentLength,
 		}).Infoln("Blue Button response")
 	}

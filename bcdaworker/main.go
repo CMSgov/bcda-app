@@ -96,7 +96,7 @@ func processJob(j *que.Job) error {
 	}
 	jobID := strconv.Itoa(jobArgs.ID)
 
-	headerParams := map[string]string{client.JOBIDKEY: jobID, client.CMSIDKEY: *aco.CMSID}
+	headerParams := map[string]string{client.JobIDKey: jobID, client.CMSIDKey: *aco.CMSID}
 	bb, err := client.NewBlueButtonClient(headerParams)
 	if err != nil {
 		log.Error(err)
