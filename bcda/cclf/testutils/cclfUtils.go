@@ -27,10 +27,11 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		"dev",
 		"small",
 		"medium",
-		"large":
+		"large",
+		"extra-large":
 
 	default:
-		return errors.New("invalid argument for aco size")
+		return errors.New("invalid argument for ACO size")
 	}
 
 	switch environment {

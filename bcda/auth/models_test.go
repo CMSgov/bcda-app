@@ -155,7 +155,7 @@ func (s *ModelsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 }
 
 func (s *ModelsTestSuite) TestCreateAlphaToken() {
-	msg, err := auth.CreateAlphaToken(1000, "dev")
+	msg, err := auth.CreateAlphaToken(1000, "T0004")
 	assert.NotEmpty(s.T(), msg)
 	assert.Nil(s.T(), err)
 }

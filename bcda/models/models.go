@@ -286,20 +286,13 @@ func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
 }
 
 // CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
-func CreateAlphaACO(db *gorm.DB) (ACO, error) {
+func CreateAlphaACO(acoCMSID string, db *gorm.DB) (ACO, error) {
 	var count int
 	db.Table("acos").Count(&count)
-	aco := ACO{Name: fmt.Sprintf("Alpha ACO %d", count), UUID: uuid.NewRandom()}
+	aco := ACO{Name: fmt.Sprintf("Alpha ACO %d", count), UUID: uuid.NewRandom(), CMSID: &acoCMSID}
 	db.Create(&aco)
 
 	return aco, db.Error
-}
-
-func AssignAlphaBeneficiaries(db *gorm.DB, aco ACO, acoSize string) error {
-	s := "insert into acos_beneficiaries (aco_id, beneficiary_id) select '" + aco.UUID.String() +
-		"', b.id from beneficiaries b join acos_beneficiaries ab on b.id = ab.beneficiary_id " +
-		"where ab.aco_id = (select uuid from acos where name ilike 'ACO " + acoSize + "')"
-	return db.Exec(s).Error
 }
 
 type Group struct {
