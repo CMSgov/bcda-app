@@ -8,7 +8,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -16,27 +16,39 @@ import (
 type AlphaAuthPlugin struct{}
 
 func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
-
+	regEvent := event{op: "RegisterClient", trackingID: localID}
+	operationStarted(regEvent)
 	if localID == "" {
-		return Credentials{}, errors.New("provide a non-empty string")
+		// do we want to track usage errors?
+		regEvent.help = "provide a non-empty string"
+		operationFailed(regEvent)
+		return Credentials{}, errors.New(regEvent.help)
 	}
 
 	aco, err := getACOFromDB(localID)
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
 
 	if aco.AlphaSecret != "" {
-		return Credentials{}, fmt.Errorf("aco %s has a secret", localID)
+		regEvent.help = fmt.Sprintf("aco %s has a secret", localID)
+		operationFailed(regEvent)
+		return Credentials{}, errors.New(regEvent.help)
 	}
 
 	s, err := generateClientSecret()
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
 
 	hashedSecret, err := NewHash(s)
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
 
@@ -46,9 +58,13 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	aco.AlphaSecret = hashedSecret.String()
 	err = db.Save(&aco).Error
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
 
+	regEvent.clientID = aco.ClientID
+	operationSucceeded(regEvent)
 	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
 }
 
