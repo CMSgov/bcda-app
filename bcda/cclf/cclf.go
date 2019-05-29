@@ -287,8 +287,8 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
-	// Prefix: T = test, P = prod; A**** = ACO ID; ZC* = CCLF file number; Y** = performance year
-	filenameRegexp := regexp.MustCompile(`(T|P)\.(A\d{4})\.ACO\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	// Prefix: T = test, P = prod; A**** or T**** (test) = ACO ID; ZC* = CCLF file number; Y** = performance year
+	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 5 {
 		fmt.Printf("Invalid filename for file: %s.\n", filePath)
@@ -299,8 +299,8 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 
 	cclfNum, err := strconv.Atoi(filenameMatches[3])
 	if err != nil {
-		fmt.Printf("Failed to parse cclf num from file: %s.\n", filePath)
-		err = errors.Wrapf(err, "failed to parse cclf num from file: %s", filePath)
+		fmt.Printf("Failed to parse CCLF number from file: %s.\n", filePath)
+		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", filePath)
 		log.Error(err)
 		return metadata, err
 	}

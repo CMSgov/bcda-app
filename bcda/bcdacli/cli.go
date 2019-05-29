@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -276,9 +277,9 @@ func setUpApp() *cli.App {
 					Destination: &ttl,
 				},
 				cli.StringFlag{
-					Name:        "size",
-					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'",
-					Destination: &acoSize,
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -288,11 +289,11 @@ func setUpApp() *cli.App {
 						ttl = "72"
 					}
 				}
-				ttlInt, err := validateAlphaTokenInputs(ttl, acoSize)
+				ttlInt, err := validateAlphaTokenInputs(ttl, acoCMSID)
 				if err != nil {
 					return err
 				}
-				accessToken, err := auth.CreateAlphaToken(ttlInt, acoSize)
+				accessToken, err := auth.CreateAlphaToken(ttlInt, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -418,12 +419,12 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "acoSize",
-					Usage:       "Set the size of the ACO.  Must be one of 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'",
+					Usage:       "Set the size of the ACO.  Must be one of 'dev', 'small', 'medium', 'large', or 'extra-large'",
 					Destination: &acoSize,
 				},
 				cli.StringFlag{
 					Name:        "environment",
-					Usage:       "Which set of files to use.  ",
+					Usage:       "Which set of files to use.",
 					Destination: &environment,
 				},
 			},
@@ -496,22 +497,18 @@ func revokeAccessToken(accessToken string) error {
 	return auth.GetProvider().RevokeAccessToken(accessToken)
 }
 
-func validateAlphaTokenInputs(ttl, acoSize string) (int, error) {
+func validateAlphaTokenInputs(ttl, acoID string) (int, error) {
 	i, err := strconv.Atoi(ttl)
 	if err != nil || i <= 0 {
 		return i, fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
 	}
-	switch strings.ToLower(acoSize) {
-	case
-		"dev",
-		"small",
-		"medium",
-		"large",
-		"extra_large":
-		return i, nil
-	default:
-		return i, errors.New("invalid argument for --size.  Please use 'Dev', 'Small', 'Medium', 'Large', or 'Extra_Large'")
+
+	acoIDFmt := regexp.MustCompile(`T\d{4}`)
+	if !acoIDFmt.MatchString(acoID) {
+		return i, errors.New("expected CMS ACO ID format for alpha ACOs is 'T' followed by four digits (e.g., 'T1234')")
 	}
+
+	return i, nil
 }
 
 func archiveExpiring(hrThreshold int) error {
