@@ -52,7 +52,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.Nil(err)
 	assert.NotNil(aco)
 	assert.Equal(ACOName, aco.Name)
-	assert.Equal("", aco.ClientID)
+	assert.Equal(acoUUID.String(), aco.ClientID)
 	assert.Equal(cmsID, *aco.CMSID)
 	pubKey, err := aco.GetPublicKey()
 	assert.NotNil(err)
