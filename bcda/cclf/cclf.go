@@ -83,7 +83,7 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 	const (
 		fileNumStart, fileNumEnd           = 0, 7
 		totalRecordStart, totalRecordEnd   = 52, 63
-		recordLengthStart, recordLengthEnd = 64, 70
+		recordLengthStart, recordLengthEnd = 64, 69
 	)
 
 	var validator map[string]cclfFileValidator
