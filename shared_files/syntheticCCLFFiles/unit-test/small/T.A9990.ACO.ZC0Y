@@ -1,11 +1,12 @@
-CCLF1        |PartAClaimsHeaderFil|10                  |2                                           XXX
-CCLF2        |Part A Claims Revenu|10                  |4                                           XXX
-CCLF3        |Part A Procedure Cod|10                  |6                                           XXX
-CCLF4        |Part A Diagnosis Cod|10                  |8                                           XXX
-CCLF5        |Part B Physicians Fi|10                  |10                                           XXX
-CCLF6        |Part B DME File     |10                  |12                                           XXX
-CCLF7        |Part D File         |10                  |14                                           XXX
-CCLF8        |Beneficiary Demogra |10                  |100                                           XXX
-CCLF9        |BENE XREF File      |2                   |100                                           XXX
-CCLFA        |Part A BE and Demo  |10                  |16                                           XXX
-CCLFB        |Part B BE and Demo  |10                  |18                                           XXX
+File Number  |File Description    |Total Records Count |Record Length
+CCLF1  |Part A Claims Header File                  |          6|  292
+CCLF2  |Part A Claims Revenue Center Detail File   |          6|  179
+CCLF3  |Part A Procedure Code File                 |          6|   94
+CCLF4  |Part A Diagnosis Code File                 |          6|   92
+CCLF5  |Part B Physicians File                     |          6|  363
+CCLF6  |Part B DME File                            |          6|  227
+CCLF7  |Part D File                                |          6|  195
+CCLF8  |Beneficiary Demographics File              |         10|  549
+CCLF9  |BENE XREF File                             |          2|   55
+CCLFA  |Part A BE and Demo Codes File              |          6|  101
+CCLFB  |Part B BE and Demo Codes File              |          6|   93
