@@ -5,6 +5,7 @@ import binascii
 import os
 import re
 import sys
+import codecs
 
 from argparse import RawTextHelpFormatter
 
@@ -88,6 +89,8 @@ def valid_uuid(filename):
 
 def main():
     args = init()
+    if sys.version_info[0] < 3:
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
     ek = binascii.unhexlify(args.key)
     pk = get_private_key(args.pk)
     decrypt_file(pk, ek, args.file)
