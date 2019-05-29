@@ -81,9 +81,9 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 	defer r.Close()
 
 	const (
-		fileNumStart, fileNumEnd           = 0, 13
-		totalRecordStart, totalRecordEnd   = 35, 55
-		recordLengthStart, recordLengthEnd = 56, 69
+		fileNumStart, fileNumEnd           = 0, 7
+		totalRecordStart, totalRecordEnd   = 52, 63
+		recordLengthStart, recordLengthEnd = 64, 69
 	)
 
 	var validator map[string]cclfFileValidator
@@ -103,6 +103,7 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 			b := sc.Bytes()
 			if len(bytes.TrimSpace(b)) > 0 {
 				filetype := string(bytes.TrimSpace(b[fileNumStart:fileNumEnd]))
+
 				if filetype == "CCLF8" || filetype == "CCLF9" {
 					if validator == nil {
 						validator = make(map[string]cclfFileValidator)
