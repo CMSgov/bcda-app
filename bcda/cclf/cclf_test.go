@@ -373,6 +373,16 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
+	
+	// CMS EFT file format structure
+	expTime, _ = time.Parse(time.RFC3339, "2019-01-19T20:13:01Z")
+	metadata, err = getCCLFFileMetadata("/cclf/T#EFT.ON.A0001.ACOB.ZC0Y19.D190119.T2013010")
+	assert.Equal("test", metadata.env)
+	assert.Equal("A0001", metadata.acoID)
+	assert.Equal(0, metadata.cclfNum)
+	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
+	assert.Equal(19, metadata.perfYear)
+	assert.Nil(err)
 
 	metadata, err = getCCLFFileMetadata("/cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
 	assert.NotNil(err)

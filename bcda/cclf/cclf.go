@@ -288,7 +288,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
 	// Prefix: T = test, P = prod; A**** = ACO ID; ZC* = CCLF file number; Y** = performance year
-	filenameRegexp := regexp.MustCompile(`(T|P)\.(A\d{4})\.ACO\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	filenameRegexp := regexp.MustCompile(`(T|P).*\.(A\d{4})\.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 5 {
 		fmt.Printf("Invalid filename for file: %s.\n", filePath)
