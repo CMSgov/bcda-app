@@ -166,9 +166,12 @@
   revision = "6a9ea43bcacdf716a5c1b38efff722c07adf0069"
 
 [[projects]]
-  digest = "1:68ae7a24476fe166c77ab60dace5945a0cd0c97bf714f27dd5cb66e5bde7fb82"
+  digest = "1:411720dfef30789c7933810e994ccbad0003929a84b22980be86e55838c5a9e8"
   name = "github.com/sirupsen/logrus"
-  packages = ["."]
+  packages = [
+    ".",
+    "hooks/test",
+  ]
   pruneopts = "UT"
   revision = "d329d24db4313262a3b0a24d8aeb1dc4bd294fb0"
 
@@ -316,6 +319,7 @@
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
+    "github.com/sirupsen/logrus/hooks/test",
     "github.com/soheilhy/cmux",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
