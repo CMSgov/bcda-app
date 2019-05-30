@@ -9,40 +9,17 @@ import (
 
 var logger *logrus.Logger
 
-const (
-	// tknExpired       = "AccessTokenExpired"
-	// tknInvalid       = "AccessTokenInvalid"
-	// tknIssued        = "AccessTokenIssued"
-	// tknRevoked       = "AccessTokenRevoked"
-	// credsIssued      = "ClientCredentialsIssued"
-	// credsRevoked     = "ClientCredentialsRevoked"
-	// reqAuthorized    = "RequestAuthorized"
-	// reqNotAuthorized = "RequestNotAuthorized"
-	// requesterUnknown = "RequesterUnknown"
-	// secretCreated    = "SecretCreated"
-	// secretFast       = "SecretTooFast"
-	// secretSlow       = "SecretTooSlow"
-	// a failure of something other than auth logic: duplicate db entries, network failures
-	// sysFailure = "SystemFailure"
-	// operation events
-	opFailed    = "OperationFailed"
-	opStarted   = "OperationStarted"
-	opSucceeded = "OperationSucceeded"
-	// service events
-	// halted  = "ServiceHalted"
-	// started = "ServiceStarted"
-	// stopped = "ServiceStopped"
-)
-
 type event struct {
 	clientID   string
-	elapsed    int
+	elapsed    time.Duration
 	help       string
 	op         string
 	tokenID    string
 	trackingID string
 }
 
+// maybe we should just use plain standard logging and pass in json. We don't use the level
+// designation to tune logging in non-local envs, so is logrus complexity worth it?
 func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
@@ -86,13 +63,37 @@ func mergeNonEmpty(data event) *logrus.Entry {
 }
 
 func operationStarted(data event) {
-	mergeNonEmpty(data).WithField("event", opStarted).Print(data.help)
+	mergeNonEmpty(data).WithField("event", "OperationStarted").Print(data.help)
 }
 
 func operationSucceeded(data event) {
-	mergeNonEmpty(data).WithField("event", opSucceeded).Print(data.help)
+	mergeNonEmpty(data).WithField("event", "OperationSucceeded").Print(data.help)
 }
 
 func operationFailed(data event) {
-	mergeNonEmpty(data).WithField("event", opFailed).Print(data.help)
+	mergeNonEmpty(data).WithField("event", "OperationFailed").Print(data.help)
+}
+
+func accessTokenIssued(data event) {
+	mergeNonEmpty(data).WithField("event", "AccessTokenIssued").Print(data.help)
+}
+
+func secureHashTooSlow(data event) {
+	mergeNonEmpty(data).WithField("event", "SecureHashTooSlow").Print(data.help)
+}
+
+func secureHashTooFast(data event) {
+	mergeNonEmpty(data).WithField("event", "SecureHashTooFast").Print(data.help)
+}
+
+func secretCreated(data event) {
+	mergeNonEmpty(data).WithField("event", "SecretCreated").Print(data.help)
+}
+
+func serviceHalted(data event) {
+	mergeNonEmpty(data).WithField("event", "ServiceHalted").Print(data.help)
+}
+
+func serviceStarted(data event) {
+	mergeNonEmpty(data).WithField("event", "ServiceStarted").Print(data.help)
 }
