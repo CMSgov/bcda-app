@@ -5,6 +5,7 @@ import binascii
 import os
 import re
 import sys
+import codecs
 
 from argparse import RawTextHelpFormatter
 
@@ -71,7 +72,7 @@ def decrypt_file(private_key, encrypted_key, filepath):
     decrypted_key = cipher.decrypt(encrypted_key)
 
     with open(filepath, 'rb') as fh:
-        result = decrypt_cipher(fh, decrypted_key)
+        result = decrypt_cipher(fh, decrypted_key).decode("utf-8")
 
     print(result)
 
@@ -88,6 +89,8 @@ def valid_uuid(filename):
 
 def main():
     args = init()
+    if sys.version_info[0] < 3:
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
     ek = binascii.unhexlify(args.key)
     pk = get_private_key(args.pk)
     decrypt_file(pk, ek, args.file)
