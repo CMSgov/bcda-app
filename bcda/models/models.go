@@ -251,7 +251,11 @@ func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	aco := ACO{Name: name, CMSID: cmsID, UUID: uuid.NewRandom()}
+	id := uuid.NewRandom()
+
+	// TODO: remove ClientID below when a future refactor removes the need
+	//    for every ACO to have a client_id at creation
+	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String()}
 	db.Create(&aco)
 
 	return aco.UUID, db.Error
