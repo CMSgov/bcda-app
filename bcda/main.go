@@ -23,8 +23,7 @@ Until you click logout your token will be presented with every request made.  To
      SecurityDefinitions:
      bearer_token:
           type: apiKey
-          name: Authorization
-          description: The bulkData endpoints require a Bearer Token. 1) Put your credentials in Basic Authentication, 2) Request a bearer token from /auth/token, 3) Put "Bearer {TOKEN}" in this field (no quotes) using the bearer token retrieved in step 2
+          name: The bulkData endpoints require a Bearer Token. 1) Put your credentials in Basic Authentication, 2) Request a bearer token from /auth/token, 3) Put "Bearer {TOKEN}" in this field (no quotes) using the bearer token retrieved in step 2
           in: header
      basic_auth:
           type: basic
