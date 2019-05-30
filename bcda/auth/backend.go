@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -20,19 +19,15 @@ import (
 
 // The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
 // Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
-const hashIter int = 90000
-const hashKeyLen int = 64
-const saltSize int = 32
-const hashMinTime = 1 * time.Second
-const hashMaxTime = 3 * time.Second
-
-var (
-	alphaBackend *AlphaBackend
+const (
+	hashIter int = 90000
+	hashKeyLen int = 64
+	saltSize int = 32
+	hashMinTime = 1 * time.Second
+	hashMaxTime = 3 * time.Second
 )
 
-func init() {
-	log.SetFormatter(&log.JSONFormatter{})
-}
+var alphaBackend *AlphaBackend
 
 // Hash is a cryptographically hashed string
 type Hash string
@@ -54,14 +49,17 @@ func NewHash(source string) (Hash, error) {
 	start := time.Now()
 	h := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
 	hashCreationTime := time.Since(start)
+	hashEvent := event{elapsed: hashCreationTime}
 
 	switch {
 	case hashCreationTime < hashMinTime:
-		// This log should be the source of a Splunk alert for production environments
-		log.Warningf("hash creation took less than minimum time (actual time: %s; target time: %s)--please increase hashIter in /bcda/auth/backend.go", hashCreationTime, hashMinTime)
+		// This event should be the source of a Splunk alert for production environments
+		hashEvent.help = fmt.Sprintf("hash creation took less than %s time -- please increase hashIter in /bcda/auth/backend.go", hashMinTime)
+		secureHashTooFast(hashEvent)
 	case hashCreationTime > hashMaxTime:
-		// This log should be the source of a Splunk alert for production environments
-		log.Warningf("hash creation took more than maximum time (actual time: %s; target time: %s)--please decrease hashIter in /bcda/auth/backend.go", hashCreationTime, hashMaxTime)
+		// This event should be the source of a Splunk alert for production environments
+		hashEvent.help = fmt.Sprintf("hash creation took more than %s time -- please decrease hashIter in /bcda/auth/backend.go", hashMaxTime)
+		secureHashTooSlow(hashEvent)
 	}
 
 	return Hash(fmt.Sprintf("%s:%s", base64.StdEncoding.EncodeToString(salt), base64.StdEncoding.EncodeToString(h))), nil
@@ -108,6 +106,7 @@ func InitAlphaBackend() *AlphaBackend {
 			PrivateKey: getPrivateKey(),
 			PublicKey:  getPublicKey(),
 		}
+		serviceStarted(event{})
 	}
 	return alphaBackend
 }
@@ -123,15 +122,19 @@ func (backend *AlphaBackend) ResetAlphaBackend() {
 // This method and its sibling, getPublicKey(), get the private key from the file system and environment variables.
 // They accesses external resources and so may panic and bubble up an error if the file is not present or not readable.
 func getPrivateKey() *rsa.PrivateKey {
+
 	fileName, ok := os.LookupEnv("JWT_PRIVATE_KEY_FILE")
 	if !ok {
-		log.Panic("no value in JWT_PRIVATE_KEY_FILE")
+		serviceHalted(event{help:"no value in JWT_PRIVATE_KEY_FILE"})
+		panic(errors.New("no value in JWT_PRIVATE_KEY_FILE"))
 	}
-	log.Infof("opening %s", fileName)
+	logger.Infof("opening %s", fileName)
 	/* #nosec -- Potential file inclusion via variable */
 	privateKeyFile, err := os.Open(fileName)
 	if err != nil {
-		log.Panicf("can't open private key file %s because %v", fileName, err)
+		msg := fmt.Sprintf("can't open private key file %s because %v", fileName, err)
+		serviceHalted(event{help:msg})
+		panic(errors.New(msg))
 	}
 
 	return utils.OpenPrivateKeyFile(privateKeyFile)
@@ -141,6 +144,7 @@ func getPrivateKey() *rsa.PrivateKey {
 func getPublicKey() *rsa.PublicKey {
 	publicKeyFile, err := os.Open(os.Getenv("JWT_PUBLIC_KEY_FILE"))
 	if err != nil {
+		serviceHalted(event{help:err.Error()})
 		panic(err)
 	}
 	return utils.OpenPublicKeyFile(publicKeyFile)

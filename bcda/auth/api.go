@@ -3,8 +3,6 @@ package auth
 import (
 	"fmt"
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -51,7 +49,6 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
-	log.WithField("client_id", clientId).Println("issued access token")
 }
 
 func GetAuthGroups(w http.ResponseWriter, r *http.Request) {

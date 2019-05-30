@@ -6,37 +6,50 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
+	"github.com/pborman/uuid"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 type AlphaAuthPlugin struct{}
 
 func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
-
+	regEvent := event{op: "RegisterClient", trackingID: localID}
+	operationStarted(regEvent)
 	if localID == "" {
-		return Credentials{}, errors.New("provide a non-empty string")
+		// do we want to report on usage errors?
+		regEvent.help = "provide a non-empty string"
+		operationFailed(regEvent)
+		return Credentials{}, errors.New(regEvent.help)
 	}
 
 	aco, err := getACOFromDB(localID)
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
 
 	if aco.AlphaSecret != "" {
-		return Credentials{}, fmt.Errorf("aco %s has a secret", localID)
+		regEvent.help = fmt.Sprintf("aco %s has a secret", localID)
+		operationFailed(regEvent)
+		return Credentials{}, errors.New(regEvent.help)
 	}
 
 	s, err := generateClientSecret()
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
+	secretCreated(regEvent)
 
 	hashedSecret, err := NewHash(s)
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
 
@@ -46,9 +59,13 @@ func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	aco.AlphaSecret = hashedSecret.String()
 	err = db.Save(&aco).Error
 	if err != nil {
+		regEvent.help = err.Error()
+		operationFailed(regEvent)
 		return Credentials{}, err
 	}
 
+	regEvent.clientID = aco.ClientID
+	operationSucceeded(regEvent)
 	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
 }
 
@@ -67,8 +84,12 @@ func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
 }
 
 func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
+	delEvent := event{op: "DeleteClient", trackingID: clientID}
+	operationStarted(delEvent)
 	aco, err := GetACOByClientID(clientID)
 	if err != nil {
+		delEvent.help = err.Error()
+		operationFailed(delEvent)
 		return err
 	}
 
@@ -79,30 +100,43 @@ func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
 	defer database.Close(db)
 	err = db.Save(&aco).Error
 	if err != nil {
+		delEvent.help = err.Error()
+		operationFailed(delEvent)
 		return err
 	}
 
+	operationSucceeded(delEvent)
 	return nil
 }
 
 func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
+	genEvent := event{op: "GenerateClientCredentials", trackingID: clientID}
+	operationStarted(genEvent)
 
 	if clientID == "" {
+		genEvent.help = "provide a non-empty string"
+		operationFailed(genEvent)
 		return Credentials{}, errors.New("provide a non-empty string")
 	}
 
 	aco, err := getACOFromDB(clientID)
 	if err != nil {
+		genEvent.help = err.Error()
+		operationFailed(genEvent)
 		return Credentials{}, err
 	}
 
 	s, err := generateClientSecret()
 	if err != nil {
+		genEvent.help = err.Error()
+		operationFailed(genEvent)
 		return Credentials{}, err
 	}
 
 	hashedSecret, err := NewHash(s)
 	if err != nil {
+		genEvent.help = err.Error()
+		operationFailed(genEvent)
 		return Credentials{}, err
 	}
 
@@ -111,9 +145,12 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Cr
 	aco.AlphaSecret = hashedSecret.String()
 	err = db.Save(&aco).Error
 	if err != nil {
+		genEvent.help = err.Error()
+		operationFailed(genEvent)
 		return Credentials{}, err
 	}
 
+	operationSucceeded(genEvent)
 	return Credentials{ClientName: aco.Name, ClientID: clientID, ClientSecret: s}, nil
 }
 
@@ -123,27 +160,40 @@ func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
 
 // MakeAccessToken manufactures an access token for the given credentials
 func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	tknEvent := event{op: "MakeAccessToken", trackingID: credentials.ClientID}
 	if credentials.ClientSecret == "" || credentials.ClientID == "" {
+		tknEvent.help = "missing or incomplete credentials"
+		operationFailed(tknEvent)
 		return "", fmt.Errorf("missing or incomplete credentials")
 	}
 
 	if uuid.Parse(credentials.ClientID) == nil {
+		tknEvent.help = "missing or incomplete credentials"
+		operationFailed(tknEvent)
 		return "", fmt.Errorf("ClientID must be a valid UUID")
 	}
 
 	aco, err := GetACOByClientID(credentials.ClientID)
 	if err != nil {
+		tknEvent.help = err.Error()
+		operationFailed(tknEvent)
 		return "", fmt.Errorf("invalid credentials; %s", err)
 	}
 	if !Hash(aco.AlphaSecret).IsHashOf(credentials.ClientSecret) {
+		tknEvent.help = "IsHashOf failed"
+		operationFailed(tknEvent)
 		return "", fmt.Errorf("invalid credentials")
 	}
 	issuedAt := time.Now().Unix()
 	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
-	return GenerateTokenString(uuid.NewRandom().String(), aco.UUID.String(), issuedAt, expiresAt)
+	uuid := uuid.NewRandom().String()
+	tknEvent.tokenID = uuid
+	operationSucceeded(tknEvent)
+	accessTokenIssued(tknEvent)
+	return GenerateTokenString(uuid, aco.UUID.String(), issuedAt, expiresAt)
 }
 
-// RequestAccessToken generates a token for the ACO
+// RequestAccessToken generates a token for the ACO (Deprecated, use MakeAccessToken()
 func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
 	var err error
 	token := Token{}
@@ -185,9 +235,13 @@ func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 }
 
 func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
+	tknEvent := event{op:"ValidateJWT"}
+	operationStarted(tknEvent)
 	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
-		log.Errorf("could not decode token %s because %s", tokenString, err)
+		tknEvent.help = err.Error()
+		operationFailed(tknEvent)
+		// can we log the fail token here
 		return err
 	}
 
@@ -195,19 +249,26 @@ func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
 
 	err = checkRequiredClaims(c)
 	if err != nil {
+		tknEvent.help = err.Error()
+		operationFailed(tknEvent)
 		return err
 	}
 
 	err = c.Valid()
 	if err != nil {
+		tknEvent.help = err.Error()
+		operationFailed(tknEvent)
 		return err
 	}
 
 	_, err = getACOFromDB(c.ACOID)
 	if err != nil {
+		tknEvent.help = err.Error()
+		operationFailed(tknEvent)
 		return err
 	}
 
+	operationSucceeded(tknEvent)
 	return nil
 }
 
