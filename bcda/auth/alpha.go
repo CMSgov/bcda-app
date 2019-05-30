@@ -85,7 +85,7 @@ func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
 	return nil
 }
 
-func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
+func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
 
 	if clientID == "" {
 		return Credentials{}, errors.New("provide a non-empty string")
