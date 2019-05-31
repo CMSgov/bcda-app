@@ -42,7 +42,8 @@ create table cclf_files (
     "timestamp" timestamp with time zone not null,
     performance_year integer not null,
     created_at timestamp with time zone not null default now(),
-    updated_at timestamp with time zone not null default now()
+    updated_at timestamp with time zone not null default now(),
+    deleted_at timestamp with time zone
 );
 
 create table cclf_beneficiaries (
