@@ -40,7 +40,9 @@ create table cclf_files (
     name varchar not null,
     aco_cms_id char(5),
     "timestamp" timestamp with time zone not null,
-    performance_year integer not null
+    performance_year integer not null,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now()
 );
 
 create table cclf_beneficiaries (
@@ -48,5 +50,7 @@ create table cclf_beneficiaries (
     file_id integer not null,
     hicn varchar(11) not null,
     mbi char(11) not null,
-    blue_button_id text
+    blue_button_id text,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now()
 );
