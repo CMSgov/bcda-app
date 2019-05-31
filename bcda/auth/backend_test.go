@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -139,7 +140,7 @@ func (s *BackendTestSuite) TestHashUnique() {
 
 func (s *BackendTestSuite) TestHashCompatibility() {
 	uuidString := "96c5a0cd-b284-47ac-be6e-f33b14dc4697"
-	hash := auth.Hash("d3H4fX/uEk1jOW2gYrFezyuJoSv4ay2x3gH5C25KpWM=:kVqFm1he5S4R1/10oIkVNFot40VB3wTa+DXTp4TrwvyXHkQO7Dxjjo/OqwemiYP8p3UQ8r/HkmTQrSS99UXzaQ==")
+	hash := auth.Hash("YMkApwNDTca4xlM/ROE4ZsiPLrWhjBGbJWue5RghICs=:S/xW9ehijAxxBtsMrDH+R6MYc/l4Sr3Y2SNkPJizy7WW0yaw7FFoAQ1R95WdWnrbPWaM6U0St5U6fp8Bge5pIA==")
 	assert.True(s.T(), hash.IsHashOf(uuidString), "Possible change in hashing parameters or algorithm.  Known input/output does not match.  Merging this code will result in invalidating credentials.")
 }
 

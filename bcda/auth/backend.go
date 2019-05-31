@@ -20,7 +20,7 @@ import (
 // The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
 // Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
 const (
-	hashIter int = 900000
+	hashIter int = 130000
 	hashKeyLen int = 64
 	saltSize int = 32
 	hashMinTime = 1 * time.Second
