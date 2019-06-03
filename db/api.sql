@@ -53,5 +53,19 @@ create table cclf_beneficiaries (
     mbi char(11) not null,
     blue_button_id text,
     created_at timestamp with time zone not null default now(),
-    updated_at timestamp with time zone not null default now()
+    updated_at timestamp with time zone not null default now(),
+    deleted_at timestamp with time zone
+);
+
+create table cclf_beneficiary_xrefs (
+    id serial primary key,
+    file_id integer not null,
+    xref_indicator varchar,
+    current_num varchar,
+    prev_num varchar,
+    prevs_efct_dt varchar,
+    prevs_obslt_dt varchar,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    deleted_at timestamp with time zone
 );
