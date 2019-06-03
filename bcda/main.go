@@ -41,11 +41,16 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
+	"github.com/CMSgov/bcda-app/bcda/web"
 
 	log "github.com/sirupsen/logrus"
 )
 
+var version = "latest"
+
 func init() {
+	bcdacli.Version = version
+	web.Version = version
 	isEtlMode := os.Getenv("BCDA_ETL_MODE")
 	if isEtlMode != "true" {
 		createAPIDirs()
@@ -87,7 +92,7 @@ func createETLDirs() {
 	pendingDeletionPath := os.Getenv("PENDING_DELETION_DIR")
 	err := os.MkdirAll(pendingDeletionPath, 0744)
 	if err != nil {
-		log.Fatal(errors.Wrap(err,"Could not create CCLF file pending deletion directory"))
+		log.Fatal(errors.Wrap(err, "Could not create CCLF file pending deletion directory"))
 	}
 }
 

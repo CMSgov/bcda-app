@@ -36,7 +36,7 @@ const Usage = "Beneficiary Claims Data API CLI"
 
 var (
 	qc      *que.Client
-	version = "latest"
+	Version = "latest"
 )
 
 func GetApp() *cli.App {
@@ -47,7 +47,7 @@ func setUpApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = Name
 	app.Usage = Usage
-	app.Version = version
+	app.Version = Version
 	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
 	app.Commands = []cli.Command{
 		{
@@ -174,9 +174,9 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name: "save-public-key",
+			Name:     "save-public-key",
 			Category: "Authentication tools",
-			Usage: "Upload an ACO's public key to the database",
+			Usage:    "Upload an ACO's public key to the database",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "cms-id",
@@ -184,8 +184,8 @@ func setUpApp() *cli.App {
 					Destination: &acoCMSID,
 				},
 				cli.StringFlag{
-					Name: "key-file",
-					Usage: "Location of public key in PEM format",
+					Name:        "key-file",
+					Usage:       "Location of public key in PEM format",
 					Destination: &filePath,
 				},
 			},
