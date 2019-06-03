@@ -38,7 +38,7 @@ fi
 cd ../bcda
 go clean
 echo "Building bcda binary..." 
-go build -ldflags "-X constants/constants.Version=$VERSION"
+go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api _site=/etc/sv/api
 cd ../bcdaworker
