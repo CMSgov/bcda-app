@@ -17,20 +17,28 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
-// The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
-// Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
-const (
-	hashIter int = 90000
-	hashKeyLen int = 64
-	saltSize int = 32
-	hashMinTime = 1 * time.Second
-	hashMaxTime = 3 * time.Second
+var (
+	alphaBackend *AlphaBackend
+	hashIter int
+	hashKeyLen int
+	saltSize int
 )
-
-var alphaBackend *AlphaBackend
 
 // Hash is a cryptographically hashed string
 type Hash string
+
+// The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
+// Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
+func init() {
+	hashIter = utils.GetEnvInt("AUTH_HASH_ITERATIONS", 0)
+	hashKeyLen = utils.GetEnvInt("AUTH_HASH_KEY_LENGTH", 0)
+	saltSize = utils.GetEnvInt("AUTH_HASH_SALT_SIZE", 0)
+
+	if hashIter == 0 || hashKeyLen == 0 || saltSize == 0 {
+		serviceHalted(event{help:"HASH_ITERATIONS, HASH_KEY_LENGTH and HASH_SALT_SIZE environment values must be set"})
+		panic("HASH_ITERATIONS, HASH_KEY_LENGTH and HASH_SALT_SIZE environment values must be set")
+	}
+}
 
 // NewHash creates a Hash value from a source string
 // The HashValue consists of the salt and hash separated by a colon ( : )
@@ -50,17 +58,7 @@ func NewHash(source string) (Hash, error) {
 	h := pbkdf2.Key([]byte(source), salt, hashIter, hashKeyLen, sha512.New)
 	hashCreationTime := time.Since(start)
 	hashEvent := event{elapsed: hashCreationTime}
-
-	switch {
-	case hashCreationTime < hashMinTime:
-		// This event should be the source of a Splunk alert for production environments
-		hashEvent.help = fmt.Sprintf("hash creation took less than %s time -- please increase hashIter in /bcda/auth/backend.go", hashMinTime)
-		secureHashTooFast(hashEvent)
-	case hashCreationTime > hashMaxTime:
-		// This event should be the source of a Splunk alert for production environments
-		hashEvent.help = fmt.Sprintf("hash creation took more than %s time -- please decrease hashIter in /bcda/auth/backend.go", hashMaxTime)
-		secureHashTooSlow(hashEvent)
-	}
+	secureHashTime(hashEvent)
 
 	return Hash(fmt.Sprintf("%s:%s", base64.StdEncoding.EncodeToString(salt), base64.StdEncoding.EncodeToString(h))), nil
 }
