@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/web"
 	"net/http"
 	"os"
@@ -34,10 +35,7 @@ import (
 const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
-var (
-	qc      *que.Client
-	Version = "latest"
-)
+var qc *que.Client
 
 func GetApp() *cli.App {
 	return setUpApp()
@@ -47,7 +45,7 @@ func setUpApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = Name
 	app.Usage = Usage
-	app.Version = Version
+	app.Version = constants.Version
 	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
 	app.Commands = []cli.Command{
 		{
