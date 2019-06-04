@@ -78,12 +78,8 @@ func accessTokenIssued(data event) {
 	mergeNonEmpty(data).WithField("event", "AccessTokenIssued").Print(data.help)
 }
 
-func secureHashTooSlow(data event) {
-	mergeNonEmpty(data).WithField("event", "SecureHashTooSlow").Print(data.help)
-}
-
-func secureHashTooFast(data event) {
-	mergeNonEmpty(data).WithField("event", "SecureHashTooFast").Print(data.help)
+func secureHashTime(data event) {
+	mergeNonEmpty(data).WithField("event", "SecureHashTime").Print(data.help)
 }
 
 func secretCreated(data event) {
