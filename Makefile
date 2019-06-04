@@ -93,4 +93,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
+.PHONY: docker-build docker-bootstrap load-fixtures load-synthetic-cclf-data test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint

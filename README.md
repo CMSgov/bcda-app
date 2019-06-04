@@ -151,4 +151,5 @@ docker exec -it bcda-app_api_1 sh -c 'tmp/bcda -h'
 If you have no data in your database, you can load the fixture data with
 ```sh
 make load-fixtures
+make load-synthetic-cclf-data
 ```
