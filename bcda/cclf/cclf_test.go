@@ -57,6 +57,12 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
+
+	// duplicate file types from cclf0
+	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000013"
+	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
+	_, err = importCCLF0(cclf0metadata)
+	assert.NotNil(err)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {

@@ -108,6 +108,14 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 					if validator == nil {
 						validator = make(map[string]cclfFileValidator)
 					}
+
+					if _, ok := validator[filetype]; ok {
+						fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
+						err = errors.Wrapf(err,"Duplicate %v file type found from CCLF0 file.\n", filetype)
+						log.Error(err)
+						return nil, err
+					}
+
 					count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
 					if err != nil {
 						fmt.Printf("Failed to parse %s record count from CCLF0 file.\n", filetype)
