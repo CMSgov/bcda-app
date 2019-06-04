@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"net/http"
 	"os"
@@ -28,10 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 )
 
-var (
-	qc      *que.Client
-	version = "latest"
-)
+var qc *que.Client
 
 /*
   	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
@@ -365,7 +363,7 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 		scheme = "https"
 	}
 	host := fmt.Sprintf("%s://%s", scheme, r.Host)
-	statement := responseutils.CreateCapabilityStatement(dt, version, host)
+	statement := responseutils.CreateCapabilityStatement(dt, constants.Version, host)
 	responseutils.WriteCapabilityStatement(statement, w)
 }
 
@@ -386,7 +384,7 @@ func metadata(w http.ResponseWriter, r *http.Request) {
 */
 func getVersion(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
-	respMap["version"] = version
+	respMap["version"] = constants.Version
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
 		log.Error(err)
