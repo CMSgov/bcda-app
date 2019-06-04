@@ -60,7 +60,7 @@ func (o OktaAuthPlugin) DeleteClient(clientID string) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
+func (o OktaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
 	clientSecret, err := o.backend.GenerateNewClientSecret(clientID)
 	if err != nil {
 		return Credentials{}, err

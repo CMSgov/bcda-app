@@ -109,7 +109,7 @@ func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
 	return nil
 }
 
-func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string, ttl int) (Credentials, error) {
+func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
 	genEvent := event{op: "GenerateClientCredentials", trackingID: clientID}
 	operationStarted(genEvent)
 
@@ -235,7 +235,7 @@ func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 }
 
 func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
-	tknEvent := event{op:"ValidateJWT"}
+	tknEvent := event{op: "ValidateJWT"}
 	operationStarted(tknEvent)
 	t, err := p.DecodeJWT(tokenString)
 	if err != nil {
