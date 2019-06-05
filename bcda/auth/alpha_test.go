@@ -136,6 +136,7 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), ts)
 	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
+
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: cc.ClientID, ClientSecret: "not_the_right_secret"})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)

@@ -1,0 +1,129 @@
+{"level":"info","msg":"opening ../../shared_files/api_unit_test_auth_private.pem","time":"2019-05-30T00:51:23.994102-07:00"}
+{"event":"ServiceStarted","level":"info","msg":"","time":"2019-05-30T00:51:23.995485-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.439336-07:00","trackingID":"07a51d73-c7f3-401d-b875-8147eba4a62b"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.44565-07:00","trackingID":"07a51d73-c7f3-401d-b875-8147eba4a62b"}
+{"elapsed":93133998,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T00:51:24.538854-07:00"}
+{"clientID":"07a51d73-c7f3-401d-b875-8147eba4a62b","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.54715-07:00","trackingID":"07a51d73-c7f3-401d-b875-8147eba4a62b"}
+{"event":"OperationFailed","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.742775-07:00","trackingID":"07a51d73-c7f3-401d-b875-8147eba4a62b"}
+{"event":"OperationFailed","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.750638-07:00"}
+{"event":"OperationFailed","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.750712-07:00","trackingID":"e91e619e-b6dd-4d0d-806e-acd7d65d274b"}
+{"event":"OperationFailed","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.750745-07:00"}
+{"event":"OperationFailed","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.756756-07:00","trackingID":"f493cabf-ad20-4a3a-b0a5-1dd8a888d10b"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.775146-07:00","trackingID":"184b26bb-4052-4888-a262-25ba01512798"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.780796-07:00","trackingID":"184b26bb-4052-4888-a262-25ba01512798"}
+{"elapsed":89972161,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T00:51:24.870829-07:00"}
+{"clientID":"184b26bb-4052-4888-a262-25ba01512798","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:24.878919-07:00","trackingID":"184b26bb-4052-4888-a262-25ba01512798"}
+{"event":"OperationStarted","level":"info","msg":"","op":"DeleteClient","time":"2019-05-30T00:51:24.886975-07:00","trackingID":"184b26bb-4052-4888-a262-25ba01512798"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"DeleteClient","time":"2019-05-30T00:51:24.900002-07:00","trackingID":"184b26bb-4052-4888-a262-25ba01512798"}
+{"event":"OperationStarted","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-30T00:51:24.909735-07:00","trackingID":"DBBD1CE1-AE24-435C-807D-ED45953077D3"}
+{"elapsed":89457918,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T00:51:25.004566-07:00"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-30T00:51:25.01228-07:00","trackingID":"DBBD1CE1-AE24-435C-807D-ED45953077D3"}
+{"event":"OperationStarted","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-30T00:51:25.012365-07:00","trackingID":"IDontexist"}
+{"elapsed":93721190,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T00:51:25.111568-07:00"}
+{"event":"OperationFailed","level":"info","msg":"pq: null value in column \"uuid\" violates not-null constraint","op":"GenerateClientCredentials","time":"2019-05-30T00:51:25.118652-07:00","trackingID":"IDontexist"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:25.130104-07:00","trackingID":"f6e01912-85f1-4b66-ba95-bd2b82256a8c"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:25.136541-07:00","trackingID":"f6e01912-85f1-4b66-ba95-bd2b82256a8c"}
+{"elapsed":91053889,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T00:51:25.227655-07:00"}
+{"clientID":"f6e01912-85f1-4b66-ba95-bd2b82256a8c","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:25.236247-07:00","trackingID":"f6e01912-85f1-4b66-ba95-bd2b82256a8c"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:25.330314-07:00","trackingID":"f6e01912-85f1-4b66-ba95-bd2b82256a8c"}
+{"event":"OperationFailed","level":"info","msg":"aco f6e01912-85f1-4b66-ba95-bd2b82256a8c has a secret","op":"RegisterClient","time":"2019-05-30T00:51:25.336612-07:00","trackingID":"f6e01912-85f1-4b66-ba95-bd2b82256a8c"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:25.336676-07:00"}
+{"event":"OperationFailed","level":"info","msg":"provide a non-empty string","op":"RegisterClient","time":"2019-05-30T00:51:25.336697-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T00:51:25.33672-07:00","trackingID":"93bc84da-a603-4584-aa81-99e2d66d6fc7"}
+{"event":"OperationFailed","level":"info","msg":"no ACO record found for 93bc84da-a603-4584-aa81-99e2d66d6fc7","op":"RegisterClient","time":"2019-05-30T00:51:25.342507-07:00","trackingID":"93bc84da-a603-4584-aa81-99e2d66d6fc7"}
+{"level":"error","msg":"could not decode token eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN because unexpected signing method: ES384","time":"2019-05-30T00:51:25.38929-07:00"}
+{"level":"error","msg":"could not decode token eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.MejLezWY6hjGgbIXkq6Qbvx_-q5vWaTR6qPiNHphvla-XaZD3up1DN6Ib5AEOVtuB3fC9l-0L36noK4qQA79lhpSK3gozXO6XPIcCp4C8MU_ACzGtYe7IwGnnK3Emr6IHQE0bpGinHX1Ak1pAuwJNawaQ6Nvmz2ozZPsyxmiwoo because crypto/rsa: verification error","time":"2019-05-30T00:51:25.389452-07:00"}
+{"level":"error","msg":"could not decode token eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhY28iOiJEQkJEMUNFMS1BRTI0LTQzNUMtODA3RC1FRDQ1OTUzMDc3RDMiLCJleHAiOjE1NTkyMDI2MjUsImlhdCI6MTU1OTIwMjY4NSwiaWQiOiI5NWZiYWRiYS0yY2Q3LTRhNTAtYjc1OC0wYjBhZDdlYWNmMmMiLCJzdWIiOiI4MjUwM0ExOC1CRjNCLTQzNkQtQkE3Qi1CQUUwOUI3RkZEMkYifQ.RA-bHWJh8Cge9notOXQyipldPgoS0dsZW4cUB6B8FOrPxUwBGV20sfbfBGJx7KzUtq2kFMLo1rPBBW4NKgKCEMgVuXs-4gLV96PVPREDpsuiWw9uRSIUScZV-0zONbEvrjRQ02YbjxGim6I3lLhMFRRmYQ1LWpL03Czx7TlUvD1C6SLULipllGuUlPbLazlpwm8SqJ6uE4vtmI700Hb0nuCiUr1q29zec3u__Qwy1SV-Y8gOwASNapTwk9nofeDPA86c0JDTd27IBzo5q85RYcXMd_GSXJyDRagWVfqQoq-Ix55ejzi99aKXqgBIgqcvKLZqxKz7rZwU_1kz7KTw0w because Token is expired","time":"2019-05-30T00:51:25.393089-07:00"}
+{"level":"info","msg":"opening ../../shared_files/api_unit_test_auth_private.pem","time":"2019-05-30T01:13:22.435947-07:00"}
+{"event":"ServiceStarted","level":"info","msg":"","time":"2019-05-30T01:13:22.437174-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:22.880156-07:00","trackingID":"7b14b298-3c5a-486c-812d-2d596168b7b3"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:22.888403-07:00","trackingID":"7b14b298-3c5a-486c-812d-2d596168b7b3"}
+{"elapsed":105844025,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T01:13:22.99434-07:00"}
+{"clientID":"7b14b298-3c5a-486c-812d-2d596168b7b3","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.002783-07:00","trackingID":"7b14b298-3c5a-486c-812d-2d596168b7b3"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"MakeAccessToken","time":"2019-05-30T01:13:23.100662-07:00","trackingID":"7b14b298-3c5a-486c-812d-2d596168b7b3"}
+{"event":"OperationFailed","level":"info","msg":"IsHashOf failed","op":"MakeAccessToken","time":"2019-05-30T01:13:23.210186-07:00","trackingID":"7b14b298-3c5a-486c-812d-2d596168b7b3"}
+{"event":"OperationFailed","level":"info","msg":"missing or incomplete credentials","op":"MakeAccessToken","time":"2019-05-30T01:13:23.217207-07:00"}
+{"event":"OperationFailed","level":"info","msg":"missing or incomplete credentials","op":"MakeAccessToken","time":"2019-05-30T01:13:23.217263-07:00","trackingID":"bd91c729-147e-4665-8267-a86a09de0712"}
+{"event":"OperationFailed","level":"info","msg":"missing or incomplete credentials","op":"MakeAccessToken","time":"2019-05-30T01:13:23.217291-07:00"}
+{"event":"OperationFailed","level":"info","msg":"no ACO record found for 474a2db9-f184-4567-a58d-03b428d55253","op":"MakeAccessToken","time":"2019-05-30T01:13:23.22293-07:00","trackingID":"474a2db9-f184-4567-a58d-03b428d55253"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.240714-07:00","trackingID":"20003d09-f0a8-42f1-a0e9-7c510598e88e"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.247327-07:00","trackingID":"20003d09-f0a8-42f1-a0e9-7c510598e88e"}
+{"elapsed":90881290,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T01:13:23.338275-07:00"}
+{"clientID":"20003d09-f0a8-42f1-a0e9-7c510598e88e","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.346229-07:00","trackingID":"20003d09-f0a8-42f1-a0e9-7c510598e88e"}
+{"event":"OperationStarted","level":"info","msg":"","op":"DeleteClient","time":"2019-05-30T01:13:23.352049-07:00","trackingID":"20003d09-f0a8-42f1-a0e9-7c510598e88e"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"DeleteClient","time":"2019-05-30T01:13:23.366701-07:00","trackingID":"20003d09-f0a8-42f1-a0e9-7c510598e88e"}
+{"event":"OperationStarted","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-30T01:13:23.376495-07:00","trackingID":"DBBD1CE1-AE24-435C-807D-ED45953077D3"}
+{"elapsed":89276317,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T01:13:23.471567-07:00"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-30T01:13:23.479888-07:00","trackingID":"DBBD1CE1-AE24-435C-807D-ED45953077D3"}
+{"event":"OperationStarted","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-30T01:13:23.479972-07:00","trackingID":"IDontexist"}
+{"elapsed":106720755,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T01:13:23.593635-07:00"}
+{"event":"OperationFailed","level":"info","msg":"pq: null value in column \"uuid\" violates not-null constraint","op":"GenerateClientCredentials","time":"2019-05-30T01:13:23.602415-07:00","trackingID":"IDontexist"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.615993-07:00","trackingID":"50a81f1d-f7ad-4e96-a540-7eac0b15d294"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.621768-07:00","trackingID":"50a81f1d-f7ad-4e96-a540-7eac0b15d294"}
+{"elapsed":89311119,"event":"SecureHashTooFast","level":"info","msg":"hash creation took less than 1s time -- please increase hashIter in /bcda/auth/backend.go","time":"2019-05-30T01:13:23.711137-07:00"}
+{"clientID":"50a81f1d-f7ad-4e96-a540-7eac0b15d294","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.718642-07:00","trackingID":"50a81f1d-f7ad-4e96-a540-7eac0b15d294"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.809487-07:00","trackingID":"50a81f1d-f7ad-4e96-a540-7eac0b15d294"}
+{"event":"OperationFailed","level":"info","msg":"aco 50a81f1d-f7ad-4e96-a540-7eac0b15d294 has a secret","op":"RegisterClient","time":"2019-05-30T01:13:23.815996-07:00","trackingID":"50a81f1d-f7ad-4e96-a540-7eac0b15d294"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.816055-07:00"}
+{"event":"OperationFailed","level":"info","msg":"provide a non-empty string","op":"RegisterClient","time":"2019-05-30T01:13:23.816075-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-30T01:13:23.816104-07:00","trackingID":"029a61b8-69ff-455a-85d7-4b7742cc156b"}
+{"event":"OperationFailed","level":"info","msg":"no ACO record found for 029a61b8-69ff-455a-85d7-4b7742cc156b","op":"RegisterClient","time":"2019-05-30T01:13:23.821573-07:00","trackingID":"029a61b8-69ff-455a-85d7-4b7742cc156b"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-30T01:13:23.851436-07:00"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-30T01:13:23.858399-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-30T01:13:23.860268-07:00"}
+{"event":"OperationFailed","level":"info","msg":"no ACO record found for fa4af78e-8b5f-43a5-811c-9c7e84175717","op":"ValidateJWT","time":"2019-05-30T01:13:23.867182-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-30T01:13:23.867254-07:00"}
+{"event":"OperationFailed","level":"info","msg":"unexpected signing method: ES384","op":"ValidateJWT","time":"2019-05-30T01:13:23.867306-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-30T01:13:23.867332-07:00"}
+{"event":"OperationFailed","level":"info","msg":"crypto/rsa: verification error","op":"ValidateJWT","time":"2019-05-30T01:13:23.867454-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-30T01:13:23.869234-07:00"}
+{"event":"OperationFailed","level":"info","msg":"missing one or more required claims","op":"ValidateJWT","time":"2019-05-30T01:13:23.869404-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-30T01:13:23.87122-07:00"}
+{"event":"OperationFailed","level":"info","msg":"Token is expired","op":"ValidateJWT","time":"2019-05-30T01:13:23.871353-07:00"}
+{"level":"info","msg":"opening ../../shared_files/api_unit_test_auth_private.pem","time":"2019-05-31T18:00:56.803353-07:00"}
+{"event":"ServiceStarted","level":"info","msg":"","time":"2019-05-31T18:00:56.804008-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:57.219897-07:00","trackingID":"b0f703b1-a2b5-46f4-9329-05bb57effa8c"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:57.226003-07:00","trackingID":"b0f703b1-a2b5-46f4-9329-05bb57effa8c"}
+{"elapsed":137610106,"event":"SecureHashTime","level":"info","msg":"","time":"2019-05-31T18:00:57.363669-07:00"}
+{"clientID":"b0f703b1-a2b5-46f4-9329-05bb57effa8c","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:57.371892-07:00","trackingID":"b0f703b1-a2b5-46f4-9329-05bb57effa8c"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"MakeAccessToken","time":"2019-05-31T18:00:57.519387-07:00","tokenID":"c20e555b-c484-45a0-994d-374a9c7a2551","trackingID":"b0f703b1-a2b5-46f4-9329-05bb57effa8c"}
+{"event":"AccessTokenIssued","level":"info","msg":"","op":"MakeAccessToken","time":"2019-05-31T18:00:57.519446-07:00","tokenID":"c20e555b-c484-45a0-994d-374a9c7a2551","trackingID":"b0f703b1-a2b5-46f4-9329-05bb57effa8c"}
+{"event":"OperationFailed","level":"info","msg":"IsHashOf failed","op":"MakeAccessToken","time":"2019-05-31T18:00:57.654072-07:00","trackingID":"b0f703b1-a2b5-46f4-9329-05bb57effa8c"}
+{"event":"OperationFailed","level":"info","msg":"missing or incomplete credentials","op":"MakeAccessToken","time":"2019-05-31T18:00:57.661918-07:00"}
+{"event":"OperationFailed","level":"info","msg":"missing or incomplete credentials","op":"MakeAccessToken","time":"2019-05-31T18:00:57.661974-07:00","trackingID":"9554eb68-81d0-4901-b654-56d5b66cc7c7"}
+{"event":"OperationFailed","level":"info","msg":"missing or incomplete credentials","op":"MakeAccessToken","time":"2019-05-31T18:00:57.662002-07:00"}
+{"event":"OperationFailed","level":"info","msg":"no ACO record found for e7c7e08a-0465-492b-8ca7-90e5c2e1bdee","op":"MakeAccessToken","time":"2019-05-31T18:00:57.667617-07:00","trackingID":"e7c7e08a-0465-492b-8ca7-90e5c2e1bdee"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:57.686735-07:00","trackingID":"d7e13230-3169-4d5d-81b3-dee8e279b10b"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:57.692965-07:00","trackingID":"d7e13230-3169-4d5d-81b3-dee8e279b10b"}
+{"elapsed":128942372,"event":"SecureHashTime","level":"info","msg":"","time":"2019-05-31T18:00:57.821966-07:00"}
+{"clientID":"d7e13230-3169-4d5d-81b3-dee8e279b10b","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:57.830389-07:00","trackingID":"d7e13230-3169-4d5d-81b3-dee8e279b10b"}
+{"event":"OperationStarted","level":"info","msg":"","op":"DeleteClient","time":"2019-05-31T18:00:57.836503-07:00","trackingID":"d7e13230-3169-4d5d-81b3-dee8e279b10b"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"DeleteClient","time":"2019-05-31T18:00:57.849596-07:00","trackingID":"d7e13230-3169-4d5d-81b3-dee8e279b10b"}
+{"event":"OperationStarted","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-31T18:00:57.862026-07:00","trackingID":"DBBD1CE1-AE24-435C-807D-ED45953077D3"}
+{"elapsed":128980842,"event":"SecureHashTime","level":"info","msg":"","time":"2019-05-31T18:00:57.998154-07:00"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-31T18:00:58.006312-07:00","trackingID":"DBBD1CE1-AE24-435C-807D-ED45953077D3"}
+{"event":"OperationStarted","level":"info","msg":"","op":"GenerateClientCredentials","time":"2019-05-31T18:00:58.006389-07:00","trackingID":"IDontexist"}
+{"elapsed":130760288,"event":"SecureHashTime","level":"info","msg":"","time":"2019-05-31T18:00:58.1428-07:00"}
+{"event":"OperationFailed","level":"info","msg":"pq: null value in column \"uuid\" violates not-null constraint","op":"GenerateClientCredentials","time":"2019-05-31T18:00:58.150123-07:00","trackingID":"IDontexist"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:58.162702-07:00","trackingID":"50ac6d51-2210-4934-9b0b-71219ecec8b1"}
+{"event":"SecretCreated","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:58.168629-07:00","trackingID":"50ac6d51-2210-4934-9b0b-71219ecec8b1"}
+{"elapsed":133223605,"event":"SecureHashTime","level":"info","msg":"","time":"2019-05-31T18:00:58.301913-07:00"}
+{"clientID":"50ac6d51-2210-4934-9b0b-71219ecec8b1","event":"OperationSucceeded","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:58.310774-07:00","trackingID":"50ac6d51-2210-4934-9b0b-71219ecec8b1"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:58.446028-07:00","trackingID":"50ac6d51-2210-4934-9b0b-71219ecec8b1"}
+{"event":"OperationFailed","level":"info","msg":"aco 50ac6d51-2210-4934-9b0b-71219ecec8b1 has a secret","op":"RegisterClient","time":"2019-05-31T18:00:58.453329-07:00","trackingID":"50ac6d51-2210-4934-9b0b-71219ecec8b1"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:58.453399-07:00"}
+{"event":"OperationFailed","level":"info","msg":"provide a non-empty string","op":"RegisterClient","time":"2019-05-31T18:00:58.453417-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"RegisterClient","time":"2019-05-31T18:00:58.453466-07:00","trackingID":"18034272-6827-42ee-aabd-5ef6a8829cec"}
+{"event":"OperationFailed","level":"info","msg":"no ACO record found for 18034272-6827-42ee-aabd-5ef6a8829cec","op":"RegisterClient","time":"2019-05-31T18:00:58.462149-07:00","trackingID":"18034272-6827-42ee-aabd-5ef6a8829cec"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-31T18:00:58.502211-07:00"}
+{"event":"OperationSucceeded","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-31T18:00:58.510818-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-31T18:00:58.51275-07:00"}
+{"event":"OperationFailed","level":"info","msg":"no ACO record found for 1d575280-adf6-44a4-bddb-749b9edab041","op":"ValidateJWT","time":"2019-05-31T18:00:58.522176-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-31T18:00:58.524012-07:00"}
+{"event":"OperationFailed","level":"info","msg":"unexpected signing method: ES384","op":"ValidateJWT","time":"2019-05-31T18:00:58.524124-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-31T18:00:58.524192-07:00"}
+{"event":"OperationFailed","level":"info","msg":"crypto/rsa: verification error","op":"ValidateJWT","time":"2019-05-31T18:00:58.524339-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-31T18:00:58.526468-07:00"}
+{"event":"OperationFailed","level":"info","msg":"missing one or more required claims","op":"ValidateJWT","time":"2019-05-31T18:00:58.526635-07:00"}
+{"event":"OperationStarted","level":"info","msg":"","op":"ValidateJWT","time":"2019-05-31T18:00:58.528515-07:00"}
+{"event":"OperationFailed","level":"info","msg":"Token is expired","op":"ValidateJWT","time":"2019-05-31T18:00:58.528648-07:00"}
