@@ -61,8 +61,11 @@ load-fixtures:
 	echo "Wait for database to be ready..."
 	sleep 5
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
+	$(MAKE) load-synthetic-cclf-data
 
 load-synthetic-cclf-data:
+	docker-compose up -d api
+	docker-compose up -d db
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev --environment=test'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=small --environment=test'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=medium --environment=test'
@@ -73,7 +76,11 @@ docker-build:
 	docker-compose build --force-rm
 	docker-compose -f docker-compose.test.yml build --force-rm
 
-docker-bootstrap: docker-build load-fixtures
+docker-bootstrap:
+	$(MAKE) docker-build
+	docker-compose up -d
+	sleep 30
+	$(MAKE) load-fixtures
 
 api-shell:
 	docker-compose exec api bash
