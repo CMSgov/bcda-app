@@ -46,23 +46,27 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	cclf0metadata = &cclfFileMetadata{}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
+	assert.EqualError(err, "could not read CCLF0 archive : read .: is a directory")
 
 	// missing cclf8 and or 9 from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
+	assert.Contains(err.Error(), "failed to parse CCLF8 from CCLF0 file")
 
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
+	assert.Contains(err.Error(), "failed to parse CCLF9 from CCLF0 file")
 
 	// duplicate file types from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000013"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
+	assert.Contains(err.Error(), "Duplicate CCLF9 file type found from CCLF0 file.")
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
