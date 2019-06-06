@@ -224,16 +224,17 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []s
 			log.Error(err)
 			errorCount++
 			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
-		}
-		cclfBeneficiary.BlueButtonID = blueButtonID
-		db.Save(&cclfBeneficiary)
-		pData, err := bbFunc(blueButtonID, jobID)
-		if err != nil {
-			log.Error(err)
-			errorCount++
-			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
 		} else {
-			fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoID, jobID)
+			cclfBeneficiary.BlueButtonID = blueButtonID
+			db.Save(&cclfBeneficiary)
+			pData, err := bbFunc(blueButtonID, jobID)
+			if err != nil {
+				log.Error(err)
+				errorCount++
+				appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
+			} else {
+				fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoID, jobID)
+			}
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {

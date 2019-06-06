@@ -391,7 +391,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	if len(patient.Entry) == 0 {
-		err = fmt.Errorf("patient identifier not found at BlueButton for cclfBenficiary ID: %v", cclfBeneficiary.ID)
+		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", cclfBeneficiary.ID)
 		log.Error(err)
 		return "", err
 	}
