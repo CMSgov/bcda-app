@@ -38,7 +38,7 @@ func init() {
 	uuid := strings.Split(filename, ".")[0]
 	if !r.MatchString(uuid) {
 		fmt.Printf("File name does not appear to be valid.\nPlease use the exact file name from the job status endpoint (i.e., of the format: <UUID>.ndjson).\n")
-		os.Exit(1)
+		os.Exit(2)
 	}
 }
 
@@ -67,13 +67,13 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 		sha256.New(), rand.Reader, privateKey, encryptedKey, []byte(base))
 	if err != nil {
 		fmt.Println("Failed to decrypt encrypted key")
-		os.Exit(1)
+		os.Exit(3)
 	}
 
 	ciphertext, err := ioutil.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		fmt.Println("Failed to read encrypted file")
-		os.Exit(1)
+		os.Exit(4)
 	}
 
 	var plaintext []byte
@@ -82,7 +82,7 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 	plaintext, err = decryptCipher(ciphertext, &key)
 	if err != nil {
 		fmt.Println("Failed to decrypt file")
-		os.Exit(1)
+		os.Exit(5)
 	}
 
 	fmt.Printf("%s", plaintext)
@@ -93,7 +93,7 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 	pkFile, err := os.Open(filepath.Clean(loc))
 	if err != nil {
 		fmt.Println("Failed to open private key")
-		os.Exit(1)
+		os.Exit(6)
 	}
 
 	pemfileinfo, _ := pkFile.Stat()
@@ -104,20 +104,20 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 	_, err = buffer.Read(pembytes)
 	if err != nil {
 		fmt.Println("Failed to read private key")
-		os.Exit(1)
+		os.Exit(7)
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
 	err = pkFile.Close()
 	if err != nil {
 		fmt.Println("Failed to decode private key")
-		os.Exit(1)
+		os.Exit(8)
 	}
 
 	imported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
 	if err != nil {
 		fmt.Println("Failed to parse private Key as PKCS1")
-		os.Exit(1)
+		os.Exit(9)
 	}
 
 	return imported
@@ -127,7 +127,7 @@ func main() {
 	ek, err := hex.DecodeString(encryptedKey)
 	if err != nil {
 		fmt.Println("Failed to decode encrypted key")
-		os.Exit(1)
+		os.Exit(10)
 	}
 	pk := getPrivateKey(private)
 	decryptFile(pk, ek, encryptedfilepath)
