@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"io/ioutil"
 	"log"
 	"os"
@@ -228,6 +229,83 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(filePath)
+}
+
+func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
+	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
+	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
+	os.Setenv("EXPORT_FAIL_PCT", "51")
+
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
+	jobID := "1"
+	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012312"}
+	db.Create(&cclfFile)
+	defer db.Delete(&cclfFile)
+
+	bbc := testUtils.BlueButtonClient{}
+	bbc.On("GetBlueButtonIdentifier", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
+
+	// clean out the data dir before beginning this test
+	os.RemoveAll(staging)
+	testUtils.CreateStaging(jobID)
+	badHICNs := []string{"000000001", "000000002"}
+	var cclfBeneficiaryIDs []string
+	for i := 0; i < len(badHICNs); i++ {
+		hicn := badHICNs[i]
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: hicn, MBI: "", BlueButtonID: ""}
+		db.Create(&cclfBeneficiary)
+		defer db.Delete(&cclfBeneficiary)
+		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+	}
+
+	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	assert.EqualError(t, err, "number of failed requests has exceeded threshold")
+
+	files, err := ioutil.ReadDir(staging)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(files))
+
+	// File 0: data
+	file0Path := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
+	file0, err := os.Open(file0Path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	scanner0 := bufio.NewScanner(file0)
+	// Should be empty
+	assert.False(t, scanner0.Scan())
+	file0.Close()
+
+	// File 1: errors
+	file1Path := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[1].Name())
+	file1, err := os.Open(file1Path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	scanner1 := bufio.NewScanner(file1)
+	for i := 0; i < 2; i++ {
+		assert.True(t, scanner1.Scan())
+		var jsonObj map[string]interface{}
+		err := json.Unmarshal(scanner1.Bytes(), &jsonObj)
+		assert.Nil(t, err)
+		assert.Equal(t, "OperationOutcome", jsonObj["resourceType"])
+		issues := jsonObj["issue"].([]interface{})
+		issue := issues[0].(map[string]interface{})
+		assert.Equal(t, "Error", issue["severity"])
+		details := issue["details"].(map[string]interface{})
+		assert.Contains(t, details["text"], "Error retrieving BlueButton ID for cclfBeneficiary")
+		assert.Nil(t, err)
+	}
+	assert.False(t, scanner1.Scan(), "There should be only 2 entries in the file.")
+	file1.Close()
+
+	bbc.AssertExpectations(t)
+
+	os.Remove(file0Path)
+	os.Remove(file1Path)
 }
 
 func TestGetFailureThreshold(t *testing.T) {
