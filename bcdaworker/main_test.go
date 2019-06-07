@@ -285,7 +285,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 		log.Fatal(err)
 	}
 	scanner1 := bufio.NewScanner(file1)
-	for i := 0; i < 2; i++ {
+	for _, cclfBeneID := range cclfBeneficiaryIDs {
 		assert.True(t, scanner1.Scan())
 		var jsonObj map[string]interface{}
 		err := json.Unmarshal(scanner1.Bytes(), &jsonObj)
@@ -295,7 +295,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 		issue := issues[0].(map[string]interface{})
 		assert.Equal(t, "Error", issue["severity"])
 		details := issue["details"].(map[string]interface{})
-		assert.Contains(t, details["text"], "Error retrieving BlueButton ID for cclfBeneficiary")
+		assert.Equal(t,fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
 		assert.Nil(t, err)
 	}
 	assert.False(t, scanner1.Scan(), "There should be only 2 entries in the file.")
