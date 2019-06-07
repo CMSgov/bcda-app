@@ -58,16 +58,29 @@ test:
 
 load-fixtures:
 	docker-compose up -d db
-	echo "Wait for db to be ready..."
+	echo "Wait for database to be ready..."
 	sleep 5
-	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
-	docker-compose exec db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/synthetic_cclf_files_beneficiaries.sql
+	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
+	$(MAKE) load-synthetic-cclf-data
+
+load-synthetic-cclf-data:
+	docker-compose up -d api
+	docker-compose up -d db
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=small --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=medium --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=large --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=extra-large --environment=test'
 
 docker-build:
 	docker-compose build --force-rm
 	docker-compose -f docker-compose.test.yml build --force-rm
 
-docker-bootstrap: docker-build load-fixtures
+docker-bootstrap:
+	$(MAKE) docker-build
+	docker-compose up -d
+	sleep 30
+	$(MAKE) load-fixtures
 
 api-shell:
 	docker-compose exec api bash
@@ -87,4 +100,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
+.PHONY: docker-build docker-bootstrap load-fixtures load-synthetic-cclf-data test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
