@@ -110,7 +110,7 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 	data, _ := pem.Decode([]byte(pembytes))
 	err = pkFile.Close()
 	if err != nil {
-		fmt.Println("Failed to decode private key")
+		fmt.Println("Failed to close private key")
 		os.Exit(8)
 	}
 
