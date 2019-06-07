@@ -90,7 +90,6 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	assert.Equal(t, 1, len(files))
 
 	for _, f := range files {
-		fmt.Println(f.Name())
 		filePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
 		file, err := os.Open(filePath)
 		if err != nil {
