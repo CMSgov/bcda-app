@@ -547,7 +547,8 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		imported:  true,
 	}
 	cclfmap["A0001_18"] = []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata}
-	cleanupCCLF(cclfmap)
+	err := cleanupCCLF(cclfmap)
+	assert.Nil(err)
 
 	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
 	if err != nil {
