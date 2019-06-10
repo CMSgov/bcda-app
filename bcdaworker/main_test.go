@@ -61,14 +61,13 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	jobID := "1"
-	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
-
-	// clean out the data dir before beginning this test
-	os.RemoveAll(staging)
+	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
+
 	beneficiaryIDs := []string{"1000003701", "1000050699"}
 	var cclfBeneficiaryIDs []string
 	for i := 0; i < len(beneficiaryIDs); i++ {
@@ -85,7 +84,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		t.Fail()
 	}
 
-	files, err := ioutil.ReadDir(staging)
+	files, err := ioutil.ReadDir(stagingDir)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(files))
 
@@ -131,7 +130,6 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
-
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "70")
@@ -159,15 +157,17 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 		defer db.Delete(&cclfBeneficiary)
 	}
 	jobID := "1"
+	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	fileName, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	fileUUID, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
 
-	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
-	fData, err := ioutil.ReadFile(filePath)
+	errorFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID)
+	fData, err := ioutil.ReadFile(errorFilePath)
 	if err != nil {
 		t.Fail()
 	}
@@ -177,8 +177,8 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 
-	os.Remove(fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, fileName))
-	os.Remove(filePath)
+	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID))
+	os.Remove(errorFilePath)
 }
 
 func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
@@ -213,8 +213,13 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	assert.Equal(t, "number of failed requests has exceeded threshold", err.Error())
 
-	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
-	fData, err := ioutil.ReadFile(filePath)
+	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	files, err := ioutil.ReadDir(stagingDir)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(files))
+
+	errorFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
+	fData, err := ioutil.ReadFile(errorFilePath)
 	if err != nil {
 		t.Fail()
 	}
@@ -227,7 +232,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	bbc.AssertNotCalled(t, "GetExplanationOfBenefitData", "1000012463")
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
-	os.Remove(filePath)
+	os.Remove(errorFilePath)
 }
 
 func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
@@ -239,7 +244,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	defer db.Close()
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
 	jobID := "1"
-	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012312"}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
@@ -248,7 +253,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	bbc.On("GetBlueButtonIdentifier", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
 
 	// clean out the data dir before beginning this test
-	os.RemoveAll(staging)
+	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 	badHICNs := []string{"000000001", "000000002"}
 	var cclfBeneficiaryIDs []string
@@ -263,32 +268,30 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	assert.EqualError(t, err, "number of failed requests has exceeded threshold")
 
-	files, err := ioutil.ReadDir(staging)
+	files, err := ioutil.ReadDir(stagingDir)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(files))
 
-	// File 0: data
-	file0Path := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
-	file0, err := os.Open(file0Path)
+	dataFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[1].Name())
+	dataFile, err := os.Open(dataFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	scanner0 := bufio.NewScanner(file0)
+	dataFileScanner := bufio.NewScanner(dataFile)
 	// Should be empty
-	assert.False(t, scanner0.Scan())
-	file0.Close()
+	assert.False(t, dataFileScanner.Scan())
+	dataFile.Close()
 
-	// File 1: errors
-	file1Path := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[1].Name())
-	file1, err := os.Open(file1Path)
+	errorFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
+	errorFile, err := os.Open(errorFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	scanner1 := bufio.NewScanner(file1)
+	errorFileScanner := bufio.NewScanner(errorFile)
 	for _, cclfBeneID := range cclfBeneficiaryIDs {
-		assert.True(t, scanner1.Scan())
+		assert.True(t, errorFileScanner.Scan())
 		var jsonObj map[string]interface{}
-		err := json.Unmarshal(scanner1.Bytes(), &jsonObj)
+		err := json.Unmarshal(errorFileScanner.Bytes(), &jsonObj)
 		assert.Nil(t, err)
 		assert.Equal(t, "OperationOutcome", jsonObj["resourceType"])
 		issues := jsonObj["issue"].([]interface{})
@@ -298,13 +301,13 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 		assert.Equal(t,fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
 		assert.Nil(t, err)
 	}
-	assert.False(t, scanner1.Scan(), "There should be only 2 entries in the file.")
-	file1.Close()
+	assert.False(t, errorFileScanner.Scan(), "There should be only 2 entries in the file.")
+	errorFile.Close()
 
 	bbc.AssertExpectations(t)
 
-	os.Remove(file0Path)
-	os.Remove(file1Path)
+	os.Remove(dataFilePath)
+	os.Remove(errorFilePath)
 }
 
 func TestGetFailureThreshold(t *testing.T) {
