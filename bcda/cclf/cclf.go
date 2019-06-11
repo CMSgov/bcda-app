@@ -404,7 +404,11 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}
 		cclf0.imported = cclf8 != nil && cclf8.imported && cclf9 != nil && cclf9.imported
 	}
-	cleanupCCLF(cclfmap)
+
+	err = cleanupCCLF(cclfmap)
+	if err != nil {
+		log.Error(err)
+	}
 
 	if failure > 0 {
 		err = errors.New("one or more files failed to import correctly")
@@ -573,7 +577,8 @@ func DeleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
 	return len(files), nil
 }
 
-func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) {
+func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) error {
+	errCount := 0
 	for _, cclflist := range cclfmap {
 		for _, cclf := range cclflist {
 			fmt.Printf("Cleaning up file %s.\n", cclf)
@@ -585,8 +590,10 @@ func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) {
 				if int(elapsed) > deleteThresholdHr {
 					err := os.Rename(cclf.filePath, newpath)
 					if err != nil {
-						fmt.Printf("File %s failed to cleanup properly.\n", cclf)
-						log.Errorf("File %s failed to cleanup properly", cclf)
+						errCount++
+						errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf, err)
+						fmt.Println(errMsg)
+						log.Error(errMsg)
 					} else {
 						fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf)
 						log.Infof("File %s never ingested, moved to the pending deletion dir", cclf)
@@ -596,8 +603,10 @@ func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) {
 				// move the successful files to the deletion dir
 				err := os.Rename(cclf.filePath, newpath)
 				if err != nil {
-					fmt.Printf("File %s failed to cleanup properly.\n", cclf)
-					log.Errorf("File %s failed to cleanup properly", cclf)
+					errCount++
+					errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf, err)
+					fmt.Println(errMsg)
+					log.Error(errMsg)
 				} else {
 					fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf)
 					log.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf)
@@ -605,6 +614,10 @@ func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) {
 			}
 		}
 	}
+	if errCount > 0 {
+		return fmt.Errorf("%d files could not be cleaned up", errCount)
+	}
+	return nil
 }
 
 func (m cclfFileMetadata) String() string {
