@@ -107,9 +107,10 @@ func processJob(j *que.Job) error {
 		}
 	}
 
-	fileName, err := writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	fileUUID, err := writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	fileName := fileUUID + ".ndjson"
 
-	// THis is only run AFTER completion of all the collection
+	// This is only run AFTER completion of all the collection
 	if err != nil {
 
 		err = db.Model(&exportJob).Update("status", "Failed").Error
@@ -169,7 +170,7 @@ func processJob(j *que.Job) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []string, jobID, t string) (fileName string, error error) {
+func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -201,8 +202,8 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []s
 	}
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
-	fileName = fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
-	f, err := os.Create(fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+	fileUUID = uuid.NewRandom().String()
+	f, err := os.Create(fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, fileUUID))
 	if err != nil {
 		log.Error(err)
 		return "", err
@@ -223,17 +224,18 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []s
 		if err != nil {
 			log.Error(err)
 			errorCount++
-			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
-		}
-		cclfBeneficiary.BlueButtonID = blueButtonID
-		db.Save(&cclfBeneficiary)
-		pData, err := bbFunc(blueButtonID, jobID)
-		if err != nil {
-			log.Error(err)
-			errorCount++
-			appendErrorToFile(acoID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
+			appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
-			fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoID, jobID)
+			cclfBeneficiary.BlueButtonID = blueButtonID
+			db.Save(&cclfBeneficiary)
+			pData, err := bbFunc(blueButtonID, jobID)
+			if err != nil {
+				log.Error(err)
+				errorCount++
+				appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
+			} else {
+				fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoID, jobID, fileUUID)
+			}
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
@@ -251,7 +253,7 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []s
 		log.Error(err)
 	}
 
-	return fileName, nil
+	return fileUUID, nil
 }
 
 func getFailureThreshold() float64 {
@@ -267,13 +269,13 @@ func getFailureThreshold() float64 {
 	return float64(exportFailPct)
 }
 
-func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID string) {
+func appendErrorToFile(fileUUID, code, detailsCode, detailsDisplay string, jobID string) {
 	segment := newrelic.StartSegment(txn, "appendErrorToFile")
 
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
-	fileName := fmt.Sprintf("%s/%s/%s-error.ndjson", dataDir, jobID, acoID)
+	fileName := fmt.Sprintf("%s/%s/%s-error.ndjson", dataDir, jobID, fileUUID)
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
 	if err != nil {
@@ -297,14 +299,14 @@ func appendErrorToFile(acoID, code, detailsCode, detailsDisplay string, jobID st
 	}
 }
 
-func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID, jobID string) {
+func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID, jobID, fileUUID string) {
 	segment := newrelic.StartSegment(txn, "fhirBundleToResourceNDJSON")
 
 	var jsonOBJ map[string]interface{}
 	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
 	if err != nil {
 		log.Error(err)
-		appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error UnMarshaling %s resources from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+		appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error unmarshaling %s resources from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		return
 	}
 
@@ -318,13 +320,13 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 			// This is unlikely to happen because we just unmarshalled this data a few lines above.
 			if err != nil {
 				log.Error(err)
-				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error Marshaling %s to Json for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+				appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 				continue
 			}
 			_, err = w.WriteString(string(entryJSON) + "\n")
 			if err != nil {
 				log.Error(err)
-				appendErrorToFile(acoID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+				appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			}
 		}
 	}

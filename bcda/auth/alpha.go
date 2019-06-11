@@ -185,7 +185,7 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 		return "", fmt.Errorf("invalid credentials")
 	}
 	issuedAt := time.Now().Unix()
-	expiresAt := time.Now().Add(time.Hour * time.Duration(TokenTTL)).Unix()
+	expiresAt := time.Now().Add(TokenTTL).Unix()
 	uuid := uuid.NewRandom().String()
 	tknEvent.tokenID = uuid
 	operationSucceeded(tknEvent)
