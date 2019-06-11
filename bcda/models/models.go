@@ -411,7 +411,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 
 	}
 	if !foundHICN {
-		err = fmt.Errorf("hashed hicn not found in the identifiers")
+		err = fmt.Errorf("hashed HICN not found in the identifiers")
 		log.Error(err)
 		return "", err
 	}
