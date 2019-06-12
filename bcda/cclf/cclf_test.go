@@ -66,7 +66,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "Duplicate CCLF9 file type found from CCLF0 file.")
+	assert.Contains(err.Error(), "duplicate CCLF9 file type found from CCLF0 file.")
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
