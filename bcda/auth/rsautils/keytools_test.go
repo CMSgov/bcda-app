@@ -8,7 +8,6 @@ import (
 
 type KeyToolsTestSuite struct {
 	suite.Suite
-	reset func()
 }
 
 func (s *KeyToolsTestSuite) SetupSuite() {
