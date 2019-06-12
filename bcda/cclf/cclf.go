@@ -111,7 +111,7 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 
 					if _, ok := validator[filetype]; ok {
 						fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
-						err := fmt.Errorf("Duplicate %v file type found from CCLF0 file.\n", filetype)
+						err := fmt.Errorf("duplicate %v file type found from CCLF0 file.\n", filetype)
 						log.Error(err)
 						return nil, err
 					}
