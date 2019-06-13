@@ -1,10 +1,6 @@
 package auth
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -82,83 +78,6 @@ func GetACOByCMSID(cmsID string) (models.ACO, error) {
 	return aco, err
 }
 
-// RevokeSystemKeyPair soft deletes the active encryption key
-// for the specified system so that it can no longer be used
-func RevokeSystemKeyPair(systemID uint) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var system models.System
-
-	err := db.Preload("EncryptionKeys").Find(&system, systemID).Error
-	if err != nil {
-		return err
-	}
-
-	var encryptionKey models.EncryptionKey
-	err = db.Find(&encryptionKey, system.EncryptionKeys[0].ID).Error
-	if err != nil {
-		return err
-	}
-
-	err = db.Delete(&encryptionKey).Error
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-/*
- GenerateSystemKeyPair creates a keypair for a system. The public key is saved to the database and the private key is returned.
-*/
-func GenerateSystemKeyPair(systemID uint) (string, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var system models.System
-	err := db.Preload("EncryptionKeys").First(&system, systemID).Error
-	if err != nil {
-		return "", errors.Wrapf(err, "could not find system ID %d", systemID)
-	}
-
-	if len(system.EncryptionKeys) > 0 {
-		return "", fmt.Errorf("encryption keypair already exists for system ID %d", systemID)
-	}
-
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return "", errors.Wrapf(err, "could not create key for system ID %d", systemID)
-	}
-
-	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		return "", errors.Wrapf(err, "could not marshal public key for system ID %d", systemID)
-	}
-
-	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: publicKeyPKIX,
-	})
-
-	encryptionKey := models.EncryptionKey{
-		Body:     string(publicKeyBytes),
-		SystemID: system.ID,
-	}
-
-	err = db.Create(&encryptionKey).Error
-	if err != nil {
-		return "", errors.Wrapf(err, "could not save key for system ID %d", systemID)
-	}
-
-	privateKeyBytes := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-		},
-	)
-
-	return string(privateKeyBytes), nil
-}
 func CreateAlphaToken(ttl int, acoCMSID string) (string, error) {
 	aco, err := createAlphaEntities(acoCMSID)
 	if err != nil {

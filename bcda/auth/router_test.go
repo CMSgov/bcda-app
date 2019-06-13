@@ -32,23 +32,3 @@ func (s *AuthRouterTestSuite) TestAuthTokenRoute() {
 	res := s.reqAuthRoute("POST", "/auth/token", nil)
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
-
-func (s *AuthRouterTestSuite) TestGetAuthGroupRoute() {
-	res := s.reqAuthRoute("GET", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-}
-
-func (s *AuthRouterTestSuite) TestPostAuthGroupRoute() {
-	res := s.reqAuthRoute("POST", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
-}
-
-func (s *AuthRouterTestSuite) TestPutAuthGroupRoute() {
-	res := s.reqAuthRoute("PUT", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
-}
-
-func (s *AuthRouterTestSuite) TestDeleteAuthGroupRoute() {
-	res := s.reqAuthRoute("DELETE", "/auth/group", nil)
-	assert.Equal(s.T(), http.StatusNotImplemented, res.StatusCode)
-}
