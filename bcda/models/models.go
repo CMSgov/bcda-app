@@ -4,21 +4,20 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
-	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -40,19 +39,12 @@ func InitializeGormModels() *gorm.DB {
 		&User{},
 		&Job{},
 		&JobKey{},
-		&Group{},
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
-		&System{},
-		&EncryptionKey{},
 	)
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
-
-	db.Model(&System{}).AddForeignKey("group_id", "groups(group_id)", "RESTRICT", "RESTRICT")
-
-	db.Model(&EncryptionKey{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")
 
 	return db
 }
@@ -156,12 +148,12 @@ type JobKey struct {
 // ACO-Beneficiary relationship models based on https://github.com/jinzhu/gorm/issues/719#issuecomment-168485989
 type ACO struct {
 	gorm.Model
-	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
-	CMSID            *string   `gorm:"type:char(5);unique" json:"cms_id"`
-	Name             string    `json:"name"`
-	ClientID         string    `json:"client_id"`
-	AlphaSecret      string    `json:"alpha_secret"`
-	PublicKey        string    `json:"public_key"`
+	UUID        uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
+	CMSID       *string   `gorm:"type:char(5);unique" json:"cms_id"`
+	Name        string    `json:"name"`
+	ClientID    string    `json:"client_id"`
+	AlphaSecret string    `json:"alpha_secret"`
+	PublicKey   string    `json:"public_key"`
 }
 
 func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
@@ -209,18 +201,18 @@ func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
 
 	k, err := ioutil.ReadAll(publicKey)
 	if err != nil {
-		return errors.Wrap(err, "cannot read public key for ACO " + aco.UUID.String())
+		return errors.Wrap(err, "cannot read public key for ACO "+aco.UUID.String())
 	}
 
 	key, err := rsautils.ReadPublicKey(string(k))
 	if err != nil || key == nil {
-		return errors.Wrap(err, "invalid public key for ACO " + aco.UUID.String())
+		return errors.Wrap(err, "invalid public key for ACO "+aco.UUID.String())
 	}
 
 	aco.PublicKey = string(k)
 	err = db.Save(&aco).Error
 	if err != nil {
-		return errors.Wrap(err, "cannot save public key for ACO " + aco.UUID.String())
+		return errors.Wrap(err, "cannot save public key for ACO "+aco.UUID.String())
 	}
 
 	return nil
@@ -297,36 +289,6 @@ func CreateAlphaACO(acoCMSID string, db *gorm.DB) (ACO, error) {
 	db.Create(&aco)
 
 	return aco, db.Error
-}
-
-type Group struct {
-	gorm.Model
-	GroupID string         `gorm:"unique;not null" json:"group_id"`
-	Data    postgres.Jsonb `json:"data"`
-}
-
-type GroupData struct {
-	Name      string     `json:"name"`
-	Users     []string   `json:"users"`
-	Scopes    []string   `json:"scopes"`
-	Systems   []System   `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"systems"`
-	Resources []Resource `json:"resources"`
-}
-
-type Resource struct {
-	ID     string   `json:"id"`
-	Name   string   `json:"name"`
-	Scopes []string `json:"scopes"`
-}
-
-type System struct {
-	gorm.Model
-	GroupID        string          `json:"group_id"`
-	ClientID       string          `json:"client_id"`
-	SoftwareID     string          `json:"software_id"`
-	ClientName     string          `json:"client_name"`
-	ClientURI      string          `json:"client_uri"`
-	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
 }
 
 type CCLFFile struct {
@@ -432,11 +394,4 @@ type jobEnqueueArgs struct {
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
-}
-
-type EncryptionKey struct {
-	gorm.Model
-	Body     string `json:"body"`
-	System   System `gorm:"foreignkey:SystemID;association_foreignkey:ID"`
-	SystemID uint   `json:"system_id"`
 }
