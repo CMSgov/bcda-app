@@ -32,6 +32,7 @@ type APIClient interface {
 	GetExplanationOfBenefitData(patientID, jobID string) (string, error)
 	GetPatientData(patientID, jobID string) (string, error)
 	GetCoverageData(beneficiaryID, jobID string) (string, error)
+
 	GetBlueButtonIdentifier(hashedHICN string) (string, error)
 }
 
@@ -98,7 +99,7 @@ type BeneDataFunc func(string, string) (string, error)
 func (bbc *BlueButtonClient) GetPatientData(patientID, jobID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
-	return bbc.getData(blueButtonBasePath+"/Patient/", params, "")
+	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID)
 }
 
 func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string, error) {
@@ -111,7 +112,7 @@ func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string,
 func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-	return bbc.getData(blueButtonBasePath+"/Coverage/", params, "")
+	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID)
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID string) (string, error) {
@@ -187,17 +188,16 @@ func logRequest(req *http.Request, resp *http.Response, jobID string) {
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
 		"job_id":      jobID,
-	}).Infoln("Blue Button request")
+	}).Infoln("request")
 
 	if resp != nil {
 		logger.WithFields(logrus.Fields{
 			"resp_code":      resp.StatusCode,
-			"bb_query_id":    resp.Header.Get("BlueButton-OriginalQueryId"),
-			"bb_query_ts":    resp.Header.Get("BlueButton-OriginalQueryTimestamp"),
-			"bb_uri":         resp.Header.Get("BlueButton-OriginalUrl"),
+			"bb_query_id":    req.Header.Get("BlueButton-OriginalQueryId"),
+			"bb_query_ts":    req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+			"bb_uri":         req.Header.Get("BlueButton-OriginalUrl"),
 			"job_id":         jobID,
-			"content_length": resp.ContentLength,
-		}).Infoln("Blue Button response")
+		}).Infoln("response")
 	}
 }
 
