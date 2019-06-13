@@ -1,10 +1,15 @@
 package rsautils
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"math/big"
 )
 
 const RSAKEYMINBITS = 2048
@@ -30,4 +35,61 @@ func ReadPublicKey (publicKey string) (*rsa.PublicKey, error) {
 	}
 
 	return rsaPub, nil
+}
+
+// Modified from source at: https://play.golang.org/p/mLpOxS-5Fy
+func ConvertJWKToPEM(jwks string) (string, error) {
+	j := map[string]string{}
+	err := json.Unmarshal([]byte(jwks), &j)
+	if err != nil {
+		return "", errors.New("unable to parse JSON for jwk: " + err.Error())
+	}
+
+	if j["kty"] != "RSA" {
+		return "", errors.New("invalid key type: " + j["kty"] + "; only 'RSA' accepted")
+	}
+
+	if j["use"] != "" && j["use"] != "enc" {
+		return "", errors.New("invalid use type: " + j["use"] + "; only 'enc' accepted")
+	}
+
+	nb, err := base64.RawURLEncoding.DecodeString(j["n"])
+	if err != nil {
+		return "", errors.New("base64 error in key n value: " + err.Error())
+	}
+	nv := new(big.Int).SetBytes(nb)
+
+	eb, err := base64.RawURLEncoding.DecodeString(j["e"])
+	if err != nil {
+		return "", errors.New("base64 error in key exponent: " + err.Error())
+	}
+
+	bigE := new(big.Int).SetBytes(eb)
+	if !bigE.IsInt64() {
+		return "", errors.New("key exponent too large: " + bigE.String())
+	}
+	ev := int(bigE.Int64())
+
+	pk := &rsa.PublicKey{
+		N: nv,
+		E: ev,
+	}
+
+	der, err := x509.MarshalPKIXPublicKey(pk)
+	if err != nil {
+		return "", errors.New("unable to marshal public key: " + err.Error())
+	}
+
+	block := &pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: der,
+	}
+
+	var out bytes.Buffer
+	err = pem.Encode(&out, block)
+	if err != nil {
+		return "", errors.New("unable to encode key in PEM format: " + err.Error())
+	}
+
+	return out.String(), nil
 }
