@@ -144,8 +144,11 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 
 	addRequestHeaders(req, reqID)
 
+	go logRequest(req, jobID)
 	resp, err := bbc.httpClient.Do(req)
-	logRequest(req, resp, jobID)
+	if resp != nil {
+		logResponse(req, resp, jobID)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -181,23 +184,23 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	req.Header.Add("BlueButton-BackendCall", "")
 }
 
-func logRequest(req *http.Request, resp *http.Response, jobID string) {
+func logRequest(req *http.Request, jobID string) {
 	logger.WithFields(logrus.Fields{
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
 		"job_id":      jobID,
 	}).Infoln("request")
+}
 
-	if resp != nil {
-		logger.WithFields(logrus.Fields{
-			"resp_code":      resp.StatusCode,
-			"bb_query_id":    req.Header.Get("BlueButton-OriginalQueryId"),
-			"bb_query_ts":    req.Header.Get("BlueButton-OriginalQueryTimestamp"),
-			"bb_uri":         req.Header.Get("BlueButton-OriginalUrl"),
-			"job_id":         jobID,
-		}).Infoln("response")
-	}
+func logResponse(req *http.Request, resp *http.Response, jobID string) {
+	logger.WithFields(logrus.Fields{
+		"resp_code":   resp.StatusCode,
+		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
+		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
+		"job_id":      jobID,
+	}).Infoln("response")
 }
 
 func GetDefaultParams() (params url.Values) {
