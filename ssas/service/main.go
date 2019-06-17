@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/CMSgov/bcda-app/ssas"
 )
 
 var logger *logrus.Logger
@@ -30,6 +32,7 @@ func init() {
 
 func main() {
 	logger.Info("Future home of the System-to-System Authentication Service")
+	logger.Infof("SSAS gave me %s", ssas.Provide())
 }
 
 func hello() string {
