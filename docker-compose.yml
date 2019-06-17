@@ -76,7 +76,7 @@ services:
       - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem 
       - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
       - BB_CHECK_CERT=false
-      - BB_TIMEOUT_MS=3000
+      - BB_TIMEOUT_MS=10000
       - BCDA_FHIR_MAX_RECORDS=10000
       - BB_HASH_PEPPER=6E6F747468657265616C706570706572
       - BB_HASH_ITER=2
