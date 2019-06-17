@@ -293,7 +293,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		}
 	}
 
-	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.\n", importedCount, fileMetadata.cclfNum, fileMetadata)
+	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
 	fmt.Println(successMsg)
 	log.Infof(successMsg)
 
