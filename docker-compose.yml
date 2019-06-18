@@ -54,6 +54,7 @@ services:
       - AUTH_HASH_ITERATIONS=130000
       - AUTH_HASH_KEY_LENGTH=64
       - AUTH_HASH_SALT_SIZE=32
+      - CCLF_IMPORT_STATUS_RECORDS_INTERVAL=1000
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -76,7 +77,7 @@ services:
       - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem 
       - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
       - BB_CHECK_CERT=false
-      - BB_TIMEOUT_MS=500
+      - BB_TIMEOUT_MS=10000
       - BCDA_FHIR_MAX_RECORDS=10000
       - BB_HASH_PEPPER=6E6F747468657265616C706570706572
       - BB_HASH_ITER=2
