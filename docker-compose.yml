@@ -54,6 +54,7 @@ services:
       - AUTH_HASH_ITERATIONS=130000
       - AUTH_HASH_KEY_LENGTH=64
       - AUTH_HASH_SALT_SIZE=32
+      - CCLF_IMPORT_STATUS_RECORDS_INTERVAL=1000
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
