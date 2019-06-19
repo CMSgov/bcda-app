@@ -6,9 +6,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
-	"log"
 )
 
 const DEFAULT_SCOPE = "bcda-api"
@@ -38,9 +39,9 @@ type System struct {
 	SoftwareID     string          `json:"software_id"`
 	ClientName     string          `json:"client_name"`
 	ClientURI      string          `json:"client_uri"`
-	APIScope	   string		   `json:"api_scope"`
+	APIScope       string          `json:"api_scope"`
 	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
-	Secrets		   []Secret		   `json:"secrets"`
+	Secrets        []Secret        `json:"secrets"`
 }
 
 type EncryptionKey struct {
@@ -62,7 +63,7 @@ func (system *System) SaveSecret(hashedSecret string) error {
 	defer database.Close(db)
 
 	secret := Secret{
-		Hash: hashedSecret,
+		Hash:     hashedSecret,
 		SystemID: system.ID,
 	}
 

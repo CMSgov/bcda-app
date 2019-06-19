@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"strconv"
+	"testing"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
-	"strconv"
-	"testing"
 
 	"github.com/stretchr/testify/suite"
 )
