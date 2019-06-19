@@ -21,10 +21,12 @@ func InitializeSystemModels() *gorm.DB {
 	db.AutoMigrate(
 		&System{},
 		&EncryptionKey{},
+		&Secret{},
 	)
 
 	db.Model(&System{}).AddForeignKey("group_id", "groups(group_id)", "RESTRICT", "RESTRICT")
 	db.Model(&EncryptionKey{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")
+	db.Model(&Secret{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")
 
 	return db
 }
@@ -38,6 +40,7 @@ type System struct {
 	ClientURI      string          `json:"client_uri"`
 	APIScope	   string		   `json:"api_scope"`
 	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
+	Secrets		   []Secret		   `json:"secrets"`
 }
 
 type EncryptionKey struct {
@@ -45,6 +48,53 @@ type EncryptionKey struct {
 	Body     string `json:"body"`
 	System   System `gorm:"foreignkey:SystemID;association_foreignkey:ID"`
 	SystemID uint   `json:"system_id"`
+}
+
+type Secret struct {
+	gorm.Model
+	Hash     string `json:"hash"`
+	System   System `gorm:"foreignkey:SystemID;association_foreignkey:ID"`
+	SystemID uint   `json:"system_id"`
+}
+
+func (system *System) SaveSecret(hashedSecret string) error {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	secret := Secret{
+		Hash: hashedSecret,
+		SystemID: system.ID,
+	}
+
+	err := db.Where("system_id = ?", system.ID).Delete(&Secret{}).Error
+	if err != nil {
+		return fmt.Errorf("unable to soft delete previous secrets for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	err = db.Create(&secret).Error
+	if err != nil {
+		return fmt.Errorf("could not save secret for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	return nil
+}
+
+func (system *System) GetSecret() (string, error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	secret := Secret{}
+
+	err := db.Where("system_id = ?", system.ID).First(&secret).Error
+	if err != nil {
+		return "", fmt.Errorf("unable to get hashed secret for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	if secret.Hash == "" {
+		return "", fmt.Errorf("stored hash of secret for clientID %s is blank", system.ClientID)
+	}
+
+	return secret.Hash, nil
 }
 
 // RevokeSystemKeyPair soft deletes the active encryption key

@@ -1,9 +1,12 @@
 package ssas
 
 import (
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
 	"strconv"
@@ -46,9 +49,8 @@ func (s *SystemsTestSuite) TestRevokeSystemKeyPair() {
 	s.db.Unscoped().Find(&encryptionKey)
 	assert.NotNil(encryptionKey.DeletedAt)
 
-	s.db.Unscoped().Delete(&encryptionKey)
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestGenerateSystemKeyPair() {
@@ -91,9 +93,8 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair() {
 	}
 	assert.Equal(&privateKey.PublicKey, publicKey)
 
-	s.db.Unscoped().Delete(&pubEncrKey)
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
@@ -124,9 +125,8 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	assert.EqualError(err, "encryption keypair already exists for system ID "+systemIDStr)
 	assert.Empty(privateKey)
 
-	s.db.Unscoped().Delete(&encrKey)
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestEncryptionKeyModel() {
@@ -147,8 +147,107 @@ func (s *SystemsTestSuite) TestEncryptionKeyModel() {
 	err = s.db.Save(&encryptionKey).Error
 	assert.Nil(err)
 
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestSaveSecret() {
+	assert := s.Assert()
+
+	group := Group{GroupID: "T21212"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group.GroupID}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	// First secret should save
+	secret1, err := generateSecret()
+	if err != nil {
+		s.FailNow("cannot generate random secret")
+	}
+	hashedSecret1, err := auth.NewHash(secret1)
+	if err != nil {
+		s.FailNow("cannot hash random secret")
+	}
+	err = system.SaveSecret(hashedSecret1.String())
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	// Second secret should cause first secret to be soft-deleted
+	secret2, err := generateSecret()
+	if err != nil {
+		s.FailNow("cannot generate random secret")
+	}
+	hashedSecret2, err := auth.NewHash(secret2)
+	if err != nil {
+		s.FailNow("cannot hash random secret")
+	}
+	err = system.SaveSecret(hashedSecret2.String())
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	// Verify we now retrieve second secret
+	// Note that this also tests GetSecret()
+	savedHash, err := system.GetSecret()
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	assert.True(auth.Hash(savedHash).IsHashOf(secret2))
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) cleanDatabase(group Group) error {
+	var system System
+	var encryptionKey EncryptionKey
+	var secret Secret
+	var systemIds []int
+	err := s.db.Where("group_id = ?", group.GroupID).Find(&system).Pluck("id", &systemIds).Error
+	if err != nil {
+		return fmt.Errorf("unable to find associated systems: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete encryption keys: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&secret).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete secrets: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Where("id IN (?)", systemIds).Delete(&system).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete systems: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Delete(&group).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete group: %s", err.Error())
+	}
+
+	return nil
+}
+
+// TODO: put this as a public function in the new plugin or in backend.go
+func generateSecret() (string, error) {
+	b := make([]byte, 40)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", b), nil
 }
 
 func TestSystemsTestSuite(t *testing.T) {
