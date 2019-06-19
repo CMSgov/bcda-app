@@ -49,7 +49,7 @@ func init() {
 	uuid := strings.Split(filename, ".")[0]
 	if !r.MatchString(uuid) {
 		fmt.Printf("File name does not appear to be valid.\nPlease use the exact file name from the job status endpoint (i.e., of the format: <UUID>.ndjson).\n")
-		os.Exit(2)
+		os.Exit(1)
 	}
 }
 
@@ -78,13 +78,13 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 		sha256.New(), rand.Reader, privateKey, encryptedKey, []byte(base))
 	if err != nil {
 		fmt.Println("Failed to decrypt encrypted key. Error:", err)
-		os.Exit(3)
+		os.Exit(1)
 	}
 
 	ciphertext, err := ioutil.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		fmt.Println("Failed to read encrypted file. Error:", err)
-		os.Exit(4)
+		os.Exit(1)
 	}
 
 	var plaintext []byte
@@ -93,7 +93,7 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 	plaintext, err = decryptCipher(ciphertext, &key)
 	if err != nil {
 		fmt.Println("Failed to decrypt file. Error:", err)
-		os.Exit(5)
+		os.Exit(1)
 	}
 
 	fmt.Printf("%s", plaintext)
@@ -104,7 +104,7 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 	pkFile, err := os.Open(filepath.Clean(loc))
 	if err != nil {
 		fmt.Println("Failed to open private key. Error:", err)
-		os.Exit(6)
+		os.Exit(1)
 	}
 
 	pemfileinfo, _ := pkFile.Stat()
@@ -115,20 +115,20 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 	_, err = buffer.Read(pembytes)
 	if err != nil {
 		fmt.Println("Failed to read private key. Error:", err)
-		os.Exit(7)
+		os.Exit(1)
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
 	err = pkFile.Close()
 	if err != nil {
 		fmt.Println("Failed to close private key. Error:", err)
-		os.Exit(8)
+		os.Exit(1)
 	}
 
 	imported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
 	if err != nil {
 		fmt.Println("Failed to parse private Key as PKCS1. Error:", err)
-		os.Exit(9)
+		os.Exit(1)
 	}
 
 	return imported
@@ -138,7 +138,7 @@ func main() {
 	ek, err := hex.DecodeString(encryptedKey)
 	if err != nil {
 		fmt.Println("Failed to decode encrypted key. Error:", err)
-		os.Exit(10)
+		os.Exit(1)
 	}
 	pk := getPrivateKey(private)
 	decryptFile(pk, ek, encryptedfilepath)
