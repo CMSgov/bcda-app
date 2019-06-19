@@ -143,8 +143,8 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 	addRequestHeaders(req, uuid.NewRandom())
 
 	tryCount := 0
-	maxTries := 3
-	retryInterval := 1000
+	maxTries := utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3)
+	retryInterval := utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)
 
 	for tryCount < maxTries {
 		tryCount++
