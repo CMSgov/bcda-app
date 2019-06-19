@@ -212,6 +212,12 @@ func (s *BBMockTestSuite) TestGetBlueButtonCoverageData() {
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 }
 
+func (s *BBMockTestSuite) TestGetBlueButtonCoverageData_500() {
+	p, err := s.bbClient.GetCoverageData("012345", "543210")
+	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Equal(s.T(), "", p)
+}
+
 func (s *BBMockTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
 	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
 	assert.Nil(s.T(), err)
@@ -219,11 +225,23 @@ func (s *BBMockTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
 	assert.Contains(s.T(), e, "excludeSAMHSA=true")
 }
 
+func (s *BBMockTestSuite) TestGetBlueButtonExplanationOfBenefitData_500() {
+	p, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
+	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Equal(s.T(), "", p)
+}
+
 func (s *BBMockTestSuite) TestGetBlueButtonMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), m, `{ "test": "ok"`)
 	assert.NotContains(s.T(), m, "excludeSAMHSA=true")
+}
+
+func (s *BBMockTestSuite) TestGetBlueButtonMetadata_500() {
+	p, err := s.bbClient.GetMetadata()
+	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Equal(s.T(), "", p)
 }
 
 // Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
