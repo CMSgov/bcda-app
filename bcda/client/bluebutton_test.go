@@ -51,7 +51,7 @@ func (s *BBMockTestSuite) SetupSuite() {
 }
 
 func (s *BBMockTestSuite) BeforeTest(suiteName, testName string) {
-	if strings.Index(testName, "500") > -1 {
+	if strings.Contains(testName, "500") {
 		s.ts = ts500
 	} else {
 		s.ts = ts200
