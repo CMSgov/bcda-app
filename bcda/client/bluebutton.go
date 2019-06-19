@@ -131,8 +131,6 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 	txn := m.Start(path, nil, nil)
 	defer m.End(txn)
 
-	reqID := uuid.NewRandom()
-
 	bbServer := os.Getenv("BB_SERVER_LOCATION")
 
 	req, err := http.NewRequest("GET", bbServer+path, nil)
@@ -142,29 +140,27 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 
 	req.URL.RawQuery = params.Encode()
 
-	addRequestHeaders(req, reqID)
+	addRequestHeaders(req, uuid.NewRandom())
 
-	go logRequest(req, jobID)
-	resp, err := bbc.httpClient.Do(req)
-	if resp != nil {
-		logResponse(req, resp, jobID)
-	}
-	if err != nil {
-		return "", err
-	}
+	tryCount := 0
+	maxTries := 3
+	retryInterval := 1000
 
-	defer resp.Body.Close()
+	for tryCount < maxTries {
+		tryCount++
+		if tryCount > 1 {
+			time.Sleep(time.Duration(retryInterval) * time.Millisecond)
+		}
 
-	if resp.StatusCode >= 400 {
-		return "", errors.New(resp.Status)
-	}
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+		data, err := bbc.tryRequest(req, jobID)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+		return data, nil
 	}
 
-	return string(data), nil
+	return "", fmt.Errorf("Blue Button request %s failed %d time(s)", req.Header.Get("BlueButton-OriginalQueryId"), tryCount)
 }
 
 func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
@@ -182,6 +178,29 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID) {
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
 	req.Header.Add("BlueButton-BackendCall", "")
+}
+
+func (bbc *BlueButtonClient) tryRequest(req *http.Request, jobID string) (string, error) {
+	go logRequest(req, jobID)
+	resp, err := bbc.httpClient.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+		logResponse(req, resp, jobID)
+	}
+	if err != nil {
+		return "", errors.Wrapf(err, "error from request %s", req.Header.Get("BlueButton-OriginalQueryId"))
+	}
+
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("error from request %s: %s", req.Header.Get("BlueButton-OriginalQueryId"), resp.Status)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrapf(err, "error reading response from request %s", req.Header.Get("BlueButton-OriginalQueryId"))
+	}
+
+	return string(data), nil
 }
 
 func logRequest(req *http.Request, jobID string) {
