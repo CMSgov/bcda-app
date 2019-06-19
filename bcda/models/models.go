@@ -17,7 +17,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -40,19 +39,12 @@ func InitializeGormModels() *gorm.DB {
 		&User{},
 		&Job{},
 		&JobKey{},
-		&Group{},
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
-		&System{},
-		&EncryptionKey{},
 	)
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
-
-	db.Model(&System{}).AddForeignKey("group_id", "groups(group_id)", "RESTRICT", "RESTRICT")
-
-	db.Model(&EncryptionKey{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")
 
 	return db
 }
@@ -299,36 +291,6 @@ func CreateAlphaACO(acoCMSID string, db *gorm.DB) (ACO, error) {
 	return aco, db.Error
 }
 
-type Group struct {
-	gorm.Model
-	GroupID string         `gorm:"unique;not null" json:"group_id"`
-	Data    postgres.Jsonb `json:"data"`
-}
-
-type GroupData struct {
-	Name      string     `json:"name"`
-	Users     []string   `json:"users"`
-	Scopes    []string   `json:"scopes"`
-	Systems   []System   `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"systems"`
-	Resources []Resource `json:"resources"`
-}
-
-type Resource struct {
-	ID     string   `json:"id"`
-	Name   string   `json:"name"`
-	Scopes []string `json:"scopes"`
-}
-
-type System struct {
-	gorm.Model
-	GroupID        string          `json:"group_id"`
-	ClientID       string          `json:"client_id"`
-	SoftwareID     string          `json:"software_id"`
-	ClientName     string          `json:"client_name"`
-	ClientURI      string          `json:"client_uri"`
-	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
-}
-
 type CCLFFile struct {
 	gorm.Model
 	CCLFNum         int       `gorm:"not null"`
@@ -432,11 +394,4 @@ type jobEnqueueArgs struct {
 	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
-}
-
-type EncryptionKey struct {
-	gorm.Model
-	Body     string `json:"body"`
-	System   System `gorm:"foreignkey:SystemID;association_foreignkey:ID"`
-	SystemID uint   `json:"system_id"`
 }

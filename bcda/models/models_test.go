@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -511,80 +510,6 @@ func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
 	assert.NotNil(beneficiaryIDs)
 	assert.Equal(100, len(beneficiaryIDs))
 
-}
-
-func (s *ModelsTestSuite) TestGroupModel() {
-	groupBytes := []byte(`{  
-		"group_id":"A12345",
-		"data":{  
-			"name":"ACO Corp Systems",
-			"users":[  
-				"00uiqolo7fEFSfif70h7",
-				"l0vckYyfyow4TZ0zOKek",
-				"HqtEi2khroEZkH4sdIzj"
-			],
-			"scopes":[  
-				"user-admin",
-				"system-admin"
-			],
-			"resources":[  
-				{  
-					"id":"xxx",
-					"name":"BCDA API",
-					"scopes":[  
-						"bcda-api"
-					]
-				},
-				{  
-					"id":"eft",
-					"name":"EFT CCLF",
-					"scopes":[  
-						"eft-app:download",
-						"eft-data:read"
-					]
-				}
-			],
-			"systems":[  
-				{  
-					"client_id":"4tuhiOIFIwriIOH3zn",
-					"software_id":"4NRB1-0XZABZI9E6-5SM3R",
-					"client_name":"ACO System A",
-					"client_uri":"https://www.acocorpsite.com"
-				}
-			]
-		}
-	}`)
-
-	group := Group{}
-	err := json.Unmarshal(groupBytes, &group)
-	assert.Nil(s.T(), err)
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	err = db.Save(&group).Error
-	assert.Nil(s.T(), err)
-}
-
-func (s *ModelsTestSuite) TestEncryptionKeyModel() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	group := Group{GroupID: "A00000"}
-	db.Save(&group)
-
-	system := System{GroupID: "A00000"}
-	db.Save(&system)
-
-	systemIDStr := strconv.FormatUint(uint64(system.ID), 10)
-	encryptionKeyBytes := []byte(`{"body": "this is a public key", "system_id": ` + systemIDStr + `}`)
-	encryptionKey := EncryptionKey{}
-	err := json.Unmarshal(encryptionKeyBytes, &encryptionKey)
-	assert.Nil(s.T(), err)
-
-	err = db.Save(&encryptionKey).Error
-	assert.Nil(s.T(), err)
-
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
 }
 
 func (s *ModelsTestSuite) TestGetBlueButtonID() {
