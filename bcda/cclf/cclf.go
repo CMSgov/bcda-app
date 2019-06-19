@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -108,6 +109,14 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 					if validator == nil {
 						validator = make(map[string]cclfFileValidator)
 					}
+
+					if _, ok := validator[filetype]; ok {
+						fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
+						err := fmt.Errorf("duplicate %v file type found from CCLF0 file.\n", filetype)
+						log.Error(err)
+						return nil, err
+					}
+
 					count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
 					if err != nil {
 						fmt.Printf("Failed to parse %s record count from CCLF0 file.\n", filetype)
@@ -254,6 +263,8 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		return err
 	}
 
+	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
+	importedCount := 0
 	for i, f := range r.File {
 		fmt.Printf("Reading file #%d from archive %s.\n", i, fileMetadata)
 		log.Infof("Reading file #%d from archive %s", i, fileMetadata)
@@ -274,12 +285,17 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 					log.Error(err)
 					return err
 				}
+				importedCount++
+				if (importedCount % importStatusInterval == 0) {
+					fmt.Printf("CCLF%d records imported: %d\n", fileMetadata.cclfNum, importedCount)
+				}
 			}
 		}
 	}
 
-	fmt.Printf("Successfully imported CCLF%d file %s.\n", fileMetadata.cclfNum, fileMetadata)
-	log.Infof("Successfully imported CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
+	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
+	fmt.Println(successMsg)
+	log.Infof(successMsg)
 
 	return nil
 }

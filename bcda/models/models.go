@@ -4,20 +4,20 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
-	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -148,12 +148,12 @@ type JobKey struct {
 // ACO-Beneficiary relationship models based on https://github.com/jinzhu/gorm/issues/719#issuecomment-168485989
 type ACO struct {
 	gorm.Model
-	UUID             uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
-	CMSID            *string   `gorm:"type:char(5);unique" json:"cms_id"`
-	Name             string    `json:"name"`
-	ClientID         string    `json:"client_id"`
-	AlphaSecret      string    `json:"alpha_secret"`
-	PublicKey        string    `json:"public_key"`
+	UUID        uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
+	CMSID       *string   `gorm:"type:char(5);unique" json:"cms_id"`
+	Name        string    `json:"name"`
+	ClientID    string    `json:"client_id"`
+	AlphaSecret string    `json:"alpha_secret"`
+	PublicKey   string    `json:"public_key"`
 }
 
 func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
@@ -201,18 +201,18 @@ func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
 
 	k, err := ioutil.ReadAll(publicKey)
 	if err != nil {
-		return errors.Wrap(err, "cannot read public key for ACO " + aco.UUID.String())
+		return errors.Wrap(err, "cannot read public key for ACO "+aco.UUID.String())
 	}
 
 	key, err := rsautils.ReadPublicKey(string(k))
 	if err != nil || key == nil {
-		return errors.Wrap(err, "invalid public key for ACO " + aco.UUID.String())
+		return errors.Wrap(err, "invalid public key for ACO "+aco.UUID.String())
 	}
 
 	aco.PublicKey = string(k)
 	err = db.Save(&aco).Error
 	if err != nil {
-		return errors.Wrap(err, "cannot save public key for ACO " + aco.UUID.String())
+		return errors.Wrap(err, "cannot save public key for ACO "+aco.UUID.String())
 	}
 
 	return nil
