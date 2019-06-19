@@ -29,16 +29,27 @@ func init() {
 	flag.StringVar(&private, "pk", "", "location of private key to use for decryption of symmetric key")
 	flag.Parse()
 
-	if encryptedKey == "" || encryptedfilepath == "" || private == "" {
-		fmt.Println("missing argument(s)")
+	var missingArgs []string
+	if encryptedKey == "" {
+		missingArgs = append(missingArgs, "key")
+	}
+	if encryptedfilepath == "" {
+		missingArgs = append(missingArgs, "file")
+	}
+	if private == "" {
+		missingArgs = append(missingArgs, "pk")
+	}
+	if len(missingArgs) > 0 {
+		fmt.Printf("Missing argument(s): %s\n", strings.Join(missingArgs, ", "))
 		os.Exit(1)
 	}
+
 	r, _ := regexp.Compile("^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}")
 	filename := path.Base(encryptedfilepath)
 	uuid := strings.Split(filename, ".")[0]
 	if !r.MatchString(uuid) {
 		fmt.Printf("File name does not appear to be valid.\nPlease use the exact file name from the job status endpoint (i.e., of the format: <UUID>.ndjson).\n")
-		os.Exit(2)
+		os.Exit(1)
 	}
 }
 
@@ -66,14 +77,14 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 	decryptedKey, err := rsa.DecryptOAEP(
 		sha256.New(), rand.Reader, privateKey, encryptedKey, []byte(base))
 	if err != nil {
-		fmt.Println("Failed to decrypt encrypted key")
-		os.Exit(3)
+		fmt.Println("Failed to decrypt encrypted key. Error:", err)
+		os.Exit(1)
 	}
 
 	ciphertext, err := ioutil.ReadFile(filepath.Clean(filename))
 	if err != nil {
-		fmt.Println("Failed to read encrypted file")
-		os.Exit(4)
+		fmt.Println("Failed to read encrypted file. Error:", err)
+		os.Exit(1)
 	}
 
 	var plaintext []byte
@@ -81,8 +92,8 @@ func decryptFile(privateKey *rsa.PrivateKey, encryptedKey []byte, filename strin
 	copy(key[:], decryptedKey[0:32])
 	plaintext, err = decryptCipher(ciphertext, &key)
 	if err != nil {
-		fmt.Println("Failed to decrypt file")
-		os.Exit(5)
+		fmt.Println("Failed to decrypt file. Error:", err)
+		os.Exit(1)
 	}
 
 	fmt.Printf("%s", plaintext)
@@ -92,8 +103,8 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 
 	pkFile, err := os.Open(filepath.Clean(loc))
 	if err != nil {
-		fmt.Println("Failed to open private key")
-		os.Exit(6)
+		fmt.Println("Failed to open private key. Error:", err)
+		os.Exit(1)
 	}
 
 	pemfileinfo, _ := pkFile.Stat()
@@ -103,21 +114,21 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 
 	_, err = buffer.Read(pembytes)
 	if err != nil {
-		fmt.Println("Failed to read private key")
-		os.Exit(7)
+		fmt.Println("Failed to read private key. Error:", err)
+		os.Exit(1)
 	}
 
 	data, _ := pem.Decode([]byte(pembytes))
 	err = pkFile.Close()
 	if err != nil {
-		fmt.Println("Failed to close private key")
-		os.Exit(8)
+		fmt.Println("Failed to close private key. Error:", err)
+		os.Exit(1)
 	}
 
 	imported, err := x509.ParsePKCS1PrivateKey(data.Bytes)
 	if err != nil {
-		fmt.Println("Failed to parse private Key as PKCS1")
-		os.Exit(9)
+		fmt.Println("Failed to parse private Key as PKCS1. Error:", err)
+		os.Exit(1)
 	}
 
 	return imported
@@ -126,8 +137,8 @@ func getPrivateKey(loc string) *rsa.PrivateKey {
 func main() {
 	ek, err := hex.DecodeString(encryptedKey)
 	if err != nil {
-		fmt.Println("Failed to decode encrypted key")
-		os.Exit(10)
+		fmt.Println("Failed to decode encrypted key. Error:", err)
+		os.Exit(1)
 	}
 	pk := getPrivateKey(private)
 	decryptFile(pk, ek, encryptedfilepath)
