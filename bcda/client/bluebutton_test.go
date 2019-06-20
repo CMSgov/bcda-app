@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -162,21 +164,21 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 }
 
 func (s *BBTestSuite) TestGetBlueButtonPatientData() {
-	p, err := s.bbClient.GetPatientData("012345", "543210")
+	p, err := s.bbClient.GetPatientData("012345", "543210", "A00234")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `{ "test": "ok"`)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonCoverageData() {
-	c, err := s.bbClient.GetCoverageData("012345", "543210")
+	c, err := s.bbClient.GetCoverageData("012345", "543210", "A00234")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), c, `{ "test": "ok"`)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 }
 
 func (s *BBTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
-	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
+	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210", "A00234")
 	assert.Nil(s.T(), err)
 
 	assert.Contains(s.T(), e, `{ "test": "ok"`)
@@ -210,6 +212,39 @@ func (s *BBTestSuite) TestHashHICN() {
 	HICN = "123456789"
 	HICNHash = client.HashHICN(HICN)
 	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
+}
+
+func (s *BBTestSuite) TestAddRequestHeaders() {
+
+	bbServer := os.Getenv("BB_SERVER_LOCATION")
+
+	req, err := http.NewRequest("GET", bbServer, nil)
+	assert.Nil(s.T(), err)
+	reqID := uuid.NewRandom()
+	assert.Nil(s.T(), err)
+
+	params := url.Values{}
+	params.Set("_format", "application/fhir+json")
+
+	req.URL.RawQuery = params.Encode()
+	client.AddRequestHeaders(req, reqID,"543210","A00234")
+
+	assert.Equal(s.T(), reqID.String(), req.Header.Get("BlueButton-OriginalQueryId"))
+	assert.Equal(s.T(), "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
+	assert.Equal(s.T(), "", req.Header.Get("BlueButton-BeneficiaryId"))
+	assert.Equal(s.T(), "", req.Header.Get("BlueButton-OriginatingIpAddress"))
+
+	assert.Equal(s.T(), "", req.Header.Get("keep-alive"))
+	assert.Equal(s.T(), "https", req.Header.Get("X-Forwarded-Proto"))
+	assert.Equal(s.T(), "", req.Header.Get("X-Forwarded-Host"))
+
+	assert.Equal(s.T(), req.URL.String(), req.Header.Get("BlueButton-OriginalUrl"))
+	assert.Equal(s.T(), req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
+	assert.Equal(s.T(), "", req.Header.Get("BlueButton-BackendCall"))
+
+	assert.Equal(s.T(), "543210", req.Header.Get("BCDA-JOBID"))
+	assert.Equal(s.T(), "A00234", req.Header.Get("BCDA-CMSID"))
+
 }
 
 func (s *BBTestSuite) TearDownTest() {
