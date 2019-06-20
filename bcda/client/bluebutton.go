@@ -140,7 +140,8 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 
 	req.URL.RawQuery = params.Encode()
 
-	addRequestHeaders(req, uuid.NewRandom())
+	queryID := uuid.NewRandom()
+	addRequestHeaders(req, queryID)
 
 	tryCount := 0
 	maxTries := utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3)
@@ -149,6 +150,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 	for tryCount < maxTries {
 		tryCount++
 		if tryCount > 1 {
+			logger.Infof("Retrying Blue Button request %s in %d ms...", queryID, retryInterval)
 			time.Sleep(time.Duration(retryInterval) * time.Millisecond)
 		}
 
@@ -160,7 +162,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 		return data, nil
 	}
 
-	return "", fmt.Errorf("Blue Button request %s failed %d time(s)", req.Header.Get("BlueButton-OriginalQueryId"), tryCount)
+	return "", fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, tryCount)
 }
 
 func addRequestHeaders(req *http.Request, reqID uuid.UUID) {

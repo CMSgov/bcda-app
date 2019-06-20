@@ -17,7 +17,7 @@ type BBTestSuite struct {
 	suite.Suite
 }
 
-type BBMockTestSuite struct {
+type BBRequestTestSuite struct {
 	BBTestSuite
 	bbClient *client.BlueButtonClient
 	ts       *httptest.Server
@@ -31,7 +31,7 @@ func (s *BBTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 }
 
-func (s *BBMockTestSuite) SetupSuite() {
+func (s *BBRequestTestSuite) SetupSuite() {
 	ts200 = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", r.URL.Query().Get("_format"))
 		response := fmt.Sprintf("{ \"test\": \"ok\"; \"url\": %v}", r.URL.String())
@@ -50,7 +50,7 @@ func (s *BBMockTestSuite) SetupSuite() {
 	}
 }
 
-func (s *BBMockTestSuite) BeforeTest(suiteName, testName string) {
+func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
 	if strings.Contains(testName, "500") {
 		s.ts = ts500
 	} else {
@@ -59,6 +59,7 @@ func (s *BBMockTestSuite) BeforeTest(suiteName, testName string) {
 	os.Setenv("BB_SERVER_LOCATION", s.ts.URL)
 }
 
+/* Tests for creating client and other functions that don't make requests */
 func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	origCertFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	defer os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
@@ -191,54 +192,54 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 
 }
 
-/* Tests below use mock Blue Button client */
-func (s *BBMockTestSuite) TestGetBlueButtonPatientData() {
+/* Tests that make requests, using clients configured with the 200 response and 500 response httptest.Servers initialized in SetupSuite() */
+func (s *BBRequestTestSuite) TestGetBlueButtonPatientData() {
 	p, err := s.bbClient.GetPatientData("012345", "543210")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `{ "test": "ok"`)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 }
 
-func (s *BBMockTestSuite) TestGetBlueButtonPatientData_500() {
+func (s *BBRequestTestSuite) TestGetBlueButtonPatientData_500() {
 	p, err := s.bbClient.GetPatientData("012345", "543210")
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBMockTestSuite) TestGetBlueButtonCoverageData() {
+func (s *BBRequestTestSuite) TestGetBlueButtonCoverageData() {
 	c, err := s.bbClient.GetCoverageData("012345", "543210")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), c, `{ "test": "ok"`)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 }
 
-func (s *BBMockTestSuite) TestGetBlueButtonCoverageData_500() {
+func (s *BBRequestTestSuite) TestGetBlueButtonCoverageData_500() {
 	p, err := s.bbClient.GetCoverageData("012345", "543210")
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBMockTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
+func (s *BBRequestTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
 	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), e, `{ "test": "ok"`)
 	assert.Contains(s.T(), e, "excludeSAMHSA=true")
 }
 
-func (s *BBMockTestSuite) TestGetBlueButtonExplanationOfBenefitData_500() {
+func (s *BBRequestTestSuite) TestGetBlueButtonExplanationOfBenefitData_500() {
 	p, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210")
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBMockTestSuite) TestGetBlueButtonMetadata() {
+func (s *BBRequestTestSuite) TestGetBlueButtonMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), m, `{ "test": "ok"`)
 	assert.NotContains(s.T(), m, "excludeSAMHSA=true")
 }
 
-func (s *BBMockTestSuite) TestGetBlueButtonMetadata_500() {
+func (s *BBRequestTestSuite) TestGetBlueButtonMetadata_500() {
 	p, err := s.bbClient.GetMetadata()
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
@@ -258,11 +259,11 @@ func (s *BBTestSuite) TestHashHICN() {
 	assert.NotEqual(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
 }
 
-func (s *BBMockTestSuite) TearDownAllSuite() {
+func (s *BBRequestTestSuite) TearDownAllSuite() {
 	s.ts.Close()
 }
 
 func TestBBTestSuite(t *testing.T) {
 	suite.Run(t, new(BBTestSuite))
-	suite.Run(t, new(BBMockTestSuite))
+	suite.Run(t, new(BBRequestTestSuite))
 }
