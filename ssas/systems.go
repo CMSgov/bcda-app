@@ -5,13 +5,16 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
 	"io"
 	"io/ioutil"
 	"log"
+	"net/url"
 )
 
 const DEFAULT_SCOPE = "bcda-api"
@@ -215,4 +218,130 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 	)
 
 	return string(privateKeyBytes), nil
+}
+
+func RegisterSystem(clientID string, clientName string, clientURI string, groupID string, scope string, publicKeyPEM string) (auth.Credentials, error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	creds := auth.Credentials{}
+
+	// TODO: decide whether to track if this was an API request called by the ACO (/auth/register), ACO-MS (/auth/system), or a CLI command
+	regEvent := Event{Op: "RegisterClient", TrackingID: clientID}
+	OperationStarted(regEvent)
+
+	if clientID == "" {
+		regEvent.Help = "clientID is required"
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	if clientName == "" {
+		regEvent.Help = "clientName is required"
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	if clientURI != "" && !isValidURI(clientURI) {
+		regEvent.Help = "clientURI is invalid: " + clientURI
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	if scope == "" {
+		scope = DEFAULT_SCOPE
+	} else if scope != DEFAULT_SCOPE {
+		regEvent.Help = "scope must be: " + DEFAULT_SCOPE
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	_, err := rsautils.ReadPublicKey(publicKeyPEM)
+	if err != nil {
+		regEvent.Help = "error in public key: " + err.Error()
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	system := System{
+		GroupID:     groupID,
+		ClientID: clientID,
+		ClientName: clientName,
+		ClientURI: clientURI,
+		APIScope: scope,
+	}
+
+	err = db.Create(&system).Error
+	if err != nil {
+		return creds, fmt.Errorf("could not save system for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
+	}
+
+	encryptionKey := EncryptionKey{
+		Body: publicKeyPEM,
+		SystemID: system.ID,
+	}
+
+	// While the createEncryptionKey method below _could_ be called here, we would lose the benefit of the transaction.
+	err = db.Create(&encryptionKey).Error
+	if err != nil {
+		return creds, fmt.Errorf("could not save public key for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
+	}
+
+	clientSecret, err := GenerateSecret()
+	if err != nil {
+		regEvent.Help = fmt.Sprintf("cannot generate secret for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	hashedSecret, err := auth.NewHash(clientSecret)
+	if err != nil {
+		regEvent.Help = fmt.Sprintf("cannot generate hash of secret for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	err = system.SaveSecret(hashedSecret.String())
+	if err != nil {
+		regEvent.Help = fmt.Sprintf("cannot save secret for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	creds.ClientID = system.ClientID
+	creds.ClientSecret = clientSecret
+	creds.ClientName = system.ClientName
+
+	OperationSucceeded(regEvent)
+	return creds, nil
+}
+
+func GetSystemByClientID(clientID string) (System, error) {
+	var (
+		db = database.GetGORMDbConnection()
+		system System
+		err error
+	)
+	defer database.Close(db)
+
+	if db.Find(&system, "client_id = ?", clientID).RecordNotFound() {
+		err = errors.New("no System record found for " + clientID)
+	}
+	return system, err
+}
+
+// TODO: put this as a public function in the new plugin or in backend.go
+func GenerateSecret() (string, error) {
+	b := make([]byte, 40)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", b), nil
+}
+
+func isValidURI(u string) bool {
+	_, err := url.ParseRequestURI(u)
+	return err == nil
 }
