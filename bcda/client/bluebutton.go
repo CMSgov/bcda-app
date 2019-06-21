@@ -29,9 +29,9 @@ var logger *logrus.Logger
 const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
-	GetExplanationOfBenefitData(patientID, jobID string, cmsID string) (string, error)
-	GetPatientData(patientID, jobID string, cmsID string) (string, error)
-	GetCoverageData(beneficiaryID, jobID string, cmsID string) (string, error)
+	GetExplanationOfBenefitData(patientID, jobID, cmsID string) (string, error)
+	GetPatientData(patientID, jobID, cmsID string) (string, error)
+	GetCoverageData(beneficiaryID, jobID, cmsID string) (string, error)
 	GetBlueButtonIdentifier(hashedHICN string) (string, error)
 }
 
@@ -144,10 +144,10 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 
 	AddRequestHeaders(req, reqID, jobID, cmsID)
 
-	go logRequest(req, jobID)
+	go logRequest(req)
 	resp, err := bbc.httpClient.Do(req)
 	if resp != nil {
-		logResponse(req, resp, jobID)
+		logResponse(req, resp)
 	}
 	if err != nil {
 		return "", err
@@ -186,7 +186,7 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BCDA-CMSID", cmsID)
 }
 
-func logRequest(req *http.Request, jobID string) {
+func logRequest(req *http.Request) {
 	logger.WithFields(logrus.Fields{
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
@@ -195,7 +195,7 @@ func logRequest(req *http.Request, jobID string) {
 	}).Infoln("request")
 }
 
-func logResponse(req *http.Request, resp *http.Response, jobID string) {
+func logResponse(req *http.Request, resp *http.Response) {
 	logger.WithFields(logrus.Fields{
 		"resp_code":   resp.StatusCode,
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
