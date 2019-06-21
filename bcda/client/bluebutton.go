@@ -150,7 +150,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID strin
 	for tryCount < maxTries {
 		tryCount++
 		if tryCount > 1 {
-			logger.Infof("Retrying Blue Button request %s in %d ms...", queryID, retryInterval)
+			logger.Infof("Blue Button request %s try #%d in %d ms...", queryID, tryCount, retryInterval)
 			time.Sleep(time.Duration(retryInterval) * time.Millisecond)
 		}
 
