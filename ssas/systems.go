@@ -6,10 +6,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"log"
-
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
+	"io"
+	"io/ioutil"
+	"log"
 )
 
 const DEFAULT_SCOPE = "bcda-api"
@@ -96,6 +98,55 @@ func (system *System) GetSecret() (string, error) {
 	}
 
 	return secret.Hash, nil
+}
+
+func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var encryptionKey EncryptionKey
+	err := db.Where("system_id = ?", system.ID).Find(&encryptionKey).Error
+	if err != nil {
+		return nil, fmt.Errorf("cannot find public key for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	return rsautils.ReadPublicKey(encryptionKey.Body)
+}
+
+func (system *System) SavePublicKey(publicKey io.Reader) error {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	k, err := ioutil.ReadAll(publicKey)
+	if err != nil {
+		return fmt.Errorf("cannot read public key for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	key, err := rsautils.ReadPublicKey(string(k))
+	if err != nil {
+		return fmt.Errorf("invalid public key for clientID %s: %s", system.ClientID, err.Error())
+	}
+	if key == nil {
+		return fmt.Errorf("invalid public key for clientID %s", system.ClientID)
+	}
+
+	encryptionKey := EncryptionKey{
+		Body: string(k),
+		SystemID: system.ID,
+	}
+
+	// Only one key should be valid per system.  Soft delete the currently active key, if any.
+	err = db.Where("system_id = ?", system.ID).Delete(&EncryptionKey{}).Error
+	if err != nil {
+		return fmt.Errorf("unable to soft delete previous encryption keys for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	err = db.Create(&encryptionKey).Error
+	if err != nil {
+		return fmt.Errorf("could not save public key for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	return nil
 }
 
 // RevokeSystemKeyPair soft deletes the active encryption key
