@@ -155,7 +155,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 			time.Sleep(time.Duration(retryInterval) * time.Millisecond)
 		}
 
-		data, err := bbc.tryRequest(req, jobID)
+		data, err := bbc.tryRequest(req)
 		if err != nil {
 			logger.Error(err)
 			continue
@@ -185,7 +185,7 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BCDA-CMSID", cmsID)
 }
 
-func (bbc *BlueButtonClient) tryRequest(req *http.Request, jobID string) (string, error) {
+func (bbc *BlueButtonClient) tryRequest(req *http.Request) (string, error) {
 	go logRequest(req)
 	resp, err := bbc.httpClient.Do(req)
 	if resp != nil {
