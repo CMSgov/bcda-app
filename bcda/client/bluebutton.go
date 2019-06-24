@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/pkg/errors"
@@ -123,15 +124,13 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	params := GetDefaultParams()
-	return bbc.getData(blueButtonBasePath+"/metadata/", params, "","")
+	return bbc.getData(blueButtonBasePath+"/metadata/", params, "", "")
 }
 
 func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsID string) (string, error) {
 	m := monitoring.GetMonitor()
 	txn := m.Start(path, nil, nil)
 	defer m.End(txn)
-
-	reqID := uuid.NewRandom()
 
 	bbServer := os.Getenv("BB_SERVER_LOCATION")
 
@@ -142,29 +141,29 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 
 	req.URL.RawQuery = params.Encode()
 
-	AddRequestHeaders(req, reqID, jobID, cmsID)
+	queryID := uuid.NewRandom()
+	AddRequestHeaders(req, queryID, jobID, cmsID)
 
-	go logRequest(req)
-	resp, err := bbc.httpClient.Do(req)
-	if resp != nil {
-		logResponse(req, resp)
+	tryCount := 0
+	maxTries := utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3)
+	retryInterval := utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)
+
+	for tryCount < maxTries {
+		tryCount++
+		if tryCount > 1 {
+			logger.Infof("Blue Button request %s try #%d in %d ms...", queryID, tryCount, retryInterval)
+			time.Sleep(time.Duration(retryInterval) * time.Millisecond)
+		}
+
+		data, err := bbc.tryRequest(req, jobID)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+		return data, nil
 	}
-	if err != nil {
-		return "", err
-	}
 
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return "", errors.New(resp.Status)
-	}
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(data), nil
+	return "", fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, tryCount)
 }
 
 func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
@@ -184,6 +183,29 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BlueButton-BackendCall", "")
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
+}
+
+func (bbc *BlueButtonClient) tryRequest(req *http.Request, jobID string) (string, error) {
+	go logRequest(req)
+	resp, err := bbc.httpClient.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+		logResponse(req, resp)
+	}
+	if err != nil {
+		return "", errors.Wrapf(err, "error from request %s", req.Header.Get("BlueButton-OriginalQueryId"))
+	}
+
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("error from request %s: %s", req.Header.Get("BlueButton-OriginalQueryId"), resp.Status)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrapf(err, "error reading response from request %s", req.Header.Get("BlueButton-OriginalQueryId"))
+	}
+
+	return string(data), nil
 }
 
 func logRequest(req *http.Request) {
