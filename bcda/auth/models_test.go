@@ -45,21 +45,6 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), tokenString)
-
-	// Get the claims of the token to find the token ID that was created
-	token := auth.Token{
-		UUID:      tokenUUID,
-		Active:    true,
-		ACOID:     acoUUID,
-		IssuedAt:  issuedAt,
-		ExpiresOn: expiresOn,
-	}
-	s.db.Create(&token)
-
-	var savedToken auth.Token
-	s.db.Find(&savedToken, "UUID = ?", tokenUUID)
-	assert.NotNil(s.T(), savedToken)
-	assert.Equal(s.T(), tokenString, savedToken.TokenString)
 }
 
 func (s *ModelsTestSuite) TestCreateAlphaToken() {
