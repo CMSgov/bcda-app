@@ -1,14 +1,20 @@
 package ssas
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
 	"strconv"
+	"strings"
 	"testing"
-
 	"github.com/stretchr/testify/suite"
 )
 
@@ -46,9 +52,8 @@ func (s *SystemsTestSuite) TestRevokeSystemKeyPair() {
 	s.db.Unscoped().Find(&encryptionKey)
 	assert.NotNil(encryptionKey.DeletedAt)
 
-	s.db.Unscoped().Delete(&encryptionKey)
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestGenerateSystemKeyPair() {
@@ -91,9 +96,8 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair() {
 	}
 	assert.Equal(&privateKey.PublicKey, publicKey)
 
-	s.db.Unscoped().Delete(&pubEncrKey)
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
@@ -124,9 +128,146 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	assert.EqualError(err, "encryption keypair already exists for system ID "+systemIDStr)
 	assert.Empty(privateKey)
 
-	s.db.Unscoped().Delete(&encrKey)
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestSystemSavePublicKey() {
+	assert := s.Assert()
+
+	clientID := uuid.NewRandom().String()
+	groupID := "T33333"
+
+	// Setup Group and System
+	group := Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	assert.Nil(err)
+	system := System{ClientID: clientID, GroupID: groupID}
+	err = s.db.Create(&system).Error
+	assert.Nil(err)
+
+
+	// Setup key
+	keyPair, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.Nil(err, "error creating random test keypair")
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
+	assert.Nil(err, "unable to marshal public key")
+	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+	assert.NotNil(publicKeyBytes, "unexpectedly empty public key byte slice")
+
+	// Save key
+	err = system.SavePublicKey(bytes.NewReader(publicKeyBytes))
+	if err != nil {
+		assert.FailNow("error saving key: " + err.Error())
+	}
+
+	// Retrieve and verify
+	storedKey, err := system.GetPublicKey()
+	assert.Nil(err)
+	assert.NotNil(storedKey)
+	storedPublicKeyPKIX, err := x509.MarshalPKIXPublicKey(storedKey)
+	assert.Nil(err, "unable to marshal saved public key")
+	storedPublicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: storedPublicKeyPKIX,
+	})
+	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
+	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestSystemSavePublicKeyInvalidKey() {
+	assert := s.Assert()
+
+	clientID := uuid.NewRandom().String()
+	groupID := "T44444"
+
+	// Setup Group and System
+	group := Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	assert.Nil(err)
+	system := System{ClientID: clientID, GroupID: groupID}
+	err = s.db.Create(&system).Error
+	assert.Nil(err)
+
+	emptyPEM := "-----BEGIN RSA PUBLIC KEY-----    -----END RSA PUBLIC KEY-----"
+	invalidPEM :=
+		`-----BEGIN RSA PUBLIC KEY-----
+z2v9wLlK4zPAs3pLln3R/4NnGFKw2Eku2JVFTotQ03gSmSzesZixicw8LxgYKbNV
+oyTpERFansw6BbCJe7AP90rmaxCx80NiewFq+7ncqMbCMcqeUuCwk8MjS6bjvpcC
+htFCqeRi6AAUDRg0pcG8yoM+jo13Z5RJPOIf3ofohncfH5wr5Q7qiOCE5VH4I7cp
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
+lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
+IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
+OwIDAQAB
+-----END RSA PUBLIC KEY-----`
+	keyPair, err := rsa.GenerateKey(rand.Reader, 512)
+	assert.Nil(err, "unable to generate key pair")
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
+	assert.Nil(err, "unable to marshal public key")
+	lowBitPubKey := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+	assert.NotNil(lowBitPubKey, "unexpectedly empty public key byte slice")
+
+	err = system.SavePublicKey(strings.NewReader(""))
+	assert.NotNil(err, "empty string should not be saved")
+
+	err = system.SavePublicKey(strings.NewReader(emptyPEM))
+	assert.NotNil(err, "empty PEM should not be saved")
+
+	err = system.SavePublicKey(strings.NewReader(invalidPEM))
+	assert.NotNil(err, "invalid PEM should not be saved")
+
+	err = system.SavePublicKey(bytes.NewReader(lowBitPubKey))
+	assert.NotNil(err, "insecure public key should not be saved")
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestSystemPublicKeyEmpty() {
+	assert := s.Assert()
+
+	clientID := uuid.NewRandom().String()
+	groupID := "T22222"
+
+	// Setup Group and System
+	group := Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	assert.Nil(err)
+	system := System{ClientID: clientID, GroupID: groupID}
+	err = s.db.Create(&system).Error
+	assert.Nil(err)
+
+	emptyPEM := "-----BEGIN RSA PUBLIC KEY-----    -----END RSA PUBLIC KEY-----"
+	validPEM, err := generatePublicKey(2048)
+	assert.Nil(err)
+
+	err = system.SavePublicKey(strings.NewReader(""))
+	assert.NotNil(err)
+	k, err := system.GetPublicKey()
+	assert.NotNil(err)
+	assert.Nil(k, "Empty string does not yield nil public key!")
+	err = system.SavePublicKey(strings.NewReader(emptyPEM))
+	assert.NotNil(err)
+	k, err = system.GetPublicKey()
+	assert.NotNil(err)
+	assert.Nil(k, "Empty PEM key does not yield nil public key!")
+	err = system.SavePublicKey(strings.NewReader(validPEM))
+	assert.Nil(err)
+	k, err = system.GetPublicKey()
+	assert.Nil(err)
+	assert.NotNil(k, "Valid PEM key yields nil public key!")
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestEncryptionKeyModel() {
@@ -147,8 +288,126 @@ func (s *SystemsTestSuite) TestEncryptionKeyModel() {
 	err = s.db.Save(&encryptionKey).Error
 	assert.Nil(err)
 
-	s.db.Unscoped().Delete(&system)
-	s.db.Unscoped().Delete(&group)
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func generatePublicKey(bits int) (string, error) {
+	keyPair, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return "", fmt.Errorf("unable to generate keyPair: %s", err.Error())
+	}
+
+	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("unable to marshal public key: %s", err.Error())
+	}
+
+	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicKeyPKIX,
+	})
+
+	return string(publicKeyBytes), nil
+}
+
+func (s *SystemsTestSuite) TestSaveSecret() {
+	assert := s.Assert()
+
+	group := Group{GroupID: "T21212"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group.GroupID}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	// First secret should save
+	secret1, err := generateSecret()
+	if err != nil {
+		s.FailNow("cannot generate random secret")
+	}
+	hashedSecret1, err := auth.NewHash(secret1)
+	if err != nil {
+		s.FailNow("cannot hash random secret")
+	}
+	err = system.SaveSecret(hashedSecret1.String())
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	// Second secret should cause first secret to be soft-deleted
+	secret2, err := generateSecret()
+	if err != nil {
+		s.FailNow("cannot generate random secret")
+	}
+	hashedSecret2, err := auth.NewHash(secret2)
+	if err != nil {
+		s.FailNow("cannot hash random secret")
+	}
+	err = system.SaveSecret(hashedSecret2.String())
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	// Verify we now retrieve second secret
+	// Note that this also tests GetSecret()
+	savedHash, err := system.GetSecret()
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	assert.True(auth.Hash(savedHash).IsHashOf(secret2))
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) cleanDatabase(group Group) error {
+	var system System
+	var encryptionKey EncryptionKey
+	var secret Secret
+	var systemIds []int
+	err := s.db.Where("group_id = ?", group.GroupID).Find(&system).Pluck("id", &systemIds).Error
+	if err != nil {
+		return fmt.Errorf("unable to find associated systems: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete encryption keys: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&secret).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete secrets: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Where("id IN (?)", systemIds).Delete(&system).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete systems: %s", err.Error())
+	}
+
+	err = s.db.Unscoped().Delete(&group).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete group: %s", err.Error())
+	}
+
+	return nil
+}
+
+// TODO: put this as a public function in the new plugin or in backend.go
+func generateSecret() (string, error) {
+	b := make([]byte, 40)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", b), nil
 }
 
 func TestSystemsTestSuite(t *testing.T) {
