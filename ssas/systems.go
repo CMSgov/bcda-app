@@ -224,9 +224,18 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
+	// A system is not valid without an active public key and a hashed secret.  However, they are stored separately in the
+	// encryption_keys and secrets tables, requiring multiple INSERT statement.  To ensure we do not get into an invalid state,
+	// wrap the two INSERT statements in a transaction.
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	creds := auth.Credentials{}
 
-	// TODO: decide whether to track if this was an API request called by the ACO (/auth/register), ACO-MS (/auth/system), or a CLI command
 	regEvent := Event{Op: "RegisterClient", TrackingID: clientID}
 	OperationStarted(regEvent)
 
@@ -271,7 +280,7 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 		APIScope: scope,
 	}
 
-	err = db.Create(&system).Error
+	err = tx.Create(&system).Error
 	if err != nil {
 		return creds, fmt.Errorf("could not save system for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
 	}
@@ -281,8 +290,9 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 		SystemID: system.ID,
 	}
 
-	// While the createEncryptionKey method below _could_ be called here, we would lose the benefit of the transaction.
-	err = db.Create(&encryptionKey).Error
+	// While the createEncryptionKey method below _could_ be called here (and system.SaveSecret() below),
+	// we would lose the benefit of the transaction.
+	err = tx.Create(&encryptionKey).Error
 	if err != nil {
 		return creds, fmt.Errorf("could not save public key for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
 	}
@@ -301,9 +311,21 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 		return creds, errors.New(regEvent.Help)
 	}
 
-	err = system.SaveSecret(hashedSecret.String())
+	secret := Secret{
+		Hash: hashedSecret.String(),
+		SystemID: system.ID,
+	}
+
+	err = tx.Create(&secret).Error
 	if err != nil {
 		regEvent.Help = fmt.Sprintf("cannot save secret for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(regEvent)
+		return creds, errors.New(regEvent.Help)
+	}
+
+	err = tx.Commit().Error
+	if err != nil {
+		regEvent.Help = fmt.Sprintf("could not commit transaction for new system with groupID %s: %s", groupID, err.Error())
 		OperationFailed(regEvent)
 		return creds, errors.New(regEvent.Help)
 	}
