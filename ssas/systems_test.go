@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
 	"github.com/stretchr/testify/suite"
 )
 
@@ -444,6 +443,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 
 	// First secret should save
 	secret1, err := GenerateSecret()
+
 	if err != nil {
 		s.FailNow("cannot generate random secret")
 	}
@@ -458,6 +458,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 
 	// Second secret should cause first secret to be soft-deleted
 	secret2, err := GenerateSecret()
+  
 	if err != nil {
 		s.FailNow("cannot generate random secret")
 	}
@@ -487,6 +488,7 @@ func (s *SystemsTestSuite) cleanDatabase(group Group) error {
 	var encryptionKey EncryptionKey
 	var secret Secret
 	var systemIds []int
+  
 	err := s.db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
 		return fmt.Errorf("unable to find associated systems: %s", err.Error())
