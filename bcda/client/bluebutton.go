@@ -214,6 +214,7 @@ func logRequest(req *http.Request) {
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
 		"job_id":      req.Header.Get("BCDA-JOBID"),
+		"cms_id":      req.Header.Get("BCDA-CMSID"),
 	}).Infoln("request")
 }
 
@@ -224,6 +225,7 @@ func logResponse(req *http.Request, resp *http.Response) {
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
 		"job_id":      req.Header.Get("BCDA-JOBID"),
+		"cms_id":      req.Header.Get("BCDA-CMSID"),
 	}).Infoln("response")
 }
 
