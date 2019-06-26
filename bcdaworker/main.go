@@ -84,6 +84,12 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
+	var aco models.ACO
+	err = db.First(&aco, "uuid = ?", exportJob.ACOID).Error
+	if err != nil {
+		return err
+	}
+
 	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
 	if err != nil {
 		return err
@@ -107,7 +113,7 @@ func processJob(j *que.Job) error {
 		}
 	}
 
-	fileUUID, err := writeBBDataToFile(bb, jobArgs.ACOID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	fileUUID, err := writeBBDataToFile(bb, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
@@ -170,7 +176,7 @@ func processJob(j *que.Job) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
+func writeBBDataToFile(bb client.APIClient, acoID string, cmsID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -228,7 +234,7 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cclfBeneficiaryIDs []s
 		} else {
 			cclfBeneficiary.BlueButtonID = blueButtonID
 			db.Save(&cclfBeneficiary)
-			pData, err := bbFunc(blueButtonID, jobID)
+			pData, err := bbFunc(blueButtonID, jobID, cmsID)
 			if err != nil {
 				log.Error(err)
 				errorCount++
