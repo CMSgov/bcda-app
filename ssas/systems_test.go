@@ -292,6 +292,121 @@ func (s *SystemsTestSuite) TestEncryptionKeyModel() {
 	assert.Nil(err)
 }
 
+func (s *SystemsTestSuite) TestGetSystemByClientIDSuccess() {
+	assert := s.Assert()
+
+	group := Group{GroupID: "abcdef123456"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group.GroupID, ClientID: "987654zyxwvu", ClientName: "Client with System"}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	sys, err := GetSystemByClientID(system.ClientID)
+	assert.Nil(err)
+	assert.NotEmpty(sys)
+	assert.Equal("Client with System", sys.ClientName)
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
+	assert := s.Assert()
+
+	groupID := "T54321"
+	group := Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	pubKey, err := generatePublicKey(2048)
+	assert.Nil(err)
+
+	creds, err := RegisterSystem("abcd1234", "Create System Test", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	assert.Nil(err)
+	assert.Equal("Create System Test", creds.ClientName)
+	assert.NotEqual("", creds.ClientSecret)
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
+	assert := s.Assert()
+
+	groupID := "T11223"
+	group := Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	pubKey, err := generatePublicKey(2048)
+	assert.Nil(err)
+
+	// No clientID
+	creds, err := RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	assert.NotNil(err)
+	assert.Empty(creds)
+
+	// No clientName
+	creds, err = RegisterSystem("a1b2c3d3", "", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	assert.NotNil(err)
+	assert.Empty(creds)
+
+	// No clientURI = success
+	creds, err = RegisterSystem("a1b2c3d4", "Register System Success1", "", groupID, DEFAULT_SCOPE, pubKey)
+	assert.Nil(err)
+	assert.NotEmpty(creds)
+
+	// No scope = success
+	creds, err = RegisterSystem("a1b2c3d5", "Register System Success2", "https://no.client.uri.net", groupID, "", pubKey)
+	assert.Nil(err)
+	assert.NotEmpty(creds)
+
+	err = s.cleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
+	assert := s.Assert()
+
+	groupID := "T22334"
+	group := Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	pubKey, err := generatePublicKey(1024)
+	assert.Nil(err)
+
+	// Blank key
+	creds, err := RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, "")
+	assert.NotNil(err)
+	assert.Empty(creds)
+
+	// Invalid key
+	creds, err = RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, "NotAKey")
+	assert.NotNil(err)
+	assert.Empty(creds)
+
+	// Key length too low
+	creds, err = RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	assert.NotNil(err)
+	assert.Empty(creds)
+
+	err = s.db.Unscoped().Delete(&group).Error
+	assert.Nil(err)
+}
+
 func generatePublicKey(bits int) (string, error) {
 	keyPair, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
@@ -327,7 +442,8 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	}
 
 	// First secret should save
-	secret1, err := generateSecret()
+	secret1, err := GenerateSecret()
+
 	if err != nil {
 		s.FailNow("cannot generate random secret")
 	}
@@ -341,7 +457,8 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	}
 
 	// Second secret should cause first secret to be soft-deleted
-	secret2, err := generateSecret()
+	secret2, err := GenerateSecret()
+  
 	if err != nil {
 		s.FailNow("cannot generate random secret")
 	}
@@ -371,10 +488,12 @@ func (s *SystemsTestSuite) cleanDatabase(group Group) error {
 	var encryptionKey EncryptionKey
 	var secret Secret
 	var systemIds []int
-	err := s.db.Where("group_id = ?", group.GroupID).Find(&system).Pluck("id", &systemIds).Error
+  
+	err := s.db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
 		return fmt.Errorf("unable to find associated systems: %s", err.Error())
 	}
+	fmt.Println("System ID's: ", systemIds)
 
 	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
 	if err != nil {
@@ -397,17 +516,6 @@ func (s *SystemsTestSuite) cleanDatabase(group Group) error {
 	}
 
 	return nil
-}
-
-// TODO: put this as a public function in the new plugin or in backend.go
-func generateSecret() (string, error) {
-	b := make([]byte, 40)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", b), nil
 }
 
 func TestSystemsTestSuite(t *testing.T) {
