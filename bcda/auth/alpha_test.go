@@ -139,7 +139,6 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	t, _ := s.p.DecodeJWT(ts)
 	c := t.Claims.(*auth.CommonClaims)
 	assert.True(s.T(), c.ExpiresAt <= time.Now().Unix()+3600)
-	assert.False(s.T(), c.ExpiresAt > time.Now().Unix()+3600)
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: cc.ClientID, ClientSecret: "not_the_right_secret"})
 	assert.NotNil(s.T(), err)
