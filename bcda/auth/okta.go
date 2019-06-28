@@ -84,11 +84,7 @@ func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
 }
 
 // Manufactures an access token for the given credentials
-func (o OktaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
-	return "", nil
-}
-
-func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
+func (o OktaAuthPlugin) MakeAccessToken(creds Credentials) (string, error) {
 	clientID := creds.ClientID
 	// Also accept clientID via creds.UserID to match alpha auth implementation
 	if clientID == "" {
@@ -96,21 +92,21 @@ func (o OktaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, e
 	}
 
 	if clientID == "" {
-		return Token{}, fmt.Errorf("client ID required")
+		return "", fmt.Errorf("client ID required")
 	}
 
 	if creds.ClientSecret == "" {
-		return Token{}, fmt.Errorf("client secret required")
+		return "", fmt.Errorf("client secret required")
 	}
 
 	clientCreds := client.Credentials{ClientID: clientID, ClientSecret: creds.ClientSecret}
 	ot, err := o.backend.RequestAccessToken(clientCreds)
 
 	if err != nil {
-		return Token{}, err
+		return "", err
 	}
 
-	return Token{TokenString: ot.AccessToken}, nil
+	return ot.AccessToken, nil
 }
 
 func (o OktaAuthPlugin) RevokeAccessToken(tokenString string) error {
