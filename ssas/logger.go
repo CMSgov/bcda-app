@@ -71,6 +71,10 @@ func OperationSucceeded(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationSucceeded").Print(data.Help)
 }
 
+func OperationCalled(data Event) {
+	mergeNonEmpty(data).WithField("Event", "OperationCalled").Print(data.Help)
+}
+
 func OperationFailed(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationFailed").Print(data.Help)
 }

@@ -1,11 +1,11 @@
 package web
 
 import (
+	ssasapi "github.com/CMSgov/bcda-app/ssas/service/api"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/go-chi/chi"
@@ -14,7 +14,7 @@ import (
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
+	r.Use(ssasapi.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 
 	// Serve up the swagger ui folder
 	swagger_path := "./swaggerui"
@@ -33,14 +33,14 @@ func NewAPIRouter() http.Handler {
 		FileServer(r, "/", http.Dir(jekyll_path))
 	}
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
+		r.With(ssasapi.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
+			r.With(ssasapi.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
 		}
 		if os.Getenv("ENABLE_COVERAGE_EXPORT") == "true" {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Coverage/$export", bulkCoverageRequest))
+			r.With(ssasapi.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Coverage/$export", bulkCoverageRequest))
 		}
-		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
+		r.With(ssasapi.RequireTokenAuth, ssasapi.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
 	})
 	r.Get(m.WrapHandler("/_version", getVersion))
@@ -50,14 +50,14 @@ func NewAPIRouter() http.Handler {
 }
 
 func NewAuthRouter() http.Handler {
-	return auth.NewAuthRouter(logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
+	return ssasapi.NewAuthRouter(logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
 }
 
 func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
-	r.Use(auth.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
-	r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).
+	r.Use(ssasapi.ParseToken, logging.NewStructuredLogger(), HSTSHeader, ConnectionClose)
+	r.With(ssasapi.RequireTokenAuth, ssasapi.RequireTokenJobMatch).
 		Get(m.WrapHandler("/data/{jobID}/{fileName}", serveData))
 	return r
 }

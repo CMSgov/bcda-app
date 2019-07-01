@@ -1,4 +1,4 @@
-package auth
+package api
 
 import (
 	"net/http"
@@ -12,5 +12,6 @@ func NewAuthRouter(middlewares ...func(http.Handler) http.Handler) http.Handler 
 	m := monitoring.GetMonitor()
 	r.Use(middlewares...)
 	r.Post(m.WrapHandler("/auth/token", GetAuthToken))
+	r.With(RequireTokenAuth, ParseRegToken).Post(m.WrapHandler("/auth/register", RegisterSystem))
 	return r
 }

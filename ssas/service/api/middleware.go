@@ -1,7 +1,8 @@
-package auth
+package api
 
 import (
 	"context"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -37,18 +38,18 @@ func ParseToken(next http.Handler) http.Handler {
 		}
 
 		tokenString := authSubmatches[1]
-		token, err := GetProvider().DecodeJWT(tokenString)
+		token, err := auth.GetProvider().DecodeJWT(tokenString)
 		if err != nil {
 			log.Errorf("Unable to decode Authorization header value; %s", err)
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		var ad AuthData
-		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
+		var ad auth.AuthData
+		if claims, ok := token.Claims.(*auth.CommonClaims); ok && token.Valid {
 			// okta token
 			if claims.ClientID != "" && claims.Subject == claims.ClientID {
-				var aco, err = GetACOByClientID(claims.ClientID)
+				var aco, err = auth.GetACOByClientID(claims.ClientID)
 				if err != nil {
 					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
 					next.ServeHTTP(w, r)
@@ -90,7 +91,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		}
 
 		if token, ok := token.(*jwt.Token); ok {
-			err := GetProvider().ValidateJWT(token.Raw)
+			err := auth.GetProvider().ValidateJWT(token.Raw)
 			if err != nil {
 				log.Error(err)
 				respond(w, http.StatusUnauthorized)
@@ -102,9 +103,44 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 	})
 }
 
+func ParseRegToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// TODO: if no
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
+		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
+		if len(authSubmatches) < 2 {
+			log.Warn("Invalid Authorization header value")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tokenString := authSubmatches[1]
+		token, err := auth.GetProvider().DecodeJWT(tokenString)
+		if err != nil {
+			log.Errorf("Unable to decode Authorization header value; %s", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		var ar auth.AuthRegData
+		if claims, ok := token.Claims.(*auth.CommonClaims); ok && token.Valid {
+			ar.GroupID = claims.GroupID
+		}
+		ctx := context.WithValue(r.Context(), "token", token)
+		ctx = context.WithValue(ctx, "ar", ar)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ad, ok := r.Context().Value("ad").(AuthData)
+		ad, ok := r.Context().Value("ad").(auth.AuthData)
 		if !ok {
 			log.Error()
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)

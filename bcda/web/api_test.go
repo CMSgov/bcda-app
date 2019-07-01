@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/ssas/service/api"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	ssasapi "github.com/CMSgov/bcda-app/ssas/service/api"
 )
 
 type TokenResponse struct {
@@ -648,7 +650,7 @@ func (s *APITestSuite) TestServeData() {
 func (s *APITestSuite) TestAuthTokenMissingAuthHeader() {
 
 	req := httptest.NewRequest("POST", "/auth/token", nil)
-	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler := http.HandlerFunc(api.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
@@ -657,7 +659,7 @@ func (s *APITestSuite) TestAuthTokenMalformedAuthHeader() {
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
 	req.Header.Add("Accept", "application/json")
-	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler := http.HandlerFunc(ssasapi.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
@@ -666,7 +668,7 @@ func (s *APITestSuite) TestAuthTokenBadCredentials() {
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 	req.SetBasicAuth("not_a_client", "not_a_secret")
 	req.Header.Add("Accept", "application/json")
-	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler := http.HandlerFunc(ssasapi.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 }
@@ -687,7 +689,7 @@ func (s *APITestSuite) TestAuthTokenSuccess() {
 	req := httptest.NewRequest("POST", "/auth/token", nil)
 	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Add("Accept", "application/json")
-	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler := http.HandlerFunc(ssasapi.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
@@ -729,12 +731,11 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
 	}
-	s.db.Save(&j)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+	req, err := http.NewRequest("POST", "/auth/register", nil)
 	assert.Nil(s.T(), err)
 
-	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
+	handler := ssasapi.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))

@@ -23,6 +23,7 @@ func init() {
 
 type CommonClaims struct {
 	ClientID string   `json:"cid,omitempty"`
+	GroupID	 string   `json:"gid,omitempty"`
 	Scopes   []string `json:"scp,omitempty"`
 	ACOID    string   `json:"aco,omitempty"`
 	UUID     string   `json:"id,omitempty"`

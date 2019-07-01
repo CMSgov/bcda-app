@@ -1,4 +1,4 @@
-package auth_test
+package api
 
 import (
 	"context"
@@ -31,8 +31,8 @@ type MiddlewareTestSuite struct {
 
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	router := chi.NewRouter()
-	router.Use(auth.ParseToken)
-	router.With(auth.RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+	router.Use(ParseToken)
+	router.With(RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Test router"))
 		if err != nil {
 			log.Fatal(err)
@@ -88,7 +88,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 		log.Fatal(err)
 	}
 
-	handler := auth.RequireTokenAuth(mockHandler)
+	handler := RequireTokenAuth(mockHandler)
 
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
@@ -170,7 +170,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 		log.Fatal(err)
 	}
 
-	handler := auth.RequireTokenJobMatch(mockHandler)
+	handler := RequireTokenJobMatch(mockHandler)
 
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
@@ -208,7 +208,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
 
-	handler := auth.RequireTokenJobMatch(mockHandler)
+	handler := RequireTokenJobMatch(mockHandler)
 
 	acoID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
@@ -253,7 +253,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 		log.Fatal(err)
 	}
 
-	handler := auth.RequireTokenJobMatch(mockHandler)
+	handler := RequireTokenJobMatch(mockHandler)
 
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)

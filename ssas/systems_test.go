@@ -316,9 +316,47 @@ func (s *SystemsTestSuite) TestGetSystemByClientIDSuccess() {
 	assert.Nil(err)
 }
 
+func (s *SystemsTestSuite) TestSystemClientGroupDuplicate() {
+	assert := s.Assert()
+
+	group1 := Group{GroupID: "fabcde612345"}
+	err := s.db.Create(&group1).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	group2 := Group{GroupID: "efabcd561234"}
+	err = s.db.Create(&group2).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group1.GroupID, ClientID: "498765uzyxwv", ClientName: "First Client"}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system = System{GroupID: group2.GroupID, ClientID: "498765uzyxwv", ClientName: "Duplicate Client"}
+	err = s.db.Create(&system).Error
+	assert.NotNil(err)
+
+	sys, err := GetSystemByClientID(system.ClientID)
+	assert.Nil(err)
+	assert.NotEmpty(sys)
+	assert.Equal("First Client", sys.ClientName)
+
+	err = s.cleanDatabase(group1)
+	assert.Nil(err)
+
+	err = s.cleanDatabase(group2)
+	assert.Nil(err)
+}
+
 func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
 	assert := s.Assert()
 
+	trackingID := uuid.NewRandom().String()
 	groupID := "T54321"
 	group := Group{GroupID: groupID}
 	err := s.db.Create(&group).Error
@@ -329,7 +367,7 @@ func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
 	pubKey, err := generatePublicKey(2048)
 	assert.Nil(err)
 
-	creds, err := RegisterSystem("abcd1234", "Create System Test", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	creds, err := RegisterSystem("Create System Test", groupID, DEFAULT_SCOPE, pubKey, trackingID)
 	assert.Nil(err)
 	assert.Equal("Create System Test", creds.ClientName)
 	assert.NotEqual("", creds.ClientSecret)
@@ -341,6 +379,7 @@ func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
 func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 	assert := s.Assert()
 
+	trackingID := uuid.NewRandom().String()
 	groupID := "T11223"
 	group := Group{GroupID: groupID}
 	err := s.db.Create(&group).Error
@@ -351,23 +390,13 @@ func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 	pubKey, err := generatePublicKey(2048)
 	assert.Nil(err)
 
-	// No clientID
-	creds, err := RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
-	assert.NotNil(err)
-	assert.Empty(creds)
-
 	// No clientName
-	creds, err = RegisterSystem("a1b2c3d3", "", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	creds, err := RegisterSystem("", groupID, DEFAULT_SCOPE, pubKey, trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
-
-	// No clientURI = success
-	creds, err = RegisterSystem("a1b2c3d4", "Register System Success1", "", groupID, DEFAULT_SCOPE, pubKey)
-	assert.Nil(err)
-	assert.NotEmpty(creds)
 
 	// No scope = success
-	creds, err = RegisterSystem("a1b2c3d5", "Register System Success2", "https://no.client.uri.net", groupID, "", pubKey)
+	creds, err = RegisterSystem("Register System Success2", groupID, "", pubKey, trackingID)
 	assert.Nil(err)
 	assert.NotEmpty(creds)
 
@@ -378,6 +407,7 @@ func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 	assert := s.Assert()
 
+	trackingID := uuid.NewRandom().String()
 	groupID := "T22334"
 	group := Group{GroupID: groupID}
 	err := s.db.Create(&group).Error
@@ -389,17 +419,17 @@ func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 	assert.Nil(err)
 
 	// Blank key
-	creds, err := RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, "")
+	creds, err := RegisterSystem("Register System Failure", groupID, DEFAULT_SCOPE, "", trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
 	// Invalid key
-	creds, err = RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, "NotAKey")
+	creds, err = RegisterSystem("Register System Failure", groupID, DEFAULT_SCOPE, "NotAKey", trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
 	// Key length too low
-	creds, err = RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	creds, err = RegisterSystem("Register System Failure", groupID, DEFAULT_SCOPE, pubKey, trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 

@@ -11,13 +11,15 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
 	"io"
 	"io/ioutil"
 	"log"
-	"net/url"
+	"time"
 )
 
 const DEFAULT_SCOPE = "bcda-api"
+const CREDENTIAL_EXPIRATION = 90 * 24 * time.Hour
 
 func InitializeSystemModels() *gorm.DB {
 	log.Println("Initialize system models")
@@ -40,10 +42,9 @@ func InitializeSystemModels() *gorm.DB {
 type System struct {
 	gorm.Model
 	GroupID        string          `json:"group_id"`
-	ClientID       string          `json:"client_id"`
+	ClientID       string          `json:"client_id" gorm:"unique_index:idx_client"`
 	SoftwareID     string          `json:"software_id"`
 	ClientName     string          `json:"client_name"`
-	ClientURI      string          `json:"client_uri"`
 	APIScope       string          `json:"api_scope"`
 	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
 	Secrets        []Secret        `json:"secrets"`
@@ -220,7 +221,7 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 	return string(privateKeyBytes), nil
 }
 
-func RegisterSystem(clientID string, clientName string, clientURI string, groupID string, scope string, publicKeyPEM string) (auth.Credentials, error) {
+func RegisterSystem(clientName string, groupID string, scope string, publicKeyPEM string, trackingID string) (auth.Credentials, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -236,23 +237,14 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 
 	creds := auth.Credentials{}
 
-	regEvent := Event{Op: "RegisterClient", TrackingID: clientID}
-	OperationStarted(regEvent)
+	clientID := uuid.NewRandom().String()
 
-	if clientID == "" {
-		regEvent.Help = "clientID is required"
-		OperationFailed(regEvent)
-		return creds, errors.New(regEvent.Help)
-	}
+	// The caller of this function should have logged OperationCalled() with the same trackingID
+	regEvent := Event{Op: "RegisterClient", TrackingID: trackingID, ClientID: clientID}
+	OperationStarted(regEvent)
 
 	if clientName == "" {
 		regEvent.Help = "clientName is required"
-		OperationFailed(regEvent)
-		return creds, errors.New(regEvent.Help)
-	}
-
-	if clientURI != "" && !isValidURI(clientURI) {
-		regEvent.Help = "clientURI is invalid: " + clientURI
 		OperationFailed(regEvent)
 		return creds, errors.New(regEvent.Help)
 	}
@@ -269,20 +261,23 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 	if err != nil {
 		regEvent.Help = "error in public key: " + err.Error()
 		OperationFailed(regEvent)
-		return creds, errors.New(regEvent.Help)
+		return creds, errors.New("error in public key")
 	}
 
 	system := System{
 		GroupID:     groupID,
 		ClientID: clientID,
 		ClientName: clientName,
-		ClientURI: clientURI,
 		APIScope: scope,
 	}
 
 	err = tx.Create(&system).Error
 	if err != nil {
-		return creds, fmt.Errorf("could not save system for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
+		regEvent.Help = fmt.Sprintf("could not save system for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
+		OperationFailed(regEvent)
+		// Returned errors are passed to API callers, and should include enough information to correct invalid submissions
+		// without revealing implementation details.  CLI callers will be able to review logs for more information.
+		return creds, errors.New("internal system error")
 	}
 
 	encryptionKey := EncryptionKey{
@@ -294,21 +289,23 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 	// we would lose the benefit of the transaction.
 	err = tx.Create(&encryptionKey).Error
 	if err != nil {
-		return creds, fmt.Errorf("could not save public key for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
+		regEvent.Help = fmt.Sprintf("could not save public key for clientID %s, groupID %s: %s", clientID, groupID, err.Error())
+		OperationFailed(regEvent)
+		return creds, errors.New("internal system error")
 	}
 
 	clientSecret, err := GenerateSecret()
 	if err != nil {
 		regEvent.Help = fmt.Sprintf("cannot generate secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(regEvent)
-		return creds, errors.New(regEvent.Help)
+		return creds, errors.New("internal system error")
 	}
 
 	hashedSecret, err := auth.NewHash(clientSecret)
 	if err != nil {
 		regEvent.Help = fmt.Sprintf("cannot generate hash of secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(regEvent)
-		return creds, errors.New(regEvent.Help)
+		return creds, errors.New("internal system error")
 	}
 
 	secret := Secret{
@@ -320,19 +317,20 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 	if err != nil {
 		regEvent.Help = fmt.Sprintf("cannot save secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(regEvent)
-		return creds, errors.New(regEvent.Help)
+		return creds, errors.New("internal system error")
 	}
 
 	err = tx.Commit().Error
 	if err != nil {
 		regEvent.Help = fmt.Sprintf("could not commit transaction for new system with groupID %s: %s", groupID, err.Error())
 		OperationFailed(regEvent)
-		return creds, errors.New(regEvent.Help)
+		return creds, errors.New("internal system error")
 	}
 
 	creds.ClientID = system.ClientID
 	creds.ClientSecret = clientSecret
 	creds.ClientName = system.ClientName
+	creds.ExpiresAt = time.Now().Add(CREDENTIAL_EXPIRATION)
 
 	OperationSucceeded(regEvent)
 	return creds, nil
@@ -347,7 +345,7 @@ func GetSystemByClientID(clientID string) (System, error) {
 	defer database.Close(db)
 
 	if db.Find(&system, "client_id = ?", clientID).RecordNotFound() {
-		err = errors.New("no System record found for " + clientID)
+		err = fmt.Errorf("no System record found for client %s", clientID)
 	}
 	return system, err
 }
@@ -361,9 +359,4 @@ func GenerateSecret() (string, error) {
 	}
 
 	return fmt.Sprintf("%x", b), nil
-}
-
-func isValidURI(u string) bool {
-	_, err := url.ParseRequestURI(u)
-	return err == nil
 }
