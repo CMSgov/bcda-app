@@ -413,6 +413,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	assert := s.Assert()
 
+	// Patient
 	j := Job{
 		ACOID:      uuid.Parse(constants.DEVACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
@@ -423,7 +424,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	defer s.db.Delete(&j)
 
 	enqueueJobs, err := j.GetEnqueJobs("Patient")
-
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(1, len(enqueueJobs))
@@ -441,17 +441,20 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
 
+	// ExplanationOfBenefit
 	j = Job{
 		ACOID:      uuid.Parse(constants.DEVACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
 	}
-
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
-	os.Setenv("BCDA_FHIR_MAX_RECORDS", "15")
 
+	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
+	if err != nil {
+		s.T().Error(err)
+	}
 	enqueueJobs, err = j.GetEnqueJobs("ExplanationOfBenefit")
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -469,6 +472,74 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	}
 	assert.Equal(50, enqueuedBenes)
 
+	// Coverage
+	j = Job{
+		ACOID:      uuid.Parse(constants.DEVACOUUID),
+		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
+		RequestURL: "/api/v1/Coverage/$export",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
+
+	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "5")
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	enqueueJobs, err = j.GetEnqueJobs("Coverage")
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	assert.Equal(10, len(enqueueJobs))
+	enqueuedBenes = 0
+	for _, queJob := range enqueueJobs {
+
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
+		assert.True(len(jobArgs.BeneficiaryIDs) <= 5)
+	}
+	assert.Equal(50, enqueuedBenes)
+}
+
+func (s *ModelsTestSuite) GetMaxBeneCount() {
+	assert := s.Assert()
+
+	// ExplanationOfBenefit
+	eobMax := GetMaxBeneCount("ExplanationOfBenefit")
+	assert.Equal(constants.BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT, eobMax)
+
+	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "5")
+	if err != nil {
+		s.T().Error(err)
+	}
+	eobMax = GetMaxBeneCount("ExplanationOfBenefit")
+	assert.Equal(5, eobMax)
+
+	// Patient
+	patientMax := GetMaxBeneCount("Patient")
+	assert.Equal(constants.BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT, patientMax)
+
+	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_PATIENT", "10")
+	if err != nil {
+		s.T().Error(err)
+	}
+	patientMax = GetMaxBeneCount("Patient")
+	assert.Equal(10, patientMax)
+
+	// Coverage
+	coverageMax := GetMaxBeneCount("Coverage")
+	assert.Equal(constants.BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT, coverageMax)
+
+	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "15")
+	if err != nil {
+		s.T().Error(err)
+	}
+	coverageMax = GetMaxBeneCount("Coverage")
+	assert.Equal(15, coverageMax)
 }
 
 func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
