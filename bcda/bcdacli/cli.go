@@ -312,14 +312,14 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 
-				// Get ACO by CMS ID (since GenerateClientCredentials interface expects a Client ID)
+				// Get ACO by CMS ID (since ResetSecret interface expects a Client ID)
 				aco, err := auth.GetACOByCMSID(acoCMSID)
 				if err != nil {
 					return err
 				}
 
 				// Generate new credentials
-				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID)
+				creds, err := auth.GetProvider().ResetSecret(aco.ClientID)
 				if err != nil {
 					return err
 				}
