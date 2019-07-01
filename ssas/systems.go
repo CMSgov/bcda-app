@@ -7,15 +7,16 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"time"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
-	"io"
-	"io/ioutil"
-	"log"
-	"time"
 )
 
 const DEFAULT_SCOPE = "bcda-api"
@@ -135,7 +136,7 @@ func (system *System) SavePublicKey(publicKey io.Reader) error {
 	}
 
 	encryptionKey := EncryptionKey{
-		Body: string(k),
+		Body:     string(k),
 		SystemID: system.ID,
 	}
 
@@ -265,10 +266,10 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	}
 
 	system := System{
-		GroupID:     groupID,
-		ClientID: clientID,
+		GroupID:    groupID,
+		ClientID:   clientID,
 		ClientName: clientName,
-		APIScope: scope,
+		APIScope:   scope,
 	}
 
 	err = tx.Create(&system).Error
@@ -281,7 +282,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	}
 
 	encryptionKey := EncryptionKey{
-		Body: publicKeyPEM,
+		Body:     publicKeyPEM,
 		SystemID: system.ID,
 	}
 
@@ -309,7 +310,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	}
 
 	secret := Secret{
-		Hash: hashedSecret.String(),
+		Hash:     hashedSecret.String(),
 		SystemID: system.ID,
 	}
 
@@ -338,9 +339,9 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 
 func GetSystemByClientID(clientID string) (System, error) {
 	var (
-		db = database.GetGORMDbConnection()
+		db     = database.GetGORMDbConnection()
 		system System
-		err error
+		err    error
 	)
 	defer database.Close(db)
 
