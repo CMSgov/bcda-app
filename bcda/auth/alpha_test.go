@@ -168,25 +168,6 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	assert.Contains(s.T(), err.Error(), "invalid credentials")
 }
 
-func (s *AlphaAuthPluginTestSuite) TestRequestAccessToken() {
-	const acoID = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	t, err := s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, 720)
-	assert.Nil(s.T(), err)
-	assert.IsType(s.T(), auth.Token{}, t)
-	assert.NotEmpty(s.T(), t.TokenString)
-
-	t, err = s.p.RequestAccessToken(auth.Credentials{}, 720)
-	assert.NotNil(s.T(), err)
-	assert.IsType(s.T(), auth.Token{}, t)
-	assert.Nil(s.T(), t.ACOID)
-	assert.Contains(s.T(), err.Error(), "must provide ClientID")
-
-	t, err = s.p.RequestAccessToken(auth.Credentials{ClientID: acoID}, -1)
-	assert.NotNil(s.T(), err)
-	assert.IsType(s.T(), auth.Token{}, t)
-	assert.Contains(s.T(), err.Error(), "invalid TTL")
-}
-
 func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 	err := s.p.RevokeAccessToken("token-value-is-not-significant-here")
 	assert.NotNil(s.T(), err)

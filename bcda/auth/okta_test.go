@@ -84,19 +84,19 @@ func (s *OktaAuthPluginTestSuite) TestRevokeSystemCredentials() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.o.RequestAccessToken(Credentials{ClientID: "", ClientSecret: ""}, 0)
-	assert.IsType(s.T(), Token{}, t)
-	assert.NotNil(s.T(), err)
+func (s *OktaAuthPluginTestSuite) TestMakeAccessToken() {
+	ts, err := s.o.MakeAccessToken(Credentials{ClientID: "", ClientSecret: ""})
+	assert.Empty(s.T(), ts)
+	assert.EqualError(s.T(), err, "client ID required")
 
 	mockID := "MockID"
 	mockSecret := "MockSecret"
-	t, err = s.o.RequestAccessToken(Credentials{ClientID: mockID, ClientSecret: mockSecret}, 0)
-	assert.IsType(s.T(), Token{}, t)
+	ts, err = s.o.MakeAccessToken(Credentials{ClientID: mockID, ClientSecret: mockSecret})
+	assert.NotEmpty(s.T(), ts)
 	assert.Nil(s.T(), err)
 
-	t, err = s.o.RequestAccessToken(Credentials{UserID: mockID, ClientSecret: mockSecret}, 0)
-	assert.IsType(s.T(), Token{}, t)
+	ts2, err := s.o.MakeAccessToken(Credentials{UserID: mockID, ClientSecret: mockSecret})
+	assert.NotEqual(s.T(), ts, ts2)
 	assert.Nil(s.T(), err)
 }
 

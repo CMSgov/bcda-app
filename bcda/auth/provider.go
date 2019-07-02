@@ -85,9 +85,6 @@ type Provider interface {
 	// MakeAccessToken mints an access token for the given credentials
 	MakeAccessToken(credentials Credentials) (string, error)
 
-	// RequestAccessToken mints an access token with a specific time-to-live for the given clientID
-	RequestAccessToken(credentials Credentials, ttl int) (Token, error)
-
 	// RevokeAccessToken a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error
 

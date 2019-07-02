@@ -193,43 +193,6 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	return GenerateTokenString(uuid, aco.UUID.String(), issuedAt, expiresAt)
 }
 
-// RequestAccessToken generates a token for the ACO (Deprecated, use MakeAccessToken()
-func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	var err error
-	token := Token{}
-
-	if creds.ClientID == "" {
-		return token, fmt.Errorf("must provide ClientID")
-	}
-
-	if uuid.Parse(creds.ClientID) == nil {
-		return token, fmt.Errorf("ClientID must be a valid UUID")
-	}
-
-	if ttl < 0 {
-		return token, fmt.Errorf("invalid TTL: %d", ttl)
-	}
-
-	var aco models.ACO
-	aco, err = getACOFromDB(creds.ClientID)
-	if err != nil {
-		return token, err
-	}
-
-	token.UUID = uuid.NewRandom()
-	token.ACOID = aco.UUID
-	token.IssuedAt = time.Now().Unix()
-	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
-	token.Active = true
-
-	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
-	if err != nil {
-		return Token{}, err
-	}
-
-	return token, nil
-}
-
 func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 	return fmt.Errorf("RevokeAccessToken is not implemented for alpha auth")
 }
