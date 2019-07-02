@@ -236,7 +236,7 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 
 	creds := auth.Credentials{}
 
-	regEvent := Event{Op: "RegisterClient", TrackingID: clientID}
+	regEvent := Event{Op: "RegisterSystem", TrackingID: clientID}
 	OperationStarted(regEvent)
 
 	if clientID == "" {
