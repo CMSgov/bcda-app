@@ -299,7 +299,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	assert.Contains(buf.String(), "Public key saved for ACO")
 }
 
-func (s *CLITestSuite) TestGenerateClientCredentialsCLI() {
+func (s *CLITestSuite) TestResetSecretCLI() {
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)

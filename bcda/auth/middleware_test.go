@@ -94,7 +94,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := auth.GetProvider().DecodeJWT(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Valid = false
@@ -176,7 +176,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := auth.GetProvider().DecodeJWT(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
@@ -214,7 +214,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := auth.GetProvider().DecodeJWT(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
@@ -259,7 +259,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := auth.GetProvider().DecodeJWT(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Claims = nil

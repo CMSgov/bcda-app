@@ -38,7 +38,7 @@ func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
 	return OktaAuthPlugin{backend}
 }
 
-func (o OktaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
+func (o OktaAuthPlugin) RegisterSystem(localID string) (Credentials, error) {
 	if localID == "" {
 		return Credentials{}, errors.New("you must provide a localID")
 	}
@@ -52,15 +52,15 @@ func (o OktaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
 	}, err
 }
 
-func (o OktaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
+func (o OktaAuthPlugin) UpdateSystem(params []byte) ([]byte, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) DeleteClient(clientID string) error {
+func (o OktaAuthPlugin) DeleteSystem(clientID string) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
+func (o OktaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
 	clientSecret, err := o.backend.GenerateNewClientSecret(clientID)
 	if err != nil {
 		return Credentials{}, err
@@ -74,7 +74,7 @@ func (o OktaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials,
 	return c, nil
 }
 
-func (o OktaAuthPlugin) RevokeClientCredentials(clientID string) error {
+func (o OktaAuthPlugin) RevokeSystemCredentials(clientID string) error {
 	err := o.backend.DeactivateApplication(clientID)
 	if err != nil {
 		return err
@@ -117,8 +117,8 @@ func (o OktaAuthPlugin) RevokeAccessToken(tokenString string) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
-	t, err := o.DecodeJWT(tokenString)
+func (o OktaAuthPlugin) AuthorizeAccess(tokenString string) error {
+	t, err := o.VerifyToken(tokenString)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (o OktaAuthPlugin) ValidateJWT(tokenString string) error {
 	return nil
 }
 
-func (o OktaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
+func (o OktaAuthPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 	keyFinder := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

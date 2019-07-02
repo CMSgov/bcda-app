@@ -37,7 +37,7 @@ func ParseToken(next http.Handler) http.Handler {
 		}
 
 		tokenString := authSubmatches[1]
-		token, err := GetProvider().DecodeJWT(tokenString)
+		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
 			log.Errorf("Unable to decode Authorization header value; %s", err)
 			next.ServeHTTP(w, r)
@@ -90,7 +90,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		}
 
 		if token, ok := token.(*jwt.Token); ok {
-			err := GetProvider().ValidateJWT(token.Raw)
+			err := GetProvider().AuthorizeAccess(token.Raw)
 			if err != nil {
 				log.Error(err)
 				respond(w, http.StatusUnauthorized)
