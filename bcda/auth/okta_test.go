@@ -50,53 +50,53 @@ func (s *OktaAuthPluginTestSuite) SetupTest() {
 	s.o = NewOktaAuthPlugin(s.m)
 }
 
-func (s *OktaAuthPluginTestSuite) TestOktaRegisterClient() {
-	c, err := s.o.RegisterClient(KnownFixtureACO)
+func (s *OktaAuthPluginTestSuite) TestOktaRegisterSystem() {
+	c, err := s.o.RegisterSystem(KnownFixtureACO)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
 	assert.Regexp(s.T(), regexp.MustCompile("[!-~]+"), c.ClientID)
 }
 
-func (s *OktaAuthPluginTestSuite) TestOktaUpdateClient() {
-	c, err := s.o.UpdateClient([]byte("{}"))
+func (s *OktaAuthPluginTestSuite) TestOktaUpdateSystem() {
+	c, err := s.o.UpdateSystem([]byte("{}"))
 	assert.Nil(s.T(), c)
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
-func (s *OktaAuthPluginTestSuite) TestOktaDeleteClient() {
-	err := s.o.DeleteClient("")
+func (s *OktaAuthPluginTestSuite) TestOktaDeleteSystem() {
+	err := s.o.DeleteSystem("")
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
-func (s *OktaAuthPluginTestSuite) TestGenerateClientCredentials() {
+func (s *OktaAuthPluginTestSuite) TestResetSecret() {
 	validClientID := "0oaj4590j9B5uh8rC0h7"
-	c, err := s.o.GenerateClientCredentials(validClientID)
+	c, err := s.o.ResetSecret(validClientID)
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", c.ClientSecret)
 
 	invalidClientID := "IDontexist"
-	c, err = s.o.GenerateClientCredentials(invalidClientID)
+	c, err = s.o.ResetSecret(invalidClientID)
 	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 
-func (s *OktaAuthPluginTestSuite) TestRevokeClientCredentials() {
-	err := s.o.RevokeClientCredentials("fakeClientID")
+func (s *OktaAuthPluginTestSuite) TestRevokeSystemCredentials() {
+	err := s.o.RevokeSystemCredentials("fakeClientID")
 	assert.Nil(s.T(), err)
 }
 
-func (s *OktaAuthPluginTestSuite) TestRequestAccessToken() {
-	t, err := s.o.RequestAccessToken(Credentials{ClientID: "", ClientSecret: ""}, 0)
-	assert.IsType(s.T(), Token{}, t)
-	assert.NotNil(s.T(), err)
+func (s *OktaAuthPluginTestSuite) TestMakeAccessToken() {
+	ts, err := s.o.MakeAccessToken(Credentials{ClientID: "", ClientSecret: ""})
+	assert.Empty(s.T(), ts)
+	assert.EqualError(s.T(), err, "client ID required")
 
 	mockID := "MockID"
 	mockSecret := "MockSecret"
-	t, err = s.o.RequestAccessToken(Credentials{ClientID: mockID, ClientSecret: mockSecret}, 0)
-	assert.IsType(s.T(), Token{}, t)
+	ts, err = s.o.MakeAccessToken(Credentials{ClientID: mockID, ClientSecret: mockSecret})
+	assert.NotEmpty(s.T(), ts)
 	assert.Nil(s.T(), err)
 
-	t, err = s.o.RequestAccessToken(Credentials{UserID: mockID, ClientSecret: mockSecret}, 0)
-	assert.IsType(s.T(), Token{}, t)
+	ts2, err := s.o.MakeAccessToken(Credentials{UserID: mockID, ClientSecret: mockSecret})
+	assert.NotEqual(s.T(), ts, ts2)
 	assert.Nil(s.T(), err)
 }
 
@@ -105,37 +105,37 @@ func (s *OktaAuthPluginTestSuite) TestOktaRevokeAccessToken() {
 	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
-func (s *OktaAuthPluginTestSuite) TestValidateJWT() {
+func (s *OktaAuthPluginTestSuite) TestAuthorizeAccess() {
 	// happy path
 	token, err := s.m.NewToken(KnownClientID)
 	require.Nil(s.T(), err)
-	err = s.o.ValidateJWT(token)
+	err = s.o.AuthorizeAccess(token)
 	require.Nil(s.T(), err)
 
 	// a variety of unhappy paths
 	token, err = s.m.NewCustomToken(OktaToken{ClientID: randomClientID()})
 	require.Nil(s.T(), err)
-	err = s.o.ValidateJWT(token)
+	err = s.o.AuthorizeAccess(token)
 	require.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "invalid cid")
 
 	token, err = s.m.NewCustomToken(OktaToken{ClientID: KnownClientID, Issuer: "not_our_okta_server"})
 	require.Nil(s.T(), err)
-	err = s.o.ValidateJWT(token)
+	err = s.o.AuthorizeAccess(token)
 	require.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "invalid iss")
 
 	token, err = s.m.NewCustomToken(OktaToken{ClientID: KnownClientID, ExpiresIn: -1})
 	require.Nil(s.T(), err)
-	err = s.o.ValidateJWT(token)
+	err = s.o.AuthorizeAccess(token)
 	require.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "expired")
 }
 
-func (s *OktaAuthPluginTestSuite) TestOktaDecodeJWT() {
+func (s *OktaAuthPluginTestSuite) TestOktaVerifyToken() {
 	token, err := s.m.NewToken(KnownClientID)
 	require.Nil(s.T(), err, "could not create token")
-	t, err := s.o.DecodeJWT(token)
+	t, err := s.o.VerifyToken(token)
 	assert.IsType(s.T(), &jwt.Token{}, t)
 	require.Nil(s.T(), err, "no error should have occurred")
 	assert.True(s.T(), t.Valid)

@@ -208,8 +208,16 @@ func main() {
 
 						fmt.Println("decrypting the file...")
 						encryptedKey := string(encryptData[path.Base(data[0].Url)])
+						if encryptedKey == "" {
+							fmt.Println("Error: no key found in data")
+							os.Exit(1)
+						}
 
 						privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
+						if privateKeyFile == "" {
+							fmt.Println("Error: private key file path not set")
+							os.Exit(1)
+						}
 
 						// execute the golang decryptor
 						var cmdOut []byte

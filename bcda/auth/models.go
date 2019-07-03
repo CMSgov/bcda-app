@@ -17,37 +17,18 @@ func InitializeGormModels() *gorm.DB {
 
 	// Migrate the schema
 	// Add your new models here
-	db.AutoMigrate(
-		&Token{},
-	)
-
-	// force manual deletion of foreign key and this related record (you can delete a Token, but not an aco with a token
-	db.Model(&Token{}).AddForeignKey("aco_id", "acos(uuid)", "RESTRICT", "RESTRICT")
+	db.AutoMigrate()
 
 	return db
 }
 
 type Token struct {
-	gorm.Model
-	// even though gorm.Model has an `id` field declared as the primary key, the following definition overrides that
-	UUID        uuid.UUID  `gorm:"primary_key" json:"uuid"`                      // uuid (primary key)
-	Value       string     `gorm:"type:varchar(511); unique" json:"value"`       // Deprecated: When can we drop Value without hurting existing alpha tokens?
-	Active      bool       `json:"active"`                                       // active
-	ACO         models.ACO `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // ACO needed here because user can belong to multiple ACOs
-	ACOID       uuid.UUID  `gorm:"type:uuid" json:"aco_id"`
-	IssuedAt    int64      `json:"issued_at"`  // standard token claim; unix date
-	ExpiresOn   int64      `json:"expires_on"` // standard token claim; unix date
-	TokenString string     `gorm:"-"`          // ignore; not for database
-}
-
-// When getting a Token out of the database, reconstruct its string value and store it in TokenString.
-func (t *Token) AfterFind() error {
-	s, err := GenerateTokenString(t.UUID.String(), t.ACOID.String(), t.IssuedAt, t.ExpiresOn)
-	if err == nil {
-		t.TokenString = s
-		return nil
-	}
-	return err
+	UUID        uuid.UUID `json:"uuid"`   // uuid (primary key)
+	Active      bool      `json:"active"` // active
+	ACOID       uuid.UUID `json:"aco_id"`
+	IssuedAt    int64     `json:"issued_at"`  // standard token claim; unix date
+	ExpiresOn   int64     `json:"expires_on"` // standard token claim; unix date
+	TokenString string    `json:"token_string"`
 }
 
 func GetACOByClientID(clientID string) (models.ACO, error) {
@@ -84,7 +65,7 @@ func CreateAlphaToken(ttl int, acoCMSID string) (string, error) {
 		return "", err
 	}
 
-	creds, err := GetProvider().RegisterClient(aco.UUID.String())
+	creds, err := GetProvider().RegisterSystem(aco.UUID.String())
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}
@@ -92,7 +73,7 @@ func CreateAlphaToken(ttl int, acoCMSID string) (string, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	// Only update aco.ClientID.  Other attributes of this ACO (AlphaSecret) may have been altered in the database by the
-	// RegisterClient() call above, so we should not save these potentially stale values.
+	// RegisterSystem() call above, so we should not save these potentially stale values.
 	err = db.Model(&aco).Update("client_id", creds.ClientID).Error
 	if err != nil {
 		return "", fmt.Errorf("could not save ClientID %s to ACO %s (%s) because %s", aco.ClientID, aco.UUID.String(), aco.Name, err.Error())

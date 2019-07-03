@@ -60,6 +60,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	defer db.Close()
 	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
+	cmsID := "A00234"
 	jobID := "1"
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
@@ -79,7 +80,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryID))
 	}
 
-	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -116,16 +117,17 @@ func TestWriteEOBDataToFile(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileNoClient(t *testing.T) {
-	_, err := writeBBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", []string{"20000", "21000"}, "1", "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", "A00234", []string{"20000", "21000"}, "1", "ExplanationOfBenefit")
 	assert.NotNil(t, err)
 }
 
 func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
+	cmsID := "A00234"
 	beneficiaryIDs := []string{"10000", "11000"}
 
-	_, err := writeBBDataToFile(&bbc, acoID, beneficiaryIDs, "1", "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit")
 	assert.NotNil(t, err)
 }
 
@@ -140,6 +142,7 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	bbc.On("GetExplanationOfBenefitData", "11000").Return("", errors.New("error"))
 	bbc.On("GetExplanationOfBenefitData", "12000").Return(bbc.GetData("ExplanationOfBenefit", "12000"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
+	cmsID := "A00234"
 	beneficiaryIDs := []string{"10000", "11000", "12000"}
 	var cclfBeneficiaryIDs []string
 
@@ -161,7 +164,7 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	fileUUID, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	fileUUID, err := writeBBDataToFile(&bbc, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	if err != nil {
 		t.Fail()
 	}
@@ -191,6 +194,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	bbc.On("GetExplanationOfBenefitData", "1000089833").Return("", errors.New("error"))
 	bbc.On("GetExplanationOfBenefitData", "1000065301").Return("", errors.New("error"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
+	cmsID := "A00234"
 	beneficiaryIDs := []string{"1000089833", "1000065301", "1000012463"}
 	var cclfBeneficiaryIDs []string
 	db := database.GetGORMDbConnection()
@@ -210,7 +214,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	assert.Equal(t, "number of failed requests has exceeded threshold", err.Error())
 
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
@@ -243,6 +247,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
+	cmsID := "A00234"
 	jobID := "1"
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012312"}
@@ -265,7 +270,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	_, err := writeBBDataToFile(&bbc, acoID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
 	assert.EqualError(t, err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(stagingDir)
