@@ -67,33 +67,30 @@ type Credentials struct {
 
 // Provider defines operations performed through an authentication provider.
 type Provider interface {
-	// RegisterClient adds a software client for the ACO identified by localID.
-	RegisterClient(localID string) (Credentials, error)
+	// RegisterSystem adds a software client for the ACO identified by localID.
+	RegisterSystem(localID string) (Credentials, error)
 
-	// UpdateClient changes data associated with the registered software client identified by clientID
-	UpdateClient(params []byte) ([]byte, error)
+	// UpdateSystem changes data associated with the registered software client identified by clientID
+	UpdateSystem(params []byte) ([]byte, error)
 
-	// DeleteClient deletes the registered software client identified by clientID, revoking an active tokens
-	DeleteClient(clientID string) error
+	// DeleteSystem deletes the registered software client identified by clientID, revoking an active tokens
+	DeleteSystem(clientID string) error
 
-	// GenerateClientCredentials new or replace existing Credentials for the given clientID
-	GenerateClientCredentials(clientID string) (Credentials, error)
+	// ResetSecret new or replace existing Credentials for the given clientID
+	ResetSecret(clientID string) (Credentials, error)
 
-	// RevokeClientCredentials any existing Credentials for the given clientID
-	RevokeClientCredentials(clientID string) error
+	// RevokeSystemCredentials any existing Credentials for the given clientID
+	RevokeSystemCredentials(clientID string) error
 
 	// MakeAccessToken mints an access token for the given credentials
 	MakeAccessToken(credentials Credentials) (string, error)
 
-	// RequestAccessToken mints an access token with a specific time-to-live for the given clientID
-	RequestAccessToken(credentials Credentials, ttl int) (Token, error)
-
 	// RevokeAccessToken a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error
 
-	// ValidateJWT asserts that a base64 encoded token string is valid for accessing the BCDA API
-	ValidateJWT(tokenString string) error
+	// AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API
+	AuthorizeAccess(tokenString string) error
 
-	// DecodeJWT decodes a base64 encoded token string into a structured token
-	DecodeJWT(tokenString string) (*jwt.Token, error)
+	// VerifyToken decodes a base64 encoded token string into a structured token
+	VerifyToken(tokenString string) (*jwt.Token, error)
 }
