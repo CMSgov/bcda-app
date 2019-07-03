@@ -53,7 +53,7 @@ func (s *SystemsTestSuite) TestRevokeSystemKeyPair() {
 	s.db.Unscoped().Find(&encryptionKey)
 	assert.NotNil(encryptionKey.DeletedAt)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -97,7 +97,7 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair() {
 	}
 	assert.Equal(&privateKey.PublicKey, publicKey)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -129,7 +129,7 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	assert.EqualError(err, "encryption keypair already exists for system ID "+systemIDStr)
 	assert.Empty(privateKey)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -177,7 +177,7 @@ func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
 	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -228,7 +228,7 @@ OwIDAQAB
 	err = system.SavePublicKey(bytes.NewReader(lowBitPubKey))
 	assert.NotNil(err, "insecure public key should not be saved")
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -266,7 +266,7 @@ func (s *SystemsTestSuite) TestSystemPublicKeyEmpty() {
 	assert.Nil(err)
 	assert.NotNil(k, "Valid PEM key yields nil public key!")
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -288,7 +288,7 @@ func (s *SystemsTestSuite) TestEncryptionKeyModel() {
 	err = s.db.Save(&encryptionKey).Error
 	assert.Nil(err)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -312,7 +312,7 @@ func (s *SystemsTestSuite) TestGetSystemByClientIDSuccess() {
 	assert.NotEmpty(sys)
 	assert.Equal("Client with System", sys.ClientName)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -346,10 +346,10 @@ func (s *SystemsTestSuite) TestSystemClientGroupDuplicate() {
 	assert.NotEmpty(sys)
 	assert.Equal("First Client", sys.ClientName)
 
-	err = s.cleanDatabase(group1)
+	err = CleanDatabase(group1)
 	assert.Nil(err)
 
-	err = s.cleanDatabase(group2)
+	err = CleanDatabase(group2)
 	assert.Nil(err)
 }
 
@@ -372,7 +372,7 @@ func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
 	assert.Equal("Create System Test", creds.ClientName)
 	assert.NotEqual("", creds.ClientSecret)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -400,7 +400,7 @@ func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 	assert.Nil(err)
 	assert.NotEmpty(creds)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -509,43 +509,8 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	}
 	assert.True(auth.Hash(savedHash).IsHashOf(secret2))
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
-}
-
-func (s *SystemsTestSuite) cleanDatabase(group Group) error {
-	var system System
-	var encryptionKey EncryptionKey
-	var secret Secret
-	var systemIds []int
-
-	err := s.db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
-	if err != nil {
-		return fmt.Errorf("unable to find associated systems: %s", err.Error())
-	}
-	fmt.Println("System ID's: ", systemIds)
-
-	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete encryption keys: %s", err.Error())
-	}
-
-	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&secret).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete secrets: %s", err.Error())
-	}
-
-	err = s.db.Unscoped().Where("id IN (?)", systemIds).Delete(&system).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete systems: %s", err.Error())
-	}
-
-	err = s.db.Unscoped().Delete(&group).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete group: %s", err.Error())
-	}
-
-	return nil
 }
 
 func TestSystemsTestSuite(t *testing.T) {

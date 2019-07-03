@@ -237,7 +237,6 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	}()
 
 	creds := auth.Credentials{}
-
 	clientID := uuid.NewRandom().String()
 
 	// The caller of this function should have logged OperationCalled() with the same trackingID
@@ -360,4 +359,44 @@ func GenerateSecret() (string, error) {
 	}
 
 	return fmt.Sprintf("%x", b), nil
+}
+
+
+func CleanDatabase(group Group) error {
+	var (
+		system System
+		encryptionKey EncryptionKey
+		secret Secret
+		systemIds []int
+		db = database.GetGORMDbConnection()
+	)
+	defer database.Close(db)
+
+	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
+	if err != nil {
+		return fmt.Errorf("unable to find associated systems: %s", err.Error())
+	}
+	fmt.Println("System ID's: ", systemIds)
+
+	err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete encryption keys: %s", err.Error())
+	}
+
+	err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&secret).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete secrets: %s", err.Error())
+	}
+
+	err = db.Unscoped().Where("id IN (?)", systemIds).Delete(&system).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete systems: %s", err.Error())
+	}
+
+	err = db.Unscoped().Delete(&group).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete group: %s", err.Error())
+	}
+
+	return nil
 }

@@ -507,29 +507,6 @@ func SetQC(client *que.Client) {
 	qc = client
 }
 
-
-/*
-	swagger:route POST /auth/token auth GetAuthToken
-
-	Get access token
-
-	Verifies Basic authentication credentials, and returns a JWT bearer token that can be presented to the other API endpoints.
-
-	Produces:
-	- application/json
-
-	Schemes: https
-
-	Security:
-		basic_auth:
-
-	Responses:
-		200: tokenResponse
-		400: missingCredentials
-		401: invalidCredentials
-		500: serverError
-*/
-
 /*
 	swagger:route POST /auth/register auth RegisterSystem
 

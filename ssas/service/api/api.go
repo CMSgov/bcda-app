@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/pborman/uuid"
 	"io/ioutil"
@@ -26,9 +27,10 @@ type RegistrationRequest struct {
 	ClientID string `json:"client_id"`
 	ClientName string `json:"client_name"`
 	Scope string `json:"scope,omitempty"`
-	JavaWebKeys JWKS `json:"jwks"`
+	JSONWebKeys JWKS `json:"jwks"`
 }
 
+// POST /auth/register
 func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	var (
 		rd  auth.AuthRegData
@@ -61,60 +63,40 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if reg.JavaWebKeys.Keys == nil || len(reg.JavaWebKeys.Keys) > 1 {
+	if reg.JSONWebKeys.Keys == nil || len(reg.JSONWebKeys.Keys) > 1 {
 		jsonError(w, "invalid_client_metadata", "Exactly one JWK must be presented")
 		return
 	}
 
-	err = json.Unmarshal(publicKeyBytes, &reg.JavaWebKeys.Keys[0])
+	publicKeyBytes, err = json.Marshal(reg.JSONWebKeys.Keys[0])
 	if err != nil {
-		jsonError(w, "invalid_client_metadata", "Unable to process JWK")
+		jsonError(w, "invalid_client_metadata", "Unable to read JWK")
+		return
+	}
+
+	publicKeyPEM, err := rsautils.ConvertJWKToPEM(string(publicKeyBytes))
+	if err != nil {
+	//	jsonError(w, "invalid_client_metadata", "Unable to process JWK")
+		jsonError(w, "invalid_client_metadata", err.Error())
 		return
 	}
 
 	// Log the source of the call for this operation.  Remaining logging will be in ssas.RegisterSystem() below.
 	trackingID = uuid.NewRandom().String()
 	ssas.OperationCalled(ssas.Event{Op: "RegisterClient", TrackingID: trackingID})
-	credentials, err := ssas.RegisterSystem(reg.ClientName, rd.GroupID, reg.Scope, string(publicKeyBytes), trackingID)
+	credentials, err := ssas.RegisterSystem(reg.ClientName, rd.GroupID, reg.Scope, publicKeyPEM, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
 		return
 	}
 
-	body := []byte(fmt.Sprintf(`{"client_id": "%s","client_secret":"%s","client_secret_expires_at":"%d","client_name":""%s",}`,
+	body := []byte(fmt.Sprintf(`{"client_id": "%s","client_secret":"%s","client_secret_expires_at":"%d","client_name":"%s"}`,
 		credentials.ClientID, credentials.ClientSecret, credentials.ExpiresAt.Unix(), credentials.ClientName))
-	_, err = w.Write(body)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(http.StatusCreated)
-	// TODO: write tests
-}
-
-func GetAuthToken(w http.ResponseWriter, r *http.Request) {
-	clientId, secret, ok := r.BasicAuth()
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
-	token, err := auth.GetProvider().MakeAccessToken(auth.Credentials{ClientID: clientId, ClientSecret: secret})
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
-
-	// https://tools.ietf.org/html/rfc6749#section-5.1
-	// not included: recommended field expires_in
-	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token))
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 }
 

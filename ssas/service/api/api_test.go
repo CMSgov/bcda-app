@@ -3,13 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/go-chi/chi"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -17,40 +17,17 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
-
-type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-}
 
 type APITestSuite struct {
 	suite.Suite
 	rr      *httptest.ResponseRecorder
 	db      *gorm.DB
-	backend *auth.AlphaBackend
-	reset   func()
-}
-
-func (s *APITestSuite) SetupSuite() {
-	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../../shared_files/api_unit_test_auth_private.pem")
-	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../../shared_files/api_unit_test_auth_public.pem")
-	s.reset = func() {
-		private()
-		public()
-	}
-	s.backend = auth.InitAlphaBackend()
-}
-
-func (s *APITestSuite) TearDownSuite() {
-	s.reset()
 }
 
 func (s *APITestSuite) SetupTest() {
-	models.InitializeGormModels()
-	auth.InitializeGormModels()
+	ssas.InitializeGroupModels()
+	ssas.InitializeSystemModels()
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
@@ -59,65 +36,14 @@ func (s *APITestSuite) TearDownTest() {
 	database.Close(s.db)
 }
 
-func (s *APITestSuite) TestAuthToken() {
-	var aco models.ACO
-	err := s.db.Where("uuid = ?", constants.DEVACOUUID).First(&aco).Error
-	assert.Nil(s.T(), err)
-	aco.AlphaSecret = ""
-	s.db.Save(&aco)
-
-	// Missing authorization header
-	req := httptest.NewRequest("POST", "/auth/token", nil)
-	handler := http.HandlerFunc(GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
-
-	// Malformed authorization header
-	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/auth/token", nil)
-	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
-	req.Header.Add("Accept", "application/json")
-	handler = http.HandlerFunc(GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
-
-	// Invalid credentials
-	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/auth/token", nil)
-	req.SetBasicAuth("not_a_client", "not_a_secret")
-	req.Header.Add("Accept", "application/json")
-	handler = http.HandlerFunc(GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
-
-	// Success!?
-	s.rr = httptest.NewRecorder()
-	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterClient(constants.DEVACOUUID)
-	assert.Nil(s.T(), err)
-	assert.NotEmpty(s.T(), creds.ClientID)
-	assert.NotEmpty(s.T(), creds.ClientSecret)
-
-	req = httptest.NewRequest("POST", "/auth/token", nil)
-	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
-	req.Header.Add("Accept", "application/json")
-	handler = http.HandlerFunc(GetAuthToken)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
-	assert.NotEmpty(s.T(), t)
-	assert.NotEmpty(s.T(), t.AccessToken)
-}
-
 func (s *APITestSuite) TestAuthRegisterEmpty() {
 	regBody := strings.NewReader("")
 
 	req, err := http.NewRequest("GET", "/auth/register", regBody)
 	assert.Nil(s.T(), err)
 
-	handler := ParseRegToken(http.HandlerFunc(RegisterSystem))
 	req = addRegDataContext(req, "T12123")
-	handler.ServeHTTP(s.rr, req)
+	http.HandlerFunc(RegisterSystem).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
@@ -127,10 +53,37 @@ func (s *APITestSuite) TestAuthRegisterBadJSON() {
 	req, err := http.NewRequest("GET", "/auth/register", regBody)
 	assert.Nil(s.T(), err)
 
-	handler := ParseRegToken(http.HandlerFunc(RegisterSystem))
 	req = addRegDataContext(req, "T12123")
-	handler.ServeHTTP(s.rr, req)
+	http.HandlerFunc(RegisterSystem).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func (s *APITestSuite) TestAuthRegisterSuccess() {
+	groupID := "T12123"
+	group := ssas.Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	regBody := strings.NewReader(fmt.Sprintf(`{"client_id":"my_client_id","client_name":"my_client_name","scope":"%s","jwks":{"keys":[{"e":"AAEAAQ","n":"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw","kty":"RSA"}]}}`,
+		ssas.DEFAULT_SCOPE))
+
+	req, err := http.NewRequest("GET", "/auth/register", regBody)
+	assert.Nil(s.T(), err)
+
+	req = addRegDataContext(req, "T12123")
+	http.HandlerFunc(RegisterSystem).ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusCreated, s.rr.Code)
+	fmt.Println("Response body:", s.rr.Body)
+
+	j := map[string]string{}
+	err = json.Unmarshal(s.rr.Body.Bytes(), &j)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "my_client_name", j["client_name"])
+
+	err = ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
 }
 
 func TestAuthAPITestSuite(t *testing.T) {
