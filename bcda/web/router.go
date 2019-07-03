@@ -1,11 +1,11 @@
 package web
 
 import (
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/go-chi/chi"

@@ -7,9 +7,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -17,6 +14,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
+	"io"
+	"io/ioutil"
+	"log"
 )
 
 const DEFAULT_SCOPE = "bcda-api"

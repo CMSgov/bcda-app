@@ -729,8 +729,9 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
 	}
+	s.db.Save(&j)
 
-	req, err := http.NewRequest("POST", "/auth/register", nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
 	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))

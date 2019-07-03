@@ -1,8 +1,9 @@
-package auth
+package auth_test
 
 import (
 	"context"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/go-chi/chi"
@@ -23,13 +24,13 @@ type MiddlewareTestSuite struct {
 	server *httptest.Server
 	rr     *httptest.ResponseRecorder
 	token  string
-	ad     AuthData
+	ad     auth.AuthData
 }
 
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	router := chi.NewRouter()
-	router.Use(ParseToken)
-	router.With(RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+	router.Use(auth.ParseToken)
+	router.With(auth.RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Test router"))
 		if err != nil {
 			log.Fatal(err)
@@ -47,8 +48,8 @@ func (s *MiddlewareTestSuite) SetupTest() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	tokenID := "d63205a8-d923-456b-a01b-0992fcb40968"
-	s.token, _ = TokenStringWithIDs(tokenID, acoID)
-	s.ad = AuthData{
+	s.token, _ = auth.TokenStringWithIDs(tokenID, acoID)
+	s.ad = auth.AuthData{
 		TokenID: tokenID,
 		UserID:  userID,
 		ACOID:   acoID,
@@ -85,18 +86,18 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 		log.Fatal(err)
 	}
 
-	handler := RequireTokenAuth(mockHandler)
+	handler := auth.RequireTokenAuth(mockHandler)
 
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := TokenStringWithIDs(tokenID, acoID)
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := GetProvider().VerifyToken(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Valid = false
 
-	ad := AuthData{
+	ad := auth.AuthData{
 		ACOID:   acoID,
 		TokenID: tokenID,
 	}
@@ -167,13 +168,13 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 		log.Fatal(err)
 	}
 
-	handler := RequireTokenJobMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := TokenStringWithIDs(tokenID, acoID)
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := GetProvider().VerifyToken(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
@@ -205,18 +206,18 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
 
-	handler := RequireTokenJobMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	acoID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
-	tokenString, err := TokenStringWithIDs(tokenID, acoID)
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := GetProvider().VerifyToken(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
 	ctx := context.WithValue(req.Context(), "token", token)
-	ad := AuthData{
+	ad := auth.AuthData{
 		ACOID:   acoID,
 		TokenID: tokenID,
 	}
@@ -250,13 +251,13 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 		log.Fatal(err)
 	}
 
-	handler := RequireTokenJobMatch(mockHandler)
+	handler := auth.RequireTokenJobMatch(mockHandler)
 
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := TokenStringWithIDs(tokenID, acoID)
+	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
-	token, err := GetProvider().VerifyToken(tokenString)
+	token, err := auth.GetProvider().VerifyToken(tokenString)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 	token.Claims = nil

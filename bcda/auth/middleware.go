@@ -2,15 +2,17 @@ package auth
 
 import (
 	"context"
+	"net/http"
+	"regexp"
+	"strconv"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-chi/chi"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/chi"
-	"net/http"
-	"regexp"
-	log "github.com/sirupsen/logrus"
-	"strconv"
 )
 
 // Puts the decoded token and identity values into the request context. Decoded values have been
