@@ -97,3 +97,27 @@ services:
       dockerfile: Dockerfiles/Dockerfile.static_site
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
+  ssas:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.ssas
+    environment:
+      - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
+      - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
+      - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
+      - DEBUG=true
+      - ATO_PUBLIC_KEY_FILE=../shared_files/ATO_public.pem
+      - ATO_PRIVATE_KEY_FILE=../shared_files/ATO_private.pem
+      - HTTP_ONLY=true
+      - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
+      - OKTA_EMAIL=shawn@bcda.aco-group.us
+      - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
+      - BCDA_AUTH_PROVIDER=${BCDA_AUTH_PROVIDER}
+      - OKTA_OAUTH_SERVER_ID=${OKTA_OAUTH_SERVER_ID}
+      - AUTH_HASH_ITERATIONS=130000
+      - AUTH_HASH_KEY_LENGTH=64
+      - AUTH_HASH_SALT_SIZE=32
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app
+    ports:
+      - "3003:3003"
