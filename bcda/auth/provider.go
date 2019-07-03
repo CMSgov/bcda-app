@@ -58,11 +58,11 @@ type AuthData struct {
 }
 
 type Credentials struct {
-	UserID       string
-	ClientID     string
-	ClientSecret string
-	Token        Token
-	ClientName   string
+	UserID       string `json:"user_id"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	Token        Token  `json:"token"`
+	ClientName   string `json:"client_name"`
 }
 
 // Provider defines operations performed through an authentication provider.
