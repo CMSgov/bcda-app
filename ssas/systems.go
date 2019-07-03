@@ -361,14 +361,13 @@ func GenerateSecret() (string, error) {
 	return fmt.Sprintf("%x", b), nil
 }
 
-
 func CleanDatabase(group Group) error {
 	var (
-		system System
+		system        System
 		encryptionKey EncryptionKey
-		secret Secret
-		systemIds []int
-		db = database.GetGORMDbConnection()
+		secret        Secret
+		systemIds     []int
+		db            = database.GetGORMDbConnection()
 	)
 	defer database.Close(db)
 

@@ -2,6 +2,10 @@ package auth
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -9,9 +13,6 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 type TokenResponse struct {
@@ -86,7 +87,7 @@ func (s *APITestSuite) TestAuthToken() {
 	// Success!?
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := GetProvider().RegisterClient(constants.DEVACOUUID)
+	creds, err := GetProvider().RegisterSystem(constants.DEVACOUUID)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)

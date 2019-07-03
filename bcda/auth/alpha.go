@@ -15,8 +15,8 @@ import (
 
 type AlphaAuthPlugin struct{}
 
-func (p AlphaAuthPlugin) RegisterClient(localID string) (Credentials, error) {
-	regEvent := event{op: "RegisterClient", trackingID: localID}
+func (p AlphaAuthPlugin) RegisterSystem(localID string) (Credentials, error) {
+	regEvent := event{op: "RegisterSystem", trackingID: localID}
 	operationStarted(regEvent)
 	if localID == "" {
 		// do we want to report on usage errors?
@@ -79,12 +79,12 @@ func generateClientSecret() (string, error) {
 	return fmt.Sprintf("%x", b), nil
 }
 
-func (p AlphaAuthPlugin) UpdateClient(params []byte) ([]byte, error) {
+func (p AlphaAuthPlugin) UpdateSystem(params []byte) ([]byte, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
-	delEvent := event{op: "DeleteClient", trackingID: clientID}
+func (p AlphaAuthPlugin) DeleteSystem(clientID string) error {
+	delEvent := event{op: "DeleteSystem", trackingID: clientID}
 	operationStarted(delEvent)
 	aco, err := GetACOByClientID(clientID)
 	if err != nil {
@@ -109,8 +109,8 @@ func (p AlphaAuthPlugin) DeleteClient(clientID string) error {
 	return nil
 }
 
-func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials, error) {
-	genEvent := event{op: "GenerateClientCredentials", trackingID: clientID}
+func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
+	genEvent := event{op: "ResetSecret", trackingID: clientID}
 	operationStarted(genEvent)
 
 	if clientID == "" {
@@ -154,8 +154,8 @@ func (p AlphaAuthPlugin) GenerateClientCredentials(clientID string) (Credentials
 	return Credentials{ClientName: aco.Name, ClientID: clientID, ClientSecret: s}, nil
 }
 
-func (p AlphaAuthPlugin) RevokeClientCredentials(clientID string) error {
-	return fmt.Errorf("RevokeClientCredentials is not implemented for alpha auth")
+func (p AlphaAuthPlugin) RevokeSystemCredentials(clientID string) error {
+	return fmt.Errorf("RevokeSystemCredentials is not implemented for alpha auth")
 }
 
 // MakeAccessToken manufactures an access token for the given credentials
@@ -193,51 +193,14 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 	return GenerateTokenString(uuid, aco.UUID.String(), issuedAt, expiresAt)
 }
 
-// RequestAccessToken generates a token for the ACO (Deprecated, use MakeAccessToken()
-func (p AlphaAuthPlugin) RequestAccessToken(creds Credentials, ttl int) (Token, error) {
-	var err error
-	token := Token{}
-
-	if creds.ClientID == "" {
-		return token, fmt.Errorf("must provide ClientID")
-	}
-
-	if uuid.Parse(creds.ClientID) == nil {
-		return token, fmt.Errorf("ClientID must be a valid UUID")
-	}
-
-	if ttl < 0 {
-		return token, fmt.Errorf("invalid TTL: %d", ttl)
-	}
-
-	var aco models.ACO
-	aco, err = getACOFromDB(creds.ClientID)
-	if err != nil {
-		return token, err
-	}
-
-	token.UUID = uuid.NewRandom()
-	token.ACOID = aco.UUID
-	token.IssuedAt = time.Now().Unix()
-	token.ExpiresOn = time.Now().Add(time.Hour * time.Duration(ttl)).Unix()
-	token.Active = true
-
-	token.TokenString, err = GenerateTokenString(token.UUID.String(), token.ACOID.String(), token.IssuedAt, token.ExpiresOn)
-	if err != nil {
-		return Token{}, err
-	}
-
-	return token, nil
-}
-
 func (p AlphaAuthPlugin) RevokeAccessToken(tokenString string) error {
 	return fmt.Errorf("RevokeAccessToken is not implemented for alpha auth")
 }
 
-func (p AlphaAuthPlugin) ValidateJWT(tokenString string) error {
-	tknEvent := event{op: "ValidateJWT"}
+func (p AlphaAuthPlugin) AuthorizeAccess(tokenString string) error {
+	tknEvent := event{op: "AuthorizeAccess"}
 	operationStarted(tknEvent)
-	t, err := p.DecodeJWT(tokenString)
+	t, err := p.VerifyToken(tokenString)
 	if err != nil {
 		tknEvent.help = err.Error()
 		operationFailed(tknEvent)
@@ -282,7 +245,7 @@ func checkRequiredClaims(claims *CommonClaims) error {
 	return nil
 }
 
-func (p AlphaAuthPlugin) DecodeJWT(tokenString string) (*jwt.Token, error) {
+func (p AlphaAuthPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
