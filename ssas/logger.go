@@ -77,7 +77,7 @@ func OperationStarted(data Event) {
 /*
 	OperationSucceeded should be called after an event's success, and should always be preceded by
 	a call to OperationStarted
-*/
+ */
 func OperationSucceeded(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationSucceeded").Print(data.Help)
 }

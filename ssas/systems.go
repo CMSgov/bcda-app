@@ -72,7 +72,7 @@ type Secret struct {
 /*
 	SaveSecret should be provided with a secret hashed with auth.NewHash(), which will
 	be saved to the secrets table and associated with the current system.
-*/
+ */
 func (system *System) SaveSecret(hashedSecret string) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -119,7 +119,7 @@ func (system *System) GetSecret() (string, error) {
 
 /*
 	GetPublicKey will retrieve the hashed secret associated with the current system.
-*/
+ */
 func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -159,9 +159,7 @@ func (system *System) SavePublicKey(publicKey io.Reader) error {
 		SystemID: system.ID,
 	}
 
-	/*
-		Only one key should be valid per system.  Soft delete the currently active key, if any.
-	*/
+	// Only one key should be valid per system.  Soft delete the currently active key, if any.
 	err = db.Where("system_id = ?", system.ID).Delete(&EncryptionKey{}).Error
 	if err != nil {
 		return fmt.Errorf("unable to soft delete previous encryption keys for clientID %s: %s", system.ClientID, err.Error())
@@ -200,7 +198,7 @@ func (system *System) RevokeSystemKeyPair() error {
 
 /*
 	GenerateSystemKeyPair creates a keypair for a system. The public key is saved to the database and the private key is returned.
-*/
+ */
 func (system *System) GenerateSystemKeyPair() (string, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -363,8 +361,9 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	OperationSucceeded(regEvent)
 	return creds, nil
 }
-
-// GetSystemByClientID returns the system associated with the provided clientID
+/*
+	GetSystemByClientID returns the system associated with the provided clientID
+ */
 func GetSystemByClientID(clientID string) (System, error) {
 	var (
 		db     = database.GetGORMDbConnection()
@@ -390,7 +389,9 @@ func GenerateSecret() (string, error) {
 	return fmt.Sprintf("%x", b), nil
 }
 
-// CleanDatabase deletes the given group and associated systems, encryption keys, and secrets.
+/*
+	CleanDatabase deletes the given group and associated systems, encryption keys, and secrets.
+ */
 func CleanDatabase(group Group) error {
 	var (
 		system        System

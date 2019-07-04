@@ -33,7 +33,7 @@ type RegistrationRequest struct {
 /*
 	RegisterSystem is mounted at POST /auth/register and allows for self-registration.  It requires that a
 	registration token be presented and parsed by middleware, with the GroupID placed in context key "rd".
-*/
+ */
 func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	var (
 		rd  auth.AuthRegData
