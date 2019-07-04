@@ -1,4 +1,9 @@
-package api
+/*
+	Package public (ssas/service/api/public) contains API functions, middleware, and a router designed to:
+		1. Be accessible to the public
+		2. Offer system self-registration and self-management
+ */
+package public
 
 import (
 	"encoding/json"
