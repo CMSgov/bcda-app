@@ -84,8 +84,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	publicKeyPEM, err := rsautils.ConvertJWKToPEM(string(publicKeyBytes))
 	if err != nil {
-	//	jsonError(w, "invalid_client_metadata", "Unable to process JWK")
-		jsonError(w, "invalid_client_metadata", err.Error())
+		jsonError(w, "invalid_client_metadata", "Unable to process JWK")
 		return
 	}
 
