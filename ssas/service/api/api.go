@@ -30,7 +30,10 @@ type RegistrationRequest struct {
 	JSONWebKeys JWKS `json:"jwks"`
 }
 
-// POST /auth/register
+/*
+	RegisterSystem is mounted at POST /auth/register and allows for self-registration.  It requires that a
+	registration token be presented and parsed by middleware, with the GroupID placed in context key "rd".
+*/
 func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	var (
 		rd  auth.AuthRegData
@@ -83,7 +86,8 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	// Log the source of the call for this operation.  Remaining logging will be in ssas.RegisterSystem() below.
 	trackingID = uuid.NewRandom().String()
-	ssas.OperationCalled(ssas.Event{Op: "RegisterClient", TrackingID: trackingID})
+	event := ssas.Event{Op: "RegisterClient", TrackingID: trackingID}
+	ssas.OperationCalled(event)
 	credentials, err := ssas.RegisterSystem(reg.ClientName, rd.GroupID, reg.Scope, publicKeyPEM, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
@@ -92,10 +96,12 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	body := []byte(fmt.Sprintf(`{"client_id": "%s","client_secret":"%s","client_secret_expires_at":"%d","client_name":"%s"}`,
 		credentials.ClientID, credentials.ClientSecret, credentials.ExpiresAt.Unix(), credentials.ClientName))
+	// Status headers other than 200 must be written before all other writes
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		ssas.OperationFailed(event)
 		return
 	}
 }

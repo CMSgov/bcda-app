@@ -7,6 +7,9 @@ import (
 	"log"
 )
 
+/*
+	InitializeGroupModels will call gorm.DB.AutoMigrate() for Group{}
+*/
 func InitializeGroupModels() *gorm.DB {
 	log.Println("Initialize group models")
 	db := database.GetGORMDbConnection()
