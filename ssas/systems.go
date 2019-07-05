@@ -218,6 +218,14 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 	return string(privateKeyBytes), nil
 }
 
+type Credentials struct {
+	UserID       string
+	ClientID     string
+	ClientSecret string
+	TokenString	 string
+	ClientName   string
+}
+
 func RegisterSystem(clientID string, clientName string, clientURI string, groupID string, scope string, publicKeyPEM string) (Credentials, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
@@ -350,7 +358,6 @@ func GetSystemByClientID(clientID string) (System, error) {
 	return system, err
 }
 
-// TODO: put this as a public function in the new plugin or in backend.go
 func GenerateSecret() (string, error) {
 	b := make([]byte, 40)
 	_, err := rand.Read(b)
