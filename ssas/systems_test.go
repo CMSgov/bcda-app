@@ -8,13 +8,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/jinzhu/gorm"
-	"github.com/pborman/uuid"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,13 +23,13 @@ type SystemsTestSuite struct {
 }
 
 func (s *SystemsTestSuite) SetupSuite() {
-	s.db = database.GetGORMDbConnection()
+	s.db = GetGORMDbConnection()
 	InitializeGroupModels()
 	InitializeSystemModels()
 }
 
 func (s *SystemsTestSuite) TearDownSuite() {
-	database.Close(s.db)
+	Close(s.db)
 }
 
 func (s *SystemsTestSuite) AfterTest() {
@@ -447,7 +446,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	if err != nil {
 		s.FailNow("cannot generate random secret")
 	}
-	hashedSecret1, err := auth.NewHash(secret1)
+	hashedSecret1, err := NewHash(secret1)
 	if err != nil {
 		s.FailNow("cannot hash random secret")
 	}
@@ -462,7 +461,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	if err != nil {
 		s.FailNow("cannot generate random secret")
 	}
-	hashedSecret2, err := auth.NewHash(secret2)
+	hashedSecret2, err := NewHash(secret2)
 	if err != nil {
 		s.FailNow("cannot hash random secret")
 	}
@@ -477,7 +476,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	if err != nil {
 		s.FailNow(err.Error())
 	}
-	assert.True(auth.Hash(savedHash).IsHashOf(secret2))
+	assert.True(Hash(savedHash).IsHashOf(secret2))
 
 	err = s.cleanDatabase(group)
 	assert.Nil(err)
