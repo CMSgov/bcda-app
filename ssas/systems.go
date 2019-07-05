@@ -251,7 +251,7 @@ type Credentials struct {
 	ClientSecret string
 	TokenString  string
 	ClientName   string
-	ExpiresAt	 time.Time
+	ExpiresAt    time.Time
 }
 
 /*
