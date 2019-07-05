@@ -7,8 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: Remove auth.logger
-var logger *logrus.Logger
+var Logger *logrus.Logger
 
 type Event struct {
 	ClientID   string
@@ -20,27 +19,27 @@ type Event struct {
 }
 
 func init() {
-	logger = logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
-	logger.Formatter.(*logrus.JSONFormatter).TimestampFormat = time.RFC3339Nano
+	Logger = logrus.New()
+	Logger.Formatter = &logrus.JSONFormatter{}
+	Logger.Formatter.(*logrus.JSONFormatter).TimestampFormat = time.RFC3339Nano
 
-	filePath, success := os.LookupEnv("AUTH_LOG")
+	filePath, success := os.LookupEnv("SSAS_LOG")
 	if success {
 		/* #nosec -- 0640 permissions required for Splunk ingestion */
 		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
 
 		if err == nil {
-			logger.SetOutput(file)
+			Logger.SetOutput(file)
 		} else {
-			logger.Info("Failed to open Auth log file; using default stderr")
+			Logger.Info("Failed to open SSAS log file; using default stderr")
 		}
 	} else {
-		logger.Info("No Auth log location provided; using default stderr")
+		Logger.Info("No SSAS log location provided; using default stderr")
 	}
 }
 
 func mergeNonEmpty(data Event) *logrus.Entry {
-	var entry = logrus.NewEntry(logger)
+	var entry = logrus.NewEntry(Logger)
 
 	if data.ClientID != "" {
 		entry = entry.WithField("clientID", data.ClientID)

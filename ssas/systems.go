@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/jinzhu/gorm"
-	"github.com/pborman/uuid"
 	"io"
 	"io/ioutil"
 	"log"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
 )
 
 const DEFAULT_SCOPE = "bcda-api"
@@ -25,11 +25,11 @@ const CREDENTIAL_EXPIRATION = 90 * 24 * time.Hour
 /*
 	InitializeSystemModels will call gorm.DB.AutoMigrate() for models associated with systems, and set up foreign key
 	relationships for those models if needed
- */
+*/
 func InitializeSystemModels() *gorm.DB {
 	log.Println("Initialize system models")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	db.AutoMigrate(
 		&System{},
@@ -72,10 +72,10 @@ type Secret struct {
 /*
 	SaveSecret should be provided with a secret hashed with auth.NewHash(), which will
 	be saved to the secrets table and associated with the current system.
- */
+*/
 func (system *System) SaveSecret(hashedSecret string) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	secret := Secret{
 		Hash:     hashedSecret,
@@ -98,10 +98,10 @@ func (system *System) SaveSecret(hashedSecret string) error {
 
 /*
 	GetSecret will retrieve the hashed secret associated with the current system.
- */
+*/
 func (system *System) GetSecret() (string, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	secret := Secret{}
 
@@ -119,10 +119,10 @@ func (system *System) GetSecret() (string, error) {
 
 /*
 	GetPublicKey will retrieve the hashed secret associated with the current system.
- */
+*/
 func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	var encryptionKey EncryptionKey
 	err := db.Where("system_id = ?", system.ID).Find(&encryptionKey).Error
@@ -130,23 +130,23 @@ func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
 		return nil, fmt.Errorf("cannot find public key for clientID %s: %s", system.ClientID, err.Error())
 	}
 
-	return rsautils.ReadPublicKey(encryptionKey.Body)
+	return ReadPublicKey(encryptionKey.Body)
 }
 
 /*
 	SavePublicKey should be provided with a public key in PEM format, which will be saved
 	to the encryption_keys table and associated with the current system.
- */
+*/
 func (system *System) SavePublicKey(publicKey io.Reader) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	k, err := ioutil.ReadAll(publicKey)
 	if err != nil {
 		return fmt.Errorf("cannot read public key for clientID %s: %s", system.ClientID, err.Error())
 	}
 
-	key, err := rsautils.ReadPublicKey(string(k))
+	key, err := ReadPublicKey(string(k))
 	if err != nil {
 		return fmt.Errorf("invalid public key for clientID %s: %s", system.ClientID, err.Error())
 	}
@@ -176,10 +176,10 @@ func (system *System) SavePublicKey(publicKey io.Reader) error {
 /*
 	RevokeSystemKeyPair soft deletes the active encryption key
 	for the specified system so that it can no longer be used
- */
+*/
 func (system *System) RevokeSystemKeyPair() error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	var encryptionKey EncryptionKey
 
@@ -198,10 +198,10 @@ func (system *System) RevokeSystemKeyPair() error {
 
 /*
 	GenerateSystemKeyPair creates a keypair for a system. The public key is saved to the database and the private key is returned.
- */
+*/
 func (system *System) GenerateSystemKeyPair() (string, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	var key EncryptionKey
 	if !db.Where("system_id = ?", system.ID).Find(&key).RecordNotFound() {
@@ -246,7 +246,7 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 /*
 	RegisterSystem will save a new system and public key after verifying provided details for validity.  It returns
 	an auth.Credentials struct including the generated clientID and secret.
- */
+*/
 func RegisterSystem(clientName string, groupID string, scope string, publicKeyPEM string, trackingID string) (auth.Credentials, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -261,7 +261,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 		}
 	}()
 
-	creds := auth.Credentials{}
+	creds := Credentials{}
 	clientID := uuid.NewRandom().String()
 
 	// The caller of this function should have logged OperationCalled() with the same trackingID
@@ -282,7 +282,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 		return creds, errors.New(regEvent.Help)
 	}
 
-	_, err := rsautils.ReadPublicKey(publicKeyPEM)
+	_, err := ReadPublicKey(publicKeyPEM)
 	if err != nil {
 		regEvent.Help = "error in public key: " + err.Error()
 		OperationFailed(regEvent)
@@ -326,7 +326,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 		return creds, errors.New("internal system error")
 	}
 
-	hashedSecret, err := auth.NewHash(clientSecret)
+	hashedSecret, err := NewHash(clientSecret)
 	if err != nil {
 		regEvent.Help = fmt.Sprintf("cannot generate hash of secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(regEvent)
@@ -361,16 +361,17 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	OperationSucceeded(regEvent)
 	return creds, nil
 }
+
 /*
 	GetSystemByClientID returns the system associated with the provided clientID
- */
+*/
 func GetSystemByClientID(clientID string) (System, error) {
 	var (
-		db     = database.GetGORMDbConnection()
+		db     = GetGORMDbConnection()
 		system System
 		err    error
 	)
-	defer database.Close(db)
+	defer Close(db)
 
 	if db.Find(&system, "client_id = ?", clientID).RecordNotFound() {
 		err = fmt.Errorf("no System record found for client %s", clientID)
@@ -391,7 +392,7 @@ func GenerateSecret() (string, error) {
 
 /*
 	CleanDatabase deletes the given group and associated systems, encryption keys, and secrets.
- */
+*/
 func CleanDatabase(group Group) error {
 	var (
 		system        System
