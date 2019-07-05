@@ -1,16 +1,16 @@
 package ssas
 
 import (
-	"github.com/CMSgov/bcda-app/bcda/database"
+	"log"
+
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
-	"log"
 )
 
 func InitializeGroupModels() *gorm.DB {
 	log.Println("Initialize group models")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	db.AutoMigrate(
 		&Group{},

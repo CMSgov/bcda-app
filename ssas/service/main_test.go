@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/ssas"
 )
 
 func TestHello(t *testing.T) {
@@ -14,7 +16,7 @@ func TestHello(t *testing.T) {
 
 func TestSSASMain(t *testing.T) {
 	var str bytes.Buffer
-	logger.SetOutput(&str)
+	ssas.Logger.SetOutput(&str)
 	main()
 	s := str.String()
 	if !strings.Contains(s, "Future home of") {
