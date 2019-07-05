@@ -14,6 +14,8 @@ import (
 
 const RSAKEYMINBITS = 2048
 
+// ReadPublicKey reads a string containing a PEM-formatted public key and returns a pointer to an rsa.PublicKey type
+// or an error. The key must have a length of at least 2048 bits, and it must be an rsa key.
 func ReadPublicKey (publicKey string) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode([]byte(publicKey))
 	if block == nil {
@@ -37,6 +39,7 @@ func ReadPublicKey (publicKey string) (*rsa.PublicKey, error) {
 	return rsaPub, nil
 }
 
+// ConvertJWKToPEM extracts the (hopefully single) public key contained in a jwks.
 // Modified from source at: https://play.golang.org/p/mLpOxS-5Fy
 func ConvertJWKToPEM(jwks string) (string, error) {
 	j := map[string]string{}

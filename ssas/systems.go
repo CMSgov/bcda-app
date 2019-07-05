@@ -245,6 +245,15 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 	return string(privateKeyBytes), nil
 }
 
+type Credentials struct {
+	UserID       string
+	ClientID     string
+	ClientSecret string
+	TokenString  string
+	ClientName   string
+	ExpiresAt	 time.Time
+}
+
 /*
 	RegisterSystem will save a new system and public key after verifying provided details for validity.  It returns
 	a ssas.Credentials struct including the generated clientID and secret.
@@ -381,7 +390,6 @@ func GetSystemByClientID(clientID string) (System, error) {
 	return system, err
 }
 
-// TODO: put this as a public function in the new plugin or in backend.go
 func GenerateSecret() (string, error) {
 	b := make([]byte, 40)
 	_, err := rand.Read(b)
