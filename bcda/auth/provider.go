@@ -1,12 +1,10 @@
 package auth
 
 import (
-	"os"
-	"strings"
-	"time"
-
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 )
@@ -52,10 +50,6 @@ func GetProvider() Provider {
 	}
 }
 
-type AuthRegData struct {
-	GroupID string
-}
-
 type AuthData struct {
 	ACOID   string
 	UserID  string
@@ -68,7 +62,6 @@ type Credentials struct {
 	ClientSecret string
 	Token        Token
 	ClientName   string
-	ExpiresAt	 time.Time
 }
 
 // Provider defines operations performed through an authentication provider.

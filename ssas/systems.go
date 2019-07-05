@@ -13,8 +13,6 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 )
@@ -69,8 +67,12 @@ type Secret struct {
 	SystemID uint   `json:"system_id"`
 }
 
+type AuthRegData struct {
+	GroupID string
+}
+
 /*
-	SaveSecret should be provided with a secret hashed with auth.NewHash(), which will
+	SaveSecret should be provided with a secret hashed with ssas.NewHash(), which will
 	be saved to the secrets table and associated with the current system.
 */
 func (system *System) SaveSecret(hashedSecret string) error {
@@ -245,11 +247,11 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 
 /*
 	RegisterSystem will save a new system and public key after verifying provided details for validity.  It returns
-	an auth.Credentials struct including the generated clientID and secret.
+	a ssas.Credentials struct including the generated clientID and secret.
 */
-func RegisterSystem(clientName string, groupID string, scope string, publicKeyPEM string, trackingID string) (auth.Credentials, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+func RegisterSystem(clientName string, groupID string, scope string, publicKeyPEM string, trackingID string) (Credentials, error) {
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	// A system is not valid without an active public key and a hashed secret.  However, they are stored separately in the
 	// encryption_keys and secrets tables, requiring multiple INSERT statement.  To ensure we do not get into an invalid state,
@@ -399,9 +401,9 @@ func CleanDatabase(group Group) error {
 		encryptionKey EncryptionKey
 		secret        Secret
 		systemIds     []int
-		db            = database.GetGORMDbConnection()
+		db            = GetGORMDbConnection()
 	)
-	defer database.Close(db)
+	defer Close(db)
 
 	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {

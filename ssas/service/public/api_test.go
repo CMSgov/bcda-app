@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 )
 
@@ -93,7 +92,7 @@ func TestAuthAPITestSuite(t *testing.T) {
 func addRegDataContext(req *http.Request, groupID string) *http.Request {
 	rctx := chi.NewRouteContext()
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	rd := auth.AuthRegData{GroupID: groupID}
+	rd := ssas.AuthRegData{GroupID: groupID}
 	req = req.WithContext(context.WithValue(req.Context(), "rd", rd))
 	return req
 }

@@ -9,8 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/pborman/uuid"
 	"io/ioutil"
@@ -41,7 +39,7 @@ type RegistrationRequest struct {
  */
 func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	var (
-		rd  auth.AuthRegData
+		rd  ssas.AuthRegData
 		err error
 		reg RegistrationRequest
 		publicKeyBytes []byte
@@ -82,7 +80,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	publicKeyPEM, err := rsautils.ConvertJWKToPEM(string(publicKeyBytes))
+	publicKeyPEM, err := ssas.ConvertJWKToPEM(string(publicKeyBytes))
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", "Unable to process JWK")
 		return
@@ -110,9 +108,9 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func readRegData(r *http.Request) (data auth.AuthRegData, err error) {
+func readRegData(r *http.Request) (data ssas.AuthRegData, err error) {
 	var ok bool
-	data, ok = r.Context().Value("rd").(auth.AuthRegData)
+	data, ok = r.Context().Value("rd").(ssas.AuthRegData)
 	if !ok {
 		err = errors.New("no registration data in context")
 	}
