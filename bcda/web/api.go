@@ -507,25 +507,3 @@ func GetJobTimeout() time.Duration {
 func SetQC(client *que.Client) {
 	qc = client
 }
-
-/*
-	swagger:route POST /auth/register auth RegisterSystem
-
-	Register system
-
-	Verifies registration credentials, accepts information about desired system (name, URI, scope, and public key),
-	and if successful returns credentials for the new system.  Follows RFC 7591: OAuth 2.0 Dynamic Registration.
-
-	Produces:
-	- application/json
-
-	Schemes: https
-
-	Security:
-		basic_auth:
-
-	Responses:
-		201: created
-		400: invalidRequest
-		500: serverError
-*/
