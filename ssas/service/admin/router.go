@@ -11,6 +11,6 @@ func NewRouter(middlewares ...func(http.Handler) http.Handler) http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(middlewares...)
-	r.Post(m.WrapHandler("/auth/system", createSystem))
+	r.Post(m.WrapHandler("/system", createSystem))
 	return r
 }

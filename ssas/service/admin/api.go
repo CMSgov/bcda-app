@@ -9,11 +9,11 @@ import (
 
 func createSystem(w http.ResponseWriter, r *http.Request) {
 	type system struct {
-		GroupID    string `json:"group_id"`
-		ClientID   string `json:"client_id"`
 		ClientName string `json:"client_name"`
+		GroupID    string `json:"group_id"`
 		Scope      string `json:"scope"`
 		PublicKey  string `json:"public_key"`
+		TrackingID string `json:"tracking_id"`
 	}
 
 	sys := system{}
@@ -22,7 +22,7 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	creds, err := ssas.RegisterSystem(sys.ClientName, sys.GroupID, sys.Scope, sys.PublicKey, sys.ClientID)
+	creds, err := ssas.RegisterSystem(sys.ClientName, sys.GroupID, sys.Scope, sys.PublicKey, sys.TrackingID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not create system. Error: %s", err), http.StatusBadRequest)
 		return
