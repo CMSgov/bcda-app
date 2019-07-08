@@ -24,13 +24,13 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 
 	creds, err := ssas.RegisterSystem(sys.ClientName, sys.GroupID, sys.Scope, sys.PublicKey, sys.ClientID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Could not create system. Error: %s", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Could not create system. Error: %s", err), http.StatusBadRequest)
 		return
 	}
 
 	credsJSON, err := json.Marshal(creds)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Could not create system. Error: %s", err), http.StatusInternalServerError)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
