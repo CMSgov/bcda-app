@@ -4,7 +4,6 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io"
 	"io/ioutil"
 	"os"
@@ -22,6 +21,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
+const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 25000
+const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 15000
 
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
@@ -91,7 +93,10 @@ func (job *Job) CheckCompletedAndCleanup() (bool, error) {
 func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 	var jobIDs []string
 	var rowCount = 0
-	maxBeneficiaries := GetMaxBeneCount(t)
+	maxBeneficiaries, err := GetMaxBeneCount(t)
+	if err != nil {
+		return nil, err
+	}
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -135,24 +140,27 @@ func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 	return enqueJobs, nil
 }
 
-func GetMaxBeneCount(requestType string) int {
+func GetMaxBeneCount(requestType string) (int, error) {
 	var envVar string
 	var defaultVal int
 
 	switch requestType {
 	case "ExplanationOfBenefit":
 		envVar = "BCDA_FHIR_MAX_RECORDS_EOB"
-		defaultVal = constants.BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT
+		defaultVal = BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT
 	case "Patient":
 		envVar = "BCDA_FHIR_MAX_RECORDS_PATIENT"
-		defaultVal = constants.BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT
+		defaultVal = BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT
 	case "Coverage":
 		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
-		defaultVal = constants.BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
+		defaultVal = BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
+	default:
+		err := errors.New("invalid request type")
+		return -1, err
 	}
 	maxBeneficiaries := utils.GetEnvInt(envVar, defaultVal)
 
-	return maxBeneficiaries
+	return maxBeneficiaries, nil
 }
 
 type JobKey struct {
