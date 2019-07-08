@@ -2,11 +2,11 @@ package ssas
 
 import (
 	"encoding/json"
-	"github.com/CMSgov/bcda-app/bcda/database"
+	"testing"
+
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type GroupsTestSuite struct {
@@ -15,12 +15,12 @@ type GroupsTestSuite struct {
 }
 
 func (s *GroupsTestSuite) SetupSuite() {
-	s.db = database.GetGORMDbConnection()
+	s.db = GetGORMDbConnection()
 	InitializeGroupModels()
 }
 
 func (s *GroupsTestSuite) TearDownSuite() {
-	database.Close(s.db)
+	Close(s.db)
 }
 
 func (s *GroupsTestSuite) AfterTest() {
@@ -72,8 +72,8 @@ groupBytes := []byte(`{
 group := Group{}
 err := json.Unmarshal(groupBytes, &group)
 assert.Nil(s.T(), err)
-db := database.GetGORMDbConnection()
-defer database.Close(db)
+db := GetGORMDbConnection()
+defer Close(db)
 err = db.Save(&group).Error
 assert.Nil(s.T(), err)
 db.Unscoped().Delete(&group)

@@ -7,22 +7,20 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/jinzhu/gorm"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/url"
+
+	"github.com/jinzhu/gorm"
 )
 
 const DEFAULT_SCOPE = "bcda-api"
 
 func InitializeSystemModels() *gorm.DB {
 	log.Println("Initialize system models")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	db.AutoMigrate(
 		&System{},
@@ -64,8 +62,8 @@ type Secret struct {
 }
 
 func (system *System) SaveSecret(hashedSecret string) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	secret := Secret{
 		Hash:     hashedSecret,
@@ -86,8 +84,8 @@ func (system *System) SaveSecret(hashedSecret string) error {
 }
 
 func (system *System) GetSecret() (string, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	secret := Secret{}
 
@@ -104,8 +102,8 @@ func (system *System) GetSecret() (string, error) {
 }
 
 func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	var encryptionKey EncryptionKey
 	err := db.Where("system_id = ?", system.ID).Find(&encryptionKey).Error
@@ -113,19 +111,19 @@ func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
 		return nil, fmt.Errorf("cannot find public key for clientID %s: %s", system.ClientID, err.Error())
 	}
 
-	return rsautils.ReadPublicKey(encryptionKey.Body)
+	return ReadPublicKey(encryptionKey.Body)
 }
 
 func (system *System) SavePublicKey(publicKey io.Reader) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	k, err := ioutil.ReadAll(publicKey)
 	if err != nil {
 		return fmt.Errorf("cannot read public key for clientID %s: %s", system.ClientID, err.Error())
 	}
 
-	key, err := rsautils.ReadPublicKey(string(k))
+	key, err := ReadPublicKey(string(k))
 	if err != nil {
 		return fmt.Errorf("invalid public key for clientID %s: %s", system.ClientID, err.Error())
 	}
@@ -155,8 +153,8 @@ func (system *System) SavePublicKey(publicKey io.Reader) error {
 // RevokeSystemKeyPair soft deletes the active encryption key
 // for the specified system so that it can no longer be used
 func (system *System) RevokeSystemKeyPair() error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	var encryptionKey EncryptionKey
 
@@ -177,8 +175,8 @@ func (system *System) RevokeSystemKeyPair() error {
  GenerateSystemKeyPair creates a keypair for a system. The public key is saved to the database and the private key is returned.
 */
 func (system *System) GenerateSystemKeyPair() (string, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	var key EncryptionKey
 	if !db.Where("system_id = ?", system.ID).Find(&key).RecordNotFound() {
@@ -220,9 +218,17 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 	return string(privateKeyBytes), nil
 }
 
-func RegisterSystem(clientID string, clientName string, clientURI string, groupID string, scope string, publicKeyPEM string) (auth.Credentials, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+type Credentials struct {
+	UserID       string
+	ClientID     string
+	ClientSecret string
+	TokenString	 string
+	ClientName   string
+}
+
+func RegisterSystem(clientID string, clientName string, clientURI string, groupID string, scope string, publicKeyPEM string) (Credentials, error) {
+	db := GetGORMDbConnection()
+	defer Close(db)
 
 	// A system is not valid without an active public key and a hashed secret.  However, they are stored separately in the
 	// encryption_keys and secrets tables, requiring multiple INSERT statement.  To ensure we do not get into an invalid state,
@@ -234,9 +240,9 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 		}
 	}()
 
-	creds := auth.Credentials{}
+	creds := Credentials{}
 
-	regEvent := Event{Op: "RegisterClient", TrackingID: clientID}
+	regEvent := Event{Op: "RegisterSystem", TrackingID: clientID}
 	OperationStarted(regEvent)
 
 	if clientID == "" {
@@ -265,7 +271,7 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 		return creds, errors.New(regEvent.Help)
 	}
 
-	_, err := rsautils.ReadPublicKey(publicKeyPEM)
+	_, err := ReadPublicKey(publicKeyPEM)
 	if err != nil {
 		regEvent.Help = "error in public key: " + err.Error()
 		OperationFailed(regEvent)
@@ -304,7 +310,7 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 		return creds, errors.New(regEvent.Help)
 	}
 
-	hashedSecret, err := auth.NewHash(clientSecret)
+	hashedSecret, err := NewHash(clientSecret)
 	if err != nil {
 		regEvent.Help = fmt.Sprintf("cannot generate hash of secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(regEvent)
@@ -340,11 +346,11 @@ func RegisterSystem(clientID string, clientName string, clientURI string, groupI
 
 func GetSystemByClientID(clientID string) (System, error) {
 	var (
-		db = database.GetGORMDbConnection()
+		db = GetGORMDbConnection()
 		system System
 		err error
 	)
-	defer database.Close(db)
+	defer Close(db)
 
 	if db.Find(&system, "client_id = ?", clientID).RecordNotFound() {
 		err = errors.New("no System record found for " + clientID)
@@ -352,7 +358,6 @@ func GetSystemByClientID(clientID string) (System, error) {
 	return system, err
 }
 
-// TODO: put this as a public function in the new plugin or in backend.go
 func GenerateSecret() (string, error) {
 	b := make([]byte, 40)
 	_, err := rand.Read(b)

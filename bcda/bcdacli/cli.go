@@ -4,10 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/cclf"
-	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
-	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/web"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,14 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/utils"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/cclf"
+	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-
+	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcda/web"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
@@ -46,7 +43,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, userName, userEmail, tokenID, tokenSecret, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
+	var acoName, acoCMSID, acoID, userName, userEmail, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -222,29 +219,6 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "create-token",
-			Category: "Authentication tools",
-			Usage:    "Create an access/session token",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "id",
-					Usage:       "Client ID associated with token",
-					Destination: &tokenID,
-				}, cli.StringFlag{
-					Name:        "secret",
-					Usage:       "Credential secret for creating session tokens",
-					Destination: &tokenSecret,
-				}},
-			Action: func(c *cli.Context) error {
-				tokenValue, err := createAccessToken(tokenID, tokenSecret)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(app.Writer, "%s\n", tokenValue)
-				return nil
-			},
-		},
-		{
 			Name:     "revoke-token",
 			Category: "Authentication tools",
 			Usage:    "Revoke an access token",
@@ -312,14 +286,14 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 
-				// Get ACO by CMS ID (since GenerateClientCredentials interface expects a Client ID)
+				// Get ACO by CMS ID (since ResetSecret interface expects a Client ID)
 				aco, err := auth.GetACOByCMSID(acoCMSID)
 				if err != nil {
 					return err
 				}
 
 				// Generate new credentials
-				creds, err := auth.GetProvider().GenerateClientCredentials(aco.ClientID)
+				creds, err := auth.GetProvider().ResetSecret(aco.ClientID)
 				if err != nil {
 					return err
 				}
@@ -470,19 +444,6 @@ func createUser(acoID, name, email string) (string, error) {
 	}
 
 	return user.UUID.String(), nil
-}
-
-func createAccessToken(ID string, secret string) (string, error) {
-	if ID == "" {
-		return "", errors.New("ID (--id) must be provided")
-	}
-
-	token, err := auth.GetProvider().RequestAccessToken(auth.Credentials{ClientID: ID, ClientSecret: secret}, 72)
-	if err != nil {
-		return "", err
-	}
-
-	return token.TokenString, nil
 }
 
 func revokeAccessToken(accessToken string) error {

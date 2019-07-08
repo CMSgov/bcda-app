@@ -90,7 +90,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	// Success!?
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterClient(constants.DEVACOUUID)
+	creds, err := auth.GetProvider().RegisterSystem(constants.DEVACOUUID)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)
