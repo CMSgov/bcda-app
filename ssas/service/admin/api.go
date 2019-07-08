@@ -12,18 +12,17 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 		GroupID    string `json:"group_id"`
 		ClientID   string `json:"client_id"`
 		ClientName string `json:"client_name"`
-		ClientURI  string `json:"client_uri"`
 		Scope      string `json:"scope"`
 		PublicKey  string `json:"public_key"`
 	}
 
 	sys := system{}
 	if err := json.NewDecoder(r.Body).Decode(&sys); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "Could not create system due to invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	creds, err := ssas.RegisterSystem(sys.ClientID, sys.ClientName, sys.ClientURI, sys.GroupID, sys.Scope, sys.PublicKey)
+	creds, err := ssas.RegisterSystem(sys.ClientName, sys.GroupID, sys.Scope, sys.PublicKey, sys.ClientID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not create system. Error: %s", err), http.StatusInternalServerError)
 		return
