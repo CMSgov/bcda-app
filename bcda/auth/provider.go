@@ -1,10 +1,11 @@
 package auth
 
 import (
-	"github.com/dgrijalva/jwt-go"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"strings"
+
+	"github.com/dgrijalva/jwt-go"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 )
