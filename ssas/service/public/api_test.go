@@ -14,8 +14,6 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/database"
 )
 
 type APITestSuite struct {
@@ -27,12 +25,12 @@ type APITestSuite struct {
 func (s *APITestSuite) SetupTest() {
 	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
-	s.db = database.GetGORMDbConnection()
+	s.db = ssas.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
 
 func (s *APITestSuite) TearDownTest() {
-	database.Close(s.db)
+	ssas.Close(s.db)
 }
 
 func (s *APITestSuite) TestAuthRegisterEmpty() {
