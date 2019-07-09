@@ -2,7 +2,6 @@ package admin
 
 import (
 	"encoding/json"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -19,11 +18,11 @@ type APITestSuite struct {
 }
 
 func (s *APITestSuite) SetupSuite() {
-	s.db = database.GetGORMDbConnection()
+	s.db = ssas.GetGORMDbConnection()
 }
 
 func (s *APITestSuite) TearDownSuite() {
-	database.Close(s.db)
+	ssas.Close(s.db)
 }
 
 func (s *APITestSuite) TestCreateSystem() {
