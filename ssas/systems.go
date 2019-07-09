@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"io"
@@ -17,8 +18,21 @@ import (
 	"github.com/pborman/uuid"
 )
 
-const DEFAULT_SCOPE = "bcda-api"
+var DefaultScope string
 const CREDENTIAL_EXPIRATION = 90 * 24 * time.Hour
+
+func init() {
+	getEnvVars()
+}
+
+func getEnvVars() {
+	DefaultScope = os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE")
+
+	if DefaultScope == "" {
+		ServiceHalted(Event{Help:"SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
+		panic("SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set")
+	}
+}
 
 /*
 	InitializeSystemModels will call gorm.DB.AutoMigrate() for models associated with systems, and set up foreign key
@@ -286,9 +300,9 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	}
 
 	if scope == "" {
-		scope = DEFAULT_SCOPE
-	} else if scope != DEFAULT_SCOPE {
-		regEvent.Help = "scope must be: " + DEFAULT_SCOPE
+		scope = DefaultScope
+	} else if scope != DefaultScope {
+		regEvent.Help = "scope must be: " + DefaultScope
 		OperationFailed(regEvent)
 		return creds, errors.New(regEvent.Help)
 	}

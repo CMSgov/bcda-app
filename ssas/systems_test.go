@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -365,7 +367,7 @@ func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
 	pubKey, err := generatePublicKey(2048)
 	assert.Nil(err)
 
-	creds, err := RegisterSystem("Create System Test", groupID, DEFAULT_SCOPE, pubKey, trackingID)
+	creds, err := RegisterSystem("Create System Test", groupID, DefaultScope, pubKey, trackingID)
 	assert.Nil(err)
 	assert.Equal("Create System Test", creds.ClientName)
 	assert.NotEqual("", creds.ClientSecret)
@@ -389,7 +391,7 @@ func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 	assert.Nil(err)
 
 	// No clientName
-	creds, err := RegisterSystem("", groupID, DEFAULT_SCOPE, pubKey, trackingID)
+	creds, err := RegisterSystem("", groupID, DefaultScope, pubKey, trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
@@ -417,17 +419,17 @@ func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 	assert.Nil(err)
 
 	// Blank key
-	creds, err := RegisterSystem("Register System Failure", groupID, DEFAULT_SCOPE, "", trackingID)
+	creds, err := RegisterSystem("Register System Failure", groupID, DefaultScope, "", trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
 	// Invalid key
-	creds, err = RegisterSystem("Register System Failure", groupID, DEFAULT_SCOPE, "NotAKey", trackingID)
+	creds, err = RegisterSystem("Register System Failure", groupID, DefaultScope, "NotAKey", trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
 	// Key length too low
-	creds, err = RegisterSystem("Register System Failure", groupID, DEFAULT_SCOPE, pubKey, trackingID)
+	creds, err = RegisterSystem("Register System Failure", groupID, DefaultScope, pubKey, trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
@@ -509,6 +511,31 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 
 	err = CleanDatabase(group)
 	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestScopeEnvSuccess() {
+	key := "SSAS_DEFAULT_SYSTEM_SCOPE"
+	new_scope := "my_scope"
+	old_scope := os.Getenv(key)
+	err := os.Setenv(key, new_scope)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	getEnvVars()
+
+	assert.Equal(s.T(), new_scope, DefaultScope)
+	err = os.Setenv(key, old_scope)
+	assert.Nil(s.T(), err)
+}
+
+func (s *SystemsTestSuite) TestScopeEnvFailure() {
+	scope := ""
+	err := os.Setenv("SSAS_DEFAULT_SYSTEM_SCOPE", scope)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	assert.Panics(s.T(), func() {getEnvVars()})
 }
 
 func TestSystemsTestSuite(t *testing.T) {
