@@ -1,6 +1,7 @@
 package ssas
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/jinzhu/gorm"
@@ -25,7 +26,29 @@ type Group struct {
 	Data    postgres.Jsonb `json:"data"`
 }
 
+func CreateGroup(gd GroupData) (Group, error) {
+	gdBytes, err := json.Marshal(gd)
+	if err != nil {
+		return Group{}, err
+	}
+
+	g := Group{
+		GroupID: gd.ID,
+		Data:    postgres.Jsonb{RawMessage: gdBytes},
+	}
+
+	db := GetGORMDbConnection()
+	defer Close(db)
+	err = db.Save(&g).Error
+	if err != nil {
+		return Group{}, err
+	}
+
+	return g, nil
+}
+
 type GroupData struct {
+	ID        string     `json:"id"`
 	Name      string     `json:"name"`
 	Users     []string   `json:"users"`
 	Scopes    []string   `json:"scopes"`
