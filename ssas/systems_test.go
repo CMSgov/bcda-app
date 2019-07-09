@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -51,7 +53,7 @@ func (s *SystemsTestSuite) TestRevokeSystemKeyPair() {
 	s.db.Unscoped().Find(&encryptionKey)
 	assert.NotNil(encryptionKey.DeletedAt)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -95,7 +97,7 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair() {
 	}
 	assert.Equal(&privateKey.PublicKey, publicKey)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -127,7 +129,7 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	assert.EqualError(err, "encryption keypair already exists for system ID "+systemIDStr)
 	assert.Empty(privateKey)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -144,7 +146,6 @@ func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	system := System{ClientID: clientID, GroupID: groupID}
 	err = s.db.Create(&system).Error
 	assert.Nil(err)
-
 
 	// Setup key
 	keyPair, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -176,7 +177,7 @@ func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
 	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -227,7 +228,7 @@ OwIDAQAB
 	err = system.SavePublicKey(bytes.NewReader(lowBitPubKey))
 	assert.NotNil(err, "insecure public key should not be saved")
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -265,7 +266,7 @@ func (s *SystemsTestSuite) TestSystemPublicKeyEmpty() {
 	assert.Nil(err)
 	assert.NotNil(k, "Valid PEM key yields nil public key!")
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -287,7 +288,7 @@ func (s *SystemsTestSuite) TestEncryptionKeyModel() {
 	err = s.db.Save(&encryptionKey).Error
 	assert.Nil(err)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
@@ -311,13 +312,51 @@ func (s *SystemsTestSuite) TestGetSystemByClientIDSuccess() {
 	assert.NotEmpty(sys)
 	assert.Equal("Client with System", sys.ClientName)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
+	assert.Nil(err)
+}
+
+func (s *SystemsTestSuite) TestSystemClientGroupDuplicate() {
+	assert := s.Assert()
+
+	group1 := Group{GroupID: "fabcde612345"}
+	err := s.db.Create(&group1).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	group2 := Group{GroupID: "efabcd561234"}
+	err = s.db.Create(&group2).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group1.GroupID, ClientID: "498765uzyxwv", ClientName: "First Client"}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system = System{GroupID: group2.GroupID, ClientID: "498765uzyxwv", ClientName: "Duplicate Client"}
+	err = s.db.Create(&system).Error
+	assert.NotNil(err)
+
+	sys, err := GetSystemByClientID(system.ClientID)
+	assert.Nil(err)
+	assert.NotEmpty(sys)
+	assert.Equal("First Client", sys.ClientName)
+
+	err = CleanDatabase(group1)
+	assert.Nil(err)
+
+	err = CleanDatabase(group2)
 	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
 	assert := s.Assert()
 
+	trackingID := uuid.NewRandom().String()
 	groupID := "T54321"
 	group := Group{GroupID: groupID}
 	err := s.db.Create(&group).Error
@@ -328,18 +367,19 @@ func (s *SystemsTestSuite) TestRegisterSystemSuccess() {
 	pubKey, err := generatePublicKey(2048)
 	assert.Nil(err)
 
-	creds, err := RegisterSystem("abcd1234", "Create System Test", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	creds, err := RegisterSystem("Create System Test", groupID, DefaultScope, pubKey, trackingID)
 	assert.Nil(err)
 	assert.Equal("Create System Test", creds.ClientName)
 	assert.NotEqual("", creds.ClientSecret)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 	assert := s.Assert()
 
+	trackingID := uuid.NewRandom().String()
 	groupID := "T11223"
 	group := Group{GroupID: groupID}
 	err := s.db.Create(&group).Error
@@ -350,33 +390,24 @@ func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 	pubKey, err := generatePublicKey(2048)
 	assert.Nil(err)
 
-	// No clientID
-	creds, err := RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
-	assert.NotNil(err)
-	assert.Empty(creds)
-
 	// No clientName
-	creds, err = RegisterSystem("a1b2c3d3", "", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	creds, err := RegisterSystem("", groupID, DefaultScope, pubKey, trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
-
-	// No clientURI = success
-	creds, err = RegisterSystem("a1b2c3d4", "Register System Success1", "", groupID, DEFAULT_SCOPE, pubKey)
-	assert.Nil(err)
-	assert.NotEmpty(creds)
 
 	// No scope = success
-	creds, err = RegisterSystem("a1b2c3d5", "Register System Success2", "https://no.client.uri.net", groupID, "", pubKey)
+	creds, err = RegisterSystem("Register System Success2", groupID, "", pubKey, trackingID)
 	assert.Nil(err)
 	assert.NotEmpty(creds)
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
 func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 	assert := s.Assert()
 
+	trackingID := uuid.NewRandom().String()
 	groupID := "T22334"
 	group := Group{GroupID: groupID}
 	err := s.db.Create(&group).Error
@@ -388,17 +419,17 @@ func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 	assert.Nil(err)
 
 	// Blank key
-	creds, err := RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, "")
+	creds, err := RegisterSystem("Register System Failure", groupID, DefaultScope, "", trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
 	// Invalid key
-	creds, err = RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, "NotAKey")
+	creds, err = RegisterSystem("Register System Failure", groupID, DefaultScope, "NotAKey", trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
 	// Key length too low
-	creds, err = RegisterSystem("", "Register System Failure", "https://no.client.uri.net", groupID, DEFAULT_SCOPE, pubKey)
+	creds, err = RegisterSystem("Register System Failure", groupID, DefaultScope, pubKey, trackingID)
 	assert.NotNil(err)
 	assert.Empty(creds)
 
@@ -457,7 +488,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 
 	// Second secret should cause first secret to be soft-deleted
 	secret2, err := GenerateSecret()
-  
+
 	if err != nil {
 		s.FailNow("cannot generate random secret")
 	}
@@ -478,43 +509,33 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	}
 	assert.True(Hash(savedHash).IsHashOf(secret2))
 
-	err = s.cleanDatabase(group)
+	err = CleanDatabase(group)
 	assert.Nil(err)
 }
 
-func (s *SystemsTestSuite) cleanDatabase(group Group) error {
-	var system System
-	var encryptionKey EncryptionKey
-	var secret Secret
-	var systemIds []int
-  
-	err := s.db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
+func (s *SystemsTestSuite) TestScopeEnvSuccess() {
+	key := "SSAS_DEFAULT_SYSTEM_SCOPE"
+	new_scope := "my_scope"
+	old_scope := os.Getenv(key)
+	err := os.Setenv(key, new_scope)
 	if err != nil {
-		return fmt.Errorf("unable to find associated systems: %s", err.Error())
+		s.FailNow(err.Error())
 	}
-	fmt.Println("System ID's: ", systemIds)
+	getEnvVars()
 
-	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete encryption keys: %s", err.Error())
-	}
+	assert.Equal(s.T(), new_scope, DefaultScope)
+	err = os.Setenv(key, old_scope)
+	assert.Nil(s.T(), err)
+}
 
-	err = s.db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&secret).Error
+func (s *SystemsTestSuite) TestScopeEnvFailure() {
+	scope := ""
+	err := os.Setenv("SSAS_DEFAULT_SYSTEM_SCOPE", scope)
 	if err != nil {
-		return fmt.Errorf("unable to delete secrets: %s", err.Error())
-	}
-
-	err = s.db.Unscoped().Where("id IN (?)", systemIds).Delete(&system).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete systems: %s", err.Error())
+		s.FailNow(err.Error())
 	}
 
-	err = s.db.Unscoped().Delete(&group).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete group: %s", err.Error())
-	}
-
-	return nil
+	assert.Panics(s.T(), func() {getEnvVars()})
 }
 
 func TestSystemsTestSuite(t *testing.T) {

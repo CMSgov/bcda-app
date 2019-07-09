@@ -8,6 +8,9 @@ import (
 	"github.com/jinzhu/gorm/dialects/postgres"
 )
 
+/*
+	InitializeGroupModels will call gorm.DB.AutoMigrate() for Group{}
+ */
 func InitializeGroupModels() *gorm.DB {
 	log.Println("Initialize group models")
 	db := GetGORMDbConnection()
