@@ -40,10 +40,10 @@ func start() {
 		// autoMigrate()
 	// }
 
-	p := service.NewServer(":3003", public.Version, public.InfoMap, public.Routes())
+	p := service.NewServer("public", ":3003", public.Version, public.InfoMap, public.Routes())
 	p.LogRoutes()
 	p.Serve()
-	s := service.NewServer(":3004", admin.Version, admin.InfoMap, admin.Routes())
+	s := service.NewServer("admin", ":3004", admin.Version, admin.InfoMap, admin.Routes())
 	s.LogRoutes()
 	s.Serve()
 

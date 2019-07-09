@@ -17,14 +17,16 @@ import (
 
 type Server struct {
 	srvr    http.Server
+	name    string
 	port    string      // port server is running on; must have leading :, as in ":3000"
 	version string      // version running on server
 	info    interface{} // json metadata about server
 	router  chi.Router
 }
 
-func NewServer(port, version string, info interface{}, routes *chi.Mux) *Server {
+func NewServer(name, port, version string, info interface{}, routes *chi.Mux) *Server {
 	s := Server{}
+	s.name = name
 	s.port = port
 	s.version = version
 	s.info = info
@@ -57,14 +59,15 @@ func (s *Server) newBaseRouter() *chi.Mux {
 
 // https://itnext.io/structuring-a-production-grade-rest-api-in-golang-c0229b3feedc
 func (s *Server) LogRoutes() {
-
+	routes := fmt.Sprintf("Routes for %s at port %s: ", s.name, s.port)
 	walker := func(method, route string, handler http.Handler, middlewares ...func (http.Handler) http.Handler) error {
-		ssas.Logger.Infof("%s %s\n", method, route)
+		routes = fmt.Sprintf("%s %s %s, ", routes, method, route)
 		return nil
 	}
 	if err := chi.Walk(s.router, walker); err != nil {
-		ssas.Logger.Fatalf("bad route: %s\n", err.Error())
+		ssas.Logger.Fatalf("bad route: %s", err.Error())
 	}
+	ssas.Logger.Infof(routes)
 }
 
 func (s *Server) Serve() {
