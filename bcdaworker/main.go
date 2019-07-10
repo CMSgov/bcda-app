@@ -315,24 +315,25 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 		appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error unmarshaling %s resources from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		return
 	}
-
 	entries := jsonOBJ["entry"]
 
 	// There might be no entries.  If this happens we can't iterate over them.
 	if entries != nil {
-
 		for _, entry := range entries.([]interface{}) {
-			entryJSON, err := json.Marshal(entry)
-			// This is unlikely to happen because we just unmarshalled this data a few lines above.
-			if err != nil {
-				log.Error(err)
-				appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
-				continue
-			}
-			_, err = w.WriteString(string(entryJSON) + "\n")
-			if err != nil {
-				log.Error(err)
-				appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+			entrymap := entry.(map[string]interface{})
+			if len(entrymap) != 0 {
+				entryJSON, err := json.Marshal(entrymap["resource"])
+				// This is unlikely to happen because we just unmarshalled this data a few lines above.
+				if err != nil {
+					log.Error(err)
+					appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+					continue
+				}
+				_, err = w.WriteString(string(entryJSON) + "\n")
+				if err != nil {
+					log.Error(err)
+					appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+				}
 			}
 		}
 	}
