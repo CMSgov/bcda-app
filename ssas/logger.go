@@ -10,6 +10,7 @@ import (
 var Logger *logrus.Logger
 
 type Event struct {
+	UserID	   string
 	ClientID   string
 	Elapsed    time.Duration
 	Help       string
