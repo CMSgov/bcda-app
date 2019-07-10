@@ -22,9 +22,10 @@ type Server struct {
 	version string      // version running on server
 	info    interface{} // json metadata about server
 	router  chi.Router
+	unsafe  bool		// running in http mode   // TODO set this from HTTP_ONLY envv
 }
 
-func NewServer(name, port, version string, info interface{}, routes *chi.Mux) *Server {
+func NewServer(name, port, version string, info interface{}, routes *chi.Mux, unsafe bool) *Server {
 	s := Server{}
 	s.name = name
 	s.port = port
@@ -32,6 +33,7 @@ func NewServer(name, port, version string, info interface{}, routes *chi.Mux) *S
 	s.info = info
 	s.router = s.newBaseRouter()
 	s.router.Mount("/", routes)
+	s.unsafe = unsafe
 	s.srvr = http.Server{
 		Handler:      s.router,
 		Addr:         port,
@@ -71,7 +73,15 @@ func (s *Server) LogRoutes() {
 }
 
 func (s *Server) Serve() {
-	go func() { log.Fatal(s.srvr.ListenAndServe()) }()
+	tlsCertPath := os.Getenv("BCDA_TLS_CERT")	// borrowing for now; we need to get our own
+	tlsKeyPath := os.Getenv("BCDA_TLS_KEY")
+
+	if (s.unsafe) {
+		ssas.Logger.Infof("starting %s server running UNSAFE http only mode; do not do this in production environments", s.name)
+		go func() { log.Fatal(s.srvr.ListenAndServe()) }()
+	} else {
+		go func() { log.Fatal(s.srvr.ListenAndServeTLS(tlsCertPath, tlsKeyPath))}()
+	}
 }
 
 func (s *Server) getInfo(w http.ResponseWriter, r *http.Request) {
@@ -100,18 +110,18 @@ func (s *Server) getHealthCheck(w http.ResponseWriter, r *http.Request) {
 func doHealthCheck() bool {
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		ssas.Logger.Error("Health check: database connection error: ", err.Error())
+		ssas.Logger.Error("health check: database connection error: ", err.Error())
 		return false
 	}
 
 	defer func() {
-		if err := db.Close(); err != nil {
+		if err = db.Close(); err != nil {
 			ssas.Logger.Infof("failed to close db connection in ssas/service/server.go#doHealthCheck() because %s", err)
 		}
 	}()
 
-	if err := db.Ping(); err != nil {
-		ssas.Logger.Error("Health check: database ping error: ", err.Error())
+	if err = db.Ping(); err != nil {
+		ssas.Logger.Error("health check: database ping error: ", err.Error())
 		return false
 	}
 

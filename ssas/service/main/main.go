@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -15,11 +16,13 @@ import (
 )
 
 var startMeUp bool
+var unsafeMode bool
 
 func init() {
 	const usage = "start the service"
 	flag.BoolVar(&startMeUp, "start", false, usage)
 	flag.BoolVar(&startMeUp, "s", false, usage+" (shorthand)")
+	unsafeMode = os.Getenv("HTTP_ONLY") == "true"
 }
 
 func main() {
@@ -40,10 +43,10 @@ func start() {
 		// autoMigrate()
 	// }
 
-	p := service.NewServer("public", ":3003", public.Version, public.InfoMap, public.Routes())
+	p := service.NewServer("public", ":3003", public.Version, public.InfoMap, public.Routes(), unsafeMode)
 	p.LogRoutes()
 	p.Serve()
-	s := service.NewServer("admin", ":3004", admin.Version, admin.InfoMap, admin.Routes())
+	s := service.NewServer("admin", ":3004", admin.Version, admin.InfoMap, admin.Routes(), unsafeMode)
 	s.LogRoutes()
 	s.Serve()
 
@@ -59,7 +62,7 @@ func start() {
 
 func newForwardingRouter() http.Handler {
 	r := chi.NewRouter()
-	// todo middleware monitoring, logging
+	// todo middleware logging
 	r.Get("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		url := "https://" + req.Host + req.URL.String()
 		ssas.Logger.Infof("forwarding from %s to %s", req.Host+req.URL.String(), url)
