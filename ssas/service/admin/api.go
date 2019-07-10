@@ -22,6 +22,7 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ssas.OperationCalled(ssas.Event{Op: "RegisterClient", TrackingID: sys.TrackingID, Help: "calling from admin.createSystem()"})
 	creds, err := ssas.RegisterSystem(sys.ClientName, sys.GroupID, sys.Scope, sys.PublicKey, sys.TrackingID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not create system. Error: %s", err), http.StatusBadRequest)
@@ -36,5 +37,8 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, string(credsJSON))
+	_, err = w.Write(credsJSON)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
 }
