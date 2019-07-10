@@ -100,7 +100,7 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 
 func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	acoID := "A40404F7-1EF2-485A-9B71-40FE7ACDCBC2"
 
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	ad := makeContextValues(acoID, userID)
@@ -151,7 +151,7 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	qc = nil
 
-	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	acoID := "3461C774-B48F-11E8-96F8-529269fb1459"
 	user, err := models.CreateUser("api.go Test User", "testbulkrequestnoqueue@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
@@ -183,7 +183,6 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	assert.Nil(s.T(), err)
 	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
 	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
-
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	user, err := models.CreateUser("api.go Test User", "testbulkpatientrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -739,7 +738,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", j.UserID.String())
+	ad := makeContextValues("3461C774-B48F-11E8-96F8-529269fb1459", j.UserID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
 	handler.ServeHTTP(s.rr, req)

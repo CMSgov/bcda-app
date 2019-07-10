@@ -110,16 +110,30 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		err error
 	)
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
 	}
 
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
 	acoID := ad.ACOID
+
+	var jobs []models.Job
+
+	// if we really do find this record
+	if !db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound() {
+		for _, job := range jobs {
+			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress")   {
+				w.Header().Set("X-Progress", "In Progress")
+				w.WriteHeader(http.StatusAccepted)
+				return
+			}
+		}
+	}
+
 	user := models.User{}
 	// Arbitrarily use the first user in order to satisfy foreign key constraint "jobs_user_id_fkey" until user is removed from jobs table
 	db.First(&user)
