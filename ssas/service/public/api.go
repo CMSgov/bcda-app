@@ -104,7 +104,8 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	body := []byte(fmt.Sprintf(`{"client_id": "%s","client_secret":"%s","client_secret_expires_at":"%d","client_name":"%s"}`,
 		credentials.ClientID, credentials.ClientSecret, credentials.ExpiresAt.Unix(), credentials.ClientName))
-	w.WriteHeader(http.StatusOK)
+	// https://tools.ietf.org/html/rfc7591#section-3.2 dictates 201, not 200
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
