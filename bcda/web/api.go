@@ -124,11 +124,11 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	var jobs []models.Job
 
 	// if we really do find this record
-	if !db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound() {
+	if !db.Find(&jobs, "aco_id = ? AND user_id = ?", acoID, ad.UserID).RecordNotFound() {
 		for _, job := range jobs {
-			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress")   {
-				w.Header().Set("X-Progress", "In Progress")
-				w.WriteHeader(http.StatusAccepted)
+			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") {
+				w.Header().Set("Retry-After", utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", defaultVal))
+				w.WriteHeader(http.StatusTooManyRequests)
 				return
 			}
 		}
