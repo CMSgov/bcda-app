@@ -132,8 +132,8 @@ func (s *OTestSuite) TestGetUserBadToken() {
 	o := NewOkta(client)
 	foundUserId, err := o.GetUser(searchString, trackingId)
 	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), "Invalid token provided", err.Error())
-	assert.Nil(s.T(), foundUserId)
+	assert.Contains(s.T(), err.Error(), "Invalid token provided")
+	assert.Empty(s.T(), foundUserId)
 }
 
 func (s *OTestSuite) TestGetUserFactorSuccess() {
@@ -247,7 +247,7 @@ func (s *OTestSuite) TestGetUserFactorBadToken() {
 	o := NewOkta(client)
 	factor, err := o.GetUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), "Invalid token provided", err.Error())
+	assert.Contains(s.T(), err.Error(), "Invalid token provided")
 	assert.Nil(s.T(), factor)
 }
 
