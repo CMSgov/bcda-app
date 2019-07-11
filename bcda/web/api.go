@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"strconv"
 
 	"net/http"
 	"os"
@@ -126,8 +127,8 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	// if we really do find this record
 	if !db.Find(&jobs, "aco_id = ? AND user_id = ?", acoID, ad.UserID).RecordNotFound() {
 		for _, job := range jobs {
-			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") {
-				w.Header().Set("Retry-After", utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", defaultVal))
+			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
 				w.WriteHeader(http.StatusTooManyRequests)
 				return
 			}

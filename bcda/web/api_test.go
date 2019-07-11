@@ -390,6 +390,43 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	s.db.Unscoped().Delete(&lastRequestJob)
 }
 
+
+func (s *APITestSuite) TestBulkConcurrentRequestTime() {
+	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	assert.Nil(s.T(),err)
+
+	j := models.Job{
+		ACOID:      uuid.Parse(acoID),
+		UserID:     uuid.Parse(userID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "In Progress",
+		JobCount:   1,
+	}
+	s.db.Save(&j)
+
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	ad := makeContextValues(acoID, userID)
+	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	pool := makeConnPool(s)
+	defer pool.Close()
+
+	// serve job
+	handler := http.HandlerFunc(bulkEOBRequest)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+
+	// change created_at timestamp
+	var job models.Job
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("created_at",job.CreatedAt.Add(-GetJobTimeout())).Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+}
+
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", "test"), nil)
 
