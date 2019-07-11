@@ -50,6 +50,7 @@ func (s *Server) newBaseRouter() *chi.Mux {
 	r := chi.NewRouter()
 	// TODO middlewares here, eg monitoring, logging
 	r.Use(
+		NewAPILogger(),
 		render.SetContentType(render.ContentTypeJSON),
 		ConnectionClose,
 	)

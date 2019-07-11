@@ -8,22 +8,43 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/ssas"
 )
 
 type PublicRouterTestSuite struct {
 	suite.Suite
 	publicRouter http.Handler
+	rr           *httptest.ResponseRecorder
+	db           *gorm.DB
+	group        ssas.Group
 }
 
-func (s *PublicRouterTestSuite) SetupTest() {
+func (s *PublicRouterTestSuite) SetupSuite() {
 	os.Setenv("DEBUG", "true")
 	s.publicRouter = Routes()
+	ssas.InitializeGroupModels()
+	ssas.InitializeSystemModels()
+	s.db = ssas.GetGORMDbConnection()
+	s.rr = httptest.NewRecorder()
+	s.group.GroupID = "T1234"
+	err := s.db.Create(&s.group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+}
+
+func (s *PublicRouterTestSuite) TearDownTestSuite() {
+	s.db.Unscoped().Delete(&s.group)
+	ssas.Close(s.db)
 }
 
 func (s *PublicRouterTestSuite) reqPublicRoute(verb string, route string, body io.Reader) *http.Response {
 	req := httptest.NewRequest(strings.ToUpper(verb), route, body)
+	req.Header.Add("x-fake-token", s.group.GroupID)
 	rr := httptest.NewRecorder()
 	s.publicRouter.ServeHTTP(rr, req)
 	return rr.Result()
