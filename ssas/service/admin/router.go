@@ -12,5 +12,6 @@ func NewRouter(middlewares ...func(http.Handler) http.Handler) http.Handler {
 	m := monitoring.GetMonitor()
 	r.Use(middlewares...)
 	r.Post(m.WrapHandler("/group", createGroup))
+	r.Post("/system", createSystem)
 	return r
 }
