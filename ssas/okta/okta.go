@@ -12,7 +12,6 @@ import (
 
 var OktaBaseUrl string
 var OktaAuthString string
-var OktaServerID string
 
 type OktaError struct {
 	ErrorCode 		string	`json:"errorCode"`
@@ -22,16 +21,14 @@ type OktaError struct {
 func init() {
 	err := config()
 	if err != nil {
-		haltEvent := ssas.Event{Op: "OktaInitialization", Help: "unable to complete Okta config: " + err.Error()}
-		ssas.ServiceHalted(haltEvent)
-		os.Exit(-1)
+		initEvent := ssas.Event{Op: "OktaInitialization", Help: "unable to complete Okta config: " + err.Error()}
+		ssas.OperationFailed(initEvent)
 	}
 }
 
 // separate from init for testing
 func config() error {
 	OktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
-	OktaServerID = os.Getenv("OKTA_OAUTH_SERVER_ID")
 	oktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
 
 	at := oktaToken
@@ -39,11 +36,11 @@ func config() error {
 		at = "[Redacted]"
 	}
 
-	if OktaBaseUrl == "" || OktaServerID == "" || oktaToken == "" {
-		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_OAUTH_SERVER_ID=%s, OKTA_CLIENT_TOKEN=%s", OktaBaseUrl, OktaServerID, at))
-	}
-
 	OktaAuthString = fmt.Sprintf("SSWS %s", oktaToken)
+
+	if OktaBaseUrl == "" || oktaToken == "" {
+		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_CLIENT_TOKEN=%s", OktaBaseUrl, at))
+	}
 
 	return nil
 }
