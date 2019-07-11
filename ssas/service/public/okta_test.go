@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -249,6 +250,13 @@ func (s *OTestSuite) TestGetUserFactorBadToken() {
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "Invalid token provided")
 	assert.Nil(s.T(), factor)
+}
+
+func (s *OTestSuite) TestGenerateOktaTransactionId() {
+	transactionId, err := generateOktaTransactionId()
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), strings.HasPrefix(transactionId, "v2mst."))
+	assert.Equal(s.T(), 28, len(transactionId))
 }
 
 func TestOTestSuite(t *testing.T) {

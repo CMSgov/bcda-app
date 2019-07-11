@@ -1,12 +1,14 @@
 package public
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/okta"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strings"
 )
@@ -218,4 +220,27 @@ func (o *OktaClient) GetUserFactor(oktaUserId string, factorType string, trackin
 	factorEvent.Help = fmt.Sprintf("no active factor of requested type %s found", factorType)
 	ssas.OperationFailed(factorEvent)
 	return factor, errors.New(factorEvent.Help)
+}
+
+func generateOktaTransactionId() (string, error) {
+	randomPart, err := randomCharacters(22)
+	if err != nil {
+		return "", errors.New("unable to generate random characters")
+	}
+
+	return "v2mst." + randomPart, nil
+}
+
+func randomCharacters(length int) (string, error) {
+	chars := []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+	randomBytes := make([]byte,length)
+	for i := 0; i < length; i++ {
+		bign, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+		if err != nil {
+			return "", errors.New("unable to generate random number")
+		}
+		n := bign.Int64()
+		randomBytes[i] = chars[n]
+	}
+	return string(randomBytes), nil
 }
