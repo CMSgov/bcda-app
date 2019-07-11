@@ -30,7 +30,6 @@ type JWKS struct {
 }
 
 type RegistrationRequest struct {
-	GroupID     string `json:"group_id,omitempty"`
 	ClientID    string `json:"client_id"`
 	ClientName  string `json:"client_name"`
 	Scope       string `json:"scope,omitempty"`
