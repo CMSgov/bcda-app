@@ -1,6 +1,8 @@
 package okta
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
 	"net/http"
@@ -11,6 +13,11 @@ import (
 var OktaBaseUrl string
 var OktaAuthString string
 var OktaServerID string
+
+type OktaError struct {
+	ErrorCode 		string	`json:"errorCode"`
+	ErrorSummary	string	`json:"errorSummary"`
+}
 
 func init() {
 	err := config()
@@ -55,6 +62,14 @@ func AddRequestHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", OktaAuthString)
+}
+
+func ParseOktaError(body []byte) (OktaError, error) {
+	oktaError := OktaError{}
+	if err := json.Unmarshal(body, &oktaError); err != nil {
+		return oktaError, errors.New("unexpected response format; not a standard Okta error")
+	}
+	return oktaError, nil
 }
 
 type RoundTripFunc func(req *http.Request) *http.Response

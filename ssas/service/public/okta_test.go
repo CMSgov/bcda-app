@@ -122,6 +122,20 @@ func (s *OTestSuite) TestGetUserNoUsers() {
 	assert.Equal(s.T(), "", foundUserId)
 }
 
+func (s *OTestSuite) TestGetUserBadToken() {
+	trackingId := uuid.NewRandom().String()
+	searchString := "no_match_expected"
+	client := okta.NewTestClient(func(req *http.Request) *http.Response {
+		return testHttpResponse(401, `{"errorCode":"E0000011","errorSummary":"Invalid token provided","errorLink":"E0000011","errorId":"oae3iIXhkQVQ2izGNwhnR47JQ","errorCauses":[]}`)
+	})
+
+	o := NewOkta(client)
+	foundUserId, err := o.GetUser(searchString, trackingId)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), "Invalid token provided", err.Error())
+	assert.Nil(s.T(), foundUserId)
+}
+
 func (s *OTestSuite) TestGetUserFactorSuccess() {
 	trackingId := uuid.NewRandom().String()
 	userId := "abc123"
@@ -219,6 +233,21 @@ func (s *OTestSuite) TestGetUserFactorNotFound() {
 	o := NewOkta(client)
 	factor, err := o.GetUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), factor)
+}
+
+func (s *OTestSuite) TestGetUserFactorBadToken() {
+	trackingId := uuid.NewRandom().String()
+	userId := "abc123"
+	factorType := "Call"
+	client := okta.NewTestClient(func(req *http.Request) *http.Response {
+		return testHttpResponse(401, `{"errorCode":"E0000011","errorSummary":"Invalid token provided","errorLink":"E0000011","errorId":"oae3iIXhkQVQ2izGNwhnR47JQ","errorCauses":[]}`)
+	})
+
+	o := NewOkta(client)
+	factor, err := o.GetUserFactor(userId, factorType, trackingId)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), "Invalid token provided", err.Error())
 	assert.Nil(s.T(), factor)
 }
 

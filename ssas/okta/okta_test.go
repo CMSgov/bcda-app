@@ -44,6 +44,14 @@ func (s *OTestSuite) TestConfig() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *OTestSuite) TestParseOktaErrorSuccess() {
+	oktaResponse := []byte(`{"errorCode":"E0000011","errorSummary":"Invalid token provided","errorLink":"E0000011","errorId":"oae3iIXhkQVQ2izGNwhnR47JQ","errorCauses":[]}`)
+	oktaError, err := ParseOktaError(oktaResponse)
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), oktaError)
+	assert.Equal(s.T(), "Invalid token provided", oktaError.ErrorSummary)
+}
+
 func TestOTestSuite(t *testing.T) {
 	suite.Run(t, new(OTestSuite))
 }

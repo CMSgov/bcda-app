@@ -77,6 +77,16 @@ func (o *OktaClient) GetUser(searchString string, trackingId string) (oktaId str
 		return "", errors.New(userEvent.Help)
 	}
 
+	if resp.StatusCode >= 400 {
+		oktaError, err := okta.ParseOktaError(body)
+		if err == nil {
+			userEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
+				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
+			ssas.OperationFailed(userEvent)
+			return "", errors.New(userEvent.Help)
+		}
+	}
+
 	if resp.StatusCode != 200 {
 		userEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
 		ssas.OperationFailed(userEvent)
@@ -158,6 +168,16 @@ func (o *OktaClient) GetUserFactor(oktaUserId string, factorType string, trackin
 		factorEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
 		ssas.OperationFailed(factorEvent)
 		return factor, errors.New(factorEvent.Help)
+	}
+
+	if resp.StatusCode >= 400 {
+		oktaError, err := okta.ParseOktaError(body)
+		if err == nil {
+			factorEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
+				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
+			ssas.OperationFailed(factorEvent)
+			return factor, errors.New(factorEvent.Help)
+		}
 	}
 
 	if resp.StatusCode != 200 {
