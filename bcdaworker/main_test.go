@@ -104,8 +104,8 @@ func TestWriteEOBDataToFile(t *testing.T) {
 			var jsonOBJ map[string]interface{}
 			err := json.Unmarshal(scanner.Bytes(), &jsonOBJ)
 			assert.Nil(t, err)
-			assert.NotNil(t, jsonOBJ["fullUrl"], "JSON should contain a value for `fullUrl`.")
-			assert.NotNil(t, jsonOBJ["resource"], "JSON should contain a value for `resource`.")
+			assert.NotNil(t, jsonOBJ["status"], "JSON should contain a value for `status`.")
+			assert.NotNil(t, jsonOBJ["type"], "JSON should contain a value for `type`.")
 		}
 		assert.False(t, scanner.Scan(), "There should be only 66 entries in the file.")
 

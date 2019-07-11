@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"testing"
 )
 
 type AuthRouterTestSuite struct {
@@ -31,4 +32,8 @@ func (s *AuthRouterTestSuite) reqAuthRoute(verb string, route string, body io.Re
 func (s *AuthRouterTestSuite) TestAuthTokenRoute() {
 	res := s.reqAuthRoute("POST", "/auth/token", nil)
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
+func TestAuthRouterTestSuite(t *testing.T) {
+	suite.Run(t, new(AuthRouterTestSuite))
 }
