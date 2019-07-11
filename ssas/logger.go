@@ -42,6 +42,9 @@ func init() {
 func mergeNonEmpty(data Event) *logrus.Entry {
 	var entry = logrus.NewEntry(Logger)
 
+	if data.UserID != "" {
+		entry = entry.WithField("userID", data.UserID)
+	}
 	if data.ClientID != "" {
 		entry = entry.WithField("clientID", data.ClientID)
 	}

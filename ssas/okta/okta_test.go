@@ -19,11 +19,9 @@ type OTestSuite struct {
 
 func (s *OTestSuite) TestConfig() {
 	originalOktaBaseUrl := os.Getenv("OKTA_CLIENT_ORGURL")
-	originalOktaServerID := os.Getenv("OKTA_OAUTH_SERVER_ID")
 	originalOktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
 
 	os.Unsetenv("OKTA_CLIENT_ORGURL")
-	os.Unsetenv("OKTA_OAUTH_SERVER_ID")
 	os.Unsetenv("OKTA_CLIENT_TOKEN")
 
 	err := config()
@@ -37,7 +35,6 @@ func (s *OTestSuite) TestConfig() {
 	assert.Regexp(s.T(), regexp.MustCompile("(OKTA_[A-Z_]*=, ){2}(OKTA_CLIENT_TOKEN=\\[Redacted\\])"), err)
 
 	os.Setenv("OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
-	os.Setenv("OKTA_OAUTH_SERVER_ID", originalOktaServerID)
 	os.Setenv("OKTA_CLIENT_TOKEN", originalOktaToken)
 
 	err = config()
