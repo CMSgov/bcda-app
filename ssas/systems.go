@@ -260,12 +260,12 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 }
 
 type Credentials struct {
-	UserID       string
-	ClientID     string
-	ClientSecret string
-	TokenString  string
-	ClientName   string
-	ExpiresAt    time.Time
+	UserID       string    `json:"user_id"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret"`
+	TokenString  string    `json:"token"`
+	ClientName   string    `json:"client_name"`
+	ExpiresAt    time.Time `json:"expires_at"`
 }
 
 /*
