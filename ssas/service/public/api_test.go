@@ -71,7 +71,7 @@ func (s *APITestSuite) TestAuthRegisterSuccess() {
 
 	req = addRegDataContext(req, "T12123")
 	http.HandlerFunc(RegisterSystem).ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusCreated, s.rr.Code)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	fmt.Println("Response body:", s.rr.Body)
 
 	j := map[string]string{}
