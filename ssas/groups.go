@@ -10,7 +10,7 @@ import (
 
 /*
 	InitializeGroupModels will call gorm.DB.AutoMigrate() for Group{}
- */
+*/
 func InitializeGroupModels() *gorm.DB {
 	log.Println("Initialize group models")
 	db := GetGORMDbConnection()
@@ -55,7 +55,7 @@ type GroupData struct {
 	Name      string     `json:"name"`
 	Users     []string   `json:"users"`
 	Scopes    []string   `json:"scopes"`
-	Systems   []System   `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"systems"`
+	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
 	Resources []Resource `json:"resources"`
 }
 
