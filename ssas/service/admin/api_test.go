@@ -72,7 +72,7 @@ func (s *APITestSuite) TestCreateGroup() {
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	g := ssas.Group{}
 	s.db.Last(&g)
-	ssas.CleanDatabase(g)
+	_ = ssas.CleanDatabase(g)
 }
 
 func (s *APITestSuite) TestCreateSystem() {
