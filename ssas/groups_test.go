@@ -70,11 +70,11 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	assert.Nil(s.T(), err)
 	g, err := CreateGroup(gd)
 	assert.Nil(s.T(), err)
-	CleanDatabase(g)
+	_ = CleanDatabase(g)
 	gd.ID = ""
 	g, err = CreateGroup(gd)
 	assert.EqualError(s.T(), err, "group_id cannot be blank")
-	CleanDatabase(g)
+	_ = CleanDatabase(g)
 }
 
 func TestGroupsTestSuite(t *testing.T) {
