@@ -70,6 +70,9 @@ func (s *APITestSuite) TestCreateGroup() {
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	g := ssas.Group{}
+	s.db.Last(&g)
+	ssas.CleanDatabase(g)
 }
 
 func (s *APITestSuite) TestCreateSystem() {
