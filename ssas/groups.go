@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/CMSgov/bcda-app/ssas"
-
 	"github.com/jinzhu/gorm"
 	"github.com/jinzhu/gorm/dialects/postgres"
 )
@@ -33,12 +31,12 @@ type Group struct {
 
 func CreateGroup(gd GroupData) (Group, error) {
 	event := Event{Op: "CreateGroup", TrackingID: gd.ID}
-	ssas.OperationStarted(event)
+	OperationStarted(event)
 
 	gdBytes, err := json.Marshal(gd)
 	if err != nil {
 		event.Help = err
-		ssas.OperationFailed(event)
+		OperationFailed(event)
 		return Group{}, err
 	}
 
@@ -52,11 +50,11 @@ func CreateGroup(gd GroupData) (Group, error) {
 	err = db.Save(&g).Error
 	if err != nil {
 		event.Help = err
-		ssas.OperationFailed(event)
+		OperationFailed(event)
 		return Group{}, err
 	}
 
-	ssas.OperationSucceeded(event)
+	OperationSucceeded(event)
 	return g, nil
 }
 
