@@ -42,7 +42,7 @@ const SampleGroup string = `{
 		{  
 		"client_id":"4tuhiOIFIwriIOH3zn",
 		"software_id":"4NRB1-0XZABZI9E6-5SM3R",
-		"client_name":"ACO System A",
+		"client_name":"ACO System A"
 		}
 }`
 
@@ -70,7 +70,11 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	assert.Nil(s.T(), err)
 	g, err := CreateGroup(gd)
 	assert.Nil(s.T(), err)
-	s.db.Unscoped().Delete(&g)
+	CleanDatabase(g)
+	gd.ID = ""
+	g, err = CreateGroup(gd)
+	assert.EqualError(s.T(), err, "group_id cannot be blank")
+	CleanDatabase(g)
 }
 
 func TestGroupsTestSuite(t *testing.T) {

@@ -2,6 +2,7 @@ package ssas
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/jinzhu/gorm"
@@ -33,9 +34,16 @@ func CreateGroup(gd GroupData) (Group, error) {
 	event := Event{Op: "CreateGroup", TrackingID: gd.ID}
 	OperationStarted(event)
 
+	if gd.ID == "" {
+		err := fmt.Errorf("group_id cannot be blank")
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
 	gdBytes, err := json.Marshal(gd)
 	if err != nil {
-		event.Help = err
+		event.Help = err.Error()
 		OperationFailed(event)
 		return Group{}, err
 	}
@@ -49,7 +57,7 @@ func CreateGroup(gd GroupData) (Group, error) {
 	defer Close(db)
 	err = db.Save(&g).Error
 	if err != nil {
-		event.Help = err
+		event.Help = err.Error()
 		OperationFailed(event)
 		return Group{}, err
 	}

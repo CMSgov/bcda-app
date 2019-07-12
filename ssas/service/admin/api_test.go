@@ -46,7 +46,7 @@ const SampleGroup string = `{
 		{  
 		"client_id":"4tuhiOIFIwriIOH3zn",
 		"software_id":"4NRB1-0XZABZI9E6-5SM3R",
-		"client_name":"ACO System A",
+		"client_name":"ACO System A"
 		}
 }`
 
