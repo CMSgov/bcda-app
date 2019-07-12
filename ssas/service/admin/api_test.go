@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const sampleGroup = `{  
+const SampleGroup string = `{  
 	"id":"A12345",
 	"name":"ACO Corp Systems",
 	"users":[  
@@ -47,7 +47,6 @@ const sampleGroup = `{
 		"client_id":"4tuhiOIFIwriIOH3zn",
 		"software_id":"4NRB1-0XZABZI9E6-5SM3R",
 		"client_name":"ACO System A",
-		"client_uri":"https://www.acocorpsite.com"
 		}
 }`
 
@@ -65,7 +64,7 @@ func (s *APITestSuite) TearDownSuite() {
 }
 
 func (s *APITestSuite) TestCreateGroup() {
-	req := httptest.NewRequest("POST", "/group", strings.NewReader(sampleGroup))
+	req := httptest.NewRequest("POST", "/group", strings.NewReader(SampleGroup))
 	handler := http.HandlerFunc(createGroup)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)

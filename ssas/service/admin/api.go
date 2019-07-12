@@ -16,6 +16,7 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ssas.OperationCalled(ssas.Event{Op: "CreateGroup", TrackingID: gd.ID, Help: "calling from admin.createGroup()"})
 	g, err := ssas.CreateGroup(gd)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create group. Error: %s", err), http.StatusBadRequest)
