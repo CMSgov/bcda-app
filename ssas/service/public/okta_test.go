@@ -10,10 +10,66 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 type OTestSuite struct {
 	suite.Suite
+}
+
+func (s *OTestSuite) TestRequestFactorChallengeSuccess() {
+	trackingId := uuid.NewRandom().String()
+	userId := "abc123"
+	factor := Factor{Id: "123abc", Type: "call"}
+	client := okta.NewTestClient(func(req *http.Request) *http.Response {
+		assert.Equal(s.T(), req.URL.String(), okta.OktaBaseUrl + "/api/v1/users/" + userId + "/factors/" + factor.Id + "/verify")
+		return testHttpResponse(200, `{"factorResult":"CHALLENGE","_links":{"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"factor":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}}}}`)
+	})
+
+	o := NewOkta(client)
+	factorVerification, err := o.RequestFactorChallenge(userId, factor, trackingId)
+	if err != nil || factorVerification == nil {
+		s.FailNow("factor result not parsed")
+	}
+	assert.Equal(s.T(), "CHALLENGE", factorVerification.Result)
+}
+
+func (s *OTestSuite) TestRequestFactorChallengePushSuccess() {
+	trackingId := uuid.NewRandom().String()
+	userId := "abc123"
+	factor := Factor{Id: "123mno", Type: "push"}
+	client := okta.NewTestClient(func(req *http.Request) *http.Response {
+		assert.Equal(s.T(), req.URL.String(), okta.OktaBaseUrl + "/api/v1/users/" + userId + "/factors/" + factor.Id + "/verify")
+		return testHttpResponse(200, `{"factorResult":"WAITING","profile":{"credentialId":"bcda_user1@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"User’s iPhone","platform":"IOS","version":"12.1.2"},"expiresAt":"2019-07-12T14:21:30.000Z","_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["DELETE"]}},"poll":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["GET"]}}}}`)
+	})
+
+	o := NewOkta(client)
+	factorVerification, err := o.RequestFactorChallenge(userId, factor, trackingId)
+	if err != nil || factorVerification == nil {
+		s.FailNow("factor result not parsed")
+	}
+	expectedTime, err := time.Parse("2006-01-02T15:04:05.999Z", "2019-07-12T14:21:30.000Z")
+	assert.Equal(s.T(), expectedTime, factorVerification.ExpiresAt)
+	assert.Equal(s.T(), "WAITING", factorVerification.Result)
+	assert.Equal(s.T(), "https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg", factorVerification.Links.Poll.Href)
+}
+
+func (s *OTestSuite) TestRequestFactorChallengeFactorNotFound() {
+	trackingId := uuid.NewRandom().String()
+	userId := "abc123"
+	factor := Factor{Id: "nonexistent_factor", Type: "call"}
+	client := okta.NewTestClient(func(req *http.Request) *http.Response {
+		assert.Equal(s.T(), req.URL.String(), okta.OktaBaseUrl + "/api/v1/users/" + userId + "/factors/" + factor.Id + "/verify")
+		return testHttpResponse(404, `{"errorCode":"E0000007","errorSummary":"Not found: Resource not found: nonexistent_factor (UserFactor)","errorLink":"E0000007","errorId":"oaeTd-sjkYlSuKXMVPzEb4okw","errorCauses":[]}`)
+	})
+
+	o := NewOkta(client)
+	factorVerification, err := o.RequestFactorChallenge(userId, factor, trackingId)
+	assert.Empty(s.T(), factorVerification)
+	if err == nil {
+		s.FailNow("RequestFactorChallenge() should fail on invalid factor ID")
+	}
+	assert.Contains(s.T(), err.Error(), "Resource not found")
 }
 
 func (s *OTestSuite) TestGetUserHeaders() {

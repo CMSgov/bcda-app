@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type OktaUser struct {
@@ -32,6 +33,22 @@ type Factor struct {
 
 type FactorRequest struct {
 	Result		string	`json:"factorResult"`
+	ExpiresAt	time.Time 	`json:"expiresAt,omitempty"`
+	Links		OktaLinks	`json:"_links,omitempty"`
+}
+
+type OktaLinks struct {
+	Cancel		Link	`json:"cancel,omitempty"`
+	Poll		Link	`json:"poll,omitempty"`
+}
+
+type Allow struct {
+	Verbs	[]string	`json:"allow"`
+}
+
+type Link struct {
+	Href		string	`json:"href"`
+	Hints		Allow	`json:"hints"`
 }
 
 type OktaClient struct{
@@ -54,9 +71,9 @@ func (o *OktaClient) GetUser(searchString string, trackingId string) (oktaId str
 	userEvent := ssas.Event{Op: "FindOktaUser", TrackingID: trackingId}
 	ssas.OperationStarted(userEvent)
 
-	policyUrl := fmt.Sprintf("%s/api/v1/users/?q=%s", okta.OktaBaseUrl, searchString)
+	userUrl := fmt.Sprintf("%s/api/v1/users/?q=%s", okta.OktaBaseUrl, searchString)
 
-	req, err := http.NewRequest("GET", policyUrl, nil)
+	req, err := http.NewRequest("GET", userUrl, nil)
 	if err != nil {
 		userEvent.Help = "unable to create request: " + err.Error()
 		ssas.OperationFailed(userEvent)
@@ -89,7 +106,7 @@ func (o *OktaClient) GetUser(searchString string, trackingId string) (oktaId str
 		}
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		userEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
 		ssas.OperationFailed(userEvent)
 		return "", errors.New(userEvent.Help)
@@ -147,9 +164,9 @@ func (o *OktaClient) GetUserFactor(oktaUserId string, factorType string, trackin
 	factorEvent := ssas.Event{Op: "FindOktaUserFactors", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(factorEvent)
 
-	policyUrl := fmt.Sprintf("%s/api/v1/users/%s/factors", okta.OktaBaseUrl, oktaUserId)
+	factorUrl := fmt.Sprintf("%s/api/v1/users/%s/factors", okta.OktaBaseUrl, oktaUserId)
 
-	req, err := http.NewRequest("GET", policyUrl, nil)
+	req, err := http.NewRequest("GET", factorUrl, nil)
 	if err != nil {
 		factorEvent.Help = "unable to create request: " + err.Error()
 		ssas.OperationFailed(factorEvent)
@@ -220,6 +237,62 @@ func (o *OktaClient) GetUserFactor(oktaUserId string, factorType string, trackin
 	factorEvent.Help = fmt.Sprintf("no active factor of requested type %s found", factorType)
 	ssas.OperationFailed(factorEvent)
 	return factor, errors.New(factorEvent.Help)
+}
+
+func (o *OktaClient) RequestFactorChallenge(oktaUserId string, oktaFactor Factor, trackingId string) (factorVerification *FactorRequest, err error) {
+	requestEvent := ssas.Event{Op: "RequestOktaFactorChallenge", UserID: oktaUserId, TrackingID: trackingId}
+	ssas.OperationStarted(requestEvent)
+
+	requestUrl := fmt.Sprintf("%s/api/v1/users/%s/factors/%s/verify", okta.OktaBaseUrl, oktaUserId, oktaFactor.Id)
+	req, err := http.NewRequest("POST", requestUrl, nil)
+	if err != nil {
+		requestEvent.Help = "unable to create request: " + err.Error()
+		ssas.OperationFailed(requestEvent)
+		return factorVerification, errors.New(requestEvent.Help)
+	}
+
+	okta.AddRequestHeaders(req)
+	resp, err := o.Client.Do(req)
+	if err != nil {
+		requestEvent.Help = "request error: " + err.Error()
+		ssas.OperationFailed(requestEvent)
+		return factorVerification, errors.New(requestEvent.Help)
+	}
+
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		requestEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
+		ssas.OperationFailed(requestEvent)
+		return factorVerification, errors.New(requestEvent.Help)
+	}
+
+	if resp.StatusCode >= 400 {
+		oktaError, err := okta.ParseOktaError(body)
+		if err == nil {
+			requestEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
+				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
+			ssas.OperationFailed(requestEvent)
+			return factorVerification, errors.New(requestEvent.Help)
+		}
+	}
+
+	// HTTP status code 201 is used for push notifications; all others receive 200
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+		requestEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
+		ssas.OperationFailed(requestEvent)
+		return factorVerification, errors.New(requestEvent.Help)
+	}
+
+	f := FactorRequest{}
+	if err = json.Unmarshal(body, &f); err != nil {
+		requestEvent.Help = fmt.Sprintf("unexpected response format; response: %s", string(body))
+		ssas.OperationFailed(requestEvent)
+		return factorVerification, errors.New(requestEvent.Help)
+	}
+
+	ssas.OperationSucceeded(requestEvent)
+	return &f, nil
 }
 
 func generateOktaTransactionId() (string, error) {
