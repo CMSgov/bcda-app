@@ -54,6 +54,7 @@ type GroupsTestSuite struct {
 func (s *GroupsTestSuite) SetupSuite() {
 	s.db = GetGORMDbConnection()
 	InitializeGroupModels()
+	InitializeSystemModels()
 }
 
 func (s *GroupsTestSuite) TearDownSuite() {

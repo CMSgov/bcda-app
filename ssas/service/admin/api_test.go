@@ -71,7 +71,7 @@ func (s *APITestSuite) TestCreateGroup() {
 	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	g := ssas.Group{}
-	s.db.Last(&g)
+	s.db.Where("group_id = ?", "A12345").Find(&g)
 	_ = ssas.CleanDatabase(g)
 }
 
