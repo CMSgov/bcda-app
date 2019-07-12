@@ -56,6 +56,8 @@ type APITestSuite struct {
 }
 
 func (s *APITestSuite) SetupSuite() {
+	ssas.InitializeGroupModels()
+	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
 }
 
@@ -114,6 +116,27 @@ func (s *APITestSuite) TestCreateSystem_MissingRequiredParam() {
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
 }
+
+// func (s *APITestSuite) TestResetCredentials() {
+// 	group := ssas.Group{GroupID: "group-12345"}
+// 	s.db.Create(&group)
+// 	system := ssas.System{GroupID: group.GroupID, ClientID: "client-12345"}
+// 	s.db.Create(&system)
+// 	secret := ssas.Secret{Hash: "foo", SystemID: system.ID}
+// 	s.db.Create(secret)
+
+// 	secret1, _ := system.GetSecret()
+// 	assert.NotEmpty(s.T(), secret1)
+
+// 	req := httptest.NewRequest("POST", "/auth/system", strings.NewReader(`{ "foo": "bar" }`))
+// 	handler := http.HandlerFunc(resetCredentials)
+// 	rr := httptest.NewRecorder()
+// 	handler.ServeHTTP(rr, req)
+
+// 	/* TODO */
+
+// 	_ = ssas.CleanDatabase(group)
+// }
 
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))

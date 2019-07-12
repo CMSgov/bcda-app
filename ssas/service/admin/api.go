@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
 )
 
 func createGroup(w http.ResponseWriter, r *http.Request) {
@@ -71,4 +73,24 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
+}
+
+func resetCredentials(w http.ResponseWriter, r *http.Request) {
+	systemID := chi.URLParam(r, "systemID")
+
+	system, err := ssas.GetSystemByClientID(systemID)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+
+	trackingID := uuid.NewRandom().String()
+	ssas.OperationCalled(ssas.Event{Op: "NewSecret", TrackingID: trackingID, Help: "calling from admin.resetCredentials()"})
+	secret, err := system.ResetSecret(trackingID)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, secret)
 }
