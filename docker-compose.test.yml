@@ -37,6 +37,7 @@ services:
       - SSAS_HASH_SALT_SIZE=32
       - CCLF_IMPORT_STATUS_RECORDS_INTERVAL=10
       - SSAS_DEFAULT_SYSTEM_SCOPE=bcda-api
+      - SSAS_MFA_CHALLENGE_REQUEST_DURATION=0
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
   postman_test:

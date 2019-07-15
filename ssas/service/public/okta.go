@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/cfg"
 	"github.com/CMSgov/bcda-app/ssas/okta"
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -29,6 +31,16 @@ type Factor struct {
 	Type		string	`json:"factorType"`
 	Provider	string	`json:"provider"`
 	Status		string	`json:"status"`
+}
+
+type Transaction struct {
+	TransactionID	string	`json:"transaction_id"`
+	ExpiresAt		time.Time `json:"expires_at"`
+}
+
+type FactorReturn struct {
+	Action		string	`json:"action"`
+	Transaction	Transaction `json:"transaction:omitempty"`
 }
 
 type FactorRequest struct {
@@ -55,6 +67,13 @@ type OktaClient struct{
 	Client 	*http.Client
 }
 
+var RequestFactorChallengeDuration time.Duration
+
+func init() {
+	factorChallengeMilliseconds := cfg.GetEnvInt("SSAS_MFA_CHALLENGE_REQUEST_DURATION", 1500)
+	RequestFactorChallengeDuration = time.Millisecond * time.Duration(factorChallengeMilliseconds)
+}
+
 func NewOkta(client *http.Client) *OktaClient {
 	if nil == client {
 		client = okta.Client()
@@ -64,10 +83,117 @@ func NewOkta(client *http.Client) *OktaClient {
 }
 
 /*
-	GetUser searches for Okta users using the provided search string.  Only return results if exactly one active user
+	RequestFactorChallenge is to be called from the /authn/request endpoint.  It looks up the Okta user ID and factor ID, calls okta.postFactorChallenge(),
+	and filters the information returned to minimize information leakage.
+
+	Valid factor types include:
+		"Google TOTP" (Google Authenticator)
+		"Okta TOTP"   (Okta Verify app time-based token)
+		"Push"        (Okta Verify app push)
+		"SMS"
+		"Call"
+		"Email"
+
+	Return
+ */
+func (o *OktaClient) RequestFactorChallenge(userIdentifier string, factorType string, trackingId string) (factorReturn *FactorReturn, err error) {
+	startTime := time.Now()
+	requestEvent := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingId}
+	ssas.OperationStarted(requestEvent)
+
+	switch strings.ToLower(factorType) {
+	case "google totp": fallthrough
+	case "okta totp": fallthrough
+	case "push": fallthrough
+	case "sms": fallthrough
+	case "call": fallthrough
+	case "email": // noop
+	default:
+		factorReturn = &FactorReturn{Action: "invalid_request"}
+		requestEvent.Help = "invalid factor type: " + factorType
+		ssas.OperationFailed(requestEvent)
+		wait(startTime, RequestFactorChallengeDuration)
+		return
+	}
+
+	oktaUserID, err := o.getUser(userIdentifier, trackingId)
+	if err != nil {
+		factorReturn = formatFactorReturn(factorType, factorReturn)
+		requestEvent.Help = "matching user not found: " + err.Error()
+		ssas.OperationFailed(requestEvent)
+		wait(startTime, RequestFactorChallengeDuration)
+		return
+	}
+
+	requestEvent.UserID = oktaUserID
+	oktaFactor, err := o.getUserFactor(oktaUserID, factorType, trackingId)
+	if err != nil {
+		factorReturn = formatFactorReturn(factorType, factorReturn)
+		requestEvent.Help = "matching factor not found: " + err.Error()
+		ssas.OperationFailed(requestEvent)
+		wait(startTime, RequestFactorChallengeDuration)
+		return
+	}
+
+	factorRequest, err := o.postFactorChallenge(oktaUserID, *oktaFactor, trackingId)
+	if err != nil {
+		factorReturn = formatFactorReturn(factorType, factorReturn)
+		requestEvent.Help = "error requesting challenge for factor: " + err.Error()
+		ssas.OperationFailed(requestEvent)
+		wait(startTime, RequestFactorChallengeDuration)
+		return
+	}
+
+	if factorRequest.Links.Poll.Href != "" {
+		factorReturn = &FactorReturn{Action: "request_sent"}
+		factorReturn.Transaction.TransactionID = parsePushTransaction(factorRequest.Links.Poll.Href)
+		factorReturn.Transaction.ExpiresAt = factorRequest.ExpiresAt
+	}
+
+	factorReturn = formatFactorReturn(factorType, factorReturn)
+	requestEvent.Help = fmt.Sprintf("okta.RequestFactorChallenge() execution seconds: %f", time.Now().Sub(startTime).Seconds())
+	ssas.OperationSucceeded(requestEvent)
+	wait(startTime, RequestFactorChallengeDuration)
+	return
+}
+
+/*
+	formatFactorReturn generates dummy return values if needed
+ */
+func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorReturn {
+	if factorReturn == nil || factorReturn.Action == "" {
+		factorReturn = &FactorReturn{Action: "request_sent"}
+	}
+
+	if strings.ToLower(factorType) == "push" {
+		if factorReturn.Transaction.TransactionID == "" {
+			transactionID, err := generateOktaTransactionId()
+			if err != nil {
+				return &FactorReturn{Action: "aborted"}
+			}
+			factorReturn.Transaction.TransactionID = transactionID
+		}
+
+		if factorReturn.Transaction.ExpiresAt.Before(time.Now()) {
+			factorReturn.Transaction.ExpiresAt = time.Now().Add(time.Minute*5)
+		}
+	}
+	return factorReturn
+}
+
+/*
+	wait() provides fixed-time execution for functions that could leak information based on how quickly they return
+ */
+func wait(startTime time.Time, targetDuration time.Duration) {
+	elapsed := time.Now().Sub(startTime)
+	time.Sleep(targetDuration - elapsed)
+}
+
+/*
+	getUser searches for Okta users using the provided search string.  Only return results if exactly one active user
 	of LOA=3 is found.
  */
-func (o *OktaClient) GetUser(searchString string, trackingId string) (oktaId string, err error) {
+func (o *OktaClient) getUser(searchString string, trackingId string) (oktaId string, err error) {
 	userEvent := ssas.Event{Op: "FindOktaUser", TrackingID: trackingId}
 	ssas.OperationStarted(userEvent)
 
@@ -150,7 +276,7 @@ func (o *OktaClient) GetUser(searchString string, trackingId string) (oktaId str
 }
 
 /*
-	GetUserFactor looks for the active Okta factor of the specified type enrolled for a given user.
+	getUserFactor looks for the active Okta factor of the specified type enrolled for a given user.
 
 	Valid factor types include:
 		"Google TOTP" (Google Authenticator)
@@ -160,7 +286,7 @@ func (o *OktaClient) GetUser(searchString string, trackingId string) (oktaId str
 		"Call"
 		"Email"
 */
-func (o *OktaClient) GetUserFactor(oktaUserId string, factorType string, trackingId string) (factor *Factor, err error) {
+func (o *OktaClient) getUserFactor(oktaUserId string, factorType string, trackingId string) (factor *Factor, err error) {
 	factorEvent := ssas.Event{Op: "FindOktaUserFactors", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(factorEvent)
 
@@ -239,8 +365,8 @@ func (o *OktaClient) GetUserFactor(oktaUserId string, factorType string, trackin
 	return factor, errors.New(factorEvent.Help)
 }
 
-func (o *OktaClient) RequestFactorChallenge(oktaUserId string, oktaFactor Factor, trackingId string) (factorVerification *FactorRequest, err error) {
-	requestEvent := ssas.Event{Op: "RequestOktaFactorChallenge", UserID: oktaUserId, TrackingID: trackingId}
+func (o *OktaClient) postFactorChallenge(oktaUserId string, oktaFactor Factor, trackingId string) (factorRequest *FactorRequest, err error) {
+	requestEvent := ssas.Event{Op: "PostOktaFactorChallenge", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(requestEvent)
 
 	requestUrl := fmt.Sprintf("%s/api/v1/users/%s/factors/%s/verify", okta.OktaBaseUrl, oktaUserId, oktaFactor.Id)
@@ -248,7 +374,7 @@ func (o *OktaClient) RequestFactorChallenge(oktaUserId string, oktaFactor Factor
 	if err != nil {
 		requestEvent.Help = "unable to create request: " + err.Error()
 		ssas.OperationFailed(requestEvent)
-		return factorVerification, errors.New(requestEvent.Help)
+		return factorRequest, errors.New(requestEvent.Help)
 	}
 
 	okta.AddRequestHeaders(req)
@@ -256,7 +382,7 @@ func (o *OktaClient) RequestFactorChallenge(oktaUserId string, oktaFactor Factor
 	if err != nil {
 		requestEvent.Help = "request error: " + err.Error()
 		ssas.OperationFailed(requestEvent)
-		return factorVerification, errors.New(requestEvent.Help)
+		return factorRequest, errors.New(requestEvent.Help)
 	}
 
 	var body []byte
@@ -264,7 +390,7 @@ func (o *OktaClient) RequestFactorChallenge(oktaUserId string, oktaFactor Factor
 	if err != nil {
 		requestEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
 		ssas.OperationFailed(requestEvent)
-		return factorVerification, errors.New(requestEvent.Help)
+		return factorRequest, errors.New(requestEvent.Help)
 	}
 
 	if resp.StatusCode >= 400 {
@@ -273,7 +399,7 @@ func (o *OktaClient) RequestFactorChallenge(oktaUserId string, oktaFactor Factor
 			requestEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
 				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
 			ssas.OperationFailed(requestEvent)
-			return factorVerification, errors.New(requestEvent.Help)
+			return factorRequest, errors.New(requestEvent.Help)
 		}
 	}
 
@@ -281,18 +407,31 @@ func (o *OktaClient) RequestFactorChallenge(oktaUserId string, oktaFactor Factor
 	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		requestEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
 		ssas.OperationFailed(requestEvent)
-		return factorVerification, errors.New(requestEvent.Help)
+		return factorRequest, errors.New(requestEvent.Help)
 	}
 
 	f := FactorRequest{}
 	if err = json.Unmarshal(body, &f); err != nil {
 		requestEvent.Help = fmt.Sprintf("unexpected response format; response: %s", string(body))
 		ssas.OperationFailed(requestEvent)
-		return factorVerification, errors.New(requestEvent.Help)
+		return factorRequest, errors.New(requestEvent.Help)
 	}
 
 	ssas.OperationSucceeded(requestEvent)
 	return &f, nil
+}
+
+/*
+	parsePushTransaction returns the Okta transaction ID for a Push factor request
+ */
+func parsePushTransaction(url string) string {
+	re := regexp.MustCompile(`/transactions/(.*)$`)
+	matches := re.FindSubmatch([]byte(url))
+	if len(matches) > 1 {
+		return string(matches[1])
+	}
+
+	return ""
 }
 
 func generateOktaTransactionId() (string, error) {

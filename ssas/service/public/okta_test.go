@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +18,12 @@ type OTestSuite struct {
 	suite.Suite
 }
 
-func (s *OTestSuite) TestRequestFactorChallengeSuccess() {
+type TestResponse struct {
+	GiveAnswer	func(*http.Request) bool
+	Response	*http.Response
+}
+
+func (s *OTestSuite) TestPostFactorChallengeSuccess() {
 	trackingId := uuid.NewRandom().String()
 	userId := "abc123"
 	factor := Factor{Id: "123abc", Type: "call"}
@@ -27,14 +33,14 @@ func (s *OTestSuite) TestRequestFactorChallengeSuccess() {
 	})
 
 	o := NewOkta(client)
-	factorVerification, err := o.RequestFactorChallenge(userId, factor, trackingId)
+	factorVerification, err := o.postFactorChallenge(userId, factor, trackingId)
 	if err != nil || factorVerification == nil {
 		s.FailNow("factor result not parsed")
 	}
 	assert.Equal(s.T(), "CHALLENGE", factorVerification.Result)
 }
 
-func (s *OTestSuite) TestRequestFactorChallengePushSuccess() {
+func (s *OTestSuite) TestPostFactorChallengePushSuccess() {
 	trackingId := uuid.NewRandom().String()
 	userId := "abc123"
 	factor := Factor{Id: "123mno", Type: "push"}
@@ -44,7 +50,7 @@ func (s *OTestSuite) TestRequestFactorChallengePushSuccess() {
 	})
 
 	o := NewOkta(client)
-	factorVerification, err := o.RequestFactorChallenge(userId, factor, trackingId)
+	factorVerification, err := o.postFactorChallenge(userId, factor, trackingId)
 	if err != nil || factorVerification == nil {
 		s.FailNow("factor result not parsed")
 	}
@@ -54,7 +60,7 @@ func (s *OTestSuite) TestRequestFactorChallengePushSuccess() {
 	assert.Equal(s.T(), "https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg", factorVerification.Links.Poll.Href)
 }
 
-func (s *OTestSuite) TestRequestFactorChallengeFactorNotFound() {
+func (s *OTestSuite) TestPostFactorChallengeFactorNotFound() {
 	trackingId := uuid.NewRandom().String()
 	userId := "abc123"
 	factor := Factor{Id: "nonexistent_factor", Type: "call"}
@@ -64,10 +70,10 @@ func (s *OTestSuite) TestRequestFactorChallengeFactorNotFound() {
 	})
 
 	o := NewOkta(client)
-	factorVerification, err := o.RequestFactorChallenge(userId, factor, trackingId)
+	factorVerification, err := o.postFactorChallenge(userId, factor, trackingId)
 	assert.Empty(s.T(), factorVerification)
 	if err == nil {
-		s.FailNow("RequestFactorChallenge() should fail on invalid factor ID")
+		s.FailNow("postFactorChallenge() should fail on invalid factor ID")
 	}
 	assert.Contains(s.T(), err.Error(), "Resource not found")
 }
@@ -82,7 +88,7 @@ func (s *OTestSuite) TestGetUserHeaders() {
 	})
 
 	o := NewOkta(client)
-	_, _ = o.GetUser("nonexistent_user", trackingId)
+	_, _ = o.getUser("nonexistent_user", trackingId)
 }
 
 func (s *OTestSuite) TestGetUserSuccess() {
@@ -95,7 +101,7 @@ func (s *OTestSuite) TestGetUserSuccess() {
 	})
 
 	o := NewOkta(client)
-	foundUserId, err := o.GetUser(searchString, trackingId)
+	foundUserId, err := o.getUser(searchString, trackingId)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), expectedUserId, foundUserId)
 }
@@ -107,9 +113,9 @@ func (s *OTestSuite) TestGetUserBadStatusCode() {
 	})
 
 	o := NewOkta(client)
-	foundUserId, err := o.GetUser("user_irrelevant", trackingId)
+	foundUserId, err := o.getUser("user_irrelevant", trackingId)
 	if err == nil {
-		s.FailNow("GetUser() should fail unless status code = 200")
+		s.FailNow("getUser() should fail unless status code = 200")
 	}
 	assert.Contains(s.T(), err.Error(), "status code")
 	assert.Equal(s.T(), "", foundUserId)
@@ -123,9 +129,9 @@ func (s *OTestSuite) TestGetUserNotLOA3() {
 	})
 
 	o := NewOkta(client)
-	foundUserId, err := o.GetUser(searchString, trackingId)
+	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
-		s.FailNow("GetUser() should fail unless LOA=3")
+		s.FailNow("getUser() should fail unless LOA=3")
 	}
 	assert.Contains(s.T(), err.Error(), "LOA")
 	assert.Equal(s.T(), "", foundUserId)
@@ -139,9 +145,9 @@ func (s *OTestSuite) TestGetUserNotActive() {
 	})
 
 	o := NewOkta(client)
-	foundUserId, err := o.GetUser(searchString, trackingId)
+	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
-		s.FailNow("GetUser() should fail unless status=ACTIVE")
+		s.FailNow("getUser() should fail unless status=ACTIVE")
 	}
 	assert.Contains(s.T(), err.Error(), "active")
 	assert.Equal(s.T(), "", foundUserId)
@@ -155,9 +161,9 @@ func (s *OTestSuite) TestGetUserMultipleUsers() {
 	})
 
 	o := NewOkta(client)
-	foundUserId, err := o.GetUser(searchString, trackingId)
+	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
-		s.FailNow("GetUser() should fail unless a single user matches the search string")
+		s.FailNow("getUser() should fail unless a single user matches the search string")
 	}
 	assert.Contains(s.T(), err.Error(), "multiple")
 	assert.Equal(s.T(), "", foundUserId)
@@ -171,9 +177,9 @@ func (s *OTestSuite) TestGetUserNoUsers() {
 	})
 
 	o := NewOkta(client)
-	foundUserId, err := o.GetUser(searchString, trackingId)
+	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
-		s.FailNow("GetUser() should fail unless a user matches the search string")
+		s.FailNow("getUser() should fail unless a user matches the search string")
 	}
 	assert.Contains(s.T(), err.Error(), "not found")
 	assert.Equal(s.T(), "", foundUserId)
@@ -187,7 +193,7 @@ func (s *OTestSuite) TestGetUserBadToken() {
 	})
 
 	o := NewOkta(client)
-	foundUserId, err := o.GetUser(searchString, trackingId)
+	foundUserId, err := o.getUser(searchString, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "Invalid token provided")
 	assert.Empty(s.T(), foundUserId)
@@ -203,10 +209,10 @@ func (s *OTestSuite) TestGetUserFactorSuccess() {
 	})
 
 	o := NewOkta(client)
-	factor, err := o.GetUserFactor(userId, factorType, trackingId)
+	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.Nil(s.T(), err)
 	if factor == nil {
-		s.FailNow("GetUserFactor() should successfully return a factor")
+		s.FailNow("getUserFactor() should successfully return a factor")
 	}
 	assert.Equal(s.T(), "123ghi", factor.Id)
 	assert.Equal(s.T(), "sms", factor.Type)
@@ -220,44 +226,44 @@ func (s *OTestSuite) TestGetUserFactorAllTypes() {
 	})
 	o := NewOkta(client)
 
-	factor, err := o.GetUserFactor(userId, "Call", trackingId)
+	factor, err := o.getUserFactor(userId, "Call", trackingId)
 	assert.Nil(s.T(), err)
 	if factor == nil {
-		s.FailNow("GetUserFactor() should successfully return a factor")
+		s.FailNow("getUserFactor() should successfully return a factor")
 	}
 	assert.Equal(s.T(), "123abc", factor.Id)
 	assert.Equal(s.T(), "call", factor.Type)
 
-	factor, err = o.GetUserFactor(userId, "Email", trackingId)
+	factor, err = o.getUserFactor(userId, "Email", trackingId)
 	assert.Nil(s.T(), err)
 	if factor == nil {
-		s.FailNow("GetUserFactor() should successfully return a factor")
+		s.FailNow("getUserFactor() should successfully return a factor")
 	}
 	assert.Equal(s.T(), "123def", factor.Id)
 	assert.Equal(s.T(), "email", factor.Type)
 
-	factor, err = o.GetUserFactor(userId, "Google TOTP", trackingId)
+	factor, err = o.getUserFactor(userId, "Google TOTP", trackingId)
 	assert.Nil(s.T(), err)
 	if factor == nil {
-		s.FailNow("GetUserFactor() should successfully return a factor")
+		s.FailNow("getUserFactor() should successfully return a factor")
 	}
 	assert.Equal(s.T(), "123jkl", factor.Id)
 	assert.Equal(s.T(), "token:software:totp", factor.Type)
 	assert.Equal(s.T(), "GOOGLE", factor.Provider)
 
-	factor, err = o.GetUserFactor(userId, "OKTA TOTP", trackingId)
+	factor, err = o.getUserFactor(userId, "OKTA TOTP", trackingId)
 	assert.Nil(s.T(), err)
 	if factor == nil {
-		s.FailNow("GetUserFactor() should successfully return a factor")
+		s.FailNow("getUserFactor() should successfully return a factor")
 	}
 	assert.Equal(s.T(), "123pqr", factor.Id)
 	assert.Equal(s.T(), "token:software:totp", factor.Type)
 	assert.Equal(s.T(), "OKTA", factor.Provider)
 
-	factor, err = o.GetUserFactor(userId, "Push", trackingId)
+	factor, err = o.getUserFactor(userId, "Push", trackingId)
 	assert.Nil(s.T(), err)
 	if factor == nil {
-		s.FailNow("GetUserFactor() should successfully return a factor")
+		s.FailNow("getUserFactor() should successfully return a factor")
 	}
 	assert.Equal(s.T(), "123mno", factor.Id)
 	assert.Equal(s.T(), "push", factor.Type)
@@ -273,7 +279,7 @@ func (s *OTestSuite) TestGetUserFactorInactive() {
 	})
 
 	o := NewOkta(client)
-	factor, err := o.GetUserFactor(userId, factorType, trackingId)
+	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), factor)
 }
@@ -288,7 +294,7 @@ func (s *OTestSuite) TestGetUserFactorNotFound() {
 	})
 
 	o := NewOkta(client)
-	factor, err := o.GetUserFactor(userId, factorType, trackingId)
+	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), factor)
 }
@@ -302,7 +308,7 @@ func (s *OTestSuite) TestGetUserFactorBadToken() {
 	})
 
 	o := NewOkta(client)
-	factor, err := o.GetUserFactor(userId, factorType, trackingId)
+	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "Invalid token provided")
 	assert.Nil(s.T(), factor)
@@ -315,8 +321,110 @@ func (s *OTestSuite) TestGenerateOktaTransactionId() {
 	assert.Equal(s.T(), 28, len(transactionId))
 }
 
+func (s *OTestSuite) TestParsePushTransactionMatch() {
+	testUrl := "https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg"
+	transactionId := parsePushTransaction(testUrl)
+	assert.Equal(s.T(), "v2mst.WmiSGGkvQc6P-QUQ5Qy0jg", transactionId)
+}
+
+func (s *OTestSuite) TestParsePushTransactionNoMatch() {
+	testUrl := "https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno"
+	transactionId := parsePushTransaction(testUrl)
+	assert.Equal(s.T(), "", transactionId)
+}
+
+func (s *OTestSuite) TestFormatFactorReturnFailedSMSRequest() {
+	result := formatFactorReturn("SMS", &FactorReturn{})
+	assert.NotEmpty(s.T(), result)
+	assert.Equal(s.T(), "request_sent", result.Action)
+	assert.Empty(s.T(), result.Transaction)
+}
+
+func (s *OTestSuite) TestFormatFactorReturnFailedPushRequest() {
+	result := formatFactorReturn("Push", &FactorReturn{})
+	assert.NotEmpty(s.T(), result)
+	assert.Equal(s.T(), "request_sent", result.Action)
+	assert.NotEmpty(s.T(), result.Transaction)
+	assert.NotEqual(s.T(), "", result.Transaction.TransactionID)
+}
+
+func (s *OTestSuite) TestFormatFactorReturnSucceededSMSRequest() {
+	factorReturn := FactorReturn{Action: "request_sent"}
+	assert.NotEmpty(s.T(), factorReturn)
+	assert.Equal(s.T(), "request_sent", factorReturn.Action)
+	assert.Equal(s.T(), "", factorReturn.Transaction.TransactionID)
+	assert.False(s.T(), factorReturn.Transaction.ExpiresAt.After(time.Now()))
+}
+
+func (s *OTestSuite) TestFormatFactorReturnSucceededPushRequest() {
+	transaction := Transaction{TransactionID: "any_id"}
+	f := FactorReturn{Action: "request_sent", Transaction: transaction}
+	factorReturn := formatFactorReturn("Push", &f)
+	assert.NotEmpty(s.T(), factorReturn)
+	assert.Equal(s.T(), "request_sent", factorReturn.Action)
+	assert.Equal(s.T(), "any_id", factorReturn.Transaction.TransactionID)
+	assert.True(s.T(), factorReturn.Transaction.ExpiresAt.After(time.Now()))
+}
+
+func (s *OTestSuite) TestRequestFactorChallengeInvalidFactor() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isGetFactor(), 200, `[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOkta(client)
+	factorReturn, err := o.RequestFactorChallenge("bcda_user@cms.gov", "badFactor", trackingId)
+	if err != nil {
+		s.FailNow("RequestFactorChallenge should return an error for an invalid factor")
+	}
+	assert.NotEmpty(s.T(), factorReturn)
+	assert.Equal(s.T(), "invalid_request", factorReturn.Action)
+}
+
+func (s *OTestSuite) TestRequestFactorChallengeCallFactor() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isGetFactor(), 200, `[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}]`),
+		newTestResponse(isPostFactorChallenge(), 200, `{"factorResult":"CHALLENGE","_links":{"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"factor":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}}}}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOkta(client)
+	factorReturn, err := o.RequestFactorChallenge("bcda_user@cms.gov", "Call", trackingId)
+	if err != nil {
+		s.FailNow("RequestFactorChallenge should not return an error for this combination of valid responses and valid factor")
+	}
+	assert.NotEmpty(s.T(), factorReturn)
+	assert.Equal(s.T(), "request_sent", factorReturn.Action)
+	assert.Empty(s.T(), factorReturn.Transaction)
+}
+
+func (s *OTestSuite) TestRequestFactorChallengePushFactor() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isGetFactor(), 200, `[{"id":"123mno","factorType":"push","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"A User’s iPhone","platform":"IOS","version":"12.1.2"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}]`),
+		newTestResponse(isPostFactorChallenge(), 200, `{"factorResult":"WAITING","profile":{"credentialId":"bcda_user1@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"User’s iPhone","platform":"IOS","version":"12.1.2"},"expiresAt":"2019-07-12T14:21:30.000Z","_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["DELETE"]}},"poll":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["GET"]}}}}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOkta(client)
+	factorReturn, err := o.RequestFactorChallenge("bcda_user@cms.gov", "Push", trackingId)
+	if err != nil {
+		s.FailNow("RequestFactorChallenge should not return an error for this combination of valid responses and valid factor")
+	}
+	assert.NotEmpty(s.T(), factorReturn)
+	assert.Equal(s.T(), "request_sent", factorReturn.Action)
+	assert.Equal(s.T(), "v2mst.WmiSGGkvQc6P-QUQ5Qy0jg", factorReturn.Transaction.TransactionID)
+}
+
 func TestOTestSuite(t *testing.T) {
 	suite.Run(t, new(OTestSuite))
+}
+
+func isMatch(regex string, comparison string) bool {
+	re := regexp.MustCompile(regex)
+	return re.Match([]byte(comparison))
 }
 
 func testHttpResponse(statusCode int, body string) *http.Response {
@@ -324,5 +432,39 @@ func testHttpResponse(statusCode int, body string) *http.Response {
 		StatusCode: statusCode,
 		Body:       ioutil.NopCloser(bytes.NewBufferString(body)),
 		Header:     make(http.Header),
+	}
+}
+
+func testHttpResponses(responses []TestResponse) func(*http.Request) *http.Response {
+	return func(req *http.Request) *http.Response {
+		for _, resp := range responses {
+			if resp.GiveAnswer(req) {
+				return resp.Response
+			}
+		}
+		return testHttpResponse(404, "Test request not found: " + req.URL.String())
+	}
+}
+
+func newTestResponse(testFunc func(*http.Request) bool, code int, body string) TestResponse {
+	response := testHttpResponse(code, body)
+	return TestResponse{GiveAnswer: testFunc, Response: response}
+}
+
+func isPostFactorChallenge() func(*http.Request) bool {
+	return func(req *http.Request) bool {
+		return req.Method == "POST" && isMatch(`\/api\/v1\/users\/.*\/factors\/.*\/verify`, req.URL.String())
+	}
+}
+
+func isGetUser() func(*http.Request) bool {
+	return func(req *http.Request) bool {
+		return req.Method == "GET" && isMatch(`\/api\/v1\/users\/\?q=`, req.URL.String())
+	}
+}
+
+func isGetFactor() func(*http.Request) bool {
+	return func(req *http.Request) bool {
+		return req.Method == "GET" && isMatch(`\/api\/v1\/users\/.*\/factors`, req.URL.String())
 	}
 }

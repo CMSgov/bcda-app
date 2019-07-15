@@ -117,6 +117,7 @@ services:
       - SSAS_HASH_KEY_LENGTH=64
       - SSAS_HASH_SALT_SIZE=32
       - SSAS_DEFAULT_SYSTEM_SCOPE=bcda-api
+      - SSAS_MFA_CHALLENGE_REQUEST_DURATION=0
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     ports:
