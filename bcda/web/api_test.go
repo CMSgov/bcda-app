@@ -64,6 +64,8 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	assert.Nil(s.T(),err)
 	user, err := models.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
