@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/go-chi/chi"
 )
 
 func createGroup(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +32,36 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	_, err = w.Write(groupJSON)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+}
+
+func updateGroup(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	gd := ssas.GroupData{}
+	err := json.NewDecoder(r.Body).Decode(&gd)
+	if err != nil {
+		http.Error(w, "Failed to create group due to invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ssas.OperationCalled(ssas.Event{Op: "UpdateGroup", TrackingID: id, Help: "calling from admin.updateGroup()"})
+	g, err := ssas.UpdateGroup(id, gd)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update group. Error: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	groupJSON, err := json.Marshal(g)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(groupJSON)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)

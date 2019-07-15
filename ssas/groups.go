@@ -1,7 +1,9 @@
 package ssas
 
 import (
+	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -66,6 +68,52 @@ func CreateGroup(gd GroupData) (Group, error) {
 	return g, nil
 }
 
+func UpdateGroup(id string, gd GroupData) (Group, error) {
+	event := Event{Op: "UpdateGroup", TrackingID: id}
+	OperationStarted(event)
+
+	if gd.ID == "" {
+		err := fmt.Errorf("group_id cannot be blank")
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
+	g := Group{}
+	db := GetGORMDbConnection()
+	defer Close(db)
+	if db.Where("group_id = ?", id).Find(&g).RecordNotFound() {
+		err := fmt.Errorf("record not found for id=%s", id)
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
+	oldGD := GroupData{}
+	g.Data.Scan(&oldGD)
+	gd.ID = oldGD.ID
+	gd.Name = oldGD.Name
+
+	gdBytes, err := json.Marshal(gd)
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
+	g.Data = postgres.Jsonb{RawMessage: gdBytes}
+	err = db.Save(&g).Error
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
+	OperationSucceeded(event)
+	return g, nil
+
+}
+
 type GroupData struct {
 	ID        string     `json:"id"`
 	Name      string     `json:"name"`
@@ -73,6 +121,23 @@ type GroupData struct {
 	Scopes    []string   `json:"scopes"`
 	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
 	Resources []Resource `json:"resources"`
+}
+
+// Make the GroupData struct implement the driver.Valuer interface. This method
+// simply returns the JSON-encoded representation of the struct.
+func (gd GroupData) Value() (driver.Value, error) {
+	return json.Marshal(gd)
+}
+
+// Make the GroupData struct implement the sql.Scanner interface. This method
+// simply decodes a JSON-encoded value into the struct fields.
+func (gd *GroupData) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &gd)
 }
 
 type Resource struct {
