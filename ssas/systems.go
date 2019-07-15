@@ -19,7 +19,7 @@ import (
 )
 
 var DefaultScope string
-const CREDENTIAL_EXPIRATION = 90 * 24 * time.Hour
+const CredentialExpiration = 90 * 24 * time.Hour
 
 func init() {
 	getEnvVars()
@@ -381,7 +381,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	creds.ClientID = system.ClientID
 	creds.ClientSecret = clientSecret
 	creds.ClientName = system.ClientName
-	creds.ExpiresAt = time.Now().Add(CREDENTIAL_EXPIRATION)
+	creds.ExpiresAt = time.Now().Add(CredentialExpiration)
 
 	OperationSucceeded(regEvent)
 	return creds, nil
