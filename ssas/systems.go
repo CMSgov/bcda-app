@@ -415,7 +415,7 @@ func GetSystemByID(id string) (System, error) {
 	)
 	defer Close(db)
 
-	if err := db.First(&system, id).Error; err != nil {
+	if err = db.First(&system, id).Error; err != nil {
 		err = fmt.Errorf("no System record found with ID %s", id)
 	}
 	return system, err

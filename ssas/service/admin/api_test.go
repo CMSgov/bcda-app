@@ -148,6 +148,19 @@ func (s *APITestSuite) TestResetCredentials() {
 	_ = ssas.CleanDatabase(group)
 }
 
+func (s *APITestSuite) TestResetCredentials_InvalidSystemID() {
+	systemID := "999"
+	req := httptest.NewRequest("PUT", "/system/"+systemID+"/credentials", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(resetCredentials)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
+}
+
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
 }

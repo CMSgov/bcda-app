@@ -80,7 +80,7 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 
 	system, err := ssas.GetSystemByID(systemID)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		http.Error(w, "Not found", http.StatusNotFound)
 	}
 
 	trackingID := uuid.NewRandom().String()
