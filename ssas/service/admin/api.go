@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/go-chi/chi"
 )
 
 func createGroup(w http.ResponseWriter, r *http.Request) {
@@ -71,4 +72,22 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
+}
+
+func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {
+	systemID := chi.URLParam(r, "systemID")
+
+	system, err := ssas.GetSystemByID(systemID)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	err = system.DeactivateSecrets()
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

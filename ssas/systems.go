@@ -98,7 +98,7 @@ func (system *System) SaveSecret(hashedSecret string) error {
 		SystemID: system.ID,
 	}
 
-	err := db.Where("system_id = ?", system.ID).Delete(&Secret{}).Error
+	err := system.DeactivateSecrets()
 	if err != nil {
 		return fmt.Errorf("unable to soft delete previous secrets for clientID %s: %s", system.ClientID, err.Error())
 	}
@@ -131,6 +131,19 @@ func (system *System) GetSecret() (string, error) {
 	}
 
 	return secret.Hash, nil
+}
+
+/*
+	DeactivateSecrets soft deletes secrets associated with the system.
+*/
+func (system *System) DeactivateSecrets() error {
+	db := GetGORMDbConnection()
+	defer Close(db)
+	err := db.Where("system_id = ?", system.ID).Delete(&Secret{}).Error
+	if err != nil {
+		return fmt.Errorf("unable to soft delete previous secrets for clientID %s: %s", system.ClientID, err.Error())
+	}
+	return nil
 }
 
 /*
@@ -415,6 +428,23 @@ func GenerateSecret() (string, error) {
 }
 
 /*
+	GetSystemByID returns the system associated with the provided ID
+*/
+func GetSystemByID(id string) (System, error) {
+	var (
+		db     = GetGORMDbConnection()
+		system System
+		err    error
+	)
+	defer Close(db)
+
+	if err = db.First(&system, id).Error; err != nil {
+		err = fmt.Errorf("no System record found with ID %s", id)
+	}
+	return system, err
+}
+
+/*
 	CleanDatabase deletes the given group and associated systems, encryption keys, and secrets.
 */
 func CleanDatabase(group Group) error {
@@ -431,7 +461,6 @@ func CleanDatabase(group Group) error {
 	if err != nil {
 		return fmt.Errorf("unable to find associated systems: %s", err.Error())
 	}
-	fmt.Println("System ID's: ", systemIds)
 
 	err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
 	if err != nil {

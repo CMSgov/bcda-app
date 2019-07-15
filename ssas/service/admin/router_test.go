@@ -34,6 +34,15 @@ func (s *RouterTestSuite) TestPostSystemRoute() {
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestDeactivateSystemCredentials() {
+	req := httptest.NewRequest("DELETE", "/system/1/credentials", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	// TODO Something else here? Not a useful test atm.
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
+
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))
 }

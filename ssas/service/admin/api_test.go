@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/go-chi/chi"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -56,6 +58,8 @@ type APITestSuite struct {
 }
 
 func (s *APITestSuite) SetupSuite() {
+	ssas.InitializeGroupModels()
+	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
 }
 
@@ -113,6 +117,18 @@ func (s *APITestSuite) TestCreateSystem_MissingRequiredParam() {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
+}
+
+func (s *APITestSuite) TestDeactivateSystemCredentials_InvalidID() {
+	systemID := "999"
+	req := httptest.NewRequest("PUT", "/system/"+systemID+"/credentials", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(deactivateSystemCredentials)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
 }
 
 func TestAPITestSuite(t *testing.T) {
