@@ -128,7 +128,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
-	if !db.Find(&jobs, "aco_id = ? AND user_id = ?", acoID, ad.UserID).RecordNotFound() {
+	if !db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound() {
 		for _, job := range jobs {
 			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
 				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
