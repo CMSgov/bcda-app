@@ -122,3 +122,5 @@ services:
       - .:/go/src/github.com/CMSgov/bcda-app
     ports:
       - "3003:3003"
+      - "3004:3004"
+      - "3005:3005"
