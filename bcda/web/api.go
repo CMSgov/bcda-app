@@ -124,7 +124,10 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	var jobs []models.Job
 
-	// if we really do find this record
+	// If we really do find this record with the below matching criteria then this particular ACO has already made
+	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
+	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
+	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	if !db.Find(&jobs, "aco_id = ? AND user_id = ?", acoID, ad.UserID).RecordNotFound() {
 		for _, job := range jobs {
 			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
