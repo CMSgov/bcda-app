@@ -15,7 +15,7 @@ type RouterTestSuite struct {
 }
 
 func (s *RouterTestSuite) SetupTest() {
-	s.router = NewRouter()
+	s.router = Routes()
 }
 
 func (s *RouterTestSuite) TestPostGroupRoute() {

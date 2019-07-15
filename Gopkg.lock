@@ -37,14 +37,23 @@
   revision = "80144968c1019660c3756f38ba233c4a31f6c65c"
 
 [[projects]]
-  digest = "1:16d9466813d755a56e1087acf1afc8c0094989fe0c691c2f4e2fbb777bff5208"
+  branch = "master"
+  digest = "1:f4d05f0ba7544c4a294bc5bc15de526ebab80ebc429467ad9d28e3aee8fd570c"
   name = "github.com/go-chi/chi"
   packages = [
     ".",
     "middleware",
   ]
   pruneopts = "UT"
-  revision = "cca4135d8dddff765463feaf1118047a9e506b4a"
+  revision = "08c92af09aaf0e957a136435fad34a19496d3805"
+
+[[projects]]
+  digest = "1:54d7b4b9ab2bb2bae35b55eea900bc8fe15cba05a95fc78bf7fd7b82a9a07afa"
+  name = "github.com/go-chi/render"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3215478343fbc559bd3fc08f7031bb134d6bdad5"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
@@ -311,6 +320,7 @@
     "github.com/eug48/fhir/models",
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
+    "github.com/go-chi/render",
     "github.com/jackc/pgx",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
