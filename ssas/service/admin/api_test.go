@@ -2,15 +2,53 @@ package admin
 
 import (
 	"encoding/json"
-	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
+
+const SampleGroup string = `{  
+	"id":"A12345",
+	"name":"ACO Corp Systems",
+	"users":[  
+		"00uiqolo7fEFSfif70h7",
+		"l0vckYyfyow4TZ0zOKek",
+		"HqtEi2khroEZkH4sdIzj"
+	],
+	"scopes":[  
+		"user-admin",
+		"system-admin"
+	],
+	"resources":[  
+		{  
+			"id":"xxx",
+			"name":"BCDA API",
+			"scopes":[  
+				"bcda-api"
+			]
+		},
+		{  
+			"id":"eft",
+			"name":"EFT CCLF",
+			"scopes":[  
+				"eft-app:download",
+				"eft-data:read"
+			]
+		}
+	],
+	"system":
+		{  
+		"client_id":"4tuhiOIFIwriIOH3zn",
+		"software_id":"4NRB1-0XZABZI9E6-5SM3R",
+		"client_name":"ACO System A"
+		}
+}`
 
 type APITestSuite struct {
 	suite.Suite
@@ -23,6 +61,18 @@ func (s *APITestSuite) SetupSuite() {
 
 func (s *APITestSuite) TearDownSuite() {
 	ssas.Close(s.db)
+}
+
+func (s *APITestSuite) TestCreateGroup() {
+	req := httptest.NewRequest("POST", "/group", strings.NewReader(SampleGroup))
+	handler := http.HandlerFunc(createGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	g := ssas.Group{}
+	s.db.Where("group_id = ?", "A12345").Find(&g)
+	_ = ssas.CleanDatabase(g)
 }
 
 func (s *APITestSuite) TestCreateSystem() {
