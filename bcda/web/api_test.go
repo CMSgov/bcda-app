@@ -94,13 +94,14 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/ExplanationOfBenefit/$export").Delete(models.Job{})
 	s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
 	s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
-	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	acoID := "A40404F7-1EF2-485A-9B71-40FE7ACDCBC2"
 
 	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
 	ad := makeContextValues(acoID, userID)
@@ -151,7 +152,7 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	qc = nil
 
-	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	acoID := "3461C774-B48F-11E8-96F8-529269fb1459"
 	user, err := models.CreateUser("api.go Test User", "testbulkrequestnoqueue@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
@@ -183,7 +184,6 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	assert.Nil(s.T(), err)
 	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
 	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
-
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	user, err := models.CreateUser("api.go Test User", "testbulkpatientrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -220,6 +220,7 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
+	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export").Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
@@ -263,6 +264,7 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 	handler := http.HandlerFunc(bulkCoverageRequest)
 	handler.ServeHTTP(s.rr, req)
 
+	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Coverage/$export").Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
@@ -272,6 +274,157 @@ func (s *APITestSuite) TestBulkRequestInvalidType() {
 	bulkRequest("Foo", s.rr, req)
 
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func (s *APITestSuite) TestBulkConcurrentRequest() {
+	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	assert.Nil(s.T(),err)
+
+	j := models.Job{
+		ACOID:      uuid.Parse(acoID),
+		UserID:     uuid.Parse(userID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "In Progress",
+		JobCount:   1,
+	}
+	s.db.Save(&j)
+
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	ad := makeContextValues(acoID, userID)
+	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	pool := makeConnPool(s)
+	defer pool.Close()
+
+	// serve job
+	handler := http.HandlerFunc(bulkEOBRequest)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+
+	// change status to Pending and serve job
+	var job models.Job
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status","Pending").Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+
+	// change status to Completed and serve job
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status","Completed").Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	var lastRequestJob models.Job
+	s.db.Last(&lastRequestJob)
+	s.db.Unscoped().Delete(&lastRequestJob)
+
+	// change status to Failed and serve job
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status","Failed").Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	lastRequestJob = models.Job{}
+	s.db.Last(&lastRequestJob)
+	s.db.Unscoped().Delete(&lastRequestJob)
+
+	// change status to Archived
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status","Archived").Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	lastRequestJob = models.Job{}
+	s.db.Last(&lastRequestJob)
+	s.db.Unscoped().Delete(&lastRequestJob)
+
+	// change status to Expired
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status","Expired").Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	lastRequestJob = models.Job{}
+	s.db.Last(&lastRequestJob)
+	s.db.Unscoped().Delete(&lastRequestJob)
+
+	// different aco same endpoint
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Updates(models.Job{ACOID:uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), Status:"In Progress"}).Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	lastRequestJob = models.Job{}
+	s.db.Last(&lastRequestJob)
+	s.db.Unscoped().Delete(&lastRequestJob)
+
+	// same aco different endpoint
+	handler = http.HandlerFunc(bulkEOBRequest)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	ad = makeContextValues(acoID, userID)
+	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	handler = http.HandlerFunc(bulkPatientRequest)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+
+	// do another patient call behind this one
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+
+	lastRequestJob = models.Job{}
+	s.db.Last(&lastRequestJob)
+	s.db.Unscoped().Delete(&lastRequestJob)
+}
+
+
+func (s *APITestSuite) TestBulkConcurrentRequestTime() {
+	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	assert.Nil(s.T(),err)
+
+	j := models.Job{
+		ACOID:      uuid.Parse(acoID),
+		UserID:     uuid.Parse(userID),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "In Progress",
+		JobCount:   1,
+	}
+	s.db.Save(&j)
+
+	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	ad := makeContextValues(acoID, userID)
+	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	pool := makeConnPool(s)
+	defer pool.Close()
+
+	// serve job
+	handler := http.HandlerFunc(bulkEOBRequest)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+
+	// change created_at timestamp
+	var job models.Job
+	err = s.db.Find(&job, "id = ?", j.ID).Error
+	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("created_at",job.CreatedAt.Add(-GetJobTimeout())).Error)
+	s.rr = httptest.NewRecorder()
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
@@ -739,7 +892,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("a40404f7-1ef2-485a-9b71-40fe7acdcbc2", j.UserID.String())
+	ad := makeContextValues("3461C774-B48F-11E8-96F8-529269fb1459", j.UserID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
 	handler.ServeHTTP(s.rr, req)
@@ -846,4 +999,23 @@ func TestAPITestSuite(t *testing.T) {
 
 func makeContextValues(acoID string, userID string) (data auth.AuthData) {
 	return auth.AuthData{ACOID: acoID, UserID: userID, TokenID: uuid.NewRandom().String()}
+}
+
+func makeConnPool(s *APITestSuite) *pgx.ConnPool {
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		s.T().Error(err)
+	}
+	qc = que.NewClient(pgxpool)
+
+	return pgxpool
 }
