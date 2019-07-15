@@ -26,12 +26,20 @@ func (s *RouterTestSuite) TestPostGroupRoute() {
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
-func (s *RouterTestSuite) TestPostSystemRoute() {
+func (s *RouterTestSuite) TestPostSystem() {
 	req := httptest.NewRequest("POST", "/system", nil)
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestPutSystemCredentials() {
+	req := httptest.NewRequest("PUT", "/system/1/credentials", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusInternalServerError, res.StatusCode)
 }
 
 func TestRouterTestSuite(t *testing.T) {

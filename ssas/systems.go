@@ -404,6 +404,23 @@ func GetSystemByClientID(clientID string) (System, error) {
 	return system, err
 }
 
+/*
+	GetSystemByID returns the system associated with the provided ID
+*/
+func GetSystemByID(id string) (System, error) {
+	var (
+		db     = GetGORMDbConnection()
+		system System
+		err    error
+	)
+	defer Close(db)
+
+	if err := db.First(&system, id).Error; err != nil {
+		err = fmt.Errorf("no System record found with ID %s", id)
+	}
+	return system, err
+}
+
 func GenerateSecret() (string, error) {
 	b := make([]byte, 40)
 	_, err := rand.Read(b)

@@ -78,13 +78,13 @@ func createSystem(w http.ResponseWriter, r *http.Request) {
 func resetCredentials(w http.ResponseWriter, r *http.Request) {
 	systemID := chi.URLParam(r, "systemID")
 
-	system, err := ssas.GetSystemByClientID(systemID)
+	system, err := ssas.GetSystemByID(systemID)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
 
 	trackingID := uuid.NewRandom().String()
-	ssas.OperationCalled(ssas.Event{Op: "NewSecret", TrackingID: trackingID, Help: "calling from admin.resetCredentials()"})
+	ssas.OperationCalled(ssas.Event{Op: "ResetSecret", TrackingID: trackingID, Help: "calling from admin.resetCredentials()"})
 	secret, err := system.ResetSecret(trackingID)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)

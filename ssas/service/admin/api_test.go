@@ -1,13 +1,16 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/go-chi/chi"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -117,26 +120,33 @@ func (s *APITestSuite) TestCreateSystem_MissingRequiredParam() {
 	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
 }
 
-// func (s *APITestSuite) TestResetCredentials() {
-// 	group := ssas.Group{GroupID: "group-12345"}
-// 	s.db.Create(&group)
-// 	system := ssas.System{GroupID: group.GroupID, ClientID: "client-12345"}
-// 	s.db.Create(&system)
-// 	secret := ssas.Secret{Hash: "foo", SystemID: system.ID}
-// 	s.db.Create(secret)
+func (s *APITestSuite) TestResetCredentials() {
+	group := ssas.Group{GroupID: "test-reset-creds-group"}
+	s.db.Create(&group)
+	system := ssas.System{GroupID: group.GroupID, ClientID: "test-reset-creds-client"}
+	s.db.Create(&system)
+	secret := ssas.Secret{Hash: "test-reset-creds-hash", SystemID: system.ID}
+	s.db.Create(&secret)
 
-// 	secret1, _ := system.GetSecret()
-// 	assert.NotEmpty(s.T(), secret1)
+	systemID := strconv.FormatUint(uint64(system.ID), 10)
+	req := httptest.NewRequest("PUT", "/system/"+systemID+"/credentials", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(resetCredentials)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
 
-// 	req := httptest.NewRequest("POST", "/auth/system", strings.NewReader(`{ "foo": "bar" }`))
-// 	handler := http.HandlerFunc(resetCredentials)
-// 	rr := httptest.NewRecorder()
-// 	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	var result map[string]interface{}
+	_ = json.Unmarshal(rr.Body.Bytes(), &result)
+	newSecret := result["client_secret"]
+	assert.NotEmpty(s.T(), newSecret)
+	assert.NotEqual(s.T(), secret, newSecret)
 
-// 	/* TODO */
-
-// 	_ = ssas.CleanDatabase(group)
-// }
+	_ = ssas.CleanDatabase(group)
+}
 
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
