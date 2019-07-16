@@ -526,8 +526,8 @@ func (s *SystemsTestSuite) TestDeactivateSecrets() {
 	s.db.Find(&systemSecrets, "system_id = ?", system.ID)
 	assert.NotEmpty(s.T(), systemSecrets)
 
-	system.DeactivateSecrets()
-
+	err := system.DeactivateSecrets()
+	assert.Nil(s.T(), err)
 	s.db.Find(&systemSecrets, "system_id = ?", system.ID)
 	assert.Empty(s.T(), systemSecrets)
 }
