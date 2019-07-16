@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"strconv"
 
 	"net/http"
 	"os"
@@ -110,16 +111,33 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		err error
 	)
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
 	}
 
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
 	acoID := ad.ACOID
+
+	var jobs []models.Job
+
+	// If we really do find this record with the below matching criteria then this particular ACO has already made
+	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
+	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
+	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
+	if !db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound() {
+		for _, job := range jobs {
+			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+		}
+	}
+
 	user := models.User{}
 	// Arbitrarily use the first user in order to satisfy foreign key constraint "jobs_user_id_fkey" until user is removed from jobs table
 	db.First(&user)
