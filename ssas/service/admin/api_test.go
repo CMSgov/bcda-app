@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -119,16 +120,23 @@ func (s *APITestSuite) TestCreateSystem_MissingRequiredParam() {
 	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
 }
 
-func (s *APITestSuite) TestDeactivateSystemCredentials_InvalidID() {
-	systemID := "999"
-	req := httptest.NewRequest("PUT", "/system/"+systemID+"/credentials", nil)
+func (s *APITestSuite) TestDeactivateSystemCredentials() {
+	group := ssas.Group{GroupID: "test-deactivate-creds-group"}
+	s.db.Create(&group)
+	system := ssas.System{GroupID: group.GroupID, ClientID: "test-deactivate-creds-client"}
+	s.db.Create(&system)
+	secret := ssas.Secret{Hash: "test-deactivate-creds-hash", SystemID: system.ID}
+	s.db.Create(&secret)
+
+	systemID := strconv.FormatUint(uint64(system.ID), 10)
+	req := httptest.NewRequest("DELETE", "/system/"+systemID+"/credentials", nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("systemID", systemID)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	handler := http.HandlerFunc(deactivateSystemCredentials)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
-	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
 }
 
 func TestAPITestSuite(t *testing.T) {
