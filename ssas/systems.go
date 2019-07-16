@@ -98,13 +98,11 @@ func (system *System) SaveSecret(hashedSecret string) error {
 		SystemID: system.ID,
 	}
 
-	err := system.DeactivateSecrets()
-	if err != nil {
-		return fmt.Errorf("unable to soft delete previous secrets for clientID %s: %s", system.ClientID, err.Error())
+	if err := system.DeactivateSecrets(); err != nil {
+		return err
 	}
 
-	err = db.Create(&secret).Error
-	if err != nil {
+	if err := db.Create(&secret).Error; err != nil {
 		return fmt.Errorf("could not save secret for clientID %s: %s", system.ClientID, err.Error())
 	}
 	SecretCreated(Event{Op: "SaveSecret", TrackingID: uuid.NewRandom().String(), ClientID: system.ClientID})
