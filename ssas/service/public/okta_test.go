@@ -2,6 +2,7 @@ package public
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/CMSgov/bcda-app/ssas/okta"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -352,13 +353,12 @@ func (s *OTestSuite) TestFormatFactorReturnSucceededSMSRequest() {
 	factorReturn := FactorReturn{Action: "request_sent"}
 	assert.NotEmpty(s.T(), factorReturn)
 	assert.Equal(s.T(), "request_sent", factorReturn.Action)
-	assert.Equal(s.T(), "", factorReturn.Transaction.TransactionID)
-	assert.False(s.T(), factorReturn.Transaction.ExpiresAt.After(time.Now()))
+	assert.Nil(s.T(), factorReturn.Transaction)
 }
 
 func (s *OTestSuite) TestFormatFactorReturnSucceededPushRequest() {
 	transaction := Transaction{TransactionID: "any_id"}
-	f := FactorReturn{Action: "request_sent", Transaction: transaction}
+	f := FactorReturn{Action: "request_sent", Transaction: &transaction}
 	factorReturn := formatFactorReturn("Push", &f)
 	assert.NotEmpty(s.T(), factorReturn)
 	assert.Equal(s.T(), "request_sent", factorReturn.Action)
@@ -398,6 +398,12 @@ func (s *OTestSuite) TestRequestFactorChallengeCallFactor() {
 	assert.NotEmpty(s.T(), factorReturn)
 	assert.Equal(s.T(), "request_sent", factorReturn.Action)
 	assert.Empty(s.T(), factorReturn.Transaction)
+
+	responseBody, err := json.Marshal(factorReturn)
+	if err != nil {
+		s.FailNow("RequestFactorChallenge should always be able to get valid JSON from the response")
+	}
+	assert.NotContains(s.T(), string(responseBody), "transaction")
 }
 
 func (s *OTestSuite) TestRequestFactorChallengePushFactor() {
@@ -416,6 +422,12 @@ func (s *OTestSuite) TestRequestFactorChallengePushFactor() {
 	assert.NotEmpty(s.T(), factorReturn)
 	assert.Equal(s.T(), "request_sent", factorReturn.Action)
 	assert.Equal(s.T(), "v2mst.WmiSGGkvQc6P-QUQ5Qy0jg", factorReturn.Transaction.TransactionID)
+
+	responseBody, err := json.Marshal(factorReturn)
+	if err != nil {
+		s.FailNow("RequestFactorChallenge should always be able to get valid JSON from the response")
+	}
+	assert.Contains(s.T(), string(responseBody), "transaction")
 }
 
 func TestOTestSuite(t *testing.T) {

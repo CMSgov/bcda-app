@@ -22,6 +22,7 @@ func Routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(service.NewAPILogger(), service.ConnectionClose)
 	router.Get("/token", service.NYI)
+	router.Post("/authn/request", RequestMultifactorChallenge)
 	router.With(fakeContext).Post("/auth/register", RegisterSystem)
 
 	return router

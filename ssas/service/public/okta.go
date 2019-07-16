@@ -39,8 +39,8 @@ type Transaction struct {
 }
 
 type FactorReturn struct {
-	Action		string	`json:"action"`
-	Transaction	Transaction `json:"transaction:omitempty"`
+	Action		string		`json:"action"`
+	Transaction	*Transaction `json:"transaction,omitempty"`
 }
 
 type FactorRequest struct {
@@ -93,8 +93,6 @@ func NewOkta(client *http.Client) *OktaClient {
 		"SMS"
 		"Call"
 		"Email"
-
-	Return
  */
 func (o *OktaClient) RequestFactorChallenge(userIdentifier string, factorType string, trackingId string) (factorReturn *FactorReturn, err error) {
 	startTime := time.Now()
@@ -146,6 +144,7 @@ func (o *OktaClient) RequestFactorChallenge(userIdentifier string, factorType st
 
 	if factorRequest.Links.Poll.Href != "" {
 		factorReturn = &FactorReturn{Action: "request_sent"}
+		factorReturn.Transaction = &Transaction{}
 		factorReturn.Transaction.TransactionID = parsePushTransaction(factorRequest.Links.Poll.Href)
 		factorReturn.Transaction.ExpiresAt = factorRequest.ExpiresAt
 	}
@@ -166,7 +165,8 @@ func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorRe
 	}
 
 	if strings.ToLower(factorType) == "push" {
-		if factorReturn.Transaction.TransactionID == "" {
+		if factorReturn.Transaction == nil || factorReturn.Transaction.TransactionID == "" {
+			factorReturn.Transaction = &Transaction{}
 			transactionID, err := generateOktaTransactionId()
 			if err != nil {
 				return &FactorReturn{Action: "aborted"}
@@ -177,6 +177,8 @@ func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorRe
 		if factorReturn.Transaction.ExpiresAt.Before(time.Now()) {
 			factorReturn.Transaction.ExpiresAt = time.Now().Add(time.Minute*5)
 		}
+	} else {
+		factorReturn.Transaction = nil
 	}
 	return factorReturn
 }
