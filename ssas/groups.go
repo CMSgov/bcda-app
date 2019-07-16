@@ -90,7 +90,13 @@ func UpdateGroup(id string, gd GroupData) (Group, error) {
 	}
 
 	oldGD := GroupData{}
-	g.Data.Scan(&oldGD)
+	err := g.Data.Scan(&oldGD)
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
 	gd.ID = oldGD.ID
 	gd.Name = oldGD.Name
 
