@@ -15,4 +15,4 @@ COPY . .
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
-CMD ["fresh", "-o", "ssas-service", "-p", "./service" ]
+CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--start"]

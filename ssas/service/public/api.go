@@ -2,22 +2,25 @@
 	Package public (ssas/service/api/public) contains API functions, middleware, and a router designed to:
 		1. Be accessible to the public
 		2. Offer system self-registration and self-management
- */
+*/
 package public
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/pborman/uuid"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/pborman/uuid"
+
+	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
 type Key struct {
-	E string `json:"e"`
-	N string `json:"n"`
+	E   string `json:"e"`
+	N   string `json:"n"`
 	KTY string `json:"kty"`
 	Use string `json:"use,omitempty"`
 }
@@ -27,30 +30,32 @@ type JWKS struct {
 }
 
 type RegistrationRequest struct {
-	ClientID string `json:"client_id"`
-	ClientName string `json:"client_name"`
-	Scope string `json:"scope,omitempty"`
-	JSONWebKeys JWKS `json:"jwks"`
+	ClientID    string `json:"client_id"`
+	ClientName  string `json:"client_name"`
+	Scope       string `json:"scope,omitempty"`
+	JSONWebKeys JWKS   `json:"jwks"`
 }
 
 /*
 	RegisterSystem is mounted at POST /auth/register and allows for self-registration.  It requires that a
-	registration token be presented and parsed by middleware, with the GroupID placed in context key "rd".
- */
+	registration token containing one or more group ids be presented and parsed by middleware, with the
+    GroupID[s] placed in the context key "rd".
+*/
 func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	var (
-		rd  ssas.AuthRegData
-		err error
-		reg RegistrationRequest
+		rd             ssas.AuthRegData
+		err            error
+		reg            RegistrationRequest
 		publicKeyBytes []byte
-		trackingID string
+		trackingID     string
 	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
 
-	if rd, err = readRegData(r); err != nil {
+	if rd, err = readRegData(r); err != nil || rd.GroupID == "" {
+		service.GetLogEntry(r).Println("missing or invalid GroupID")
 		// Specified in RFC 7592 https://tools.ietf.org/html/rfc7592#page-6
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
@@ -65,6 +70,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &reg)
 	if err != nil {
+		service.LogEntrySetField(r,"bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -98,7 +104,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	body := []byte(fmt.Sprintf(`{"client_id": "%s","client_secret":"%s","client_secret_expires_at":"%d","client_name":"%s"}`,
 		credentials.ClientID, credentials.ClientSecret, credentials.ExpiresAt.Unix(), credentials.ClientName))
-	// Status headers other than 200 must be written before all other writes
+	// https://tools.ietf.org/html/rfc7591#section-3.2 dictates 201, not 200
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(body)
 	if err != nil {
@@ -119,7 +125,7 @@ func readRegData(r *http.Request) (data ssas.AuthRegData, err error) {
 
 func jsonError(w http.ResponseWriter, error string, description string) {
 	w.WriteHeader(http.StatusBadRequest)
-	body := []byte(fmt.Sprintf(`{"error":"%s","error_description":"%s"}`,error, description))
+	body := []byte(fmt.Sprintf(`{"error":"%s","error_description":"%s"}`, error, description))
 	_, err := w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
