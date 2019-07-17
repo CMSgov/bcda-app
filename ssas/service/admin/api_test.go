@@ -159,6 +159,8 @@ func (s *APITestSuite) TestResetCredentials_InvalidSystemID() {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
+}
+
 func (s *APITestSuite) TestGetPublicKey() {
 
 }

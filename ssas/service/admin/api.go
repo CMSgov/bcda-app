@@ -98,6 +98,8 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPublicKey(w http.ResponseWriter, r *http.Request) {
+	systemID := chi.URLParam(r, "systemID")
+
 	system, err := ssas.GetSystemByID(systemID)
 	if err != nil {
 		http.Error(w, "Not found", http.StatusNotFound)

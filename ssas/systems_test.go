@@ -42,7 +42,7 @@ func (s *SystemsTestSuite) TestRevokeSystemKeyPair() {
 
 	group := Group{GroupID: "A00001"}
 	s.db.Save(&group)
-	system := System{GroupID: group.GroupID}
+	system := System{GroupID: group.GroupID, ClientID: "test-revoke-system-key-pair-client"}
 	s.db.Save(&system)
 	encryptionKey := EncryptionKey{SystemID: system.ID}
 	s.db.Save(&encryptionKey)
@@ -135,7 +135,7 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 
 func (s *SystemsTestSuite) TestGetPublicKey() {
 	group := Group{GroupID: "test-get-public-key-group"}
-	_ := s.db.Create(&group).Error
+	err := s.db.Create(&group).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
@@ -146,16 +146,19 @@ func (s *SystemsTestSuite) TestGetPublicKey() {
 		s.FailNow(err.Error())
 	}
 
+	keyStr, _ := generatePublicKey(2048)
+
 	encrKey := EncryptionKey{
 		SystemID: system.ID,
+		Body:     keyStr,
 	}
 	err = s.db.Create(&encrKey).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 
-	key, err := system.GetPublicKey
-	assert.EqualError(s.T(), err, "")
+	key, err := system.GetPublicKey()
+	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), key)
 }
 
@@ -491,7 +494,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 		s.FailNow(err.Error())
 	}
 
-	system := System{GroupID: group.GroupID}
+	system := System{GroupID: group.GroupID, ClientID: "test-save-secret-client"}
 	err = s.db.Create(&system).Error
 	if err != nil {
 		s.FailNow(err.Error())

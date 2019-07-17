@@ -20,6 +20,7 @@ services:
       - FHIR_PAYLOAD_DIR=../bcdaworker/data
       - FHIR_STAGING_DIR=../bcdaworker/tmpdata
       - FHIR_ARCHIVE_DIR=../bcdaworker/archive
+      - PENDING_DELETION_DIR=./tempCCLFDir
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
       - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
