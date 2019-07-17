@@ -134,7 +134,7 @@ func (system *System) GetSecret() (string, error) {
 }
 
 /*
-	GetPublicKey will retrieve the hashed secret associated with the current system.
+	GetPublicKey will retrieve the public key associated with the current system.
 */
 func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
 	db := GetGORMDbConnection()

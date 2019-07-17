@@ -96,3 +96,19 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, secret)
 }
+
+func getPublicKey(w http.ResponseWriter, r *http.Request) {
+	system, err := ssas.GetSystemByID(systemID)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	key, err := system.GetPublicKey()
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, `{ "client_id": "", "public_key": "%v" }`, key)
+}

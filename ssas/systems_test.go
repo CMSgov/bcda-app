@@ -133,6 +133,32 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	assert.Nil(err)
 }
 
+func (s *SystemsTestSuite) TestGetPublicKey() {
+	group := Group{GroupID: "test-get-public-key-group"}
+	_ := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group.GroupID}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	encrKey := EncryptionKey{
+		SystemID: system.ID,
+	}
+	err = s.db.Create(&encrKey).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	key, err := system.GetPublicKey
+	assert.EqualError(s.T(), err, "")
+	assert.NotNil(s.T(), key)
+}
+
 func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	assert := s.Assert()
 
