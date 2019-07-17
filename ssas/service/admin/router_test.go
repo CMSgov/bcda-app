@@ -29,7 +29,7 @@ func (s *RouterTestSuite) TestPostGroupRoute() {
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
-func (s *RouterTestSuite) TestPostSystemRoute() {
+func (s *RouterTestSuite) TestPostSystem() {
 	req := httptest.NewRequest("POST", "/system", nil)
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
@@ -37,7 +37,7 @@ func (s *RouterTestSuite) TestPostSystemRoute() {
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
-func (s *RouterTestSuite) TestDeleteSystemCredentials() {
+func (s *RouterTestSuite) TestDeactivateSystemCredentials() {
 	db := ssas.GetGORMDbConnection()
 	group := ssas.Group{GroupID: "delete-system-credentials-test-group"}
 	db.Create(&group)
@@ -50,6 +50,23 @@ func (s *RouterTestSuite) TestDeleteSystemCredentials() {
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+
+	_ = ssas.CleanDatabase(group)
+}
+
+func (s *RouterTestSuite) TestPutSystemCredentials() {
+	db := ssas.GetGORMDbConnection()
+	group := ssas.Group{GroupID: "put-system-credentials-test-group"}
+	db.Create(&group)
+	system := ssas.System{GroupID: group.GroupID, ClientID: "put-system-credentials-test-system"}
+	db.Create(&system)
+	systemID := strconv.FormatUint(uint64(system.ID), 10)
+
+	req := httptest.NewRequest("PUT", "/system/"+systemID+"/credentials", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusCreated, res.StatusCode)
 
 	_ = ssas.CleanDatabase(group)
 }

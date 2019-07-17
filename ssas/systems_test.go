@@ -530,6 +530,33 @@ func (s *SystemsTestSuite) TestDeactivateSecrets() {
 	assert.Nil(s.T(), err)
 	s.db.Find(&systemSecrets, "system_id = ?", system.ID)
 	assert.Empty(s.T(), systemSecrets)
+
+	_ = CleanDatabase(group)
+}
+
+func (s *SystemsTestSuite) TestResetSecret() {
+	group := Group{GroupID: "group-12345"}
+	s.db.Create(&group)
+	system := System{GroupID: group.GroupID, ClientID: "client-12345"}
+	s.db.Create(&system)
+	secret := Secret{Hash: "foo", SystemID: system.ID}
+	s.db.Create(&secret)
+
+	secret1 := Secret{}
+	s.db.Where("system_id = ?", system.ID).First(&secret1)
+	assert.NotEmpty(s.T(), secret1)
+
+	secret2, err := system.ResetSecret("tracking-id")
+	if err != nil {
+		s.FailNow("Error from ResetSecret()", err.Error())
+		return
+	}
+
+	assert.Nil(s.T(), err)
+	assert.NotEmpty(s.T(), secret2)
+	assert.NotEqual(s.T(), secret1, secret2)
+
+	_ = CleanDatabase(group)
 }
 
 func (s *SystemsTestSuite) TestScopeEnvSuccess() {

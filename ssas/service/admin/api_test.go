@@ -120,6 +120,47 @@ func (s *APITestSuite) TestCreateSystem_MissingRequiredParam() {
 	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
 }
 
+func (s *APITestSuite) TestResetCredentials() {
+	group := ssas.Group{GroupID: "test-reset-creds-group"}
+	s.db.Create(&group)
+	system := ssas.System{GroupID: group.GroupID, ClientID: "test-reset-creds-client"}
+	s.db.Create(&system)
+	secret := ssas.Secret{Hash: "test-reset-creds-hash", SystemID: system.ID}
+	s.db.Create(&secret)
+
+	systemID := strconv.FormatUint(uint64(system.ID), 10)
+	req := httptest.NewRequest("PUT", "/system/"+systemID+"/credentials", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(resetCredentials)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	var result map[string]interface{}
+	_ = json.Unmarshal(rr.Body.Bytes(), &result)
+	newSecret := result["client_secret"]
+	assert.NotEmpty(s.T(), newSecret)
+	assert.NotEqual(s.T(), secret, newSecret)
+
+	_ = ssas.CleanDatabase(group)
+}
+
+func (s *APITestSuite) TestResetCredentials_InvalidSystemID() {
+	systemID := "999"
+	req := httptest.NewRequest("PUT", "/system/"+systemID+"/credentials", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(resetCredentials)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
+}
+
 func (s *APITestSuite) TestDeactivateSystemCredentials() {
 	group := ssas.Group{GroupID: "test-deactivate-creds-group"}
 	s.db.Create(&group)
@@ -137,6 +178,8 @@ func (s *APITestSuite) TestDeactivateSystemCredentials() {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+
+	_ = ssas.CleanDatabase(group)
 }
 
 func TestAPITestSuite(t *testing.T) {

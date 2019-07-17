@@ -415,16 +415,6 @@ func GetSystemByClientID(clientID string) (System, error) {
 	return system, err
 }
 
-func GenerateSecret() (string, error) {
-	b := make([]byte, 40)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", b), nil
-}
-
 /*
 	GetSystemByID returns the system associated with the provided ID
 */
@@ -440,6 +430,51 @@ func GetSystemByID(id string) (System, error) {
 		err = fmt.Errorf("no System record found with ID %s", id)
 	}
 	return system, err
+}
+
+func GenerateSecret() (string, error) {
+	b := make([]byte, 40)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", b), nil
+}
+
+/*
+	ResetSecret creates a new secret for the current system.
+*/
+func (system *System) ResetSecret(trackingID string) (string, error) {
+	db := GetGORMDbConnection()
+	defer Close(db)
+
+	newSecretEvent := Event{Op: "ResetSecret", TrackingID: trackingID, ClientID: system.ClientID}
+	OperationStarted(newSecretEvent)
+
+	secretString, err := GenerateSecret()
+	if err != nil {
+		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(newSecretEvent)
+		return "", errors.New("internal system error")
+	}
+
+	hashedSecret, err := NewHash(secretString)
+	if err != nil {
+		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(newSecretEvent)
+		return "", errors.New("internal system error")
+	}
+
+	hashedSecretString := hashedSecret.String()
+	if err = system.SaveSecret(hashedSecretString); err != nil {
+		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(newSecretEvent)
+		return "", errors.New("internal system error")
+	}
+
+	OperationSucceeded(newSecretEvent)
+	return hashedSecretString, nil
 }
 
 /*
