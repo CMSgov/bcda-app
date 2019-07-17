@@ -482,7 +482,7 @@ func archiveExpiring(hrThreshold int) error {
 
 	var lastJobError error
 	for _, j := range jobs {
-		t := j.CreatedAt
+		t := j.UpdatedAt
 		elapsed := time.Since(t).Hours()
 		if int(elapsed) >= hrThreshold {
 

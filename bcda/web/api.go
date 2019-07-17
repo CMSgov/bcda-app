@@ -257,14 +257,14 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 	case "Completed":
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
-		if job.CreatedAt.Add(GetJobTimeout()).Before(time.Now()) {
-			w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
+		if job.UpdatedAt.Add(GetJobTimeout()).Before(time.Now()) {
+			w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Deleted)
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
+		w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
 			scheme = "https"
@@ -324,7 +324,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	case "Archived":
 		fallthrough
 	case "Expired":
-		w.Header().Set("Expires", job.CreatedAt.Add(GetJobTimeout()).String())
+		w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Deleted)
 		responseutils.WriteError(oo, w, http.StatusGone)
 	}
