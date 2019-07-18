@@ -1,6 +1,8 @@
 package public
 
 import (
+	"fmt"
+	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/okta"
 	"os"
 	"strings"
@@ -26,10 +28,12 @@ func SetProvider(name string) {
 		case Mock:
 			providerName = name
 		default:
-			//log.Infof(`Unknown providerName %s; using %s`, name, providerName)
+			providerEvent := ssas.Event{Op: "SetProvider", Help: fmt.Sprintf(`Unknown providerName %s; using %s`, name, providerName)}
+			ssas.ServiceStarted(providerEvent)
 		}
 	}
-	//log.Infof(`MFA is made possible by %s`, providerName)
+	providerEvent := ssas.Event{Op: "SetProvider", Help: fmt.Sprintf(`MFA is made possible by %s`, providerName)}
+	ssas.ServiceStarted(providerEvent)
 }
 
 func GetProviderName() string {
@@ -39,9 +43,8 @@ func GetProviderName() string {
 func GetProvider() MFAProvider {
 	switch providerName {
 	case Live:
-		return &MockMFAPlugin{}
-	case Mock:
 		return NewOktaMFA(okta.Client())
+	case Mock: fallthrough
 	default:
 		return &MockMFAPlugin{}
 	}

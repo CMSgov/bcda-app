@@ -56,6 +56,7 @@ Required values must be present in the docker-compose.*.yml files.
 | SSAS_HASH_ITERATIONS | Yes      | Controls how many iterations our secure hashing mechanism performs. Service will panic if this key does not have a value. |
 | SSAS_HASH_KEY_LENGTH | Yes      | Controls the key length used by our secure hashing mechanism. Service will panic if this key does not have a value. |
 | SSAS_HASH_SALT_SIZE  | Yes      | Controls salt size used by our secure hashing mechanism performs. Service will panic if this key does not have a value. |
+| SSAS_MFA_PROVIDER    | No       | Switches between mock Okta MFA calls and live calls.  Defaults to "Mock".
 | SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS | No | Minimum execution time for RequestFactorChallenge().  If not present, defaults to 1500.  In production, this should always be set longer than the longest expected execution time.  (Actual execution time is logged.)|
 | OKTA_CLIENT_ORGURL   | Yes      | Sets the URL for contacting Okta (will vary between production/non-production environments). |
 | OKTA_CLIENT_TOKEN    | Yes      | A token providing limited admin-level API rights to Okta. |
