@@ -92,6 +92,9 @@ func (s *APITestSuite) TestUpdateGroup() {
 
 	url := fmt.Sprintf("/group/%v", g.ID)
 	req := httptest.NewRequest("PUT", url, strings.NewReader(SampleGroup))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", fmt.Sprint(g.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	handler := http.HandlerFunc(updateGroup)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)

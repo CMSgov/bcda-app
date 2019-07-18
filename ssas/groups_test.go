@@ -89,10 +89,10 @@ func (s *GroupsTestSuite) TestUpdateGroup() {
 	gd.Scopes = []string{"aScope", "anotherScope"}
 	gd.ID = "aNewGroupID"
 	gd.Name = "aNewGroupName"
-	g, err = UpdateGroup(string(g.ID), gd)
+	newG, err := UpdateGroup(string(g.ID), gd)
 	assert.Nil(s.T(), err)
 
-	newGDBytes, _ := g.Data.MarshalJSON()
+	newGDBytes, _ := newG.Data.MarshalJSON()
 	newGD := GroupData{}
 	err = newGD.Scan(newGDBytes)
 	assert.Nil(s.T(), err)
