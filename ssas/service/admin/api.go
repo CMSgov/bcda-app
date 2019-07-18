@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/go-chi/chi"
@@ -41,21 +40,16 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 
 func updateGroup(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	uintID, err := strconv.ParseUint(id, 10, 64)
-	if err != nil {
-		http.Error(w, "Failed to update group due to invalid id", http.StatusBadRequest)
-		return
-	}
 
 	gd := ssas.GroupData{}
-	err = json.NewDecoder(r.Body).Decode(&gd)
+	err := json.NewDecoder(r.Body).Decode(&gd)
 	if err != nil {
 		http.Error(w, "Failed to update group due to invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	ssas.OperationCalled(ssas.Event{Op: "UpdateGroup", TrackingID: id, Help: "calling from admin.updateGroup()"})
-	g, err := ssas.UpdateGroup(uintID, gd)
+	g, err := ssas.UpdateGroup(id, gd)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to update group. Error: %s", err), http.StatusBadRequest)
 		return

@@ -73,7 +73,8 @@ func (s *APITestSuite) TestCreateGroup() {
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	g := ssas.Group{}
 	s.db.Where("group_id = ?", "A12345").Find(&g)
-	_ = ssas.CleanDatabase(g)
+	err := ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
 }
 
 func (s *APITestSuite) TestUpdateGroup() {
@@ -81,16 +82,18 @@ func (s *APITestSuite) TestUpdateGroup() {
 	gd := ssas.GroupData{}
 	err := json.Unmarshal(groupBytes, &gd)
 	assert.Nil(s.T(), err)
-	g, _ := ssas.CreateGroup(gd)
+	g, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
 
 	url := fmt.Sprintf("/group/%v", g.ID)
 	req := httptest.NewRequest("PUT", url, strings.NewReader(SampleGroup))
-	handler := http.HandlerFunc(createGroup)
+	handler := http.HandlerFunc(updateGroup)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
-	_ = ssas.CleanDatabase(g)
+	err = ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
 }
 
 func (s *APITestSuite) TestCreateSystem() {

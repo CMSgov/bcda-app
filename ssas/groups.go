@@ -68,22 +68,29 @@ func CreateGroup(gd GroupData) (Group, error) {
 	return g, nil
 }
 
-func UpdateGroup(id uint64, gd GroupData) (Group, error) {
-	event := Event{Op: "UpdateGroup", TrackingID: string(id)}
+func UpdateGroup(id string, gd GroupData) (Group, error) {
+	event := Event{Op: "UpdateGroup", TrackingID: id}
 	OperationStarted(event)
 
 	g := Group{}
 	db := GetGORMDbConnection()
 	defer Close(db)
-	if db.First(&g, id).RecordNotFound() {
-		err := fmt.Errorf("record not found for id=%v", id)
+	if db.Where("id = ?", id).Find(&g).RecordNotFound() {
+		err := fmt.Errorf("record not found for id=%s", id)
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
+	oldGDBytes, err := g.Data.MarshalJSON()
+	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
 		return Group{}, err
 	}
 
 	oldGD := GroupData{}
-	err := oldGD.Scan(&g.Data)
+	err = oldGD.Scan(oldGDBytes)
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
