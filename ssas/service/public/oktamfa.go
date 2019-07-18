@@ -33,18 +33,8 @@ type Factor struct {
 	Status		string	`json:"status"`
 }
 
-type Transaction struct {
-	TransactionID	string	`json:"transaction_id"`
-	ExpiresAt		time.Time `json:"expires_at"`
-}
-
-type FactorReturn struct {
-	Action		string		`json:"action"`
-	Transaction	*Transaction `json:"transaction,omitempty"`
-}
-
 type FactorRequest struct {
-	Result		string	`json:"factorResult"`
+	Result		string		`json:"factorResult"`
 	ExpiresAt	time.Time 	`json:"expiresAt,omitempty"`
 	Links		OktaLinks	`json:"_links,omitempty"`
 }
@@ -63,23 +53,39 @@ type Link struct {
 	Hints		Allow	`json:"hints"`
 }
 
-type OktaClient struct{
+type OktaMFAPlugin struct{
 	Client 	*http.Client
 }
 
 var RequestFactorChallengeDuration time.Duration
 
 func init() {
-	factorChallengeMilliseconds := cfg.GetEnvInt("SSAS_MFA_CHALLENGE_REQUEST_DURATION", 1500)
+	factorChallengeMilliseconds := cfg.GetEnvInt("SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS", 1500)
 	RequestFactorChallengeDuration = time.Millisecond * time.Duration(factorChallengeMilliseconds)
 }
 
-func NewOkta(client *http.Client) *OktaClient {
+func NewOktaMFA(client *http.Client) *OktaMFAPlugin {
 	if nil == client {
 		client = okta.Client()
 	}
 
-	return &OktaClient{Client: client}
+	return &OktaMFAPlugin{Client: client}
+}
+
+/*
+	VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
+	except Push.
+ */
+func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool, error) {
+	return false, errors.New("function VerifyFactorTransaction() not yet implemented in OktaMFAPlugin")
+}
+
+/*
+   VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
+   rejection, waiting, and timeout.
+ */
+func (o *OktaMFAPlugin) VerifyFactorTransaction(userIdentifier string, factorType string, transactionId string, trackingId string) (string, error) {
+	return "", errors.New("function VerifyFactorTransaction() not yet implemented in OktaMFAPlugin")
 }
 
 /*
@@ -94,7 +100,7 @@ func NewOkta(client *http.Client) *OktaClient {
 		"Call"
 		"Email"
  */
-func (o *OktaClient) RequestFactorChallenge(userIdentifier string, factorType string, trackingId string) (factorReturn *FactorReturn, err error) {
+func (o *OktaMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType string, trackingId string) (factorReturn *FactorReturn, err error) {
 	startTime := time.Now()
 	requestEvent := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingId}
 	ssas.OperationStarted(requestEvent)
@@ -195,7 +201,7 @@ func wait(startTime time.Time, targetDuration time.Duration) {
 	getUser searches for Okta users using the provided search string.  Only return results if exactly one active user
 	of LOA=3 is found.
  */
-func (o *OktaClient) getUser(searchString string, trackingId string) (oktaId string, err error) {
+func (o *OktaMFAPlugin) getUser(searchString string, trackingId string) (oktaId string, err error) {
 	userEvent := ssas.Event{Op: "FindOktaUser", TrackingID: trackingId}
 	ssas.OperationStarted(userEvent)
 
@@ -288,7 +294,7 @@ func (o *OktaClient) getUser(searchString string, trackingId string) (oktaId str
 		"Call"
 		"Email"
 */
-func (o *OktaClient) getUserFactor(oktaUserId string, factorType string, trackingId string) (factor *Factor, err error) {
+func (o *OktaMFAPlugin) getUserFactor(oktaUserId string, factorType string, trackingId string) (factor *Factor, err error) {
 	factorEvent := ssas.Event{Op: "FindOktaUserFactors", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(factorEvent)
 
@@ -367,7 +373,7 @@ func (o *OktaClient) getUserFactor(oktaUserId string, factorType string, trackin
 	return factor, errors.New(factorEvent.Help)
 }
 
-func (o *OktaClient) postFactorChallenge(oktaUserId string, oktaFactor Factor, trackingId string) (factorRequest *FactorRequest, err error) {
+func (o *OktaMFAPlugin) postFactorChallenge(oktaUserId string, oktaFactor Factor, trackingId string) (factorRequest *FactorRequest, err error) {
 	requestEvent := ssas.Event{Op: "PostOktaFactorChallenge", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(requestEvent)
 

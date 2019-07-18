@@ -1,10 +1,15 @@
 package okta
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -12,11 +17,14 @@ import (
 
 var OktaBaseUrl string
 var OktaAuthString string
+var OktaCACertFingerprint []byte
 
 type OktaError struct {
 	ErrorCode 		string	`json:"errorCode"`
 	ErrorSummary	string	`json:"errorSummary"`
 }
+
+type Dialer func(network, addr string) (net.Conn, error)
 
 func init() {
 	err := config()
@@ -28,28 +36,38 @@ func init() {
 
 // separate from init for testing
 func config() error {
-	OktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
 	oktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
-
 	at := oktaToken
 	if at != "" {
 		at = "[Redacted]"
 	}
-
 	OktaAuthString = fmt.Sprintf("SSWS %s", oktaToken)
+	OktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
+	fingerprintString := os.Getenv("OKTA_CA_CERT_FINGERPRINT")
 
-	if OktaBaseUrl == "" || oktaToken == "" {
-		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_CLIENT_TOKEN=%s", OktaBaseUrl, at))
+	if OktaBaseUrl == "" || oktaToken == "" || fingerprintString == "" {
+		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_CLIENT_TOKEN=%s, OKTA_CA_CERT_FINGERPRINT=%s",
+			OktaBaseUrl, at, fingerprintString))
+	}
+
+	var err error
+	OktaCACertFingerprint, err = hex.DecodeString(fingerprintString)
+	if err != nil {
+		return fmt.Errorf("unable to parse OKTA_CA_CERT_FINGERPRINT: " + err.Error())
 	}
 
 	return nil
 }
 
 /*
-	Client returns an http.Client set with appropriate defaults
+	Client returns an http.Client set with appropriate defaults, including an extra layer of certificate validation
  */
 func Client() *http.Client {
-	return &http.Client{Timeout: time.Second * 10}
+	client := http.Client{Timeout: time.Second * 10}
+	client.Transport = &http.Transport{
+		DialTLS: makeDialer(OktaCACertFingerprint, false),
+	}
+	return &client
 }
 
 /*
@@ -85,5 +103,34 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 func NewTestClient(fn RoundTripFunc) *http.Client {
 	return &http.Client{
 		Transport: RoundTripFunc(fn),
+	}
+}
+
+// Modified from https://medium.com/@zmanian/server-public-key-pinning-in-go-7a57bbe39438
+func makeDialer(fingerprint []byte, skipCAVerification bool) Dialer {
+	return func(network, addr string) (net.Conn, error) {
+		var errMessage string
+		c, err := tls.Dial(network, addr, &tls.Config{InsecureSkipVerify: skipCAVerification})
+		if err != nil {
+			return c, err
+		}
+		connstate := c.ConnectionState()
+		keyPinValid := false
+		for _, peercert := range connstate.PeerCertificates {
+			hash := sha1.Sum(peercert.Raw)
+
+			// We're not pinning the certificate itself, just the CA that issued it
+			if peercert.IsCA {
+				if bytes.Compare(hash[0:], fingerprint) != 0 {
+					errMessage = fmt.Sprintf("pinned CA key changed; issuer of presented key: %s, DNSNames: %s, IsCA: %t, Subject: %s, fingerprint: %#v, stored fingerprint: %#v", peercert.Issuer, peercert.DNSNames, peercert.IsCA, peercert.Subject, hash, OktaCACertFingerprint)
+				} else {
+					keyPinValid = true
+				}
+			}
+		}
+		if keyPinValid == false {
+			return nil, fmt.Errorf(errMessage)
+		}
+		return c, nil
 	}
 }

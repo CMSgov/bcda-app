@@ -33,7 +33,7 @@ func (s *OTestSuite) TestPostFactorChallengeSuccess() {
 		return testHttpResponse(200, `{"factorResult":"CHALLENGE","_links":{"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"factor":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}}}}`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factorVerification, err := o.postFactorChallenge(userId, factor, trackingId)
 	if err != nil || factorVerification == nil {
 		s.FailNow("factor result not parsed")
@@ -50,7 +50,7 @@ func (s *OTestSuite) TestPostFactorChallengePushSuccess() {
 		return testHttpResponse(200, `{"factorResult":"WAITING","profile":{"credentialId":"bcda_user1@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"User’s iPhone","platform":"IOS","version":"12.1.2"},"expiresAt":"2019-07-12T14:21:30.000Z","_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["DELETE"]}},"poll":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["GET"]}}}}`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factorVerification, err := o.postFactorChallenge(userId, factor, trackingId)
 	if err != nil || factorVerification == nil {
 		s.FailNow("factor result not parsed")
@@ -70,7 +70,7 @@ func (s *OTestSuite) TestPostFactorChallengeFactorNotFound() {
 		return testHttpResponse(404, `{"errorCode":"E0000007","errorSummary":"Not found: Resource not found: nonexistent_factor (UserFactor)","errorLink":"E0000007","errorId":"oaeTd-sjkYlSuKXMVPzEb4okw","errorCauses":[]}`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factorVerification, err := o.postFactorChallenge(userId, factor, trackingId)
 	assert.Empty(s.T(), factorVerification)
 	if err == nil {
@@ -88,7 +88,7 @@ func (s *OTestSuite) TestGetUserHeaders() {
 		return testHttpResponse(200, `[]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	_, _ = o.getUser("nonexistent_user", trackingId)
 }
 
@@ -101,7 +101,7 @@ func (s *OTestSuite) TestGetUserSuccess() {
 		return testHttpResponse(200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"a_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	foundUserId, err := o.getUser(searchString, trackingId)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), expectedUserId, foundUserId)
@@ -113,7 +113,7 @@ func (s *OTestSuite) TestGetUserBadStatusCode() {
 		return testHttpResponse(404, "")
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	foundUserId, err := o.getUser("user_irrelevant", trackingId)
 	if err == nil {
 		s.FailNow("getUser() should fail unless status code = 200")
@@ -129,7 +129,7 @@ func (s *OTestSuite) TestGetUserNotLOA3() {
 		return testHttpResponse(200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"a_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
 		s.FailNow("getUser() should fail unless LOA=3")
@@ -145,7 +145,7 @@ func (s *OTestSuite) TestGetUserNotActive() {
 		return testHttpResponse(200, `[{"id":"abc123","status":"STAGED","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"a_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
 		s.FailNow("getUser() should fail unless status=ACTIVE")
@@ -161,7 +161,7 @@ func (s *OTestSuite) TestGetUserMultipleUsers() {
 		return testHttpResponse(200, `[{"id":"def456","status":"ACTIVE","created":"2019-06-04T13:21:06.000Z","activated":"2019-06-04T13:21:07.000Z","statusChanged":"2019-06-04T13:21:07.000Z","lastLogin":null,"lastUpdated":"2019-06-04T13:21:07.000Z","passwordChanged":"2019-06-04T13:21:07.000Z","profile":{"firstName":"Test2","lastName":"User","mobilePhone":null,"secondEmail":"","login":"bcda_user1","email":"bcda_user1@cms.gov"},"credentials":{"password":{},"emails":[{"value":"bcda_user1@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/def456"}}},{"id":"ghi789","status":"STAGED","created":"2019-06-04T13:22:55.000Z","activated":null,"statusChanged":null,"lastLogin":null,"lastUpdated":"2019-06-04T16:34:21.000Z","passwordChanged":null,"profile":{"firstName":"Test3","lastName":"User","aco_ids":["A0000","A0001"],"mobilePhone":null,"addressType":"Select Type...","secondEmail":null,"login":"bcda_user3@cms.gov","email":"bcda_user3@cms.gov","LOA":"Select Level..."},"credentials":{"emails":[{"value":"bcda_user3@cms.gov","status":"VERIFIED","type":"PRIMARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/ghi789"}}}]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
 		s.FailNow("getUser() should fail unless a single user matches the search string")
@@ -177,7 +177,7 @@ func (s *OTestSuite) TestGetUserNoUsers() {
 		return testHttpResponse(200, `[]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	foundUserId, err := o.getUser(searchString, trackingId)
 	if err == nil {
 		s.FailNow("getUser() should fail unless a user matches the search string")
@@ -193,7 +193,7 @@ func (s *OTestSuite) TestGetUserBadToken() {
 		return testHttpResponse(401, `{"errorCode":"E0000011","errorSummary":"Invalid token provided","errorLink":"E0000011","errorId":"oae3iIXhkQVQ2izGNwhnR47JQ","errorCauses":[]}`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	foundUserId, err := o.getUser(searchString, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "Invalid token provided")
@@ -209,7 +209,7 @@ func (s *OTestSuite) TestGetUserFactorSuccess() {
 		return testHttpResponse(200, `[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123def","factorType":"email","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","profile":{"email":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123ghi","factorType":"sms","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:10:19.000Z","lastUpdated":"2019-06-05T14:10:19.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123ghi","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123ghi/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123jkl","factorType":"token:software:totp","provider":"GOOGLE","vendorName":"GOOGLE","status":"ACTIVE","created":"2018-12-05T20:38:23.000Z","lastUpdated":"2018-12-05T20:38:47.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123mno","factorType":"push","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"A User’s iPhone","platform":"IOS","version":"12.1.2"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123pqr","factorType":"token:software:totp","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.Nil(s.T(), err)
 	if factor == nil {
@@ -225,7 +225,7 @@ func (s *OTestSuite) TestGetUserFactorAllTypes() {
 	client := okta.NewTestClient(func(req *http.Request) *http.Response {
 		return testHttpResponse(200, `[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123def","factorType":"email","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","profile":{"email":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123ghi","factorType":"sms","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:10:19.000Z","lastUpdated":"2019-06-05T14:10:19.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123ghi","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123ghi/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123jkl","factorType":"token:software:totp","provider":"GOOGLE","vendorName":"GOOGLE","status":"ACTIVE","created":"2018-12-05T20:38:23.000Z","lastUpdated":"2018-12-05T20:38:47.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123mno","factorType":"push","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"A User’s iPhone","platform":"IOS","version":"12.1.2"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123pqr","factorType":"token:software:totp","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}]`)
 	})
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 
 	factor, err := o.getUserFactor(userId, "Call", trackingId)
 	assert.Nil(s.T(), err)
@@ -279,7 +279,7 @@ func (s *OTestSuite) TestGetUserFactorInactive() {
 		return testHttpResponse(200, `[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"PENDING","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123def","factorType":"email","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","profile":{"email":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123ghi","factorType":"sms","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:10:19.000Z","lastUpdated":"2019-06-05T14:10:19.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123ghi","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123ghi/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123jkl","factorType":"token:software:totp","provider":"GOOGLE","vendorName":"GOOGLE","status":"ACTIVE","created":"2018-12-05T20:38:23.000Z","lastUpdated":"2018-12-05T20:38:47.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123mno","factorType":"push","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"A User’s iPhone","platform":"IOS","version":"12.1.2"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123pqr","factorType":"token:software:totp","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), factor)
@@ -294,7 +294,7 @@ func (s *OTestSuite) TestGetUserFactorNotFound() {
 		return testHttpResponse(200, `[{"id":"123def","factorType":"email","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","profile":{"email":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123def/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123jkl","factorType":"token:software:totp","provider":"GOOGLE","vendorName":"GOOGLE","status":"ACTIVE","created":"2018-12-05T20:38:23.000Z","lastUpdated":"2018-12-05T20:38:47.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123jkl/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123mno","factorType":"push","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"A User’s iPhone","platform":"IOS","version":"12.1.2"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}},{"id":"123pqr","factorType":"token:software:totp","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-01-03T18:18:52.000Z","lastUpdated":"2019-01-03T18:19:04.000Z","profile":{"credentialId":"a_user@cms.gov"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123pqr/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}]`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), factor)
@@ -308,7 +308,7 @@ func (s *OTestSuite) TestGetUserFactorBadToken() {
 		return testHttpResponse(401, `{"errorCode":"E0000011","errorSummary":"Invalid token provided","errorLink":"E0000011","errorId":"oae3iIXhkQVQ2izGNwhnR47JQ","errorCauses":[]}`)
 	})
 
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factor, err := o.getUserFactor(userId, factorType, trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "Invalid token provided")
@@ -373,7 +373,7 @@ func (s *OTestSuite) TestRequestFactorChallengeInvalidFactor() {
 		newTestResponse(isGetFactor(), 200, `[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}`),
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factorReturn, err := o.RequestFactorChallenge("bcda_user@cms.gov", "badFactor", trackingId)
 	if err != nil {
 		s.FailNow("RequestFactorChallenge should return an error for an invalid factor")
@@ -390,7 +390,7 @@ func (s *OTestSuite) TestRequestFactorChallengeCallFactor() {
 		newTestResponse(isPostFactorChallenge(), 200, `{"factorResult":"CHALLENGE","_links":{"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"factor":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}}}}`),
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factorReturn, err := o.RequestFactorChallenge("bcda_user@cms.gov", "Call", trackingId)
 	if err != nil {
 		s.FailNow("RequestFactorChallenge should not return an error for this combination of valid responses and valid factor")
@@ -414,7 +414,7 @@ func (s *OTestSuite) TestRequestFactorChallengePushFactor() {
 		newTestResponse(isPostFactorChallenge(), 200, `{"factorResult":"WAITING","profile":{"credentialId":"bcda_user1@cms.gov","deviceType":"SmartPhone_IPhone","keys":[{"kty":"PKIX","use":"sig","kid":"default","x5c":["MIIBI..."]}],"name":"User’s iPhone","platform":"IOS","version":"12.1.2"},"expiresAt":"2019-07-12T14:21:30.000Z","_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["DELETE"]}},"poll":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg","hints":{"allow":["GET"]}}}}`),
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
-	o := NewOkta(client)
+	o := NewOktaMFA(client)
 	factorReturn, err := o.RequestFactorChallenge("bcda_user@cms.gov", "Push", trackingId)
 	if err != nil {
 		s.FailNow("RequestFactorChallenge should not return an error for this combination of valid responses and valid factor")
