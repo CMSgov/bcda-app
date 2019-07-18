@@ -68,29 +68,22 @@ func CreateGroup(gd GroupData) (Group, error) {
 	return g, nil
 }
 
-func UpdateGroup(id string, gd GroupData) (Group, error) {
-	event := Event{Op: "UpdateGroup", TrackingID: id}
+func UpdateGroup(id uint64, gd GroupData) (Group, error) {
+	event := Event{Op: "UpdateGroup", TrackingID: string(id)}
 	OperationStarted(event)
-
-	if gd.ID == "" {
-		err := fmt.Errorf("group_id cannot be blank")
-		event.Help = err.Error()
-		OperationFailed(event)
-		return Group{}, err
-	}
 
 	g := Group{}
 	db := GetGORMDbConnection()
 	defer Close(db)
-	if db.Where("group_id = ?", id).Find(&g).RecordNotFound() {
-		err := fmt.Errorf("record not found for id=%s", id)
+	if db.First(&g, id).RecordNotFound() {
+		err := fmt.Errorf("record not found for id=%v", id)
 		event.Help = err.Error()
 		OperationFailed(event)
 		return Group{}, err
 	}
 
 	oldGD := GroupData{}
-	err := g.Data.Scan(&oldGD)
+	err := oldGD.Scan(&g.Data)
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)

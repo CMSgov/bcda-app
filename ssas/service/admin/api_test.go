@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -72,6 +73,23 @@ func (s *APITestSuite) TestCreateGroup() {
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	g := ssas.Group{}
 	s.db.Where("group_id = ?", "A12345").Find(&g)
+	_ = ssas.CleanDatabase(g)
+}
+
+func (s *APITestSuite) TestUpdateGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g, _ := ssas.CreateGroup(gd)
+
+	url := fmt.Sprintf("/group/%v", g.ID)
+	req := httptest.NewRequest("PUT", url, strings.NewReader(SampleGroup))
+	handler := http.HandlerFunc(createGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	_ = ssas.CleanDatabase(g)
 }
 

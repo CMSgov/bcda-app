@@ -77,6 +77,28 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	assert.EqualError(s.T(), err, "group_id cannot be blank")
 }
 
+func (s *GroupsTestSuite) TestUpdateGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g, err := CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	gd.Scopes = []string{"aScope", "anotherScope"}
+	gd.ID = "aNewGroupID"
+	gd.Name = "aNewGroupName"
+	g, err = UpdateGroup(uint64(g.ID), gd)
+	assert.Nil(s.T(), err)
+	newGD := GroupData{}
+	err = newGD.Scan(&g.Data)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), []string{"aScope", "anotherScope"}, newGD.Scopes)
+	assert.NotEqual(s.T(), "aNewGroupID", newGD.ID)
+	assert.NotEqual(s.T(), "aNewGroupName", newGD.Name)
+	_ = CleanDatabase(g)
+}
+
 func TestGroupsTestSuite(t *testing.T) {
 	suite.Run(t, new(GroupsTestSuite))
 }
