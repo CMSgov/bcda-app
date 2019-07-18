@@ -156,7 +156,7 @@ func (o *OktaMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType
 	}
 
 	factorReturn = formatFactorReturn(factorType, factorReturn)
-	requestEvent.Help = fmt.Sprintf("okta.RequestFactorChallenge() execution seconds: %f", time.Now().Sub(startTime).Seconds())
+	requestEvent.Help = fmt.Sprintf("okta.RequestFactorChallenge() execution seconds: %f", time.Since(startTime).Seconds())
 	ssas.OperationSucceeded(requestEvent)
 	wait(startTime, RequestFactorChallengeDuration)
 	return
@@ -193,7 +193,7 @@ func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorRe
 	wait() provides fixed-time execution for functions that could leak information based on how quickly they return
  */
 func wait(startTime time.Time, targetDuration time.Duration) {
-	elapsed := time.Now().Sub(startTime)
+	elapsed := time.Since(startTime)
 	time.Sleep(targetDuration - elapsed)
 }
 

@@ -56,6 +56,7 @@ func (s *OTestSuite) TestPostFactorChallengePushSuccess() {
 		s.FailNow("factor result not parsed")
 	}
 	expectedTime, err := time.Parse("2006-01-02T15:04:05.999Z", "2019-07-12T14:21:30.000Z")
+	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), expectedTime, factorVerification.ExpiresAt)
 	assert.Equal(s.T(), "WAITING", factorVerification.Result)
 	assert.Equal(s.T(), "https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123mno/transactions/v2mst.WmiSGGkvQc6P-QUQ5Qy0jg", factorVerification.Links.Poll.Href)

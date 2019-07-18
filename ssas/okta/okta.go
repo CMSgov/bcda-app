@@ -121,7 +121,7 @@ func makeDialer(fingerprint []byte, skipCAVerification bool) Dialer {
 
 			// We're not pinning the certificate itself, just the CA that issued it
 			if peercert.IsCA {
-				if bytes.Compare(hash[0:], fingerprint) != 0 {
+				if !bytes.Equal(hash[0:], fingerprint) {
 					errMessage = fmt.Sprintf("pinned CA key changed; issuer of presented key: %s, DNSNames: %s, IsCA: %t, Subject: %s, fingerprint: %#v, stored fingerprint: %#v",
 						peercert.Issuer, peercert.DNSNames, peercert.IsCA, peercert.Subject, hash, OktaCACertFingerprint)
 				} else {
@@ -129,7 +129,7 @@ func makeDialer(fingerprint []byte, skipCAVerification bool) Dialer {
 				}
 			}
 		}
-		if keyPinValid == false {
+		if !keyPinValid {
 			return nil, fmt.Errorf(errMessage)
 		}
 		return c, nil
