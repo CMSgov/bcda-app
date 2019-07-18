@@ -46,8 +46,8 @@ func config() error {
 	fingerprintString := os.Getenv("OKTA_CA_CERT_FINGERPRINT")
 
 	if OktaBaseUrl == "" || oktaToken == "" || fingerprintString == "" {
-		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_CLIENT_TOKEN=%s, OKTA_CA_CERT_FINGERPRINT=%s",
-			OktaBaseUrl, at, fingerprintString))
+		return fmt.Errorf(fmt.Sprintf("missing env vars: OKTA_CLIENT_ORGURL=%s, OKTA_CA_CERT_FINGERPRINT=%s, OKTA_CLIENT_TOKEN=%s",
+			OktaBaseUrl, fingerprintString, at))
 	}
 
 	var err error
@@ -122,7 +122,8 @@ func makeDialer(fingerprint []byte, skipCAVerification bool) Dialer {
 			// We're not pinning the certificate itself, just the CA that issued it
 			if peercert.IsCA {
 				if bytes.Compare(hash[0:], fingerprint) != 0 {
-					errMessage = fmt.Sprintf("pinned CA key changed; issuer of presented key: %s, DNSNames: %s, IsCA: %t, Subject: %s, fingerprint: %#v, stored fingerprint: %#v", peercert.Issuer, peercert.DNSNames, peercert.IsCA, peercert.Subject, hash, OktaCACertFingerprint)
+					errMessage = fmt.Sprintf("pinned CA key changed; issuer of presented key: %s, DNSNames: %s, IsCA: %t, Subject: %s, fingerprint: %#v, stored fingerprint: %#v",
+						peercert.Issuer, peercert.DNSNames, peercert.IsCA, peercert.Subject, hash, OktaCACertFingerprint)
 				} else {
 					keyPinValid = true
 				}
