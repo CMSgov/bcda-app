@@ -3,7 +3,6 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -175,12 +174,22 @@ func (s *APITestSuite) TestGetPublicKey() {
 		s.FailNow(err.Error())
 	}
 
-	keyStr := "publickey"
-	encrKey := ssas.EncryptionKey{
+	key1Str := "publickey1"
+	encrKey1 := ssas.EncryptionKey{
 		SystemID: system.ID,
-		Body:     keyStr,
+		Body:     key1Str,
 	}
-	err = s.db.Create(&encrKey).Error
+	err = s.db.Create(&encrKey1).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	key2Str := "publickey2"
+	encrKey2 := ssas.EncryptionKey{
+		SystemID: system.ID,
+		Body:     key2Str,
+	}
+	err = s.db.Create(&encrKey2).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
@@ -197,17 +206,15 @@ func (s *APITestSuite) TestGetPublicKey() {
 	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	var result map[string]string
-	fmt.Println(string(rr.Body.Bytes()))
 	err = json.Unmarshal(rr.Body.Bytes(), &result)
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 
-	fmt.Printf("result: %+v\n", result)
 	assert.Equal(s.T(), system.ClientID, result["client_id"])
 	resPublicKey := result["public_key"]
 	assert.NotEmpty(s.T(), resPublicKey)
-	assert.Equal(s.T(), keyStr, resPublicKey)
+	assert.Equal(s.T(), key2Str, resPublicKey)
 
 	_ = ssas.CleanDatabase(group)
 }
