@@ -1,0 +1,153 @@
+{
+	"info": {
+		"_postman_id": "466653fe-fe34-4da5-90be-beaa32c16e91",
+		"name": "SSAS",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "public auth/register",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "x-fake-token",
+						"value": "T0000",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"group_id\":\"T0000\",\"client_id\":\"yet another evil twin\",\"client_name\":\"my sister's evil twin\",\"scope\":\"bcda-api\",\"jwks\":{\"keys\":[{\"e\":\"AAEAAQ\",\"n\":\"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\"kty\":\"RSA\"}]}}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/auth/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"auth",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public info",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3003/_info",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"_info"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3003/_health",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"_health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public _version",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3003/_version",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"_version"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin info",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/_info",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"_info"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/_health",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"_health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin _version",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/_version",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"_version"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

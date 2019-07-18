@@ -17,5 +17,6 @@ func Routes() *chi.Mux {
 	r.Post("/group", createGroup)
 	r.Put("/group/{id}", updateGroup)
 	r.Post("/system", createSystem)
+	r.Put("/system/{systemID}/credentials", resetCredentials)
 	return r
 }
