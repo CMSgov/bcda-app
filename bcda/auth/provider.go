@@ -13,6 +13,7 @@ import (
 const (
 	Alpha = "alpha"
 	Okta  = "okta"
+	SSAS  = "ssas"
 )
 
 var providerName = Alpha
@@ -28,6 +29,8 @@ func SetProvider(name string) {
 		case Okta:
 			providerName = name
 		case Alpha:
+			providerName = name
+		case SSAS:
 			providerName = name
 		default:
 			log.Infof(`Unknown providerName %s; using %s`, name, providerName)
@@ -46,6 +49,8 @@ func GetProvider() Provider {
 		return AlphaAuthPlugin{}
 	case Okta:
 		return NewOktaAuthPlugin(client.NewOktaClient())
+	case SSAS:
+		return SSASPlugin{}
 	default:
 		return AlphaAuthPlugin{}
 	}

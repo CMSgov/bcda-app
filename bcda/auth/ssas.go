@@ -1,0 +1,55 @@
+package auth
+
+import (
+	"errors"
+
+	jwt "github.com/dgrijalva/jwt-go"
+)
+
+// SSASPlugin is an implementation of Provider that acts as a client for the SSAS API.
+type SSASPlugin struct{}
+
+// RegisterSystem adds a software client for the ACO identified by localID.
+func (s SSASPlugin) RegisterSystem(localID string) (Credentials, error) {
+	return Credentials{}, errors.New("Not yet implemented")
+}
+
+// UpdateSystem changes data associated with the registered software client identified by clientID
+func (s SSASPlugin) UpdateSystem(params []byte) ([]byte, error) {
+	return nil, errors.New("Not yet implemented")
+}
+
+// DeleteSystem deletes the registered software client identified by clientID, revoking an active tokens
+func (s SSASPlugin) DeleteSystem(clientID string) error {
+	return errors.New("Not yet implemented")
+}
+
+// ResetSecret new or replace existing Credentials for the given clientID
+func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
+	return Credentials{}, errors.New("Not yet implemented")
+}
+
+// RevokeSystemCredentials any existing Credentials for the given clientID
+func (s SSASPlugin) RevokeSystemCredentials(clientID string) error {
+	return errors.New("Not yet implemented")
+}
+
+// MakeAccessToken mints an access token for the given credentials
+func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	return "", errors.New("Not yet implemented")
+}
+
+// RevokeAccessToken a specific access token identified in a base64 encoded token string
+func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
+	return errors.New("Not yet implemented")
+}
+
+// AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API
+func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
+	return errors.New("Not yet implemented")
+}
+
+// VerifyToken decodes a base64 encoded token string into a structured token
+func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
+	return nil, errors.New("Not yet implemented")
+}
