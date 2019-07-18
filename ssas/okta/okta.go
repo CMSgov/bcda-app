@@ -2,6 +2,7 @@ package okta
 
 import (
 	"bytes"
+	// #nosec: using SHA1 to match browser fingerprinting
 	"crypto/sha1"
 	"crypto/tls"
 	"encoding/hex"
@@ -65,7 +66,7 @@ func config() error {
 func Client() *http.Client {
 	client := http.Client{Timeout: time.Second * 10}
 	client.Transport = &http.Transport{
-		DialTLS: makeDialer(OktaCACertFingerprint, false),
+		DialTLS: makeDialer(OktaCACertFingerprint),
 	}
 	return &client
 }
@@ -107,16 +108,17 @@ func NewTestClient(fn RoundTripFunc) *http.Client {
 }
 
 // Modified from https://medium.com/@zmanian/server-public-key-pinning-in-go-7a57bbe39438
-func makeDialer(fingerprint []byte, skipCAVerification bool) Dialer {
+func makeDialer(fingerprint []byte) Dialer {
 	return func(network, addr string) (net.Conn, error) {
 		var errMessage string
-		c, err := tls.Dial(network, addr, &tls.Config{InsecureSkipVerify: skipCAVerification})
+		c, err := tls.Dial(network, addr, &tls.Config{})
 		if err != nil {
 			return c, err
 		}
 		connstate := c.ConnectionState()
 		keyPinValid := false
 		for _, peercert := range connstate.PeerCertificates {
+			// #nosec: using SHA1 to match browser fingerprinting
 			hash := sha1.Sum(peercert.Raw)
 
 			// We're not pinning the certificate itself, just the CA that issued it
