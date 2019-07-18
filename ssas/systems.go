@@ -134,14 +134,26 @@ func (system *System) GetSecret() (string, error) {
 }
 
 /*
-	GetPublicKey will retrieve the public key associated with the current system.
+	GetEncryptionKey will retrieve the key associated with the current system.
 */
-func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
+func (system *System) GetEncryptionKey() (EncryptionKey, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
 
 	var encryptionKey EncryptionKey
 	err := db.Where("system_id = ?", system.ID).Find(&encryptionKey).Error
+	if err != nil {
+		return encryptionKey, fmt.Errorf("cannot find key for clientID %s: %s", system.ClientID, err.Error())
+	}
+
+	return encryptionKey, nil
+}
+
+/*
+	GetPublicKey will retrieve the public key associated with the current system.
+*/
+func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
+	encryptionKey, err := system.GetEncryptionKey()
 	if err != nil {
 		return nil, fmt.Errorf("cannot find public key for clientID %s: %s", system.ClientID, err.Error())
 	}

@@ -8,11 +8,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
@@ -133,8 +134,8 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	assert.Nil(err)
 }
 
-func (s *SystemsTestSuite) TestGetPublicKey() {
-	group := Group{GroupID: "test-get-public-key-group"}
+func (s *SystemsTestSuite) TestGetEncryptionKey() {
+	group := Group{GroupID: "test-get-encryption-key-group"}
 	err := s.db.Create(&group).Error
 	if err != nil {
 		s.FailNow(err.Error())
@@ -146,20 +147,30 @@ func (s *SystemsTestSuite) TestGetPublicKey() {
 		s.FailNow(err.Error())
 	}
 
-	keyStr, _ := generatePublicKey(2048)
+	pubKey := `-----BEGIN RSA PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
+lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
+IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
+z2v9wLlK4zPAs3pLln3R/4NnGFKw2Eku2JVFTotQ03gSmSzesZixicw8LxgYKbNV
+oyTpERFansw6BbCJe7AP90rmaxCx80NiewFq+7ncqMbCMcqeUuCwk8MjS6bjvpcC
+htFCqeRi6AAUDRg0pcG8yoM+jo13Z5RJPOIf3ofohncfH5wr5Q7qiOCE5VH4I7cp
+OwIDAQAB
+-----END RSA PUBLIC KEY-----`
 
-	encrKey := EncryptionKey{
+	origKey := EncryptionKey{
 		SystemID: system.ID,
-		Body:     keyStr,
+		Body:     pubKey,
 	}
-	err = s.db.Create(&encrKey).Error
+	err = s.db.Create(&origKey).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 
-	key, err := system.GetPublicKey()
+	key, err := system.GetEncryptionKey()
 	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), key)
+	assert.Equal(s.T(), pubKey, key.Body)
+
+	_ = CleanDatabase(group)
 }
 
 func (s *SystemsTestSuite) TestSystemSavePublicKey() {

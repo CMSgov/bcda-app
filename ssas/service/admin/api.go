@@ -106,11 +106,12 @@ func getPublicKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := system.GetPublicKey()
+	key, err := system.GetEncryptionKey()
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprintf(w, `{ "client_id": "", "public_key": "%v" }`, key)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{ "client_id": "%s", "public_key": "%s" }`, system.ClientID, key.Body)
 }
