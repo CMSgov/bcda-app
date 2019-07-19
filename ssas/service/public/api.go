@@ -37,10 +37,10 @@ type RegistrationRequest struct {
 }
 
 type MFARequest struct {
-	CmsID		string `json:"cms_id"`
-	FactorType	string `json:"factor_type"`
-	Passcode	string `json:"passcode,omitempty"`
-	Transaction string `json:"transaction,omitempty"`
+	CmsID			string `json:"cms_id"`
+	FactorType		string `json:"factor_type"`
+	Passcode   	   *string `json:"passcode,omitempty"`
+	Transaction    *string `json:"transaction,omitempty"`
 }
 
 /*
@@ -95,6 +95,63 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 		event.Help = "failure generating JSON: " + err.Error()
 		ssas.OperationFailed(event)
 		return
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
+/*
+	VerifyMultifactorResponse is mounted at POST /authn/verify and tests a multi-factor authentication passcode
+	for the specified factor, and should be used for all factor types except Push.
+*/
+func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
+	var (
+		err				error
+		trackingID		string
+		mfaReq			MFARequest
+		body 			[]byte
+	)
+
+	setHeaders(w)
+
+	bodyStr, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	err = json.Unmarshal(bodyStr, &mfaReq)
+	if err != nil {
+		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	if mfaReq.Passcode == nil {
+		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body missing passcode")
+		return
+	}
+
+	trackingID = uuid.NewRandom().String()
+	event := ssas.Event{Op: "VerifyOktaFactorResponse", TrackingID: trackingID, Help: "calling from public.VerifyMultifactorResponse()"}
+	ssas.OperationCalled(event)
+	success := GetProvider().VerifyFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
+
+	if !success {
+		event.Help = "passcode rejected"
+		ssas.OperationFailed(event)
+		body = []byte(`{"factor_result":"failure"}`)
+	} else {
+		event.Help = "passcode accepted"
+		ssas.OperationSucceeded(event)
+		body = []byte(`{"factor_result":"success"}`)
 	}
 
 	_, err = w.Write(body)

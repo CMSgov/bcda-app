@@ -62,6 +62,18 @@ type Transaction struct {
 	ExpiresAt		time.Time `json:"expires_at"`
 }
 
+func ValidFactorType(factorType string) bool {
+	switch strings.ToLower(factorType) {
+	case "google totp": fallthrough
+	case "okta totp": fallthrough
+	case "push": fallthrough
+	case "sms": fallthrough
+	case "call": fallthrough
+	case "email": return true
+	default: return false
+	}
+}
+
 
 // Provider defines operations performed through an Okta MFA provider.  This indirection allows for a mock provider
 // to use during CI/CD integration testing
@@ -73,7 +85,7 @@ type MFAProvider interface {
 
 	// VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
 	// except Push.
-	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool, error)
+	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool)
 
 	// VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
 	// rejection, waiting, and timeout.

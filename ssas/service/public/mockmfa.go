@@ -11,10 +11,39 @@ type MockMFAPlugin struct{}
 
 /*
 	VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
-	except Push.
+	except Push.  It mocks responses with valid factor types according to the following chart:
+
+	userIdentifier			response			error
+	--------------			--------			-----
+	success@test.com 		true    			none
+	failure@test.com		false				none
+	error@test.com			false				(non-nil error)
+	(all others)			false				none
 */
-func (m *MockMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool, error) {
-	return false, errors.New("function VerifyFactorTransaction() not yet implemented in MockMFAPlugin")
+func (m *MockMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool) {
+	success = false
+	verifyEvent := ssas.Event{Op: "VerifyOktaFactorChallenge", TrackingID: trackingId}
+	ssas.OperationStarted(verifyEvent)
+
+	if !ValidFactorType(factorType) {
+		verifyEvent.Help = "invalid factor type: " + factorType
+		ssas.OperationFailed(verifyEvent)
+		return
+	}
+
+	switch strings.ToLower(userIdentifier) {
+	case "error@test.com":
+		verifyEvent.Help = "mocking error"
+	case "failure@test.com": // noop
+	case "success@test.com": fallthrough
+	default:
+		ssas.OperationSucceeded(verifyEvent)
+		success = true
+		return
+	}
+
+	ssas.OperationFailed(verifyEvent)
+	return
 }
 
 /*
@@ -33,29 +62,25 @@ func (m *MockMFAPlugin) VerifyFactorTransaction(userIdentifier string, factorTyp
 	--------------			--------					-----
 	success@test.com 		request_sent    			none
 	transaction@test.com	request_sent, transaction	none
-	error@test.com			aborted						none
+	error@test.com			none						(non-nil error)
 	(all others)			request_sent				none
 */
 func (m *MockMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType string, trackingId string) (factorReturn *FactorReturn, err error) {
 	requestEvent := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingId}
 	ssas.OperationStarted(requestEvent)
 
-	switch strings.ToLower(factorType) {
-	case "google totp": fallthrough
-	case "okta totp": fallthrough
-	case "push": fallthrough
-	case "sms": fallthrough
-	case "call": fallthrough
-	case "email": // noop
-	default:
+	if !ValidFactorType(factorType) {
 		factorReturn = &FactorReturn{Action: "invalid_request"}
 		requestEvent.Help = "invalid factor type: " + factorType
 		ssas.OperationFailed(requestEvent)
 		return
 	}
 
+	factorReturn = &FactorReturn{Action: "request_sent"}
+
 	switch strings.ToLower(userIdentifier) {
 	case "error@test.com":
+		err = errors.New("mocking error")
 		requestEvent.Help = "mocking error"
 		ssas.OperationFailed(requestEvent)
 		return
@@ -65,7 +90,6 @@ func (m *MockMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType
 		factorReturn = &FactorReturn{Action: "request_sent", Transaction: &Transaction{TransactionID: transactionId, ExpiresAt: transactionExpires}}
 	case "success@test.com": fallthrough
 	default:
-		factorReturn = &FactorReturn{Action: "request_sent"}
 	}
 
 	ssas.OperationSucceeded(requestEvent)
