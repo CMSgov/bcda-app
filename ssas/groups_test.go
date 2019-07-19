@@ -92,13 +92,10 @@ func (s *GroupsTestSuite) TestUpdateGroup() {
 	newG, err := UpdateGroup(string(g.ID), gd)
 	assert.Nil(s.T(), err)
 
-	newGDBytes, _ := newG.Data.MarshalJSON()
-	newGD := GroupData{}
-	err = newGD.Scan(newGDBytes)
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), []string{"aScope", "anotherScope"}, newGD.Scopes)
-	assert.NotEqual(s.T(), "aNewGroupID", newGD.ID)
-	assert.NotEqual(s.T(), "aNewGroupName", newGD.Name)
+	assert.Equal(s.T(), []string{"aScope", "anotherScope"}, newG.Data.Scopes)
+	assert.NotEqual(s.T(), "aNewGroupID", newG.Data.ID)
+	assert.NotEqual(s.T(), "aNewGroupName", newG.Data.Name)
 	err = CleanDatabase(g)
 	assert.Nil(s.T(), err)
 }

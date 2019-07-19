@@ -1,14 +1,10 @@
 package ssas
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 
 	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
 )
 
 /*
@@ -28,8 +24,8 @@ func InitializeGroupModels() *gorm.DB {
 
 type Group struct {
 	gorm.Model
-	GroupID string         `gorm:"unique;not null" json:"group_id"`
-	Data    postgres.Jsonb `json:"data"`
+	GroupID string    `gorm:"unique;not null" json:"group_id"`
+	Data    GroupData `gorm:"type:jsonb" json:"data"`
 }
 
 func CreateGroup(gd GroupData) (Group, error) {
@@ -43,21 +39,14 @@ func CreateGroup(gd GroupData) (Group, error) {
 		return Group{}, err
 	}
 
-	gdBytes, err := json.Marshal(gd)
-	if err != nil {
-		event.Help = err.Error()
-		OperationFailed(event)
-		return Group{}, err
-	}
-
 	g := Group{
 		GroupID: gd.ID,
-		Data:    postgres.Jsonb{RawMessage: gdBytes},
+		Data:    gd,
 	}
 
 	db := GetGORMDbConnection()
 	defer Close(db)
-	err = db.Save(&g).Error
+	err := db.Save(&g).Error
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
@@ -82,33 +71,11 @@ func UpdateGroup(id string, gd GroupData) (Group, error) {
 		return Group{}, err
 	}
 
-	oldGDBytes, err := g.Data.MarshalJSON()
-	if err != nil {
-		event.Help = err.Error()
-		OperationFailed(event)
-		return Group{}, err
-	}
+	gd.ID = g.Data.ID
+	gd.Name = g.Data.Name
 
-	oldGD := GroupData{}
-	err = oldGD.Scan(oldGDBytes)
-	if err != nil {
-		event.Help = err.Error()
-		OperationFailed(event)
-		return Group{}, err
-	}
-
-	gd.ID = oldGD.ID
-	gd.Name = oldGD.Name
-
-	gdBytes, err := json.Marshal(gd)
-	if err != nil {
-		event.Help = err.Error()
-		OperationFailed(event)
-		return Group{}, err
-	}
-
-	g.Data = postgres.Jsonb{RawMessage: gdBytes}
-	err = db.Save(&g).Error
+	g.Data = gd
+	err := db.Save(&g).Error
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
@@ -127,23 +94,6 @@ type GroupData struct {
 	Scopes    []string   `json:"scopes"`
 	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
 	Resources []Resource `json:"resources"`
-}
-
-// Make the GroupData struct implement the driver.Valuer interface. This method
-// simply returns the JSON-encoded representation of the struct.
-func (gd GroupData) Value() (driver.Value, error) {
-	return json.Marshal(gd)
-}
-
-// Make the GroupData struct implement the sql.Scanner interface. This method
-// simply decodes a JSON-encoded value into the struct fields.
-func (gd *GroupData) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &gd)
 }
 
 type Resource struct {
