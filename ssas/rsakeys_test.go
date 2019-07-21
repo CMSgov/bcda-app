@@ -3,6 +3,8 @@ package ssas
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"crypto/rsa"
+	"os"
 	"testing"
 )
 
@@ -17,6 +19,58 @@ func (s *KeyToolsTestSuite) TearDownSuite() {
 }
 
 func (s *KeyToolsTestSuite) AfterTest() {
+}
+
+func (s *KeyToolsTestSuite) TestInvalidBase64PrivateKey() {
+	filePath := os.Getenv("SSAS_BAD_BASE64_TEST_PRIVATE_KEY")
+	if filePath == "" {
+		assert.FailNow(s.T(), "no path to private key defined")
+	}
+	pemData, err := ReadPEMFile(filePath)
+	assert.Nil(s.T(), err)
+	_, err = ReadPrivateKey(pemData)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "decode")
+}
+
+func (s *KeyToolsTestSuite) TestNotRSAPrivateKey() {
+	filePath := os.Getenv("SSAS_NOT_RSA_TEST_PRIVATE_KEY")
+	if filePath == "" {
+		assert.FailNow(s.T(), "no path to private key defined")
+	}
+	pemData, err := ReadPEMFile(filePath)
+	assert.Nil(s.T(), err)
+	_, err = ReadPrivateKey(pemData)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "parse RSA")
+}
+
+func (s *KeyToolsTestSuite) TestTooSmallRSAPrivateKey() {
+	filePath := os.Getenv("SSAS_TOO_SMALL_TEST_PRIVATE_KEY")
+	if filePath == "" {
+		assert.FailNow(s.T(), "no path to private key defined")
+	}
+	pemData, err := ReadPEMFile(filePath)
+	assert.Nil(s.T(), err)
+	_, err = ReadPrivateKey(pemData)
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "insecure key length")
+}
+
+func (s *KeyToolsTestSuite) TestValidPrivateKey() {
+	filePath := os.Getenv("SSAS_SERVER_TEST_PRIVATE_KEY")
+	if filePath == "" {
+		assert.FailNow(s.T(), "no path to private key defined")
+	}
+	pemData, err := ReadPEMFile(filePath)
+	if err != nil {
+		assert.FailNow(s.T(), "failed to read pem file because %s", err.Error())
+	}
+	privateKey, err := ReadPrivateKey(pemData)
+	if err != nil {
+		assert.FailNow(s.T(), "failed to read private key because %s", err.Error())
+	}
+	assert.IsType(s.T(), &rsa.PrivateKey{}, privateKey)
 }
 
 func (s *KeyToolsTestSuite) TestConvertJWKToPEMValid() {
