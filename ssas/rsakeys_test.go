@@ -1,11 +1,12 @@
 package ssas
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"crypto/rsa"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type KeyToolsTestSuite struct {
@@ -21,55 +22,41 @@ func (s *KeyToolsTestSuite) TearDownSuite() {
 func (s *KeyToolsTestSuite) AfterTest() {
 }
 
-func (s *KeyToolsTestSuite) TestInvalidBase64PrivateKey() {
-	filePath := os.Getenv("SSAS_BAD_BASE64_TEST_PRIVATE_KEY")
-	if filePath == "" {
-		assert.FailNow(s.T(), "no path to private key defined")
-	}
-	pemData, err := ReadPEMFile(filePath)
-	assert.Nil(s.T(), err)
+func (s *KeyToolsTestSuite) TestReadPrivateKey_EmptyKey() {
+	pemData, err := ReadPEMFile("")
+	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "no such file or directory", "expected os.open error")
 	_, err = ReadPrivateKey(pemData)
 	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "decode")
+	assert.Contains(s.T(), err.Error(), "empty or nil")
 }
 
-func (s *KeyToolsTestSuite) TestNotRSAPrivateKey() {
-	filePath := os.Getenv("SSAS_NOT_RSA_TEST_PRIVATE_KEY")
-	if filePath == "" {
-		assert.FailNow(s.T(), "no path to private key defined")
+func (s *KeyToolsTestSuite) TestReadPrivateKey_BadKeys() {
+	assertT := assert.New(s.T())		// is this construction duplicating what s.T() does?
+	var tests = []struct {
+		path   string
+		errMsg string
+	}{
+		{"SSAS_BAD_BASE64_TEST_PRIVATE_KEY", "decode"},
+		{"SSAS_NOT_RSA_TEST_PRIVATE_KEY", "parse RSA"},
+		{"SSAS_TOO_SMALL_TEST_PRIVATE_KEY", "insecure key length"},
 	}
-	pemData, err := ReadPEMFile(filePath)
-	assert.Nil(s.T(), err)
-	_, err = ReadPrivateKey(pemData)
-	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "parse RSA")
-}
-
-func (s *KeyToolsTestSuite) TestTooSmallRSAPrivateKey() {
-	filePath := os.Getenv("SSAS_TOO_SMALL_TEST_PRIVATE_KEY")
-	if filePath == "" {
-		assert.FailNow(s.T(), "no path to private key defined")
+	for _, test := range tests {
+		filePath := os.Getenv(test.path)
+		pemData, err := ReadPEMFile(filePath)
+		assertT.Nil(err)
+		_, err = ReadPrivateKey(pemData)
+		assertT.NotNil(err)
+		assertT.Contains(err.Error(), test.errMsg)
 	}
-	pemData, err := ReadPEMFile(filePath)
-	assert.Nil(s.T(), err)
-	_, err = ReadPrivateKey(pemData)
-	assert.NotNil(s.T(), err)
-	assert.Contains(s.T(), err.Error(), "insecure key length")
 }
 
-func (s *KeyToolsTestSuite) TestValidPrivateKey() {
+func (s *KeyToolsTestSuite) TestReadPrivateKey_GoodKeys() {
 	filePath := os.Getenv("SSAS_SERVER_TEST_PRIVATE_KEY")
-	if filePath == "" {
-		assert.FailNow(s.T(), "no path to private key defined")
-	}
 	pemData, err := ReadPEMFile(filePath)
-	if err != nil {
-		assert.FailNow(s.T(), "failed to read pem file because %s", err.Error())
-	}
+	assert.Nil(s.T(), err)
 	privateKey, err := ReadPrivateKey(pemData)
-	if err != nil {
-		assert.FailNow(s.T(), "failed to read private key because %s", err.Error())
-	}
+	assert.Nil(s.T(), err)
 	assert.IsType(s.T(), &rsa.PrivateKey{}, privateKey)
 }
 

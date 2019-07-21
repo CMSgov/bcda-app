@@ -28,11 +28,15 @@ func ReadPEMFile(pemPath string) ([]byte, error) {
 }
 
 // ReadPrivateKey reads a PEM-formatted private key and returns a pointer to an rsa.PublicKey type
-// and an error. The key must have a length of at least 2048 bits, and it must be an rsa key.
+// and an error. The key must have a length of at least 2048 bits, and it must be an rsa key. It must
+// also be the first and only key in the file.
 func ReadPrivateKey(privateKey []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(privateKey)
+	if len(privateKey) == 0 {
+		return nil, fmt.Errorf("empty or nil privateKey argument")
+	}
+	block, rest := pem.Decode(privateKey)
 	if block == nil {
-		return nil, fmt.Errorf("not able to decode PEM-formatted RSA private key")
+		return nil, fmt.Errorf("unable to decode private key '%s'", string(rest))
 	}
 
 	rsaPriv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
