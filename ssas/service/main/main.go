@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -17,12 +16,16 @@ import (
 
 var startMeUp bool
 var unsafeMode bool
+var adminSigningKeyPath string
+var publicSigningKeyPath string
 
 func init() {
 	const usage = "start the service"
 	flag.BoolVar(&startMeUp, "start", false, usage)
-	flag.BoolVar(&startMeUp, "s", false, usage+" (shorthand)")
+	flag.BoolVar(&startMeUp, "s", false, usage + " (shorthand)")
 	unsafeMode = os.Getenv("HTTP_ONLY") == "true"
+	adminSigningKeyPath = os.Getenv("SSAS_ADMIN_SIGNING_KEY_PATH")
+	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
 }
 
 func main() {
@@ -33,22 +36,29 @@ func main() {
 	}
 }
 
-func hello() string {
-	return "hello SSAS"
-}
-
 func start() {
 	ssas.Logger.Infof("%s", "Starting ssas...")
 	// if os.Getenv("DEBUG") == "true" {
-		// autoMigrate()
+	// autoMigrate()
 	// }
 
-	p := service.NewServer("public", ":3003", public.Version, public.InfoMap, public.Routes(), unsafeMode)
-	p.LogRoutes()
-	p.Serve()
-	s := service.NewServer("admin", ":3004", admin.Version, admin.InfoMap, admin.Routes(), unsafeMode)
-	s.LogRoutes()
-	s.Serve()
+	ps := service.NewServer("public", ":3003", public.Version, public.InfoMap, public.Routes(), unsafeMode)
+	if !unsafeMode {
+		if err := ps.SetSigningKeys(publicSigningKeyPath); err != nil {
+			ssas.Logger.Fatalf("unable to get signing key for public server because %s; can't start", err.Error())
+		}
+	}
+	ps.LogRoutes()
+	ps.Serve()
+
+	as := service.NewServer("admin", ":3004", admin.Version, admin.InfoMap, admin.Routes(), unsafeMode)
+	if !unsafeMode {
+		if err := as.SetSigningKeys(adminSigningKeyPath); err != nil {
+			ssas.Logger.Fatalf("unable to get signing key for admin server because %s; can't start", err.Error())
+		}
+	}
+	as.LogRoutes()
+	as.Serve()
 
 	// Accepts and redirects HTTP requests to HTTPS.
 	forwarder := &http.Server{
@@ -57,13 +67,14 @@ func start() {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	}
-	log.Fatal(forwarder.ListenAndServe())
+	ssas.Logger.Fatal(forwarder.ListenAndServe())
 }
 
 func newForwardingRouter() http.Handler {
 	r := chi.NewRouter()
 	// todo middleware logging
 	r.Get("/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// TODO only forward requests for paths in our own host or resource server
 		url := "https://" + req.Host + req.URL.String()
 		ssas.Logger.Infof("forwarding from %s to %s", req.Host+req.URL.String(), url)
 		http.Redirect(w, req, url, http.StatusMovedPermanently)
