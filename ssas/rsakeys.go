@@ -19,6 +19,7 @@ const RSAKEYMINBITS = 2048
 // or an empty string with a non-nil error
 func ReadPEMFile(pemPath string) ([]byte, error) {
 	// This function only reads PEM files, and PEM files should never be large enough to require buffering
+	/* #nosec -- Potential file inclusion via variable */
 	pemData, err := ioutil.ReadFile(pemPath)
 	if err != nil {
 		return nil, err
