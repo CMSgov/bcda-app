@@ -39,6 +39,23 @@ func init() {
 
 // NewSSASClient creates and returns an SSASClient.
 func NewSSASClient() (*SSASClient, error) {
+	transport, err := tlsTransport()
+	if err != nil {
+		return nil, errors.Wrap(err, "SSAS client could not be created")
+	}
+
+	var timeout int
+	if timeout, err = strconv.Atoi(os.Getenv("SSAS_TIMEOUT_MS")); err != nil {
+		ssasLogger.Info("Could not get SSAS timeout from environment variable; using default value of 500.")
+		timeout = 500
+	}
+
+	client := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
+
+	return &SSASClient{*client}, nil
+}
+
+func tlsTransport() (*http.Transport, error) {
 	certFile := os.Getenv("SSAS_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("SSAS_CLIENT_KEY_FILE")
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
@@ -62,16 +79,7 @@ func NewSSASClient() (*SSASClient, error) {
 	tlsConfig.RootCAs = caCertPool
 	tlsConfig.BuildNameToCertificate()
 
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	var timeout int
-	if timeout, err = strconv.Atoi(os.Getenv("SSAS_TIMEOUT_MS")); err != nil {
-		ssasLogger.Info("Could not get SSAS timeout from environment variable; using default value of 500.")
-		timeout = 500
-	}
-
-	client := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
-
-	return &SSASClient{*client}, nil
+	return &http.Transport{TLSClientConfig: tlsConfig}, nil
 }
 
 // CreateSystem POSTs to the SSAS /system endpoint to create a system.
