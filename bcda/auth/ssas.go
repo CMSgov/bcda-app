@@ -6,7 +6,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
-// SSASPlugin is an implementation of Provider that acts as a client for the SSAS API.
+// SSASPlugin is an implementation of Provider that uses the SSAS API.
 type SSASPlugin struct {
 	// client client.SSASClient
 }
