@@ -57,8 +57,8 @@ func NewServer(name, port, version string, info interface{}, routes *chi.Mux, no
 func (s *Server) SetSigningKeys(privateKeyPath string) error {
 	var err error
 	if s.privateSigningKey, err = getPrivateKey(privateKeyPath); err != nil {
-		msg := fmt.Sprintf("can't open key file %s because %v", privateKeyPath, err)
-		ssas.Logger.Infof("bad signing key: %s", msg)
+		msg := fmt.Sprintf("bad signing key;fpath %s; %v", privateKeyPath, err)
+		ssas.Logger.Info(msg)
 		return errors.New(msg)
 	}
 	return nil

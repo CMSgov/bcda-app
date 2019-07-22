@@ -1,12 +1,13 @@
 package service
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+const unitSigningKeyPath string = "../../shared_files/ssas/unit_test_private_key.pem"
 
 type ServerTestSuite struct {
 	suite.Suite
@@ -25,8 +26,9 @@ func (s *ServerTestSuite) TearDownSuite() {
 func (s *ServerTestSuite) TestSetSigningKeys() {
 	err := s.server.SetSigningKeys("")
 	assert.NotNil(s.T(), err)
+	assert.Contains(s.T(), err.Error(), "bad signing key", "testing bad key")
 
-	err = s.server.SetSigningKeys(os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH"))
+	err = s.server.SetSigningKeys(unitSigningKeyPath)
 	assert.Nil(s.T(), err)
 }
 

@@ -2,12 +2,16 @@ package ssas
 
 import (
 	"crypto/rsa"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+const badBase64KeyPath = "../shared_files/ssas/bad_base64_test_private_key.pem"
+const notRSAKeyPath = "../shared_files/ssas/not_rsa_test_private_key.pem"
+const tooSmallKeyPath = "../shared_files/ssas/too_small_test_private_key.pem"
+const goodTestKeyPath = "../shared_files/ssas/good_test_private_key.pem"
 
 type RSAKeysTestSuite struct {
 	suite.Suite
@@ -23,18 +27,18 @@ func (s *RSAKeysTestSuite) TestReadPrivateKey_EmptyKey() {
 }
 
 func (s *RSAKeysTestSuite) TestReadPrivateKey_BadKeys() {
-	assertT := assert.New(s.T())		// is this construction duplicating what s.T() does?
+	assertT := assert.New(s.T())
 	var tests = []struct {
 		path   string
 		errMsg string
 	}{
-		{"SSAS_BAD_BASE64_TEST_PRIVATE_KEY", "decode"},
-		{"SSAS_NOT_RSA_TEST_PRIVATE_KEY", "parse RSA"},
-		{"SSAS_TOO_SMALL_TEST_PRIVATE_KEY", "insecure key length"},
+		{badBase64KeyPath, "decode"},
+		{notRSAKeyPath, "parse RSA"},
+		{tooSmallKeyPath, "insecure key length"},
 	}
 	for _, test := range tests {
-		filePath := os.Getenv(test.path)
-		pemData, err := ReadPEMFile(filePath)
+		// filePath := os.Getenv(test.path)
+		pemData, err := ReadPEMFile(test.path)
 		assertT.Nil(err)
 		_, err = ReadPrivateKey(pemData)
 		assertT.NotNil(err)
@@ -43,8 +47,8 @@ func (s *RSAKeysTestSuite) TestReadPrivateKey_BadKeys() {
 }
 
 func (s *RSAKeysTestSuite) TestReadPrivateKey_GoodKeys() {
-	filePath := os.Getenv("SSAS_GOOD_TEST_PRIVATE_KEY")
-	pemData, err := ReadPEMFile(filePath)
+	// filePath := os.Getenv(goodTestKeyPath)
+	pemData, err := ReadPEMFile(goodTestKeyPath)
 	assert.Nil(s.T(), err)
 	privateKey, err := ReadPrivateKey(pemData)
 	assert.Nil(s.T(), err)
