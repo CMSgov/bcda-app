@@ -39,6 +39,19 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func deleteGroup(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	ssas.OperationCalled(ssas.Event{Op: "DeleteGroup", TrackingID: id, Help: "calling from admin.deleteGroup()"})
+	err := ssas.DeleteGroup(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to delete group. Error: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func createSystem(w http.ResponseWriter, r *http.Request) {
 	type system struct {
 		ClientName string `json:"client_name"`
