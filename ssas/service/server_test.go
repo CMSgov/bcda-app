@@ -26,7 +26,7 @@ func (s *ServerTestSuite) TestSetSigningKeys() {
 	err := s.server.SetSigningKeys("")
 	assert.NotNil(s.T(), err)
 
-	err = s.server.SetSigningKeys(os.Getenv("SSAS_SERVER_TEST_PRIVATE_KEY"))
+	err = s.server.SetSigningKeys(os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH"))
 	assert.Nil(s.T(), err)
 }
 
