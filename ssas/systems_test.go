@@ -8,11 +8,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
@@ -513,6 +514,26 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 	assert.Nil(err)
 }
 
+func (s *SystemsTestSuite) TestDeactivateSecrets() {
+	group := Group{GroupID: "test-deactivate-secrets-group"}
+	s.db.Create(&group)
+	system := System{GroupID: group.GroupID, ClientID: "test-deactivate-secrets-client"}
+	s.db.Create(&system)
+	secret := Secret{Hash: "test-deactivate-secrets-hash", SystemID: system.ID}
+	s.db.Create(&secret)
+
+	var systemSecrets []Secret
+	s.db.Find(&systemSecrets, "system_id = ?", system.ID)
+	assert.NotEmpty(s.T(), systemSecrets)
+
+	err := system.DeactivateSecrets()
+	assert.Nil(s.T(), err)
+	s.db.Find(&systemSecrets, "system_id = ?", system.ID)
+	assert.Empty(s.T(), systemSecrets)
+
+	_ = CleanDatabase(group)
+}
+
 func (s *SystemsTestSuite) TestResetSecret() {
 	group := Group{GroupID: "group-12345"}
 	s.db.Create(&group)
@@ -540,16 +561,16 @@ func (s *SystemsTestSuite) TestResetSecret() {
 
 func (s *SystemsTestSuite) TestScopeEnvSuccess() {
 	key := "SSAS_DEFAULT_SYSTEM_SCOPE"
-	new_scope := "my_scope"
-	old_scope := os.Getenv(key)
-	err := os.Setenv(key, new_scope)
+	newScope := "my_scope"
+	oldScope := os.Getenv(key)
+	err := os.Setenv(key, newScope)
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 	getEnvVars()
 
-	assert.Equal(s.T(), new_scope, DefaultScope)
-	err = os.Setenv(key, old_scope)
+	assert.Equal(s.T(), newScope, DefaultScope)
+	err = os.Setenv(key, oldScope)
 	assert.Nil(s.T(), err)
 }
 
