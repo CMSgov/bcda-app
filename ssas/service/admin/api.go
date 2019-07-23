@@ -109,3 +109,21 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, secret)
 }
+
+func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {
+	systemID := chi.URLParam(r, "systemID")
+
+	system, err := ssas.GetSystemByID(systemID)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	err = system.DeactivateSecrets()
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
