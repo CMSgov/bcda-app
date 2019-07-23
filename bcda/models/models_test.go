@@ -310,6 +310,19 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
 }
 
+func (s *ModelsTestSuite) TestACOGetPublicKey_SSAS() {
+	authProvider := os.Getenv("BCDA_AUTH_PROVIDER")
+	os.Setenv("BCDA_AUTH_PROVIDER", "ssas")
+	defer os.Setenv("BCDA_AUTH_PROVIDER", authProvider)
+
+	cmsID := "A0001"
+	aco := ACO{Name: "Public key from SSAS ACO", CMSID: &cmsID, UUID: uuid.NewRandom()}
+
+	key, err := aco.GetPublicKey()
+	assert.Nil(s.T(), key)
+	assert.Contains(s.T(), err.Error(), "SSAS client could not be created")
+}
+
 func (s *ModelsTestSuite) TestCreateUser() {
 	name, email, sampleUUID, duplicateName := "First Last", "firstlast@example.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3", "Duplicate Name"
 
