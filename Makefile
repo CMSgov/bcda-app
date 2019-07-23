@@ -16,7 +16,6 @@ lint:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
-
 lint-ssas:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run ./ssas/...
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./ssas/...
@@ -53,11 +52,7 @@ unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 unit-test-ssas:
-	docker-compose up -d db
-	@echo "Wait for database to be ready..."
-	sleep 5
-	docker-compose -f docker-compose.test.yml run --rm tests sh unit_test_ssas.sh
-	docker-compose stop db
+	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test_ssas.sh
 
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
