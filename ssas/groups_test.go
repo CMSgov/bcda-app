@@ -2,6 +2,7 @@ package ssas
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/jinzhu/gorm"
@@ -83,13 +84,15 @@ func (s *GroupsTestSuite) TestUpdateGroup() {
 	gd := GroupData{}
 	err := json.Unmarshal(groupBytes, &gd)
 	assert.Nil(s.T(), err)
-	g, err := CreateGroup(gd)
+	g := Group{}
+	g.Data = gd
+	err = s.db.Save(&g).Error
 	assert.Nil(s.T(), err)
 
 	gd.Scopes = []string{"aScope", "anotherScope"}
 	gd.ID = "aNewGroupID"
 	gd.Name = "aNewGroupName"
-	newG, err := UpdateGroup(string(g.ID), gd)
+	newG, err := UpdateGroup(fmt.Sprint(g.ID), gd)
 	assert.Nil(s.T(), err)
 
 	assert.Nil(s.T(), err)
