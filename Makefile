@@ -57,10 +57,10 @@ unit-test-ssas:
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
-# removed postman test temporarily
 test:
 	$(MAKE) lint
 	$(MAKE) unit-test
+	$(MAKE) postman env=local
 	$(MAKE) smoke-test
 
 test-ssas:
