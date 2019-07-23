@@ -435,6 +435,14 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	return success, failure, skipped, err
 }
 
+func isSuppressionFile(filePath string) bool {
+		// Beneficiary Data Sharing Preferences File sent by 1-800-Medicare: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
+		// Prefix: T = test, P = prod;
+		filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
+		filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
+		return filenameMatches != nil
+}
+
 func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -451,6 +459,12 @@ func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepa
 		metadata.filePath = path
 		metadata.deliveryDate = info.ModTime()
 		if err != nil {
+			if isSuppressionFile(info.Name()) {
+				fmt.Printf("Suppression file found %s...\n", info.Name())
+				log.Infof("Suppression file found %s...\n", info.Name())
+				return nil
+			}
+
 			// skipping files with a bad name.  An unknown file in this dir isn't a blocker
 			fmt.Printf("Unknown file found: %s.\n", metadata)
 			log.Errorf("Unknown file found: %s", metadata)

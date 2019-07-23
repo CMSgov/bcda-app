@@ -570,6 +570,14 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/")
 }
 
+func (s *CCLFTestSuite) TestIsSuppressionFile() {
+	suppressionFilePath := BASE_FILE_PATH + "cclf_Suppression/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
+	assert.True(s.T(),isSuppressionFile(suppressionFilePath))
+
+	suppressionFilePath = BASE_FILE_PATH + "cclf_Suppression/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	assert.False(s.T(),isSuppressionFile(suppressionFilePath))
+}
+
 func (s *CCLFTestSuite) TestDeleteDirectory() {
 	assert := assert.New(s.T())
 	dirToDelete := BASE_FILE_PATH + "doomedDirectory"
