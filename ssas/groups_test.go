@@ -79,34 +79,24 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 }
 
 func (s *GroupsTestSuite) TestDeleteGroup() {
-	group := Group{GroupID: "groups-test-delete-group"}
+	group := Group{GroupID: "groups-test-delete-group-id"}
 	err := s.db.Create(&group).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 
-	system := System{GroupID: group.GroupID, ClientID: "groups-test-delete-group"}
+	system := System{GroupID: group.GroupID, ClientID: "groups-test-delete-client-id"}
 	err = s.db.Create(&system).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 
-	key1Str := "publickey1"
-	encrKey1 := EncryptionKey{
+	keyStr := "publickey"
+	encrKey := EncryptionKey{
 		SystemID: system.ID,
-		Body:     key1Str,
+		Body:     keyStr,
 	}
-	err = s.db.Create(&encrKey1).Error
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-
-	key2Str := "publickey2"
-	encrKey2 := EncryptionKey{
-		SystemID: system.ID,
-		Body:     key2Str,
-	}
-	err = s.db.Create(&encrKey2).Error
+	err = s.db.Create(&encrKey).Error
 	if err != nil {
 		s.FailNow(err.Error())
 	}
