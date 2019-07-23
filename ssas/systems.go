@@ -150,18 +150,6 @@ func (system *System) GetEncryptionKey() (EncryptionKey, error) {
 }
 
 /*
-	GetPublicKey will retrieve the public key associated with the current system.
-*/
-func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
-	encryptionKey, err := system.GetEncryptionKey()
-	if err != nil {
-		return nil, fmt.Errorf("cannot find public key for clientID %s: %s", system.ClientID, err.Error())
-	}
-
-	return ReadPublicKey(encryptionKey.Body)
-}
-
-/*
 	SavePublicKey should be provided with a public key in PEM format, which will be saved
 	to the encryption_keys table and associated with the current system.
 */

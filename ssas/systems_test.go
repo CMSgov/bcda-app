@@ -205,17 +205,10 @@ func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	}
 
 	// Retrieve and verify
-	storedKey, err := system.GetPublicKey()
+	storedKey, err := system.GetEncryptionKey()
 	assert.Nil(err)
 	assert.NotNil(storedKey)
-	storedPublicKeyPKIX, err := x509.MarshalPKIXPublicKey(storedKey)
-	assert.Nil(err, "unable to marshal saved public key")
-	storedPublicKeyBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: storedPublicKeyPKIX,
-	})
-	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
-	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
+	assert.Equal(storedKey.Body, string(publicKeyBytes))
 
 	err = CleanDatabase(group)
 	assert.Nil(err)
@@ -292,19 +285,19 @@ func (s *SystemsTestSuite) TestSystemPublicKeyEmpty() {
 
 	err = system.SavePublicKey(strings.NewReader(""))
 	assert.NotNil(err)
-	k, err := system.GetPublicKey()
+	k, err := system.GetEncryptionKey()
 	assert.NotNil(err)
-	assert.Nil(k, "Empty string does not yield nil public key!")
+	assert.Empty(k, "Empty string does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(emptyPEM))
 	assert.NotNil(err)
-	k, err = system.GetPublicKey()
+	k, err = system.GetEncryptionKey()
 	assert.NotNil(err)
-	assert.Nil(k, "Empty PEM key does not yield nil public key!")
+	assert.Empty(k, "Empty PEM key does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(validPEM))
 	assert.Nil(err)
-	k, err = system.GetPublicKey()
+	k, err = system.GetEncryptionKey()
 	assert.Nil(err)
-	assert.NotNil(k, "Valid PEM key yields nil public key!")
+	assert.NotEmpty(k, "Valid PEM key yields empty public key!")
 
 	err = CleanDatabase(group)
 	assert.Nil(err)
