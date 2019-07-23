@@ -19,6 +19,7 @@ import (
 )
 
 var DefaultScope string
+
 const CREDENTIAL_EXPIRATION = 90 * 24 * time.Hour
 
 func init() {
@@ -29,7 +30,7 @@ func getEnvVars() {
 	DefaultScope = os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE")
 
 	if DefaultScope == "" {
-		ServiceHalted(Event{Help:"SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
+		ServiceHalted(Event{Help: "SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
 		panic("SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set")
 	}
 }
@@ -98,13 +99,11 @@ func (system *System) SaveSecret(hashedSecret string) error {
 		SystemID: system.ID,
 	}
 
-	err := db.Where("system_id = ?", system.ID).Delete(&Secret{}).Error
-	if err != nil {
-		return fmt.Errorf("unable to soft delete previous secrets for clientID %s: %s", system.ClientID, err.Error())
+	if err := system.DeactivateSecrets(); err != nil {
+		return err
 	}
 
-	err = db.Create(&secret).Error
-	if err != nil {
+	if err := db.Create(&secret).Error; err != nil {
 		return fmt.Errorf("could not save secret for clientID %s: %s", system.ClientID, err.Error())
 	}
 	SecretCreated(Event{Op: "SaveSecret", TrackingID: uuid.NewRandom().String(), ClientID: system.ClientID})
@@ -134,7 +133,20 @@ func (system *System) GetSecret() (string, error) {
 }
 
 /*
-	GetEncryptionKey will retrieve the key associated with the current system.
+	DeactivateSecrets soft deletes secrets associated with the system.
+*/
+func (system *System) DeactivateSecrets() error {
+	db := GetGORMDbConnection()
+	defer Close(db)
+	err := db.Where("system_id = ?", system.ID).Delete(&Secret{}).Error
+	if err != nil {
+		return fmt.Errorf("unable to soft delete previous secrets for clientID %s: %s", system.ClientID, err.Error())
+	}
+	return nil
+}
+
+/*
+	GetEncryptionKey retrieves the key associated with the current system.
 */
 func (system *System) GetEncryptionKey() (EncryptionKey, error) {
 	db := GetGORMDbConnection()
@@ -483,7 +495,6 @@ func CleanDatabase(group Group) error {
 	if err != nil {
 		return fmt.Errorf("unable to find associated systems: %s", err.Error())
 	}
-	fmt.Println("System ID's: ", systemIds)
 
 	err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
 	if err != nil {

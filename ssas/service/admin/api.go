@@ -115,3 +115,21 @@ func getPublicKey(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{ "client_id": "%s", "public_key": "%s" }`, system.ClientID, key.Body)
 }
+
+func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {
+	systemID := chi.URLParam(r, "systemID")
+
+	system, err := ssas.GetSystemByID(systemID)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	err = system.DeactivateSecrets()
+
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

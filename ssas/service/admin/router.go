@@ -18,5 +18,6 @@ func Routes() *chi.Mux {
 	r.Post("/system", createSystem)
 	r.Put("/system/{systemID}/credentials", resetCredentials)
 	r.Get("/system/{systemID}/key", getPublicKey)
+	r.Delete("/system/{systemID}/credentials", deactivateSystemCredentials)
 	return r
 }
