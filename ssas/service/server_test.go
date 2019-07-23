@@ -30,6 +30,7 @@ func (s *ServerTestSuite) TestSetSigningKeys() {
 
 	err = s.server.SetSigningKeys(unitSigningKeyPath)
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), s.server.privateSigningKey)
 }
 
 func TestServerTestSuite(t *testing.T) {

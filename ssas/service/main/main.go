@@ -15,14 +15,18 @@ import (
 )
 
 var startMeUp bool
+var migrateAndStart bool
 var unsafeMode bool
 var adminSigningKeyPath string
 var publicSigningKeyPath string
 
 func init() {
-	const usage = "start the service"
-	flag.BoolVar(&startMeUp, "start", false, usage)
-	flag.BoolVar(&startMeUp, "s", false, usage + " (shorthand)")
+	const usageStart = "start the service"
+	flag.BoolVar(&startMeUp, "start", false, usageStart)
+	flag.BoolVar(&startMeUp, "s", false, usageStart + " (shorthand)")
+	const usageMigrate = "migrate the db and start the service"
+	flag.BoolVar(&migrateAndStart, "migrate", false, usageMigrate)
+	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate + " (shorthand)")
 	unsafeMode = os.Getenv("HTTP_ONLY") == "true"
 	adminSigningKeyPath = os.Getenv("SSAS_ADMIN_SIGNING_KEY_PATH")
 	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
@@ -31,6 +35,13 @@ func init() {
 func main() {
 	ssas.Logger.Info("Future home of the System-to-System Authentication Service")
 	flag.Parse()
+	if migrateAndStart {
+		if os.Getenv("DEBUG") == "true" {
+			ssas.InitializeGroupModels()
+			ssas.InitializeSystemModels()
+		}
+		start()
+	}
 	if startMeUp {
 		start()
 	}
@@ -38,25 +49,22 @@ func main() {
 
 func start() {
 	ssas.Logger.Infof("%s", "Starting ssas...")
-	// if os.Getenv("DEBUG") == "true" {
-	// autoMigrate()
-	// }
 
 	ps := service.NewServer("public", ":3003", public.Version, public.InfoMap, public.Routes(), unsafeMode)
-	if !unsafeMode {
-		if err := ps.SetSigningKeys(publicSigningKeyPath); err != nil {
-			ssas.Logger.Fatalf("unable to get signing key for public server because %s; can't start", err.Error())
-		}
+	// the signing key is separate from the [future] cert / private key used for https or tls or whatever
+	if err := ps.SetSigningKeys(publicSigningKeyPath); err != nil {
+		ssas.Logger.Fatalf("unable to get signing key for public server because %s; can't start", err.Error())
 	}
+
 	ps.LogRoutes()
 	ps.Serve()
 
 	as := service.NewServer("admin", ":3004", admin.Version, admin.InfoMap, admin.Routes(), unsafeMode)
-	if !unsafeMode {
-		if err := as.SetSigningKeys(adminSigningKeyPath); err != nil {
-			ssas.Logger.Fatalf("unable to get signing key for admin server because %s; can't start", err.Error())
-		}
+	// the signing key is separate from the [future] cert / private key used for https or tls or whatever
+	if err := as.SetSigningKeys(adminSigningKeyPath); err != nil {
+		ssas.Logger.Fatalf("unable to get signing key for admin server because %s; can't start", err.Error())
 	}
+
 	as.LogRoutes()
 	as.Serve()
 

@@ -16,6 +16,11 @@ lint:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
+
+lint-ssas:
+	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run ./ssas/...
+	docker-compose -f docker-compose.test.yml run --rm tests gosec ./ssas/...
+
 #
 # The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token
 # The CLIENT_ID and CLIENT_SECRET values can be overridden by environmental variables e.g.:
@@ -47,6 +52,13 @@ postman:
 unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
+unit-test-ssas:
+	docker-compose up -d db
+	@echo "Wait for database to be ready..."
+	sleep 5
+	docker-compose -f docker-compose.test.yml run --rm tests sh unit_test_ssas.sh
+	docker-compose stop db
+
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
@@ -55,6 +67,12 @@ test:
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
 	$(MAKE) smoke-test
+
+test-ssas:
+	$(MAKE) lint-ssas
+	$(MAKE) unit-test-ssas
+	@echo "No postman tests (yet)"
+	@echo "No smoke-test (yet)"
 
 load-fixtures:
 	docker-compose up -d db
