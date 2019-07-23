@@ -45,6 +45,7 @@ func deleteGroup(w http.ResponseWriter, r *http.Request) {
 	ssas.OperationCalled(ssas.Event{Op: "DeleteGroup", TrackingID: id, Help: "calling from admin.deleteGroup()"})
 	err := ssas.DeleteGroup(id)
 	if err != nil {
+		ssas.OperationFailed(ssas.Event{Op: "admin.deleteGroup", TrackingID: id, Help: err.Error()})
 		http.Error(w, fmt.Sprintf("Failed to delete group. Error: %s", err), http.StatusBadRequest)
 		return
 	}
