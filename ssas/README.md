@@ -56,13 +56,46 @@ Required values must be present in the docker-compose.*.yml files.
 | SSAS_HASH_ITERATIONS | Yes      | Controls how many iterations our secure hashing mechanism performs. Service will panic if this key does not have a value. |
 | SSAS_HASH_KEY_LENGTH | Yes      | Controls the key length used by our secure hashing mechanism. Service will panic if this key does not have a value. |
 | SSAS_HASH_SALT_SIZE  | Yes      | Controls salt size used by our secure hashing mechanism performs. Service will panic if this key does not have a value. |
+| SSAS_READ_TIMEOUT    | No       | Sets the read timeout on server requests |
+| SSAS_WRITE_TIMEOUT   | No       | Sets the write timeout on server responses |
+| SSAS_IDLE_TIMEOUT    | No       | Sets the idle timeout on |
+| SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | Provides the location of the admin server signing key |
+| SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | Provides the location of the public server signing key |
+
 
 # Build
 
-Build the code with `make docker-bootstrap`. Alternatively, `docker-compose up ssas` will build and run the SSAS by itself.
+Build the code and containers with `make docker-bootstrap`. Alternatively, `docker-compose up ssas` will build and run the SSAS by itself.
 
 # Test
 
-The SSAS can be tested by running `make test` or `make unit-test`.
+The SSAS can be tested by running `make test-ssas` or `make unit-test-ssas`. You can also use the repo-wide commands `make test` and `make unit-test`, which will run tests against the entire repo, including the SSAS code.
+
+# Integration Testing
+
+To run postman tests locally:
+
+Build and startup the required containers. Building with docker-compose up first will significantly improve the performance of the following steps.
+
+```
+docker-compose up
+docker-compose stop
+docker-compose up -d db
+docker-compose up ssas
+```
+
+Seed the database with a minimal group:
+
+```
+docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
+	insert into groups(group_id) values ('T0000');
+```
+
+point your browser at one of the following ports, or use the postman test collection in tests.
+
+- public server: 3003
+- admin server: 3004
+- forwarding server: 3005
+
 
 # Goland IDE
