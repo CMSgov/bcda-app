@@ -2,6 +2,7 @@ package ssas
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/jinzhu/gorm"
@@ -75,6 +76,33 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	gd.ID = ""
 	_, err = CreateGroup(gd)
 	assert.EqualError(s.T(), err, "group_id cannot be blank")
+}
+
+func (s *GroupsTestSuite) TestDeleteGroup() {
+	group := Group{GroupID: "groups-test-delete-group-id"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group.GroupID, ClientID: "groups-test-delete-client-id"}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	keyStr := "publickey"
+	encrKey := EncryptionKey{
+		SystemID: system.ID,
+		Body:     keyStr,
+	}
+	err = s.db.Create(&encrKey).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	err = DeleteGroup(fmt.Sprint(group.ID))
+	assert.Nil(s.T(), err)
 }
 
 func TestGroupsTestSuite(t *testing.T) {
