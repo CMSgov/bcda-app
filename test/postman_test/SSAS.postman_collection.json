@@ -197,6 +197,30 @@
 				"description": "Verify an MFA passcode"
 			},
 			"response": []
+		},
+		{
+			"name": "public authn",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"cms_id\":\"{{cms_id}}\",\"password\":\"{{password}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/authn",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"authn"
+					]
+				},
+				"description": "Verify a username and password"
+			},
+			"response": []
 		}
 	]
 }
