@@ -43,8 +43,8 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	assert.NotNil(suite.T(), suite.gormdb.DB().Ping(), fmt.Sprint("Gorm database should fail to connect (negative scenario)"))
 
 	// close DBs to reset the test
-	suite.db.Close()
-	suite.gormdb.Close()
+	_ = suite.db.Close()
+	_ = suite.gormdb.Close()
 
 	// set the database URL back to the real value to test the positive scenarios
 	os.Setenv("DATABASE_URL", actualDatabaseURL)
@@ -58,7 +58,6 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	// assert that Ping() does not return an error
 	assert.Nil(suite.T(), suite.db.Ping(), fmt.Sprint("Error connecting to sql database"))
 	assert.Nil(suite.T(), suite.gormdb.DB().Ping(), fmt.Sprint("Error connecting to gorm database "))
-
 }
 
 func TestConnectionTestSuite(t *testing.T) {
