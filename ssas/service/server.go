@@ -216,8 +216,8 @@ func (s *Server) mintToken(acoID string, issuedAt int64, expiresAt int64) (*jwt.
 	}
 	var signedString, err = token.SignedString(s.privateSigningKey)
 	if err != nil {
-		ssas.TokenMintingFailure(ssas.Event{TokenID:tokenID,})
-		ssas.Logger.Errorf("token signing error %s")
+		ssas.TokenMintingFailure(ssas.Event{TokenID:tokenID})
+		ssas.Logger.Errorf("token signing error %s", err)
 		return nil, "", err
 	}
 	// not emitting AccessTokenIssued here because it hasn't been given to anyone
