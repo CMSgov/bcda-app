@@ -750,7 +750,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Failed to import 1 files.")
-	assert.Contains(buf.String(), "Skipped 2 files.")
+	assert.Contains(buf.String(), "Skipped 3 files.")
 	buf.Reset()
 
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_BadFileNames/")

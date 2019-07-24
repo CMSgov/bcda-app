@@ -423,7 +423,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 	assert.Nil(err)
 	cclflist := cclfmap["A0001_18"]
 	assert.Equal(2, len(cclflist))
-	assert.Equal(2, skipped)
+	assert.Equal(3, skipped)
 	for _, cclf := range cclflist {
 		assert.NotEqual(9, cclf.cclfNum)
 	}
@@ -508,6 +508,50 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 	assert.Equal(3, len(cclf0))
 }
 
+func (s *CCLFTestSuite) TestSortCCLFFiles_Time() {
+	assert := assert.New(s.T())
+	cclfmap := make(map[string][]*cclfFileMetadata)
+	var skipped int
+	folderPath := BASE_FILE_PATH + "cclf_BadFileNames/"
+	filePath := folderPath + "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
+
+	origTime := time.Now().Truncate(time.Second)
+	err := os.Chtimes(filePath, origTime, origTime)
+	if err != nil {
+		s.FailNow("Failed to change modified time for file", err)
+	}
+
+	skipped = 0
+	err = filepath.Walk(folderPath, sortCCLFFiles(&cclfmap, &skipped))
+	assert.Nil(err)
+	cclflist := cclfmap["A0001_18"]
+	assert.Equal(2, len(cclflist))
+	assert.Equal(3, skipped)
+	// assert that this file is still here.
+	_, err = os.Open(filePath)
+	assert.Nil(err)
+
+	timeChange := origTime.Add(-(time.Hour * 25)).Truncate(time.Second)
+	err = os.Chtimes(filePath,timeChange, timeChange)
+	if err != nil {
+		s.FailNow("Failed to change modified time for file", err)
+	}
+
+	cclfmap = make(map[string][]*cclfFileMetadata)
+	skipped = 0
+	err = filepath.Walk(folderPath, sortCCLFFiles(&cclfmap, &skipped))
+	assert.Nil(err)
+	cclflist = cclfmap["A0001_18"]
+	assert.Equal(2, len(cclflist))
+	assert.Equal(3, skipped)
+
+	// assert that this file is not still here.
+	_, err = os.Open(filePath)
+	assert.NotNil(err)
+
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
+}
+
 func (s *CCLFTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string][]*cclfFileMetadata)
@@ -568,14 +612,6 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		assert.NotEqual("T.A0001.ACO.ZC0Y18.D181120.T1000011", file.Name())
 	}
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/")
-}
-
-func (s *CCLFTestSuite) TestIsSuppressionFile() {
-	suppressionFilePath := BASE_FILE_PATH + "cclf_Suppression/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
-	assert.True(s.T(),isSuppressionFile(suppressionFilePath))
-
-	suppressionFilePath = BASE_FILE_PATH + "cclf_Suppression/T.A0001.ACO.ZC0Y18.D181120.T1000011"
-	assert.False(s.T(),isSuppressionFile(suppressionFilePath))
 }
 
 func (s *CCLFTestSuite) TestDeleteDirectory() {
