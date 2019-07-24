@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/encryption"
+	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -68,6 +70,22 @@ func processJob(j *que.Job) error {
 	defer m.End(txn)
 
 	log.Info("Worker started processing job ", j.ID)
+
+	// Update the Cloudwatch Metric for job queue count
+	env := os.Getenv("DEPLOYMENT_TARGET")
+	if env != "" {
+		sampler, err := metrics.NewSampler("BCDA", "Count")
+		if err != nil {
+			fmt.Println("Warning: failed to create new metric sampler...")
+		} else {
+			err := sampler.PutSample("JobQueueCount", getQueueJobCount(), []metrics.Dimension{
+				metrics.Dimension{Name: "Environment", Value: env},
+			})
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -411,6 +429,29 @@ func setupQueue() *pgx.ConnPool {
 	go workers.Start()
 
 	return pgxpool
+}
+
+func getQueueJobCount() float64 {
+	databaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	db, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		log.Error(err)
+	}
+
+	pingErr := db.Ping()
+	if pingErr != nil {
+		log.Error(pingErr)
+	}
+	defer db.Close()
+
+	row := db.QueryRow(`select count(*) from que_jobs;`)
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Error(err)
+	}
+
+	return float64(count)
 }
 
 func main() {
