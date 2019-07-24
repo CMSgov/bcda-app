@@ -72,20 +72,7 @@ func processJob(j *que.Job) error {
 	log.Info("Worker started processing job ", j.ID)
 
 	// Update the Cloudwatch Metric for job queue count
-	env := os.Getenv("DEPLOYMENT_TARGET")
-	if env != "" {
-		sampler, err := metrics.NewSampler("BCDA", "Count")
-		if err != nil {
-			fmt.Println("Warning: failed to create new metric sampler...")
-		} else {
-			err := sampler.PutSample("JobQueueCount", getQueueJobCount(), []metrics.Dimension{
-				metrics.Dimension{Name: "Environment", Value: env},
-			})
-			if err != nil {
-				log.Error(err)
-			}
-		}
-	}
+	updateJobQueueCountCloudwatchMetric()
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -188,6 +175,9 @@ func processJob(j *que.Job) error {
 		log.Error(err)
 		return err
 	}
+
+        // Update the Cloudwatch Metric for job queue count
+        updateJobQueueCountCloudwatchMetric()
 
 	log.Info("Worker finished processing job ", j.ID)
 
@@ -452,6 +442,25 @@ func getQueueJobCount() float64 {
 	}
 
 	return float64(count)
+}
+
+func updateJobQueueCountCloudwatchMetric() {
+
+	// Update the Cloudwatch Metric for job queue count
+	env := os.Getenv("DEPLOYMENT_TARGET")
+	if env != "" {
+		sampler, err := metrics.NewSampler("BCDA", "Count")
+		if err != nil {
+			fmt.Println("Warning: failed to create new metric sampler...")
+		} else {
+			err := sampler.PutSample("JobQueueCount", getQueueJobCount(), []metrics.Dimension{
+				metrics.Dimension{Name: "Environment", Value: env},
+			})
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
 }
 
 func main() {
