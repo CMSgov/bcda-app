@@ -7,8 +7,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Logger provides a structured logger for this service
 var Logger *logrus.Logger
 
+// Event contains the superset of fields that may be included in Logger statements
 type Event struct {
 	ClientID   string
 	Elapsed    time.Duration
@@ -66,33 +68,29 @@ func mergeNonEmpty(data Event) *logrus.Entry {
 	randomly generated TrackingID.
  */
 
-/*
-	OperationStarted should be called at the beginning of all logged events
- */
+
+// OperationStarted should be called at the beginning of all logged events
 func OperationStarted(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationStarted").Print(data.Help)
 }
 
-/*
-	OperationSucceeded should be called after an event's success, and should always be preceded by
-	a call to OperationStarted
- */
+
+// OperationSucceeded should be called after an event's success, and should always be preceded by
+// a call to OperationStarted
 func OperationSucceeded(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationSucceeded").Print(data.Help)
 }
 
-/*
-	OperationCalled will log the caller of an operation.  The caller should use the same
-	randomly generated TrackingID as used in the operation for OperationStarted, OperationSucceeded, etc.
- */
+
+// OperationCalled will log the caller of an operation.  The caller should use the same
+// randomly generated TrackingID as used in the operation for OperationStarted, OperationSucceeded, etc.
 func OperationCalled(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationCalled").Print(data.Help)
 }
 
-/*
-	OperationFailed should be called after an event's failure, and should always be preceded by
-	a call to OperationStarted
- */
+
+// OperationFailed should be called after an event's failure, and should always be preceded by
+// a call to OperationStarted
 func OperationFailed(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationFailed").Print(data.Help)
 }
@@ -103,38 +101,32 @@ func TokenMintingFailure(data Event) {
 	mergeNonEmpty(data).WithField("Event", "AccessTokenIssued").Print(data.Help)
 }
 
-/*
-	AccessTokenIssued should be called to log the successful creation of every access token
- */
+// AccessTokenIssued should be called to log the successful creation of every access token
 func AccessTokenIssued(data Event) {
 	mergeNonEmpty(data).WithField("Event", "AccessTokenIssued").Print(data.Help)
 }
 
-/*
-	SecureHashTime should be called with the time taken to create a hash, logs of which can be used
-	to approximate the security provided by the hash
- */
+
+// SecureHashTime should be called with the time taken to create a hash, logs of which can be used
+// to approximate the security provided by the hash
 func SecureHashTime(data Event) {
 	mergeNonEmpty(data).WithField("Event", "SecureHashTime").Print(data.Help)
 }
 
-/*
-	SecretCreated should be called every time a system's secret is generated
- */
+
+// SecretCreated should be called every time a system's secret is generated
 func SecretCreated(data Event) {
 	mergeNonEmpty(data).WithField("Event", "SecretCreated").Print(data.Help)
 }
 
-/*
-	ServiceHalted should be called to log an unexpected stop to the service
- */
+
+// ServiceHalted should be called to log an unexpected stop to the service
 func ServiceHalted(data Event) {
 	mergeNonEmpty(data).WithField("Event", "ServiceHalted").Print(data.Help)
 }
 
-/*
-	ServiceStarted should be called to log the starting of the service
- */
+
+// ServiceStarted should be called to log the starting of the service
 func ServiceStarted(data Event) {
 	mergeNonEmpty(data).WithField("Event", "ServiceStarted").Print(data.Help)
 }
