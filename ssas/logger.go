@@ -97,6 +97,12 @@ func OperationFailed(data Event) {
 	mergeNonEmpty(data).WithField("Event", "OperationFailed").Print(data.Help)
 }
 
+// TokenMintingFailure is emitted when a token can't be created. Usually, this is due to a
+// issue with the signing key.
+func TokenMintingFailure(data Event) {
+	mergeNonEmpty(data).WithField("Event", "AccessTokenIssued").Print(data.Help)
+}
+
 /*
 	AccessTokenIssued should be called to log the successful creation of every access token
  */

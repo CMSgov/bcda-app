@@ -8,10 +8,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/cfg"
@@ -27,12 +30,15 @@ type Server struct {
 	// info contains json metadata about server
 	info   interface{}
 	router chi.Router
-	// running in http mode   // TODO set this from HTTP_ONLY envv
+	// when true, not running in http mode   // TODO set this from HTTP_ONLY envv
 	notSecure  bool
 	srvr http.Server
 	privateSigningKey *rsa.PrivateKey
+	tokenTTL time.Duration
 }
 
+// NewServer initializes an instance of the Server type. Subsequent to initialization, a signing key
+// must be assigned to the server.
 func NewServer(name, port, version string, info interface{}, routes *chi.Mux, notSecure bool) *Server {
 	s := Server{}
 	s.name = name
@@ -49,7 +55,7 @@ func NewServer(name, port, version string, info interface{}, routes *chi.Mux, no
 		WriteTimeout: time.Duration(cfg.GetEnvInt("SSAS_WRITE_TIMEOUT", 20)) * time.Second,
 		IdleTimeout:  time.Duration(cfg.GetEnvInt("SSAS_IDLE_TIMEOUT", 120)) * time.Second,
 	}
-
+	s.initTokenDuration()
 	return &s
 }
 
@@ -64,7 +70,8 @@ func (s *Server) SetSigningKeys(privateKeyPath string) error {
 	return nil
 }
 
-// https://itnext.io/structuring-a-production-grade-rest-api-in-golang-c0229b3feedc
+// LogRoutes reports the routes supported by this server to the active log. Code is based on an example
+// from https://itnext.io/structuring-a-production-grade-rest-api-in-golang-c0229b3feedc
 func (s *Server) LogRoutes() {
 	routes := fmt.Sprintf("Routes for %s at port %s: ", s.name, s.port)
 	walker := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
@@ -77,8 +84,9 @@ func (s *Server) LogRoutes() {
 	ssas.Logger.Infof(routes)
 }
 
+// Serve starts the server listening for and responding to requests.
 func (s *Server) Serve() {
-	if (s.notSecure) {
+	if s.notSecure {
 		ssas.Logger.Infof("starting %s server running UNSAFE http only mode; do not do this in production environments", s.name)
 		go func() { log.Fatal(s.srvr.ListenAndServe()) }()
 	} else {
@@ -88,7 +96,6 @@ func (s *Server) Serve() {
 	}
 }
 
-// only used for creation of Server instance
 func (s *Server) newBaseRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(
@@ -167,9 +174,73 @@ func NYI(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response)
 }
 
+// ConnectionClose provides a convenience function for closing http.Handlers
 func ConnectionClose(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "close")
 		next.ServeHTTP(w, r)
 	})
+}
+
+var ttlScale = time.Minute
+
+// CommonClaims contains the superset of claims that may be found in the token
+type CommonClaims struct {
+	ClientID string      `json:"cid,omitempty"`
+	Scopes   []string    `json:"scp,omitempty"`
+	ACOID    string      `json:"aco,omitempty"`
+	UUID     string      `json:"id,omitempty"`
+	Data     interface{} `json:"dat,omitempty"`
+	jwt.StandardClaims
+}
+
+// MintToken generates a tokenstring that expires in tokenTTL time
+func (s *Server) MintToken(acoID string) (*jwt.Token, string, error) {
+	return s.mintToken(acoID, time.Now().Unix(), time.Now().Add(s.tokenTTL).Unix())
+}
+
+// MintTokenWithDuration generates a tokenstring that expires after a specific duration from now.
+// If duration is <= 0, the token will be expired upon creation
+func (s *Server) MintTokenWithDuration(acoID string, duration time.Duration) (*jwt.Token, string, error) {
+	return s.mintToken(acoID, time.Now().Unix(), time.Now().Add(duration).Unix())
+}
+
+func (s *Server) mintToken(acoID string, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
+	token := jwt.New(jwt.SigningMethodRS512)
+	tokenID := newTokenID()
+	token.Claims = jwt.MapClaims{
+		"exp": expiresAt,
+		"iat": issuedAt,
+		"aco": acoID,
+		"id":  tokenID,
+	}
+	var signedString, err = token.SignedString(s.privateSigningKey)
+	if err != nil {
+		ssas.TokenMintingFailure(ssas.Event{TokenID:tokenID,})
+		ssas.Logger.Errorf("token signing error %s")
+		return nil, "", err
+	}
+	// not emitting AccessTokenIssued here because it hasn't been given to anyone
+	return token, signedString, nil
+}
+
+func newTokenID() string {
+	return string(uuid.NewRandom())
+}
+
+// initTokenDuration sets (again) the TokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
+// should only be used for initialization or testing; we don't support changing the ttl during runtime
+func (s *Server) initTokenDuration() {
+	s.tokenTTL = time.Hour
+	if ttl := os.Getenv("SSAS_TOKEN_TTL_IN_MINUTES"); ttl != "" {
+		var (
+			n   int
+			err error
+		)
+		if n, err = strconv.Atoi(ttl); err == nil {
+			s.tokenTTL = ttlScale * time.Duration(n)
+			ssas.Logger.Infof("set token duration from env var value %s", ttl)
+		}
+	}
+	ssas.Logger.Infof("Token ttl is %d minutes", s.tokenTTL/ttlScale)
 }
