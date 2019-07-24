@@ -434,7 +434,7 @@ func getQueueJobCount() float64 {
 	}
 	defer db.Close()
 
-	row := db.QueryRow(`select count(*) from que_jobs;`)
+	row := db.QueryRow(`select count(*) from cclf_beneficiaries;`)
 
 	var count int
 	if err := row.Scan(&count); err != nil {
