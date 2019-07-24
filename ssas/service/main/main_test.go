@@ -8,12 +8,6 @@ import (
 	"github.com/CMSgov/bcda-app/ssas"
 )
 
-func TestHello(t *testing.T) {
-	if s := hello(); s != "hello SSAS" {
-		t.Errorf("expected 'hello SSAS'; got %v", s)
-	}
-}
-
 func TestSSASMain(t *testing.T) {
 	var str bytes.Buffer
 	ssas.Logger.SetOutput(&str)

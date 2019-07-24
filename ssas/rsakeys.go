@@ -9,14 +9,51 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 )
 
 const RSAKEYMINBITS = 2048
 
+// ReadPEMFile reads the contents of the file found at pemPath, returning those contents as a string
+// or an empty string with a non-nil error
+func ReadPEMFile(pemPath string) ([]byte, error) {
+	// This function only reads PEM files, and PEM files should never be large enough to require buffering
+	/* #nosec -- Potential file inclusion via variable */
+	pemData, err := ioutil.ReadFile(pemPath)
+	if err != nil {
+		return nil, err
+	}
+	return pemData, nil
+}
+
+// ReadPrivateKey reads a PEM-formatted private key and returns a pointer to an rsa.PublicKey type
+// and an error. The key must have a length of at least 2048 bits, and it must be an rsa key. It must
+// also be the first and only key in the file.
+func ReadPrivateKey(privateKey []byte) (*rsa.PrivateKey, error) {
+	if len(privateKey) == 0 {
+		return nil, fmt.Errorf("empty or nil privateKey argument")
+	}
+	block, rest := pem.Decode(privateKey)
+	if block == nil {
+		return nil, fmt.Errorf("unable to decode private key '%s'", string(rest))
+	}
+
+	rsaPriv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse RSA private key: %s", err.Error())
+	}
+
+	if rsaPriv.Size() < RSAKEYMINBITS/8 {
+		return nil, fmt.Errorf("insecure key length (%d bytes)", rsaPriv.Size())
+	}
+
+	return rsaPriv, nil
+}
+
 // ReadPublicKey reads a string containing a PEM-formatted public key and returns a pointer to an rsa.PublicKey type
 // or an error. The key must have a length of at least 2048 bits, and it must be an rsa key.
-func ReadPublicKey (publicKey string) (*rsa.PublicKey, error) {
+func ReadPublicKey(publicKey string) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode([]byte(publicKey))
 	if block == nil {
 		return nil, fmt.Errorf("not able to decode PEM-formatted public key")
