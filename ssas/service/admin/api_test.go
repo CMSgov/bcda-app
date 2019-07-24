@@ -104,6 +104,30 @@ func (s *APITestSuite) TestUpdateGroup() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *APITestSuite) TestDeleteGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	url := fmt.Sprintf("/group/%v", g.ID)
+	req := httptest.NewRequest("DELETE", url, nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", fmt.Sprint(g.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(deleteGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	deleted := s.db.Find(&ssas.Group{}, g.ID).RecordNotFound()
+	assert.True(s.T(), deleted)
+	err = ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+
+}
+
 func (s *APITestSuite) TestCreateSystem() {
 	group := ssas.Group{GroupID: "test-group-id"}
 	err := s.db.Save(&group).Error
