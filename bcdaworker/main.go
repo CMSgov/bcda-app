@@ -422,7 +422,7 @@ func setupQueue() *pgx.ConnPool {
 }
 
 func getQueueJobCount() float64 {
-	databaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	databaseURL := os.Getenv("DATABASE_URL")
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Error(err)
