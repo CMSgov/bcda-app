@@ -16,6 +16,42 @@ func (s *MockMFATestSuite) TestConfig() {
 	s.o = &MockMFAPlugin{}
 }
 
+func (s *MockMFATestSuite) TestVerifyPasswordSuccess() {
+	trackingId := uuid.NewRandom().String()
+	userId := "success@test.com"
+
+	passwordReturn, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
+	assert.Nil(s.T(), err)
+	if passwordReturn == nil {
+		s.FailNow("we expect no errors from the mocked VerifyPassword() for this user ID")
+	}
+	assert.True(s.T(), passwordReturn.Success)
+	assert.NotEqual(s.T(), passwordReturn.Message, "")
+}
+
+func (s *MockMFATestSuite) TestVerifyPasswordFailure() {
+	trackingId := uuid.NewRandom().String()
+	userId := "locked_out@test.com"
+
+	passwordReturn, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
+	assert.Nil(s.T(), err)
+	if passwordReturn == nil {
+		s.FailNow("we expect a passwordReturn struct from the mocked VerifyPassword() for this user ID")
+	}
+	assert.False(s.T(), passwordReturn.Success)
+}
+
+func (s *MockMFATestSuite) TestVerifyPasswordError() {
+	trackingId := uuid.NewRandom().String()
+	userId := "error@test.com"
+
+	passwordReturn, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
+	assert.NotNil(s.T(), err)
+	if passwordReturn != nil {
+		s.FailNow("we expect no passwordReturn from the mocked VerifyPassword() when an error is raised")
+	}
+}
+
 func (s *MockMFATestSuite) TestRequestFactorChallengeSuccess() {
 	trackingId := uuid.NewRandom().String()
 	userId := "success@test.com"

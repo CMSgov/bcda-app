@@ -15,13 +15,14 @@ var InfoMap map[string][]string
 
 func init() {
 	InfoMap = make(map[string][]string)
-	InfoMap["public"] = []string{"token", "register", "authn/request", "authn/verify"}
+	InfoMap["public"] = []string{"token", "register", "authn", "authn/request", "authn/verify"}
 }
 
 func Routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(service.NewAPILogger(), service.ConnectionClose)
 	router.Get("/token", service.NYI)
+	router.Post("/authn", VerifyPassword)
 	router.Post("/authn/request", RequestMultifactorChallenge)
 	router.Post("/authn/verify", VerifyMultifactorResponse)
 	router.With(fakeContext).Post("/register", RegisterSystem)

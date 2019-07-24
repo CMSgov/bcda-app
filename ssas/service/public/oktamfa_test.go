@@ -395,6 +395,102 @@ func (s *OTestSuite) TestRequestFactorChallengeInvalidFactor() {
 	assert.Equal(s.T(), "invalid_request", factorReturn.Action)
 }
 
+func (s *OTestSuite) TestVerifyPasswordSuccess() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isPostPassword(), 200, `{"stateToken":"00aaaaaa11bbbbbb","expiresAt":"2019-07-23T17:56:00.000Z","status":"MFA_REQUIRED","_embedded":{"user":{"id":"abc123","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"login":"bcda_user@cms.gov","firstName":"Test","lastName":"User","locale":"en","timeZone":"America/Los_Angeles"}},"factors":[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}],"policy":{"allowRememberDevice":true,"rememberDeviceLifetimeInMinutes":30,"rememberDeviceByDefault":false,"factorsPolicyInfo":{"op112233":{"autoPushEnabled":false}}}},"_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/authn/cancel","hints":{"allow":["POST"]}}}}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOktaMFA(client)
+	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	if passwordReturn == nil {
+		s.FailNow("VerifyPassword should return a value unless there's an error")
+	}
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), passwordReturn.Success)
+}
+
+func (s *OTestSuite) TestVerifyPasswordBadPassword() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isPostPassword(), 401, `{"errorCode":"E0000004","errorSummary":"Authentication failed","errorLink":"E0000004","errorId":"oae-riwVuf1Q0iFB_UITtSltQ","errorCauses":[]}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOktaMFA(client)
+	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	assert.Nil(s.T(), err)
+	if passwordReturn == nil {
+		s.FailNow("VerifyPassword should return a value unless there's an error")
+	}
+	assert.False(s.T(), passwordReturn.Success)
+	assert.NotEqual(s.T(), passwordReturn.Message, "")
+}
+
+func (s *OTestSuite) TestVerifyPasswordEnrollMFA() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isPostPassword(), 200, `{"status":"MFA_ENROLL","_embedded":{"user":{"id":"abc123","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"login":"bcda_user@cms.gov","firstName":"Test","lastName":"User","locale":"en","timeZone":"America/Los_Angeles"}},"factors":[],"policy":{"allowRememberDevice":true,"rememberDeviceLifetimeInMinutes":30,"rememberDeviceByDefault":false,"factorsPolicyInfo":{"op112233":{"autoPushEnabled":false}}}},"_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/authn/cancel","hints":{"allow":["POST"]}}}}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOktaMFA(client)
+	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	assert.Nil(s.T(), err)
+	if passwordReturn == nil {
+		s.FailNow("VerifyPassword should return a value unless there's an error")
+	}
+	assert.False(s.T(), passwordReturn.Success)
+	assert.NotEqual(s.T(), passwordReturn.Message, "")
+}
+
+func (s *OTestSuite) TestVerifyPasswordActivateMFA() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isPostPassword(), 200, `{"status":"MFA_ENROLL_ACTIVATE","_embedded":{"user":{"id":"abc123","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"login":"bcda_user@cms.gov","firstName":"Test","lastName":"User","locale":"en","timeZone":"America/Los_Angeles"}},"factors":[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"PENDING","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}],"policy":{"allowRememberDevice":true,"rememberDeviceLifetimeInMinutes":30,"rememberDeviceByDefault":false,"factorsPolicyInfo":{"op112233":{"autoPushEnabled":false}}}},"_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/authn/cancel","hints":{"allow":["POST"]}}}}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOktaMFA(client)
+	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	assert.Nil(s.T(), err)
+	if passwordReturn == nil {
+		s.FailNow("VerifyPassword should return a value unless there's an error")
+	}
+	assert.False(s.T(), passwordReturn.Success)
+	assert.NotEqual(s.T(), passwordReturn.Message, "")
+}
+
+func (s *OTestSuite) TestVerifyPasswordExpired() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 200, `[{"id":"abc123","status":"ACTIVE","created":"2018-12-05T19:48:17.000Z","activated":"2018-12-05T19:48:17.000Z","statusChanged":"2019-06-04T12:52:49.000Z","lastLogin":"2019-06-06T18:45:35.000Z","lastUpdated":"2019-06-04T12:52:49.000Z","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"firstName":"Test","lastName":"User","mobilePhone":null,"addressType":"Select Type...","secondEmail":"bcda_user@cms.gov","login":"a_user@cms.gov","email":"a_user@cms.gov","LOA":"3"},"credentials":{"password":{},"emails":[{"value":"a_user@cms.gov","status":"VERIFIED","type":"PRIMARY"},{"value":"a_user@cms.gov","status":"VERIFIED","type":"SECONDARY"}],"provider":{"type":"OKTA","name":"OKTA"}},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123"}}}]`),
+		newTestResponse(isPostPassword(), 200, `{"stateToken":"00aaaaaa11bbbbbb","expiresAt":"2019-07-23T17:56:00.000Z","status":"PASSWORD_EXPIRED","_embedded":{"user":{"id":"abc123","passwordChanged":"2019-06-04T12:52:49.000Z","profile":{"login":"bcda_user@cms.gov","firstName":"Test","lastName":"User","locale":"en","timeZone":"America/Los_Angeles"}},"factors":[{"id":"123abc","factorType":"call","provider":"OKTA","vendorName":"OKTA","status":"ACTIVE","created":"2019-06-05T14:13:57.000Z","lastUpdated":"2019-06-05T14:13:57.000Z","profile":{"phoneNumber":"+15555555555"},"_links":{"self":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc","hints":{"allow":["GET","DELETE"]}},"verify":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123/factors/123abc/verify","hints":{"allow":["POST"]}},"user":{"href":"https://cms-sandbox.oktapreview.com/api/v1/users/abc123","hints":{"allow":["GET"]}}}}],"policy":{"allowRememberDevice":true,"rememberDeviceLifetimeInMinutes":30,"rememberDeviceByDefault":false,"factorsPolicyInfo":{"op112233":{"autoPushEnabled":false}}}},"_links":{"cancel":{"href":"https://cms-sandbox.oktapreview.com/api/v1/authn/cancel","hints":{"allow":["POST"]}}}}`),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOktaMFA(client)
+	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	assert.Nil(s.T(), err)
+	if passwordReturn == nil {
+		s.FailNow("VerifyPassword should return a value unless there's an error")
+	}
+	assert.False(s.T(), passwordReturn.Success)
+	assert.NotEqual(s.T(), passwordReturn.Message, "")
+}
+
+func (s *OTestSuite) TestVerifyPasswordError() {
+	trackingId := uuid.NewRandom().String()
+	responses := []TestResponse{
+		newTestResponse(isGetUser(), 400, ``),
+	}
+	client := okta.NewTestClient(testHttpResponses(responses))
+	o := NewOktaMFA(client)
+	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), passwordReturn)
+}
+
 func (s *OTestSuite) TestVerifyFactorChallengeSuccess() {
 	trackingId := uuid.NewRandom().String()
 	responses := []TestResponse{
@@ -525,6 +621,12 @@ func testHttpResponses(responses []TestResponse) func(*http.Request) *http.Respo
 func newTestResponse(testFunc func(*http.Request) bool, code int, body string) TestResponse {
 	response := testHttpResponse(code, body)
 	return TestResponse{GiveAnswer: testFunc, Response: response}
+}
+
+func isPostPassword() func(*http.Request) bool {
+	return func(req *http.Request) bool {
+		return req.Method == "POST" && isMatch(`\/api\/v1\/authn`, req.URL.String())
+	}
 }
 
 func isPostFactorChallenge() func(*http.Request) bool {

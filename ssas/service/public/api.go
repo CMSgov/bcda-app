@@ -43,6 +43,63 @@ type MFARequest struct {
 	Transaction    *string `json:"transaction,omitempty"`
 }
 
+type PasswordRequest struct {
+	CmsID			string `json:"cms_id"`
+	Password 		string `json:"password"`
+}
+
+/*
+	VerifyPassword is mounted at POST /authn and responds with the account status for a verified username/password
+ 	combination.
+*/
+func VerifyPassword(w http.ResponseWriter, r *http.Request) {
+	var (
+		err				error
+		trackingID		string
+		passReq			PasswordRequest
+	)
+
+	setHeaders(w)
+
+	bodyStr, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	err = json.Unmarshal(bodyStr, &passReq)
+	if err != nil {
+		service.LogEntrySetField(r,"bodyStr", "<redacted>")
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	trackingID = uuid.NewRandom().String()
+	event := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingID, Help: "calling from public.VerifyPassword()"}
+	ssas.OperationCalled(event)
+	passwordResponse, err := GetProvider().VerifyPassword(passReq.CmsID, passReq.Password, trackingID)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", err.Error())
+		return
+	}
+
+	body, err := json.Marshal(passwordResponse)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure generating JSON: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
 /*
 	RequestMultifactorChallenge is mounted at POST /authn/request and sends a multi-factor authentication request
 	using the specified factor.
