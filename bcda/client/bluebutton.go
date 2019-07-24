@@ -99,6 +99,10 @@ type BeneDataFunc func(string, string, string) (string, error)
 func (bbc *BlueButtonClient) GetPatientData(patientID, jobID, cmsID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
+
+	if utils.FromEnv("ENABLE_PLAINTEXT_HICN", "false") == "true" {
+		params.Set("includeIdentifiers", "true")
+	}
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 

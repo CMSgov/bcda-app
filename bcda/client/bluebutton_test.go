@@ -200,6 +200,20 @@ func (s *BBRequestTestSuite) TestGetBlueButtonPatientData() {
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `{ "test": "ok"`)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
+	assert.NotContains(s.T(), p, "includeIdentifiers=true")
+
+	err = os.Setenv("ENABLE_PLAINTEXT_HICN", "true")
+	if err != nil {
+		s.FailNow("Failed to change an environment var", err)
+	}
+
+	p, _ = s.bbClient.GetPatientData("012345", "543210", "A0000")
+	assert.Contains(s.T(), p,"includeIdentifiers=true")
+
+	err = os.Unsetenv("ENABLE_PLAINTEXT_HICN")
+	if err != nil {
+		s.FailNow("Failed to unset an environment var", err)
+	}
 }
 
 func (s *BBRequestTestSuite) TestGetBlueButtonPatientData_500() {
