@@ -77,7 +77,6 @@ Build the code and containers with `make docker-bootstrap`. Alternatively, `dock
 
 # Test
 
-The SSAS can be tested by running `make test` or `make unit-test`.  
 The SSAS can be tested by running `make test-ssas` or `make unit-test-ssas`. You can also use the repo-wide commands `make test` and `make unit-test`, which will run tests against the entire repo, including the SSAS code.  Some tests are designed to be only run as needed, and are excluded from `make` by a build tag.  To include
 one of these test suites, follow the instructions at the top of the test file.
 
