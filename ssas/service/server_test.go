@@ -57,7 +57,7 @@ func (s *ServerTestSuite) TestTokenDurationEmptyOverride() {
 
 func (s *ServerTestSuite) TestUnavailableSigner() {
 	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	token, ts, err := s.server.MintToken(acoUUID)
+	token, ts, err := s.server.MintToken(acoUUID, nil)
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
@@ -68,7 +68,7 @@ func (s *ServerTestSuite) TestUnavailableSigner() {
 		_ = s.server.SetSigningKeys(unitSigningKeyPath)
 	}()
 	assert.Panics(s.T(), func() {
-		_, _, _ = s.server.MintToken(acoUUID)
+		_, _, _ = s.server.MintToken(acoUUID, nil)
 	})
 }
 

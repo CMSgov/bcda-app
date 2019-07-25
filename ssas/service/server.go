@@ -31,10 +31,10 @@ type Server struct {
 	info   interface{}
 	router chi.Router
 	// when true, not running in http mode   // TODO set this from HTTP_ONLY envv
-	notSecure  bool
-	srvr http.Server
+	notSecure         bool
+	srvr              http.Server
 	privateSigningKey *rsa.PrivateKey
-	tokenTTL time.Duration
+	tokenTTL          time.Duration
 }
 
 // NewServer initializes an instance of the Server type. Subsequent to initialization, a signing key
@@ -186,37 +186,39 @@ var ttlScale = time.Minute
 
 // CommonClaims contains the superset of claims that may be found in the token
 type CommonClaims struct {
+	jwt.StandardClaims
 	ClientID string      `json:"cid,omitempty"`
 	Scopes   []string    `json:"scp,omitempty"`
 	ACOID    string      `json:"aco,omitempty"`
 	UUID     string      `json:"id,omitempty"`
 	Data     interface{} `json:"dat,omitempty"`
-	jwt.StandardClaims
 }
 
 // MintToken generates a tokenstring that expires in tokenTTL time
-func (s *Server) MintToken(acoID string) (*jwt.Token, string, error) {
-	return s.mintToken(acoID, time.Now().Unix(), time.Now().Add(s.tokenTTL).Unix())
+func (s *Server) MintToken(acoID string, data interface{}) (*jwt.Token, string, error) {
+	return s.mintToken(acoID, data, time.Now().Unix(), time.Now().Add(s.tokenTTL).Unix())
 }
 
 // MintTokenWithDuration generates a tokenstring that expires after a specific duration from now.
 // If duration is <= 0, the token will be expired upon creation
-func (s *Server) MintTokenWithDuration(acoID string, duration time.Duration) (*jwt.Token, string, error) {
-	return s.mintToken(acoID, time.Now().Unix(), time.Now().Add(duration).Unix())
+func (s *Server) MintTokenWithDuration(acoID string, data interface{}, duration time.Duration) (*jwt.Token, string, error) {
+	return s.mintToken(acoID, data, time.Now().Unix(), time.Now().Add(duration).Unix())
 }
 
-func (s *Server) mintToken(acoID string, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
+func (s *Server) mintToken(acoID string, data interface{}, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
 	token := jwt.New(jwt.SigningMethodRS512)
 	tokenID := newTokenID()
-	token.Claims = jwt.MapClaims{
-		"exp": expiresAt,
-		"iat": issuedAt,
-		"aco": acoID,
-		"id":  tokenID,
+	claims := CommonClaims{
+		ACOID: acoID,
+		Data:  data,
+		UUID:  tokenID,
 	}
+	claims.IssuedAt = issuedAt
+	claims.ExpiresAt = expiresAt
+	token.Claims = claims
 	var signedString, err = token.SignedString(s.privateSigningKey)
 	if err != nil {
-		ssas.TokenMintingFailure(ssas.Event{TokenID:tokenID})
+		ssas.TokenMintingFailure(ssas.Event{TokenID: tokenID})
 		ssas.Logger.Errorf("token signing error %s", err)
 		return nil, "", err
 	}
@@ -225,7 +227,7 @@ func (s *Server) mintToken(acoID string, issuedAt int64, expiresAt int64) (*jwt.
 }
 
 func newTokenID() string {
-	return string(uuid.NewRandom())
+	return uuid.NewRandom().String()
 }
 
 // initTokenDuration sets (again) the TokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
