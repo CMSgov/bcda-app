@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
+	"github.com/go-chi/render"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/ssas"
@@ -37,10 +39,10 @@ type RegistrationRequest struct {
 }
 
 type MFARequest struct {
-	CmsID			string `json:"cms_id"`
-	FactorType		string `json:"factor_type"`
-	Passcode   	   *string `json:"passcode,omitempty"`
-	Transaction    *string `json:"transaction,omitempty"`
+	CmsID       string  `json:"cms_id"`
+	FactorType  string  `json:"factor_type"`
+	Passcode    *string `json:"passcode,omitempty"`
+	Transaction *string `json:"transaction,omitempty"`
 }
 
 type PasswordRequest struct {
@@ -114,12 +116,12 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 
 	In the case of the Push factor, a transaction ID is returned to use with the polling endpoint:
 	    POST /authn/verify/transactions/{transaction_id}
- */
+*/
 func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 	var (
-		err				error
-		trackingID		string
-		mfaReq			MFARequest
+		err        error
+		trackingID string
+		mfaReq     MFARequest
 	)
 
 	setHeaders(w)
@@ -132,7 +134,7 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &mfaReq)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -169,10 +171,10 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 */
 func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 	var (
-		err				error
-		trackingID		string
-		mfaReq			MFARequest
-		body 			[]byte
+		err        error
+		trackingID string
+		mfaReq     MFARequest
+		body       []byte
 	)
 
 	setHeaders(w)
@@ -185,13 +187,13 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &mfaReq)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
 
 	if mfaReq.Passcode == nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body missing passcode")
 		return
 	}
@@ -252,7 +254,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &reg)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -319,4 +321,46 @@ func setHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   string `json:"expires_in"`
+}
+
+func token(w http.ResponseWriter, r *http.Request) {
+	clientID, secret, ok := r.BasicAuth()
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	system, err := ssas.GetSystemByClientID(clientID)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	savedSecret, err := system.GetSecret()
+	if err != nil || !ssas.Hash(savedSecret).IsHashOf(secret) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	token, ts, err := server.MintToken(system.GroupID, nil)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// https://tools.ietf.org/html/rfc6749#section-5.1
+	// expires_in is duration in seconds
+	expiresIn := token.Claims.(service.CommonClaims).ExpiresAt - token.Claims.(service.CommonClaims).IssuedAt
+	m := TokenResponse{AccessToken: ts, TokenType: "bearer", ExpiresIn: strconv.FormatInt(expiresIn, 10)}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	render.JSON(w, r, m)
 }
