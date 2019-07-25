@@ -5,56 +5,57 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/CMSgov/bcda-app/ssas/cfg"
-	"github.com/CMSgov/bcda-app/ssas/okta"
 	"io/ioutil"
 	"math/big"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/cfg"
+	"github.com/CMSgov/bcda-app/ssas/okta"
 )
 
 type OktaUser struct {
-	Id			string	`json:"id"`
-	Status		string	`json:"status"`
-	Profile	UserProfile	`json:"profile"`
+	Id      string      `json:"id"`
+	Status  string      `json:"status"`
+	Profile UserProfile `json:"profile"`
 }
 
 type UserProfile struct {
-	LOA			string	`json:"LOA,omitempty"`
+	LOA string `json:"LOA,omitempty"`
 }
 
 type Factor struct {
-	Id			string	`json:"id"`
-	Type		string	`json:"factorType"`
-	Provider	string	`json:"provider"`
-	Status		string	`json:"status"`
+	Id       string `json:"id"`
+	Type     string `json:"factorType"`
+	Provider string `json:"provider"`
+	Status   string `json:"status"`
 }
 
 type FactorRequest struct {
-	Result		string		`json:"factorResult"`
-	ExpiresAt	time.Time 	`json:"expiresAt,omitempty"`
-	Links		OktaLinks	`json:"_links,omitempty"`
+	Result    string    `json:"factorResult"`
+	ExpiresAt time.Time `json:"expiresAt,omitempty"`
+	Links     OktaLinks `json:"_links,omitempty"`
 }
 
 type OktaLinks struct {
-	Cancel		Link	`json:"cancel,omitempty"`
-	Poll		Link	`json:"poll,omitempty"`
+	Cancel Link `json:"cancel,omitempty"`
+	Poll   Link `json:"poll,omitempty"`
 }
 
 type Allow struct {
-	Verbs	[]string	`json:"allow"`
+	Verbs []string `json:"allow"`
 }
 
 type Link struct {
-	Href		string	`json:"href"`
-	Hints		Allow	`json:"hints"`
+	Href  string `json:"href"`
+	Hints Allow  `json:"hints"`
 }
 
-type OktaMFAPlugin struct{
-	Client 	*http.Client
+type OktaMFAPlugin struct {
+	Client *http.Client
 }
 
 var RequestFactorChallengeDuration time.Duration
@@ -75,7 +76,7 @@ func NewOktaMFA(client *http.Client) *OktaMFAPlugin {
 /*
 	VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
 	except Push.
- */
+*/
 func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool) {
 	startTime := time.Now()
 	success = false
@@ -132,7 +133,7 @@ func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 /*
    VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
    rejection, waiting, and timeout.
- */
+*/
 func (o *OktaMFAPlugin) VerifyFactorTransaction(userIdentifier string, factorType string, transactionId string, trackingId string) (string, error) {
 	return "", errors.New("function VerifyFactorTransaction() not yet implemented in OktaMFAPlugin")
 }
@@ -148,7 +149,7 @@ func (o *OktaMFAPlugin) VerifyFactorTransaction(userIdentifier string, factorTyp
 		"SMS"
 		"Call"
 		"Email"
- */
+*/
 func (o *OktaMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType string, trackingId string) (factorReturn *FactorReturn, err error) {
 	startTime := time.Now()
 	requestEvent := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingId}
@@ -206,7 +207,7 @@ func (o *OktaMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType
 
 /*
 	formatFactorReturn generates dummy return values if needed
- */
+*/
 func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorReturn {
 	if factorReturn == nil || factorReturn.Action == "" {
 		factorReturn = &FactorReturn{Action: "request_sent"}
@@ -223,7 +224,7 @@ func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorRe
 		}
 
 		if factorReturn.Transaction.ExpiresAt.Before(time.Now()) {
-			factorReturn.Transaction.ExpiresAt = time.Now().Add(time.Minute*5)
+			factorReturn.Transaction.ExpiresAt = time.Now().Add(time.Minute * 5)
 		}
 	} else {
 		factorReturn.Transaction = nil
@@ -233,7 +234,7 @@ func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorRe
 
 /*
 	wait() provides fixed-time execution for functions that could leak information based on how quickly they return
- */
+*/
 func wait(startTime time.Time, targetDuration time.Duration) {
 	elapsed := time.Since(startTime)
 	time.Sleep(targetDuration - elapsed)
@@ -242,7 +243,7 @@ func wait(startTime time.Time, targetDuration time.Duration) {
 /*
 	getUser searches for Okta users using the provided search string.  Only return results if exactly one active user
 	of LOA=3 is found.
- */
+*/
 func (o *OktaMFAPlugin) getUser(searchString string, trackingId string) (oktaId string, err error) {
 	userEvent := ssas.Event{Op: "FindOktaUser", TrackingID: trackingId}
 	ssas.OperationStarted(userEvent)
@@ -397,16 +398,16 @@ func (o *OktaMFAPlugin) getUserFactor(oktaUserId string, factorType string, trac
 
 		switch {
 		case t == "google totp" && f.Type == "token:software:totp" && f.Provider == "GOOGLE":
-				ssas.OperationSucceeded(factorEvent)
-				return &f, nil
+			ssas.OperationSucceeded(factorEvent)
+			return &f, nil
 		case t == "okta totp" && f.Type == "token:software:totp" && f.Provider == "OKTA":
-				ssas.OperationSucceeded(factorEvent)
-				return &f, nil
+			ssas.OperationSucceeded(factorEvent)
+			return &f, nil
 		case t == string(f.Type):
-				ssas.OperationSucceeded(factorEvent)
-				return &f, nil
+			ssas.OperationSucceeded(factorEvent)
+			return &f, nil
 		default:
-				continue
+			continue
 		}
 	}
 
@@ -529,7 +530,7 @@ func (o *OktaMFAPlugin) postFactorResponse(oktaUserId string, oktaFactor Factor,
 
 /*
 	parsePushTransaction returns the Okta transaction ID for a Push factor request
- */
+*/
 func parsePushTransaction(url string) string {
 	re := regexp.MustCompile(`/transactions/(.*)$`)
 	matches := re.FindSubmatch([]byte(url))
@@ -551,7 +552,7 @@ func generateOktaTransactionId() (string, error) {
 
 func randomCharacters(length int) (string, error) {
 	chars := []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
-	randomBytes := make([]byte,length)
+	randomBytes := make([]byte, length)
 	for i := 0; i < length; i++ {
 		bign, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
 		if err != nil {
