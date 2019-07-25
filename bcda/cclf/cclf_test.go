@@ -531,6 +531,8 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_Time() {
 	_, err = os.Open(filePath)
 	assert.Nil(err)
 
+	// Some files should have been moved to deletion directory; move them back so skipped again will be 3
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
 	timeChange := origTime.Add(-(time.Hour * 25)).Truncate(time.Second)
 	err = os.Chtimes(filePath,timeChange, timeChange)
 	if err != nil {
