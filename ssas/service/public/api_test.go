@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/go-chi/chi"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
+
+	"github.com/CMSgov/bcda-app/ssas"
 
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +21,8 @@ import (
 
 type APITestSuite struct {
 	suite.Suite
-	rr      *httptest.ResponseRecorder
-	db      *gorm.DB
+	rr *httptest.ResponseRecorder
+	db *gorm.DB
 }
 
 func (s *APITestSuite) SetupTest() {
@@ -176,4 +179,45 @@ func addRegDataContext(req *http.Request, groupID string) *http.Request {
 	rd := ssas.AuthRegData{GroupID: groupID}
 	req = req.WithContext(context.WithValue(req.Context(), "rd", rd))
 	return req
+}
+
+func (s *APITestSuite) TestTokenSuccess() {
+	groupID := "T0007"
+	group := ssas.Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	_, pubKey, err := ssas.GenerateTestKeys(2048)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	pemString, err := ssas.ConvertPublicKeyToPEMString(&pubKey)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	creds, err := ssas.RegisterSystem("Token Test", groupID, ssas.DefaultScope, pemString, uuid.NewRandom().String())
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "Token Test", creds.ClientName)
+	assert.NotNil(s.T(), creds.ClientSecret)
+
+	_, _ = MakeServer()
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(token)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	t := TokenResponse{}
+	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
+	assert.NotEmpty(s.T(), t)
+	assert.NotEmpty(s.T(), t.AccessToken)
+
+	err = ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
+}
+
+func TestAPITestSuite(t *testing.T) {
+	suite.Run(t, new(APITestSuite))
 }

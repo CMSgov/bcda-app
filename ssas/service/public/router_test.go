@@ -28,7 +28,7 @@ type PublicRouterTestSuite struct {
 
 func (s *PublicRouterTestSuite) SetupSuite() {
 	os.Setenv("DEBUG", "true")
-	s.publicRouter = Routes()
+	s.publicRouter = routes()
 	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
@@ -59,7 +59,7 @@ func (s *PublicRouterTestSuite) reqPublicRoute(verb string, route string, body i
 
 func (s *PublicRouterTestSuite) TestTokenRoute() {
 	res := s.reqPublicRoute("GET", "/token", nil)
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestRegisterRoute() {
