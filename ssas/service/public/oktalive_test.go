@@ -98,8 +98,6 @@ func (s *OktaLiveTestSuite) TestPinnedKeyNotMatched() {
 }
 
 func (s *OktaLiveTestSuite) TestGetUserSuccess() {
-	fmt.Println("s.userId", s.userId)
-	fmt.Println("s.email", s.email)
 	trackingId := uuid.NewRandom().String()
 
 	foundUserId, err := s.oc.getUser(s.email, trackingId)

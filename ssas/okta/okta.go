@@ -9,11 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/ssas"
 	"net"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/CMSgov/bcda-app/ssas"
 )
 
 var OktaBaseUrl string
@@ -21,8 +22,8 @@ var OktaAuthString string
 var OktaCACertFingerprint []byte
 
 type OktaError struct {
-	ErrorCode 		string	`json:"errorCode"`
-	ErrorSummary	string	`json:"errorSummary"`
+	ErrorCode    string `json:"errorCode"`
+	ErrorSummary string `json:"errorSummary"`
 }
 
 type Dialer func(network, addr string) (net.Conn, error)
@@ -37,7 +38,9 @@ func init() {
 
 // separate from init for testing
 func config() error {
+	OktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
 	oktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
+
 	at := oktaToken
 	if at != "" {
 		at = "[Redacted]"
@@ -62,7 +65,7 @@ func config() error {
 
 /*
 	Client returns an http.Client set with appropriate defaults, including an extra layer of certificate validation
- */
+*/
 func Client() *http.Client {
 	client := http.Client{Timeout: time.Second * 10}
 	client.Transport = &http.Transport{
@@ -73,7 +76,7 @@ func Client() *http.Client {
 
 /*
 	AddRequestHeaders sets common headers needed for all Okta requests
- */
+*/
 func AddRequestHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
@@ -93,14 +96,14 @@ type RoundTripFunc func(req *http.Request) *http.Response
 /*
 	RoundTrip allows control of an http.Client's response for testing purposes.  This code is taken
 	from https://hassansin.github.io/Unit-Testing-http-client-in-Go
- */
+*/
 func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req), nil
 }
 
 /*
 	NewTestClient returns *http.Client with Transport replaced to avoid making real calls
- */
+*/
 func NewTestClient(fn RoundTripFunc) *http.Client {
 	return &http.Client{
 		Transport: RoundTripFunc(fn),

@@ -117,6 +117,14 @@ services:
       - OKTA_MFA_EMAIL=${OKTA_MFA_EMAIL}
       - OKTA_MFA_USER_ID=${OKTA_MFA_USER_ID}
       - OKTA_MFA_SMS_FACTOR_ID=${OKTA_MFA_SMS_FACTOR_ID}
+      - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem
+      - SSAS_PUBLIC_SIGNING_KEY_PATH=../shared_files/ssas/public_test_signing_key.pem
+      - SSAS_ADMIN_PORT=:3003
+      - SSAS_PUBLIC_PORT=:3004
+      - SSAS_HTTP_TO_HTTPS_PORT=:3005
+      - SSAS_READ_TIMEOUT=10
+      - SSAS_WRITE_TIMEOUT=20
+      - SSAS_IDLE_TIMEOUT=120
       - SSAS_HASH_ITERATIONS=130000
       - SSAS_HASH_KEY_LENGTH=64
       - SSAS_HASH_SALT_SIZE=32
