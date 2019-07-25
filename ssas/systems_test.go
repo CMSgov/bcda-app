@@ -165,7 +165,7 @@ OwIDAQAB
 		s.FailNow(err.Error())
 	}
 
-	key, err := system.GetEncryptionKey()
+	key, err := system.GetEncryptionKey("")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), pubKey, key.Body)
 
@@ -204,7 +204,7 @@ func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	}
 
 	// Retrieve and verify
-	storedKey, err := system.GetEncryptionKey()
+	storedKey, err := system.GetEncryptionKey("")
 	assert.Nil(err)
 	assert.NotNil(storedKey)
 	assert.Equal(storedKey.Body, string(publicKeyBytes))
@@ -284,17 +284,17 @@ func (s *SystemsTestSuite) TestSystemPublicKeyEmpty() {
 
 	err = system.SavePublicKey(strings.NewReader(""))
 	assert.NotNil(err)
-	k, err := system.GetEncryptionKey()
+	k, err := system.GetEncryptionKey("")
 	assert.NotNil(err)
 	assert.Empty(k, "Empty string does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(emptyPEM))
 	assert.NotNil(err)
-	k, err = system.GetEncryptionKey()
+	k, err = system.GetEncryptionKey("")
 	assert.NotNil(err)
 	assert.Empty(k, "Empty PEM key does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(validPEM))
 	assert.Nil(err)
-	k, err = system.GetEncryptionKey()
+	k, err = system.GetEncryptionKey("")
 	assert.Nil(err)
 	assert.NotEmpty(k, "Valid PEM key yields empty public key!")
 

@@ -148,16 +148,21 @@ func (system *System) DeactivateSecrets() error {
 /*
 	GetEncryptionKey retrieves the key associated with the current system.
 */
-func (system *System) GetEncryptionKey() (EncryptionKey, error) {
+func (system *System) GetEncryptionKey(trackingID string) (EncryptionKey, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
+
+	getKeyEvent := Event{Op: "GetEncryptionKey", TrackingID: trackingID, ClientID: system.ClientID}
+	OperationStarted(getKeyEvent)
 
 	var encryptionKey EncryptionKey
 	err := db.Where("system_id = ?", system.ID).Find(&encryptionKey).Error
 	if err != nil {
+		OperationFailed(getKeyEvent)
 		return encryptionKey, fmt.Errorf("cannot find key for clientID %s: %s", system.ClientID, err.Error())
 	}
 
+	OperationSucceeded(getKeyEvent)
 	return encryptionKey, nil
 }
 

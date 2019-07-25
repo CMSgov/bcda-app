@@ -156,7 +156,9 @@ func getPublicKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := system.GetEncryptionKey()
+	trackingID := uuid.NewRandom().String()
+	ssas.OperationCalled(ssas.Event{Op: "GetEncryptionKey", TrackingID: trackingID, Help: "calling from admin.getPublicKey()"})
+	key, err := system.GetEncryptionKey(trackingID)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
