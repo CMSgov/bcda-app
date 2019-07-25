@@ -18,7 +18,7 @@ var server *service.Server
 
 func init() {
 	infoMap = make(map[string][]string)
-	infoMap["public"] = []string{"token", "register"}
+	infoMap["public"] = []string{"token", "register", "authn/request", "authn/verify"}
 	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
 }
 
