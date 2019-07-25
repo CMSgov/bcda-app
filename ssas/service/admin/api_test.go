@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -77,7 +78,54 @@ func (s *APITestSuite) TestCreateGroup() {
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	g := ssas.Group{}
 	s.db.Where("group_id = ?", "A12345").Find(&g)
-	_ = ssas.CleanDatabase(g)
+	err := ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+}
+
+func (s *APITestSuite) TestUpdateGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	url := fmt.Sprintf("/group/%v", g.ID)
+	req := httptest.NewRequest("PUT", url, strings.NewReader(SampleGroup))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", fmt.Sprint(g.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(updateGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	err = ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+}
+
+func (s *APITestSuite) TestDeleteGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	url := fmt.Sprintf("/group/%v", g.ID)
+	req := httptest.NewRequest("DELETE", url, nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", fmt.Sprint(g.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(deleteGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	deleted := s.db.Find(&ssas.Group{}, g.ID).RecordNotFound()
+	assert.True(s.T(), deleted)
+	err = ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+
 }
 
 func (s *APITestSuite) TestCreateSystem() {
@@ -159,6 +207,27 @@ func (s *APITestSuite) TestResetCredentials_InvalidSystemID() {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
+}
+
+func (s *APITestSuite) TestDeactivateSystemCredentials() {
+	group := ssas.Group{GroupID: "test-deactivate-creds-group"}
+	s.db.Create(&group)
+	system := ssas.System{GroupID: group.GroupID, ClientID: "test-deactivate-creds-client"}
+	s.db.Create(&system)
+	secret := ssas.Secret{Hash: "test-deactivate-creds-hash", SystemID: system.ID}
+	s.db.Create(&secret)
+
+	systemID := strconv.FormatUint(uint64(system.ID), 10)
+	req := httptest.NewRequest("DELETE", "/system/"+systemID+"/credentials", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(deactivateSystemCredentials)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+
+	_ = ssas.CleanDatabase(group)
 }
 
 func TestAPITestSuite(t *testing.T) {
