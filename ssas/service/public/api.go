@@ -38,6 +38,76 @@ type RegistrationRequest struct {
 	JSONWebKeys JWKS   `json:"jwks"`
 }
 
+type MFARequest struct {
+	CmsID       string `json:"cms_id"`
+	FactorType  string `json:"factor_type"`
+	Passcode    string `json:"passcode,omitempty"`
+	Transaction string `json:"transaction,omitempty"`
+}
+
+/*
+	RequestMultifactorChallenge is mounted at POST /authn/request and sends a multi-factor authentication request
+	using the specified factor.
+
+	Valid factor types include:
+		"Google TOTP" (Google Authenticator)
+		"Okta TOTP"   (Okta Verify app time-based token)
+		"Push"        (Okta Verify app push)
+		"SMS"
+		"Call"
+		"Email"
+
+	In the case of the Push factor, a transaction ID is returned to use with the polling endpoint:
+	    POST /authn/verify/transactions/{transaction_id}
+*/
+func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
+	var (
+		err        error
+		trackingID string
+		mfaReq     MFARequest
+	)
+
+	setHeaders(w)
+
+	bodyStr, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	err = json.Unmarshal(bodyStr, &mfaReq)
+	if err != nil {
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	trackingID = uuid.NewRandom().String()
+	event := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingID, Help: "calling from public.RequestMultifactorChallenge()"}
+	ssas.OperationCalled(event)
+	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, trackingID)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", err.Error())
+		return
+	}
+
+	body, err := json.Marshal(factorResponse)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure generating JSON: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
 /*
 	RegisterSystem is mounted at POST /auth/register and allows for self-registration.  It requires that a
 	registration token containing one or more group ids be presented and parsed by middleware, with the
@@ -52,9 +122,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 		trackingID     string
 	)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
+	setHeaders(w)
 
 	if rd, err = readRegData(r); err != nil || rd.GroupID == "" {
 		service.GetLogEntry(r).Println("missing or invalid GroupID")
@@ -96,7 +164,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	// Log the source of the call for this operation.  Remaining logging will be in ssas.RegisterSystem() below.
 	trackingID = uuid.NewRandom().String()
-	event := ssas.Event{Op: "RegisterClient", TrackingID: trackingID}
+	event := ssas.Event{Op: "RegisterClient", TrackingID: trackingID, Help: "calling from public.RegisterSystem()"}
 	ssas.OperationCalled(event)
 	credentials, err := ssas.RegisterSystem(reg.ClientName, rd.GroupID, reg.Scope, publicKeyPEM, trackingID)
 	if err != nil {
@@ -111,6 +179,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
 		ssas.OperationFailed(event)
 		return
 	}
@@ -132,6 +201,12 @@ func jsonError(w http.ResponseWriter, error string, description string) {
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+func setHeaders(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
 }
 
 type TokenResponse struct {

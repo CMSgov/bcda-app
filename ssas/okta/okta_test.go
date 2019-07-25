@@ -5,12 +5,13 @@
 package okta
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type OTestSuite struct {
@@ -20,9 +21,11 @@ type OTestSuite struct {
 func (s *OTestSuite) TestConfig() {
 	originalOktaBaseUrl := os.Getenv("OKTA_CLIENT_ORGURL")
 	originalOktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
+	originalOktaCACertFingerprint := os.Getenv("OKTA_CA_CERT_FINGERPRINT")
 
 	os.Unsetenv("OKTA_CLIENT_ORGURL")
 	os.Unsetenv("OKTA_CLIENT_TOKEN")
+	os.Unsetenv("OKTA_CA_CERT_FINGERPRINT")
 
 	err := config()
 	require.NotNil(s.T(), err)
@@ -35,6 +38,7 @@ func (s *OTestSuite) TestConfig() {
 	assert.Regexp(s.T(), regexp.MustCompile("(OKTA_[A-Z_]*=, ){2}(OKTA_CLIENT_TOKEN=\\[Redacted\\])"), err)
 
 	os.Setenv("OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
+	os.Setenv("OKTA_CA_CERT_FINGERPRINT", originalOktaCACertFingerprint)
 	os.Setenv("OKTA_CLIENT_TOKEN", originalOktaToken)
 
 	err = config()
