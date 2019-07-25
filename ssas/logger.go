@@ -12,6 +12,7 @@ var Logger *logrus.Logger
 
 // Event contains the superset of fields that may be included in Logger statements
 type Event struct {
+	UserID	   string
 	ClientID   string
 	Elapsed    time.Duration
 	Help       string
@@ -43,6 +44,9 @@ func init() {
 func mergeNonEmpty(data Event) *logrus.Entry {
 	var entry = logrus.NewEntry(Logger)
 
+	if data.UserID != "" {
+		entry = entry.WithField("userID", data.UserID)
+	}
 	if data.ClientID != "" {
 		entry = entry.WithField("clientID", data.ClientID)
 	}
