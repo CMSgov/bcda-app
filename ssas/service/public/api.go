@@ -36,6 +36,10 @@ type RegistrationRequest struct {
 	JSONWebKeys JWKS   `json:"jwks"`
 }
 
+type ResetRequest struct {
+	ClientID	string `json:"client_id"`
+}
+
 type MFARequest struct {
 	CmsID			string `json:"cms_id"`
 	FactorType		string `json:"factor_type"`
@@ -213,6 +217,61 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 
 	_, err = w.Write(body)
 	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
+/*
+	ResetSecret is mounted at POST /reset and allows the authenticated manager of a system to rotate their secret.
+*/
+func ResetSecret(w http.ResponseWriter, r *http.Request) {
+	var (
+		rd 			ssas.AuthRegData
+		err			error
+		trackingID	string
+		req			ResetRequest
+		sys			ssas.System
+		bodyStr		[]byte
+		credentials	ssas.Credentials
+		event		ssas.Event
+	)
+	setHeaders(w)
+
+	if rd, err = readRegData(r); err != nil || rd.GroupID == "" {
+		service.GetLogEntry(r).Println("missing or invalid GroupID")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if bodyStr, err = ioutil.ReadAll(r.Body); err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	if err = json.Unmarshal(bodyStr, &req); err != nil {
+		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	if sys, err = ssas.GetSystemByClientID(req.ClientID); err != nil {
+		jsonError(w, "invalid_client_metadata", "Client not found")
+		return
+	}
+
+	event = ssas.Event{Op: "ResetSecret", TrackingID: uuid.NewRandom().String(), Help: "calling from public.ResetSecret()"}
+	ssas.OperationCalled(event)
+	if credentials, err = sys.ResetSecret(trackingID); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	body := []byte(fmt.Sprintf(`{"client_id": "%s","client_secret":"%s","client_secret_expires_at":"%d","client_name":"%s"}`,
+		credentials.ClientID, credentials.ClientSecret, credentials.ExpiresAt.Unix(), credentials.ClientName))
+	if _, err = w.Write(body); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		event.Help = "failure writing response body: " + err.Error()
 		ssas.OperationFailed(event)

@@ -15,7 +15,7 @@ var InfoMap map[string][]string
 
 func init() {
 	InfoMap = make(map[string][]string)
-	InfoMap["public"] = []string{"token", "register", "authn", "authn/request", "authn/verify"}
+	InfoMap["public"] = []string{"token", "register", "reset", "authn", "authn/request", "authn/verify"}
 }
 
 func Routes() *chi.Mux {
@@ -26,11 +26,12 @@ func Routes() *chi.Mux {
 	router.Post("/authn/request", RequestMultifactorChallenge)
 	router.Post("/authn/verify", VerifyMultifactorResponse)
 	router.With(fakeContext).Post("/register", RegisterSystem)
+	router.With(fakeContext).Post("/reset", ResetSecret)
 
 	return router
 }
 
-func fakeContext(h http.Handler) http.Handler {
+func fakeContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var	rd  ssas.AuthRegData
 		if rd.GroupID = r.Header.Get("x-fake-token"); rd.GroupID == "" {
@@ -38,6 +39,6 @@ func fakeContext(h http.Handler) http.Handler {
 		}
 		ctx := context.WithValue(r.Context(), "rd", rd)
 		service.LogEntrySetField(r,"rd", rd)
-		RegisterSystem(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
