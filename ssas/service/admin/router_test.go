@@ -21,8 +21,24 @@ func (s *RouterTestSuite) SetupTest() {
 	s.router = Routes()
 }
 
-func (s *RouterTestSuite) TestPostGroupRoute() {
+func (s *RouterTestSuite) TestPostGroup() {
 	req := httptest.NewRequest("POST", "/group", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestPutGroup() {
+	req := httptest.NewRequest("PUT", "/group/1", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestDeleteGroup() {
+	req := httptest.NewRequest("DELETE", "/group/101", nil)
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
