@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/go-chi/chi"
@@ -113,7 +114,8 @@ func getPublicKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{ "client_id": "%s", "public_key": "%s" }`, system.ClientID, key.Body)
+	keyStr := strings.Replace(key.Body, "\n", "\\n", -1)
+	fmt.Fprintf(w, `{ "client_id": "%s", "public_key": "%s" }`, system.ClientID, keyStr)
 }
 
 func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {

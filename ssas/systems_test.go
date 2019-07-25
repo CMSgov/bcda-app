@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -471,22 +470,7 @@ func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 }
 
 func generatePublicKey(bits int) (string, error) {
-	keyPair, err := rsa.GenerateKey(rand.Reader, bits)
-	if err != nil {
-		return "", fmt.Errorf("unable to generate keyPair: %s", err.Error())
-	}
-
-	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
-	if err != nil {
-		return "", fmt.Errorf("unable to marshal public key: %s", err.Error())
-	}
-
-	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: publicKeyPKIX,
-	})
-
-	return string(publicKeyBytes), nil
+	return GeneratePublicKey(bits)
 }
 
 func (s *SystemsTestSuite) TestSaveSecret() {
