@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -77,7 +78,54 @@ func (s *APITestSuite) TestCreateGroup() {
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	g := ssas.Group{}
 	s.db.Where("group_id = ?", "A12345").Find(&g)
-	_ = ssas.CleanDatabase(g)
+	err := ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+}
+
+func (s *APITestSuite) TestUpdateGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	url := fmt.Sprintf("/group/%v", g.ID)
+	req := httptest.NewRequest("PUT", url, strings.NewReader(SampleGroup))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", fmt.Sprint(g.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(updateGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	err = ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+}
+
+func (s *APITestSuite) TestDeleteGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	url := fmt.Sprintf("/group/%v", g.ID)
+	req := httptest.NewRequest("DELETE", url, nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", fmt.Sprint(g.ID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(deleteGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	deleted := s.db.Find(&ssas.Group{}, g.ID).RecordNotFound()
+	assert.True(s.T(), deleted)
+	err = ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+
 }
 
 func (s *APITestSuite) TestCreateSystem() {
