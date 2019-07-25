@@ -72,10 +72,35 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	assert.Nil(s.T(), err)
 	g, err := CreateGroup(gd)
 	assert.Nil(s.T(), err)
-	_ = CleanDatabase(g)
+	err = CleanDatabase(g)
+	assert.Nil(s.T(), err)
 	gd.ID = ""
 	_, err = CreateGroup(gd)
 	assert.EqualError(s.T(), err, "group_id cannot be blank")
+}
+
+func (s *GroupsTestSuite) TestUpdateGroup() {
+	groupBytes := []byte(SampleGroup)
+	gd := GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g := Group{}
+	g.Data = gd
+	err = s.db.Save(&g).Error
+	assert.Nil(s.T(), err)
+
+	gd.Scopes = []string{"aScope", "anotherScope"}
+	gd.ID = "aNewGroupID"
+	gd.Name = "aNewGroupName"
+	newG, err := UpdateGroup(fmt.Sprint(g.ID), gd)
+	assert.Nil(s.T(), err)
+
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), []string{"aScope", "anotherScope"}, newG.Data.Scopes)
+	assert.NotEqual(s.T(), "aNewGroupID", newG.Data.ID)
+	assert.NotEqual(s.T(), "aNewGroupName", newG.Data.Name)
+	err = CleanDatabase(g)
+	assert.Nil(s.T(), err)
 }
 
 func (s *GroupsTestSuite) TestDeleteGroup() {
@@ -103,6 +128,9 @@ func (s *GroupsTestSuite) TestDeleteGroup() {
 
 	err = DeleteGroup(fmt.Sprint(group.ID))
 	assert.Nil(s.T(), err)
+	err = CleanDatabase(group)
+	assert.Nil(s.T(), err)
+
 }
 
 func TestGroupsTestSuite(t *testing.T) {

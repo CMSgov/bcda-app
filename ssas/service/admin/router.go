@@ -15,6 +15,7 @@ func init() {
 func Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/group", createGroup)
+	r.Put("/group/{id}", updateGroup)
 	r.Delete("/group/{id}", deleteGroup)
 	r.Post("/system", createSystem)
 	r.Put("/system/{systemID}/credentials", resetCredentials)
