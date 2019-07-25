@@ -1,12 +1,10 @@
 package ssas
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 
 	"github.com/jinzhu/gorm"
-	"github.com/jinzhu/gorm/dialects/postgres"
 )
 
 /*
@@ -26,8 +24,8 @@ func InitializeGroupModels() *gorm.DB {
 
 type Group struct {
 	gorm.Model
-	GroupID string         `gorm:"unique;not null" json:"group_id"`
-	Data    postgres.Jsonb `json:"data"`
+	GroupID string    `gorm:"unique;not null" json:"group_id"`
+	Data    GroupData `gorm:"type:jsonb" json:"data"`
 }
 
 func CreateGroup(gd GroupData) (Group, error) {
@@ -41,21 +39,14 @@ func CreateGroup(gd GroupData) (Group, error) {
 		return Group{}, err
 	}
 
-	gdBytes, err := json.Marshal(gd)
-	if err != nil {
-		event.Help = err.Error()
-		OperationFailed(event)
-		return Group{}, err
-	}
-
 	g := Group{
 		GroupID: gd.ID,
-		Data:    postgres.Jsonb{RawMessage: gdBytes},
+		Data:    gd,
 	}
 
 	db := GetGORMDbConnection()
 	defer Close(db)
-	err = db.Save(&g).Error
+	err := db.Save(&g).Error
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
@@ -64,6 +55,99 @@ func CreateGroup(gd GroupData) (Group, error) {
 
 	OperationSucceeded(event)
 	return g, nil
+}
+
+func UpdateGroup(id string, gd GroupData) (Group, error) {
+	event := Event{Op: "UpdateGroup", TrackingID: id}
+	OperationStarted(event)
+
+	g := Group{}
+	db := GetGORMDbConnection()
+	defer Close(db)
+	if db.Where("id = ?", id).Find(&g).RecordNotFound() {
+		err := fmt.Errorf("record not found for id=%s", id)
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
+	gd.ID = g.Data.ID
+	gd.Name = g.Data.Name
+
+	g.Data = gd
+	err := db.Save(&g).Error
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return Group{}, err
+	}
+
+	OperationSucceeded(event)
+	return g, nil
+
+}
+
+func DeleteGroup(id string) error {
+	event := Event{Op: "DeleteGroup", TrackingID: id}
+	OperationStarted(event)
+
+	db := GetGORMDbConnection()
+	defer Close(db)
+	g := Group{}
+	err := db.Where("id = ?", id).First(&g).Error
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return err
+	}
+
+	err = cascadeDeleteGroup(g)
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return err
+	}
+
+	OperationSucceeded(event)
+	return nil
+}
+
+func cascadeDeleteGroup(group Group) error {
+	var (
+		system        System
+		encryptionKey EncryptionKey
+		secret        Secret
+		systemIds     []int
+		db            = GetGORMDbConnection()
+	)
+	defer Close(db)
+
+	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
+	if err != nil {
+		return fmt.Errorf("unable to find associated systems: %s", err.Error())
+	}
+
+	err = db.Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete encryption keys: %s", err.Error())
+	}
+
+	err = db.Where("system_id IN (?)", systemIds).Delete(&secret).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete secrets: %s", err.Error())
+	}
+
+	err = db.Where("id IN (?)", systemIds).Delete(&system).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete systems: %s", err.Error())
+	}
+
+	err = db.Delete(&group).Error
+	if err != nil {
+		return fmt.Errorf("unable to delete group: %s", err.Error())
+	}
+
+	return nil
 }
 
 type GroupData struct {
