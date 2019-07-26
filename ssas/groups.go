@@ -1,6 +1,9 @@
 package ssas
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -189,6 +192,23 @@ type GroupData struct {
 	Scopes    []string   `json:"scopes"`
 	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
 	Resources []Resource `json:"resources"`
+}
+
+// Make the GroupData struct implement the driver.Valuer interface. This method
+// simply returns the JSON-encoded representation of the struct.
+func (gd GroupData) Value() (driver.Value, error) {
+	return json.Marshal(gd)
+}
+
+// Make the GroupData struct implement the sql.Scanner interface. This method
+// simply decodes a JSON-encoded value into the struct fields.
+func (gd *GroupData) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &gd)
 }
 
 type Resource struct {
