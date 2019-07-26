@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
+	"github.com/go-chi/render"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/ssas"
@@ -36,16 +38,20 @@ type RegistrationRequest struct {
 	JSONWebKeys JWKS   `json:"jwks"`
 }
 
+type ResetRequest struct {
+	ClientID string `json:"client_id"`
+}
+
 type MFARequest struct {
-	CmsID			string `json:"cms_id"`
-	FactorType		string `json:"factor_type"`
-	Passcode   	   *string `json:"passcode,omitempty"`
-	Transaction    *string `json:"transaction,omitempty"`
+	CmsID       string  `json:"cms_id"`
+	FactorType  string  `json:"factor_type"`
+	Passcode    *string `json:"passcode,omitempty"`
+	Transaction *string `json:"transaction,omitempty"`
 }
 
 type PasswordRequest struct {
-	CmsID			string `json:"cms_id"`
-	Password 		string `json:"password"`
+	CmsID    string `json:"cms_id"`
+	Password string `json:"password"`
 }
 
 /*
@@ -54,9 +60,9 @@ type PasswordRequest struct {
 */
 func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 	var (
-		err				error
-		trackingID		string
-		passReq			PasswordRequest
+		err        error
+		trackingID string
+		passReq    PasswordRequest
 	)
 
 	setHeaders(w)
@@ -69,7 +75,7 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &passReq)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", "<redacted>")
+		service.LogEntrySetField(r, "bodyStr", "<redacted>")
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -114,12 +120,12 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 
 	In the case of the Push factor, a transaction ID is returned to use with the polling endpoint:
 	    POST /authn/verify/transactions/{transaction_id}
- */
+*/
 func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 	var (
-		err				error
-		trackingID		string
-		mfaReq			MFARequest
+		err        error
+		trackingID string
+		mfaReq     MFARequest
 	)
 
 	setHeaders(w)
@@ -132,7 +138,7 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &mfaReq)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -169,10 +175,10 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 */
 func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 	var (
-		err				error
-		trackingID		string
-		mfaReq			MFARequest
-		body 			[]byte
+		err        error
+		trackingID string
+		mfaReq     MFARequest
+		body       []byte
 	)
 
 	setHeaders(w)
@@ -185,13 +191,13 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &mfaReq)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
 
 	if mfaReq.Passcode == nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body missing passcode")
 		return
 	}
@@ -213,6 +219,61 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 
 	_, err = w.Write(body)
 	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
+/*
+	ResetSecret is mounted at POST /reset and allows the authenticated manager of a system to rotate their secret.
+*/
+func ResetSecret(w http.ResponseWriter, r *http.Request) {
+	var (
+		rd          ssas.AuthRegData
+		err         error
+		trackingID  string
+		req         ResetRequest
+		sys         ssas.System
+		bodyStr     []byte
+		credentials ssas.Credentials
+		event       ssas.Event
+	)
+	setHeaders(w)
+
+	if rd, err = readRegData(r); err != nil || rd.GroupID == "" {
+		service.GetLogEntry(r).Println("missing or invalid GroupID")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	if bodyStr, err = ioutil.ReadAll(r.Body); err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	if err = json.Unmarshal(bodyStr, &req); err != nil {
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	if sys, err = ssas.GetSystemByClientID(req.ClientID); err != nil {
+		jsonError(w, "invalid_client_metadata", "Client not found")
+		return
+	}
+
+	event = ssas.Event{Op: "ResetSecret", TrackingID: uuid.NewRandom().String(), Help: "calling from public.ResetSecret()"}
+	ssas.OperationCalled(event)
+	if credentials, err = sys.ResetSecret(trackingID); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	body := []byte(fmt.Sprintf(`{"client_id": "%s","client_secret":"%s","client_secret_expires_at":"%d","client_name":"%s"}`,
+		credentials.ClientID, credentials.ClientSecret, credentials.ExpiresAt.Unix(), credentials.ClientName))
+	if _, err = w.Write(body); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		event.Help = "failure writing response body: " + err.Error()
 		ssas.OperationFailed(event)
@@ -252,7 +313,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &reg)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -319,4 +380,46 @@ func setHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   string `json:"expires_in"`
+}
+
+func token(w http.ResponseWriter, r *http.Request) {
+	clientID, secret, ok := r.BasicAuth()
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	system, err := ssas.GetSystemByClientID(clientID)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	savedSecret, err := system.GetSecret()
+	if err != nil || !ssas.Hash(savedSecret).IsHashOf(secret) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	token, ts, err := server.MintToken(system.GroupID, nil)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// https://tools.ietf.org/html/rfc6749#section-5.1
+	// expires_in is duration in seconds
+	expiresIn := token.Claims.(service.CommonClaims).ExpiresAt - token.Claims.(service.CommonClaims).IssuedAt
+	m := TokenResponse{AccessToken: ts, TokenType: "bearer", ExpiresIn: strconv.FormatInt(expiresIn, 10)}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	render.JSON(w, r, m)
 }

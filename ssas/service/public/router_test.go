@@ -1,6 +1,8 @@
 package public
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -21,11 +23,12 @@ type PublicRouterTestSuite struct {
 	rr           *httptest.ResponseRecorder
 	db           *gorm.DB
 	group        ssas.Group
+	system		 ssas.System
 }
 
 func (s *PublicRouterTestSuite) SetupSuite() {
 	os.Setenv("DEBUG", "true")
-	s.publicRouter = Routes()
+	s.publicRouter = routes()
 	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
@@ -33,7 +36,11 @@ func (s *PublicRouterTestSuite) SetupSuite() {
 	s.group.GroupID = "T1234"
 	err := s.db.Create(&s.group).Error
 	if err != nil {
-		s.FailNow(err.Error())
+		s.FailNow("unable to create group: " + err.Error())
+	}
+	s.system = ssas.System{GroupID: s.group.GroupID, ClientID: "abcd1234"}
+	if err := s.db.Create(&s.system).Error; err != nil {
+		s.FailNow("unable to create system: " + err.Error())
 	}
 }
 
@@ -52,13 +59,26 @@ func (s *PublicRouterTestSuite) reqPublicRoute(verb string, route string, body i
 
 func (s *PublicRouterTestSuite) TestTokenRoute() {
 	res := s.reqPublicRoute("GET", "/token", nil)
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestRegisterRoute() {
 	rb := strings.NewReader(`{"client_id":"evil_twin","client_name":"my evil twin","scope":"bcda-api","jwks":{"keys":[{"e":"AAEAAQ","n":"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw","kty":"RSA"}]}}`)
 	res := s.reqPublicRoute("POST", "/register", rb)
 	assert.Equal(s.T(), http.StatusCreated, res.StatusCode)
+}
+
+func (s *PublicRouterTestSuite) TestResetRoute() {
+	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`,s.system.ClientID))
+	res := s.reqPublicRoute("POST", "/reset", rb)
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(res.Body)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	body := buf.String()
+	assert.Contains(s.T(), body, "client_secret")
 }
 
 func (s *PublicRouterTestSuite) TestAuthnRoute() {

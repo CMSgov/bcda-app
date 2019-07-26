@@ -3,6 +3,7 @@ package public
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi"
 
@@ -10,34 +11,47 @@ import (
 	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
-var Version = "latest"
-var InfoMap map[string][]string
+var version = "latest"
+var infoMap map[string][]string
+var publicSigningKeyPath string
+var server *service.Server
 
 func init() {
-	InfoMap = make(map[string][]string)
-	InfoMap["public"] = []string{"token", "register", "authn", "authn/request", "authn/verify"}
+	infoMap = make(map[string][]string)
+	infoMap["public"] = []string{"token", "register", "authn/request", "authn/verify"}
+	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
 }
 
-func Routes() *chi.Mux {
+func MakeServer() (*service.Server, error) {
+	server = service.NewServer("public", ":3003", version, infoMap, routes(), true)
+	// the signing key is separate from the [future] cert / private key used for https or tls or whatever
+	if err := server.SetSigningKeys(publicSigningKeyPath); err != nil {
+		return &service.Server{}, err
+	}
+	return server, nil
+}
+
+func routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(service.NewAPILogger(), service.ConnectionClose)
-	router.Get("/token", service.NYI)
+	router.Get("/token", token)
 	router.Post("/authn", VerifyPassword)
 	router.Post("/authn/request", RequestMultifactorChallenge)
 	router.Post("/authn/verify", VerifyMultifactorResponse)
 	router.With(fakeContext).Post("/register", RegisterSystem)
+	router.With(fakeContext).Post("/reset", ResetSecret)
 
 	return router
 }
 
-func fakeContext(h http.Handler) http.Handler {
+func fakeContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var	rd  ssas.AuthRegData
+		var rd ssas.AuthRegData
 		if rd.GroupID = r.Header.Get("x-fake-token"); rd.GroupID == "" {
 			service.GetLogEntry(r).Println("missing header x-fake-token; request will fail")
 		}
 		ctx := context.WithValue(r.Context(), "rd", rd)
-		service.LogEntrySetField(r,"rd", rd)
-		RegisterSystem(w, r.WithContext(ctx))
+		service.LogEntrySetField(r, "rd", rd)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

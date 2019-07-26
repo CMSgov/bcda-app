@@ -456,13 +456,16 @@ func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepa
 			log.Errorf("Unknown file found: %s", metadata)
 			*skipped = *skipped + 1
 
-			newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), info.Name())
-			err = os.Rename(metadata.filePath, newpath)
-			if err != nil {
-				fmt.Printf("Error moving unknown file %s to pending deletion dir.\n", metadata)
-				err = fmt.Errorf("error moving unknown file %s to pending deletion dir", metadata)
-				log.Error(err)
-				return err
+			deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+			if metadata.deliveryDate.Add(deleteThreshold).Before(time.Now()) {
+				newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), info.Name())
+				err = os.Rename(metadata.filePath, newpath)
+				if err != nil {
+					fmt.Printf("Error moving unknown file %s to pending deletion dir.\n", metadata)
+					err = fmt.Errorf("error moving unknown file %s to pending deletion dir", metadata)
+					log.Error(err)
+					return err
+				}
 			}
 			return nil
 		}

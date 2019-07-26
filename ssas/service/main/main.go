@@ -18,18 +18,16 @@ var startMeUp bool
 var migrateAndStart bool
 var unsafeMode bool
 var adminSigningKeyPath string
-var publicSigningKeyPath string
 
 func init() {
 	const usageStart = "start the service"
 	flag.BoolVar(&startMeUp, "start", false, usageStart)
-	flag.BoolVar(&startMeUp, "s", false, usageStart + " (shorthand)")
+	flag.BoolVar(&startMeUp, "s", false, usageStart+" (shorthand)")
 	const usageMigrate = "migrate the db and start the service"
 	flag.BoolVar(&migrateAndStart, "migrate", false, usageMigrate)
-	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate + " (shorthand)")
+	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate+" (shorthand)")
 	unsafeMode = os.Getenv("HTTP_ONLY") == "true"
 	adminSigningKeyPath = os.Getenv("SSAS_ADMIN_SIGNING_KEY_PATH")
-	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
 }
 
 func main() {
@@ -50,10 +48,9 @@ func main() {
 func start() {
 	ssas.Logger.Infof("%s", "Starting ssas...")
 
-	ps := service.NewServer("public", ":3003", public.Version, public.InfoMap, public.Routes(), unsafeMode)
-	// the signing key is separate from the [future] cert / private key used for https or tls or whatever
-	if err := ps.SetSigningKeys(publicSigningKeyPath); err != nil {
-		ssas.Logger.Fatalf("unable to get signing key for public server because %s; can't start", err.Error())
+	ps, err := public.MakeServer()
+	if err != nil {
+		ssas.Logger.Fatalf("unable to start public server because %s", err.Error())
 	}
 
 	ps.LogRoutes()

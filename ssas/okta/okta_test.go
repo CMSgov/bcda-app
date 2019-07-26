@@ -2,16 +2,16 @@
 
 // To enable this test suite:
 // Run "go test -tags=okta -v" from the ssas/okta directory
-
 package okta
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type OTestSuite struct {
@@ -39,6 +39,7 @@ func (s *OTestSuite) TestConfig() {
 
 	os.Setenv("OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
 	os.Setenv("OKTA_CA_CERT_FINGERPRINT", originalOktaCACertFingerprint)
+	os.Setenv("OKTA_CLIENT_TOKEN", originalOktaToken)
 
 	err = config()
 	assert.Nil(s.T(), err)
