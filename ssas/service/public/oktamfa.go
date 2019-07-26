@@ -19,7 +19,7 @@ import (
 
 type OktaUser struct {
 	Id      string      `json:"id"`
-	Status  string      `json:"status"`
+	Status  string      `json:"status,omitempty"`
 	Profile UserProfile `json:"profile"`
 }
 
@@ -34,8 +34,13 @@ type Factor struct {
 	Status   string `json:"status"`
 }
 
+type Embedded struct {
+	User	OktaUser `json:"user"`
+}
+
 type PasswordResponse struct {
-	Status string `json:"status"`
+	Status 		string 		`json:"status"`
+	Embedded	Embedded 	`json:"_embedded,omitempty"`
 }
 
 type FactorResponse struct {
@@ -80,7 +85,7 @@ func NewOktaMFA(client *http.Client) *OktaMFAPlugin {
 /*
 	VerifyPassword tests a username/password for validity.  This function should be used before calling MFA functions.
 */
-func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, err error) {
+func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, oktaId string, err error) {
 	passwordEvent := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingId}
 	ssas.OperationStarted(passwordEvent)
 
@@ -125,6 +130,9 @@ func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 		return
 	}
 
+	// Will be "" in some cases
+	oktaId = passwordResponse.Embedded.User.Id
+
 	passwordReturn = &PasswordReturn{Success: success, Message: message}
 	passwordEvent.Help = message
 	ssas.OperationSucceeded(passwordEvent)
@@ -135,7 +143,7 @@ func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 	VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
 	except Push.
 */
-func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool) {
+func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool, oktaUserID string) {
 	startTime := time.Now()
 	success = false
 	requestEvent := ssas.Event{Op: "VerifyOktaFactorChallenge", TrackingID: trackingId}
@@ -331,7 +339,7 @@ func (o *OktaMFAPlugin) postPassword(oktaUserId string, password string, trackin
 	if resp.StatusCode == 401 {
 		requestEvent.Help = "authentication failure: " + string(body)
 		ssas.OperationFailed(requestEvent)
-		p := PasswordResponse{"AUTHENTICATION_FAILED"}
+		p := PasswordResponse{Status: "AUTHENTICATION_FAILED"}
 		return &p, nil
 	}
 

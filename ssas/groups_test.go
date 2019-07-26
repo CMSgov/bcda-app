@@ -72,6 +72,7 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	assert.Nil(s.T(), err)
 	g, err := CreateGroup(gd)
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), g)
 	err = CleanDatabase(g)
 	assert.Nil(s.T(), err)
 	gd.ID = ""
@@ -131,6 +132,44 @@ func (s *GroupsTestSuite) TestDeleteGroup() {
 	err = CleanDatabase(group)
 	assert.Nil(s.T(), err)
 
+}
+
+func (s *GroupsTestSuite) TestGetAuthorizedGroupsForOktaID() {
+	group1bytes := []byte(`{"id":"T0001","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
+	group2bytes := []byte(`{"id":"T0002","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
+	group3bytes := []byte(`{"id":"T0003","users":["qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
+
+	g1 := GroupData{}
+	err := json.Unmarshal(group1bytes, &g1)
+	assert.Nil(s.T(), err)
+	group1, err := CreateGroup(g1)
+	fmt.Println("Group 1 GroupID: ", group1.GroupID)
+
+	g2 := GroupData{}
+	err = json.Unmarshal(group2bytes, &g2)
+	assert.Nil(s.T(), err)
+	group2, err := CreateGroup(g2)
+	fmt.Println("Group 2 GroupID: ", group2.GroupID)
+
+	g3 := GroupData{}
+	err = json.Unmarshal(group3bytes, &g3)
+	assert.Nil(s.T(), err)
+	group3, err := CreateGroup(g3)
+	fmt.Println("Group 3 GroupID: ", group3.GroupID)
+
+	//defer s.db.Unscoped().Delete(&group1)
+	//defer s.db.Unscoped().Delete(&group2)
+	//defer s.db.Unscoped().Delete(&group3)
+
+	authorizedGroups, err := GetAuthorizedGroupsForOktaID("abcdef")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	if len(authorizedGroups) != 2 {
+		fmt.Println("authorizedGroups:", authorizedGroups)
+		s.FailNow("oktaID should be authorized for exactly two groups")
+	}
+	assert.Equal(s.T(), "T0001", authorizedGroups[0])
 }
 
 func TestGroupsTestSuite(t *testing.T) {

@@ -392,11 +392,12 @@ func (s *OTestSuite) TestVerifyPasswordSuccess() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
 	if passwordReturn == nil {
 		s.FailNow("VerifyPassword should return a value unless there's an error")
 	}
 	assert.Nil(s.T(), err)
+	assert.NotEqual(s.T(), "", oktaId)
 	assert.True(s.T(), passwordReturn.Success)
 }
 
@@ -408,11 +409,12 @@ func (s *OTestSuite) TestVerifyPasswordBadPassword() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
 	assert.Nil(s.T(), err)
 	if passwordReturn == nil {
 		s.FailNow("VerifyPassword should return a value unless there's an error")
 	}
+	assert.Equal(s.T(), "", oktaId)
 	assert.False(s.T(), passwordReturn.Success)
 	assert.NotEqual(s.T(), passwordReturn.Message, "")
 }
@@ -425,11 +427,12 @@ func (s *OTestSuite) TestVerifyPasswordEnrollMFA() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
 	assert.Nil(s.T(), err)
 	if passwordReturn == nil {
 		s.FailNow("VerifyPassword should return a value unless there's an error")
 	}
+	assert.NotEqual(s.T(), "", oktaId)
 	assert.False(s.T(), passwordReturn.Success)
 	assert.NotEqual(s.T(), passwordReturn.Message, "")
 }
@@ -442,11 +445,12 @@ func (s *OTestSuite) TestVerifyPasswordActivateMFA() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
 	assert.Nil(s.T(), err)
 	if passwordReturn == nil {
 		s.FailNow("VerifyPassword should return a value unless there's an error")
 	}
+	assert.NotEqual(s.T(), "", oktaId)
 	assert.False(s.T(), passwordReturn.Success)
 	assert.NotEqual(s.T(), passwordReturn.Message, "")
 }
@@ -459,11 +463,12 @@ func (s *OTestSuite) TestVerifyPasswordExpired() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
 	assert.Nil(s.T(), err)
 	if passwordReturn == nil {
 		s.FailNow("VerifyPassword should return a value unless there's an error")
 	}
+	assert.NotEqual(s.T(), "", oktaId)
 	assert.False(s.T(), passwordReturn.Success)
 	assert.NotEqual(s.T(), passwordReturn.Message, "")
 }
@@ -475,9 +480,10 @@ func (s *OTestSuite) TestVerifyPasswordError() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	passwordReturn, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := o.VerifyPassword("bcda_user@cms.gov", "any_password_will_do", trackingId)
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), passwordReturn)
+	assert.Equal(s.T(), "", oktaId)
 }
 
 func (s *OTestSuite) TestVerifyFactorChallengeSuccess() {
@@ -489,8 +495,9 @@ func (s *OTestSuite) TestVerifyFactorChallengeSuccess() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	success := o.VerifyFactorChallenge("bcda_user@cms.gov", "Call", "passcode", trackingId)
+	success, oktaID := o.VerifyFactorChallenge("bcda_user@cms.gov", "Call", "passcode", trackingId)
 	assert.True(s.T(), success)
+	assert.Equal(s.T(), "abc123", oktaID)
 }
 
 func (s *OTestSuite) TestVerifyFactorChallengeFailure() {
@@ -502,8 +509,9 @@ func (s *OTestSuite) TestVerifyFactorChallengeFailure() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	success := o.VerifyFactorChallenge("bcda_user@cms.gov", "Call", "passcode", trackingId)
+	success, oktaID := o.VerifyFactorChallenge("bcda_user@cms.gov", "Call", "passcode", trackingId)
 	assert.False(s.T(), success)
+	assert.Equal(s.T(), "abc123", oktaID)
 }
 
 func (s *OTestSuite) TestVerifyFactorChallengeError() {
@@ -515,8 +523,9 @@ func (s *OTestSuite) TestVerifyFactorChallengeError() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	success := o.VerifyFactorChallenge("bcda_user@cms.gov", "Call", "passcode", trackingId)
+	success, oktaID := o.VerifyFactorChallenge("bcda_user@cms.gov", "Call", "passcode", trackingId)
 	assert.False(s.T(), success)
+	assert.Equal(s.T(), "abc123", oktaID)
 }
 
 func (s *OTestSuite) TestVerifyFactorChallengeBadFactor() {
@@ -527,8 +536,9 @@ func (s *OTestSuite) TestVerifyFactorChallengeBadFactor() {
 	}
 	client := okta.NewTestClient(testHttpResponses(responses))
 	o := NewOktaMFA(client)
-	success := o.VerifyFactorChallenge("bcda_user@cms.gov", "badFactor", "passcode", trackingId)
+	success, oktaID := o.VerifyFactorChallenge("bcda_user@cms.gov", "badFactor", "passcode", trackingId)
 	assert.False(s.T(), success)
+	assert.Equal(s.T(), "", oktaID)
 }
 
 func (s *OTestSuite) TestRequestFactorChallengeCallFactor() {

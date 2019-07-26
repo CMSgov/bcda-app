@@ -57,7 +57,7 @@ func (s *ServerTestSuite) TestTokenDurationEmptyOverride() {
 
 func (s *ServerTestSuite) TestUnavailableSigner() {
 	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	token, ts, err := s.server.MintToken(acoUUID, nil)
+	token, ts, err := s.server.MintAccessToken(acoUUID, nil)
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
@@ -68,9 +68,54 @@ func (s *ServerTestSuite) TestUnavailableSigner() {
 		_ = s.server.SetSigningKeys(unitSigningKeyPath)
 	}()
 	assert.Panics(s.T(), func() {
-		_, _, _ = s.server.MintToken(acoUUID, nil)
+		_, _, _ = s.server.MintAccessToken(acoUUID, nil)
 	})
 }
+
+func (s *ServerTestSuite) TestMintMFAToken() {
+	err := s.server.SetSigningKeys(unitSigningKeyPath)
+	assert.Nil(s.T(), err)
+	token, ts, err := s.server.MintMFAToken("my_okta_id")
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+	assert.NotNil(s.T(), ts)
+}
+
+func (s *ServerTestSuite) TestMintMFATokenMissingID() {
+	token, ts, err := s.server.MintMFAToken("")
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), token)
+	assert.Equal(s.T(),"", ts)
+}
+
+func (s *ServerTestSuite) TestMintRegistrationToken() {
+	groupIDs := []string{"A0000", "A0001"}
+	token, ts, err := s.server.MintRegistrationToken("my_okta_id", groupIDs)
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), token)
+	assert.NotNil(s.T(), ts)
+}
+
+func (s *ServerTestSuite) TestMintRegistrationTokenMissingID() {
+	groupIDs := []string{"", ""}
+	token, ts, err := s.server.MintRegistrationToken("my_okta_id", groupIDs)
+
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), token)
+	assert.Equal(s.T(), "", ts)
+}
+
+func (s *ServerTestSuite) TestEmpty() {
+	groupIDs := []string{"", ""}
+	assert.True(s.T(), empty(groupIDs))
+
+	groupIDs = []string{"", "asdf"}
+	assert.False(s.T(), empty(groupIDs))
+}
+
 
 func TestServerTestSuite(t *testing.T) {
 	suite.Run(t, new(ServerTestSuite))
