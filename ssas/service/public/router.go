@@ -18,7 +18,7 @@ var server *service.Server
 
 func init() {
 	infoMap = make(map[string][]string)
-	infoMap["public"] = []string{"token", "register", "authn/request"}
+	infoMap["public"] = []string{"token", "register", "authn/request", "authn/verify"}
 	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
 }
 
@@ -36,6 +36,7 @@ func routes() *chi.Mux {
 	router.Use(service.NewAPILogger(), service.ConnectionClose)
 	router.Get("/token", token)
 	router.Post("/authn/request", RequestMultifactorChallenge)
+	router.Post("/authn/verify", VerifyMultifactorResponse)
 	router.With(fakeContext).Post("/register", RegisterSystem)
 
 	return router

@@ -61,6 +61,18 @@ func (s *PublicRouterTestSuite) TestRegisterRoute() {
 	assert.Equal(s.T(), http.StatusCreated, res.StatusCode)
 }
 
+func (s *PublicRouterTestSuite) TestAuthnRequestRoute() {
+	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
+	res := s.reqPublicRoute("POST", "/authn/request", rb)
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
+func (s *PublicRouterTestSuite) TestAuthnVerifyRoute() {
+	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
+	res := s.reqPublicRoute("POST", "/authn/verify", rb)
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
 func TestAuthRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(PublicRouterTestSuite))
 }
