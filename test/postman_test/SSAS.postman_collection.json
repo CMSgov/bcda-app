@@ -1,12 +1,12 @@
 {
 	"info": {
-		"_postman_id": "466653fe-fe34-4da5-90be-beaa32c16e91",
+		"_postman_id": "769bc51d-c8cc-4e9e-828b-4e9372b24414",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "public auth/register",
+			"name": "public register",
 			"request": {
 				"method": "POST",
 				"header": [
@@ -27,14 +27,13 @@
 					"raw": "{\"group_id\":\"T0000\",\"client_id\":\"yet another evil twin\",\"client_name\":\"my sister's evil twin\",\"scope\":\"bcda-api\",\"jwks\":{\"keys\":[{\"e\":\"AAEAAQ\",\"n\":\"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\"kty\":\"RSA\"}]}}"
 				},
 				"url": {
-					"raw": "http://localhost:3003/auth/register",
+					"raw": "http://localhost:3003/register",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
 					"port": "3003",
 					"path": [
-						"auth",
 						"register"
 					]
 				}
@@ -146,6 +145,56 @@
 						"_version"
 					]
 				}
+			},
+			"response": []
+		},
+		{
+			"name": "public authn/request",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"cms_id\":\"{{cms_id}}\",\"factor_type\":\"{{factor_type}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/authn/request",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"authn",
+						"request"
+					]
+				},
+				"description": "Request that an MFA passcode be sent, for example, via SMS"
+			},
+			"response": []
+		},
+		{
+			"name": "public authn/verify",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"cms_id\":\"{{cms_id}}\",\"factor_type\":\"{{factor_type}}\",\"passcode\":\"{{passcode}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/authn/verify",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"authn",
+						"verify"
+					]
+				},
+				"description": "Verify an MFA passcode"
 			},
 			"response": []
 		}
