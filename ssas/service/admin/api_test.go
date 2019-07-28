@@ -232,16 +232,6 @@ func (s *APITestSuite) TestGetPublicKey() {
 		s.FailNow(err.Error())
 	}
 
-	key2Str := "publickey2"
-	encrKey2 := ssas.EncryptionKey{
-		SystemID: system.ID,
-		Body:     key2Str,
-	}
-	err = s.db.Create(&encrKey2).Error
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-
 	systemID := strconv.FormatUint(uint64(system.ID), 10)
 	req := httptest.NewRequest("GET", "/system/"+systemID+"/key", nil)
 	rctx := chi.NewRouteContext()
@@ -262,7 +252,7 @@ func (s *APITestSuite) TestGetPublicKey() {
 	assert.Equal(s.T(), system.ClientID, result["client_id"])
 	resPublicKey := result["public_key"]
 	assert.NotEmpty(s.T(), resPublicKey)
-	assert.Equal(s.T(), key2Str, resPublicKey)
+	assert.Equal(s.T(), key1Str, resPublicKey)
 
 	_ = ssas.CleanDatabase(group)
 }
