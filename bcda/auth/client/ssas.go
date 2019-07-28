@@ -3,6 +3,8 @@ package client
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -20,6 +22,7 @@ var ssasLogger *logrus.Logger
 // SSASClient is a client for interacting with the System-to-System Authentication Service.
 type SSASClient struct {
 	http.Client
+	baseURL string
 }
 
 func init() {
@@ -39,9 +42,15 @@ func init() {
 
 // NewSSASClient creates and returns an SSASClient.
 func NewSSASClient() (*SSASClient, error) {
-	transport, err := tlsTransport()
-	if err != nil {
-		return nil, errors.Wrap(err, "SSAS client could not be created")
+	var (
+		transport = &http.Transport{}
+		err       error
+	)
+	if os.Getenv("SSAS_USE_TLS") != "false" {
+		transport, err = tlsTransport()
+		if err != nil {
+			return nil, errors.Wrap(err, "SSAS client could not be created")
+		}
 	}
 
 	var timeout int
@@ -50,9 +59,14 @@ func NewSSASClient() (*SSASClient, error) {
 		timeout = 500
 	}
 
+	ssasURL := os.Getenv("SSAS_URL")
+	if ssasURL == "" {
+		return nil, errors.New("no URL provided for SSAS")
+	}
+
 	client := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
 
-	return &SSASClient{*client}, nil
+	return &SSASClient{*client, ssasURL}, nil
 }
 
 func tlsTransport() (*http.Transport, error) {
@@ -89,7 +103,19 @@ func (c *SSASClient) CreateSystem() ([]byte, error) {
 
 // GetPublicKey GETs the SSAS /system/{systemID}/key endpoint to retrieve a system's public key.
 func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
-	return nil, nil
+	resp, err := c.Get(fmt.Sprintf("%s/system/%v/key", c.baseURL, systemID))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get public key")
+	}
+
+	defer resp.Body.Close()
+
+	var respMap map[string]string
+	if err = json.NewDecoder(resp.Body).Decode(&respMap); err != nil {
+		return nil, errors.Wrap(err, "could not get public key")
+	}
+
+	return []byte(respMap["public_key"]), nil
 }
 
 // ResetCredentials PUTs to the SSAS /system/{systemID}/credentials endpoint to reset the system's credentials.
