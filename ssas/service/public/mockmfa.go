@@ -2,9 +2,10 @@ package public
 
 import (
 	"errors"
-	"github.com/CMSgov/bcda-app/ssas"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/ssas"
 )
 
 type MockMFAPlugin struct{}
@@ -22,7 +23,7 @@ type MockMFAPlugin struct{}
 	bad_password@test.com	false			none
 	error@test.com			(none)			(non-nil error)
 	(all others)			true			none
- */
+*/
 func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, err error) {
 	r := PasswordReturn{Success: false, Message: ""}
 	verifyEvent := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingId}
@@ -43,7 +44,8 @@ func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 		r.Message = "password expired"
 	case "bad_password@test.com":
 		r.Message = "authentication failed"
-	case "success@test.com": fallthrough
+	case "success@test.com":
+		fallthrough
 	default:
 		r.Success = true
 		r.Message = "proceed to MFA verification"
@@ -83,7 +85,8 @@ func (m *MockMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 	case "error@test.com":
 		verifyEvent.Help = "mocking error"
 	case "failure@test.com": // noop
-	case "success@test.com": fallthrough
+	case "success@test.com":
+		fallthrough
 	default:
 		ssas.OperationSucceeded(verifyEvent)
 		success = true
@@ -134,9 +137,10 @@ func (m *MockMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType
 		return
 	case "transaction@test.com":
 		transactionId, _ := generateOktaTransactionId()
-		transactionExpires := time.Now().Add(time.Minute*5)
+		transactionExpires := time.Now().Add(time.Minute * 5)
 		factorReturn = &FactorReturn{Action: "request_sent", Transaction: &Transaction{TransactionID: transactionId, ExpiresAt: transactionExpires}}
-	case "success@test.com": fallthrough
+	case "success@test.com":
+		fallthrough
 	default:
 	}
 

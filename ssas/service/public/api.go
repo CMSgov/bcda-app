@@ -46,8 +46,8 @@ type MFARequest struct {
 }
 
 type PasswordRequest struct {
-	CmsID			string `json:"cms_id"`
-	Password 		string `json:"password"`
+	CMSID    string `json:"cms_id"`
+	Password string `json:"password"`
 }
 
 /*
@@ -56,9 +56,9 @@ type PasswordRequest struct {
 */
 func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 	var (
-		err				error
-		trackingID		string
-		passReq			PasswordRequest
+		err        error
+		trackingID string
+		passReq    PasswordRequest
 	)
 
 	setHeaders(w)
@@ -71,7 +71,7 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &passReq)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", "<redacted>")
+		service.LogEntrySetField(r, "bodyStr", "<redacted>")
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -79,7 +79,7 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingID, Help: "calling from public.VerifyPassword()"}
 	ssas.OperationCalled(event)
-	passwordResponse, err := GetProvider().VerifyPassword(passReq.CmsID, passReq.Password, trackingID)
+	passwordResponse, err := GetProvider().VerifyPassword(passReq.CMSID, passReq.Password, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
 		return

@@ -1,10 +1,11 @@
 package public
 
 import (
+	"testing"
+
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type MockMFATestSuite struct {
