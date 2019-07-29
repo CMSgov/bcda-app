@@ -29,6 +29,14 @@ func (s *RouterTestSuite) TestPostGroup() {
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestGetGroup() {
+	req := httptest.NewRequest("GET", "/group", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestPutGroup() {
 	req := httptest.NewRequest("PUT", "/group/1", nil)
 	rr := httptest.NewRecorder()
