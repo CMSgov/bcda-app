@@ -47,7 +47,6 @@ func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 		r.Message = "authentication failed"
 	case "success@test.com": fallthrough
 	default:
-		oktaId = "test_okta_id"
 		r.Success = true
 		r.Message = "proceed to MFA verification"
 		passwordReturn = &r

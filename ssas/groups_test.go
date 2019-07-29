@@ -171,9 +171,9 @@ func (s *GroupsTestSuite) TestGetAuthorizedGroupsForOktaID() {
 	group3, err := CreateGroup(g3)
 	fmt.Println("Group 3 GroupID: ", group3.GroupID)
 
-	//defer s.db.Unscoped().Delete(&group1)
-	//defer s.db.Unscoped().Delete(&group2)
-	//defer s.db.Unscoped().Delete(&group3)
+	defer s.db.Unscoped().Delete(&group1)
+	defer s.db.Unscoped().Delete(&group2)
+	defer s.db.Unscoped().Delete(&group3)
 
 	authorizedGroups, err := GetAuthorizedGroupsForOktaID("abcdef")
 	if err != nil {

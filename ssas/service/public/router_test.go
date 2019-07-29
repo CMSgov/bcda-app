@@ -2,6 +2,7 @@ package public
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,8 +34,11 @@ func (s *PublicRouterTestSuite) SetupSuite() {
 	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
-	s.group.GroupID = "T1234"
-	err := s.db.Create(&s.group).Error
+	groupBytes := []byte(`{"id":"T1234","users":["fake_okta_id","abcdefg"]}`)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	s.group, err = ssas.CreateGroup(gd)
 	if err != nil {
 		s.FailNow("unable to create group: " + err.Error())
 	}
@@ -66,7 +70,7 @@ func (s *PublicRouterTestSuite) TestTokenRoute() {
 }
 
 func (s *PublicRouterTestSuite) TestRegisterRoute() {
-	groupIDs := []string{"T12345", "T00001"}
+	groupIDs := []string{"T1234", "T0001"}
 	_, ts, _ := server.MintRegistrationToken("test_okta_id", groupIDs)
 	rb := strings.NewReader(`{"client_id":"evil_twin","client_name":"my evil twin","scope":"bcda-api","jwks":{"keys":[{"e":"AAEAAQ","n":"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw","kty":"RSA"}]}}`)
 	res := s.reqPublicRoute("POST", "/register", rb, ts)
@@ -80,7 +84,7 @@ func (s *PublicRouterTestSuite) TestRegisterRouteNoToken() {
 }
 
 func (s *PublicRouterTestSuite) TestResetRoute() {
-	groupIDs := []string{"T12345", "T00001"}
+	groupIDs := []string{"T1234", "T0001"}
 	_, ts, _ := server.MintRegistrationToken("test_okta_id", groupIDs)
 	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`,s.system.ClientID))
 	res := s.reqPublicRoute("POST", "/reset", rb, ts)
@@ -120,7 +124,7 @@ func (s *PublicRouterTestSuite) TestAuthnRequestRouteNoToken() {
 }
 
 func (s *PublicRouterTestSuite) TestAuthnVerifyRoute() {
-	_, ts, _ := server.MintMFAToken("test_okta_id")
+	_, ts, _ := server.MintMFAToken("fake_okta_id")
 	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
 	res := s.reqPublicRoute("POST", "/authn/verify", rb, ts)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
