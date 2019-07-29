@@ -61,7 +61,7 @@ func NewSSASClient() (*SSASClient, error) {
 
 	ssasURL := os.Getenv("SSAS_URL")
 	if ssasURL == "" {
-		return nil, errors.New("no URL provided for SSAS")
+		return nil, errors.New("SSAS client could not be created: no URL provided")
 	}
 
 	client := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
