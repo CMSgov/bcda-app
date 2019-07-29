@@ -39,7 +39,7 @@ type RegistrationRequest struct {
 }
 
 type MFARequest struct {
-	CmsID       string  `json:"cms_id"`
+	CMSID       string  `json:"cms_id"`
 	FactorType  string  `json:"factor_type"`
 	Passcode    *string `json:"passcode,omitempty"`
 	Transaction *string `json:"transaction,omitempty"`
