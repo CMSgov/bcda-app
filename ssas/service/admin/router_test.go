@@ -34,7 +34,7 @@ func (s *RouterTestSuite) TestGetGroup() {
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
-	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestPutGroup() {

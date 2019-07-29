@@ -67,9 +67,8 @@ func ListGroups(trackingID string) ([]Group, error) {
 	groups := []Group{}
 	db := GetGORMDbConnection()
 	defer Close(db)
-	db.Find(&groups)
-	if len(groups) == 0 {
-		err := fmt.Errorf("no group records found")
+	err := db.Find(&groups).Error
+	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
 		return []Group{}, err
