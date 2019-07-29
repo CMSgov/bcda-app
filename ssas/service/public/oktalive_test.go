@@ -23,10 +23,10 @@ import (
 
 type OktaLiveTestSuite struct {
 	suite.Suite
-	oc *OktaMFAPlugin
-	email string
-	userId string
-	password string
+	oc          *OktaMFAPlugin
+	email       string
+	userId      string
+	password    string
 	smsFactorId string
 }
 

@@ -23,7 +23,7 @@ type MockMFAPlugin struct{}
 	bad_password@test.com	false			none
 	error@test.com			(none)			(non-nil error)
 	(all others)			true			none
- */
+*/
 func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, err error) {
 	r := PasswordReturn{Success: false, Message: ""}
 	verifyEvent := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingId}
@@ -44,7 +44,8 @@ func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 		r.Message = "password expired"
 	case "bad_password@test.com":
 		r.Message = "authentication failed"
-	case "success@test.com": fallthrough
+	case "success@test.com":
+		fallthrough
 	default:
 		r.Success = true
 		r.Message = "proceed to MFA verification"
