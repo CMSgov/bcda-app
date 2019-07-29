@@ -172,6 +172,31 @@
 				"description": "Request that an MFA passcode be sent, for example, via SMS"
 			},
 			"response": []
+		},
+		{
+			"name": "public authn/verify",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"cms_id\":\"{{cms_id}}\",\"factor_type\":\"{{factor_type}}\",\"passcode\":\"{{passcode}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/authn/verify",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"authn",
+						"verify"
+					]
+				},
+				"description": "Verify an MFA passcode"
+			},
+			"response": []
 		}
 	]
 }

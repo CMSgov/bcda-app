@@ -72,6 +72,21 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	assert.Nil(s.T(), err)
 	g, err := CreateGroup(gd)
 	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), g)
+	assert.Equal(s.T(), "A12345", g.GroupID)
+	assert.Equal(s.T(), "A12345", g.Data.ID)
+	assert.Equal(s.T(), 3, len(g.Data.Users))
+
+	dbGroup := Group{}
+	db := GetGORMDbConnection()
+	defer Close(db)
+	if db.Where("id = ?", g.ID).Find(&dbGroup).RecordNotFound() {
+		assert.FailNow(s.T(), fmt.Sprintf("record not found for id=%d", g.ID))
+	}
+	assert.Equal(s.T(), "A12345", dbGroup.GroupID)
+	assert.Equal(s.T(), "A12345", dbGroup.Data.ID)
+	assert.Equal(s.T(), 3, len(dbGroup.Data.Users))
+
 	err = CleanDatabase(g)
 	assert.Nil(s.T(), err)
 	gd.ID = ""

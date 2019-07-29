@@ -2,16 +2,17 @@ package public
 
 import (
 	"fmt"
-	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/CMSgov/bcda-app/ssas/okta"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/okta"
 )
 
 const (
 	Mock = "mock"
-	Live  = "live"
+	Live = "live"
 )
 
 var providerName = Mock
@@ -44,7 +45,8 @@ func GetProvider() MFAProvider {
 	switch providerName {
 	case Live:
 		return NewOktaMFA(okta.Client())
-	case Mock: fallthrough
+	case Mock:
+		fallthrough
 	default:
 		return &MockMFAPlugin{}
 	}
@@ -52,16 +54,34 @@ func GetProvider() MFAProvider {
 
 // FactorReturn defines the return type of RequestFactorChallenge
 type FactorReturn struct {
-	Action		string			`json:"action"`
-	Transaction	*Transaction 	`json:"transaction,omitempty"`
+	Action      string       `json:"action"`
+	Transaction *Transaction `json:"transaction,omitempty"`
 }
 
 // Transaction defines the extra information provided in a response to RequestFactorChallenge for Push factors
 type Transaction struct {
-	TransactionID	string	`json:"transaction_id"`
-	ExpiresAt		time.Time `json:"expires_at"`
+	TransactionID string    `json:"transaction_id"`
+	ExpiresAt     time.Time `json:"expires_at"`
 }
 
+func ValidFactorType(factorType string) bool {
+	switch strings.ToLower(factorType) {
+	case "google totp":
+		fallthrough
+	case "okta totp":
+		fallthrough
+	case "push":
+		fallthrough
+	case "sms":
+		fallthrough
+	case "call":
+		fallthrough
+	case "email":
+		return true
+	default:
+		return false
+	}
+}
 
 // Provider defines operations performed through an Okta MFA provider.  This indirection allows for a mock provider
 // to use during CI/CD integration testing
@@ -73,7 +93,7 @@ type MFAProvider interface {
 
 	// VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
 	// except Push.
-	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool, error)
+	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) bool
 
 	// VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
 	// rejection, waiting, and timeout.
