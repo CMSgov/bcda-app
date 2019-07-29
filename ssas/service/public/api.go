@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
+	"github.com/go-chi/render"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/ssas"
@@ -36,6 +38,133 @@ type RegistrationRequest struct {
 	JSONWebKeys JWKS   `json:"jwks"`
 }
 
+type MFARequest struct {
+	CmsID       string  `json:"cms_id"`
+	FactorType  string  `json:"factor_type"`
+	Passcode    *string `json:"passcode,omitempty"`
+	Transaction *string `json:"transaction,omitempty"`
+}
+
+/*
+	RequestMultifactorChallenge is mounted at POST /authn/request and sends a multi-factor authentication request
+	using the specified factor.
+
+	Valid factor types include:
+		"Google TOTP" (Google Authenticator)
+		"Okta TOTP"   (Okta Verify app time-based token)
+		"Push"        (Okta Verify app push)
+		"SMS"
+		"Call"
+		"Email"
+
+	In the case of the Push factor, a transaction ID is returned to use with the polling endpoint:
+	    POST /authn/verify/transactions/{transaction_id}
+*/
+func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
+	var (
+		err        error
+		trackingID string
+		mfaReq     MFARequest
+	)
+
+	setHeaders(w)
+
+	bodyStr, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	err = json.Unmarshal(bodyStr, &mfaReq)
+	if err != nil {
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	trackingID = uuid.NewRandom().String()
+	event := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingID, Help: "calling from public.RequestMultifactorChallenge()"}
+	ssas.OperationCalled(event)
+	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, trackingID)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", err.Error())
+		return
+	}
+
+	body, err := json.Marshal(factorResponse)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure generating JSON: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
+/*
+	VerifyMultifactorResponse is mounted at POST /authn/verify and tests a multi-factor authentication passcode
+	for the specified factor, and should be used for all factor types except Push.
+*/
+func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
+	var (
+		err        error
+		trackingID string
+		mfaReq     MFARequest
+		body       []byte
+	)
+
+	setHeaders(w)
+
+	bodyStr, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	err = json.Unmarshal(bodyStr, &mfaReq)
+	if err != nil {
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	if mfaReq.Passcode == nil {
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
+		jsonError(w, "invalid_client_metadata", "Request body missing passcode")
+		return
+	}
+
+	trackingID = uuid.NewRandom().String()
+	event := ssas.Event{Op: "VerifyOktaFactorResponse", TrackingID: trackingID, Help: "calling from public.VerifyMultifactorResponse()"}
+	ssas.OperationCalled(event)
+	success := GetProvider().VerifyFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
+
+	if !success {
+		event.Help = "passcode rejected"
+		ssas.OperationFailed(event)
+		body = []byte(`{"factor_result":"failure"}`)
+	} else {
+		event.Help = "passcode accepted"
+		ssas.OperationSucceeded(event)
+		body = []byte(`{"factor_result":"success"}`)
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
 /*
 	RegisterSystem is mounted at POST /auth/register and allows for self-registration.  It requires that a
 	registration token containing one or more group ids be presented and parsed by middleware, with the
@@ -50,9 +179,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 		trackingID     string
 	)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
+	setHeaders(w)
 
 	if rd, err = readRegData(r); err != nil || rd.GroupID == "" {
 		service.GetLogEntry(r).Println("missing or invalid GroupID")
@@ -70,7 +197,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyStr, &reg)
 	if err != nil {
-		service.LogEntrySetField(r,"bodyStr", bodyStr)
+		service.LogEntrySetField(r, "bodyStr", bodyStr)
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
@@ -94,7 +221,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 
 	// Log the source of the call for this operation.  Remaining logging will be in ssas.RegisterSystem() below.
 	trackingID = uuid.NewRandom().String()
-	event := ssas.Event{Op: "RegisterClient", TrackingID: trackingID}
+	event := ssas.Event{Op: "RegisterClient", TrackingID: trackingID, Help: "calling from public.RegisterSystem()"}
 	ssas.OperationCalled(event)
 	credentials, err := ssas.RegisterSystem(reg.ClientName, rd.GroupID, reg.Scope, publicKeyPEM, trackingID)
 	if err != nil {
@@ -109,6 +236,7 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
 		ssas.OperationFailed(event)
 		return
 	}
@@ -130,4 +258,52 @@ func jsonError(w http.ResponseWriter, error string, description string) {
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+func setHeaders(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   string `json:"expires_in"`
+}
+
+func token(w http.ResponseWriter, r *http.Request) {
+	clientID, secret, ok := r.BasicAuth()
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	system, err := ssas.GetSystemByClientID(clientID)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	savedSecret, err := system.GetSecret()
+	if err != nil || !ssas.Hash(savedSecret).IsHashOf(secret) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	token, ts, err := server.MintToken(system.GroupID, nil)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// https://tools.ietf.org/html/rfc6749#section-5.1
+	// expires_in is duration in seconds
+	expiresIn := token.Claims.(service.CommonClaims).ExpiresAt - token.Claims.(service.CommonClaims).IssuedAt
+	m := TokenResponse{AccessToken: ts, TokenType: "bearer", ExpiresIn: strconv.FormatInt(expiresIn, 10)}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	render.JSON(w, r, m)
 }

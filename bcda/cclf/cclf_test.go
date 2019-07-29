@@ -508,7 +508,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 	assert.Equal(3, len(cclf0))
 }
 
-func (s *CCLFTestSuite) TestSortCCLFFiles_Time() {
+func (s *CCLFTestSuite) TestSortCCLFFiles_TimeChange() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string][]*cclfFileMetadata)
 	var skipped int
@@ -530,6 +530,8 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_Time() {
 	// assert that this file is still here.
 	_, err = os.Open(filePath)
 	assert.Nil(err)
+
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
 
 	timeChange := origTime.Add(-(time.Hour * 25)).Truncate(time.Second)
 	err = os.Chtimes(filePath,timeChange, timeChange)
