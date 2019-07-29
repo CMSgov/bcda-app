@@ -73,10 +73,10 @@ create table cclf_beneficiary_xrefs (
 create table suppressions (
     id serial primary key,
     hicn varchar(11) not null,
-    source_code varchar,
+    source_code varchar(5),
     effective_date timestamp with time zone,
     preference_indicator char(1),
-    samhsa_source_code varchar,
+    samhsa_source_code varchar(5),
     samhsa_effective_date timestamp with time zone,
     samhsa_preference_indicator char(1),
     aco_cms_id char(5),

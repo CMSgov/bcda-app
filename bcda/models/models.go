@@ -351,10 +351,10 @@ type CCLFBeneficiary struct {
 type Suppression struct {
 	gorm.Model
 	HICN                string `gorm:"type:varchar(11);not null"`
-	SourceCode          string `json:"source_code"`
+	SourceCode          string `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time
 	PrefIndicator       string `gorm:"type:char(1)"`
-	SAMHSASourceCode    string `json:"samhsa_source_code"`
+	SAMHSASourceCode    string `gorm:"type:varchar(5)"`
 	SAMHSAEffectiveDt   time.Time
 	SAMHSAPrefIndicator string `gorm:"type:char(1)"`
 	ACOCMSID            string `gorm:"type:char(5)"`
