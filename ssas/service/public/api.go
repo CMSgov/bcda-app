@@ -142,7 +142,7 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingID, Help: "calling from public.RequestMultifactorChallenge()"}
 	ssas.OperationCalled(event)
-	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, trackingID)
+	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.CMSID, mfaReq.FactorType, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
 		return
@@ -201,7 +201,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaFactorResponse", TrackingID: trackingID, Help: "calling from public.VerifyMultifactorResponse()"}
 	ssas.OperationCalled(event)
-	success := GetProvider().VerifyFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
+	success := GetProvider().VerifyFactorChallenge(mfaReq.CMSID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
 
 	if !success {
 		event.Help = "passcode rejected"

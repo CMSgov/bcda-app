@@ -46,7 +46,7 @@ func config() error {
 		at = "[Redacted]"
 	}
 	OktaAuthString = fmt.Sprintf("SSWS %s", oktaToken)
-	OktaBaseURL = os.Getenv("OKTA_CLIENT_ORGURL")
+	OktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
 	fingerprintString := os.Getenv("OKTA_CA_CERT_FINGERPRINT")
 
 	if OktaBaseUrl == "" || oktaToken == "" || fingerprintString == "" {
