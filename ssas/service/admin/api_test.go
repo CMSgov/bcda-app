@@ -217,11 +217,11 @@ func (s *APITestSuite) TestResetCredentials() {
 
 	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
-	var result map[string]interface{}
+	var result map[string]string
 	_ = json.Unmarshal(rr.Body.Bytes(), &result)
 	newSecret := result["client_secret"]
 	assert.NotEmpty(s.T(), newSecret)
-	assert.NotEqual(s.T(), secret, newSecret)
+	assert.NotEqual(s.T(), secret.Hash, newSecret)
 
 	_ = ssas.CleanDatabase(group)
 }
@@ -237,6 +237,104 @@ func (s *APITestSuite) TestResetCredentials_InvalidSystemID() {
 	handler.ServeHTTP(rr, req)
 
 	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
+}
+
+func (s *APITestSuite) TestGetPublicKey() {
+	group := ssas.Group{GroupID: "api-test-get-public-key-group"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := ssas.System{GroupID: group.GroupID, ClientID: "api-test-get-public-key-client"}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	key1Str := "publickey1"
+	encrKey1 := ssas.EncryptionKey{
+		SystemID: system.ID,
+		Body:     key1Str,
+	}
+	err = s.db.Create(&encrKey1).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	systemID := strconv.FormatUint(uint64(system.ID), 10)
+	req := httptest.NewRequest("GET", "/system/"+systemID+"/key", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(getPublicKey)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	var result map[string]string
+	err = json.Unmarshal(rr.Body.Bytes(), &result)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	assert.Equal(s.T(), system.ClientID, result["client_id"])
+	resPublicKey := result["public_key"]
+	assert.NotEmpty(s.T(), resPublicKey)
+	assert.Equal(s.T(), key1Str, resPublicKey)
+
+	_ = ssas.CleanDatabase(group)
+}
+
+func (s *APITestSuite) TestGetPublicKey_Rotation() {
+	group := ssas.Group{GroupID: "api-test-get-public-key-group"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := ssas.System{GroupID: group.GroupID, ClientID: "api-test-get-public-key-client"}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	key1, _ := ssas.GeneratePublicKey(2048)
+	err = system.SavePublicKey(strings.NewReader(key1))
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	key2, _ := ssas.GeneratePublicKey(2048)
+	err = system.SavePublicKey(strings.NewReader(key2))
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	systemID := strconv.FormatUint(uint64(system.ID), 10)
+	req := httptest.NewRequest("GET", "/system/"+systemID+"/key", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(getPublicKey)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	var result map[string]string
+	err = json.Unmarshal(rr.Body.Bytes(), &result)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	assert.Equal(s.T(), system.ClientID, result["client_id"])
+	resPublicKey := result["public_key"]
+	assert.NotEmpty(s.T(), resPublicKey)
+	assert.Equal(s.T(), key2, resPublicKey)
+
+	_ = ssas.CleanDatabase(group)
 }
 
 func (s *APITestSuite) TestDeactivateSystemCredentials() {

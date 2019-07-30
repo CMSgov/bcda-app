@@ -43,6 +43,7 @@ func InitializeGormModels() *gorm.DB {
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
+		&Suppression{},
 	)
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
@@ -345,6 +346,19 @@ type CCLFBeneficiary struct {
 	HICN         string `gorm:"type:varchar(11);not null"`
 	MBI          string `gorm:"type:char(11);not null"`
 	BlueButtonID string `gorm:"type: text"`
+}
+
+type Suppression struct {
+	gorm.Model
+	HICN                string `gorm:"type:varchar(11);not null"`
+	SourceCode          string `gorm:"type:varchar(5)"`
+	EffectiveDt         time.Time
+	PrefIndicator       string `gorm:"type:char(1)"`
+	SAMHSASourceCode    string `gorm:"type:varchar(5)"`
+	SAMHSAEffectiveDt   time.Time
+	SAMHSAPrefIndicator string `gorm:"type:char(1)"`
+	ACOCMSID            string `gorm:"column:aco_cms_id;type:char(5)"`
+	BeneficiaryLinkKey  int
 }
 
 // This method will ensure that a valid BlueButton ID is returned.

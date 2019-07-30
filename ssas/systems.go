@@ -19,6 +19,7 @@ import (
 )
 
 var DefaultScope string
+
 const CredentialExpiration = 90 * 24 * time.Hour
 
 func init() {
@@ -29,7 +30,7 @@ func getEnvVars() {
 	DefaultScope = os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE")
 
 	if DefaultScope == "" {
-		ServiceHalted(Event{Help:"SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
+		ServiceHalted(Event{Help: "SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
 		panic("SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set")
 	}
 }
@@ -145,19 +146,24 @@ func (system *System) DeactivateSecrets() error {
 }
 
 /*
-	GetPublicKey will retrieve the hashed secret associated with the current system.
+	GetEncryptionKey retrieves the key associated with the current system.
 */
-func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
+func (system *System) GetEncryptionKey(trackingID string) (EncryptionKey, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
+
+	getKeyEvent := Event{Op: "GetEncryptionKey", TrackingID: trackingID, ClientID: system.ClientID}
+	OperationStarted(getKeyEvent)
 
 	var encryptionKey EncryptionKey
 	err := db.Where("system_id = ?", system.ID).Find(&encryptionKey).Error
 	if err != nil {
-		return nil, fmt.Errorf("cannot find public key for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(getKeyEvent)
+		return encryptionKey, fmt.Errorf("cannot find key for clientID %s: %s", system.ClientID, err.Error())
 	}
 
-	return ReadPublicKey(encryptionKey.Body)
+	OperationSucceeded(getKeyEvent)
+	return encryptionKey, nil
 }
 
 /*
