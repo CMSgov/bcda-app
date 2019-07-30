@@ -34,7 +34,11 @@ type Factor struct {
 	Status   string `json:"status"`
 }
 
-type FactorRequest struct {
+type PasswordResponse struct {
+	Status string `json:"status"`
+}
+
+type FactorResponse struct {
 	Result    string    `json:"factorResult"`
 	ExpiresAt time.Time `json:"expiresAt,omitempty"`
 	Links     OktaLinks `json:"_links,omitempty"`
@@ -71,6 +75,60 @@ func NewOktaMFA(client *http.Client) *OktaMFAPlugin {
 	}
 
 	return &OktaMFAPlugin{Client: client}
+}
+
+/*
+	VerifyPassword tests a username/password for validity.  This function should be used before calling MFA functions.
+*/
+func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, err error) {
+	passwordEvent := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingId}
+	ssas.OperationStarted(passwordEvent)
+
+	oktaUserID, err := o.getUser(userIdentifier, trackingId)
+	if err != nil {
+		passwordEvent.Help = "matching user not found: " + err.Error()
+		ssas.OperationFailed(passwordEvent)
+		err = errors.New(passwordEvent.Help)
+		return
+	}
+
+	passwordEvent.UserID = oktaUserID
+	passwordResponse, err := o.postPassword(oktaUserID, password, trackingId)
+	if err != nil {
+		passwordEvent.Help = "error validating factor passcode: " + err.Error()
+		ssas.OperationFailed(passwordEvent)
+		err = errors.New(passwordEvent.Help)
+		return
+	}
+
+	success := false
+	message := ""
+	switch passwordResponse.Status {
+	case "PASSWORD_EXPIRED":
+		message = "password expired"
+	case "MFA_ENROLL":
+		message = "account needs to enroll MFA factor"
+	case "MFA_ENROLL_ACTIVATE":
+		message = "account needs to activate MFA factor"
+	case "AUTHENTICATION_FAILED":
+		message = "authentication request failed"
+	case "MFA_REQUIRED":
+		fallthrough
+	case "SUCCESS":
+		message = "proceed to MFA verification"
+		success = true
+	default:
+		message = "unknown password verification response"
+		passwordEvent.Help = message
+		ssas.OperationFailed(passwordEvent)
+		err = errors.New(message)
+		return
+	}
+
+	passwordReturn = &PasswordReturn{Success: success, Message: message}
+	passwordEvent.Help = message
+	ssas.OperationSucceeded(passwordEvent)
+	return
 }
 
 /*
@@ -238,6 +296,70 @@ func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorRe
 func wait(startTime time.Time, targetDuration time.Duration) {
 	elapsed := time.Since(startTime)
 	time.Sleep(targetDuration - elapsed)
+}
+
+func (o *OktaMFAPlugin) postPassword(oktaUserId string, password string, trackingId string) (passwordResponse *PasswordResponse, err error) {
+	requestEvent := ssas.Event{Op: "PostOktaPassword", TrackingID: trackingId}
+	ssas.OperationStarted(requestEvent)
+
+	passwordUrl := fmt.Sprintf("%s/api/v1/authn", okta.OktaBaseUrl)
+	requestBody := strings.NewReader(fmt.Sprintf(`{"username":"%s","password":"%s"}`, oktaUserId, password))
+
+	req, err := http.NewRequest("POST", passwordUrl, requestBody)
+	if err != nil {
+		requestEvent.Help = "unable to create request: " + err.Error()
+		ssas.OperationFailed(requestEvent)
+		return nil, errors.New(requestEvent.Help)
+	}
+
+	okta.AddRequestHeaders(req)
+	resp, err := o.Client.Do(req)
+	if err != nil {
+		requestEvent.Help = "request error: " + err.Error()
+		ssas.OperationFailed(requestEvent)
+		return nil, errors.New(requestEvent.Help)
+	}
+
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		requestEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
+		ssas.OperationFailed(requestEvent)
+		return nil, errors.New(requestEvent.Help)
+	}
+
+	if resp.StatusCode == 401 {
+		requestEvent.Help = "authentication failure: " + string(body)
+		ssas.OperationFailed(requestEvent)
+		p := PasswordResponse{"AUTHENTICATION_FAILED"}
+		return &p, nil
+	}
+
+	if resp.StatusCode >= 400 {
+		oktaError, err := okta.ParseOktaError(body)
+		if err == nil {
+			requestEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
+				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
+			ssas.OperationFailed(requestEvent)
+			return nil, errors.New(requestEvent.Help)
+		}
+	}
+
+	if resp.StatusCode != 200 {
+		requestEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
+		ssas.OperationFailed(requestEvent)
+		return nil, errors.New(requestEvent.Help)
+	}
+
+	var p PasswordResponse
+	if err = json.Unmarshal(body, &p); err != nil {
+		requestEvent.Help = fmt.Sprintf("unexpected response format; response: %s", string(body))
+		ssas.OperationFailed(requestEvent)
+		return nil, errors.New(requestEvent.Help)
+	}
+
+	ssas.OperationSucceeded(requestEvent)
+	return &p, nil
 }
 
 /*
@@ -416,7 +538,7 @@ func (o *OktaMFAPlugin) getUserFactor(oktaUserId string, factorType string, trac
 	return factor, errors.New(factorEvent.Help)
 }
 
-func (o *OktaMFAPlugin) postFactorChallenge(oktaUserId string, oktaFactor Factor, trackingId string) (factorRequest *FactorRequest, err error) {
+func (o *OktaMFAPlugin) postFactorChallenge(oktaUserId string, oktaFactor Factor, trackingId string) (factorRequest *FactorResponse, err error) {
 	requestEvent := ssas.Event{Op: "PostOktaFactorChallenge", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(requestEvent)
 
@@ -461,7 +583,7 @@ func (o *OktaMFAPlugin) postFactorChallenge(oktaUserId string, oktaFactor Factor
 		return factorRequest, errors.New(requestEvent.Help)
 	}
 
-	f := FactorRequest{}
+	f := FactorResponse{}
 	if err = json.Unmarshal(body, &f); err != nil {
 		requestEvent.Help = fmt.Sprintf("unexpected response format; response: %s", string(body))
 		ssas.OperationFailed(requestEvent)
@@ -472,7 +594,7 @@ func (o *OktaMFAPlugin) postFactorChallenge(oktaUserId string, oktaFactor Factor
 	return &f, nil
 }
 
-func (o *OktaMFAPlugin) postFactorResponse(oktaUserId string, oktaFactor Factor, passcode string, trackingId string) (factorRequest *FactorRequest, err error) {
+func (o *OktaMFAPlugin) postFactorResponse(oktaUserId string, oktaFactor Factor, passcode string, trackingId string) (factorRequest *FactorResponse, err error) {
 	requestEvent := ssas.Event{Op: "PostOktaFactorResponse", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(requestEvent)
 
@@ -517,7 +639,7 @@ func (o *OktaMFAPlugin) postFactorResponse(oktaUserId string, oktaFactor Factor,
 		return factorRequest, errors.New(requestEvent.Help)
 	}
 
-	f := FactorRequest{}
+	f := FactorResponse{}
 	if err = json.Unmarshal(body, &f); err != nil {
 		requestEvent.Help = fmt.Sprintf("unexpected response format; response: %s", string(body))
 		ssas.OperationFailed(requestEvent)

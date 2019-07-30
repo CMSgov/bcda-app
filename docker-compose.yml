@@ -116,6 +116,7 @@ services:
       - OKTA_CA_CERT_FINGERPRINT=${OKTA_CA_CERT_FINGERPRINT}
       - OKTA_MFA_EMAIL=${OKTA_MFA_EMAIL}
       - OKTA_MFA_USER_ID=${OKTA_MFA_USER_ID}
+      - OKTA_MFA_USER_PASSWORD=${OKTA_MFA_USER_PASSWORD}
       - OKTA_MFA_SMS_FACTOR_ID=${OKTA_MFA_SMS_FACTOR_ID}
       - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem
       - SSAS_PUBLIC_SIGNING_KEY_PATH=../shared_files/ssas/public_test_signing_key.pem

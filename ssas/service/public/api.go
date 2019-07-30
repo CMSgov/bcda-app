@@ -39,14 +39,71 @@ type RegistrationRequest struct {
 }
 
 type MFARequest struct {
-	CmsID       string  `json:"cms_id"`
+	LoginID     string  `json:"login_id"`
 	FactorType  string  `json:"factor_type"`
 	Passcode    *string `json:"passcode,omitempty"`
 	Transaction *string `json:"transaction,omitempty"`
 }
 
+type PasswordRequest struct {
+	LoginID  string `json:"login_id"`
+	Password string `json:"password"`
+}
+
 /*
-	RequestMultifactorChallenge is mounted at POST /authn/request and sends a multi-factor authentication request
+	VerifyPassword is mounted at POST /authn and responds with the account status for a verified username/password
+ 	combination.
+*/
+func VerifyPassword(w http.ResponseWriter, r *http.Request) {
+	var (
+		err        error
+		trackingID string
+		passReq    PasswordRequest
+	)
+
+	setHeaders(w)
+
+	bodyStr, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", "Request body cannot be read")
+		return
+	}
+
+	err = json.Unmarshal(bodyStr, &passReq)
+	if err != nil {
+		service.LogEntrySetField(r, "bodyStr", "<redacted>")
+		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
+		return
+	}
+
+	trackingID = uuid.NewRandom().String()
+	event := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingID, Help: "calling from public.VerifyPassword()"}
+	ssas.OperationCalled(event)
+	passwordResponse, err := GetProvider().VerifyPassword(passReq.LoginID, passReq.Password, trackingID)
+	if err != nil {
+		jsonError(w, "invalid_client_metadata", err.Error())
+		return
+	}
+
+	body, err := json.Marshal(passwordResponse)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure generating JSON: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure writing response body: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+}
+
+/*
+	RequestMultifactorChallenge is mounted at POST /authn/challenge and sends a multi-factor authentication request
 	using the specified factor.
 
 	Valid factor types include:
@@ -85,7 +142,7 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingID, Help: "calling from public.RequestMultifactorChallenge()"}
 	ssas.OperationCalled(event)
-	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, trackingID)
+	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
 		return
@@ -144,7 +201,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaFactorResponse", TrackingID: trackingID, Help: "calling from public.VerifyMultifactorResponse()"}
 	ssas.OperationCalled(event)
-	success := GetProvider().VerifyFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
+	success := GetProvider().VerifyFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
 
 	if !success {
 		event.Help = "passcode rejected"
