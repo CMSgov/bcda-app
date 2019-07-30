@@ -357,7 +357,7 @@ type Suppression struct {
 	SAMHSASourceCode    string `gorm:"type:varchar(5)"`
 	SAMHSAEffectiveDt   time.Time
 	SAMHSAPrefIndicator string `gorm:"type:char(1)"`
-	ACOCMSID            string `gorm:"column:aco_cms_id"`
+	ACOCMSID            string `gorm:"column:aco_cms_id;type:char(5)"`
 	BeneficiaryLinkKey  int
 }
 
