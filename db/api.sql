@@ -69,3 +69,19 @@ create table cclf_beneficiary_xrefs (
     updated_at timestamp with time zone not null default now(),
     deleted_at timestamp with time zone
 );
+
+create table suppressions (
+    id serial primary key,
+    hicn varchar(11) not null,
+    source_code varchar(5),
+    effective_date timestamp with time zone,
+    preference_indicator char(1),
+    samhsa_source_code varchar(5),
+    samhsa_effective_date timestamp with time zone,
+    samhsa_preference_indicator char(1),
+    aco_cms_id char(5),
+    beneficiary_link_key integer,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    deleted_at timestamp with time zone
+);

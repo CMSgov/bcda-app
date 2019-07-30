@@ -63,6 +63,7 @@ Required values must be present in the docker-compose.*.yml files.
 | OKTA_CA_CERT_FINGERPRINT | Yes  | SHA1 fingerprint for the CA certificate signing the Okta TLS cert.  If the fingerprint does not match the CA certificate presented when we visit Okta, the HTTPS connection is terminated |
 | OKTA_MFA_EMAIL       | No       | The email address (Okta account identifier) for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
 | OKTA_MFA_USER_ID     | No       | The user ID for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
+| OKTA_MFA_USER_PASSWORD| No      | The password for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
 | OKTA_MFA_SMS_FACTOR_ID | No     | The SMS MFA factor ID enrolled for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
 | SSAS_READ_TIMEOUT    | No       | Sets the read timeout on server requests |
 | SSAS_WRITE_TIMEOUT   | No       | Sets the write timeout on server responses |
