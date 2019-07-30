@@ -23,7 +23,7 @@ type PublicRouterTestSuite struct {
 	rr           *httptest.ResponseRecorder
 	db           *gorm.DB
 	group        ssas.Group
-	system		 ssas.System
+	system       ssas.System
 }
 
 func (s *PublicRouterTestSuite) SetupSuite() {
@@ -69,7 +69,7 @@ func (s *PublicRouterTestSuite) TestRegisterRoute() {
 }
 
 func (s *PublicRouterTestSuite) TestResetRoute() {
-	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`,s.system.ClientID))
+	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`, s.system.ClientID))
 	res := s.reqPublicRoute("POST", "/reset", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 	buf := new(bytes.Buffer)
@@ -82,19 +82,19 @@ func (s *PublicRouterTestSuite) TestResetRoute() {
 }
 
 func (s *PublicRouterTestSuite) TestAuthnRoute() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","password":"abcdefg"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","password":"abcdefg"}`)
 	res := s.reqPublicRoute("POST", "/authn", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnRequestRoute() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
-	res := s.reqPublicRoute("POST", "/authn/request", rb)
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
+	res := s.reqPublicRoute("POST", "/authn/challenge", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnVerifyRoute() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
 	res := s.reqPublicRoute("POST", "/authn/verify", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
