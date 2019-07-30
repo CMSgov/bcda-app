@@ -101,6 +101,11 @@ func (s *APITestSuite) TestListGroups() {
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	groups := []ssas.Group{}
+	err = json.Unmarshal(rr.Body.Bytes(), &groups)
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), len(groups) >= 2)
+
 	err = ssas.CleanDatabase(g1)
 	assert.Nil(s.T(), err)
 	err = ssas.CleanDatabase(g2)
