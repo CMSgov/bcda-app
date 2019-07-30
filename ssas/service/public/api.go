@@ -43,14 +43,14 @@ type ResetRequest struct {
 }
 
 type MFARequest struct {
-	CmsID       string  `json:"cms_id"`
+	LoginID     string  `json:"login_id"`
 	FactorType  string  `json:"factor_type"`
 	Passcode    *string `json:"passcode,omitempty"`
 	Transaction *string `json:"transaction,omitempty"`
 }
 
 type PasswordRequest struct {
-	CmsID    string `json:"cms_id"`
+	LoginID  string `json:"login_id"`
 	Password string `json:"password"`
 }
 
@@ -83,7 +83,7 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingID, Help: "calling from public.VerifyPassword()"}
 	ssas.OperationCalled(event)
-	passwordResponse, oktaId, err := GetProvider().VerifyPassword(passReq.CmsID, passReq.Password, trackingID)
+	passwordResponse, oktaId, err := GetProvider().VerifyPassword(passReq.LoginID, passReq.Password, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
 		return
@@ -117,7 +117,7 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	RequestMultifactorChallenge is mounted at POST /authn/request and sends a multi-factor authentication request
+	RequestMultifactorChallenge is mounted at POST /authn/challenge and sends a multi-factor authentication request
 	using the specified factor.
 
 	Valid factor types include:
@@ -156,7 +156,7 @@ func RequestMultifactorChallenge(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingID, Help: "calling from public.RequestMultifactorChallenge()"}
 	ssas.OperationCalled(event)
-	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, trackingID)
+	factorResponse, err := GetProvider().RequestFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
 		return
@@ -189,7 +189,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 		trackingID string
 		mfaReq     MFARequest
 		body       []byte
-		ts		   string
+		ts         string
 		groupIDs   []string
 	)
 
@@ -217,7 +217,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaFactorResponse", TrackingID: trackingID, Help: "calling from public.VerifyMultifactorResponse()"}
 	ssas.OperationCalled(event)
-	success, oktaID := GetProvider().VerifyFactorChallenge(mfaReq.CmsID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
+	success, oktaID := GetProvider().VerifyFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
 
 	if !success {
 		event.Help = "passcode rejected"

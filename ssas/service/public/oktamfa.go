@@ -35,12 +35,12 @@ type Factor struct {
 }
 
 type Embedded struct {
-	User	OktaUser `json:"user"`
+	User OktaUser `json:"user"`
 }
 
 type PasswordResponse struct {
-	Status 		string 		`json:"status"`
-	Embedded	Embedded 	`json:"_embedded,omitempty"`
+	Status   string   `json:"status"`
+	Embedded Embedded `json:"_embedded,omitempty"`
 }
 
 type FactorResponse struct {

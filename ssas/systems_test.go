@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -43,7 +42,7 @@ func (s *SystemsTestSuite) TestRevokeSystemKeyPair() {
 
 	group := Group{GroupID: "A00001"}
 	s.db.Save(&group)
-	system := System{GroupID: group.GroupID}
+	system := System{GroupID: group.GroupID, ClientID: "test-revoke-system-key-pair-client"}
 	s.db.Save(&system)
 	encryptionKey := EncryptionKey{SystemID: system.ID}
 	s.db.Save(&encryptionKey)
@@ -134,6 +133,45 @@ func (s *SystemsTestSuite) TestGenerateSystemKeyPair_AlreadyExists() {
 	assert.Nil(err)
 }
 
+func (s *SystemsTestSuite) TestGetEncryptionKey() {
+	group := Group{GroupID: "test-get-encryption-key-group"}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	system := System{GroupID: group.GroupID}
+	err = s.db.Create(&system).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	pubKey := `-----BEGIN RSA PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
+lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
+IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
+z2v9wLlK4zPAs3pLln3R/4NnGFKw2Eku2JVFTotQ03gSmSzesZixicw8LxgYKbNV
+oyTpERFansw6BbCJe7AP90rmaxCx80NiewFq+7ncqMbCMcqeUuCwk8MjS6bjvpcC
+htFCqeRi6AAUDRg0pcG8yoM+jo13Z5RJPOIf3ofohncfH5wr5Q7qiOCE5VH4I7cp
+OwIDAQAB
+-----END RSA PUBLIC KEY-----`
+
+	origKey := EncryptionKey{
+		SystemID: system.ID,
+		Body:     pubKey,
+	}
+	err = s.db.Create(&origKey).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	key, err := system.GetEncryptionKey("")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), pubKey, key.Body)
+
+	_ = CleanDatabase(group)
+}
+
 func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	assert := s.Assert()
 
@@ -166,17 +204,10 @@ func (s *SystemsTestSuite) TestSystemSavePublicKey() {
 	}
 
 	// Retrieve and verify
-	storedKey, err := system.GetPublicKey()
+	storedKey, err := system.GetEncryptionKey("")
 	assert.Nil(err)
 	assert.NotNil(storedKey)
-	storedPublicKeyPKIX, err := x509.MarshalPKIXPublicKey(storedKey)
-	assert.Nil(err, "unable to marshal saved public key")
-	storedPublicKeyBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: storedPublicKeyPKIX,
-	})
-	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
-	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
+	assert.Equal(storedKey.Body, string(publicKeyBytes))
 
 	err = CleanDatabase(group)
 	assert.Nil(err)
@@ -253,19 +284,19 @@ func (s *SystemsTestSuite) TestSystemPublicKeyEmpty() {
 
 	err = system.SavePublicKey(strings.NewReader(""))
 	assert.NotNil(err)
-	k, err := system.GetPublicKey()
+	k, err := system.GetEncryptionKey("")
 	assert.NotNil(err)
-	assert.Nil(k, "Empty string does not yield nil public key!")
+	assert.Empty(k, "Empty string does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(emptyPEM))
 	assert.NotNil(err)
-	k, err = system.GetPublicKey()
+	k, err = system.GetEncryptionKey("")
 	assert.NotNil(err)
-	assert.Nil(k, "Empty PEM key does not yield nil public key!")
+	assert.Empty(k, "Empty PEM key does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(validPEM))
 	assert.Nil(err)
-	k, err = system.GetPublicKey()
+	k, err = system.GetEncryptionKey("")
 	assert.Nil(err)
-	assert.NotNil(k, "Valid PEM key yields nil public key!")
+	assert.NotEmpty(k, "Valid PEM key yields empty public key!")
 
 	err = CleanDatabase(group)
 	assert.Nil(err)
@@ -439,22 +470,7 @@ func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 }
 
 func generatePublicKey(bits int) (string, error) {
-	keyPair, err := rsa.GenerateKey(rand.Reader, bits)
-	if err != nil {
-		return "", fmt.Errorf("unable to generate keyPair: %s", err.Error())
-	}
-
-	publicKeyPKIX, err := x509.MarshalPKIXPublicKey(&keyPair.PublicKey)
-	if err != nil {
-		return "", fmt.Errorf("unable to marshal public key: %s", err.Error())
-	}
-
-	publicKeyBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: publicKeyPKIX,
-	})
-
-	return string(publicKeyBytes), nil
+	return GeneratePublicKey(bits)
 }
 
 func (s *SystemsTestSuite) TestSaveSecret() {
@@ -466,7 +482,7 @@ func (s *SystemsTestSuite) TestSaveSecret() {
 		s.FailNow(err.Error())
 	}
 
-	system := System{GroupID: group.GroupID}
+	system := System{GroupID: group.GroupID, ClientID: "test-save-secret-client"}
 	err = s.db.Create(&system).Error
 	if err != nil {
 		s.FailNow(err.Error())

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/go-chi/chi"
@@ -146,7 +147,7 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, credentials.ClientSecret)
 }
 
-func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {
+func getPublicKey(w http.ResponseWriter, r *http.Request) {
 	systemID := chi.URLParam(r, "systemID")
 
 	system, err := ssas.GetSystemByID(systemID)
@@ -155,7 +156,29 @@ func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	trackingID := uuid.NewRandom().String()
+	ssas.OperationCalled(ssas.Event{Op: "GetEncryptionKey", TrackingID: trackingID, Help: "calling from admin.getPublicKey()"})
+	key, err := system.GetEncryptionKey(trackingID)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	keyStr := strings.Replace(key.Body, "\n", "\\n", -1)
+	fmt.Fprintf(w, `{ "client_id": "%s", "public_key": "%s" }`, system.ClientID, keyStr)
+}
+
+func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {
+	systemID := chi.URLParam(r, "systemID")
+
+	system, err := ssas.GetSystemByID(systemID)
+	if err != nil {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
 	err = system.DeactivateSecrets()
+
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return

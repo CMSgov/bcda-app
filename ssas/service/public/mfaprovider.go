@@ -54,9 +54,9 @@ func GetProvider() MFAProvider {
 
 // PasswordReturn defines the return type of VerifyPassword
 type PasswordReturn struct {
-	Success			bool		`json:"success"`
-	Message 		string		`json:"message"`
-	Token			string		`json:"token,omitempty"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Token   string `json:"token,omitempty"`
 }
 
 // FactorReturn defines the return type of RequestFactorChallenge

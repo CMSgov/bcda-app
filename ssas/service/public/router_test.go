@@ -24,7 +24,7 @@ type PublicRouterTestSuite struct {
 	rr           *httptest.ResponseRecorder
 	db           *gorm.DB
 	group        ssas.Group
-	system		 ssas.System
+	system       ssas.System
 }
 
 func (s *PublicRouterTestSuite) SetupSuite() {
@@ -86,7 +86,7 @@ func (s *PublicRouterTestSuite) TestRegisterRouteNoToken() {
 func (s *PublicRouterTestSuite) TestResetRoute() {
 	groupIDs := []string{"T1234", "T0001"}
 	_, ts, _ := MintRegistrationToken("test_okta_id", groupIDs)
-	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`,s.system.ClientID))
+	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`, s.system.ClientID))
 	res := s.reqPublicRoute("POST", "/reset", rb, ts)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 	buf := new(bytes.Buffer)
@@ -99,39 +99,39 @@ func (s *PublicRouterTestSuite) TestResetRoute() {
 }
 
 func (s *PublicRouterTestSuite) TestResetRouteNoToken() {
-	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`,s.system.ClientID))
+	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`, s.system.ClientID))
 	res := s.reqPublicRoute("POST", "/reset", rb, "")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnRoute() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","password":"abcdefg"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","password":"abcdefg"}`)
 	res := s.reqPublicRoute("POST", "/authn", rb, "")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
-func (s *PublicRouterTestSuite) TestAuthnRequestRoute() {
-	_, ts, _ := MintMFAToken("test_okta_id")
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
-	res := s.reqPublicRoute("POST", "/authn/request", rb, ts)
+func (s *PublicRouterTestSuite) TestAuthnChallengeRoute() {
+	_, ts, _ := MintMFAToken("fake_okta_id")
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
+	res := s.reqPublicRoute("POST", "/authn/challenge", rb, ts)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
-func (s *PublicRouterTestSuite) TestAuthnRequestRouteNoToken() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
-	res := s.reqPublicRoute("POST", "/authn/request", rb, "")
+func (s *PublicRouterTestSuite) TestAuthnChallengeRouteNoToken() {
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
+	res := s.reqPublicRoute("POST", "/authn/challenge", rb, "")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnVerifyRoute() {
 	_, ts, _ := MintMFAToken("fake_okta_id")
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
 	res := s.reqPublicRoute("POST", "/authn/verify", rb, ts)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnVerifyRouteNoToken() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
 	res := s.reqPublicRoute("POST", "/authn/verify", rb, "")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
