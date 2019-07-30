@@ -89,13 +89,26 @@ func (s *PublicRouterTestSuite) TestResetRoute() {
 	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`, s.system.ClientID))
 	res := s.reqPublicRoute("POST", "/reset", rb, ts)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
+func (s *PublicRouterTestSuite) TestAuthnChallengeRoute() {
+	_, ts, _ := MintMFAToken("fake_okta_id")
+	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
+	res := s.reqPublicRoute("POST", "/authn/challenge", rb, ts)
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(res.Body)
 	if err != nil {
 		s.FailNow(err.Error())
 	}
 	body := buf.String()
-	assert.Contains(s.T(), body, "client_secret")
+	assert.Contains(s.T(), body, "request_sent")
+}
+
+func (s *PublicRouterTestSuite) TestAuthnChallengeRouteNoToken() {
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
+	res := s.reqPublicRoute("POST", "/authn/challenge", rb, "")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestResetRouteNoToken() {
@@ -108,19 +121,6 @@ func (s *PublicRouterTestSuite) TestAuthnRoute() {
 	rb := strings.NewReader(`{"login_id":"success@test.com","password":"abcdefg"}`)
 	res := s.reqPublicRoute("POST", "/authn", rb, "")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
-}
-
-func (s *PublicRouterTestSuite) TestAuthnChallengeRoute() {
-	_, ts, _ := MintMFAToken("fake_okta_id")
-	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
-	res := s.reqPublicRoute("POST", "/authn/challenge", rb, ts)
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
-}
-
-func (s *PublicRouterTestSuite) TestAuthnChallengeRouteNoToken() {
-	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
-	res := s.reqPublicRoute("POST", "/authn/challenge", rb, "")
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnVerifyRoute() {

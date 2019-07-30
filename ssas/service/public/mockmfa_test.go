@@ -23,7 +23,7 @@ func (s *MockMFATestSuite) TestVerifyPasswordSuccess() {
 
 	passwordReturn, oktaId, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
 	assert.Nil(s.T(), err)
-	if passwordReturn == nil || oktaId == ""{
+	if passwordReturn == nil || oktaId == "" {
 		s.FailNow("we expect no errors from the mocked VerifyPassword() for this user ID")
 	}
 	assert.True(s.T(), passwordReturn.Success)
