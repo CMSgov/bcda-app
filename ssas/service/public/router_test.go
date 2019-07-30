@@ -69,7 +69,7 @@ func (s *PublicRouterTestSuite) TestAuthnRoute() {
 
 func (s *PublicRouterTestSuite) TestAuthnRequestRoute() {
 	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
-	res := s.reqPublicRoute("POST", "/authn/request", rb)
+	res := s.reqPublicRoute("POST", "/authn/challenge", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
