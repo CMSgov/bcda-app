@@ -15,7 +15,7 @@
 
 <!-- Describe the problem being solved here: -->
 
-### Proposed changes
+### Proposed Changes
 
 <!-- List of changes with bullet points here: -->
 
