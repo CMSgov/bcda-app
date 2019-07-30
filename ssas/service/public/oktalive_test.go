@@ -23,24 +23,57 @@ import (
 
 type OktaLiveTestSuite struct {
 	suite.Suite
-	oc *OktaMFAPlugin
-	email string
-	userId string
+	oc          *OktaMFAPlugin
+	email       string
+	userId      string
+	password    string
 	smsFactorId string
 }
 
 func (s *OktaLiveTestSuite) SetupSuite() {
 	s.email = os.Getenv("OKTA_MFA_EMAIL")
 	s.userId = os.Getenv("OKTA_MFA_USER_ID")
+	s.password = os.Getenv("OKTA_MFA_USER_PASSWORD")
 	s.smsFactorId = os.Getenv("OKTA_MFA_SMS_FACTOR_ID")
 
-	if s.email == "" || s.userId == "" || s.smsFactorId == "" {
-		s.FailNow(fmt.Sprintf("Cannot run live Okta tests without env vars set: OKTA_MFA_EMAIL=%s; OKTA_MFA_USER_ID=%s; OKTA_MFA_SMS_FACTOR_ID=%s", s.email, s.userId, s.smsFactorId))
+	if s.email == "" || s.userId == "" || s.password == "" || s.smsFactorId == "" {
+		s.FailNow(fmt.Sprintf("Cannot run live Okta tests without env vars set: OKTA_MFA_EMAIL=%s; OKTA_MFA_USER_ID=%s; OKTA_MFA_USER_PASSWORD=%s; OKTA_MFA_SMS_FACTOR_ID=%s",
+			s.email, s.userId, s.password, s.smsFactorId))
 	}
 }
 
 func (s *OktaLiveTestSuite) SetupTest() {
 	s.oc = NewOktaMFA(okta.Client())
+}
+
+func (s *OktaLiveTestSuite) TestPostPasswordSuccess() {
+	trackingId := uuid.NewRandom().String()
+
+	passwordRequest, err := s.oc.postPassword(s.email, s.password, trackingId)
+	if err != nil || passwordRequest == nil {
+		s.FailNow("password result not parsed: " + err.Error())
+	}
+	assert.Equal(s.T(), "MFA_REQUIRED", passwordRequest.Status)
+}
+
+func (s *OktaLiveTestSuite) TestPostPasswordFailure() {
+	trackingId := uuid.NewRandom().String()
+
+	passwordRequest, err := s.oc.postPassword(s.userId, "bad_password", trackingId)
+	if err != nil || passwordRequest == nil {
+		s.FailNow("password result not parsed: " + err.Error())
+	}
+	assert.Equal(s.T(), "AUTHENTICATION_FAILED", passwordRequest.Status)
+}
+
+func (s *OktaLiveTestSuite) TestPostPasswordBadUserId() {
+	trackingId := uuid.NewRandom().String()
+
+	passwordRequest, err := s.oc.postPassword("bad_user_id", s.password, trackingId)
+	if err != nil || passwordRequest == nil {
+		s.FailNow("password result not parsed: " + err.Error())
+	}
+	assert.Equal(s.T(), "AUTHENTICATION_FAILED", passwordRequest.Status)
 }
 
 func (s *OktaLiveTestSuite) TestPostFactorChallengeSuccess() {
