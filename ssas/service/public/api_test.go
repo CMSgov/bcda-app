@@ -203,7 +203,7 @@ func (s *APITestSuite) TestTokenSuccess() {
 	assert.NotNil(s.T(), creds.ClientSecret)
 
 	_, _ = MakeServer()
-	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req := httptest.NewRequest("POST", "/token", nil)
 	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
 	req.Header.Add("Accept", "application/json")
 	handler := http.HandlerFunc(token)

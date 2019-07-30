@@ -156,20 +156,17 @@ func (s *GroupsTestSuite) TestGetAuthorizedGroupsForOktaID() {
 	g1 := GroupData{}
 	err := json.Unmarshal(group1bytes, &g1)
 	assert.Nil(s.T(), err)
-	group1, err := CreateGroup(g1)
-	fmt.Println("Group 1 GroupID: ", group1.GroupID)
+	group1, _ := CreateGroup(g1)
 
 	g2 := GroupData{}
 	err = json.Unmarshal(group2bytes, &g2)
 	assert.Nil(s.T(), err)
-	group2, err := CreateGroup(g2)
-	fmt.Println("Group 2 GroupID: ", group2.GroupID)
+	group2, _ := CreateGroup(g2)
 
 	g3 := GroupData{}
 	err = json.Unmarshal(group3bytes, &g3)
 	assert.Nil(s.T(), err)
-	group3, err := CreateGroup(g3)
-	fmt.Println("Group 3 GroupID: ", group3.GroupID)
+	group3, _ := CreateGroup(g3)
 
 	defer s.db.Unscoped().Delete(&group1)
 	defer s.db.Unscoped().Delete(&group2)

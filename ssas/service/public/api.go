@@ -90,7 +90,7 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if passwordResponse.Success {
-		_, passwordResponse.Token, err = server.MintMFAToken(oktaId)
+		_, passwordResponse.Token, err = MintMFAToken(oktaId)
 	}
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -245,7 +245,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 
 	event.Help = "passcode accepted"
 	ssas.OperationSucceeded(event)
-	if _, ts, err = server.MintRegistrationToken(oktaID, groupIDs); err != nil {
+	if _, ts, err = MintRegistrationToken(oktaID, groupIDs); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		event.Help = "failure creating registration token: " + err.Error()
 		ssas.OperationFailed(event)
@@ -443,7 +443,8 @@ func token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, ts, err := server.MintAccessToken(system.GroupID, nil)
+	token, ts, err := MintAccessToken(system.GroupID, nil)
+	fmt.Println("system.GroupID:", system.GroupID)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return

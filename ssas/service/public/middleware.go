@@ -22,12 +22,23 @@ func readGroupID(next http.Handler) http.Handler {
 			err error
 		)
 		if rd, err = readRegData(r); err != nil {
-			rd = ssas.AuthRegData{}
+			service.GetLogEntry(r).Println("no data from token about allowed groups")
+			respond(w, http.StatusUnauthorized)
+			return
 		}
 
 		if rd.GroupID = r.Header.Get("x-group-id"); rd.GroupID == "" {
-			service.GetLogEntry(r).Println("missing header x-group-id; request will fail")
+			service.GetLogEntry(r).Println("missing header x-group-id")
+			respond(w, http.StatusUnauthorized)
+			return
 		}
+
+		if !contains(rd.AllowedGroupIDs, rd.GroupID) {
+			service.GetLogEntry(r).Println("group specified in x-group-id not in token's allowed groups")
+			respond(w, http.StatusUnauthorized)
+			return
+		}
+
 		ctx := context.WithValue(r.Context(), "rd", rd)
 		service.LogEntrySetField(r, "rd", rd)
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -98,9 +109,8 @@ func tokenAuth(next http.Handler, tokenType string) http.Handler {
 		}
 
 		if token, ok := token.(*jwt.Token); ok {
-			err := server.AuthorizeAccess(token.Raw, tokenType)
+			err := tokenValidity(token.Raw, tokenType)
 			if err != nil {
-				log.Error(err)
 				respond(w, http.StatusUnauthorized)
 				return
 			}
@@ -113,4 +123,13 @@ func tokenAuth(next http.Handler, tokenType string) http.Handler {
 func respond(w http.ResponseWriter, status int) {
 	oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
 	responseutils.WriteError(oo, w, status)
+}
+
+func contains(list []string, target string) bool {
+	for _, item := range list {
+		if item == target {
+			return true
+		}
+	}
+	return false
 }
