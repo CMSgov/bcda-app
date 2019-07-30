@@ -558,44 +558,44 @@ func (s *ModelsTestSuite) TestGetMaxBeneCount() {
 	assert.EqualError(err,"invalid request type")
 }
 
-func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
+func (s *ModelsTestSuite) TestGetBeneficiaries() {
 	assert := s.Assert()
 	var aco, smallACO, mediumACO, largeACO ACO
 	acoUUID := uuid.Parse(constants.DEVACOUUID)
 
 	err := s.db.Find(&aco, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err := aco.GetBeneficiaryIDs()
+	beneficiaries, err := aco.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(50, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(50, len(beneficiaries))
 
 	// small ACO has 10 benes
 	acoUUID = uuid.Parse(constants.SMALLACOUUID)
 	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err = smallACO.GetBeneficiaryIDs()
+	beneficiaries, err = smallACO.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(10, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(10, len(beneficiaries))
 
 	// Medium ACO has 25 benes
 	acoUUID = uuid.Parse(constants.MEDIUMACOUUID)
 	err = s.db.Find(&mediumACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err = mediumACO.GetBeneficiaryIDs()
+	beneficiaries, err = mediumACO.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(25, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(25, len(beneficiaries))
 
 	// Large ACO has 100 benes
 	acoUUID = uuid.Parse(constants.LARGEACOUUID)
 	err = s.db.Find(&largeACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err = largeACO.GetBeneficiaryIDs()
+	beneficiaries, err = largeACO.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(100, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(100, len(beneficiaries))
 
 }
 
