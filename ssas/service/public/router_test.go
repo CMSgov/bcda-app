@@ -93,7 +93,7 @@ func (s *PublicRouterTestSuite) TestResetRoute() {
 
 func (s *PublicRouterTestSuite) TestAuthnChallengeRoute() {
 	_, ts, _ := MintMFAToken("fake_okta_id")
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
 	res := s.reqPublicRoute("POST", "/authn/challenge", rb, ts)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 	buf := new(bytes.Buffer)
