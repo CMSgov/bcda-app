@@ -109,6 +109,7 @@ func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 		return nil, err
 	}
 
+	// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
 	beneficiaries, err := aco.GetBeneficiaries(false)
 	if err != nil {
 		return nil, err
