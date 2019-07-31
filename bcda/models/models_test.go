@@ -668,6 +668,28 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	}
 	defer s.db.Unscoped().Delete(&bene4Suppression)
 
+	// Beneficiary 5: two suppression records, latest: preference indicator = N, effective date < now
+	bene5 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene5hicn"}
+	err = s.db.Save(&bene5).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene5)
+
+	bene5Suppression1 := Suppression{HICN: "bene5hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-2 * time.Hour)}
+	err = s.db.Save(&bene5Suppression1).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene5Suppression1)
+
+	bene5Suppression2 := Suppression{HICN: "bene5hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-1 * time.Hour)}
+	err = s.db.Save(&bene5Suppression2).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene5Suppression2)
+
 	result, err := aco.GetBeneficiaries(false)
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), result, 3)
