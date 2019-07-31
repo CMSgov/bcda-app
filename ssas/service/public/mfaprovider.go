@@ -107,7 +107,7 @@ type MFAProvider interface {
 
 	// VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
 	// except Push.
-	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool, string)
+	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool, string, []string)
 
 	// VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
 	// rejection, waiting, and timeout.

@@ -10,7 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
-// TokenTTL contains the token ttl in nanoseconds (1,000,000,000 nanos/sec)
+// tokenTTL contains the token ttl in nanoseconds (1,000,000,000 nanos/sec)
 var (
 	TokenTTL = time.Hour
 	ttlScalar = time.Minute
@@ -52,7 +52,7 @@ func GenerateTokenString(id, acoID string, issuedAt int64, expiresAt int64) (str
 	return token.SignedString(InitAlphaBackend().PrivateKey)
 }
 
-// SetTokenDuration sets (again) the TokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
+// SetTokenDuration sets (again) the tokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
 // should only be used for testing; we don't support changing the ttl during runtime
 func SetTokenDuration() {
 	if ttl := utils.FromEnv("JWT_EXPIRATION_DELTA", "60"); ttl != "" {

@@ -505,6 +505,10 @@ func CleanDatabase(group Group) error {
 	)
 	defer Close(db)
 
+	if group.ID == 0 {
+		return fmt.Errorf("must have valid group id")
+	}
+
 	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
 		return fmt.Errorf("unable to find associated systems: %s", err.Error())

@@ -3,10 +3,18 @@ package public
 import (
 	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/cfg"
 	"github.com/CMSgov/bcda-app/ssas/service"
 	"github.com/dgrijalva/jwt-go"
 	"time"
 )
+
+var selfRegistrationTokenDuration time.Duration
+
+func init() {
+	minutes := cfg.GetEnvInt("SSAS_MFA_TOKEN_TIMEOUT_MINUTES", 60)
+	selfRegistrationTokenDuration = time.Duration(int64(time.Minute) * int64(minutes))
+}
 
 // MintMFAToken generates a tokenstring for MFA endpoints
 func MintMFAToken(oktaID string) (*jwt.Token, string, error) {
@@ -19,7 +27,7 @@ func MintMFAToken(oktaID string) (*jwt.Token, string, error) {
 		return nil, "", err
 	}
 
-	return server.MintToken(claims, time.Now().Unix(), time.Now().Add(server.TokenTTL).Unix())
+	return server.MintToken(claims, time.Now().Unix(), time.Now().Add(selfRegistrationTokenDuration).Unix())
 }
 
 // MintRegistrationToken generates a tokenstring for system self-registration endpoints
@@ -34,10 +42,10 @@ func MintRegistrationToken(oktaID string, groupIDs []string) (*jwt.Token, string
 		return nil, "", err
 	}
 
-	return server.MintTokenWithDuration(claims, server.TokenTTL)
+	return server.MintTokenWithDuration(claims, selfRegistrationTokenDuration)
 }
 
-// MintAccessToken generates a tokenstring that expires in server.TokenTTL time
+// MintAccessToken generates a tokenstring that expires in server.tokenTTL time
 func MintAccessToken(acoID string, data interface{}) (*jwt.Token, string, error) {
 	claims := service.CommonClaims{
 		TokenType: "AccessToken",
@@ -46,11 +54,10 @@ func MintAccessToken(acoID string, data interface{}) (*jwt.Token, string, error)
 	}
 
 	if err := checkTokenClaims(&claims, claims.TokenType); err != nil {
-		fmt.Println("error in checkTokenClaims: " + err.Error())   // TODO: remove
 		return nil, "", err
 	}
 
-	return server.MintTokenWithDuration(claims, server.TokenTTL)
+	return server.MintTokenWithDuration(claims, selfRegistrationTokenDuration)
 }
 
 func empty(arr []string) bool {
@@ -109,15 +116,15 @@ func checkTokenClaims(claims *service.CommonClaims, requiredTokenType string) er
 	switch claims.TokenType {
 	case "MFAToken":
 		if claims.OktaID == "" {
-			return fmt.Errorf("missing MFA claim(s)")
+			return fmt.Errorf("MFA token must have OktaID claim")
 		}
 	case "RegistrationToken":
 		if empty(claims.GroupIDs) {
-			return fmt.Errorf("missing registration claim(s)")
+			return fmt.Errorf("registration token must have GroupIDs claim")
 		}
 	case "AccessToken":
 		if claims.ACOID == "" {
-			return fmt.Errorf("must have ACOID and data")
+			return fmt.Errorf("access token must have ACOID claim")
 		}
 	default:
 		return fmt.Errorf("missing token type claim")

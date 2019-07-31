@@ -9,12 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-chi/render"
+	"github.com/pborman/uuid"
 	"io/ioutil"
 	"net/http"
 	"strconv"
-
-	"github.com/go-chi/render"
-	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/service"
@@ -217,7 +216,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaFactorResponse", TrackingID: trackingID, Help: "calling from public.VerifyMultifactorResponse()"}
 	ssas.OperationCalled(event)
-	success, oktaID := GetProvider().VerifyFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
+	success, oktaID, groupIDs := GetProvider().VerifyFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
 
 	if !success {
 		event.Help = "passcode rejected"
@@ -232,15 +231,19 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if oktaID != "" {
-		groupIDs, err = ssas.GetAuthorizedGroupsForOktaID(oktaID)
+	if empty(groupIDs) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		event.Help = "no authorized groups: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
 
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			event.Help = "failure getting authorized groups: " + err.Error()
-			ssas.OperationFailed(event)
-			return
-		}
+	gIdsBytes, err := json.Marshal(groupIDs)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		event.Help = "no authorized groups: " + err.Error()
+		ssas.OperationFailed(event)
+		return
 	}
 
 	event.Help = "passcode accepted"
@@ -251,8 +254,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 		ssas.OperationFailed(event)
 		return
 	}
-
-	body = []byte(fmt.Sprintf(`{"factor_result":"success","registration_token":"%s"}`, ts))
+	body = []byte(fmt.Sprintf(`{"factor_result":"success","registration_token":"%s", "available_groups":%s}`, ts, string(gIdsBytes)))
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -297,6 +299,11 @@ func ResetSecret(w http.ResponseWriter, r *http.Request) {
 
 	if sys, err = ssas.GetSystemByClientID(req.ClientID); err != nil {
 		jsonError(w, "invalid_client_metadata", "Client not found")
+		return
+	}
+
+	if !contains(rd.AllowedGroupIDs, rd.GroupID) || sys.GroupID != rd.GroupID {
+		jsonError(w, "invalid_client_metadata", "Invalid group")
 		return
 	}
 
@@ -353,6 +360,8 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "invalid_client_metadata", "Request body cannot be parsed")
 		return
 	}
+
+	//if reg.
 
 	if reg.JSONWebKeys.Keys == nil || len(reg.JSONWebKeys.Keys) > 1 {
 		jsonError(w, "invalid_client_metadata", "Exactly one JWK must be presented")

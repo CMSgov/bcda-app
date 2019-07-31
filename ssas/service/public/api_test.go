@@ -42,7 +42,7 @@ func (s *APITestSuite) TestAuthRegisterEmpty() {
 	req, err := http.NewRequest("GET", "/auth/register", regBody)
 	assert.Nil(s.T(), err)
 
-	req = addRegDataContext(req, "T12123")
+	req = addRegDataContext(req, "T12123", []string{"T12123"})
 	http.HandlerFunc(RegisterSystem).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
@@ -53,7 +53,7 @@ func (s *APITestSuite) TestAuthRegisterBadJSON() {
 	req, err := http.NewRequest("GET", "/auth/register", regBody)
 	assert.Nil(s.T(), err)
 
-	req = addRegDataContext(req, "T12123")
+	req = addRegDataContext(req, "T12123", []string{"T12123"})
 	http.HandlerFunc(RegisterSystem).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
@@ -72,7 +72,7 @@ func (s *APITestSuite) TestAuthRegisterSuccess() {
 	req, err := http.NewRequest("GET", "/auth/register", regBody)
 	assert.Nil(s.T(), err)
 
-	req = addRegDataContext(req, "T12123")
+	req = addRegDataContext(req, "T12123", []string{"T12123"})
 	http.HandlerFunc(RegisterSystem).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusCreated, s.rr.Code)
 
@@ -96,7 +96,7 @@ func (s *APITestSuite) TestResetSecretNoSystem() {
 	req, err := http.NewRequest("PUT", "/reset", body)
 	assert.Nil(s.T(), err)
 
-	req = addRegDataContext(req, groupID)
+	req = addRegDataContext(req, groupID, []string{groupID})
 	http.HandlerFunc(ResetSecret).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 	assert.Contains(s.T(), s.rr.Body.String(), "not found")
@@ -112,7 +112,7 @@ func (s *APITestSuite) TestResetSecretEmpty() {
 	req, err := http.NewRequest("PUT", "/reset", body)
 	assert.Nil(s.T(), err)
 
-	req = addRegDataContext(req, groupID)
+	req = addRegDataContext(req, groupID, []string{groupID})
 	http.HandlerFunc(ResetSecret).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
@@ -124,7 +124,7 @@ func (s *APITestSuite) TestResetSecretBadJSON() {
 	req, err := http.NewRequest("PUT", "/reset", body)
 	assert.Nil(s.T(), err)
 
-	req = addRegDataContext(req, groupID)
+	req = addRegDataContext(req, groupID, []string{groupID})
 	http.HandlerFunc(ResetSecret).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
@@ -150,7 +150,7 @@ func (s *APITestSuite) TestResetSecretSuccess() {
 	req, err := http.NewRequest("PUT", "/reset", body)
 	assert.Nil(s.T(), err)
 
-	req = addRegDataContext(req, groupID)
+	req = addRegDataContext(req, groupID, []string{groupID})
 	http.HandlerFunc(ResetSecret).ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 
@@ -160,6 +160,7 @@ func (s *APITestSuite) TestResetSecretSuccess() {
 	}
 	hash := ssas.Hash(newSecret.Hash)
 
+	fmt.Println("TestResetSecretSuccess body:", s.rr.Body.String())
 	j := map[string]string{}
 	err = json.Unmarshal(s.rr.Body.Bytes(), &j)
 	assert.Nil(s.T(), err)
@@ -173,10 +174,10 @@ func TestAuthAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
 }
 
-func addRegDataContext(req *http.Request, groupID string) *http.Request {
+func addRegDataContext(req *http.Request, groupID string, groupIDs []string) *http.Request {
 	rctx := chi.NewRouteContext()
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	rd := ssas.AuthRegData{GroupID: groupID}
+	rd := ssas.AuthRegData{GroupID: groupID, AllowedGroupIDs: groupIDs}
 	req = req.WithContext(context.WithValue(req.Context(), "rd", rd))
 	return req
 }

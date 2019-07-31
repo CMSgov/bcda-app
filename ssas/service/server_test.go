@@ -33,31 +33,31 @@ func (s *ServerTestSuite) TestSetSigningKeys() {
 }
 
 func (s *ServerTestSuite) TestTokenDurationDefault() {
-	assert.NotEmpty(s.T(), s.server.TokenTTL)
-	assert.Equal(s.T(), s.server.TokenTTL, time.Hour)
+	assert.NotEmpty(s.T(), s.server.tokenTTL)
+	assert.Equal(s.T(), s.server.tokenTTL, time.Hour)
 }
 
 func (s *ServerTestSuite) TestTokenDurationOverride() {
 	originalValue := os.Getenv("SSAS_TOKEN_TTL_IN_MINUTES")
-	assert.NotEmpty(s.T(), s.server.TokenTTL)
-	assert.Equal(s.T(), time.Hour, s.server.TokenTTL)
+	assert.NotEmpty(s.T(), s.server.tokenTTL)
+	assert.Equal(s.T(), time.Hour, s.server.tokenTTL)
 	os.Setenv("SSAS_TOKEN_TTL_IN_MINUTES", "5")
 	s.server.initTokenDuration()
-	assert.Equal(s.T(), 5*time.Minute, s.server.TokenTTL)
+	assert.Equal(s.T(), 5*time.Minute, s.server.tokenTTL)
 	os.Setenv("SSAS_TOKEN_TTL_IN_MINUTES", originalValue)
 }
 
 func (s *ServerTestSuite) TestTokenDurationEmptyOverride() {
-	assert.NotEmpty(s.T(), s.server.TokenTTL)
-	assert.Equal(s.T(), time.Hour, s.server.TokenTTL)
+	assert.NotEmpty(s.T(), s.server.tokenTTL)
+	assert.Equal(s.T(), time.Hour, s.server.tokenTTL)
 	os.Setenv("JWT_EXPIRATION_DELTA", "")
 	s.server.initTokenDuration()
-	assert.Equal(s.T(), time.Hour, s.server.TokenTTL)
+	assert.Equal(s.T(), time.Hour, s.server.tokenTTL)
 }
 
 func (s *ServerTestSuite) TestUnavailableSigner() {
 	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	token, ts, err := s.server.MintToken(CommonClaims{ACOID: acoUUID}, time.Now().Unix(), time.Now().Add(s.server.TokenTTL).Unix())
+	token, ts, err := s.server.MintToken(CommonClaims{ACOID: acoUUID}, time.Now().Unix(), time.Now().Add(s.server.tokenTTL).Unix())
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
@@ -68,7 +68,7 @@ func (s *ServerTestSuite) TestUnavailableSigner() {
 		_ = s.server.SetSigningKeys(unitSigningKeyPath)
 	}()
 	assert.Panics(s.T(), func() {
-		_, _, _ = s.server.MintToken(CommonClaims{ACOID: acoUUID}, time.Now().Unix(), time.Now().Add(s.server.TokenTTL).Unix())
+		_, _, _ = s.server.MintToken(CommonClaims{ACOID: acoUUID}, time.Now().Unix(), time.Now().Add(s.server.tokenTTL).Unix())
 	})
 }
 

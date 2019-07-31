@@ -2,7 +2,6 @@ package public
 
 import (
 	"context"
-	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/service"
 	"net/http"
@@ -10,8 +9,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/CMSgov/bcda-app/bcda/responseutils"  // TODO: factor this requirement out
 )
 
 
@@ -58,7 +55,6 @@ func parseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		fmt.Println("Auth header:", authHeader)
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
@@ -121,8 +117,7 @@ func tokenAuth(next http.Handler, tokenType string) http.Handler {
 }
 
 func respond(w http.ResponseWriter, status int) {
-	oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
-	responseutils.WriteError(oo, w, status)
+	http.Error(w, http.StatusText(status), status)
 }
 
 func contains(list []string, target string) bool {

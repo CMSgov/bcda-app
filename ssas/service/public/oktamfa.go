@@ -143,7 +143,7 @@ func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 	VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
 	except Push.
 */
-func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool, oktaUserID string) {
+func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool, oktaID string, groupIDs []string) {
 	startTime := time.Now()
 	success = false
 	requestEvent := ssas.Event{Op: "VerifyOktaFactorChallenge", TrackingID: trackingId}
@@ -156,7 +156,7 @@ func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 		return
 	}
 
-	oktaUserID, err := o.getUser(userIdentifier, trackingId)
+	oktaID, err := o.getUser(userIdentifier, trackingId)
 	if err != nil {
 		requestEvent.Help = "matching user not found: " + err.Error()
 		ssas.OperationFailed(requestEvent)
@@ -164,8 +164,8 @@ func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 		return
 	}
 
-	requestEvent.UserID = oktaUserID
-	oktaFactor, err := o.getUserFactor(oktaUserID, factorType, trackingId)
+	requestEvent.UserID = oktaID
+	oktaFactor, err := o.getUserFactor(oktaID, factorType, trackingId)
 	if err != nil {
 		requestEvent.Help = "matching factor not found: " + err.Error()
 		ssas.OperationFailed(requestEvent)
@@ -173,7 +173,7 @@ func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 		return
 	}
 
-	factorRequest, err := o.postFactorResponse(oktaUserID, *oktaFactor, passcode, trackingId)
+	factorRequest, err := o.postFactorResponse(oktaID, *oktaFactor, passcode, trackingId)
 	if err != nil {
 		requestEvent.Help = "error validating factor passcode: " + err.Error()
 		ssas.OperationFailed(requestEvent)
@@ -185,6 +185,14 @@ func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 
 	if !success {
 		requestEvent.Help = "passcode not accepted"
+		ssas.OperationFailed(requestEvent)
+		wait(startTime, RequestFactorChallengeDuration)
+		return
+	}
+
+	groupIDs, err = ssas.GetAuthorizedGroupsForOktaID(oktaID)
+	if err != nil {
+		requestEvent.Help = "failure getting authorized groups: " + err.Error()
 		ssas.OperationFailed(requestEvent)
 		wait(startTime, RequestFactorChallengeDuration)
 		return

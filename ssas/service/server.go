@@ -34,7 +34,7 @@ type Server struct {
 	notSecure         bool
 	srvr              http.Server
 	privateSigningKey *rsa.PrivateKey
-	TokenTTL          time.Duration
+	tokenTTL          time.Duration
 }
 
 // NewServer initializes an instance of the Server type. Subsequent to initialization, a signing key
@@ -227,21 +227,21 @@ func newTokenID() string {
 	return uuid.NewRandom().String()
 }
 
-// initTokenDuration sets (again) the TokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
+// initTokenDuration sets (again) the tokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
 // should only be used for initialization or testing; we don't support changing the ttl during runtime
 func (s *Server) initTokenDuration() {
-	s.TokenTTL = time.Hour
+	s.tokenTTL = time.Hour
 	if ttl := os.Getenv("SSAS_TOKEN_TTL_IN_MINUTES"); ttl != "" {
 		var (
 			n   int
 			err error
 		)
 		if n, err = strconv.Atoi(ttl); err == nil {
-			s.TokenTTL = ttlScale * time.Duration(n)
+			s.tokenTTL = ttlScale * time.Duration(n)
 			ssas.Logger.Infof("set token duration from env var value %s", ttl)
 		}
 	}
-	ssas.Logger.Infof("Token ttl is %d minutes", s.TokenTTL/ttlScale)
+	ssas.Logger.Infof("Token ttl is %d minutes", s.tokenTTL/ttlScale)
 }
 
 func (s *Server) VerifyToken(tokenString string) (*jwt.Token, error) {
