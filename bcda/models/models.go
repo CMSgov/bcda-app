@@ -7,9 +7,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -218,8 +220,30 @@ type CCLFBeneficiaryXref struct {
 	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
+// GetPublicKey returns the ACO's public key.
 func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
-	return rsautils.ReadPublicKey(aco.PublicKey)
+	var key string
+	if strings.ToLower(os.Getenv("BCDA_AUTH_PROVIDER")) == "ssas" {
+		ssas, err := authclient.NewSSASClient()
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		systemID, err := strconv.Atoi(aco.ClientID)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		keyBytes, err := ssas.GetPublicKey(systemID)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		key = string(keyBytes)
+	} else {
+		key = aco.PublicKey
+	}
+	return rsautils.ReadPublicKey(key)
 }
 
 func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
