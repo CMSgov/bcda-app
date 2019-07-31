@@ -314,7 +314,7 @@ func setUpApp() *cli.App {
 		{
 			Name:     "archive-job-files",
 			Category: "Cleanup",
-			Usage:    "Updates job statuses and moves files to an inaccessible location",
+			Usage:    "Update job statuses and move files to an inaccessible location",
 			Action: func(c *cli.Context) error {
 				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
 				return archiveExpiring(threshold)
@@ -323,7 +323,7 @@ func setUpApp() *cli.App {
 		{
 			Name:     "cleanup-archive",
 			Category: "Cleanup",
-			Usage:    "Removes job directory and files from archive and updates job status to Expired",
+			Usage:    "Remove job directory and files from archive and update job status to Expired",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "threshold",
@@ -342,11 +342,11 @@ func setUpApp() *cli.App {
 		{
 			Name:     "import-cclf-directory",
 			Category: "Data import",
-			Usage:    "Import all CCLF files in the directory",
+			Usage:    "Import all CCLF files from the specified directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "directory",
-					Usage:       "Directory where CCLF Files are located",
+					Usage:       "Directory where CCLF files are located",
 					Destination: &filePath,
 				},
 			},
@@ -354,6 +354,26 @@ func setUpApp() *cli.App {
 				success, failure, skipped, err := cclf.ImportCCLFDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				return err
+			},
+		},
+		{
+			Name:     "import-1800medicare-directory",
+			Category: "Data import",
+			Usage:    "Import all 1-800-MEDICARE files from the specified directory",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "directory",
+					Usage:       "Directory where 1-800-MEDICARE files are located",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				msg, err := import1800MedicareDirectory(filePath)
+				if err != nil {
+					return err
+				}
+				fmt.Println(msg)
+				return nil
 			},
 		},
 		{
@@ -556,4 +576,9 @@ func cleanupArchive(hrThreshold int) error {
 	}
 
 	return nil
+}
+
+func import1800MedicareDirectory(dir string) (string, error) {
+	// TODO
+	return "", nil
 }
