@@ -7,6 +7,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -16,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/go-chi/chi"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -308,6 +312,59 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	})
 	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
 	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
+}
+
+func (s *ModelsTestSuite) TestACOGetPublicKey_SSAS() {
+	router := chi.NewRouter()
+	keyStr := `-----BEGIN RSA PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
+lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
+IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
+z2v9wLlK4zPAs3pLln3R/4NnGFKw2Eku2JVFTotQ03gSmSzesZixicw8LxgYKbNV
+oyTpERFansw6BbCJe7AP90rmaxCx80NiewFq+7ncqMbCMcqeUuCwk8MjS6bjvpcC
+htFCqeRi6AAUDRg0pcG8yoM+jo13Z5RJPOIf3ofohncfH5wr5Q7qiOCE5VH4I7cp
+OwIDAQAB
+-----END RSA PUBLIC KEY-----
+`
+	router.Get("/system/{systemID}/key", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{ "client_id": "123456", "public_key": "` + strings.Replace(keyStr, "\n", "\\n", -1) + `" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	origAuthProvider := os.Getenv("BCDA_AUTH_PROVIDER")
+	os.Setenv("BCDA_AUTH_PROVIDER", "ssas")
+	defer os.Setenv("BCDA_AUTH_PROVIDER", origAuthProvider)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	os.Setenv("SSAS_URL", server.URL)
+	defer os.Setenv("SSAS_URL", origSSASURL)
+
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	os.Setenv("SSAS_USE_TLS", "false")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+
+	cmsID := "A0001"
+	aco := ACO{Name: "Public key from SSAS ACO", CMSID: &cmsID, UUID: uuid.NewRandom(), ClientID: "100"}
+
+	key, err := aco.GetPublicKey()
+	if err != nil {
+		s.FailNow("Failed to get key", err.Error())
+	}
+
+	keyBytes, err := x509.MarshalPKIXPublicKey(key)
+	if err != nil {
+		s.FailNow("Failed to marshal key", err.Error())
+	}
+
+	pemBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: keyBytes,
+	})
+
+	assert.Equal(s.T(), keyStr, string(pemBytes))
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {

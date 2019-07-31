@@ -106,6 +106,6 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	assert.NotEmpty(s.T(), t.AccessToken)
 }
 
-func TestAuthAuthAPITestSuite(t *testing.T) {
+func TestAuthAPITestSuite(t *testing.T) {
 	suite.Run(t, new(AuthAPITestSuite))
 }
