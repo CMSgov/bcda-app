@@ -362,9 +362,8 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	}
 
 	if len(cclfmap) == 0 {
-		err := errors.New("failed to find any CCLF files in directory")
-		log.Error(err)
-		return 0, 0, 0, err
+		log.Info("Failed to find any CCLF files in directory")
+		return 0, 0, 0, nil
 	}
 
 	for _, cclflist := range cclfmap {
