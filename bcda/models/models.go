@@ -232,7 +232,7 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 
 		for _, b := range cclfBeneficiaries {
 			var s Suppression
-			found := !db.Order("effective_date desc").First(&s, "hicn = ? AND effective_date <= ?", b.HICN, time.Now()).RecordNotFound()
+			found := !db.Order("effective_date desc").First(&s, "hicn = ? AND effective_date <= ? AND preference_indicator != '' AND preference_indicator IS NOT NULL", b.HICN, time.Now()).RecordNotFound()
 			if (found && s.PrefIndicator != "N") || !found {
 				unsuppressedBeneficiaries = append(unsuppressedBeneficiaries, b)
 			}
