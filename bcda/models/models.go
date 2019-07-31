@@ -230,7 +230,7 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		for _, b := range cclfBeneficiaries {
 			var s Suppression
 			found := !db.Order("effective_date desc").First(&s, "hicn = ? AND effective_date <= ?", b.HICN, time.Now()).RecordNotFound()
-			if (found && s.PrefIndicator != 'N') || !found {
+			if (found && s.PrefIndicator != "N") || !found {
 				unsuppressedBeneficiaries = append(unsuppressedBeneficiaries, b)
 			}
 		}
@@ -385,10 +385,10 @@ type Suppression struct {
 	HICN                string    `gorm:"type:varchar(11);not null"`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
-	PrefIndicator       byte      `gorm:"column:preference_indicator;type:char(1)"`
+	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`
 	SAMHSASourceCode    string    `gorm:"type:varchar(5)"`
 	SAMHSAEffectiveDt   time.Time `gorm:"column:samhsa_effective_date"`
-	SAMHSAPrefIndicator byte      `gorm:"column:samhsa_preference_indicator;type:char(1)"`
+	SAMHSAPrefIndicator string    `gorm:"column:samhsa_preference_indicator;type:char(1)"`
 	ACOCMSID            string    `gorm:"column:aco_cms_id;type:char(5)"`
 	BeneficiaryLinkKey  int
 }

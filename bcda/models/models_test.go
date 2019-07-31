@@ -555,7 +555,7 @@ func (s *ModelsTestSuite) TestGetMaxBeneCount() {
 	// Invalid type
 	max, err := GetMaxBeneCount("Coverages")
 	assert.Equal(-1, max)
-	assert.EqualError(err,"invalid request type")
+	assert.EqualError(err, "invalid request type")
 }
 
 func (s *ModelsTestSuite) TestGetBeneficiaries() {
@@ -597,6 +597,83 @@ func (s *ModelsTestSuite) TestGetBeneficiaries() {
 	assert.NotNil(beneficiaries)
 	assert.Equal(100, len(beneficiaries))
 
+}
+
+func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
+	acoCMSID := "T0000"
+	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
+	err := s.db.Save(&aco).Error
+	if err != nil {
+		s.FailNow("Failed to save ACO", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&aco)
+
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID}
+	err = s.db.Save(&cclfFile).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFile)
+
+	// Beneficiary 1: preference indicator = N, effective date < now
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene1hicn"}
+	err = s.db.Save(&bene1).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1)
+
+	bene1Suppression := Suppression{HICN: "bene1hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-1 * time.Hour)}
+	err = s.db.Save(&bene1Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1Suppression)
+
+	// Beneficiary 2: preference indicator = Y
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene2hicn"}
+	err = s.db.Save(&bene2).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2)
+
+	bene2Suppression := Suppression{HICN: "bene2hicn", PrefIndicator: "Y"}
+	err = s.db.Save(&bene2Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2Suppression)
+
+	// Beneficiary 3: no suppression record
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene3hicn"}
+	err = s.db.Save(&bene3).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3)
+
+	// Beneficiary 4: preference indicator = N, effective date > now
+	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene4hicn"}
+	err = s.db.Save(&bene4).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene4)
+
+	bene4Suppression := Suppression{HICN: "bene4hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(1 * time.Hour)}
+	err = s.db.Save(&bene4Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene4Suppression)
+
+	result, err := aco.GetBeneficiaries(false)
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), result, 3)
+	assert.Equal(s.T(), bene2.ID, result[0].ID)
+	assert.Equal(s.T(), bene3.ID, result[1].ID)
+	assert.Equal(s.T(), bene4.ID, result[2].ID)
 }
 
 func (s *ModelsTestSuite) TestGetBlueButtonID() {
