@@ -52,6 +52,12 @@ func GetProvider() MFAProvider {
 	}
 }
 
+// PasswordReturn defines the return type of VerifyPassword
+type PasswordReturn struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
 // FactorReturn defines the return type of RequestFactorChallenge
 type FactorReturn struct {
 	Action      string       `json:"action"`
@@ -86,6 +92,13 @@ func ValidFactorType(factorType string) bool {
 // Provider defines operations performed through an Okta MFA provider.  This indirection allows for a mock provider
 // to use during CI/CD integration testing
 type MFAProvider interface {
+
+	// VerifyPassword checks username/password validity, and returns information about the status of the account. Most
+	// importantly for the MFA workflow, it indicates whether a successfully verified account is cleared to continue
+	// MFA authentication, or whether a condition exists such as an expired password or no actively enrolled
+	// MFA factors.
+	VerifyPassword(userIdentifier string, password string, trackingId string) (*PasswordReturn, error)
+
 	// RequestFactorChallenge sends an MFA challenge request for the MFA factor type registered to the specified user,
 	// if both user and factor exist.  For instance, for the SMS factor type, an SMS message would be sent with a
 	// passcode.  Responses for successful and failed attempts should not vary.

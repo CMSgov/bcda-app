@@ -149,7 +149,7 @@
 			"response": []
 		},
 		{
-			"name": "public authn/request",
+			"name": "public authn/challenge",
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -158,7 +158,7 @@
 					"raw": "{\"cms_id\":\"{{cms_id}}\",\"factor_type\":\"{{factor_type}}\"}"
 				},
 				"url": {
-					"raw": "http://localhost:3003/authn/request",
+					"raw": "http://localhost:3003/authn/challenge",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -169,7 +169,7 @@
 						"request"
 					]
 				},
-				"description": "Request that an MFA passcode be sent, for example, via SMS"
+				"description": "Request that an MFA challenge passcode be sent, for example, via SMS"
 			},
 			"response": []
 		},
@@ -195,6 +195,30 @@
 					]
 				},
 				"description": "Verify an MFA passcode"
+			},
+			"response": []
+		},
+		{
+			"name": "public authn",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"cms_id\":\"{{cms_id}}\",\"password\":\"{{password}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/authn",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"authn"
+					]
+				},
+				"description": "Verify a username and password"
 			},
 			"response": []
 		}

@@ -7,9 +7,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -43,6 +45,7 @@ func InitializeGormModels() *gorm.DB {
 		&CCLFBeneficiaryXref{},
 		&CCLFFile{},
 		&CCLFBeneficiary{},
+		&Suppression{},
 	)
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
@@ -217,8 +220,30 @@ type CCLFBeneficiaryXref struct {
 	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
+// GetPublicKey returns the ACO's public key.
 func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
-	return rsautils.ReadPublicKey(aco.PublicKey)
+	var key string
+	if strings.ToLower(os.Getenv("BCDA_AUTH_PROVIDER")) == "ssas" {
+		ssas, err := authclient.NewSSASClient()
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		systemID, err := strconv.Atoi(aco.ClientID)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		keyBytes, err := ssas.GetPublicKey(systemID)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		key = string(keyBytes)
+	} else {
+		key = aco.PublicKey
+	}
+	return rsautils.ReadPublicKey(key)
 }
 
 func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
@@ -345,6 +370,19 @@ type CCLFBeneficiary struct {
 	HICN         string `gorm:"type:varchar(11);not null"`
 	MBI          string `gorm:"type:char(11);not null"`
 	BlueButtonID string `gorm:"type: text"`
+}
+
+type Suppression struct {
+	gorm.Model
+	HICN                string `gorm:"type:varchar(11);not null"`
+	SourceCode          string `gorm:"type:varchar(5)"`
+	EffectiveDt         time.Time
+	PrefIndicator       string `gorm:"type:char(1)"`
+	SAMHSASourceCode    string `gorm:"type:varchar(5)"`
+	SAMHSAEffectiveDt   time.Time
+	SAMHSAPrefIndicator string `gorm:"type:char(1)"`
+	ACOCMSID            string `gorm:"column:aco_cms_id;type:char(5)"`
+	BeneficiaryLinkKey  int
 }
 
 // This method will ensure that a valid BlueButton ID is returned.
