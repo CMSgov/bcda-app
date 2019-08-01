@@ -374,7 +374,7 @@ type CCLFBeneficiary struct {
 
 type Suppression struct {
 	gorm.Model
-	CCLFFile            CCLFFile
+	SuppressionFile     SuppressionFile
 	FileID              uint   `gorm:"not null"`
 	HICN                string `gorm:"type:varchar(11);not null"`
 	SourceCode          string `gorm:"type:varchar(5)"`
