@@ -42,11 +42,9 @@ func readGroupID(next http.Handler) http.Handler {
 	})
 }
 
-// Puts the decoded token and identity values into the request context. Decoded values have been
+// Puts the decoded token, identity, and authorization values into the request context. Decoded values have been
 // verified to be tokens signed by our server and to have not expired. Additional authorization
-// occurs in RequireTokenAuth(). Only auth code should look at the token claims; API code should
-// rely on the values in AuthData. We do this to insulate API code from the differences among
-// Provider tokens.
+// occurs in requireRegTokenAuth() or requireMFATokenAuth().
 func parseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")

@@ -362,8 +362,6 @@ func RegisterSystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//if reg.
-
 	if reg.JSONWebKeys.Keys == nil || len(reg.JSONWebKeys.Keys) > 1 {
 		jsonError(w, "invalid_client_metadata", "Exactly one JWK must be presented")
 		return
@@ -454,7 +452,6 @@ func token(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token, ts, err := MintAccessToken(system.GroupID, nil)
-	fmt.Println("system.GroupID:", system.GroupID)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
