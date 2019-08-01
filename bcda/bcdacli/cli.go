@@ -357,18 +357,18 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "import-1800medicare-directory",
+			Name:     "import-suppression-directory",
 			Category: "Data import",
-			Usage:    "Import all 1-800-MEDICARE files from the specified directory",
+			Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "directory",
-					Usage:       "Directory where 1-800-MEDICARE files are located",
+					Usage:       "Directory where suppression files are located",
 					Destination: &filePath,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				msg, err := import1800MedicareDirectory(filePath)
+				msg, err := importSuppressionDirectory(filePath)
 				if err != nil {
 					return err
 				}
@@ -578,7 +578,7 @@ func cleanupArchive(hrThreshold int) error {
 	return nil
 }
 
-func import1800MedicareDirectory(dir string) (string, error) {
+func importSuppressionDirectory(dir string) (string, error) {
 	// TODO
 	return "", nil
 }

@@ -812,7 +812,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_split/")
 }
 
-func (s *CLITestSuite) TestImport1800MedicareDirectory() {
+func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	assert := assert.New(s.T())
 
 	db := database.GetGORMDbConnection()
@@ -821,7 +821,7 @@ func (s *CLITestSuite) TestImport1800MedicareDirectory() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	args := []string{"bcda", "import-1800medicare-directory", "--directory", "../../shared_files/suppression/"}
+	args := []string{"bcda", "import-suppression-directory", "--directory", "../../shared_files/suppression/"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 
