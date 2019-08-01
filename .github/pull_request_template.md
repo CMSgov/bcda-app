@@ -27,19 +27,19 @@
 
 <!-- Does the change deal with PII/PHI at all? What should reviewers look for in terms of security concerns? -->
 
-1. **YES or NO**: This change adds new software dependencies
+- [ ] new software dependencies
 
 <!-- If yes, list the new dependencies and briefly note any relevant security impacts -->
 
-2. **YES or NO**: This change alters security controls or supporting software
+- [ ] security controls or supporting software altered
 
 <!-- If yes, what security controls or supporting software are affected? -->
 
-3. **YES or NO**: This change introduces storage or transmission of new data
+- [ ] new data stored or transmitted
 
 <!-- If yes, what new data are we storing or transmitting? Is the data considered PII/PHI? -->
 
-4. **YES or NO**: A security checklist has been completed for this change
+- [ ] security checklist is completed for this change
 
 <!-- If yes, provide a link to the security checklist in Confluence here. -->
 
