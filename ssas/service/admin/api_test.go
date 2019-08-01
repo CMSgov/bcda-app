@@ -82,6 +82,36 @@ func (s *APITestSuite) TestCreateGroup() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *APITestSuite) TestListGroups() {
+	groupBytes := []byte(SampleGroup)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal(groupBytes, &gd)
+	assert.Nil(s.T(), err)
+	g1, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	gd.ID = "some-fake-id"
+	gd.Name = "some-fake-name"
+	g2, err := ssas.CreateGroup(gd)
+	assert.Nil(s.T(), err)
+
+	req := httptest.NewRequest("GET", "/group", nil)
+	handler := http.HandlerFunc(listGroups)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	groups := []ssas.Group{}
+	err = json.Unmarshal(rr.Body.Bytes(), &groups)
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), len(groups) >= 2)
+
+	err = ssas.CleanDatabase(g1)
+	assert.Nil(s.T(), err)
+	err = ssas.CleanDatabase(g2)
+	assert.Nil(s.T(), err)
+}
+
 func (s *APITestSuite) TestUpdateGroup() {
 	groupBytes := []byte(SampleGroup)
 	gd := ssas.GroupData{}
