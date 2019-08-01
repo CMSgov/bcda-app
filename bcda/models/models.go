@@ -374,6 +374,8 @@ type CCLFBeneficiary struct {
 
 type Suppression struct {
 	gorm.Model
+	CCLFFile            CCLFFile
+	FileID              uint   `gorm:"not null"`
 	HICN                string `gorm:"type:varchar(11);not null"`
 	SourceCode          string `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time
@@ -381,8 +383,14 @@ type Suppression struct {
 	SAMHSASourceCode    string `gorm:"type:varchar(5)"`
 	SAMHSAEffectiveDt   time.Time
 	SAMHSAPrefIndicator string `gorm:"type:char(1)"`
-	ACOCMSID            string `gorm:"column:aco_cms_id;type:char(5)"`
 	BeneficiaryLinkKey  int
+}
+
+type SuppressionFile struct {
+	gorm.Model
+	Name      string    `gorm:"not null;unique"`
+	ACOCMSID  string    `gorm:"column:aco_cms_id;type:char(5)"`
+	Timestamp time.Time `gorm:"not null"`
 }
 
 // This method will ensure that a valid BlueButton ID is returned.
