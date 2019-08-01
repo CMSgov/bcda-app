@@ -62,7 +62,7 @@
 							"    pm.response.to.be.json;",
 							"    ",
 							"    var respJson = pm.response.json();",
-							"    pm.environment.set(\"id\", respJson.output[0].ID);",
+							"    pm.environment.set(\"group-id\", respJson.ID);",
 							"});"
 						],
 						"type": "text/javascript"
@@ -222,7 +222,7 @@
 					"raw": "{\n    \"id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\",\n        \"new-user\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\",\n        \"new-scope\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
 				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group/{{id}}",
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group/{{group-id}}",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -230,7 +230,7 @@
 					"port": "{{admin-port}}",
 					"path": [
 						"group",
-						"{{id}}"
+						"{{group-id}}"
 					]
 				}
 			},
@@ -325,7 +325,7 @@
 				"method": "DELETE",
 				"header": [],
 				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group/{{id}}",
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group/{{group-id}}",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -333,7 +333,7 @@
 					"port": "{{admin-port}}",
 					"path": [
 						"group",
-						"{{id}}"
+						"{{group-id}}"
 					]
 				}
 			},
