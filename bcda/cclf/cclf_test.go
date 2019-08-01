@@ -2,6 +2,7 @@ package cclf
 
 import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"os"
@@ -628,7 +629,7 @@ func (s *CCLFTestSuite) TestDeleteDirectory() {
 	assert.Nil(err)
 	assert.Equal(4, len(files))
 
-	filesDeleted, err := DeleteDirectoryContents(dirToDelete)
+	filesDeleted, err := utils.DeleteDirectoryContents(dirToDelete)
 	assert.Equal(4, filesDeleted)
 	assert.Nil(err)
 
@@ -638,7 +639,7 @@ func (s *CCLFTestSuite) TestDeleteDirectory() {
 	assert.Nil(err)
 	assert.Equal(0, len(files))
 
-	filesDeleted, err = DeleteDirectoryContents("This/Does/not/Exist")
+	filesDeleted, err = utils.DeleteDirectoryContents("This/Does/not/Exist")
 	assert.Equal(0, filesDeleted)
 	assert.NotNil(err)
 }
