@@ -163,7 +163,7 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 
 	trackingID := uuid.NewRandom().String()
 	ssas.OperationCalled(ssas.Event{Op: "ResetSecret", TrackingID: trackingID, Help: "calling from admin.resetCredentials()"})
-	secret, err := system.ResetSecret(trackingID)
+	credentials, err := system.ResetSecret(trackingID)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
@@ -171,7 +171,7 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, secret)
+	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, credentials.ClientSecret)
 }
 
 func getPublicKey(w http.ResponseWriter, r *http.Request) {
