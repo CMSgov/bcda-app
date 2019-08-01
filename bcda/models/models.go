@@ -409,13 +409,13 @@ type Suppression struct {
 	gorm.Model
 	SuppressionFile     SuppressionFile
 	FileID              uint   `gorm:"not null"`
-	HICN                string `gorm:"type:varchar(11);not null"`
-	SourceCode          string `gorm:"type:varchar(5)"`
-	EffectiveDt         time.Time
-	PrefIndicator       string `gorm:"type:char(1)"`
-	SAMHSASourceCode    string `gorm:"type:varchar(5)"`
-	SAMHSAEffectiveDt   time.Time
-	SAMHSAPrefIndicator string `gorm:"type:char(1)"`
+	HICN                string    `gorm:"type:varchar(11);not null"`
+	SourceCode          string    `gorm:"type:varchar(5)"`
+	EffectiveDt         time.Time `gorm:"column:effective_date"`
+	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`
+	SAMHSASourceCode    string    `gorm:"type:varchar(5)"`
+	SAMHSAEffectiveDt   time.Time `gorm:"column:samhsa_effective_date"`
+	SAMHSAPrefIndicator string    `gorm:"column:samhsa_preference_indicator;type:char(1)"`
 	BeneficiaryLinkKey  int
 }
 
