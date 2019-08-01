@@ -9,11 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/render"
-	"github.com/pborman/uuid"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/render"
+	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/service"
