@@ -1,10 +1,367 @@
 {
 	"info": {
-		"_postman_id": "769bc51d-c8cc-4e9e-828b-4e9372b24414",
+		"_postman_id": "4b27bbbe-fe8c-4195-a852-7644248dd722",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
+		{
+			"name": "admin post group, no group_id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "1678ec38-847b-4912-9d74-469a233d0200",
+						"exec": [
+							"pm.test(\"response is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"bad-json\": \"is-bad\"\n}"
+				},
+				"url": {
+					"raw": "localhost:3004/group",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin post group, success",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "20ed753f-bd64-4270-9993-305d4efc1372",
+						"exec": [
+							"pm.test(\"response is created and returns json\", function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.response.to.be.json;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
+				},
+				"url": {
+					"raw": "localhost:3004/group",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin put group, invalid id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "8dffcb16-25eb-44bc-8be3-fe19b23dc302",
+						"exec": [
+							"pm.test(\"response is 400 and record not found\", function () {",
+							"    pm.response.to.have.status(400);",
+							"    pm.response.to.have.body(\"Failed to update group. Error: record not found for id=9999\\n\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\",\n        \"new-user\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\",\n        \"new-scope\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
+				},
+				"url": {
+					"raw": "localhost:3004/group/9999",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group",
+						"9999"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin put group, success",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "8dffcb16-25eb-44bc-8be3-fe19b23dc302",
+						"exec": [
+							"pm.test(\"response is 200 and response has updated group\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.response.to.have.jsonBody({",
+							"    \"group_id\": \"a-fake-id\",",
+							"    \"data\": {",
+							"        \"id\": \"a-fake-id\",",
+							"        \"name\": \"a-fake-name\",",
+							"        \"users\": [",
+							"            \"00uiqolo7fEFSfif70h7\",",
+							"            \"l0vckYyfyow4TZ0zOKek\",",
+							"            \"HqtEi2khroEZkH4sdIzj\",",
+							"            \"new-user\"",
+							"        ],",
+							"        \"scopes\": [",
+							"            \"user-admin\",",
+							"            \"system-admin\",",
+							"            \"new-scope\"",
+							"        ],",
+							"        \"system\": {",
+							"            \"ID\": 0,",
+							"            \"CreatedAt\": \"0001-01-01T00:00:00Z\",",
+							"            \"UpdatedAt\": \"0001-01-01T00:00:00Z\",",
+							"            \"DeletedAt\": null,",
+							"            \"group_id\": \"\",",
+							"            \"client_id\": \"4tuhiOIFIwriIOH3zn\",",
+							"            \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",",
+							"            \"client_name\": \"ACO System A\",",
+							"            \"api_scope\": \"\",",
+							"            \"encryption_keys\": null,",
+							"            \"secrets\": null",
+							"        },",
+							"        \"resources\": [",
+							"            {",
+							"                \"id\": \"xxx\",",
+							"                \"name\": \"BCDA API\",",
+							"                \"scopes\": [",
+							"                    \"bcda-api\"",
+							"                ]",
+							"            },",
+							"            {",
+							"                \"id\": \"eft\",",
+							"                \"name\": \"EFT CCLF\",",
+							"                \"scopes\": [",
+							"                    \"eft-app:download\",",
+							"                    \"eft-data:read\"",
+							"                ]",
+							"            }",
+							"        ]",
+							"    }",
+							"})",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\",\n        \"new-user\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\",\n        \"new-scope\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
+				},
+				"url": {
+					"raw": "localhost:3004/group/11",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group",
+						"11"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin get group, one group",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "f4740e30-67e2-4ec7-bfae-9d44f7aa84fc",
+						"exec": [
+							"pm.test(\"response is 200 and group found\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.response.to.have.jsonBody({\"name\":\"a-fake-name\"});",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/group",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin delete group, invalid id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "95ce3470-8202-4e9f-b4f6-4fe36a09cb0d",
+						"exec": [
+							"pm.test(\"response is 400 and record not found\", function () {",
+							"    pm.response.to.have.status(400);",
+							"    pm.response.to.have.body(\"Failed to delete group. Error: record not found\\n\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/group/9999",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group",
+						"9999"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin delete group, success",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "95ce3470-8202-4e9f-b4f6-4fe36a09cb0d",
+						"exec": [
+							"pm.test(\"response is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/group/11",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group",
+						"11"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin get group, no groups",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 200 and no groups in response\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    pm.response.to.have.body(\"[]\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/group",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"group"
+					]
+				}
+			},
+			"response": []
+		},
 		{
 			"name": "public register",
 			"request": {
@@ -158,7 +515,7 @@
 					"raw": "{\"cms_id\":\"{{cms_id}}\",\"factor_type\":\"{{factor_type}}\"}"
 				},
 				"url": {
-					"raw": "http://localhost:3003/authn/challenge",
+					"raw": "http://localhost:3003/authn/request",
 					"protocol": "http",
 					"host": [
 						"localhost"

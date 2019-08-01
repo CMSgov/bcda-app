@@ -48,6 +48,9 @@ postman:
 	# For example: make postman env=test token=<MY_TOKEN>
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
 
+postman-ssas:
+	docker-compose -f docker-compose.test.yml run --rm postman_test_ssas test/postman_test/ssas-local.postman_environment.json
+
 unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
@@ -61,12 +64,13 @@ test:
 	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
+	$(MAKE) postman-ssas
 	$(MAKE) smoke-test
 
 test-ssas:
 	$(MAKE) lint-ssas
 	$(MAKE) unit-test-ssas
-	@echo "No postman tests (yet)"
+	$(MAKE) postman-ssas
 	@echo "No smoke-test (yet)"
 
 load-fixtures:
