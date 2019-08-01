@@ -179,7 +179,8 @@ func (s *APITestSuite) TestCreateSystem() {
 	assert.NotNil(s.T(), result["token"])
 	assert.Equal(s.T(), "Test Client", result["client_name"])
 
-	_ = ssas.CleanDatabase(group)
+	err = ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
 }
 
 func (s *APITestSuite) TestCreateSystem_InvalidRequest() {

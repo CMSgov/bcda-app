@@ -76,7 +76,6 @@ func ListGroups(trackingID string) ([]Group, error) {
 
 	OperationSucceeded(event)
 	return groups, nil
-
 }
 
 func UpdateGroup(id string, gd GroupData) (Group, error) {
