@@ -60,6 +60,25 @@ func CreateGroup(gd GroupData) (Group, error) {
 	return g, nil
 }
 
+func ListGroups(trackingID string) ([]Group, error) {
+	event := Event{Op: "ListGroups", TrackingID: trackingID}
+	OperationStarted(event)
+
+	groups := []Group{}
+	db := GetGORMDbConnection()
+	defer Close(db)
+	err := db.Find(&groups).Error
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return []Group{}, err
+	}
+
+	OperationSucceeded(event)
+	return groups, nil
+
+}
+
 func UpdateGroup(id string, gd GroupData) (Group, error) {
 	event := Event{Op: "UpdateGroup", TrackingID: id}
 	OperationStarted(event)
