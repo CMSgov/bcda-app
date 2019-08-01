@@ -109,15 +109,16 @@ func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 		return nil, err
 	}
 
-	beneficiaryIDs, err := aco.GetBeneficiaryIDs()
+	// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
+	beneficiaries, err := aco.GetBeneficiaries(false)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, id := range beneficiaryIDs {
+	for _, b := range beneficiaries {
 		rowCount++
-		jobIDs = append(jobIDs, id)
-		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaryIDs) {
+		jobIDs = append(jobIDs, fmt.Sprint(b.ID))
+		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 
 			args, err := json.Marshal(jobEnqueueArgs{
 				ID:             int(job.ID),
@@ -185,10 +186,29 @@ type ACO struct {
 	PublicKey   string    `json:"public_key"`
 }
 
-func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
+func (aco *ACO) GetBeneficiaryIDs(includeSuppressed bool) (cclfBeneficiaryIDs []string, err error) {
+	cclfBeneficiaries, err := aco.GetBeneficiaries(includeSuppressed)
+	if err != nil {
+		return nil, err
+	}
+	if cclfBeneficiaries == nil {
+		return cclfBeneficiaryIDs, nil
+	}
+
+	for _, b := range cclfBeneficiaries {
+		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, fmt.Sprint(b.ID))
+	}
+
+	return cclfBeneficiaryIDs, nil
+}
+
+// GetBeneficiaries retrieves beneficiaries associated with the ACO.
+func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, error) {
+	var cclfBeneficiaries []CCLFBeneficiary
+
 	if aco.CMSID == nil {
 		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
-		return cclfBeneficiaryIDs, fmt.Errorf("no CMS ID set for this ACO")
+		return cclfBeneficiaries, fmt.Errorf("no CMS ID set for this ACO")
 	}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -196,18 +216,31 @@ func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
 	// todo add a filter here to make sure the file is up to date.
 	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
 		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
-		return cclfBeneficiaryIDs, fmt.Errorf("unable to find cclfFile")
+		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	if err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFile.ID).Pluck("ID", &cclfBeneficiaryIDs).Error; err != nil {
+	if err := db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error; err != nil {
 		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
 		return nil, err
-	} else if len(cclfBeneficiaryIDs) == 0 {
+	} else if len(cclfBeneficiaries) == 0 {
 		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
 		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
 	}
 
-	return cclfBeneficiaryIDs, nil
+	if !includeSuppressed {
+		unsuppressedBeneficiaries := []CCLFBeneficiary{}
+
+		for _, b := range cclfBeneficiaries {
+			var s Suppression
+			found := !db.Order("effective_date desc").First(&s, "hicn = ? AND effective_date <= ? AND preference_indicator != '' AND preference_indicator IS NOT NULL", b.HICN, time.Now()).RecordNotFound()
+			if (found && s.PrefIndicator != "N") || !found {
+				unsuppressedBeneficiaries = append(unsuppressedBeneficiaries, b)
+			}
+		}
+		return unsuppressedBeneficiaries, nil
+	}
+
+	return cclfBeneficiaries, nil
 }
 
 type CCLFBeneficiaryXref struct {
