@@ -560,17 +560,17 @@ func (s *SystemsTestSuite) TestResetSecret() {
 
 	secret1 := Secret{}
 	s.db.Where("system_id = ?", system.ID).First(&secret1)
-	assert.NotEmpty(s.T(), secret1)
+	assert.Equal(s.T(), secret1.Hash, secret.Hash)
 
-	secret2, err := system.ResetSecret("tracking-id")
+	credentials, err := system.ResetSecret("tracking-id")
 	if err != nil {
 		s.FailNow("Error from ResetSecret()", err.Error())
 		return
 	}
 
 	assert.Nil(s.T(), err)
-	assert.NotEmpty(s.T(), secret2)
-	assert.NotEqual(s.T(), secret1, secret2)
+	assert.NotEmpty(s.T(), credentials)
+	assert.NotEqual(s.T(), secret1.Hash, credentials.ClientSecret)
 
 	_ = CleanDatabase(group)
 }

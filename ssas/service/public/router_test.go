@@ -1,6 +1,8 @@
 package public
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +23,7 @@ type PublicRouterTestSuite struct {
 	rr           *httptest.ResponseRecorder
 	db           *gorm.DB
 	group        ssas.Group
+	system       ssas.System
 }
 
 func (s *PublicRouterTestSuite) SetupSuite() {
@@ -33,7 +36,11 @@ func (s *PublicRouterTestSuite) SetupSuite() {
 	s.group.GroupID = "T1234"
 	err := s.db.Create(&s.group).Error
 	if err != nil {
-		s.FailNow(err.Error())
+		s.FailNow("unable to create group: " + err.Error())
+	}
+	s.system = ssas.System{GroupID: s.group.GroupID, ClientID: "abcd1234"}
+	if err := s.db.Create(&s.system).Error; err != nil {
+		s.FailNow("unable to create system: " + err.Error())
 	}
 }
 
@@ -61,20 +68,33 @@ func (s *PublicRouterTestSuite) TestRegisterRoute() {
 	assert.Equal(s.T(), http.StatusCreated, res.StatusCode)
 }
 
+func (s *PublicRouterTestSuite) TestResetRoute() {
+	rb := strings.NewReader(fmt.Sprintf(`{"client_id":"%s"}`, s.system.ClientID))
+	res := s.reqPublicRoute("POST", "/reset", rb)
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(res.Body)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	body := buf.String()
+	assert.Contains(s.T(), body, "client_secret")
+}
+
 func (s *PublicRouterTestSuite) TestAuthnRoute() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","password":"abcdefg"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","password":"abcdefg"}`)
 	res := s.reqPublicRoute("POST", "/authn", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnRequestRoute() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS"}`)
 	res := s.reqPublicRoute("POST", "/authn/challenge", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *PublicRouterTestSuite) TestAuthnVerifyRoute() {
-	rb := strings.NewReader(`{"cms_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
+	rb := strings.NewReader(`{"login_id":"success@test.com","factor_type":"SMS","passcode":"123456"}`)
 	res := s.reqPublicRoute("POST", "/authn/verify", rb)
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
