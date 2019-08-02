@@ -52,18 +52,18 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
-	assert.Contains(err.Error(), "failed to parse CCLF8 from CCLF0 file")
+	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file ../../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011")
 
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
-	assert.Contains(err.Error(), "failed to parse CCLF9 from CCLF0 file")
+	assert.EqualError(err, "failed to parse CCLF9 from CCLF0 file: ../../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012")
 
 	// duplicate file types from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000013"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
-	assert.Contains(err.Error(), "duplicate CCLF9 file type found from CCLF0 file.")
+	assert.EqualError(err, "duplicate CCLF9 file type found from CCLF0 file")
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
@@ -547,6 +547,13 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_TimeChange() {
 	assert.EqualError(err, "open ../../shared_files/cclf_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009: no such file or directory")
 
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
+}
+
+func (s *CCLFTestSuite) TestSortCCLFFiles_InvalidPath() {
+	cclfMap := make(map[string][]*cclfFileMetadata)
+	skipped := 0
+	err := filepath.Walk("./foo", sortCCLFFiles(&cclfMap, &skipped))
+	assert.EqualError(s.T(), err, "error in sorting cclf file: nil,: lstat ./foo: no such file or directory")
 }
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {

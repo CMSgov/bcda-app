@@ -183,7 +183,7 @@ func (s *CLITestSuite) TestCreateUser() {
 	// Duplicate User
 	args = []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", email}
 	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), email, "%s should contain '%s' and 'already exists'", err, email)
+	assert.EqualError(err, "unable to create user for UnitTest@mail.com because a user with that Email address already exists")
 	assert.Equal(0, buf.Len())
 }
 
@@ -237,7 +237,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	// Invalid key
 	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_private.pem"}
 	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), "invalid public key for ACO")
+	assert.Contains(err.Error(), fmt.Sprintf("invalid public key for ACO %s: unable to parse public key: asn1: structure error: tags don't match", aco.UUID))
 	assert.Contains(buf.String(), "Unable to save public key for ACO")
 
 	// Success
@@ -546,11 +546,11 @@ func (s *CLITestSuite) TestCleanArchive() {
 	// create a file that was last modified before the Threshold, but accessed after it
 	modified := now.Add(-(time.Hour * (Threshold + 1)))
 	accessed := now.Add(-(time.Hour * (Threshold - 1)))
-	beforeJobId, before := setupJobArchiveFile(s, "before@test.com", modified, accessed)
+	beforeJobID, before := setupJobArchiveFile(s, "before@test.com", modified, accessed)
 	defer before.Close()
 
 	// create a file that is clearly after the threshold (unless the threshold is 0)
-	afterJobId, after := setupJobArchiveFile(s, "after@test.com", now, now)
+	afterJobID, after := setupJobArchiveFile(s, "after@test.com", now, now)
 	defer after.Close()
 
 	// condition: bad threshold value
@@ -577,13 +577,13 @@ func (s *CLITestSuite) TestCleanArchive() {
 	defer database.Close(db)
 
 	var beforeJob models.Job
-	db.First(&beforeJob, "id = ?", beforeJobId)
+	db.First(&beforeJob, "id = ?", beforeJobID)
 	assert.Equal("Expired", beforeJob.Status)
 
 	assert.FileExists(after.Name(), "%s not found; it should have been", after.Name())
 
 	var afterJob models.Job
-	db.First(&afterJob, "id = ?", afterJobId)
+	db.First(&afterJob, "id = ?", afterJobID)
 	assert.Equal("Archived", afterJob.Status)
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
@@ -611,7 +611,7 @@ func (s *CLITestSuite) TestRevokeToken() {
 	// Expect (for the moment) that alpha auth does not implement
 	args = []string{"bcda", "revoke-token", "--access-token", "this-token-value-is-immaterial"}
 	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), "not implemented")
+	assert.EqualError(err, "RevokeAccessToken is not implemented for alpha auth")
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 }
