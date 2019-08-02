@@ -536,7 +536,7 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 				// currently only errors if there are more records than we expect.
 				if count > validator.totalRecordCount {
 					fmt.Printf("Maximum record count reached for file %s, Expected record count: %d, Actual record count: %d.\n", key, validator.totalRecordCount, count)
-					err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d) ", key, validator.totalRecordCount, count)
+					err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d)", key, validator.totalRecordCount, count)
 					log.Error(err)
 					return err
 				}

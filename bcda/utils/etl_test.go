@@ -1,11 +1,13 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type ETLTestSuite struct {
@@ -16,20 +18,20 @@ func TestETLTestSuite(t *testing.T) {
 	suite.Run(t, new(ETLTestSuite))
 }
 
-func (s *ETLTestSuite) TestDeleteDirectory() {
+func (s *CCLFTestSuite) TestDeleteDirectory() {
 	assert := assert.New(s.T())
-	dirToDelete := "../../shared_files/doomedDirectory"
-	makeDirToDelete(s.Suite, dirToDelete)
+	dirToDelete := BASE_FILE_PATH + "doomedDirectory"
+	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
 	defer os.Remove(dirToDelete)
 
 	f, err := os.Open(dirToDelete)
 	assert.Nil(err)
 	files, err := f.Readdir(-1)
 	assert.Nil(err)
-	assert.Equal(2, len(files))
+	assert.Equal(4, len(files))
 
 	filesDeleted, err := DeleteDirectoryContents(dirToDelete)
-	assert.Equal(2, filesDeleted)
+	assert.Equal(4, filesDeleted)
 	assert.Nil(err)
 
 	f, err = os.Open(dirToDelete)
@@ -40,7 +42,7 @@ func (s *ETLTestSuite) TestDeleteDirectory() {
 
 	filesDeleted, err = DeleteDirectoryContents("This/Does/not/Exist")
 	assert.Equal(0, filesDeleted)
-	assert.NotNil(err)
+	assert.EqualError(err, "could not open dir: This/Does/not/Exist: open This/Does/not/Exist: no such file or directory")
 }
 
 func makeDirToDelete(s suite.Suite, filePath string) {

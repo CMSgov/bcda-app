@@ -225,19 +225,19 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	// Non-existent ACO
 	args = []string{"bcda", "save-public-key", "--cms-id", "ABCDE", "--key-file", "../../shared_files/ATO_public.pem"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.EqualError(err, "no ACO record found for ABCDE")
 	assert.Contains(buf.String(), "Unable to find ACO")
 
 	// Missing file
 	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "FILE_DOES_NOT_EXIST"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.EqualError(err, "open FILE_DOES_NOT_EXIST: no such file or directory")
 	assert.Contains(buf.String(), "Unable to open file")
 
 	// Invalid key
 	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_private.pem"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.Contains(err.Error(), "invalid public key for ACO")
 	assert.Contains(buf.String(), "Unable to save public key for ACO")
 
 	// Success
@@ -525,7 +525,6 @@ func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, acce
 }
 
 func (s *CLITestSuite) TestCleanArchive() {
-
 	// init
 	const Threshold = 30
 	now := time.Now()
@@ -557,7 +556,7 @@ func (s *CLITestSuite) TestCleanArchive() {
 	// condition: bad threshold value
 	args = []string{"bcda", "cleanup-archive", "--threshold", "abcde"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.EqualError(err, "strconv.Atoi: parsing \"abcde\": invalid syntax")
 
 	// condition: before < Threshold < after <= now
 	// a file created before the Threshold should be deleted; one created after should not
@@ -617,15 +616,14 @@ func (s *CLITestSuite) TestRevokeToken() {
 	buf.Reset()
 }
 
-func (s *CLITestSuite) TestStartApi() {
-
+func (s *CLITestSuite) TestStartAPI() {
 	// Negative case
-	originalQueueDbUrl := os.Getenv("QUEUE_DATABASE_URL")
+	originalQueueDBURL := os.Getenv("QUEUE_DATABASE_URL")
 	os.Setenv("QUEUE_DATABASE_URL", "http://bad url.com/")
 	args := []string{"bcda", "start-api"}
 	err := s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	os.Setenv("QUEUE_DATABASE_URL", originalQueueDbUrl)
+	os.Setenv("QUEUE_DATABASE_URL", originalQueueDBURL)
 
 	// We cannot test the positive case because we don't want to start the HTTP Server in unit test environment
 }
@@ -746,7 +744,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	// dir has 4 files, but 2 will be ignored because of bad file names.
 	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_BadFileNames/"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.EqualError(err, "one or more files failed to import correctly")
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Failed to import 1 files.")
@@ -774,14 +772,14 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	// File, not a directory
 	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.EqualError(err, "unable to delete Directory Contents because ../../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009 does not reference a directory")
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
 	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
 	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
 	err = s.testApp.Run(args)
-	assert.NotNil(err)
+	assert.EqualError(err, "flag provided but not defined: -envvar")
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
