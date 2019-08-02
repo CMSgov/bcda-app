@@ -56,3 +56,7 @@
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
   version = "1.16.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/patrickmn/go-cache"
