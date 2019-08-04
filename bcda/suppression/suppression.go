@@ -118,15 +118,15 @@ func getSuppressionFileMetadata(suppresslist *[]suppressionFileMetadata, skipped
 	}
 }
 
-func parseMetadata(filePath string) (suppressionFileMetadata, error) {
+func parseMetadata(filename string) (suppressionFileMetadata, error) {
 	var metadata suppressionFileMetadata
 	// Beneficiary Data Sharing Preferences File sent by 1-800-Medicare: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
 	// Prefix: T = test, P = prod;
 	filenameRegexp := regexp.MustCompile(`((P|T)\#EFT)\.ON\.ACO\.NGD1800\.DPRF\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
+	filenameMatches := filenameRegexp.FindStringSubmatch(filename)
 	if len(filenameMatches) < 4 {
-		fmt.Printf("Invalid filename for file: %s.\n", filePath)
-		err := fmt.Errorf("invalid filename for file: %s", filePath)
+		fmt.Printf("Invalid filename for file: %s.\n", filename)
+		err := fmt.Errorf("invalid filename for file: %s", filename)
 		log.Error(err)
 		return metadata, err
 	}
@@ -134,8 +134,8 @@ func parseMetadata(filePath string) (suppressionFileMetadata, error) {
 	filenameDate := filenameMatches[3]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
-		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, filePath)
-		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filePath)
+		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, filename)
+		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, filename)
 		log.Error(err)
 		return metadata, err
 	}
@@ -160,9 +160,8 @@ func validate(metadata suppressionFileMetadata) error {
 	defer f.Close()
 
 	var (
-		headTrailStart, headTrailEnd = 1, 15
-		recCountStart, recCountEnd   = 24, 34
-		acoIdStart, acoIdEnd         = 385, 390
+		headTrailStart, headTrailEnd = 0, 15
+		recCountStart, recCountEnd   = 23, 33
 	)
 
 	sc := bufio.NewScanner(f)
@@ -178,89 +177,95 @@ func validate(metadata suppressionFileMetadata) error {
 				log.Error(err)
 				return err
 			}
+			count++
 			continue
 		}
 
 		if metaInfo != trailerCode {
-			metadata.acoID = string(bytes.TrimSpace(b[acoIdStart:acoIdEnd]))
 			count++
 		} else {
 			// trailer info
 			expectedCount, err := strconv.Atoi(string(bytes.TrimSpace(b[recCountStart:recCountEnd])))
 			if err != nil {
 				fmt.Printf("Failed to parse record count from file: %s.\n", metadata.filePath)
-				err = errors.Wrapf(err, "failed to parse record count from file: %s", metadata.filePath)
+				err = fmt.Errorf("failed to parse record count from file: %s", metadata.filePath)
 				log.Error(err)
 				return err
 			}
+			// subtract the single count from the header
+			count--
 			if count != expectedCount {
 				fmt.Printf("Incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d.\n", metadata.filePath, expectedCount, count)
-				err = errors.Wrapf(err, "incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d.", metadata.filePath, expectedCount, count)
+				err = fmt.Errorf("incorrect number of records found from file: '%s'. Expected record count: %d, Actual record count: %d", metadata.filePath, expectedCount, count)
 				log.Error(err)
 				return err
 			}
 		}
 	}
+	fmt.Printf("Successfully validated suppression file %s.\n", metadata)
+	log.Infof("Successfully validated suppression file %s.", metadata)
 	return nil
 }
 
 func importSuppressionData(metadata suppressionFileMetadata) error {
 	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, db *gorm.DB) error {
 		var (
-			headTrailStart, headTrailEnd                 = 1, 15
-			hicnStart, hicnEnd                           = 1, 11
-			lKeyStart, lKeyEnd                           = 12, 22
-			effectiveDtStart, effectiveDtEnd             = 355, 363
-			sourceCdeStart, sourceCdeEnd                 = 363, 368
-			prefIndtorStart, prefIndtorEnd               = 369, 370
-			samhsaEffectiveDtStart, samhsaEffectiveDtEnd = 370, 378
-			samhsaSourceCdeStart, samhsaSourceCdeEnd     = 378, 383
-			samhsaPrefIndtorStart, samhsaPrefIndtorEnd   = 384, 385
+			hicnStart, hicnEnd                           = 0, 11
+			lKeyStart, lKeyEnd                           = 11, 21
+			effectiveDtStart, effectiveDtEnd             = 354, 362
+			sourceCdeStart, sourceCdeEnd                 = 362, 367
+			prefIndtorStart, prefIndtorEnd               = 368, 369
+			samhsaEffectiveDtStart, samhsaEffectiveDtEnd = 369, 377
+			samhsaSourceCdeStart, samhsaSourceCdeEnd     = 377, 382
+			samhsaPrefIndtorStart, samhsaPrefIndtorEnd   = 383, 384
+			acoIdStart, acoIdEnd                         = 384, 389
 		)
-		metaInfo := string(bytes.TrimSpace(b[headTrailStart:headTrailEnd]))
-		if metaInfo != headerCode && metaInfo != trailerCode {
-			ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
-			dt, err := convertDt(ds)
-			if err != nil {
-				fmt.Printf("Failed to parse date '%s' from file: %s.\n", ds, metadata.filePath)
-				err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", ds, metadata.filePath)
-				log.Error(err)
-				return err
-			}
-			ds = string(bytes.TrimSpace(b[samhsaEffectiveDtStart:samhsaEffectiveDtEnd]))
-			samhsaDt, err := convertDt(ds)
-			if err != nil {
-				fmt.Printf("Failed to parse date '%s' from file: %s.\n", ds, metadata.filePath)
-				err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", ds, metadata.filePath)
-				log.Error(err)
-				return err
-			}
-			lk, err := strconv.Atoi(string(bytes.TrimSpace(b[lKeyStart:lKeyEnd])))
-			if err != nil {
-				fmt.Printf("Failed to parse beneficiary link key from file: %s.\n", metadata.filePath)
-				err = errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.filePath)
-				log.Error(err)
-				return err
-			}
+		ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
+		dt, err := convertDt(ds)
+		if err != nil {
+			fmt.Printf("Failed to parse date '%s' from file: %s.\n", ds, metadata.filePath)
+			err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", ds, metadata.filePath)
+			log.Error(err)
+			return err
+		}
+		ds = string(bytes.TrimSpace(b[samhsaEffectiveDtStart:samhsaEffectiveDtEnd]))
+		samhsaDt, err := convertDt(ds)
+		if err != nil {
+			fmt.Printf("Failed to parse date '%s' from file: %s.\n", ds, metadata.filePath)
+			err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", ds, metadata.filePath)
+			log.Error(err)
+			return err
+		}
+		keyval := string(bytes.TrimSpace(b[lKeyStart:lKeyEnd]))
+		if keyval == "" {
+			keyval = "0"
+		}
+		lk, err := strconv.Atoi(keyval)
+		if err != nil {
+			fmt.Printf("Failed to parse beneficiary link key from file: %s.\n", metadata.filePath)
+			err = errors.Wrapf(err, "failed to parse beneficiary link key from file: %s", metadata.filePath)
+			log.Error(err)
+			return err
+		}
 
-			suppression := models.Suppression{
-				FileID:              fileID,
-				HICN:                string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
-				SourceCode:          string(bytes.TrimSpace(b[sourceCdeStart:sourceCdeEnd])),
-				EffectiveDt:         dt,
-				PrefIndicator:       string(bytes.TrimSpace(b[prefIndtorStart:prefIndtorEnd])),
-				SAMHSASourceCode:    string(bytes.TrimSpace(b[samhsaSourceCdeStart:samhsaSourceCdeEnd])),
-				SAMHSAEffectiveDt:   samhsaDt,
-				SAMHSAPrefIndicator: string(bytes.TrimSpace(b[samhsaPrefIndtorStart:samhsaPrefIndtorEnd])),
-				BeneficiaryLinkKey:  lk,
-			}
-			err = db.Create(suppression).Error
-			if err != nil {
-				fmt.Println("Could not create suppression record.")
-				err = errors.Wrap(err, "could not create suppression record")
-				log.Error(err)
-				return err
-			}
+		suppression := &models.Suppression{
+			FileID:              fileID,
+			HICN:                string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
+			SourceCode:          string(bytes.TrimSpace(b[sourceCdeStart:sourceCdeEnd])),
+			EffectiveDt:         dt,
+			PrefIndicator:       string(bytes.TrimSpace(b[prefIndtorStart:prefIndtorEnd])),
+			SAMHSASourceCode:    string(bytes.TrimSpace(b[samhsaSourceCdeStart:samhsaSourceCdeEnd])),
+			SAMHSAEffectiveDt:   samhsaDt,
+			SAMHSAPrefIndicator: string(bytes.TrimSpace(b[samhsaPrefIndtorStart:samhsaPrefIndtorEnd])),
+			BeneficiaryLinkKey:  lk,
+			ACOCMSID:            string(bytes.TrimSpace(b[acoIdStart:acoIdEnd])),
+		}
+		err = db.Create(suppression).Error
+		if err != nil {
+			fmt.Println("Could not create suppression record.")
+			err = errors.Wrap(err, "could not create suppression record")
+			log.Error(err)
+			return err
 		}
 		return nil
 	})
@@ -275,9 +280,12 @@ func importSuppressionMetadata(metadata suppressionFileMetadata, importFunc func
 	fmt.Printf("Importing suppression file %s...\n", metadata)
 	log.Infof("Importing suppression file %s...", metadata)
 
+	var (
+		headTrailStart, headTrailEnd = 0, 15
+	)
+
 	suppressionMetaFile := &models.SuppressionFile{
 		Name:      metadata.name,
-		ACOCMSID:  metadata.acoID,
 		Timestamp: metadata.timestamp,
 	}
 
@@ -307,6 +315,10 @@ func importSuppressionMetadata(metadata suppressionFileMetadata, importFunc func
 	for sc.Scan() {
 		b := sc.Bytes()
 		if len(bytes.TrimSpace(b)) > 0 {
+			metaInfo := string(bytes.TrimSpace(b[headTrailStart:headTrailEnd]))
+			if metaInfo == headerCode || metaInfo == trailerCode {
+				continue
+			}
 			err = importFunc(suppressionMetaFile.ID, b, db)
 			if err != nil {
 				log.Error(err)
@@ -367,8 +379,11 @@ func cleanupSuppression(suppresslist []suppressionFileMetadata) error {
 	return nil
 }
 
-func convertDt(value string) (time.Time, error) {
-	t, err := time.Parse("D060102.T150405", value)
+func convertDt(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	t, err := time.Parse("20060102", s)
 	if err != nil || t.IsZero() {
 		return t, err
 	}
