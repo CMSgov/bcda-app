@@ -76,7 +76,6 @@ func ListGroups(trackingID string) ([]Group, error) {
 
 	OperationSucceeded(event)
 	return groups, nil
-
 }
 
 func UpdateGroup(id string, gd GroupData) (Group, error) {
@@ -132,6 +131,33 @@ func DeleteGroup(id string) error {
 
 	OperationSucceeded(event)
 	return nil
+}
+
+// GetAuthorizedGroupsForOktaID returns a slice of GroupID's representing all groups this Okta user has rights to manage
+// TODO: this is the slowest and most memory intensive way possible to implement this.  Refactor!
+func GetAuthorizedGroupsForOktaID(oktaID string) ([]string, error) {
+	db := GetGORMDbConnection()
+	defer Close(db)
+
+	var (
+		result []string
+	)
+
+	groups := []Group{}
+	err := db.Select("*").Find(&groups).Error
+	if err != nil {
+		return result, err
+	}
+
+	for _, group := range groups {
+		for _, user := range group.Data.Users {
+			if user == oktaID {
+				result = append(result, group.GroupID)
+			}
+		}
+	}
+
+	return result, nil
 }
 
 func cascadeDeleteGroup(group Group) error {

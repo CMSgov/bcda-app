@@ -70,7 +70,7 @@ func ReadPublicKey(publicKey string) (*rsa.PublicKey, error) {
 		return nil, fmt.Errorf("not able to cast key as *rsa.PublicKey")
 	}
 
-	if rsaPub.Size() < RSAKEYMINBITS / 8 {
+	if rsaPub.Size() < RSAKEYMINBITS/8 {
 		return nil, fmt.Errorf("insecure key length (%d bytes)", rsaPub.Size())
 	}
 

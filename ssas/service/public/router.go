@@ -1,13 +1,10 @@
 package public
 
 import (
-	"context"
-	"net/http"
 	"os"
 
 	"github.com/go-chi/chi"
 
-	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
@@ -36,22 +33,10 @@ func routes() *chi.Mux {
 	router.Use(service.NewAPILogger(), service.ConnectionClose)
 	router.Get("/token", token)
 	router.Post("/authn", VerifyPassword)
-	router.Post("/authn/challenge", RequestMultifactorChallenge)
-	router.Post("/authn/verify", VerifyMultifactorResponse)
-	router.With(fakeContext).Post("/register", RegisterSystem)
-	router.With(fakeContext).Post("/reset", ResetSecret)
+	router.With(parseToken, requireMFATokenAuth).Post("/authn/challenge", RequestMultifactorChallenge)
+	router.With(parseToken, requireMFATokenAuth).Post("/authn/verify", VerifyMultifactorResponse)
+	router.With(parseToken, requireRegTokenAuth, readGroupID).Post("/register", RegisterSystem)
+	router.With(parseToken, requireRegTokenAuth, readGroupID).Post("/reset", ResetSecret)
 
 	return router
-}
-
-func fakeContext(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var rd ssas.AuthRegData
-		if rd.GroupID = r.Header.Get("x-fake-token"); rd.GroupID == "" {
-			service.GetLogEntry(r).Println("missing header x-fake-token; request will fail")
-		}
-		ctx := context.WithValue(r.Context(), "rd", rd)
-		service.LogEntrySetField(r, "rd", rd)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }

@@ -43,7 +43,7 @@ func (s *ServerTestSuite) TestTokenDurationOverride() {
 	assert.Equal(s.T(), time.Hour, s.server.tokenTTL)
 	os.Setenv("SSAS_TOKEN_TTL_IN_MINUTES", "5")
 	s.server.initTokenDuration()
-	assert.Equal(s.T(), 5 * time.Minute, s.server.tokenTTL)
+	assert.Equal(s.T(), 5*time.Minute, s.server.tokenTTL)
 	os.Setenv("SSAS_TOKEN_TTL_IN_MINUTES", originalValue)
 }
 
@@ -57,7 +57,7 @@ func (s *ServerTestSuite) TestTokenDurationEmptyOverride() {
 
 func (s *ServerTestSuite) TestUnavailableSigner() {
 	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	token, ts, err := s.server.MintToken(acoUUID, nil)
+	token, ts, err := s.server.MintToken(CommonClaims{ACOID: acoUUID})
 
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
@@ -68,7 +68,7 @@ func (s *ServerTestSuite) TestUnavailableSigner() {
 		_ = s.server.SetSigningKeys(unitSigningKeyPath)
 	}()
 	assert.Panics(s.T(), func() {
-		_, _, _ = s.server.MintToken(acoUUID, nil)
+		_, _, _ = s.server.MintToken(CommonClaims{ACOID: acoUUID})
 	})
 }
 
