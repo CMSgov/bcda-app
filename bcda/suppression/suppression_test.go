@@ -125,19 +125,16 @@ func (s *SuppressionTestSuite) TestValidate() {
 	// invalid file header
 	metadata.filePath = BASE_FILE_PATH + "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
 	err = validate(metadata)
-	assert.NotNil(err)
 	assert.EqualError(err, "invalid file header for file: "+metadata.filePath)
 
 	// missing record count
 	metadata.filePath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
 	err = validate(metadata)
-	assert.NotNil(err)
 	assert.EqualError(err, "failed to parse record count from file: "+metadata.filePath)
 
 	// incorrect record count
 	metadata.filePath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"
 	err = validate(metadata)
-	assert.NotNil(err)
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.filePath+"'. Expected record count: 5, Actual record count: 4")
 }
 
@@ -167,7 +164,7 @@ func (s *SuppressionTestSuite) TestParseMetadata_InvalidFilename() {
 	assert.EqualError(err, "invalid filename for file: /path/to/file")
 
 	_, err = parseMetadata("/path/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000010")
-	assert.NotNil(err)
+	assert.EqualError(err, "invalid filename for file: /path/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000010")
 
 	// invalid date
 	_, err = parseMetadata("/path/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420")
@@ -266,7 +263,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 
 	// assert that this file is not still here.
 	_, err = os.Open(filePath)
-	assert.NotNil(err)
+	assert.EqualError(err, "open ../../shared_files/suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009: no such file or directory")
 
 	testUtils.ResetFiles(s.Suite, folderPath)
 }
