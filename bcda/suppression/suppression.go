@@ -21,7 +21,6 @@ import (
 
 type suppressionFileMetadata struct {
 	name         string
-	acoID        string
 	timestamp    time.Time
 	filePath     string
 	imported     bool
@@ -223,16 +222,16 @@ func importSuppressionData(metadata suppressionFileMetadata) error {
 		ds := string(bytes.TrimSpace(b[effectiveDtStart:effectiveDtEnd]))
 		dt, err := convertDt(ds)
 		if err != nil {
-			fmt.Printf("Failed to parse date '%s' from file: %s.\n", ds, metadata.filePath)
-			err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", ds, metadata.filePath)
+			fmt.Printf("Failed to parse the effective date '%s' from file: %s.\n", ds, metadata.filePath)
+			err = errors.Wrapf(err, "failed to parse the effective date '%s' from file: %s", ds, metadata.filePath)
 			log.Error(err)
 			return err
 		}
 		ds = string(bytes.TrimSpace(b[samhsaEffectiveDtStart:samhsaEffectiveDtEnd]))
 		samhsaDt, err := convertDt(ds)
 		if err != nil {
-			fmt.Printf("Failed to parse date '%s' from file: %s.\n", ds, metadata.filePath)
-			err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", ds, metadata.filePath)
+			fmt.Printf("Failed to parse the samhsa effective date '%s' from file: %s.\n", ds, metadata.filePath)
+			err = errors.Wrapf(err, "failed to parse the samhsa effective date '%s' from file: %s", ds, metadata.filePath)
 			log.Error(err)
 			return err
 		}

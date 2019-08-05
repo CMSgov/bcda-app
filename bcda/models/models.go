@@ -412,6 +412,16 @@ type SuppressionFile struct {
 	Timestamp time.Time `gorm:"not null"`
 }
 
+func (suppressionFile *SuppressionFile) Delete() error {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	err := db.Unscoped().Where("file_id = ?", suppressionFile.ID).Delete(&Suppression{}).Error
+	if err != nil {
+		return err
+	}
+	return db.Unscoped().Delete(&suppressionFile).Error
+}
+
 type Suppression struct {
 	gorm.Model
 	SuppressionFile     SuppressionFile
