@@ -5,6 +5,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	jwt "github.com/dgrijalva/jwt-go"
+
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 )
 
 // SSASPlugin is an implementation of Provider that uses the SSAS API.
@@ -41,7 +43,19 @@ func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
 
 // MakeAccessToken mints an access token for the given credentials.
 func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
-	return "", errors.New("Not yet implemented")
+	ssas, err := client.NewSSASClient()
+	if err != nil {
+		logger.Errorf("failed to create SSAS client; %s", err.Error())
+		return "", err
+	}
+
+	ts, err := ssas.GetToken(client.Credentials{ClientID:credentials.ClientID, ClientSecret:credentials.ClientSecret})
+	if err != nil {
+		logger.Errorf("Failed to get token; %s", err.Error())
+		return "", err
+	}
+
+	return string(ts), nil
 }
 
 // RevokeAccessToken revokes a specific access token identified in a base64-encoded token string.
