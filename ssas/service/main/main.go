@@ -16,7 +16,6 @@ import (
 var startMeUp bool
 var migrateAndStart bool
 var unsafeMode bool
-var adminSigningKeyPath string
 
 func init() {
 	const usageStart = "start the service"
