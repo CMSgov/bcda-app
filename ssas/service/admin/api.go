@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
+
+	"github.com/CMSgov/bcda-app/ssas"
 )
 
 func createGroup(w http.ResponseWriter, r *http.Request) {

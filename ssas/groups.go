@@ -199,12 +199,12 @@ func cascadeDeleteGroup(group Group) error {
 }
 
 type GroupData struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Users     []string   `json:"users"`
-	Scopes    []string   `json:"scopes"`
-	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
-	Resources []Resource `json:"resources"`
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	Users     []string    `json:"users"`
+	Scopes    []string    `json:"scopes"`
+	System    System      `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
+	Resources []Resource  `json:"resources"`
 }
 
 // Make the GroupData struct implement the driver.Valuer interface. This method
@@ -228,4 +228,17 @@ type Resource struct {
 	ID     string   `json:"id"`
 	Name   string   `json:"name"`
 	Scopes []string `json:"scopes"`
+}
+
+func FindByGroupID(groupID string) (Group, error){
+	db := GetGORMDbConnection()
+	defer Close(db)
+
+	group := Group{GroupID:groupID}
+	err := db.Find(&group).Error
+	if err != nil {
+		return group, err
+	}
+
+	return group, nil
 }

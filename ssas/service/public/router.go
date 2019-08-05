@@ -1,7 +1,9 @@
 package public
 
 import (
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi"
 
@@ -15,17 +17,17 @@ var server *service.Server
 
 func init() {
 	infoMap = make(map[string][]string)
-	infoMap["public"] = []string{"token", "register", "authn/challenge", "authn/verify"}
 	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
 }
 
-func MakeServer() (*service.Server, error) {
-	server = service.NewServer("public", ":3003", version, infoMap, routes(), true)
-	// the signing key is separate from the [future] cert / private key used for https or tls or whatever
-	if err := server.SetSigningKeys(publicSigningKeyPath); err != nil {
-		return &service.Server{}, err
+func Server() (*service.Server) {
+	server = service.NewServer("public", ":3003", version, infoMap, routes(), true, publicSigningKeyPath, 20 * time.Minute)
+	if server != nil {
+		r, _ := server.ListRoutes()
+		infoMap["banner"] = []string{fmt.Sprintf("%s server running on port %s", "public", ":3003")}
+		infoMap["routes"] = r
 	}
-	return server, nil
+	return server
 }
 
 func routes() *chi.Mux {
