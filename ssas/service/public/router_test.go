@@ -44,8 +44,9 @@ func (s *PublicRouterTestSuite) SetupSuite() {
 	}
 }
 
-func (s *PublicRouterTestSuite) TearDownTestSuite() {
-	s.db.Unscoped().Delete(&s.group)
+func (s *PublicRouterTestSuite) TearDownSuite() {
+	err := ssas.CleanDatabase(s.group)
+	assert.Nil(s.T(), err)
 	ssas.Close(s.db)
 }
 

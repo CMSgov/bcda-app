@@ -90,8 +90,8 @@ func (s *APITestSuite) TestListGroups() {
 	g1, err := ssas.CreateGroup(gd)
 	assert.Nil(s.T(), err)
 
-	gd.ID = "some-fake-id"
-	gd.Name = "some-fake-name"
+	gd.ID = "another-fake-id"
+	gd.Name = "another-fake-name"
 	g2, err := ssas.CreateGroup(gd)
 	assert.Nil(s.T(), err)
 
@@ -179,7 +179,8 @@ func (s *APITestSuite) TestCreateSystem() {
 	assert.NotNil(s.T(), result["token"])
 	assert.Equal(s.T(), "Test Client", result["client_name"])
 
-	_ = ssas.CleanDatabase(group)
+	err = ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
 }
 
 func (s *APITestSuite) TestCreateSystem_InvalidRequest() {
@@ -284,7 +285,8 @@ func (s *APITestSuite) TestGetPublicKey() {
 	assert.NotEmpty(s.T(), resPublicKey)
 	assert.Equal(s.T(), key1Str, resPublicKey)
 
-	_ = ssas.CleanDatabase(group)
+	err = ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
 }
 
 func (s *APITestSuite) TestGetPublicKey_Rotation() {
@@ -334,7 +336,8 @@ func (s *APITestSuite) TestGetPublicKey_Rotation() {
 	assert.NotEmpty(s.T(), resPublicKey)
 	assert.Equal(s.T(), key2, resPublicKey)
 
-	_ = ssas.CleanDatabase(group)
+	err = ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
 }
 
 func (s *APITestSuite) TestDeactivateSystemCredentials() {

@@ -503,7 +503,17 @@ func CleanDatabase(group Group) error {
 	)
 	defer Close(db)
 
-	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
+	if group.ID == 0 {
+		return fmt.Errorf("invalid group.ID")
+	}
+
+	foundGroup := Group{GroupID: group.GroupID}
+	err := db.Unscoped().Find(&foundGroup).Error
+	if err != nil {
+		return fmt.Errorf("unable to find group %s: %s", group.GroupID, err.Error())
+	}
+
+	err = db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
 		return fmt.Errorf("unable to find associated systems: %s", err.Error())
 	}

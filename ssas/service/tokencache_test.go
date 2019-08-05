@@ -42,6 +42,7 @@ func (s *TokenCacheTestSuite) TestIsTokenBlacklistedExpired() {
 	if err != nil {
 		assert.FailNow(s.T(), "unable to set cache value: " + err.Error())
 	}
+	time.Sleep(minimalDuration*5)
 	assert.False(s.T(), s.t.IsTokenBlacklisted(key))
 }
 
@@ -137,6 +138,7 @@ func (s *TokenCacheTestSuite) TestIsOrgTokenBlacklistedCacheExpired() {
 	if err != nil {
 		assert.FailNow(s.T(), "unable to set cache value: " + err.Error())
 	}
+	time.Sleep(minimalDuration*5)
 	assert.False(s.T(), s.t.IsOrgTokenBlacklisted(key, tokenTime))
 }
 
