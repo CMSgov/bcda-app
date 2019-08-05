@@ -41,7 +41,7 @@ func (s *ServerTestSuite) TestNewServer() {
 
 	r := chi.NewRouter()
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("test"))
+		_, _ = w.Write([]byte("test"))
 	})
 	ts := NewServer("test-server", ":9999", "9.99.999", s.info, r, true, unitSigningKeyPath, 37 * time.Minute)
 	assert.NotEmpty(s.T(), ts.router)

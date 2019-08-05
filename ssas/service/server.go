@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/rsa"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -67,18 +66,6 @@ func NewServer(name, port, version string, info interface{}, routes *chi.Mux, no
 	}
 
 	return &s
-}
-
-// TODO remove after refactoring public side
-// SetSigningKey sets the RSA key to be used by this server for signing tokens
-func (s *Server) setSigningKey(privateKeyPath string) error {
-	var err error
-	if s.tokenSigningKey, err = getPrivateKey(privateKeyPath); err != nil {
-		msg := fmt.Sprintf("bad signing key; path %s; %v", privateKeyPath, err)
-		ssas.Logger.Info(msg)
-		return errors.New(msg)
-	}
-	return nil
 }
 
 func (s *Server) ListRoutes() ([]string, error) {
@@ -200,8 +187,6 @@ func ConnectionClose(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-var ttlScale = time.Minute
 
 // CommonClaims contains the superset of claims that may be found in the token
 type CommonClaims struct {
