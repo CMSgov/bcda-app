@@ -8,15 +8,15 @@ import (
 	"testing"
 )
 
-type EtlTestSuite struct {
+type ETLTestSuite struct {
 	suite.Suite
 }
 
-func TestEtlTestSuite(t *testing.T) {
-	suite.Run(t, new(EtlTestSuite))
+func TestETLTestSuite(t *testing.T) {
+	suite.Run(t, new(ETLTestSuite))
 }
 
-func (s *EtlTestSuite) TestDeleteDirectory() {
+func (s *ETLTestSuite) TestDeleteDirectory() {
 	assert := assert.New(s.T())
 	dirToDelete := "../../shared_files/doomedDirectory"
 	makeDirToDelete(s.Suite, dirToDelete)
