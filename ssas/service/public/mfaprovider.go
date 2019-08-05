@@ -56,6 +56,7 @@ func GetProvider() MFAProvider {
 type PasswordReturn struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
+	Token   string `json:"token,omitempty"`
 }
 
 // FactorReturn defines the return type of RequestFactorChallenge
@@ -97,7 +98,7 @@ type MFAProvider interface {
 	// importantly for the MFA workflow, it indicates whether a successfully verified account is cleared to continue
 	// MFA authentication, or whether a condition exists such as an expired password or no actively enrolled
 	// MFA factors.
-	VerifyPassword(userIdentifier string, password string, trackingId string) (*PasswordReturn, error)
+	VerifyPassword(userIdentifier string, password string, trackingId string) (*PasswordReturn, string, error)
 
 	// RequestFactorChallenge sends an MFA challenge request for the MFA factor type registered to the specified user,
 	// if both user and factor exist.  For instance, for the SMS factor type, an SMS message would be sent with a
@@ -106,7 +107,7 @@ type MFAProvider interface {
 
 	// VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
 	// except Push.
-	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) bool
+	VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (bool, string, []string)
 
 	// VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
 	// rejection, waiting, and timeout.
