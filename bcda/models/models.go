@@ -7,9 +7,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -107,15 +109,16 @@ func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 		return nil, err
 	}
 
-	beneficiaryIDs, err := aco.GetBeneficiaryIDs()
+	// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
+	beneficiaries, err := aco.GetBeneficiaries(false)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, id := range beneficiaryIDs {
+	for _, b := range beneficiaries {
 		rowCount++
-		jobIDs = append(jobIDs, id)
-		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaryIDs) {
+		jobIDs = append(jobIDs, fmt.Sprint(b.ID))
+		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 
 			args, err := json.Marshal(jobEnqueueArgs{
 				ID:             int(job.ID),
@@ -183,10 +186,29 @@ type ACO struct {
 	PublicKey   string    `json:"public_key"`
 }
 
-func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
+func (aco *ACO) GetBeneficiaryIDs(includeSuppressed bool) (cclfBeneficiaryIDs []string, err error) {
+	cclfBeneficiaries, err := aco.GetBeneficiaries(includeSuppressed)
+	if err != nil {
+		return nil, err
+	}
+	if cclfBeneficiaries == nil {
+		return cclfBeneficiaryIDs, nil
+	}
+
+	for _, b := range cclfBeneficiaries {
+		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, fmt.Sprint(b.ID))
+	}
+
+	return cclfBeneficiaryIDs, nil
+}
+
+// GetBeneficiaries retrieves beneficiaries associated with the ACO.
+func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, error) {
+	var cclfBeneficiaries []CCLFBeneficiary
+
 	if aco.CMSID == nil {
 		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
-		return cclfBeneficiaryIDs, fmt.Errorf("no CMS ID set for this ACO")
+		return cclfBeneficiaries, fmt.Errorf("no CMS ID set for this ACO")
 	}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -194,18 +216,31 @@ func (aco *ACO) GetBeneficiaryIDs() (cclfBeneficiaryIDs []string, err error) {
 	// todo add a filter here to make sure the file is up to date.
 	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
 		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
-		return cclfBeneficiaryIDs, fmt.Errorf("unable to find cclfFile")
+		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	if err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFile.ID).Pluck("ID", &cclfBeneficiaryIDs).Error; err != nil {
+	if err := db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error; err != nil {
 		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
 		return nil, err
-	} else if len(cclfBeneficiaryIDs) == 0 {
+	} else if len(cclfBeneficiaries) == 0 {
 		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
 		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
 	}
 
-	return cclfBeneficiaryIDs, nil
+	if !includeSuppressed {
+		unsuppressedBeneficiaries := []CCLFBeneficiary{}
+
+		for _, b := range cclfBeneficiaries {
+			var s Suppression
+			found := !db.Order("effective_date desc").First(&s, "hicn = ? AND effective_date <= ? AND preference_indicator != '' AND preference_indicator IS NOT NULL", b.HICN, time.Now()).RecordNotFound()
+			if (found && s.PrefIndicator != "N") || !found {
+				unsuppressedBeneficiaries = append(unsuppressedBeneficiaries, b)
+			}
+		}
+		return unsuppressedBeneficiaries, nil
+	}
+
+	return cclfBeneficiaries, nil
 }
 
 type CCLFBeneficiaryXref struct {
@@ -218,8 +253,30 @@ type CCLFBeneficiaryXref struct {
 	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
+// GetPublicKey returns the ACO's public key.
 func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
-	return rsautils.ReadPublicKey(aco.PublicKey)
+	var key string
+	if strings.ToLower(os.Getenv("BCDA_AUTH_PROVIDER")) == "ssas" {
+		ssas, err := authclient.NewSSASClient()
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		systemID, err := strconv.Atoi(aco.ClientID)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		keyBytes, err := ssas.GetPublicKey(systemID)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
+		}
+
+		key = string(keyBytes)
+	} else {
+		key = aco.PublicKey
+	}
+	return rsautils.ReadPublicKey(key)
 }
 
 func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
@@ -350,14 +407,14 @@ type CCLFBeneficiary struct {
 
 type Suppression struct {
 	gorm.Model
-	HICN                string `gorm:"type:varchar(11);not null"`
-	SourceCode          string `gorm:"type:varchar(5)"`
-	EffectiveDt         time.Time
-	PrefIndicator       string `gorm:"type:char(1)"`
-	SAMHSASourceCode    string `gorm:"type:varchar(5)"`
-	SAMHSAEffectiveDt   time.Time
-	SAMHSAPrefIndicator string `gorm:"type:char(1)"`
-	ACOCMSID            string `gorm:"column:aco_cms_id;type:char(5)"`
+	HICN                string    `gorm:"type:varchar(11);not null"`
+	SourceCode          string    `gorm:"type:varchar(5)"`
+	EffectiveDt         time.Time `gorm:"column:effective_date"`
+	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`
+	SAMHSASourceCode    string    `gorm:"type:varchar(5)"`
+	SAMHSAEffectiveDt   time.Time `gorm:"column:samhsa_effective_date"`
+	SAMHSAPrefIndicator string    `gorm:"column:samhsa_preference_indicator;type:char(1)"`
+	ACOCMSID            string    `gorm:"column:aco_cms_id;type:char(5)"`
 	BeneficiaryLinkKey  int
 }
 

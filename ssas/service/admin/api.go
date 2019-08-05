@@ -42,6 +42,33 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func listGroups(w http.ResponseWriter, r *http.Request) {
+	trackingID := uuid.NewRandom().String()
+
+	ssas.OperationCalled(ssas.Event{Op: "ListGroups", TrackingID: trackingID, Help: "calling from admin.listGroups()"})
+	groups, err := ssas.ListGroups(trackingID)
+	if err != nil {
+		ssas.OperationFailed(ssas.Event{Op: "admin.listGroups", TrackingID: trackingID, Help: err.Error()})
+		http.Error(w, fmt.Sprintf("Failed to list groups. Error: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	groupsJSON, err := json.Marshal(groups)
+	if err != nil {
+		ssas.OperationFailed(ssas.Event{Op: "admin.listGroups", TrackingID: trackingID, Help: err.Error()})
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(groupsJSON)
+	if err != nil {
+		ssas.OperationFailed(ssas.Event{Op: "admin.listGroups", TrackingID: trackingID, Help: err.Error()})
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+}
+
 func updateGroup(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -136,7 +163,7 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 
 	trackingID := uuid.NewRandom().String()
 	ssas.OperationCalled(ssas.Event{Op: "ResetSecret", TrackingID: trackingID, Help: "calling from admin.resetCredentials()"})
-	secret, err := system.ResetSecret(trackingID)
+	credentials, err := system.ResetSecret(trackingID)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
@@ -144,7 +171,7 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, secret)
+	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, credentials.ClientSecret)
 }
 
 func getPublicKey(w http.ResponseWriter, r *http.Request) {

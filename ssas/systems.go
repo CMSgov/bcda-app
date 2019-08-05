@@ -451,9 +451,11 @@ func GenerateSecret() (string, error) {
 /*
 	ResetSecret creates a new secret for the current system.
 */
-func (system *System) ResetSecret(trackingID string) (string, error) {
+func (system *System) ResetSecret(trackingID string) (Credentials, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
+
+	creds := Credentials{}
 
 	newSecretEvent := Event{Op: "ResetSecret", TrackingID: trackingID, ClientID: system.ClientID}
 	OperationStarted(newSecretEvent)
@@ -462,25 +464,30 @@ func (system *System) ResetSecret(trackingID string) (string, error) {
 	if err != nil {
 		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(newSecretEvent)
-		return "", errors.New("internal system error")
+		return creds, errors.New("internal system error")
 	}
 
 	hashedSecret, err := NewHash(secretString)
 	if err != nil {
 		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(newSecretEvent)
-		return "", errors.New("internal system error")
+		return creds, errors.New("internal system error")
 	}
 
 	hashedSecretString := hashedSecret.String()
 	if err = system.SaveSecret(hashedSecretString); err != nil {
 		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(newSecretEvent)
-		return "", errors.New("internal system error")
+		return creds, errors.New("internal system error")
 	}
 
 	OperationSucceeded(newSecretEvent)
-	return hashedSecretString, nil
+
+	creds.ClientID = system.ClientID
+	creds.ClientSecret = secretString
+	creds.ClientName = system.ClientName
+	creds.ExpiresAt = time.Now().Add(CredentialExpiration)
+	return creds, nil
 }
 
 /*
