@@ -616,33 +616,6 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/")
 }
 
-func (s *CCLFTestSuite) TestDeleteDirectory() {
-	assert := assert.New(s.T())
-	dirToDelete := BASE_FILE_PATH + "doomedDirectory"
-	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
-	defer os.Remove(dirToDelete)
-
-	f, err := os.Open(dirToDelete)
-	assert.Nil(err)
-	files, err := f.Readdir(-1)
-	assert.Nil(err)
-	assert.Equal(4, len(files))
-
-	filesDeleted, err := DeleteDirectoryContents(dirToDelete)
-	assert.Equal(4, filesDeleted)
-	assert.Nil(err)
-
-	f, err = os.Open(dirToDelete)
-	assert.Nil(err)
-	files, err = f.Readdir(-1)
-	assert.Nil(err)
-	assert.Equal(0, len(files))
-
-	filesDeleted, err = DeleteDirectoryContents("This/Does/not/Exist")
-	assert.Equal(0, filesDeleted)
-	assert.NotNil(err)
-}
-
 func deleteFilesByACO(acoID string, db *gorm.DB) error {
 	var files []models.CCLFFile
 	db.Where("aco_cms_id = ?", acoID).Find(&files)
