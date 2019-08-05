@@ -188,7 +188,7 @@ var ttlScale = time.Minute
 type CommonClaims struct {
 	jwt.StandardClaims
 	// AccessToken, MFAToken, or RegistrationToken
-	TokenType string	 `json:"typ,omitempty"`
+	TokenType string	 `json:"use,omitempty"`
 	// In an MFA token, presence of an OktaID is taken as proof of username/password authentication
 	OktaID	 string		 `json:"oid,omitempty"`
 	ClientID string      `json:"cid,omitempty"`
@@ -200,7 +200,18 @@ type CommonClaims struct {
 	Data     interface{} `json:"dat,omitempty"`
 }
 
-func (s *Server) MintToken(claims CommonClaims, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
+// MintTokenWithDuration generates a tokenstring that expires after a specific duration from now.
+// If duration is <= 0, the token will be expired upon creation
+func (s *Server) MintTokenWithDuration(claims CommonClaims, duration time.Duration) (*jwt.Token, string, error) {
+	return s.mintToken(claims, time.Now().Unix(), time.Now().Add(duration).Unix())
+}
+
+// MintToken generates a tokenstring that expires in tokenTTL time
+func (s *Server) MintToken(claims CommonClaims) (*jwt.Token, string, error) {
+	return s.mintToken(claims, time.Now().Unix(), time.Now().Add(s.tokenTTL).Unix())
+}
+
+func (s *Server) mintToken(claims CommonClaims, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
 	token := jwt.New(jwt.SigningMethodRS512)
 	tokenID := newTokenID()
 	claims.UUID = tokenID
@@ -215,12 +226,6 @@ func (s *Server) MintToken(claims CommonClaims, issuedAt int64, expiresAt int64)
 	}
 	// not emitting AccessTokenIssued here because it hasn't been given to anyone
 	return token, signedString, nil
-}
-
-// MintTokenWithDuration generates a tokenstring that expires after a specific duration from now.
-// If duration is <= 0, the token will be expired upon creation
-func (s *Server) MintTokenWithDuration(claims CommonClaims, duration time.Duration) (*jwt.Token, string, error) {
-	return s.MintToken(claims, time.Now().Unix(), time.Now().Add(duration).Unix())
 }
 
 func newTokenID() string {

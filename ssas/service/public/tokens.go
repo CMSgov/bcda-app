@@ -23,11 +23,11 @@ func MintMFAToken(oktaID string) (*jwt.Token, string, error) {
 		OktaID: oktaID,
 	}
 
-	if err := checkTokenClaims(&claims, claims.TokenType); err != nil {
+	if err := checkTokenClaims(&claims); err != nil {
 		return nil, "", err
 	}
 
-	return server.MintToken(claims, time.Now().Unix(), time.Now().Add(selfRegistrationTokenDuration).Unix())
+	return server.MintTokenWithDuration(claims, selfRegistrationTokenDuration)
 }
 
 // MintRegistrationToken generates a tokenstring for system self-registration endpoints
@@ -38,7 +38,7 @@ func MintRegistrationToken(oktaID string, groupIDs []string) (*jwt.Token, string
 		GroupIDs: groupIDs,
 	}
 
-	if err := checkTokenClaims(&claims, claims.TokenType); err != nil {
+	if err := checkTokenClaims(&claims); err != nil {
 		return nil, "", err
 	}
 
@@ -53,11 +53,11 @@ func MintAccessToken(acoID string, data interface{}) (*jwt.Token, string, error)
 		Data:  data,
 	}
 
-	if err := checkTokenClaims(&claims, claims.TokenType); err != nil {
+	if err := checkTokenClaims(&claims); err != nil {
 		return nil, "", err
 	}
 
-	return server.MintTokenWithDuration(claims, selfRegistrationTokenDuration)
+	return server.MintToken(claims)
 }
 
 func empty(arr []string) bool {
@@ -106,13 +106,13 @@ func checkAllClaims(claims *service.CommonClaims, requiredTokenType string) erro
 		return err
 	}
 
-	if err := checkTokenClaims(claims, requiredTokenType); err != nil {
+	if err := checkTokenClaims(claims); err != nil {
 		return err
 	}
 	return nil
 }
 
-func checkTokenClaims(claims *service.CommonClaims, requiredTokenType string) error {
+func checkTokenClaims(claims *service.CommonClaims) error {
 	switch claims.TokenType {
 	case "MFAToken":
 		if claims.OktaID == "" {

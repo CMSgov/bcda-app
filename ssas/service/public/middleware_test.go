@@ -73,6 +73,8 @@ func (s *PublicMiddlewareTestSuite) TestParseTokenEmptyToken() {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				token := r.Context().Value("token")
 				assert.Nil(s.T(), token)
+				_, err := readRegData(r)
+				assert.NotNil(s.T(), err)
 			})
 		}
 	s.server = httptest.NewServer(s.CreateRouter(parseToken, testForToken))
