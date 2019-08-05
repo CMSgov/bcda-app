@@ -116,6 +116,40 @@ func (s *SSASClientTestSuite) TestDeleteCredentials() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *SSASClientTestSuite) TestGetToken() {
+	const tokenString = "totallyfake.tokenstringfor.testing"
+	router := chi.NewRouter()
+	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	defer os.Setenv("SSAS_URL", origSSASURL)
+	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
+	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	respKey, err := client.GetToken(authclient.Credentials{ClientID:"happy", ClientSecret:"client"})
+	if err != nil {
+		s.FailNow("Failed to get token", err.Error())
+	}
+
+	assert.Equal(s.T(), tokenString, string(respKey))
+}
+
 func TestSSASClientTestSuite(t *testing.T) {
 	suite.Run(t, new(SSASClientTestSuite))
 }

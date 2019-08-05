@@ -1,9 +1,19 @@
 package auth_test
 
 import (
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"regexp"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,7 +34,73 @@ func (s *SSASPluginTestSuite) TestDeleteSystem() {}
 
 func (s *SSASPluginTestSuite) TestResetSecret() {}
 
-func (s *SSASPluginTestSuite) TestMakeAccessToken() {}
+func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {}
+
+func (s *SSASPluginTestSuite) TestMakeAccessToken() {
+	const tokenString = "totallyfake.tokenstringfor.testing"
+	router := chi.NewRouter()
+	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+		clientId, secret, ok := r.BasicAuth()
+		if !ok {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		if clientId == "happy" && secret == "customer" {
+			_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `" }`))
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	defer os.Setenv("SSAS_URL", origSSASURL)
+	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
+	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	ts, err := s.p.MakeAccessToken(auth.Credentials{ClientID: "happy", ClientSecret: "customer"})
+	assert.Nil(s.T(), err)
+	assert.NotEmpty(s.T(), ts)
+	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
+
+	// t, _ := s.p.VerifyToken(ts)
+	// c := t.Claims.(*auth.CommonClaims)
+	// assert.True(s.T(), c.ExpiresAt <= time.Now().Unix()+3600)
+
+	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: "sad", ClientSecret: "customer"})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "401")
+
+	ts, err = s.p.MakeAccessToken(auth.Credentials{})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "401")
+
+	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: uuid.NewRandom().String()})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "401")
+
+	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientSecret: testUtils.RandomBase64(20)})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "401")
+
+	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
+	assert.NotNil(s.T(), err)
+	assert.Empty(s.T(), ts)
+	assert.Contains(s.T(), err.Error(), "401")
+}
 
 func (s *SSASPluginTestSuite) TestRevokeAccessToken() {}
 
