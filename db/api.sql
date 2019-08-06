@@ -70,8 +70,18 @@ create table cclf_beneficiary_xrefs (
     deleted_at timestamp with time zone
 );
 
+create table suppression_files (
+    id serial primary key,
+    name varchar not null,
+    "timestamp" timestamp with time zone not null,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    deleted_at timestamp with time zone
+);
+
 create table suppressions (
     id serial primary key,
+    file_id integer not null,
     hicn varchar(11) not null,
     source_code varchar(5),
     effective_date timestamp with time zone,
