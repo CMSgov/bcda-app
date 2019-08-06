@@ -96,7 +96,7 @@ docker-build:
 docker-bootstrap:
 	$(MAKE) docker-build
 	docker-compose up -d
-	sleep 30
+	sleep 40
 	$(MAKE) load-fixtures
 
 api-shell:
