@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -67,8 +68,7 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 
 	if strings.ToLower(os.Getenv("BB_CHECK_CERT")) != "false" {
 		caFile := os.Getenv("BB_CLIENT_CA_FILE")
-		/* #nosec */
-		caCert, err := ioutil.ReadFile(caFile)
+		caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not read CA file")
 		}

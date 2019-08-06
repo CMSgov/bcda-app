@@ -2,6 +2,7 @@ package ssas
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -69,7 +70,7 @@ func ReadPublicKey(publicKey string) (*rsa.PublicKey, error) {
 		return nil, fmt.Errorf("not able to cast key as *rsa.PublicKey")
 	}
 
-	if rsaPub.Size() < RSAKEYMINBITS / 8 {
+	if rsaPub.Size() < RSAKEYMINBITS/8 {
 		return nil, fmt.Errorf("insecure key length (%d bytes)", rsaPub.Size())
 	}
 
@@ -132,4 +133,33 @@ func ConvertJWKToPEM(jwks string) (string, error) {
 	}
 
 	return out.String(), nil
+}
+
+func ConvertPublicKeyToPEMString(pk *rsa.PublicKey) (string, error) {
+	der, err := x509.MarshalPKIXPublicKey(pk)
+	if err != nil {
+		return "", errors.New("unable to marshal public key: " + err.Error())
+	}
+
+	block := &pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: der,
+	}
+
+	var out bytes.Buffer
+	err = pem.Encode(&out, block)
+	if err != nil {
+		return "", errors.New("unable to encode key in PEM format: " + err.Error())
+	}
+
+	return out.String(), nil
+}
+
+func GenerateTestKeys(bitSize int) (*rsa.PrivateKey, rsa.PublicKey, error) {
+	reader := rand.Reader
+	privateKey, err := rsa.GenerateKey(reader, bitSize)
+	if err != nil {
+		return nil, rsa.PublicKey{}, err
+	}
+	return privateKey, privateKey.PublicKey, nil
 }

@@ -5,12 +5,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -112,7 +113,7 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 
 					if _, ok := validator[filetype]; ok {
 						fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
-						err := fmt.Errorf("duplicate %v file type found from CCLF0 file.\n", filetype)
+						err := fmt.Errorf("duplicate %v file type found from CCLF0 file", filetype)
 						log.Error(err)
 						return nil, err
 					}
@@ -286,7 +287,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 					return err
 				}
 				importedCount++
-				if (importedCount % importStatusInterval == 0) {
+				if importedCount%importStatusInterval == 0 {
 					fmt.Printf("CCLF%d records imported: %d\n", fileMetadata.cclfNum, importedCount)
 				}
 			}
@@ -362,9 +363,8 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	}
 
 	if len(cclfmap) == 0 {
-		err := errors.New("failed to find any CCLF files in directory")
-		log.Error(err)
-		return 0, 0, 0, err
+		log.Info("Failed to find any CCLF files in directory")
+		return 0, 0, skipped, nil
 	}
 
 	for _, cclflist := range cclfmap {
@@ -438,8 +438,12 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Printf("Error in sorting CCLF file %s: %s.\n", info.Name(), err)
-			err = errors.Wrapf(err, "error in sorting cclf file: %v,", info.Name())
+			var fileName = "nil"
+			if info != nil {
+				fileName = info.Name()
+			}
+			fmt.Printf("Error in sorting CCLF file %s: %s.\n", fileName, err)
+			err = errors.Wrapf(err, "error in sorting cclf file: %v,", fileName)
 			log.Error(err)
 			return err
 		}
@@ -537,7 +541,7 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 				// currently only errors if there are more records than we expect.
 				if count > validator.totalRecordCount {
 					fmt.Printf("Maximum record count reached for file %s, Expected record count: %d, Actual record count: %d.\n", key, validator.totalRecordCount, count)
-					err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d) ", key, validator.totalRecordCount, count)
+					err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d)", key, validator.totalRecordCount, count)
 					log.Error(err)
 					return err
 				}
@@ -552,48 +556,6 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 	fmt.Printf("Successfully validated CCLF%d file %s.\n", fileMetadata.cclfNum, fileMetadata)
 	log.Infof("Successfully validated CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
 	return nil
-}
-
-func DeleteDirectoryContents(dirToDelete string) (filesDeleted int, err error) {
-	fmt.Printf("Preparing to delete directory %v.\n", dirToDelete)
-	log.Infof("Preparing to delete directory %v", dirToDelete)
-	f, err := os.Open(filepath.Clean(dirToDelete))
-	if err != nil {
-		fmt.Printf("Could not open dir: %s.\n", dirToDelete)
-		err = errors.Wrapf(err, "could not open dir: %s", dirToDelete)
-		log.Error(err)
-		return 0, err
-	}
-	files, err := f.Readdir(-1)
-	if err != nil {
-		fmt.Printf("Error reading files from dir: %s.\n", f.Name())
-		err = errors.Wrapf(err, "error reading files from dir: %s", f.Name())
-		log.Error(err)
-		return 0, err
-	}
-	err = f.Close()
-	if err != nil {
-		fmt.Printf("Error closing dir: %s.\n", f.Name())
-		err = errors.Wrapf(err, "error closing dir: %s", f.Name())
-		log.Error(err)
-		return 0, err
-	}
-
-	for _, file := range files {
-		fmt.Printf("Deleting %s.\n", file.Name())
-		log.Infof("deleting %s ", file.Name())
-		err = os.Remove(filepath.Join(dirToDelete, file.Name()))
-		if err != nil {
-			fmt.Printf("Error deleting file: %s from dir: %s.\n", file.Name(), dirToDelete)
-			err = errors.Wrapf(err, "error deleting file: %s from dir: %s", file.Name(), dirToDelete)
-			log.Error(err)
-			return 0, err
-		}
-	}
-
-	fmt.Printf("Successfully deleted all files from dir: %s.\n", dirToDelete)
-	log.Infof("Successfully deleted all files from dir: %s", dirToDelete)
-	return len(files), nil
 }
 
 func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) error {

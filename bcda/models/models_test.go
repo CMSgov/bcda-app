@@ -7,6 +7,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -16,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/go-chi/chi"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +58,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.Equal(acoUUID.String(), aco.ClientID)
 	assert.Equal(cmsID, *aco.CMSID)
 	pubKey, err := aco.GetPublicKey()
-	assert.NotNil(err)
+	assert.EqualError(err, "not able to decode PEM-formatted public key")
 	assert.Nil(pubKey)
 	assert.NotNil(GetATOPrivateKey())
 	// should confirm the keys are a matched pair? i.e., encrypt something with one and decrypt with the other
@@ -75,7 +79,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 		Name: "Duplicate UUID Test",
 	}
 	err = s.db.Save(&aco).Error
-	assert.NotNil(err)
+	assert.EqualError(err, "pq: duplicate key value violates unique constraint \"acos_pkey\"")
 
 	// Duplicate CMS ID
 	aco = ACO{
@@ -84,7 +88,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 		Name:  "Duplicate CMS ID Test",
 	}
 	err = s.db.Save(&aco).Error
-	assert.NotNil(err)
+	assert.EqualError(err, "pq: duplicate key value violates unique constraint \"acos_cms_id_key\"")
 }
 
 func (s *ModelsTestSuite) TestACOPublicKeyColumn() {
@@ -228,10 +232,10 @@ OwIDAQAB
 	nonEmptyPEM := ACO{PublicKey: validPEM}
 
 	k, err := emptyPubKey.GetPublicKey()
-	assert.NotNil(err)
+	assert.EqualError(err, "not able to decode PEM-formatted public key")
 	assert.Nil(k, "Empty string does not yield nil public key!")
 	k, err = emptyPubKey2.GetPublicKey()
-	assert.NotNil(err)
+	assert.EqualError(err, "not able to decode PEM-formatted public key")
 	assert.Nil(k, "Empty PEM key does not yield nil public key!")
 	k, err = nonEmptyPEM.GetPublicKey()
 	assert.Nil(err)
@@ -308,6 +312,59 @@ func (s *ModelsTestSuite) TestACOPublicKeyRetrieve() {
 	})
 	assert.NotNil(storedPublicKeyBytes, "unexpectedly empty stored public key byte slice")
 	assert.Equal(storedPublicKeyBytes, publicKeyBytes)
+}
+
+func (s *ModelsTestSuite) TestACOGetPublicKey_SSAS() {
+	router := chi.NewRouter()
+	keyStr := `-----BEGIN RSA PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZYpl2VjUja8VgkgoQ9K
+lgjvcjwaQZ7pLGrIA/BQcm+KnCIYOHaDH15eVDKQ+M2qE4FHRwLec/DTqlwg8TkT
+IYjBnXgN1Sg18y+SkSYYklO4cxlvMO3V8gaot9amPmt4YbpgG7CyZ+BOUHuoGBTh
+z2v9wLlK4zPAs3pLln3R/4NnGFKw2Eku2JVFTotQ03gSmSzesZixicw8LxgYKbNV
+oyTpERFansw6BbCJe7AP90rmaxCx80NiewFq+7ncqMbCMcqeUuCwk8MjS6bjvpcC
+htFCqeRi6AAUDRg0pcG8yoM+jo13Z5RJPOIf3ofohncfH5wr5Q7qiOCE5VH4I7cp
+OwIDAQAB
+-----END RSA PUBLIC KEY-----
+`
+	router.Get("/system/{systemID}/key", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{ "client_id": "123456", "public_key": "` + strings.Replace(keyStr, "\n", "\\n", -1) + `" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	origAuthProvider := os.Getenv("BCDA_AUTH_PROVIDER")
+	os.Setenv("BCDA_AUTH_PROVIDER", "ssas")
+	defer os.Setenv("BCDA_AUTH_PROVIDER", origAuthProvider)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	os.Setenv("SSAS_URL", server.URL)
+	defer os.Setenv("SSAS_URL", origSSASURL)
+
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	os.Setenv("SSAS_USE_TLS", "false")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+
+	cmsID := "A0001"
+	aco := ACO{Name: "Public key from SSAS ACO", CMSID: &cmsID, UUID: uuid.NewRandom(), ClientID: "100"}
+
+	key, err := aco.GetPublicKey()
+	if err != nil {
+		s.FailNow("Failed to get key", err.Error())
+	}
+
+	keyBytes, err := x509.MarshalPKIXPublicKey(key)
+	if err != nil {
+		s.FailNow("Failed to marshal key", err.Error())
+	}
+
+	pemBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: keyBytes,
+	})
+
+	assert.Equal(s.T(), keyStr, string(pemBytes))
 }
 
 func (s *ModelsTestSuite) TestCreateUser() {
@@ -555,48 +612,222 @@ func (s *ModelsTestSuite) TestGetMaxBeneCount() {
 	// Invalid type
 	max, err := GetMaxBeneCount("Coverages")
 	assert.Equal(-1, max)
-	assert.EqualError(err,"invalid request type")
+	assert.EqualError(err, "invalid request type")
 }
 
-func (s *ModelsTestSuite) TestGetBeneficiaryIDs() {
+func (s *ModelsTestSuite) TestGetBeneficiaries() {
 	assert := s.Assert()
 	var aco, smallACO, mediumACO, largeACO ACO
 	acoUUID := uuid.Parse(constants.DEVACOUUID)
 
 	err := s.db.Find(&aco, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err := aco.GetBeneficiaryIDs()
+	beneficiaries, err := aco.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(50, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(50, len(beneficiaries))
 
 	// small ACO has 10 benes
 	acoUUID = uuid.Parse(constants.SMALLACOUUID)
 	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err = smallACO.GetBeneficiaryIDs()
+	beneficiaries, err = smallACO.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(10, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(10, len(beneficiaries))
 
 	// Medium ACO has 25 benes
 	acoUUID = uuid.Parse(constants.MEDIUMACOUUID)
 	err = s.db.Find(&mediumACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err = mediumACO.GetBeneficiaryIDs()
+	beneficiaries, err = mediumACO.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(25, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(25, len(beneficiaries))
 
 	// Large ACO has 100 benes
 	acoUUID = uuid.Parse(constants.LARGEACOUUID)
 	err = s.db.Find(&largeACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
-	beneficiaryIDs, err = largeACO.GetBeneficiaryIDs()
+	beneficiaries, err = largeACO.GetBeneficiaries(true)
 	assert.Nil(err)
-	assert.NotNil(beneficiaryIDs)
-	assert.Equal(100, len(beneficiaryIDs))
+	assert.NotNil(beneficiaries)
+	assert.Equal(100, len(beneficiaries))
 
+}
+
+func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
+	acoCMSID := "T0000"
+	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
+	err := s.db.Save(&aco).Error
+	if err != nil {
+		s.FailNow("Failed to save ACO", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&aco)
+
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID}
+	err = s.db.Save(&cclfFile).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFile)
+
+	// Beneficiary 1: preference indicator = N, effective date = now - 48 hours
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene1hicn"}
+	err = s.db.Save(&bene1).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1)
+
+	bene1Suppression := Suppression{HICN: "bene1hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
+	err = s.db.Save(&bene1Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1Suppression)
+
+	// Beneficiary 2: preference indicator = Y, effective date = now - 24 hours
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene2hicn"}
+	err = s.db.Save(&bene2).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2)
+
+	bene2Suppression := Suppression{HICN: "bene2hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	err = s.db.Save(&bene2Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2Suppression)
+
+	// Beneficiary 3: no suppression record
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene3hicn"}
+	err = s.db.Save(&bene3).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3)
+
+	// Beneficiary 4: preference indicator = N, effective date = now + 1 hour
+	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene4hicn"}
+	err = s.db.Save(&bene4).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene4)
+
+	bene4Suppression := Suppression{HICN: "bene4hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(1 * time.Hour)}
+	err = s.db.Save(&bene4Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene4Suppression)
+
+	// Beneficiary 5: two suppression records, preference indicators = Y, N, effective dates = now - 72, 24 hours
+	bene5 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene5hicn"}
+	err = s.db.Save(&bene5).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene5)
+
+	bene5Suppression1 := Suppression{HICN: "bene5hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-72 * time.Hour)}
+	err = s.db.Save(&bene5Suppression1).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene5Suppression1)
+
+	bene5Suppression2 := Suppression{HICN: "bene5hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	err = s.db.Save(&bene5Suppression2).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene5Suppression2)
+
+	// Beneficiary 6: preference indicator = blank, effective date = now - 12 hours
+	bene6 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene6hicn"}
+	err = s.db.Save(&bene6).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene6)
+
+	bene6Suppression := Suppression{HICN: "bene6hicn", PrefIndicator: "", EffectiveDt: time.Now().Add(-12 * time.Hour)}
+	err = s.db.Save(&bene6Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene6Suppression)
+
+	// Beneficiary 7: three suppression records: preference indicators = Y, N, Y; effective dates = now - 168, 96, 24 hours
+	bene7 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene7hicn"}
+	err = s.db.Save(&bene7).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene7)
+
+	bene7Suppression1 := Suppression{HICN: "bene7hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-168 * time.Hour)}
+	err = s.db.Save(&bene7Suppression1).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene7Suppression1)
+
+	bene7Suppression2 := Suppression{HICN: "bene7hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-96 * time.Hour)}
+	err = s.db.Save(&bene7Suppression2).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene7Suppression2)
+
+	bene7Suppression3 := Suppression{HICN: "bene7hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	err = s.db.Save(&bene7Suppression3).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene7Suppression3)
+
+	// Beneficiary 8: three suppression records: preference indicators = Y, N, blank; effective dates = now - 96, 48, 24 hours
+	bene8 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene8hicn"}
+	err = s.db.Save(&bene8).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene8)
+
+	bene8Suppression1 := Suppression{HICN: "bene8hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-96 * time.Hour)}
+	err = s.db.Save(&bene8Suppression1).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene8Suppression1)
+
+	bene8Suppression2 := Suppression{HICN: "bene8hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
+	err = s.db.Save(&bene8Suppression2).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene8Suppression2)
+
+	bene8Suppression3 := Suppression{HICN: "bene8hicn", PrefIndicator: "", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	err = s.db.Save(&bene8Suppression3).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene8Suppression3)
+
+	result, err := aco.GetBeneficiaries(false)
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), result, 5)
+	assert.Equal(s.T(), bene2.ID, result[0].ID)
+	assert.Equal(s.T(), bene3.ID, result[1].ID)
+	assert.Equal(s.T(), bene4.ID, result[2].ID)
+	assert.Equal(s.T(), bene6.ID, result[3].ID)
+	assert.Equal(s.T(), bene7.ID, result[4].ID)
 }
 
 func (s *ModelsTestSuite) TestGetBlueButtonID() {

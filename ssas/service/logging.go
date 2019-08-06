@@ -1,4 +1,4 @@
-package service
+	package service
 
 import (
 	"fmt"
@@ -48,6 +48,7 @@ func (l *APILogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 
 	if rd, ok := r.Context().Value("rd").(ssas.AuthRegData); ok {
 		logFields["group_id"] = rd.GroupID
+		logFields["okta_id"] = rd.OktaID
 	}
 
 	entry.Logger = entry.Logger.WithFields(logFields)

@@ -1,6 +1,9 @@
 package ssas
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -55,6 +58,24 @@ func CreateGroup(gd GroupData) (Group, error) {
 
 	OperationSucceeded(event)
 	return g, nil
+}
+
+func ListGroups(trackingID string) ([]Group, error) {
+	event := Event{Op: "ListGroups", TrackingID: trackingID}
+	OperationStarted(event)
+
+	groups := []Group{}
+	db := GetGORMDbConnection()
+	defer Close(db)
+	err := db.Find(&groups).Error
+	if err != nil {
+		event.Help = err.Error()
+		OperationFailed(event)
+		return []Group{}, err
+	}
+
+	OperationSucceeded(event)
+	return groups, nil
 }
 
 func UpdateGroup(id string, gd GroupData) (Group, error) {
@@ -112,6 +133,33 @@ func DeleteGroup(id string) error {
 	return nil
 }
 
+// GetAuthorizedGroupsForOktaID returns a slice of GroupID's representing all groups this Okta user has rights to manage
+// TODO: this is the slowest and most memory intensive way possible to implement this.  Refactor!
+func GetAuthorizedGroupsForOktaID(oktaID string) ([]string, error) {
+	db := GetGORMDbConnection()
+	defer Close(db)
+
+	var (
+		result []string
+	)
+
+	groups := []Group{}
+	err := db.Select("*").Find(&groups).Error
+	if err != nil {
+		return result, err
+	}
+
+	for _, group := range groups {
+		for _, user := range group.Data.Users {
+			if user == oktaID {
+				result = append(result, group.GroupID)
+			}
+		}
+	}
+
+	return result, nil
+}
+
 func cascadeDeleteGroup(group Group) error {
 	var (
 		system        System
@@ -157,6 +205,23 @@ type GroupData struct {
 	Scopes    []string   `json:"scopes"`
 	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
 	Resources []Resource `json:"resources"`
+}
+
+// Make the GroupData struct implement the driver.Valuer interface. This method
+// simply returns the JSON-encoded representation of the struct.
+func (gd GroupData) Value() (driver.Value, error) {
+	return json.Marshal(gd)
+}
+
+// Make the GroupData struct implement the sql.Scanner interface. This method
+// simply decodes a JSON-encoded value into the struct fields.
+func (gd *GroupData) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &gd)
 }
 
 type Resource struct {

@@ -15,10 +15,12 @@ func init() {
 func Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/group", createGroup)
+	r.Get("/group", listGroups)
 	r.Put("/group/{id}", updateGroup)
 	r.Delete("/group/{id}", deleteGroup)
 	r.Post("/system", createSystem)
 	r.Put("/system/{systemID}/credentials", resetCredentials)
+	r.Get("/system/{systemID}/key", getPublicKey)
 	r.Delete("/system/{systemID}/credentials", deactivateSystemCredentials)
 	return r
 }

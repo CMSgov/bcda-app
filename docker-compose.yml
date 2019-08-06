@@ -113,6 +113,11 @@ services:
       - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
       - BCDA_AUTH_PROVIDER=${BCDA_AUTH_PROVIDER}
       - OKTA_OAUTH_SERVER_ID=${OKTA_OAUTH_SERVER_ID}
+      - OKTA_CA_CERT_FINGERPRINT=${OKTA_CA_CERT_FINGERPRINT}
+      - OKTA_MFA_EMAIL=${OKTA_MFA_EMAIL}
+      - OKTA_MFA_USER_ID=${OKTA_MFA_USER_ID}
+      - OKTA_MFA_USER_PASSWORD=${OKTA_MFA_USER_PASSWORD}
+      - OKTA_MFA_SMS_FACTOR_ID=${OKTA_MFA_SMS_FACTOR_ID}
       - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem
       - SSAS_PUBLIC_SIGNING_KEY_PATH=../shared_files/ssas/public_test_signing_key.pem
       - SSAS_ADMIN_PORT=:3003
@@ -125,6 +130,9 @@ services:
       - SSAS_HASH_KEY_LENGTH=64
       - SSAS_HASH_SALT_SIZE=32
       - SSAS_DEFAULT_SYSTEM_SCOPE=bcda-api
+      - SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS=0
+      - SSAS_MFA_TOKEN_TIMEOUT_MINUTES=60
+      - SSAS_MFA_PROVIDER=${SSAS_MFA_PROVIDER}
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     ports:

@@ -1,41 +1,59 @@
 {
 	"info": {
-		"_postman_id": "466653fe-fe34-4da5-90be-beaa32c16e91",
+		"_postman_id": "5890dfc3-bd4b-48bf-a440-d1d2a3755536",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "public auth/register",
+			"name": "admin info",
 			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"name": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					},
-					{
-						"key": "x-fake-token",
-						"value": "T0000",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\"group_id\":\"T0000\",\"client_id\":\"yet another evil twin\",\"client_name\":\"my sister's evil twin\",\"scope\":\"bcda-api\",\"jwks\":{\"keys\":[{\"e\":\"AAEAAQ\",\"n\":\"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\"kty\":\"RSA\"}]}}"
-				},
+				"method": "GET",
+				"header": [],
 				"url": {
-					"raw": "http://localhost:3003/auth/register",
-					"protocol": "http",
+					"raw": "localhost:3004/_info",
 					"host": [
 						"localhost"
 					],
-					"port": "3003",
+					"port": "3004",
 					"path": [
-						"auth",
-						"register"
+						"_info"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/_health",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"_health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin _version",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3004/_version",
+					"host": [
+						"localhost"
+					],
+					"port": "3004",
+					"path": [
+						"_version"
 					]
 				}
 			},
@@ -96,54 +114,184 @@
 			"response": []
 		},
 		{
-			"name": "admin info",
+			"name": "public authn/challenge",
 			"request": {
-				"method": "GET",
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"login_id\":\"{{login_id}}\",\"factor_type\":\"{{factor_type}}\"}"
+				},
 				"url": {
-					"raw": "localhost:3004/_info",
+					"raw": "http://localhost:3003/authn/challenge",
+					"protocol": "http",
 					"host": [
 						"localhost"
 					],
-					"port": "3004",
+					"port": "3003",
 					"path": [
-						"_info"
+						"authn",
+						"challenge"
+					]
+				},
+				"description": "Request that an MFA challenge passcode be sent, for example, via SMS"
+			},
+			"response": []
+		},
+		{
+			"name": "public authn/verify",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"login_id\":\"{{login_id}}\",\"factor_type\":\"{{factor_type}}\",\"passcode\":\"{{passcode}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/authn/verify",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"authn",
+						"verify"
+					]
+				},
+				"description": "Verify an MFA passcode"
+			},
+			"response": []
+		},
+		{
+			"name": "public authn",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"login_id\":\"{{login_id}}\",\"password\":\"{{password}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/authn",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"authn"
+					]
+				},
+				"description": "Verify a username and password"
+			},
+			"response": []
+		},
+		{
+			"name": "public register",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "x-group-id",
+						"value": "{{group_id}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"client_name\": \"My favorite name in all the world\",\n    \"scope\": \"bcda-api\",\n    \"jwks\": {\n        \"keys\": [\n            {\n                \"e\": \"AAEAAQ\",\n                \"n\": \"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\n                \"kty\": \"RSA\"\n            }\n        ]\n    }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"register"
 					]
 				}
 			},
 			"response": []
 		},
 		{
-			"name": "admin health",
+			"name": "public reset",
 			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "localhost:3004/_health",
-					"host": [
-						"localhost"
-					],
-					"port": "3004",
-					"path": [
-						"_health"
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
 					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "admin _version",
-			"request": {
-				"method": "GET",
-				"header": [],
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "x-group-id",
+						"type": "text",
+						"value": "T0001"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"client_id\":\"{{client_id}}\"}"
+				},
 				"url": {
-					"raw": "localhost:3004/_version",
+					"raw": "http://localhost:3003/reset",
+					"protocol": "http",
 					"host": [
 						"localhost"
 					],
-					"port": "3004",
+					"port": "3003",
 					"path": [
-						"_version"
+						"reset"
 					]
 				}
 			},

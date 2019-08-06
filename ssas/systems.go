@@ -19,7 +19,8 @@ import (
 )
 
 var DefaultScope string
-const CREDENTIAL_EXPIRATION = 90 * 24 * time.Hour
+
+const CredentialExpiration = 90 * 24 * time.Hour
 
 func init() {
 	getEnvVars()
@@ -29,7 +30,7 @@ func getEnvVars() {
 	DefaultScope = os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE")
 
 	if DefaultScope == "" {
-		ServiceHalted(Event{Help:"SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
+		ServiceHalted(Event{Help: "SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
 		panic("SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set")
 	}
 }
@@ -82,7 +83,9 @@ type Secret struct {
 }
 
 type AuthRegData struct {
-	GroupID string
+	GroupID 		string
+	AllowedGroupIDs []string
+	OktaID			string
 }
 
 /*
@@ -145,19 +148,24 @@ func (system *System) DeactivateSecrets() error {
 }
 
 /*
-	GetPublicKey will retrieve the hashed secret associated with the current system.
+	GetEncryptionKey retrieves the key associated with the current system.
 */
-func (system *System) GetPublicKey() (*rsa.PublicKey, error) {
+func (system *System) GetEncryptionKey(trackingID string) (EncryptionKey, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
+
+	getKeyEvent := Event{Op: "GetEncryptionKey", TrackingID: trackingID, ClientID: system.ClientID}
+	OperationStarted(getKeyEvent)
 
 	var encryptionKey EncryptionKey
 	err := db.Where("system_id = ?", system.ID).Find(&encryptionKey).Error
 	if err != nil {
-		return nil, fmt.Errorf("cannot find public key for clientID %s: %s", system.ClientID, err.Error())
+		OperationFailed(getKeyEvent)
+		return encryptionKey, fmt.Errorf("cannot find key for clientID %s: %s", system.ClientID, err.Error())
 	}
 
-	return ReadPublicKey(encryptionKey.Body)
+	OperationSucceeded(getKeyEvent)
+	return encryptionKey, nil
 }
 
 /*
@@ -392,7 +400,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	creds.ClientID = system.ClientID
 	creds.ClientSecret = clientSecret
 	creds.ClientName = system.ClientName
-	creds.ExpiresAt = time.Now().Add(CREDENTIAL_EXPIRATION)
+	creds.ExpiresAt = time.Now().Add(CredentialExpiration)
 
 	OperationSucceeded(regEvent)
 	return creds, nil
@@ -445,9 +453,11 @@ func GenerateSecret() (string, error) {
 /*
 	ResetSecret creates a new secret for the current system.
 */
-func (system *System) ResetSecret(trackingID string) (string, error) {
+func (system *System) ResetSecret(trackingID string) (Credentials, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
+
+	creds := Credentials{}
 
 	newSecretEvent := Event{Op: "ResetSecret", TrackingID: trackingID, ClientID: system.ClientID}
 	OperationStarted(newSecretEvent)
@@ -456,25 +466,30 @@ func (system *System) ResetSecret(trackingID string) (string, error) {
 	if err != nil {
 		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(newSecretEvent)
-		return "", errors.New("internal system error")
+		return creds, errors.New("internal system error")
 	}
 
 	hashedSecret, err := NewHash(secretString)
 	if err != nil {
 		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(newSecretEvent)
-		return "", errors.New("internal system error")
+		return creds, errors.New("internal system error")
 	}
 
 	hashedSecretString := hashedSecret.String()
 	if err = system.SaveSecret(hashedSecretString); err != nil {
 		newSecretEvent.Help = fmt.Sprintf("could not reset secret for clientID %s: %s", system.ClientID, err.Error())
 		OperationFailed(newSecretEvent)
-		return "", errors.New("internal system error")
+		return creds, errors.New("internal system error")
 	}
 
 	OperationSucceeded(newSecretEvent)
-	return hashedSecretString, nil
+
+	creds.ClientID = system.ClientID
+	creds.ClientSecret = secretString
+	creds.ClientName = system.ClientName
+	creds.ExpiresAt = time.Now().Add(CredentialExpiration)
+	return creds, nil
 }
 
 /*
@@ -489,6 +504,10 @@ func CleanDatabase(group Group) error {
 		db            = GetGORMDbConnection()
 	)
 	defer Close(db)
+
+	if group.ID == 0 {
+		return fmt.Errorf("must have valid group id")
+	}
 
 	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
