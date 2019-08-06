@@ -119,8 +119,29 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 }
 
 // ResetCredentials PUTs to the SSAS /system/{systemID}/credentials endpoint to reset the system's credentials.
-func (c *SSASClient) ResetCredentials(systemID int) ([]byte, error) {
-	return nil, nil
+func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to delete credentials")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to delete credentials")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 201 {
+		return nil, errors.New(fmt.Sprintf("failed to delete credentials. status code: %v", resp.StatusCode)
+	}
+
+	var respMap map[string]string
+	if err = json.NewDecoder(resp.Body).Decode(&respMap); err != nil {
+		return nil, errors.Wrap(err, "failed to delete credentials")
+	}
+
+	return []byte(respMap["client_secret"]), nil
+
 }
 
 // DeleteCredentials DELETEs from the SSAS /system/{systemID}/credentials endpoint to deactivate credentials associated with the system.
