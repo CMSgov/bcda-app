@@ -46,6 +46,7 @@ func InitializeGormModels() *gorm.DB {
 		&CCLFFile{},
 		&CCLFBeneficiary{},
 		&Suppression{},
+		&SuppressionFile{},
 	)
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
@@ -405,8 +406,26 @@ type CCLFBeneficiary struct {
 	BlueButtonID string `gorm:"type: text"`
 }
 
+type SuppressionFile struct {
+	gorm.Model
+	Name      string    `gorm:"not null;unique"`
+	Timestamp time.Time `gorm:"not null"`
+}
+
+func (suppressionFile *SuppressionFile) Delete() error {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+	err := db.Unscoped().Where("file_id = ?", suppressionFile.ID).Delete(&Suppression{}).Error
+	if err != nil {
+		return err
+	}
+	return db.Unscoped().Delete(&suppressionFile).Error
+}
+
 type Suppression struct {
 	gorm.Model
+	SuppressionFile     SuppressionFile
+	FileID              uint      `gorm:"not null"`
 	HICN                string    `gorm:"type:varchar(11);not null"`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
@@ -414,7 +433,7 @@ type Suppression struct {
 	SAMHSASourceCode    string    `gorm:"type:varchar(5)"`
 	SAMHSAEffectiveDt   time.Time `gorm:"column:samhsa_effective_date"`
 	SAMHSAPrefIndicator string    `gorm:"column:samhsa_preference_indicator;type:char(1)"`
-	ACOCMSID            string    `gorm:"column:aco_cms_id;type:char(5)"`
+	ACOCMSID  string    `gorm:"column:aco_cms_id;type:char(5)"`
 	BeneficiaryLinkKey  int
 }
 

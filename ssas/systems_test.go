@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -283,14 +284,14 @@ func (s *SystemsTestSuite) TestSystemPublicKeyEmpty() {
 	assert.Nil(err)
 
 	err = system.SavePublicKey(strings.NewReader(""))
-	assert.NotNil(err)
+	assert.EqualError(err, fmt.Sprintf("invalid public key for clientID %s: not able to decode PEM-formatted public key", clientID))
 	k, err := system.GetEncryptionKey("")
-	assert.NotNil(err)
+	assert.EqualError(err, fmt.Sprintf("cannot find key for clientID %s: record not found", clientID))
 	assert.Empty(k, "Empty string does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(emptyPEM))
-	assert.NotNil(err)
+	assert.EqualError(err, fmt.Sprintf("invalid public key for clientID %s: not able to decode PEM-formatted public key", clientID))
 	k, err = system.GetEncryptionKey("")
-	assert.NotNil(err)
+	assert.EqualError(err, fmt.Sprintf("cannot find key for clientID %s: record not found", clientID))
 	assert.Empty(k, "Empty PEM key does not yield empty encryption key!")
 	err = system.SavePublicKey(strings.NewReader(validPEM))
 	assert.Nil(err)
@@ -371,7 +372,7 @@ func (s *SystemsTestSuite) TestSystemClientGroupDuplicate() {
 
 	system = System{GroupID: group2.GroupID, ClientID: "498765uzyxwv", ClientName: "Duplicate Client"}
 	err = s.db.Create(&system).Error
-	assert.NotNil(err)
+	assert.EqualError(err, "pq: duplicate key value violates unique constraint \"idx_client\"")
 
 	sys, err := GetSystemByClientID(system.ClientID)
 	assert.Nil(err)
@@ -424,7 +425,7 @@ func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 
 	// No clientName
 	creds, err := RegisterSystem("", groupID, DefaultScope, pubKey, trackingID)
-	assert.NotNil(err)
+	assert.EqualError(err, "clientName is required")
 	assert.Empty(creds)
 
 	// No scope = success
@@ -452,17 +453,17 @@ func (s *SystemsTestSuite) TestRegisterSystemBadKey() {
 
 	// Blank key
 	creds, err := RegisterSystem("Register System Failure", groupID, DefaultScope, "", trackingID)
-	assert.NotNil(err)
+	assert.EqualError(err, "error in public key")
 	assert.Empty(creds)
 
 	// Invalid key
 	creds, err = RegisterSystem("Register System Failure", groupID, DefaultScope, "NotAKey", trackingID)
-	assert.NotNil(err)
+	assert.EqualError(err, "error in public key")
 	assert.Empty(creds)
 
 	// Key length too low
 	creds, err = RegisterSystem("Register System Failure", groupID, DefaultScope, pubKey, trackingID)
-	assert.NotNil(err)
+	assert.EqualError(err, "error in public key")
 	assert.Empty(creds)
 
 	err = s.db.Unscoped().Delete(&group).Error
@@ -597,7 +598,7 @@ func (s *SystemsTestSuite) TestScopeEnvFailure() {
 		s.FailNow(err.Error())
 	}
 
-	assert.Panics(s.T(), func() {getEnvVars()})
+	assert.Panics(s.T(), func() { getEnvVars() })
 }
 
 func TestSystemsTestSuite(t *testing.T) {

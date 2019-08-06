@@ -58,7 +58,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 	assert.Equal(acoUUID.String(), aco.ClientID)
 	assert.Equal(cmsID, *aco.CMSID)
 	pubKey, err := aco.GetPublicKey()
-	assert.NotNil(err)
+	assert.EqualError(err, "not able to decode PEM-formatted public key")
 	assert.Nil(pubKey)
 	assert.NotNil(GetATOPrivateKey())
 	// should confirm the keys are a matched pair? i.e., encrypt something with one and decrypt with the other
@@ -79,7 +79,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 		Name: "Duplicate UUID Test",
 	}
 	err = s.db.Save(&aco).Error
-	assert.NotNil(err)
+	assert.EqualError(err, "pq: duplicate key value violates unique constraint \"acos_pkey\"")
 
 	// Duplicate CMS ID
 	aco = ACO{
@@ -88,7 +88,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 		Name:  "Duplicate CMS ID Test",
 	}
 	err = s.db.Save(&aco).Error
-	assert.NotNil(err)
+	assert.EqualError(err, "pq: duplicate key value violates unique constraint \"acos_cms_id_key\"")
 }
 
 func (s *ModelsTestSuite) TestACOPublicKeyColumn() {
@@ -232,10 +232,10 @@ OwIDAQAB
 	nonEmptyPEM := ACO{PublicKey: validPEM}
 
 	k, err := emptyPubKey.GetPublicKey()
-	assert.NotNil(err)
+	assert.EqualError(err, "not able to decode PEM-formatted public key")
 	assert.Nil(k, "Empty string does not yield nil public key!")
 	k, err = emptyPubKey2.GetPublicKey()
-	assert.NotNil(err)
+	assert.EqualError(err, "not able to decode PEM-formatted public key")
 	assert.Nil(k, "Empty PEM key does not yield nil public key!")
 	k, err = nonEmptyPEM.GetPublicKey()
 	assert.Nil(err)

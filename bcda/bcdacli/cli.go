@@ -375,7 +375,7 @@ func setUpApp() *cli.App {
 				if !fi.IsDir() {
 					return fmt.Errorf("unable to delete Directory Contents because %v does not reference a directory", dirToDelete)
 				}
-				filesDeleted, err := cclf.DeleteDirectoryContents(dirToDelete)
+				filesDeleted, err := utils.DeleteDirectoryContents(dirToDelete)
 				if filesDeleted > 0 {
 					fmt.Fprintf(app.Writer, "Successfully Deleted %v files from %v", filesDeleted, dirToDelete)
 				}

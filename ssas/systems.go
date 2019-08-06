@@ -83,7 +83,9 @@ type Secret struct {
 }
 
 type AuthRegData struct {
-	GroupID string
+	GroupID 		string
+	AllowedGroupIDs []string
+	OktaID			string
 }
 
 /*
@@ -504,6 +506,10 @@ func CleanDatabase(group Group) error {
 		db            = GetGORMDbConnection()
 	)
 	defer Close(db)
+
+	if group.ID == 0 {
+		return fmt.Errorf("must have valid group id")
+	}
 
 	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
