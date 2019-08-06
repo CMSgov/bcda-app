@@ -132,7 +132,7 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 201 {
-		return nil, errors.New(fmt.Sprintf("failed to delete credentials. status code: %v", resp.StatusCode)
+		return nil, errors.New(fmt.Sprintf("failed to delete credentials. status code: %v", resp.StatusCode))
 	}
 
 	var respMap map[string]string

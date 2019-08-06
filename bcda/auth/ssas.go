@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -30,8 +31,12 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
 func (s SSASPlugin) ResetSecret(ssasID string) (Credentials, error) {
-	// s.client.ResetCredentials()
-	return Credentials{}, errors.New("Not yet implemented")
+	resp, err := s.client.ResetCredentials(ssasID)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	return Credentials{ClientSecret: fmt.Sprint(resp)}, nil
 }
 
 // RevokeSystemCredentials revokes any existing credentials for the given ssasID.
