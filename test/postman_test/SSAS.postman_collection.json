@@ -1,11 +1,16 @@
 {
 	"info": {
+<<<<<<< HEAD
 		"_postman_id": "4b27bbbe-fe8c-4195-a852-7644248dd722",
+=======
+		"_postman_id": "5890dfc3-bd4b-48bf-a440-d1d2a3755536",
+>>>>>>> master
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
+<<<<<<< HEAD
 			"name": "admin post group, no group_id",
 			"event": [
 				{
@@ -410,73 +415,27 @@
 		},
 		{
 			"name": "public info",
+=======
+			"name": "admin info",
+>>>>>>> master
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
+<<<<<<< HEAD
 					"raw": "{{scheme}}://{{host}}:{{public-port}}/_info",
 					"protocol": "{{scheme}}",
+=======
+					"raw": "localhost:3004/_info",
+>>>>>>> master
 					"host": [
 						"{{host}}"
 					],
+<<<<<<< HEAD
 					"port": "{{public-port}}",
-					"path": [
-						"_info"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public health",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/_health",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"_health"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public _version",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/_version",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"_version"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "admin info",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_info",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{admin-port}}",
+=======
+					"port": "3004",
+>>>>>>> master
 					"path": [
 						"_info"
 					]
@@ -490,12 +449,20 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_health",
+<<<<<<< HEAD
+					"raw": "{{scheme}}://{{host}}:{{public-port}}/_health",
 					"protocol": "{{scheme}}",
+=======
+					"raw": "localhost:3004/_health",
+>>>>>>> master
 					"host": [
 						"{{host}}"
 					],
-					"port": "{{admin-port}}",
+<<<<<<< HEAD
+					"port": "{{public-port}}",
+=======
+					"port": "3004",
+>>>>>>> master
 					"path": [
 						"_health"
 					]
@@ -509,12 +476,101 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_version",
+<<<<<<< HEAD
+					"raw": "{{scheme}}://{{host}}:{{public-port}}/_version",
 					"protocol": "{{scheme}}",
+=======
+					"raw": "localhost:3004/_version",
+>>>>>>> master
 					"host": [
 						"{{host}}"
 					],
+<<<<<<< HEAD
+					"port": "{{public-port}}",
+=======
+					"port": "3004",
+>>>>>>> master
+					"path": [
+						"_version"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public info",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+<<<<<<< HEAD
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_info",
+					"protocol": "{{scheme}}",
+=======
+					"raw": "localhost:3003/_info",
+>>>>>>> master
+					"host": [
+						"{{host}}"
+					],
+<<<<<<< HEAD
 					"port": "{{admin-port}}",
+=======
+					"port": "3003",
+>>>>>>> master
+					"path": [
+						"_info"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+<<<<<<< HEAD
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_health",
+					"protocol": "{{scheme}}",
+=======
+					"raw": "localhost:3003/_health",
+>>>>>>> master
+					"host": [
+						"{{host}}"
+					],
+<<<<<<< HEAD
+					"port": "{{admin-port}}",
+=======
+					"port": "3003",
+>>>>>>> master
+					"path": [
+						"_health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public _version",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+<<<<<<< HEAD
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_version",
+					"protocol": "{{scheme}}",
+=======
+					"raw": "localhost:3003/_version",
+>>>>>>> master
+					"host": [
+						"{{host}}"
+					],
+<<<<<<< HEAD
+					"port": "{{admin-port}}",
+=======
+					"port": "3003",
+>>>>>>> master
 					"path": [
 						"_version"
 					]
@@ -525,11 +581,21 @@
 		{
 			"name": "public authn/challenge",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\"cms_id\":\"{{cms_id}}\",\"factor_type\":\"{{factor_type}}\"}"
+					"raw": "{\"login_id\":\"{{login_id}}\",\"factor_type\":\"{{factor_type}}\"}"
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{public-port}}/authn/request",
@@ -540,7 +606,7 @@
 					"port": "{{public-port}}",
 					"path": [
 						"authn",
-						"request"
+						"challenge"
 					]
 				},
 				"description": "Request that an MFA challenge passcode be sent, for example, via SMS"
@@ -550,11 +616,21 @@
 		{
 			"name": "public authn/verify",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\"cms_id\":\"{{cms_id}}\",\"factor_type\":\"{{factor_type}}\",\"passcode\":\"{{passcode}}\"}"
+					"raw": "{\"login_id\":\"{{login_id}}\",\"factor_type\":\"{{factor_type}}\",\"passcode\":\"{{passcode}}\"}"
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{public-port}}/authn/verify",
@@ -579,7 +655,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\"cms_id\":\"{{cms_id}}\",\"password\":\"{{password}}\"}"
+					"raw": "{\"login_id\":\"{{login_id}}\",\"password\":\"{{password}}\"}"
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{public-port}}/authn",
@@ -593,6 +669,96 @@
 					]
 				},
 				"description": "Verify a username and password"
+			},
+			"response": []
+		},
+		{
+			"name": "public register",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "x-group-id",
+						"value": "{{group_id}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"client_name\": \"My favorite name in all the world\",\n    \"scope\": \"bcda-api\",\n    \"jwks\": {\n        \"keys\": [\n            {\n                \"e\": \"AAEAAQ\",\n                \"n\": \"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\n                \"kty\": \"RSA\"\n            }\n        ]\n    }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "public reset",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "x-group-id",
+						"type": "text",
+						"value": "T0001"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"client_id\":\"{{client_id}}\"}"
+				},
+				"url": {
+					"raw": "http://localhost:3003/reset",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3003",
+					"path": [
+						"reset"
+					]
+				}
 			},
 			"response": []
 		}

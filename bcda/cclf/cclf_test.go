@@ -1,13 +1,14 @@
 package cclf
 
 import (
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/jinzhu/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -45,28 +46,24 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	// negative
 	cclf0metadata = &cclfFileMetadata{}
 	_, err = importCCLF0(cclf0metadata)
-	assert.NotNil(err)
 	assert.EqualError(err, "could not read CCLF0 archive : read .: is a directory")
 
 	// missing cclf8 and or 9 from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse CCLF8 from CCLF0 file")
+	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file ../../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000011")
 
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse CCLF9 from CCLF0 file")
+	assert.EqualError(err, "failed to parse CCLF9 from CCLF0 file: ../../shared_files/cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000012")
 
 	// duplicate file types from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf0_MissingData/T.A0001.ACO.ZC0Y18.D181120.T1000013"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "duplicate CCLF9 file type found from CCLF0 file.")
+	assert.EqualError(err, "duplicate CCLF9 file type found from CCLF0 file")
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
@@ -100,9 +97,9 @@ func (s *CCLFTestSuite) TestValidate() {
 	// negative
 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 2, maxRecordLength: 549}, "CCLF9": {totalRecordCount: 6, maxRecordLength: 3}}
 	err = validate(cclf8metadata, cclfvalidator)
-	assert.NotNil(err)
+	assert.EqualError(err, "maximum record count reached for file CCLF8 (expected: 2, actual: 3)")
 	err = validate(cclf9metadata, cclfvalidator)
-	assert.NotNil(err)
+	assert.EqualError(err, "incorrect record length for file CCLF9 (expected: 3, actual: 43)")
 }
 
 func (s *CCLFTestSuite) TestValidate_SplitFiles() {
@@ -247,7 +244,6 @@ func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 
 	var metadata *cclfFileMetadata
 	err := importCCLF8(metadata)
-	assert.NotNil(err)
 	assert.EqualError(err, "CCLF file not found")
 }
 
@@ -344,7 +340,6 @@ func (s *CCLFTestSuite) TestImportCCLF9_InvalidMetadata() {
 
 	var metadata *cclfFileMetadata
 	err := importCCLF9(metadata)
-	assert.NotNil(err)
 	assert.EqualError(err, "CCLF file not found")
 }
 
@@ -399,10 +394,10 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata_InvalidFilename() {
 	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 
 	_, err = getCCLFFileMetadata("/cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
-	assert.NotNil(err)
+	assert.EqualError(err, "invalid filename for file: /cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
 
 	_, err = getCCLFFileMetadata("/cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
-	assert.NotNil(err)
+	assert.EqualError(err, "invalid filename for file: /cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
 }
 
 func (s *CCLFTestSuite) TestSortCCLFFiles() {
@@ -534,7 +529,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_TimeChange() {
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
 
 	timeChange := origTime.Add(-(time.Hour * 25)).Truncate(time.Second)
-	err = os.Chtimes(filePath,timeChange, timeChange)
+	err = os.Chtimes(filePath, timeChange, timeChange)
 	if err != nil {
 		s.FailNow("Failed to change modified time for file", err)
 	}
@@ -549,9 +544,16 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_TimeChange() {
 
 	// assert that this file is not still here.
 	_, err = os.Open(filePath)
-	assert.NotNil(err)
+	assert.EqualError(err, "open ../../shared_files/cclf_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009: no such file or directory")
 
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf_BadFileNames/")
+}
+
+func (s *CCLFTestSuite) TestSortCCLFFiles_InvalidPath() {
+	cclfMap := make(map[string][]*cclfFileMetadata)
+	skipped := 0
+	err := filepath.Walk("./foo", sortCCLFFiles(&cclfMap, &skipped))
+	assert.EqualError(s.T(), err, "error in sorting cclf file: nil,: lstat ./foo: no such file or directory")
 }
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {
@@ -614,33 +616,6 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		assert.NotEqual("T.A0001.ACO.ZC0Y18.D181120.T1000011", file.Name())
 	}
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/")
-}
-
-func (s *CCLFTestSuite) TestDeleteDirectory() {
-	assert := assert.New(s.T())
-	dirToDelete := BASE_FILE_PATH + "doomedDirectory"
-	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
-	defer os.Remove(dirToDelete)
-
-	f, err := os.Open(dirToDelete)
-	assert.Nil(err)
-	files, err := f.Readdir(-1)
-	assert.Nil(err)
-	assert.Equal(4, len(files))
-
-	filesDeleted, err := DeleteDirectoryContents(dirToDelete)
-	assert.Equal(4, filesDeleted)
-	assert.Nil(err)
-
-	f, err = os.Open(dirToDelete)
-	assert.Nil(err)
-	files, err = f.Readdir(-1)
-	assert.Nil(err)
-	assert.Equal(0, len(files))
-
-	filesDeleted, err = DeleteDirectoryContents("This/Does/not/Exist")
-	assert.Equal(0, filesDeleted)
-	assert.NotNil(err)
 }
 
 func deleteFilesByACO(acoID string, db *gorm.DB) error {

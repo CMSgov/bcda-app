@@ -51,6 +51,7 @@ services:
       - SSAS_HASH_SALT_SIZE=32
       - SSAS_DEFAULT_SYSTEM_SCOPE=bcda-api
       - SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS=0
+      - SSAS_MFA_TOKEN_TIMEOUT_MINUTES=60
       - SSAS_MFA_PROVIDER=${SSAS_MFA_PROVIDER}
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
