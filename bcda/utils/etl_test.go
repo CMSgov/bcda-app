@@ -1,11 +1,12 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type ETLTestSuite struct {
@@ -40,7 +41,7 @@ func (s *ETLTestSuite) TestDeleteDirectory() {
 
 	filesDeleted, err = DeleteDirectoryContents("This/Does/not/Exist")
 	assert.Equal(0, filesDeleted)
-	assert.NotNil(err)
+	assert.EqualError(err, "could not open dir: This/Does/not/Exist: open This/Does/not/Exist: no such file or directory")
 }
 
 func makeDirToDelete(s suite.Suite, filePath string) {

@@ -5,12 +5,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -112,7 +113,7 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 
 					if _, ok := validator[filetype]; ok {
 						fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
-						err := fmt.Errorf("duplicate %v file type found from CCLF0 file.\n", filetype)
+						err := fmt.Errorf("duplicate %v file type found from CCLF0 file", filetype)
 						log.Error(err)
 						return nil, err
 					}
@@ -286,7 +287,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 					return err
 				}
 				importedCount++
-				if (importedCount % importStatusInterval == 0) {
+				if importedCount%importStatusInterval == 0 {
 					fmt.Printf("CCLF%d records imported: %d\n", fileMetadata.cclfNum, importedCount)
 				}
 			}
@@ -437,8 +438,12 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 func sortCCLFFiles(cclfmap *map[string][]*cclfFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Printf("Error in sorting CCLF file %s: %s.\n", info.Name(), err)
-			err = errors.Wrapf(err, "error in sorting cclf file: %v,", info.Name())
+			var fileName = "nil"
+			if info != nil {
+				fileName = info.Name()
+			}
+			fmt.Printf("Error in sorting CCLF file %s: %s.\n", fileName, err)
+			err = errors.Wrapf(err, "error in sorting cclf file: %v,", fileName)
 			log.Error(err)
 			return err
 		}
@@ -536,7 +541,7 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 				// currently only errors if there are more records than we expect.
 				if count > validator.totalRecordCount {
 					fmt.Printf("Maximum record count reached for file %s, Expected record count: %d, Actual record count: %d.\n", key, validator.totalRecordCount, count)
-					err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d) ", key, validator.totalRecordCount, count)
+					err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d)", key, validator.totalRecordCount, count)
 					log.Error(err)
 					return err
 				}
