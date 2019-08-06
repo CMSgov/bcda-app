@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "4b27bbbe-fe8c-4195-a852-7644248dd722",
+		"_postman_id": "24667282-ec23-453b-b25d-54663d2d2fec",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -542,7 +542,7 @@
 					"raw": "{\"login_id\":\"{{login_id}}\",\"factor_type\":\"{{factor_type}}\"}"
 				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/authn/request",
+					"raw": "{{scheme}}://{{host}}:{{public-port}}/authn/challenge",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -648,12 +648,12 @@
 					"raw": "{\n    \"client_name\": \"My favorite name in all the world\",\n    \"scope\": \"bcda-api\",\n    \"jwks\": {\n        \"keys\": [\n            {\n                \"e\": \"AAEAAQ\",\n                \"n\": \"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\n                \"kty\": \"RSA\"\n            }\n        ]\n    }\n}"
 				},
 				"url": {
-					"raw": "http://localhost:3003/register",
-					"protocol": "http",
+					"raw": "{{scheme}}://{{host}}:{{public-port}}/register",
+					"protocol": "{{scheme}}",
 					"host": [
-						"localhost"
+						"{{host}}"
 					],
-					"port": "3003",
+					"port": "{{public-port}}",
 					"path": [
 						"register"
 					]
@@ -693,12 +693,12 @@
 					"raw": "{\"client_id\":\"{{client_id}}\"}"
 				},
 				"url": {
-					"raw": "http://localhost:3003/reset",
-					"protocol": "http",
+					"raw": "{{scheme}}://{{host}}:{{public-port}}/reset",
+					"protocol": "{{scheme}}",
 					"host": [
-						"localhost"
+						"{{host}}"
 					],
-					"port": "3003",
+					"port": "{{public-port}}",
 					"path": [
 						"reset"
 					]
