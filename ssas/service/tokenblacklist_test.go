@@ -17,14 +17,14 @@ const expiration = 90*time.Minute
 
 type TokenCacheTestSuite struct {
 	suite.Suite
-	t *TokenCache
+	t *Blacklist
 	db *gorm.DB
 }
 
 func (s *TokenCacheTestSuite) SetupSuite() {
 	ssas.InitializeBlacklistModels()
 	s.db = ssas.GetGORMDbConnection()
-	s.t = NewTokenCache(defaultCacheTimeout, cacheCleanupInterval)
+	s.t = NewBlacklist(defaultCacheTimeout, cacheCleanupInterval)
 }
 
 func (s *TokenCacheTestSuite) TearDownSuite() {

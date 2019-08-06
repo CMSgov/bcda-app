@@ -117,7 +117,7 @@ func TokenBlacklisted(data Event) {
 
 // BlacklistedTokenPresented logs an attempt to verify a blacklisted token
 func BlacklistedTokenPresented(data Event) {
-	mergeNonEmpty(data).WithField("Event", "BlackistedTokenPresented").Print(data.Help)
+	mergeNonEmpty(data).WithField("Event", "BlacklistedTokenPresented").Print(data.Help)
 }
 
 // SecureHashTime should be called with the time taken to create a hash, logs of which can be used
