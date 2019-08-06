@@ -9,28 +9,28 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-//	InitializeCacheModels will call gorm.DB.AutoMigrate() for CacheEntries{}
-func InitializeCacheModels() *gorm.DB {
+//	InitializeBlacklistModels will call gorm.DB.AutoMigrate() for BlacklistEntries{}
+func InitializeBlacklistModels() *gorm.DB {
 	log.Println("Initialize cache models")
 	db := GetGORMDbConnection()
 	defer Close(db)
 
 	db.AutoMigrate(
-		&CacheEntry{},
+		&BlacklistEntry{},
 	)
 
 	return db
 }
 
-type CacheEntry struct {
+type BlacklistEntry struct {
 	gorm.Model
 	Key				string	`gorm:"not null" json:"key"`
 	EntryDate		int64	`gorm:"not null" json:"entry_date"`
 	CacheExpiration	int64	`gorm:"not null" json:"cache_expiration"`
 }
 
-func CreateCacheEntry(key string, entryDate time.Time, cacheExpiration time.Time) (entry CacheEntry, err error) {
-	event := Event{Op: "CreateCacheEntry", TrackingID: key}
+func CreateBlacklistEntry(key string, entryDate time.Time, cacheExpiration time.Time) (entry BlacklistEntry, err error) {
+	event := Event{Op: "CreateBlacklistEntry", TrackingID: key}
 	OperationStarted(event)
 
 	if key == "" {
@@ -40,7 +40,7 @@ func CreateCacheEntry(key string, entryDate time.Time, cacheExpiration time.Time
 		return
 	}
 
-	ce := CacheEntry{
+	be := BlacklistEntry{
 		Key: key,
 		EntryDate: entryDate.Unix(),
 		CacheExpiration: cacheExpiration.UnixNano(),
@@ -48,7 +48,7 @@ func CreateCacheEntry(key string, entryDate time.Time, cacheExpiration time.Time
 
 	db := GetGORMDbConnection()
 	defer Close(db)
-	err = db.Save(&ce).Error
+	err = db.Save(&be).Error
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
@@ -56,13 +56,13 @@ func CreateCacheEntry(key string, entryDate time.Time, cacheExpiration time.Time
 	}
 
 	OperationSucceeded(event)
-	entry = ce
+	entry = be
 	return
 }
 
-func GetUnexpiredCacheEntries() (entries []CacheEntry, err error) {
+func GetUnexpiredBlacklistEntries() (entries []BlacklistEntry, err error) {
 	trackingID := uuid.NewRandom().String()
-	event := Event{Op: "GetCacheEntries", TrackingID: trackingID}
+	event := Event{Op: "GetBlacklistEntries", TrackingID: trackingID}
 	OperationStarted(event)
 
 	db := GetGORMDbConnection()

@@ -35,7 +35,7 @@ type TokenCache struct {
 func (t *TokenCache) BlacklistToken(tokenID string, blacklistExpiration time.Duration) error {
 	entryDate := time.Now()
 	expirationDate := entryDate.Add(blacklistExpiration)
-	if _, err := ssas.CreateCacheEntry(tokenID, entryDate, expirationDate); err != nil {
+	if _, err := ssas.CreateBlacklistEntry(tokenID, entryDate, expirationDate); err != nil {
 		return fmt.Errorf(fmt.Sprintf("unable to blacklist token id %s: %s", tokenID, err.Error()))
 	}
 
@@ -58,12 +58,12 @@ func (t *TokenCache) IsTokenBlacklisted(tokenID string) bool {
 //	LoadFromDatabase refreshes unexpired cache contents from the database
 func (t *TokenCache) LoadFromDatabase() error {
 	var (
-		entries	[]ssas.CacheEntry
+		entries	[]ssas.BlacklistEntry
 		items	map[string]cache.Item
 		err		error
 	)
 
-	if entries, err = ssas.GetUnexpiredCacheEntries(); err != nil {
+	if entries, err = ssas.GetUnexpiredBlacklistEntries(); err != nil {
 		return err
 	}
 

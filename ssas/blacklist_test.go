@@ -15,7 +15,7 @@ type CacheEntriesTestSuite struct {
 
 func (s *CacheEntriesTestSuite) SetupSuite() {
 	s.db = GetGORMDbConnection()
-	InitializeCacheModels()
+	InitializeBlacklistModels()
 }
 
 func (s *CacheEntriesTestSuite) TearDownSuite() {
@@ -26,8 +26,8 @@ func (s *CacheEntriesTestSuite) TestGetUnexpiredCacheEntries() {
 	var err error
 	entryDate := time.Now().Add(time.Minute*-5).UnixNano()
 	expiration := time.Now().Add(time.Minute*5).UnixNano()
-	e1 := CacheEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
-	e2 := CacheEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
+	e1 := BlacklistEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
+	e2 := BlacklistEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
 
 	if err = s.db.Save(&e1).Error; err != nil {
 		assert.FailNow(s.T(), err.Error())
@@ -36,7 +36,7 @@ func (s *CacheEntriesTestSuite) TestGetUnexpiredCacheEntries() {
 		assert.FailNow(s.T(), err.Error())
 	}
 
-	entries, err := GetUnexpiredCacheEntries()
+	entries, err := GetUnexpiredBlacklistEntries()
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), entries, 2)
 

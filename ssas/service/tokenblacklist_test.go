@@ -22,7 +22,7 @@ type TokenCacheTestSuite struct {
 }
 
 func (s *TokenCacheTestSuite) SetupSuite() {
-	ssas.InitializeCacheModels()
+	ssas.InitializeBlacklistModels()
 	s.db = ssas.GetGORMDbConnection()
 	s.t = NewTokenCache(defaultCacheTimeout, cacheCleanupInterval)
 }
@@ -33,7 +33,7 @@ func (s *TokenCacheTestSuite) TearDownSuite() {
 
 func (s *TokenCacheTestSuite) TearDownTest() {
 	s.t.c.Flush()
-	err := s.db.Exec("DELETE FROM cache_entries;").Error
+	err := s.db.Exec("DELETE FROM blacklist_entries;").Error
 	assert.Nil(s.T(), err)
 }
 
@@ -41,8 +41,8 @@ func (s *TokenCacheTestSuite) TestLoadFromDatabaseExpired() {
 	var err error
 	entryDate := time.Now().Add(time.Minute*-5).Unix()
 	expiration := time.Now().Add(time.Minute*-5).UnixNano()
-	e1 := ssas.CacheEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
-	e2 := ssas.CacheEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
+	e1 := ssas.BlacklistEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
+	e2 := ssas.BlacklistEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
 
 	if err = s.db.Save(&e1).Error; err != nil {
 		assert.FailNow(s.T(), err.Error())
@@ -69,8 +69,8 @@ func (s *TokenCacheTestSuite) TestLoadFromDatabase() {
 	var err error
 	entryDate := time.Now().Add(time.Minute*-5).Unix()
 	expiration := time.Now().Add(time.Minute*5).UnixNano()
-	e1 := ssas.CacheEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
-	e2 := ssas.CacheEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
+	e1 := ssas.BlacklistEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
+	e2 := ssas.BlacklistEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
 
 	if err = s.db.Save(&e1).Error; err != nil {
 		assert.FailNow(s.T(), err.Error())
@@ -141,7 +141,7 @@ func (s *TokenCacheTestSuite) TestBlacklistToken() {
 	_, found := s.t.c.Get(key)
 	assert.True(s.T(), found)
 
-	entries, err := ssas.GetUnexpiredCacheEntries()
+	entries, err := ssas.GetUnexpiredBlacklistEntries()
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), entries, 1)
 	assert.Equal(s.T(), key, entries[0].Key)
@@ -159,7 +159,7 @@ func (s *TokenCacheTestSuite) TestBlacklistTokenKeyExists() {
 	assert.True(s.T(), found)
 
 	// Verify key exists in database
-	entries1, err := ssas.GetUnexpiredCacheEntries()
+	entries1, err := ssas.GetUnexpiredBlacklistEntries()
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), entries1, 1)
 	assert.Equal(s.T(), key, entries1[0].Key)
@@ -180,7 +180,7 @@ func (s *TokenCacheTestSuite) TestBlacklistTokenKeyExists() {
 	assert.NotEqual(s.T(), obj1, obj2)
 
 	// Verify both keys are in the database, and that they are in time order
-	entries2, err := ssas.GetUnexpiredCacheEntries()
+	entries2, err := ssas.GetUnexpiredBlacklistEntries()
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), entries2, 2)
 	assert.Equal(s.T(), key, entries2[1].Key)
