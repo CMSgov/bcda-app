@@ -1,6 +1,8 @@
 package service
 
 import (
+	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"math/rand"
@@ -16,14 +18,93 @@ const expiration = 90*time.Minute
 type TokenCacheTestSuite struct {
 	suite.Suite
 	t *TokenCache
+	db *gorm.DB
 }
 
 func (s *TokenCacheTestSuite) SetupSuite() {
+	ssas.InitializeCacheModels()
+	s.db = ssas.GetGORMDbConnection()
 	s.t = NewTokenCache(defaultCacheTimeout, cacheCleanupInterval)
 }
 
-func (s *TokenCacheTestSuite) SetupTest() {
+func (s *TokenCacheTestSuite) TearDownSuite() {
+	s.db.Close()
+}
+
+func (s *TokenCacheTestSuite) TearDownTest() {
 	s.t.c.Flush()
+	err := s.db.Exec("DELETE FROM cache_entries;").Error
+	assert.Nil(s.T(), err)
+}
+
+func (s *TokenCacheTestSuite) TestLoadFromDatabaseExpired() {
+	var err error
+	entryDate := time.Now().Add(time.Minute*-5).Unix()
+	expiration := time.Now().Add(time.Minute*-5).UnixNano()
+	e1 := ssas.CacheEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
+	e2 := ssas.CacheEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
+
+	if err = s.db.Save(&e1).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	if err = s.db.Save(&e2).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	if err = s.t.LoadFromDatabase(); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	assert.Len(s.T(), s.t.c.Items(), 0)
+	assert.False(s.T(), s.t.IsTokenBlacklisted(e1.Key))
+	assert.False(s.T(), s.t.IsTokenBlacklisted(e2.Key))
+
+	err = s.db.Unscoped().Delete(&e1).Error
+	assert.Nil(s.T(), err)
+	err = s.db.Unscoped().Delete(&e2).Error
+	assert.Nil(s.T(), err)
+}
+
+func (s *TokenCacheTestSuite) TestLoadFromDatabase() {
+	var err error
+	entryDate := time.Now().Add(time.Minute*-5).Unix()
+	expiration := time.Now().Add(time.Minute*5).UnixNano()
+	e1 := ssas.CacheEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
+	e2 := ssas.CacheEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
+
+	if err = s.db.Save(&e1).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	if err = s.db.Save(&e2).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	if err = s.t.LoadFromDatabase(); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	assert.Len(s.T(), s.t.c.Items(), 2)
+	assert.True(s.T(), s.t.IsTokenBlacklisted(e1.Key))
+	assert.True(s.T(), s.t.IsTokenBlacklisted(e2.Key))
+
+	obj1, exp1, found := s.t.c.GetWithExpiration(e1.Key)
+	assert.True(s.T(), found)
+	insertedDate1, ok := obj1.(int64)
+	assert.True(s.T(), ok)
+	assert.Equal(s.T(), entryDate, insertedDate1)
+	assert.Equal(s.T(), expiration, exp1.UnixNano())
+
+	obj2, exp2, found := s.t.c.GetWithExpiration(e2.Key)
+	assert.True(s.T(), found)
+	insertedDate2, ok := obj2.(int64)
+	assert.True(s.T(), ok)
+	assert.Equal(s.T(), entryDate, insertedDate2)
+	assert.Equal(s.T(), expiration, exp2.UnixNano())
+
+	err = s.db.Unscoped().Delete(&e1).Error
+	assert.Nil(s.T(), err)
+	err = s.db.Unscoped().Delete(&e2).Error
+	assert.Nil(s.T(), err)
 }
 
 func (s *TokenCacheTestSuite) TestIsTokenBlacklistedTrue() {
@@ -53,132 +134,70 @@ func (s *TokenCacheTestSuite) TestIsTokenBlacklistedFalse() {
 
 func (s *TokenCacheTestSuite) TestBlacklistToken() {
 	key := strconv.Itoa(rand.Int())
-	s.t.BlacklistToken(key, expiration)
+	if err := s.t.BlacklistToken(key, expiration); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
 
 	_, found := s.t.c.Get(key)
 	assert.True(s.T(), found)
 
-	// TODO: verify token is in database
+	entries, err := ssas.GetUnexpiredCacheEntries()
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), entries, 1)
+	assert.Equal(s.T(), key, entries[0].Key)
 }
 
 func (s *TokenCacheTestSuite) TestBlacklistTokenKeyExists() {
 	key := strconv.Itoa(rand.Int())
 
-	s.t.BlacklistToken(key, expiration)
+	// Place key in blacklist
+	if err := s.t.BlacklistToken(key, expiration); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	// Verify key exists in cache
 	obj1, found := s.t.c.Get(key)
 	assert.True(s.T(), found)
-	// TODO: verify token is in database
 
-	// The value stored is the current time expressed as in Unix time.  Since the precision is one second,
-	// wait to make sure the new blacklist entry has a different value
-	time.Sleep(1*time.Second)
+	// Verify key exists in database
+	entries1, err := ssas.GetUnexpiredCacheEntries()
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), entries1, 1)
+	assert.Equal(s.T(), key, entries1[0].Key)
+	assert.Equal(s.T(), obj1, entries1[0].EntryDate)
 
-	s.t.BlacklistToken(key, expiration)
+	// The value stored is the current time expressed as in Unix time.
+	// Wait to make sure the new blacklist entry has a different value
+	time.Sleep(2*time.Second)
+
+	// Place key in cache a second time; the expiration will be different
+	if err := s.t.BlacklistToken(key, expiration); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	// Verify retrieving key from cache gets new value (timestamp)
 	obj2, found := s.t.c.Get(key)
 	assert.True(s.T(), found)
-	// TODO: verify token is in database with new value
 	assert.NotEqual(s.T(), obj1, obj2)
-}
 
-func (s *TokenCacheTestSuite) TestBlacklistOrgTokens() {
-	orgKey := "T0001"
-	tokenID := strconv.Itoa(rand.Int())
+	// Verify both keys are in the database, and that they are in time order
+	entries2, err := ssas.GetUnexpiredCacheEntries()
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), entries2, 2)
+	assert.Equal(s.T(), key, entries2[1].Key)
+	assert.Equal(s.T(), obj2, entries2[1].EntryDate)
 
-	s.t.BlacklistOrgTokens(orgKey, tokenID, expiration)
-
-	_, found := s.t.c.Get(orgKey)
-	assert.True(s.T(), found)
-
-	// TODO: verify token is in database
-}
-
-func (s *TokenCacheTestSuite) TestBlacklistOrgTokensKeyExists() {
-	orgKey := "T0001"
-	tokenID := strconv.Itoa(rand.Int())
-
-	s.t.BlacklistOrgTokens(orgKey, tokenID, expiration)
-	obj1, found := s.t.c.Get(orgKey)
-	assert.True(s.T(), found)
-	// TODO: verify token is in database
-
-	time.Sleep(1*time.Second)
-
-	s.t.BlacklistOrgTokens(orgKey, tokenID, expiration)
-	obj2, found := s.t.c.Get(orgKey)
-	assert.True(s.T(), found)
-	// TODO: verify token is in database with new value
+	// Verify that the blacklisted object changed in both cache and database
 	assert.NotEqual(s.T(), obj1, obj2)
-}
+	assert.NotEqual(s.T(), entries1[0].CacheExpiration, entries2[1].CacheExpiration)
 
-func (s *TokenCacheTestSuite) TestIsOrgTokenBlacklistedTrue() {
-	blacklistTime := time.Now().Unix()
-	tokenTime := time.Now().Add(-5*time.Minute).Unix()
-
-	key := strconv.Itoa(rand.Int())
-	err := s.t.c.Add(key, blacklistTime, expiration)
-	if err != nil {
-		assert.FailNow(s.T(), "unable to set cache value: " + err.Error())
-	}
-	assert.True(s.T(), s.t.IsOrgTokenBlacklisted(key, tokenTime))
-}
-
-func (s *TokenCacheTestSuite) TestIsOrgTokenBlacklistedNotInCache() {
-	tokenTime := time.Now().Add(-5*time.Minute).Unix()
-	key := strconv.Itoa(rand.Int())
-	assert.False(s.T(), s.t.IsOrgTokenBlacklisted(key, tokenTime))
-}
-
-func (s *TokenCacheTestSuite) TestIsOrgTokenBlacklistedCacheExpired() {
-	blacklistTime := time.Now().Unix()
-	tokenTime := time.Now().Add(-5*time.Minute).Unix()
-
-	minimalDuration := 1*time.Nanosecond
-	key := strconv.Itoa(rand.Int())
-	err := s.t.c.Add(key, blacklistTime, minimalDuration)
-	if err != nil {
-		assert.FailNow(s.T(), "unable to set cache value: " + err.Error())
-	}
-	time.Sleep(minimalDuration*5)
-	assert.False(s.T(), s.t.IsOrgTokenBlacklisted(key, tokenTime))
-}
-
-func (s *TokenCacheTestSuite) TestIsOrgTokenBlacklistedAfterBlacklistDate() {
-	blacklistTime := time.Now().Unix()
-	tokenTime := time.Now().Add(5*time.Minute).Unix()
-
-	key := strconv.Itoa(rand.Int())
-	err := s.t.c.Add(key, blacklistTime, expiration)
-	if err != nil {
-		assert.FailNow(s.T(), "unable to set cache value: " + err.Error())
-	}
-	assert.False(s.T(), s.t.IsOrgTokenBlacklisted(key, tokenTime))
-}
-
-func (s *TokenCacheTestSuite) TestBeforeBlacklistedTrue() {
-	// Testing with a blacklisting date in the past to avoid any relation with the current time
-	blacklistTime := time.Now().Add(-30*24*time.Hour)
-	blacklistUnixTime := blacklistTime.Unix()
-	earlierUnixTime := blacklistTime.Add(-5*time.Minute).Unix()
-
-	isBlacklisted := beforeBlacklisted("key_only_for_logging", blacklistUnixTime, earlierUnixTime)
-	assert.True(s.T(), isBlacklisted)
-}
-
-func (s *TokenCacheTestSuite) TestBeforeBlacklistedFalse() {
-	blacklistTime := time.Now().Add(-30*24*time.Hour)
-	blacklistUnixTime := blacklistTime.Unix()
-	laterUnixTime := blacklistTime.Add(5*time.Minute).Unix()
-
-	isBlacklisted := beforeBlacklisted("key_only_for_logging", blacklistUnixTime, laterUnixTime)
-	assert.False(s.T(), isBlacklisted)
-}
-
-func (s *TokenCacheTestSuite) TestBeforeBlacklistedError() {
-	blacklistTime := time.Now().Add(-30*24*time.Hour)
-	laterUnixTime := blacklistTime.Add(5*time.Minute).Unix()
-
-	isBlacklisted := beforeBlacklisted("key_only_for_logging", "this is not a time!", laterUnixTime)
-	assert.True(s.T(), isBlacklisted)
+	// Show that loading the cache from the database preserves the most recent entry, even if two
+	//   objects with the same key are unexpired
+	err = s.t.LoadFromDatabase()
+	assert.Nil(s.T(), err)
+	obj3, found := s.t.c.Get(key)
+	assert.True(s.T(), found)
+	assert.Equal(s.T(), obj2, obj3)
+	assert.NotEqual(s.T(), obj1, obj3)
 }
 
 func TestTokenCacheTestSuite(t *testing.T) {

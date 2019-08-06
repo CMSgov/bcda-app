@@ -31,28 +31,18 @@ type TokenCache struct {
 	c *cache.Cache
 }
 
-//	BlacklistOrgTokens invalidates all tokens generated for the specified organization before this time
-func (t *TokenCache) BlacklistOrgTokens(orgKey string, tokenID string, blacklistExpiration time.Duration) {
-	ssas.TokenBlacklisted(ssas.Event{Op: "OrgTokenBlacklist", TrackingID: orgKey, TokenID: tokenID})
-	// TODO: save org/date to database
-	t.c.Set(orgKey, time.Now().Unix(), blacklistExpiration)
-}
-
-//	IsOrgTokenBlacklisted tests whether this organization has invalidated tokens created at this time
-func (t *TokenCache) IsOrgTokenBlacklisted(orgKey string, tokenUnixDate int64) bool {
-	bEvent := ssas.Event{Op: "TokenVerification", TrackingID: orgKey}
-	if allClearDate, found := t.c.Get(orgKey); found && beforeBlacklisted(orgKey, allClearDate, tokenUnixDate) {
-		ssas.BlacklistedTokenPresented(bEvent)
-		return true
-	}
-	return false
-}
-
 //	BlacklistToken invalidates the specified tokenID
-func (t *TokenCache) BlacklistToken(tokenID string, blacklistExpiration time.Duration) {
+func (t *TokenCache) BlacklistToken(tokenID string, blacklistExpiration time.Duration) error {
+	entryDate := time.Now()
+	expirationDate := entryDate.Add(blacklistExpiration)
+	if _, err := ssas.CreateCacheEntry(tokenID, entryDate, expirationDate); err != nil {
+		return fmt.Errorf(fmt.Sprintf("unable to blacklist token id %s: %s", tokenID, err.Error()))
+	}
+
 	ssas.TokenBlacklisted(ssas.Event{Op: "TokenBlacklist", TrackingID: tokenID, TokenID: tokenID})
-	// TODO: save tokenID to database
-	t.c.Set(tokenID, time.Now().Unix(), blacklistExpiration)
+	t.c.Set(tokenID, entryDate.Unix(), blacklistExpiration)
+
+	return nil
 }
 
 //	IsTokenBlacklisted tests whether this tokenID has been invalidated
@@ -65,27 +55,30 @@ func (t *TokenCache) IsTokenBlacklisted(tokenID string) bool {
 	return false
 }
 
-//	LoadFromDatabase refreshes the cache contents from the database
+//	LoadFromDatabase refreshes unexpired cache contents from the database
 func (t *TokenCache) LoadFromDatabase() error {
-	// TODO: make this work
+	var (
+		entries	[]ssas.CacheEntry
+		items	map[string]cache.Item
+		err		error
+	)
+
+	if entries, err = ssas.GetUnexpiredCacheEntries(); err != nil {
+		return err
+	}
+
+	t.c.Flush()
+	items = make(map[string]cache.Item)
+	for _, entry := range entries {
+		expDuration := entry.CacheExpiration
+		item := cache.Item{Object: entry.EntryDate, Expiration: expDuration}
+		items[entry.Key] = item
+	}
+
+	t.c = cache.NewFrom(defaultCacheTimeout, cacheCleanupInterval, items)
 	return nil
 }
 
-func beforeBlacklisted(key string, timeObj interface{}, tokenSignUnixDate int64) bool {
-	var (
-		allClearUnixDate int64
-		ok bool
-	)
-
-	if allClearUnixDate, ok = timeObj.(int64); !ok {
-		// When in doubt, assume an unreadable timestamp invalidates all tokens for this org
-		ssas.BlacklistedTokenPresented(ssas.Event{Op: "TestIfInBlacklistSigningPeriod",
-			Help: fmt.Sprintf("unable to parse all clear date for key %s", key)})
-		return true
-	}
-	return tokenSignUnixDate < allClearUnixDate
-}
-
-// TODO: write CLI command to call BlacklistOrgToken()
+// TODO: write CLI command to call BlacklistToken()
 // TODO: write CLI command to call LoadFromDatabase()
 // TODO: write cron job to call CLI command for LoadFromDatabase() every five minutes
