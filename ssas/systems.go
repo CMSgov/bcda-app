@@ -280,6 +280,7 @@ type Credentials struct {
 	UserID       string    `json:"user_id"`
 	ClientID     string    `json:"client_id"`
 	ClientSecret string    `json:"client_secret"`
+	SystemID     string    `json:"system_id"`
 	TokenString  string    `json:"token"`
 	ClientName   string    `json:"client_name"`
 	ExpiresAt    time.Time `json:"expires_at"`
@@ -395,6 +396,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 		return creds, errors.New("internal system error")
 	}
 
+	creds.SystemID = fmt.Sprint(system.ID)
 	creds.ClientID = system.ClientID
 	creds.ClientSecret = clientSecret
 	creds.ClientName = system.ClientName
