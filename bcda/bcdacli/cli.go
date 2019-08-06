@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
 	"github.com/bgentry/que-go"
@@ -368,12 +369,9 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				msg, err := importSuppressionDirectory(filePath)
-				if err != nil {
-					return err
-				}
-				fmt.Println(msg)
-				return nil
+				s, f, sk, err := suppression.ImportSuppressionDirectory(filePath)
+				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
+				return err
 			},
 		},
 		{
@@ -576,9 +574,4 @@ func cleanupArchive(hrThreshold int) error {
 	}
 
 	return nil
-}
-
-func importSuppressionDirectory(dir string) (string, error) {
-	// TODO
-	return "", nil
 }

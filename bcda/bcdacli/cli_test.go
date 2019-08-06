@@ -821,9 +821,66 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	args := []string{"bcda", "import-suppression-directory", "--directory", "../../shared_files/suppression/"}
+	path := "../../shared_files/synthetic1800MedicareFiles/"
+
+	args := []string{"bcda", "import-suppression-directory", "--directory", path}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
+	assert.Contains(buf.String(), "Completed 1-800-MEDICARE suppression data import.")
+	assert.Contains(buf.String(), "Files imported: 1")
+	assert.Contains(buf.String(), "Files failed: 0")
+	assert.Contains(buf.String(), "Files skipped: 0")
 
-	// TODO
+	testUtils.ResetFiles(s.Suite, path)
+
+	fs := []models.SuppressionFile{}
+	db.Where("name = ?", "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009").Find(&fs)
+	for _, f := range fs {
+		err := f.Delete()
+		assert.Nil(err)
+	}
+}
+
+func (s *CLITestSuite) TestImportSuppressionDirectory_Skipped() {
+	assert := assert.New(s.T())
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	path := "../../shared_files/suppressionfile_BadFileNames/"
+
+	args := []string{"bcda", "import-suppression-directory", "--directory", path}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Contains(buf.String(), "Completed 1-800-MEDICARE suppression data import.")
+	assert.Contains(buf.String(), "Files imported: 0")
+	assert.Contains(buf.String(), "Files failed: 0")
+	assert.Contains(buf.String(), "Files skipped: 2")
+
+	testUtils.ResetFiles(s.Suite, path)
+}
+
+func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
+	assert := assert.New(s.T())
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	path := "../../shared_files/suppressionfile_BadHeader/"
+
+	args := []string{"bcda", "import-suppression-directory", "--directory", path}
+	err := s.testApp.Run(args)
+	assert.EqualError(err, "one or more suppression files failed to import correctly")
+	assert.Contains(buf.String(), "Completed 1-800-MEDICARE suppression data import.")
+	assert.Contains(buf.String(), "Files imported: 0")
+	assert.Contains(buf.String(), "Files failed: 1")
+	assert.Contains(buf.String(), "Files skipped: 0")
+
+	testUtils.ResetFiles(s.Suite, path)
 }
