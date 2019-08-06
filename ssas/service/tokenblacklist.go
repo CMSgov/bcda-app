@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/cfg"
 	"github.com/patrickmn/go-cache"
 	"github.com/pborman/uuid"
 	"time"
@@ -12,16 +13,16 @@ var (
 	Cache Blacklist
 	// This default cache timeout value should never be used, since individual cache elements have their own timeouts
 	defaultCacheTimeout   = 24*time.Hour
-	// TODO: set the cacheCleanupInterval from an env var
-	cacheCleanupInterval  = 30*time.Minute
+	cacheCleanupInterval  time.Duration
 )
 
 func init() {
+	cacheCleanupInterval = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_EXP_MINUTES", 15)) * time.Minute
 	NewBlacklist(defaultCacheTimeout, cacheCleanupInterval)
 }
 
 //	NewBlacklist allows for easy Blacklist{} creation and manipulation during testing, and should not be called
-//	outside a test suite
+//		outside a test suite
 func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Blacklist {
 	trackingID := uuid.NewRandom().String()
 	event := ssas.Event{Op: "InitBlacklist", TrackingID: trackingID}
@@ -57,8 +58,10 @@ func (t *Blacklist) BlacklistToken(tokenID string, blacklistExpiration time.Dura
 	return nil
 }
 
-//	IsTokenBlacklisted tests whether this tokenID has been invalidated.  This tests the cache only, so if a tokenID has
-//	been blacklisted on a different instance, it will return "false" until the cache is refreshed.
+//	IsTokenBlacklisted tests whether this tokenID is in the blacklist cache.
+//	- Tokens should expire before blacklist entries, so a tokenID for a recently expired token may return "true."
+//	- This tests the cache only, so if a tokenID has been blacklisted on a different instance, it will return "false"
+//		until the cache is refreshed.
 func (t *Blacklist) IsTokenBlacklisted(tokenID string) bool {
 	bEvent := ssas.Event{Op: "TokenVerification", TrackingID: tokenID, TokenID: tokenID}
 	if _, found := t.c.Get(tokenID); found {
@@ -92,6 +95,6 @@ func (t *Blacklist) LoadFromDatabase() error {
 	return nil
 }
 
-// TODO: write CLI command to call BlacklistToken()
-// TODO: write CLI command to call LoadFromDatabase()
-// TODO: write cron job to call CLI command for LoadFromDatabase() every five minutes
+// TODO: write an admin endpoint to call BlacklistToken()
+// TODO: implement RevokeAccessToken() in the BCDA Auth SSAS provider to call the new admin endpoint
+// TODO: implement a timer to call LoadFromDatabase() periodically (every five minutes?)
