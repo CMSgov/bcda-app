@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -80,8 +81,12 @@ func ImportSuppressionDirectory(filePath string) (success, failure, skipped int,
 func getSuppressionFileMetadata(suppresslist *[]suppressionFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Printf("Error in checking suppression file %s: %s.\n", info.Name(), err)
-			err = errors.Wrapf(err, "error in checking suppression file: %s,", info.Name())
+			var fileName = "nil"
+			if info != nil {
+				fileName = info.Name()
+			}
+			fmt.Printf("Error in checking suppression file %s: %s.\n", fileName, err)
+			err = errors.Wrapf(err, "error in checking suppression file: %s,", fileName)
 			log.Error(err)
 			return err
 		}
