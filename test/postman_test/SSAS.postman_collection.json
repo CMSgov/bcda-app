@@ -1,16 +1,11 @@
 {
 	"info": {
-<<<<<<< HEAD
 		"_postman_id": "4b27bbbe-fe8c-4195-a852-7644248dd722",
-=======
-		"_postman_id": "5890dfc3-bd4b-48bf-a440-d1d2a3755536",
->>>>>>> master
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-<<<<<<< HEAD
 			"name": "admin post group, no group_id",
 			"event": [
 				{
@@ -415,27 +410,16 @@
 		},
 		{
 			"name": "public info",
-=======
-			"name": "admin info",
->>>>>>> master
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
-<<<<<<< HEAD
 					"raw": "{{scheme}}://{{host}}:{{public-port}}/_info",
 					"protocol": "{{scheme}}",
-=======
-					"raw": "localhost:3004/_info",
->>>>>>> master
 					"host": [
 						"{{host}}"
 					],
-<<<<<<< HEAD
 					"port": "{{public-port}}",
-=======
-					"port": "3004",
->>>>>>> master
 					"path": [
 						"_info"
 					]
@@ -449,20 +433,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-<<<<<<< HEAD
 					"raw": "{{scheme}}://{{host}}:{{public-port}}/_health",
 					"protocol": "{{scheme}}",
-=======
-					"raw": "localhost:3004/_health",
->>>>>>> master
 					"host": [
 						"{{host}}"
 					],
-<<<<<<< HEAD
 					"port": "{{public-port}}",
-=======
-					"port": "3004",
->>>>>>> master
 					"path": [
 						"_health"
 					]
@@ -476,20 +452,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-<<<<<<< HEAD
 					"raw": "{{scheme}}://{{host}}:{{public-port}}/_version",
 					"protocol": "{{scheme}}",
-=======
-					"raw": "localhost:3004/_version",
->>>>>>> master
 					"host": [
 						"{{host}}"
 					],
-<<<<<<< HEAD
 					"port": "{{public-port}}",
-=======
-					"port": "3004",
->>>>>>> master
 					"path": [
 						"_version"
 					]
@@ -503,20 +471,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-<<<<<<< HEAD
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_info",
 					"protocol": "{{scheme}}",
-=======
-					"raw": "localhost:3003/_info",
->>>>>>> master
 					"host": [
 						"{{host}}"
 					],
-<<<<<<< HEAD
 					"port": "{{admin-port}}",
-=======
-					"port": "3003",
->>>>>>> master
 					"path": [
 						"_info"
 					]
@@ -530,20 +490,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-<<<<<<< HEAD
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_health",
 					"protocol": "{{scheme}}",
-=======
-					"raw": "localhost:3003/_health",
->>>>>>> master
 					"host": [
 						"{{host}}"
 					],
-<<<<<<< HEAD
 					"port": "{{admin-port}}",
-=======
-					"port": "3003",
->>>>>>> master
 					"path": [
 						"_health"
 					]
@@ -557,20 +509,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-<<<<<<< HEAD
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_version",
 					"protocol": "{{scheme}}",
-=======
-					"raw": "localhost:3003/_version",
->>>>>>> master
 					"host": [
 						"{{host}}"
 					],
-<<<<<<< HEAD
 					"port": "{{admin-port}}",
-=======
-					"port": "3003",
->>>>>>> master
 					"path": [
 						"_version"
 					]
