@@ -22,10 +22,10 @@ var adminSigningKeyPath string
 func init() {
 	const usageStart = "start the service"
 	flag.BoolVar(&startMeUp, "start", false, usageStart)
-	flag.BoolVar(&startMeUp, "s", false, usageStart + " (shorthand)")
+	flag.BoolVar(&startMeUp, "s", false, usageStart+" (shorthand)")
 	const usageMigrate = "migrate the db and start the service"
 	flag.BoolVar(&migrateAndStart, "migrate", false, usageMigrate)
-	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate + " (shorthand)")
+	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate+" (shorthand)")
 	unsafeMode = os.Getenv("HTTP_ONLY") == "true"
 	adminSigningKeyPath = os.Getenv("SSAS_ADMIN_SIGNING_KEY_PATH")
 }

@@ -21,9 +21,9 @@ func (s *MockMFATestSuite) TestVerifyPasswordSuccess() {
 	trackingId := uuid.NewRandom().String()
 	userId := "success@test.com"
 
-	passwordReturn, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
 	assert.Nil(s.T(), err)
-	if passwordReturn == nil {
+	if passwordReturn == nil || oktaId == "" {
 		s.FailNow("we expect no errors from the mocked VerifyPassword() for this user ID")
 	}
 	assert.True(s.T(), passwordReturn.Success)
@@ -34,9 +34,9 @@ func (s *MockMFATestSuite) TestVerifyPasswordFailure() {
 	trackingId := uuid.NewRandom().String()
 	userId := "locked_out@test.com"
 
-	passwordReturn, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
 	assert.Nil(s.T(), err)
-	if passwordReturn == nil {
+	if passwordReturn == nil || oktaId == "" {
 		s.FailNow("we expect a passwordReturn struct from the mocked VerifyPassword() for this user ID")
 	}
 	assert.False(s.T(), passwordReturn.Success)
@@ -46,9 +46,9 @@ func (s *MockMFATestSuite) TestVerifyPasswordError() {
 	trackingId := uuid.NewRandom().String()
 	userId := "error@test.com"
 
-	passwordReturn, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
+	passwordReturn, oktaId, err := s.o.VerifyPassword(userId, "any_password_will_do", trackingId)
 	assert.NotNil(s.T(), err)
-	if passwordReturn != nil {
+	if passwordReturn != nil || oktaId == "" {
 		s.FailNow("we expect no passwordReturn from the mocked VerifyPassword() when an error is raised")
 	}
 }
@@ -131,8 +131,10 @@ func (s *MockMFATestSuite) TestVerifyFactorChallengeSuccess() {
 	factorType := "SMS"
 	passcode := "mock doesn't care what this is"
 
-	success := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
+	success, oktaID, groupIDs := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
 	assert.True(s.T(), success)
+	assert.NotEqual(s.T(), "", oktaID)
+	assert.False(s.T(), empty(groupIDs))
 }
 
 func (s *MockMFATestSuite) TestVerifyFactorChallengeFailure() {
@@ -141,7 +143,7 @@ func (s *MockMFATestSuite) TestVerifyFactorChallengeFailure() {
 	factorType := "SMS"
 	passcode := "mock doesn't care what this is"
 
-	success := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
+	success, _, _ := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
 	assert.False(s.T(), success)
 }
 
@@ -151,8 +153,10 @@ func (s *MockMFATestSuite) TestVerifyFactorChallengeError() {
 	factorType := "SMS"
 	passcode := "mock doesn't care what this is"
 
-	success := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
+	success, oktaID, groupIDs := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
 	assert.False(s.T(), success)
+	assert.Equal(s.T(), "", oktaID)
+	assert.True(s.T(), empty(groupIDs))
 }
 
 func (s *MockMFATestSuite) TestVerifyFactorChallengeRandomUserID() {
@@ -161,8 +165,10 @@ func (s *MockMFATestSuite) TestVerifyFactorChallengeRandomUserID() {
 	factorType := "SMS"
 	passcode := "mock doesn't care what this is"
 
-	success := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
+	success, oktaID, groupIDs := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
 	assert.True(s.T(), success)
+	assert.NotEqual(s.T(), "", oktaID)
+	assert.False(s.T(), empty(groupIDs))
 }
 
 func (s *MockMFATestSuite) TestVerifyFactorChallengeBadFactor() {
@@ -171,7 +177,7 @@ func (s *MockMFATestSuite) TestVerifyFactorChallengeBadFactor() {
 	factorType := "Unknown factor type"
 	passcode := "mock doesn't care what this is"
 
-	success := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
+	success, _, _ := s.o.VerifyFactorChallenge(userId, factorType, passcode, trackingId)
 	assert.False(s.T(), success)
 }
 
