@@ -26,7 +26,7 @@ func (s SSASPlugin) UpdateSystem(params []byte) ([]byte, error) {
 
 // DeleteSystem deletes the registered software client identified by clientID, revoking any active tokens.
 func (s SSASPlugin) DeleteSystem(clientID string) error {
-	return errors.New("Not yet implemented")
+	return errors.New("Not supported")
 }
 
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
@@ -39,10 +39,9 @@ func (s SSASPlugin) ResetSecret(ssasID string) (Credentials, error) {
 	return Credentials{ClientSecret: fmt.Sprint(resp)}, nil
 }
 
-// RevokeSystemCredentials revokes any existing credentials for the given ssasID.
-func (s SSASPlugin) RevokeSystemCredentials(clientID string) error {
-	// s.client.DeleteCredentials()
-	return errors.New("Not yet implemented")
+// RevokeSystemCredentials revokes any existing credentials for the given clientID.
+func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
+	return s.client.DeleteCredentials(ssasID)
 }
 
 // MakeAccessToken mints an access token for the given credentials.
