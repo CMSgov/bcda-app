@@ -24,6 +24,8 @@ func (s *SSASPluginTestSuite) TestDeleteSystem() {}
 
 func (s *SSASPluginTestSuite) TestResetSecret() {}
 
+func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {}
+
 func (s *SSASPluginTestSuite) TestMakeAccessToken() {}
 
 func (s *SSASPluginTestSuite) TestRevokeAccessToken() {}

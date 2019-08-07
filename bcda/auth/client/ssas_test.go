@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -88,7 +89,33 @@ func (s *SSASClientTestSuite) TestGetPublicKey() {
 	assert.Equal(s.T(), keyStr, string(respKey))
 }
 
-func (s *SSASClientTestSuite) TestResetCredentials() {}
+func (s *SSASClientTestSuite) TestResetCredentials() {
+	router := chi.NewRouter()
+	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, "fake-client-id", "fake-secret")
+	})
+	server := httptest.NewServer(router)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	defer os.Setenv("SSAS_URL", origSSASURL)
+	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
+	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	newSecret, err := client.ResetCredentials("1")
+	assert.Nil(s.T(), err)
+	assert.NotEmpty(s.T(), newSecret)
+}
 
 func (s *SSASClientTestSuite) TestDeleteCredentials() {
 	router := chi.NewRouter()
