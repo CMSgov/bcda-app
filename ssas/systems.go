@@ -83,7 +83,9 @@ type Secret struct {
 }
 
 type AuthRegData struct {
-	GroupID string
+	GroupID         string
+	AllowedGroupIDs []string
+	OktaID          string
 }
 
 /*

@@ -24,8 +24,9 @@ type MockMFAPlugin struct{}
 	error@test.com			(none)			(non-nil error)
 	(all others)			true			none
 */
-func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, err error) {
+func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, oktaId string, err error) {
 	r := PasswordReturn{Success: false, Message: ""}
+	oktaId = "fake_okta_id"
 	verifyEvent := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingId}
 	ssas.OperationStarted(verifyEvent)
 
@@ -70,7 +71,7 @@ func (m *MockMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 	error@test.com			false				(non-nil error)
 	(all others)			false				none
 */
-func (m *MockMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool) {
+func (m *MockMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool, oktaUserID string, groupIDs []string) {
 	success = false
 	verifyEvent := ssas.Event{Op: "VerifyOktaFactorChallenge", TrackingID: trackingId}
 	ssas.OperationStarted(verifyEvent)
@@ -88,6 +89,8 @@ func (m *MockMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 	case "success@test.com":
 		fallthrough
 	default:
+		oktaUserID = "fake_okta_id"
+		groupIDs = []string{"T0001", "T0002"}
 		ssas.OperationSucceeded(verifyEvent)
 		success = true
 		return

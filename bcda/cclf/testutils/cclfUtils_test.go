@@ -2,11 +2,12 @@ package testutils
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"os"
-	"testing"
 )
 
 type CCLFUtilTestSuite struct {
@@ -24,13 +25,13 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
 	err := ImportCCLFPackage("NOTREAL", "test")
-	assert.NotNil(err)
+	assert.EqualError(err, "invalid argument for ACO size")
 }
 
 func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 	assert := assert.New(s.T())
 	err := ImportCCLFPackage("dev", "environment")
-	assert.NotNil(err)
+	assert.EqualError(err, "invalid argument for environment")
 }
 
 func (s *CCLFUtilTestSuite) TestImport() {

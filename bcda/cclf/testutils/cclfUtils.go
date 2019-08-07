@@ -74,7 +74,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	}
 	fmt.Printf("Completed CCLF import.  Successfully imported %d files.  Failed to import %d files.  Skipped %d files.  See logs for more details.\n", success, failure, skipped)
 	if success == 3 {
-		_, err = cclf.DeleteDirectoryContents(DestDir)
+		_, err = utils.DeleteDirectoryContents(DestDir)
 		return err
 	} else {
 		err = errors.New("did not import 3 files")

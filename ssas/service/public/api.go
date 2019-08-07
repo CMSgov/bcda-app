@@ -83,9 +83,19 @@ func VerifyPassword(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingID, Help: "calling from public.VerifyPassword()"}
 	ssas.OperationCalled(event)
-	passwordResponse, err := GetProvider().VerifyPassword(passReq.LoginID, passReq.Password, trackingID)
+	passwordResponse, oktaId, err := GetProvider().VerifyPassword(passReq.LoginID, passReq.Password, trackingID)
 	if err != nil {
 		jsonError(w, "invalid_client_metadata", err.Error())
+		return
+	}
+
+	if passwordResponse.Success {
+		_, passwordResponse.Token, err = MintMFAToken(oktaId)
+	}
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure generating JSON: " + err.Error()
+		ssas.OperationFailed(event)
 		return
 	}
 
@@ -179,6 +189,8 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 		trackingID string
 		mfaReq     MFARequest
 		body       []byte
+		ts         string
+		groupIDs   []string
 	)
 
 	setHeaders(w)
@@ -205,18 +217,45 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 	trackingID = uuid.NewRandom().String()
 	event := ssas.Event{Op: "VerifyOktaFactorResponse", TrackingID: trackingID, Help: "calling from public.VerifyMultifactorResponse()"}
 	ssas.OperationCalled(event)
-	success := GetProvider().VerifyFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
+	success, oktaID, groupIDs := GetProvider().VerifyFactorChallenge(mfaReq.LoginID, mfaReq.FactorType, *mfaReq.Passcode, trackingID)
 
 	if !success {
 		event.Help = "passcode rejected"
 		ssas.OperationFailed(event)
-		body = []byte(`{"factor_result":"failure"}`)
-	} else {
-		event.Help = "passcode accepted"
-		ssas.OperationSucceeded(event)
-		body = []byte(`{"factor_result":"success"}`)
+
+		_, err = w.Write([]byte(`{"factor_result":"failure"}`))
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			event.Help = "failure writing response body: " + err.Error()
+			ssas.OperationFailed(event)
+			return
+		}
 	}
 
+	if empty(groupIDs) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		event.Help = "no authorized groups: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+
+	gIdsBytes, err := json.Marshal(groupIDs)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		event.Help = "no authorized groups: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+
+	event.Help = "passcode accepted"
+	ssas.OperationSucceeded(event)
+	if _, ts, err = MintRegistrationToken(oktaID, groupIDs); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		event.Help = "failure creating registration token: " + err.Error()
+		ssas.OperationFailed(event)
+		return
+	}
+	body = []byte(fmt.Sprintf(`{"factor_result":"success","registration_token":"%s", "available_groups":%s}`, ts, string(gIdsBytes)))
 	_, err = w.Write(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -261,6 +300,11 @@ func ResetSecret(w http.ResponseWriter, r *http.Request) {
 
 	if sys, err = ssas.GetSystemByClientID(req.ClientID); err != nil {
 		jsonError(w, "invalid_client_metadata", "Client not found")
+		return
+	}
+
+	if !contains(rd.AllowedGroupIDs, rd.GroupID) || sys.GroupID != rd.GroupID {
+		jsonError(w, "invalid_client_metadata", "Invalid group")
 		return
 	}
 
@@ -407,7 +451,7 @@ func token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, ts, err := server.MintToken(system.GroupID, nil)
+	token, ts, err := MintAccessToken(system.GroupID, nil)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return

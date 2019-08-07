@@ -187,32 +187,34 @@ var ttlScale = time.Minute
 // CommonClaims contains the superset of claims that may be found in the token
 type CommonClaims struct {
 	jwt.StandardClaims
+	// AccessToken, MFAToken, or RegistrationToken
+	TokenType string	 `json:"use,omitempty"`
+	// In an MFA token, presence of an OktaID is taken as proof of username/password authentication
+	OktaID	 string		 `json:"oid,omitempty"`
 	ClientID string      `json:"cid,omitempty"`
+	// In a registration token, GroupIDs contains a list of all groups this user is authorized to manage
+	GroupIDs []string	 `json:"gid,omitempty"`
 	Scopes   []string    `json:"scp,omitempty"`
 	ACOID    string      `json:"aco,omitempty"`
 	UUID     string      `json:"id,omitempty"`
 	Data     interface{} `json:"dat,omitempty"`
 }
 
-// MintToken generates a tokenstring that expires in tokenTTL time
-func (s *Server) MintToken(acoID string, data interface{}) (*jwt.Token, string, error) {
-	return s.mintToken(acoID, data, time.Now().Unix(), time.Now().Add(s.tokenTTL).Unix())
-}
-
 // MintTokenWithDuration generates a tokenstring that expires after a specific duration from now.
 // If duration is <= 0, the token will be expired upon creation
-func (s *Server) MintTokenWithDuration(acoID string, data interface{}, duration time.Duration) (*jwt.Token, string, error) {
-	return s.mintToken(acoID, data, time.Now().Unix(), time.Now().Add(duration).Unix())
+func (s *Server) MintTokenWithDuration(claims CommonClaims, duration time.Duration) (*jwt.Token, string, error) {
+	return s.mintToken(claims, time.Now().Unix(), time.Now().Add(duration).Unix())
 }
 
-func (s *Server) mintToken(acoID string, data interface{}, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
+// MintToken generates a tokenstring that expires in tokenTTL time
+func (s *Server) MintToken(claims CommonClaims) (*jwt.Token, string, error) {
+	return s.mintToken(claims, time.Now().Unix(), time.Now().Add(s.tokenTTL).Unix())
+}
+
+func (s *Server) mintToken(claims CommonClaims, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
 	token := jwt.New(jwt.SigningMethodRS512)
 	tokenID := newTokenID()
-	claims := CommonClaims{
-		ACOID: acoID,
-		Data:  data,
-		UUID:  tokenID,
-	}
+	claims.UUID = tokenID
 	claims.IssuedAt = issuedAt
 	claims.ExpiresAt = expiresAt
 	token.Claims = claims
@@ -230,7 +232,7 @@ func newTokenID() string {
 	return uuid.NewRandom().String()
 }
 
-// initTokenDuration sets (again) the TokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
+// initTokenDuration sets (again) the tokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
 // should only be used for initialization or testing; we don't support changing the ttl during runtime
 func (s *Server) initTokenDuration() {
 	s.tokenTTL = time.Hour
@@ -245,4 +247,31 @@ func (s *Server) initTokenDuration() {
 		}
 	}
 	ssas.Logger.Infof("Token ttl is %d minutes", s.tokenTTL/ttlScale)
+}
+
+func (s *Server) VerifyToken(tokenString string) (*jwt.Token, error) {
+
+	keyFunc := func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return &s.privateSigningKey.PublicKey, nil
+	}
+
+	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)
+}
+
+func (s *Server) CheckRequiredClaims(claims *CommonClaims, RequiredTokenType string) error {
+	if claims.ExpiresAt == 0 ||
+		claims.IssuedAt == 0 ||
+		claims.UUID == "" ||
+		claims.TokenType == "" {
+		return fmt.Errorf("missing one or more claims")
+	}
+
+	if RequiredTokenType != claims.TokenType {
+		return fmt.Errorf("wrong token type: " + claims.TokenType)
+	}
+
+	return nil
 }
