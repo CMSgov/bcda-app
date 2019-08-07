@@ -104,7 +104,31 @@ func (s *SSASClientTestSuite) TestGetPublicKey() {
 
 func (s *SSASClientTestSuite) TestResetCredentials() {}
 
-func (s *SSASClientTestSuite) TestDeleteCredentials() {}
+func (s *SSASClientTestSuite) TestDeleteCredentials() {
+	router := chi.NewRouter()
+	router.Delete("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	})
+	server := httptest.NewServer(router)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	defer os.Setenv("SSAS_URL", origSSASURL)
+	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
+	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	err = client.DeleteCredentials("1")
+	assert.Nil(s.T(), err)
+}
 
 func (s *SSASClientTestSuite) TestRevokeAccessToken() {
 	router := chi.NewRouter()

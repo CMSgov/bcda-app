@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -124,8 +123,23 @@ func (c *SSASClient) ResetCredentials(systemID int) ([]byte, error) {
 }
 
 // DeleteCredentials DELETEs from the SSAS /system/{systemID}/credentials endpoint to deactivate credentials associated with the system.
-func (c *SSASClient) DeleteCredentials(systemID int) ([]byte, error) {
-	return nil, nil
+func (c *SSASClient) DeleteCredentials(systemID string) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to delete credentials")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed to delete credentials")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return errors.Wrap(err, "failed to delete credentials")
+	}
+
+	return nil
 }
 
 func (c *SSASClient) RevokeAccessToken(tokenID string) error {
