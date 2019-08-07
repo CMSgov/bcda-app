@@ -36,9 +36,7 @@ func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
 
 // RevokeSystemCredentials revokes any existing credentials for the given clientID.
 func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
-	err := s.client.DeleteCredentials(ssasID)
-
-	return err
+	return s.client.DeleteCredentials(ssasID)
 }
 
 // MakeAccessToken mints an access token for the given credentials.

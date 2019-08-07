@@ -3,8 +3,6 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,11 +23,6 @@ func (s *SSASPluginTestSuite) TestUpdateSystem() {}
 func (s *SSASPluginTestSuite) TestDeleteSystem() {}
 
 func (s *SSASPluginTestSuite) TestResetSecret() {}
-
-func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {
-	err := s.p.RevokeSystemCredentials("a-fake-ssasID")
-	assert.NotNil(s.T(), err)
-}
 
 func (s *SSASPluginTestSuite) TestMakeAccessToken() {}
 
