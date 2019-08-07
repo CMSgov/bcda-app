@@ -2,8 +2,7 @@ package auth
 
 import (
 	"errors"
-	"github.com/CMSgov/bcda-app/bcda/auth/client"
-
+	
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	jwt "github.com/dgrijalva/jwt-go"
 )
