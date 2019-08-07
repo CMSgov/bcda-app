@@ -127,3 +127,22 @@ func (c *SSASClient) ResetCredentials(systemID int) ([]byte, error) {
 func (c *SSASClient) DeleteCredentials(systemID int) ([]byte, error) {
 	return nil, nil
 }
+
+func (c *SSASClient) RevokeAccessToken(tokenID string) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to revoke token")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed to revoke token")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return errors.Wrap(err, "failed to revoke token")
+	}
+
+	return nil
+}

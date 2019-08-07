@@ -14,17 +14,36 @@ import (
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 )
 
+var (
+	origSSASURL				string
+	origPublicURL			string
+	origSSASUseTLS			string
+	origSSASClientKeyFile	string
+	origSSASClientCertFile	string
+)
+
 type SSASClientTestSuite struct {
 	suite.Suite
 }
 
-func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
-	os.Setenv("SSAS_USE_TLS", "false")
+func (s *SSASClientTestSuite) BeforeTest() {
+	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
+	origSSASURL = os.Getenv("SSAS_URL")
+	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
+	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
+	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
+}
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
+func (s *SSASClientTestSuite) AfterTest() {
+	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", origSSASURL)
+	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
+	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
+}
+
+func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
+	os.Setenv("SSAS_USE_TLS", "false")
 	os.Setenv("SSAS_URL", "http://ssas-url")
 
 	client, err := authclient.NewSSASClient()
@@ -34,6 +53,10 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_NoKeypair() {
+	os.Setenv("SSAS_USE_TLS", "true")
+	os.Setenv("SSAS_URL", "http://ssas-url")
+	os.Unsetenv("SSAS_CLIENT_KEY_FILE")
+	os.Unsetenv("SSAS_CLIENT_CERT_FILE")
 	client, err := authclient.NewSSASClient()
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), client)
@@ -41,12 +64,7 @@ func (s *SSASClientTestSuite) TestNewSSASClient_NoKeypair() {
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_USE_TLS", "false")
-
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
 	os.Unsetenv("SSAS_URL")
 
 	client, err := authclient.NewSSASClient()
@@ -68,10 +86,6 @@ func (s *SSASClientTestSuite) TestGetPublicKey() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
 
@@ -91,6 +105,26 @@ func (s *SSASClientTestSuite) TestGetPublicKey() {
 func (s *SSASClientTestSuite) TestResetCredentials() {}
 
 func (s *SSASClientTestSuite) TestDeleteCredentials() {}
+
+func (s *SSASClientTestSuite) TestRevokeAccessToken() {
+	router := chi.NewRouter()
+	router.Delete("/token/{tokenID}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	err = client.RevokeAccessToken("abc-123")
+	assert.Nil(s.T(), err)
+}
 
 func TestSSASClientTestSuite(t *testing.T) {
 	suite.Run(t, new(SSASClientTestSuite))
