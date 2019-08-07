@@ -79,6 +79,7 @@ load-fixtures:
 	sleep 5
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
+	$(MAKE) load-synthetic-suppression-data
 
 load-synthetic-cclf-data:
 	docker-compose up -d api
@@ -88,6 +89,11 @@ load-synthetic-cclf-data:
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=medium --environment=test'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=large --environment=test'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=extra-large --environment=test'
+
+load-synthetic-suppression-data:
+	docker-compose up -d api
+	docker-compose up -d db
+	docker-compose run api sh -c 'tmp/bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
 
 docker-build:
 	docker-compose build --force-rm
@@ -117,4 +123,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures load-synthetic-cclf-data test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
+.PHONY: docker-build docker-bootstrap load-fixtures load-synthetic-cclf-data load-synthetic-suppression-data test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
