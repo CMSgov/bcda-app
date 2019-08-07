@@ -33,7 +33,7 @@ func Server() (*service.Server) {
 func routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(service.NewAPILogger(), service.ConnectionClose)
-	router.Get("/token", token)
+	router.Post("/token", token)
 	router.Post("/authn", VerifyPassword)
 	router.With(parseToken, requireMFATokenAuth).Post("/authn/challenge", RequestMultifactorChallenge)
 	router.With(parseToken, requireMFATokenAuth).Post("/authn/verify", VerifyMultifactorResponse)
