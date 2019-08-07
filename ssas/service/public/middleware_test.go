@@ -3,10 +3,12 @@ package public
 import (
 	"context"
 	"fmt"
+	"github.com/CMSgov/bcda-app/ssas/service"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
@@ -122,10 +124,48 @@ func (s *PublicMiddlewareTestSuite) TestParseTokenValidToken() {
 
 	req.Header.Add("Authorization", "Bearer " + ts)
 
-	_, err = client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		assert.FailNow(s.T(), err.Error())
 	}
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
+func (s *PublicMiddlewareTestSuite) TestParseTokenBlacklisted() {
+	testForToken :=
+		func (next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				token := r.Context().Value("token")
+				assert.NotNil(s.T(), token)
+				rd, err := readRegData(r)
+				assert.Nil(s.T(), err)
+				assert.Nil(s.T(), rd.AllowedGroupIDs)
+			})
+		}
+	s.server = httptest.NewServer(s.CreateRouter(parseToken, testForToken))
+	client := s.server.Client()
+	groupIDs := []string{"T0001", "T0002"}
+	token, ts, _ := MintRegistrationToken("fake_okta_id", groupIDs)
+	claims := token.Claims.(service.CommonClaims)
+	fmt.Println("claims:", claims)
+	fmt.Println("claims id:", claims.Id)
+
+	service.TokenBlacklist = *service.NewBlacklist(time.Minute*120, time.Minute*15)
+	err := service.TokenBlacklist.BlacklistToken(claims.Id, service.TokenCacheLifetime)
+	assert.Nil(s.T(), err)
+
+	req, err := http.NewRequest("GET", s.server.URL, nil)
+	if err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	req.Header.Add("Authorization", "Bearer " + ts)
+
+	res, err := client.Do(req)
+	if err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
 func (s *PublicMiddlewareTestSuite) TestRequireRegTokenAuthValidToken() {

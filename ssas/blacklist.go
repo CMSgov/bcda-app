@@ -30,7 +30,7 @@ type BlacklistEntry struct {
 }
 
 func CreateBlacklistEntry(key string, entryDate time.Time, cacheExpiration time.Time) (entry BlacklistEntry, err error) {
-	event := Event{Op: "CreateBlacklistEntry", TrackingID: key}
+	event := Event{Op: "CreateBlacklistEntry", TrackingID: key, TokenID: key}
 	OperationStarted(event)
 
 	if key == "" {

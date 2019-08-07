@@ -217,6 +217,7 @@ func (s *Server) mintToken(claims CommonClaims, issuedAt int64, expiresAt int64)
 	claims.UUID = tokenID
 	claims.IssuedAt = issuedAt
 	claims.ExpiresAt = expiresAt
+	claims.Id = tokenID
 	token.Claims = claims
 	var signedString, err = token.SignedString(s.privateSigningKey)
 	if err != nil {

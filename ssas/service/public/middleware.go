@@ -47,6 +47,11 @@ func readGroupID(next http.Handler) http.Handler {
 // occurs in requireRegTokenAuth() or requireMFATokenAuth().
 func parseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var (
+			claims 	*service.CommonClaims
+			ok		bool
+		)
+
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			next.ServeHTTP(w, r)
@@ -69,12 +74,23 @@ func parseToken(next http.Handler) http.Handler {
 			return
 		}
 
+		if claims, ok = token.Claims.(*service.CommonClaims); !ok {
+			log.Errorf("invalid token claims")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if service.TokenBlacklist.IsTokenBlacklisted(claims.Id) {
+			respond(w, http.StatusUnauthorized)
+			return
+		}
+
 		var rd ssas.AuthRegData
 		if rd, err = readRegData(r); err != nil {
 			rd = ssas.AuthRegData{}
 		}
 
-		if claims, ok := token.Claims.(*service.CommonClaims); ok && token.Valid {
+		if token.Valid {
 			rd.AllowedGroupIDs = claims.GroupIDs
 			rd.OktaID = claims.OktaID
 		}
