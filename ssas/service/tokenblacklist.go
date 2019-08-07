@@ -10,14 +10,16 @@ import (
 )
 
 var (
-	Cache Blacklist
+	TokenBlacklist Blacklist
 	// This default cache timeout value should never be used, since individual cache elements have their own timeouts
 	defaultCacheTimeout   = 24*time.Hour
 	cacheCleanupInterval  time.Duration
+	TokenCacheLifetime	  time.Duration
 )
 
 func init() {
-	cacheCleanupInterval = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_EXP_MINUTES", 15)) * time.Minute
+	cacheCleanupInterval = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES", 15)) * time.Minute
+	TokenCacheLifetime	 = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES", 60*24)) * time.Minute
 	NewBlacklist(defaultCacheTimeout, cacheCleanupInterval)
 }
 
@@ -37,6 +39,7 @@ func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Bl
 	}
 
 	ssas.OperationSucceeded(event)
+	TokenBlacklist = tc
 	return &tc
 }
 

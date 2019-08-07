@@ -53,6 +53,7 @@ services:
       - SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS=0
       - SSAS_MFA_PROVIDER=${SSAS_MFA_PROVIDER}
       - SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES=15
+      - SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES=1440
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
   postman_test:

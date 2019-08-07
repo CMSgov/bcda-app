@@ -71,7 +71,7 @@ Required values must be present in the docker-compose.*.yml files.
 | SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | Provides the location of the admin server signing key |
 | SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | Provides the location of the public server signing key |
 | SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES | No | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
-
+| SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES | No | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours.
 # Build
 
 Build the code and containers with `make docker-bootstrap`. Alternatively, `docker-compose up ssas` will build and run the SSAS by itself.

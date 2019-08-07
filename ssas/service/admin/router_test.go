@@ -21,6 +21,14 @@ func (s *RouterTestSuite) SetupTest() {
 	s.router = Routes()
 }
 
+func (s *RouterTestSuite) TestRevokeToken() {
+	req := httptest.NewRequest("DELETE", "/token/abc-123", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestPostGroup() {
 	req := httptest.NewRequest("POST", "/group", nil)
 	rr := httptest.NewRecorder()

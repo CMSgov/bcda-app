@@ -9,7 +9,7 @@ var InfoMap = map[string][]string{}
 
 func init() {
 	InfoMap = make(map[string][]string)
-	InfoMap["admin"] = []string{"system", "group"}
+	InfoMap["admin"] = []string{"system", "group", "token"}
 }
 
 func Routes() *chi.Mux {
@@ -22,5 +22,6 @@ func Routes() *chi.Mux {
 	r.Put("/system/{systemID}/credentials", resetCredentials)
 	r.Get("/system/{systemID}/key", getPublicKey)
 	r.Delete("/system/{systemID}/credentials", deactivateSystemCredentials)
+	r.Delete("/token/{tokenID}", revokeToken)
 	return r
 }

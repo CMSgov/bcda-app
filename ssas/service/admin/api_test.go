@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/ssas/service"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -134,6 +135,23 @@ func (s *APITestSuite) TestUpdateGroup() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *APITestSuite) TestRevokeToken() {
+	tokenID := "abc-123-def-456"
+
+	url := fmt.Sprintf("/token/%s", tokenID)
+	req := httptest.NewRequest("DELETE", url, nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("tokenID", tokenID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(revokeToken)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Result().StatusCode)
+
+	assert.True(s.T(), service.TokenBlacklist.IsTokenBlacklisted(tokenID))
+	assert.False(s.T(), service.TokenBlacklist.IsTokenBlacklisted("this_key_should_not_exist"))
+}
+
 func (s *APITestSuite) TestDeleteGroup() {
 	groupBytes := []byte(SampleGroup)
 	gd := ssas.GroupData{}
@@ -155,7 +173,6 @@ func (s *APITestSuite) TestDeleteGroup() {
 	assert.True(s.T(), deleted)
 	err = ssas.CleanDatabase(g)
 	assert.Nil(s.T(), err)
-
 }
 
 func (s *APITestSuite) TestCreateSystem() {
