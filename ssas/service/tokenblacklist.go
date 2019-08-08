@@ -98,7 +98,7 @@ func (t *Blacklist) LoadFromDatabase() error {
 
 	// If the key already exists in the cache, it will be updated.
 	for _, entry := range entries {
-		cacheDuration := time.Now().Sub(time.Unix(0, entry.CacheExpiration))
+		cacheDuration := time.Since(time.Unix(0, entry.CacheExpiration))
 		t.c.Set(entry.Key, entry.EntryDate, cacheDuration)
 	}
 	return nil
