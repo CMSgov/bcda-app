@@ -148,6 +148,8 @@ func (s *TokenCacheTestSuite) TestBlacklistToken() {
 }
 
 func (s *TokenCacheTestSuite) TestStartCacheRefreshTicker() {
+	stopCacheRefreshTicker()
+
 	var err error
 	entryDate := time.Now().Add(time.Minute*-5).Unix()
 	expiration := time.Now().Add(time.Minute*5).UnixNano()
@@ -159,14 +161,13 @@ func (s *TokenCacheTestSuite) TestStartCacheRefreshTicker() {
 		assert.FailNow(s.T(), err.Error())
 	}
 
-	assert.Len(s.T(), s.t.c.Items(), 0)
+	assert.False(s.T(), s.t.IsTokenBlacklisted(key1))
+	assert.False(s.T(), s.t.IsTokenBlacklisted(key2))
 
 	ticker := s.t.startCacheRefreshTicker(time.Millisecond*250)
 	defer ticker.Stop()
 
 	time.Sleep(time.Millisecond*350)
-
-	assert.Len(s.T(), s.t.c.Items(), 1)
 	assert.True(s.T(), s.t.IsTokenBlacklisted(key1))
 	assert.False(s.T(), s.t.IsTokenBlacklisted(key2))
 
@@ -176,8 +177,6 @@ func (s *TokenCacheTestSuite) TestStartCacheRefreshTicker() {
 	}
 
 	time.Sleep(time.Millisecond*250)
-
-	assert.Len(s.T(), s.t.c.Items(), 2)
 	assert.True(s.T(), s.t.IsTokenBlacklisted(key1))
 	assert.True(s.T(), s.t.IsTokenBlacklisted(key2))
 
