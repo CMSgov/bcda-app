@@ -6,7 +6,6 @@ import (
 	"github.com/CMSgov/bcda-app/ssas/cfg"
 	"github.com/patrickmn/go-cache"
 	"github.com/pborman/uuid"
-	"sync"
 	"time"
 )
 
@@ -18,7 +17,6 @@ var (
 	TokenCacheLifetime	  time.Duration
 	cacheRefreshFreq	  time.Duration
 	cacheRefreshTicker	  *time.Ticker
-	cacheMu 			  sync.Mutex
 )
 
 func init() {
@@ -67,9 +65,6 @@ func (t *Blacklist) BlacklistToken(tokenID string, blacklistExpiration time.Dura
 
 	// Add to cache only after token is blacklisted in database
 	ssas.TokenBlacklisted(ssas.Event{Op: "TokenBlacklist", TrackingID: tokenID, TokenID: tokenID})
-	// Since the cache is refreshed from a timer in a separate goroutine, all cache access is wrapped in a mutex
-	cacheMu.Lock()
-	defer cacheMu.Unlock()
 	t.c.Set(tokenID, entryDate.Unix(), blacklistExpiration)
 
 	return nil
@@ -80,8 +75,6 @@ func (t *Blacklist) BlacklistToken(tokenID string, blacklistExpiration time.Dura
 //	- This queries the cache only, so if a tokenID has been blacklisted on a different instance, it will return "false"
 //		until the cached blacklist is refreshed from the database.
 func (t *Blacklist) IsTokenBlacklisted(tokenID string) bool {
-	cacheMu.Lock()
-	defer cacheMu.Unlock()
 	bEvent := ssas.Event{Op: "TokenVerification", TrackingID: tokenID, TokenID: tokenID}
 	if _, found := t.c.Get(tokenID); found {
 		ssas.BlacklistedTokenPresented(bEvent)
@@ -94,7 +87,6 @@ func (t *Blacklist) IsTokenBlacklisted(tokenID string) bool {
 func (t *Blacklist) LoadFromDatabase() error {
 	var (
 		entries	[]ssas.BlacklistEntry
-		items	map[string]cache.Item
 		err		error
 	)
 
@@ -104,17 +96,11 @@ func (t *Blacklist) LoadFromDatabase() error {
 
 	t.c.Flush()
 
-	// go-cache will accept bulk entries for a new cache, but only as a map
-	items = make(map[string]cache.Item)
+	// If the key already exists in the cache, it will be updated.
 	for _, entry := range entries {
-		expDuration := entry.CacheExpiration
-		item := cache.Item{Object: entry.EntryDate, Expiration: expDuration}
-		items[entry.Key] = item
+		cacheDuration := time.Now().Sub(time.Unix(0, entry.CacheExpiration))
+		t.c.Set(entry.Key, entry.EntryDate, cacheDuration)
 	}
-
-	cacheMu.Lock()
-	defer cacheMu.Unlock()
-	t.c = cache.NewFrom(defaultCacheTimeout, cacheCleanupInterval, items)
 	return nil
 }
 

@@ -87,19 +87,17 @@ func (s *TokenCacheTestSuite) TestLoadFromDatabase() {
 	assert.True(s.T(), s.t.IsTokenBlacklisted(e1.Key))
 	assert.True(s.T(), s.t.IsTokenBlacklisted(e2.Key))
 
-	obj1, exp1, found := s.t.c.GetWithExpiration(e1.Key)
+	obj1, _, found := s.t.c.GetWithExpiration(e1.Key)
 	assert.True(s.T(), found)
 	insertedDate1, ok := obj1.(int64)
 	assert.True(s.T(), ok)
 	assert.Equal(s.T(), entryDate, insertedDate1)
-	assert.Equal(s.T(), expiration, exp1.UnixNano())
 
-	obj2, exp2, found := s.t.c.GetWithExpiration(e2.Key)
+	obj2, _, found := s.t.c.GetWithExpiration(e2.Key)
 	assert.True(s.T(), found)
 	insertedDate2, ok := obj2.(int64)
 	assert.True(s.T(), ok)
 	assert.Equal(s.T(), entryDate, insertedDate2)
-	assert.Equal(s.T(), expiration, exp2.UnixNano())
 
 	err = s.db.Unscoped().Delete(&e1).Error
 	assert.Nil(s.T(), err)
