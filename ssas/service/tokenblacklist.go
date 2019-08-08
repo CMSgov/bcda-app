@@ -15,17 +15,25 @@ var (
 	defaultCacheTimeout   = 24*time.Hour
 	cacheCleanupInterval  time.Duration
 	TokenCacheLifetime	  time.Duration
+	cacheRefreshFreq	  time.Duration
+	cacheRefreshTicker	  *time.Ticker
 )
 
 func init() {
 	cacheCleanupInterval = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES", 15)) * time.Minute
 	TokenCacheLifetime	 = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES", 60*24)) * time.Minute
+	cacheRefreshFreq	 = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES", 5)) * time.Minute
 	NewBlacklist(defaultCacheTimeout, cacheCleanupInterval)
 }
 
 //	NewBlacklist allows for easy Blacklist{} creation and manipulation during testing, and should not be called
 //		outside a test suite
 func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Blacklist {
+	// In case a Blacklist timer has already been started:
+	if cacheRefreshTicker != nil {
+		cacheRefreshTicker.Stop()
+	}
+
 	trackingID := uuid.NewRandom().String()
 	event := ssas.Event{Op: "InitBlacklist", TrackingID: trackingID}
 	ssas.OperationStarted(event)
@@ -37,6 +45,8 @@ func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Bl
 		event.Help = "unable to load blacklist from database: " + err.Error()
 		ssas.OperationFailed(event)
 	}
+
+	cacheRefreshTicker = tc.startCacheRefreshTicker()
 
 	ssas.OperationSucceeded(event)
 	TokenBlacklist = tc
@@ -98,6 +108,19 @@ func (t *Blacklist) LoadFromDatabase() error {
 	return nil
 }
 
-// TODO: write an admin endpoint to call BlacklistToken()
-// TODO: implement RevokeAccessToken() in the BCDA Auth SSAS provider to call the new admin endpoint
-// TODO: implement a timer to call LoadFromDatabase() periodically (every five minutes?)
+func (t *Blacklist) startCacheRefreshTicker() *time.Ticker {
+	trackingID := uuid.NewRandom().String()
+	event := ssas.Event{Op: "CacheRefreshTicker", TrackingID: trackingID}
+	ssas.ServiceStarted(event)
+
+	ticker := time.NewTicker(cacheRefreshFreq)
+	//done := make(chan bool)
+
+	go func() {
+		for  range ticker.C {
+			_ = TokenBlacklist.LoadFromDatabase()
+		}
+	}()
+
+	return ticker
+}
