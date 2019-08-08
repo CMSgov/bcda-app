@@ -3,12 +3,13 @@ package auth
 import (
 	"errors"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
 // SSASPlugin is an implementation of Provider that uses the SSAS API.
 type SSASPlugin struct {
-	// client client.SSASClient
+	client client.SSASClient
 }
 
 // RegisterSystem adds a software client for the ACO identified by localID.
@@ -24,7 +25,7 @@ func (s SSASPlugin) UpdateSystem(params []byte) ([]byte, error) {
 
 // DeleteSystem deletes the registered software client identified by clientID, revoking any active tokens.
 func (s SSASPlugin) DeleteSystem(clientID string) error {
-	return errors.New("Not yet implemented")
+	return errors.New("Not supported")
 }
 
 // ResetSecret creates new or replaces existing credentials for the given clientID.
@@ -34,9 +35,8 @@ func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
 }
 
 // RevokeSystemCredentials revokes any existing credentials for the given clientID.
-func (s SSASPlugin) RevokeSystemCredentials(clientID string) error {
-	// s.client.DeleteCredentials()
-	return errors.New("Not yet implemented")
+func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
+	return s.client.DeleteCredentials(ssasID)
 }
 
 // MakeAccessToken mints an access token for the given credentials.

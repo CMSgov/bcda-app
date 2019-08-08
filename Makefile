@@ -48,6 +48,9 @@ postman:
 	# For example: make postman env=test token=<MY_TOKEN>
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
 
+postman-ssas:
+	docker-compose -f docker-compose.test.yml run --rm postman_test_ssas test/postman_test/ssas-local.postman_environment.json
+
 unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
@@ -61,12 +64,13 @@ test:
 	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
+	$(MAKE) postman-ssas
 	$(MAKE) smoke-test
 
 test-ssas:
 	$(MAKE) lint-ssas
 	$(MAKE) unit-test-ssas
-	@echo "No postman tests (yet)"
+	$(MAKE) postman-ssas
 	@echo "No smoke-test (yet)"
 
 load-fixtures:
@@ -75,6 +79,7 @@ load-fixtures:
 	sleep 5
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
+	$(MAKE) load-synthetic-suppression-data
 
 load-synthetic-cclf-data:
 	docker-compose up -d api
@@ -85,6 +90,11 @@ load-synthetic-cclf-data:
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=large --environment=test'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=extra-large --environment=test'
 
+load-synthetic-suppression-data:
+	docker-compose up -d api
+	docker-compose up -d db
+	docker-compose run api sh -c 'tmp/bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
+
 docker-build:
 	docker-compose build --force-rm
 	docker-compose -f docker-compose.test.yml build --force-rm
@@ -92,7 +102,7 @@ docker-build:
 docker-bootstrap:
 	$(MAKE) docker-build
 	docker-compose up -d
-	sleep 30
+	sleep 40
 	$(MAKE) load-fixtures
 
 api-shell:
@@ -113,4 +123,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures load-synthetic-cclf-data test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
+.PHONY: docker-build docker-bootstrap load-fixtures load-synthetic-cclf-data load-synthetic-suppression-data test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
