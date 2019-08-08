@@ -47,6 +47,7 @@ func CreateBlacklistEntry(key string, entryDate time.Time, cacheExpiration time.
 	}
 
 	db := GetGORMDbConnection()
+	defer Close(db)
 	err = db.Save(&be).Error
 	if err != nil {
 		event.Help = err.Error()
@@ -56,7 +57,6 @@ func CreateBlacklistEntry(key string, entryDate time.Time, cacheExpiration time.
 
 	OperationSucceeded(event)
 	entry = be
-	Close(db)
 	return
 }
 
@@ -66,6 +66,7 @@ func GetUnexpiredBlacklistEntries() (entries []BlacklistEntry, err error) {
 	OperationStarted(event)
 
 	db := GetGORMDbConnection()
+	defer Close(db)
 	err = db.Order("entry_date, cache_expiration").Where("cache_expiration > ?", time.Now().UnixNano()).Find(&entries).Error
 	if err != nil {
 		event.Help = err.Error()
@@ -74,7 +75,5 @@ func GetUnexpiredBlacklistEntries() (entries []BlacklistEntry, err error) {
 	}
 
 	OperationSucceeded(event)
-	Close(db)
-
 	return
 }
