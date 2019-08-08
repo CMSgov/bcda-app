@@ -38,19 +38,19 @@ func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Bl
 	event := ssas.Event{Op: "InitBlacklist", TrackingID: trackingID}
 	ssas.OperationStarted(event)
 
-	tc := Blacklist{}
-	tc.c = cache.New(cacheTimeout, cleanupInterval)
+	bl := Blacklist{}
+	bl.c = cache.New(cacheTimeout, cleanupInterval)
 
-	if err := tc.LoadFromDatabase(); err != nil {
+	if err := bl.LoadFromDatabase(); err != nil {
 		event.Help = "unable to load blacklist from database: " + err.Error()
 		ssas.OperationFailed(event)
 	}
 
-	cacheRefreshTicker = tc.startCacheRefreshTicker()
+	cacheRefreshTicker = bl.startCacheRefreshTicker()
 
 	ssas.OperationSucceeded(event)
-	TokenBlacklist = tc
-	return &tc
+	TokenBlacklist = bl
+	return &bl
 }
 
 type Blacklist struct {
@@ -65,6 +65,7 @@ func (t *Blacklist) BlacklistToken(tokenID string, blacklistExpiration time.Dura
 		return fmt.Errorf(fmt.Sprintf("unable to blacklist token id %s: %s", tokenID, err.Error()))
 	}
 
+	// Add to cache only after token is blacklisted in database
 	ssas.TokenBlacklisted(ssas.Event{Op: "TokenBlacklist", TrackingID: tokenID, TokenID: tokenID})
 	t.c.Set(tokenID, entryDate.Unix(), blacklistExpiration)
 
@@ -73,8 +74,8 @@ func (t *Blacklist) BlacklistToken(tokenID string, blacklistExpiration time.Dura
 
 //	IsTokenBlacklisted tests whether this tokenID is in the blacklist cache.
 //	- Tokens should expire before blacklist entries, so a tokenID for a recently expired token may return "true."
-//	- This tests the cache only, so if a tokenID has been blacklisted on a different instance, it will return "false"
-//		until the cache is refreshed.
+//	- This queries the cache only, so if a tokenID has been blacklisted on a different instance, it will return "false"
+//		until the cached blacklist is refreshed from the database.
 func (t *Blacklist) IsTokenBlacklisted(tokenID string) bool {
 	bEvent := ssas.Event{Op: "TokenVerification", TrackingID: tokenID, TokenID: tokenID}
 	if _, found := t.c.Get(tokenID); found {
@@ -97,6 +98,8 @@ func (t *Blacklist) LoadFromDatabase() error {
 	}
 
 	t.c.Flush()
+
+	// go-cache will accept bulk entries for a new cache, but only as a map
 	items = make(map[string]cache.Item)
 	for _, entry := range entries {
 		expDuration := entry.CacheExpiration
@@ -114,10 +117,10 @@ func (t *Blacklist) startCacheRefreshTicker() *time.Ticker {
 	ssas.ServiceStarted(event)
 
 	ticker := time.NewTicker(cacheRefreshFreq)
-	//done := make(chan bool)
 
 	go func() {
 		for  range ticker.C {
+			// Errors are logged in LoadFromDatabase()
 			_ = TokenBlacklist.LoadFromDatabase()
 		}
 	}()
