@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -176,4 +177,38 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	}
 
 	return []byte(t.AccessToken), nil
+}
+
+// VerifyPublicToken verifies that the tokenString presented was issued by the public server. It does so using
+// the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
+func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
+	public := os.Getenv("SSAS_PUBLIC_URL")
+	url := fmt.Sprintf("%s/introspect", public)
+	body := strings.NewReader(`"token="`+tokenString+`""`)
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, errors.Wrap(err, "bad request structure")
+	}
+
+	// TODO assuming auth is by self-management
+	req.SetBasicAuth(os.Getenv("BCDA_SSAS_CLIENT_ID"), os.Getenv("BCDA_SSAS_SECRET"))
+	req.Header.Add("Accept", "application/json")
+
+	resp, err := client().Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "introspect request failed")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("introspect request failed; %v", resp.StatusCode)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not read introspect response")
+	}
+
+	return b, nil
 }

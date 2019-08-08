@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -148,6 +149,47 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	}
 
 	assert.Equal(s.T(), tokenString, string(respKey))
+}
+
+func (s *SSASClientTestSuite) TestVerifyPublicToken() {
+	const tokenString = "totallyfake.tokenstringfor.testing"
+	router := chi.NewRouter()
+	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
+		b := []byte(`{"cid":"12345", "active":true, "scp":"bcda-api", "exp":99999999, "iat":99991000, "tid":"98765"}`)
+		if _, err := w.Write(b);  err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	defer os.Setenv("SSAS_URL", origSSASURL)
+	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
+	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	b, err := client.VerifyPublicToken(tokenString)
+	if err != nil {
+		s.FailNow("bad stuff", err.Error())
+	}
+
+	var ir map[string]interface{}
+	if err = json.Unmarshal(b, &ir); err != nil {
+		s.FailNow("could not understand response", err.Error())
+	}
+
+	assert.Equal(s.T(), int64(99999999), int64(ir["exp"].(float64)))
+	assert.True(s.T(), ir["active"].(bool))
+	assert.Equal(s.T(), "12345", ir["cid"])
 }
 
 func TestSSASClientTestSuite(t *testing.T) {
