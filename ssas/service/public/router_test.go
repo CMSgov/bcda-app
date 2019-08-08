@@ -65,7 +65,7 @@ func (s *PublicRouterTestSuite) reqPublicRoute(verb string, route string, body i
 }
 
 func (s *PublicRouterTestSuite) TestTokenRoute() {
-	res := s.reqPublicRoute("GET", "/token", nil, "")
+	res := s.reqPublicRoute("POST", "/token", nil, "")
 	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
