@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "24667282-ec23-453b-b25d-54663d2d2fec",
+		"_postman_id": "3bee0e43-45c8-4e3c-a50f-4171956b4a0b",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -380,6 +380,40 @@
 					"port": "{{admin-port}}",
 					"path": [
 						"group"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin delete token, success",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "95ce3470-8202-4e9f-b4f6-4fe36a09cb0d",
+						"exec": [
+							"pm.test(\"response is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/token/{{token_id}}",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"token",
+						"{{token_id}}"
 					]
 				}
 			},
