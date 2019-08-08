@@ -46,7 +46,7 @@ func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Bl
 		ssas.OperationFailed(event)
 	}
 
-	cacheRefreshTicker = bl.startCacheRefreshTicker()
+	cacheRefreshTicker = bl.startCacheRefreshTicker(cacheRefreshFreq)
 
 	ssas.OperationSucceeded(event)
 	TokenBlacklist = bl
@@ -111,17 +111,17 @@ func (t *Blacklist) LoadFromDatabase() error {
 	return nil
 }
 
-func (t *Blacklist) startCacheRefreshTicker() *time.Ticker {
+func (t *Blacklist) startCacheRefreshTicker(refreshFreq time.Duration) *time.Ticker {
 	trackingID := uuid.NewRandom().String()
 	event := ssas.Event{Op: "CacheRefreshTicker", TrackingID: trackingID}
 	ssas.ServiceStarted(event)
 
-	ticker := time.NewTicker(cacheRefreshFreq)
+	ticker := time.NewTicker(refreshFreq)
 
 	go func() {
-		for  range ticker.C {
+		for range ticker.C {
 			// Errors are logged in LoadFromDatabase()
-			_ = TokenBlacklist.LoadFromDatabase()
+			_ = t.LoadFromDatabase()
 		}
 	}()
 

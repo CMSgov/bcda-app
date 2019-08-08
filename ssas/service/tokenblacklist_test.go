@@ -147,6 +147,46 @@ func (s *TokenCacheTestSuite) TestBlacklistToken() {
 	assert.Equal(s.T(), key, entries[0].Key)
 }
 
+func (s *TokenCacheTestSuite) TestStartCacheRefreshTicker() {
+	var err error
+	entryDate := time.Now().Add(time.Minute*-5).Unix()
+	expiration := time.Now().Add(time.Minute*5).UnixNano()
+	key1 := "key1"
+	key2 := "key2"
+
+	e1 := ssas.BlacklistEntry{Key: key1, EntryDate: entryDate, CacheExpiration: expiration}
+	if err = s.db.Save(&e1).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	assert.Len(s.T(), s.t.c.Items(), 0)
+
+	ticker := s.t.startCacheRefreshTicker(time.Millisecond*250)
+	defer ticker.Stop()
+
+	time.Sleep(time.Millisecond*350)
+
+	assert.Len(s.T(), s.t.c.Items(), 1)
+	assert.True(s.T(), s.t.IsTokenBlacklisted(key1))
+	assert.False(s.T(), s.t.IsTokenBlacklisted(key2))
+
+	e2 := ssas.BlacklistEntry{Key: key2, EntryDate: entryDate, CacheExpiration: expiration}
+	if err = s.db.Save(&e2).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	time.Sleep(time.Millisecond*250)
+
+	assert.Len(s.T(), s.t.c.Items(), 2)
+	assert.True(s.T(), s.t.IsTokenBlacklisted(key1))
+	assert.True(s.T(), s.t.IsTokenBlacklisted(key2))
+
+	err = s.db.Unscoped().Delete(&e1).Error
+	assert.Nil(s.T(), err)
+	err = s.db.Unscoped().Delete(&e2).Error
+	assert.Nil(s.T(), err)
+}
+
 func (s *TokenCacheTestSuite) TestBlacklistTokenKeyExists() {
 	key := strconv.Itoa(rand.Int())
 
