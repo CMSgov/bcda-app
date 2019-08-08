@@ -37,6 +37,7 @@ func main() {
 		if os.Getenv("DEBUG") == "true" {
 			ssas.InitializeGroupModels()
 			ssas.InitializeSystemModels()
+			ssas.InitializeBlacklistModels()
 		}
 		start()
 	}

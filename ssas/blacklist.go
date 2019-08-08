@@ -11,7 +11,7 @@ import (
 
 //	InitializeBlacklistModels will call gorm.DB.AutoMigrate() for BlacklistEntries{}
 func InitializeBlacklistModels() *gorm.DB {
-	log.Println("Initialize cache models")
+	log.Println("Initialize blacklist models")
 	db := GetGORMDbConnection()
 	defer Close(db)
 
