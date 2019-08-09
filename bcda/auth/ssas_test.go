@@ -120,8 +120,8 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 		}
 
 		if clientId == os.Getenv("BCDA_SSAS_CLIENT_ID") && secret == os.Getenv("BCDA_SSAS_SECRET") {
-			b, err := json.Marshal(struct{ Active bool `json:"active"` }{Active: true})
-			if _, err = w.Write(b); err != nil {
+			b, _ := json.Marshal(struct{ Active bool `json:"active"` }{Active: true})
+			if _, err := w.Write(b); err != nil {
 				log.Fatal(err)
 			}
 		} else {
