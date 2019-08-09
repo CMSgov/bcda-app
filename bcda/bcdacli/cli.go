@@ -2,7 +2,6 @@ package bcdacli
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,7 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -44,7 +46,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, userName, userEmail, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment string
+	var acoName, acoCMSID, acoID, userName, userEmail, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -115,6 +117,31 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
+			Name:     "create-group",
+			Category: "Authentication tools",
+			Usage:    "Create a group (SSAS)",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "id",
+					Usage:       "ID of group (typically ACO CMS ID)",
+					Destination: &groupID,
+				},
+				cli.StringFlag{
+					Name:        "name",
+					Usage:       "Name of group (typically ACO name)",
+					Destination: &groupName,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				groupID, err := createGroup(groupID, groupName)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(app.Writer, "Created group %s\n", groupID)
+				return nil
+			},
+		},
+		{
 			Name:     "create-aco",
 			Category: "Authentication tools",
 			Usage:    "Create an ACO",
@@ -129,9 +156,14 @@ func setUpApp() *cli.App {
 					Usage:       "CMS ID of ACO",
 					Destination: &acoCMSID,
 				},
+				cli.StringFlag{
+					Name:        "group-id",
+					Usage:       "Auth group ID (required for SSAS)",
+					Destination: &groupID,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := cclf.CreateACO(acoName, acoCMSID)
+				acoUUID, err := createACO(acoName, acoCMSID, groupID)
 				if err != nil {
 					return err
 				}
@@ -430,6 +462,37 @@ func autoMigrate() {
 	models.InitializeGormModels()
 	auth.InitializeGormModels()
 	fmt.Println("Completed Database Initialization")
+}
+
+func createGroup(id, name string) (string, error) {
+	ssas, err := authclient.NewSSASClient()
+	if err != nil {
+		return "", err
+	}
+	ssas.CreateGroup(id, name)
+	return "", nil
+}
+
+func createACO(name, cmsID, groupID string) (string, error) {
+	if name == "" {
+		return "", errors.New("ACO name (--name) must be provided")
+	}
+
+	var cmsIDPt *string
+	if cmsID != "" {
+		acoIDFmt := regexp.MustCompile(`^A\d{4}$`)
+		if !acoIDFmt.MatchString(cmsID) {
+			return "", errors.New("ACO CMS ID (--cms-id) is invalid")
+		}
+		cmsIDPt = &cmsID
+	}
+
+	acoUUID, err := models.CreateACO(name, cmsIDPt, groupID)
+	if err != nil {
+		return "", err
+	}
+
+	return acoUUID.String(), nil
 }
 
 func createUser(acoID, name, email string) (string, error) {

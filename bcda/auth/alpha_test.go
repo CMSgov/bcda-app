@@ -61,7 +61,7 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
+	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID, "group-id")
 	c, err := s.p.RegisterSystem(acoUUID.String())
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
@@ -98,7 +98,7 @@ func (s *AlphaAuthPluginTestSuite) TestUpdateSystem() {
 
 func (s *AlphaAuthPluginTestSuite) TestDeleteSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
+	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID, "group-id")
 	c, _ := s.p.RegisterSystem(acoUUID.String())
 	aco, _ := auth.GetACOByClientID(c.ClientID)
 	assert.NotEmpty(s.T(), aco.ClientID)
@@ -127,7 +127,7 @@ func (s *AlphaAuthPluginTestSuite) TestResetSecret() {
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
+	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID, "group-id")
 	user, _ := models.CreateUser("Test Access Token", "testaccesstoken@examplecom", acoUUID)
 	cc, err := s.p.RegisterSystem(acoUUID.String())
 	assert.Nil(s.T(), err)

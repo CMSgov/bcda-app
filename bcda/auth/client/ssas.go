@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -99,6 +100,33 @@ func tlsTransport() (*http.Transport, error) {
 	tlsConfig.BuildNameToCertificate()
 
 	return &http.Transport{TLSClientConfig: tlsConfig}, nil
+}
+
+// CreateGroup POSTs to the SSAS /group endpoint to create a system.
+func (c *SSASClient) CreateGroup(id, name string) ([]byte, error) {
+	// Group data
+	// {
+	// 	"id": "",
+	// 	"name": "",
+	// 	"users": [],
+	// 	"scopes: [],
+	// 	"system": {},
+	// 	"resources": []
+	// }
+	b := fmt.Sprintf(`{"id": "%s", "name": "%s", "scopes": ["bcda-api"]}`, id, name)
+
+	resp, err := c.Post(fmt.Sprintf("%s/group", c.baseURL), "application/json", strings.NewReader(b))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create group")
+	}
+
+	rb, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create group")
+	}
+
+	return rb, nil
 }
 
 // CreateSystem POSTs to the SSAS /system endpoint to create a system.

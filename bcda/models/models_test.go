@@ -45,7 +45,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 
 	const ACOName = "ACO Name"
 	cmsID := "A0000"
-	acoUUID, err := CreateACO(ACOName, &cmsID)
+	acoUUID, err := CreateACO(ACOName, &cmsID, "group-id")
 
 	assert.Nil(err)
 	assert.NotNil(acoUUID)
