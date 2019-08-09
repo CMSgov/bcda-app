@@ -130,16 +130,16 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 201 {
+	if resp.StatusCode != http.StatusCreated {
 		return nil, errors.New(fmt.Sprintf("failed to delete credentials. status code: %v", resp.StatusCode))
 	}
 
-	var respMap map[string]string
-	if err = json.NewDecoder(resp.Body).Decode(&respMap); err != nil {
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to delete credentials")
 	}
 
-	return []byte(respMap["client_secret"]), nil
+	return []byte(body), nil
 
 }
 
@@ -156,7 +156,7 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.Wrap(err, "failed to delete credentials")
 	}
 

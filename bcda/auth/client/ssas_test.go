@@ -1,12 +1,15 @@
 package client_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
@@ -112,9 +115,11 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 		s.FailNow("Failed to create SSAS client", err.Error())
 	}
 
-	newSecret, err := client.ResetCredentials("1")
+	resp, err := client.ResetCredentials("1")
 	assert.Nil(s.T(), err)
-	assert.NotEmpty(s.T(), newSecret)
+	creds := auth.Credentials{}
+	err = json.Unmarshal(resp, &creds)
+	assert.Nil(s.T(), err, nil)
 }
 
 func (s *SSASClientTestSuite) TestDeleteCredentials() {

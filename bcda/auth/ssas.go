@@ -1,8 +1,8 @@
 package auth
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -36,7 +36,13 @@ func (s SSASPlugin) ResetSecret(ssasID string) (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	return Credentials{ClientSecret: fmt.Sprint(resp)}, nil
+	creds := Credentials{}
+	err = json.Unmarshal(resp, &creds)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	return creds, nil
 }
 
 // RevokeSystemCredentials revokes any existing credentials for the given clientID.
