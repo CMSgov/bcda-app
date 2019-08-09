@@ -120,6 +120,8 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 	creds := auth.Credentials{}
 	err = json.Unmarshal(resp, &creds)
 	assert.Nil(s.T(), err, nil)
+	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
 }
 
 func (s *SSASClientTestSuite) TestDeleteCredentials() {
