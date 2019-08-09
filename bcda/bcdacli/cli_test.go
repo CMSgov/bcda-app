@@ -821,7 +821,7 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	path := "../../shared_files/synthetic1800MedicareFiles/"
+	path := "../../shared_files/synthetic1800MedicareFiles/test/"
 
 	args := []string{"bcda", "import-suppression-directory", "--directory", path}
 	err := s.testApp.Run(args)
