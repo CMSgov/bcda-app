@@ -207,7 +207,7 @@ func main() {
 						}
 
 						fmt.Println("decrypting the file...")
-						encryptedKey := string(encryptData[path.Base(data[0].Url)])
+						encryptedKey := string(encryptData[path.Base(fileItem.Url)])
 						if encryptedKey == "" {
 							fmt.Println("Error: no key found in data")
 							os.Exit(1)
