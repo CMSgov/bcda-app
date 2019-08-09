@@ -34,18 +34,7 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
 	assert.IsType(s.T(), &authclient.SSASClient{}, client)
 }
 
-func (s *SSASClientTestSuite) TestNewSSASClient_NoKeypair() {
-	client, err := authclient.NewSSASClient()
-	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), client)
-	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
-}
-
-func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
-	os.Setenv("SSAS_USE_TLS", "false")
-
+func (s *SSASClientTestSuite) TestNewSSASClient_NoURL() {
 	origSSASURL := os.Getenv("SSAS_URL")
 	defer os.Setenv("SSAS_URL", origSSASURL)
 	os.Unsetenv("SSAS_URL")
@@ -54,6 +43,21 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), client)
 	assert.EqualError(s.T(), err, "SSAS client could not be created: no URL provided")
+}
+
+func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrueNoKey() {
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_USE_TLS", "true")
+
+	origSSASClientCertFile := os.Getenv("SSAS_CLIENT_CERT_FILE")
+	defer os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
+	os.Unsetenv("SSAS_CLIENT_CERT_FILE")
+
+	client, err := authclient.NewSSASClient()
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), client)
+	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
 }
 
 func (s *SSASClientTestSuite) TestCreateSystem() {}

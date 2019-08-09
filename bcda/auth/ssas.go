@@ -11,7 +11,7 @@ import (
 
 // SSASPlugin is an implementation of Provider that uses the SSAS API.
 type SSASPlugin struct {
-	client client.SSASClient
+	client *client.SSASClient
 }
 
 // RegisterSystem adds a software client for the ACO identified by localID.
@@ -43,13 +43,7 @@ func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
 
 // MakeAccessToken mints an access token for the given credentials.
 func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
-	ssas, err := client.NewSSASClient()
-	if err != nil {
-		logger.Errorf("failed to create SSAS client; %s", err.Error())
-		return "", err
-	}
-
-	ts, err := ssas.GetToken(client.Credentials{ClientID: credentials.ClientID, ClientSecret: credentials.ClientSecret})
+	ts, err := s.client.GetToken(client.Credentials{ClientID: credentials.ClientID, ClientSecret: credentials.ClientSecret})
 	if err != nil {
 		logger.Errorf("Failed to get token; %s", err.Error())
 		return "", err
@@ -70,13 +64,7 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 
 // VerifyToken decodes a base64-encoded token string into a structured token.
 func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
-	ssas, err := client.NewSSASClient()
-	if err != nil {
-		logger.Errorf("failed to create SSAS client; %s", err.Error())
-		return nil, err
-	}
-
-	b, err := ssas.VerifyPublicToken(tokenString)
+	b, err := s.client.VerifyPublicToken(tokenString)
 	if err != nil {
 		logger.Errorf("Failed to verify token; %s", err.Error())
 		return nil, err
@@ -89,6 +77,6 @@ func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 		return nil, errors.New("inactive token")
 	}
 	parser := jwt.Parser{}
-	token, _, err := parser.ParseUnverified( tokenString, &jwt.MapClaims{})
+	token, _, err := parser.ParseUnverified( tokenString, &CommonClaims{})
 	return token, err
 }
