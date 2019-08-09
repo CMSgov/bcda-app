@@ -140,8 +140,8 @@ services:
       - SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS=0
       - SSAS_MFA_TOKEN_TIMEOUT_MINUTES=60
       - SSAS_MFA_PROVIDER=${SSAS_MFA_PROVIDER}
-      - SSAS_URL=${SSAS_URL}
-      - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
+      - SSAS_URL=http://ssas:3004
+      - SSAS_PUBLIC_URL=http://ssas:3003
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     ports:
