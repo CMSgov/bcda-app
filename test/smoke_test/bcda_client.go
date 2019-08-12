@@ -170,9 +170,7 @@ func main() {
 			if status.StatusCode  == 401 {
 				fmt.Println("acquire new token...")
 				accessToken  = getAccessToken() 
-			}
-
-			else  if status.StatusCode == 200 {
+			} else if status.StatusCode == 200 {
 				fmt.Println("file is ready for download...")
 
 				defer status.Body.Close()
