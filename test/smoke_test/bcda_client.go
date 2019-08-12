@@ -193,6 +193,10 @@ func main() {
 				}
 
 				for _, fileItem := range data {
+				
+					// Acquire new access token for each file download
+					accessToken = getAccessToken();
+
 					fmt.Printf("fetching: %s\n", fileItem.Url)
 					download := get(fileItem.Url)
 					if download.StatusCode == 200 {
@@ -315,7 +319,7 @@ func main() {
 			}
 		}
 	} else {
-		fmt.Printf("error: failed to start %s data aggregation job\n", endpoint)
+		fmt.Printf("error: failed to start %s data aggregation job %s\n", endpoint, result.StatusCode)
 		os.Exit(1)
 	}
 }
