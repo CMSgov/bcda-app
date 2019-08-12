@@ -271,7 +271,7 @@ func (s *Server) CheckRequiredClaims(claims *CommonClaims, RequiredTokenType str
 	}
 
 	if RequiredTokenType != claims.TokenType {
-		return fmt.Errorf("wrong token type: " + claims.TokenType)
+		return fmt.Errorf(fmt.Sprintf("wrong token type: %s; required type: %s", claims.TokenType, RequiredTokenType))
 	}
 
 	return nil

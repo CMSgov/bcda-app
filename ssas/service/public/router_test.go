@@ -137,6 +137,6 @@ func (s *PublicRouterTestSuite) TestAuthnVerifyRouteNoToken() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
-func TestAuthRouterTestSuite(t *testing.T) {
+func TestPublicRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(PublicRouterTestSuite))
 }

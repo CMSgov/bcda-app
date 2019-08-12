@@ -120,6 +120,11 @@ func BlacklistedTokenPresented(data Event) {
 	mergeNonEmpty(data).WithField("Event", "BlacklistedTokenPresented").Print(data.Help)
 }
 
+// AuthorizationFailure should be called by middleware to record token or credential issues
+func AuthorizationFailure(data Event) {
+	mergeNonEmpty(data).WithField("Event", "AuthorizationFailure").Print(data.Help)
+}
+
 // SecureHashTime should be called with the time taken to create a hash, logs of which can be used
 // to approximate the security provided by the hash
 func SecureHashTime(data Event) {
