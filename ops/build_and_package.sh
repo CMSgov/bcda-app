@@ -50,7 +50,7 @@ fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker
 cd ../ssas
 go clean
 echo "Building ssas..."
-go build
+go build -o ssas ./service/main
 echo "Packaging ssas binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n ssas ssas=/usr/local/bin/ssas
 
