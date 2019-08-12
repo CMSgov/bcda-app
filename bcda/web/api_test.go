@@ -397,6 +397,7 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 
 
 func (s *APITestSuite) TestBulkConcurrentRequestTime() {
+        os.Setenv("DEPLOYMENT_TARGET", "prod")
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -430,6 +431,7 @@ func (s *APITestSuite) TestBulkConcurrentRequestTime() {
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+        os.Unsetenv("DEPLOYMENT_TARGET")
 }
 
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
