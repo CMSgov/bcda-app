@@ -168,7 +168,7 @@ func main() {
 	
 			// Acquire new token if the current token has expired
 			if status.StatusCode  == 401 {
-				fmt.Println("acquire new token..."
+				fmt.Println("acquire new token...")
 				accessToken  = getAccessToken() 
 			}
 
