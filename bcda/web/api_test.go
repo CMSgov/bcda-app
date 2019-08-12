@@ -279,6 +279,7 @@ func (s *APITestSuite) TestBulkRequestInvalidType() {
 }
 
 func (s *APITestSuite) TestBulkConcurrentRequest() {
+	os.Setenv("DEPLOYMENT_TARGET", "prod")
 	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
 	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -390,6 +391,8 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	lastRequestJob = models.Job{}
 	s.db.Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
+
+	os.Unsetenv("DEPLOYMENT_TARGET")
 }
 
 
