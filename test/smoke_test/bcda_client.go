@@ -319,7 +319,7 @@ func main() {
 			}
 		}
 	} else {
-		fmt.Printf("error: failed to start %s data aggregation job %s\n", endpoint, result.StatusCode)
+		fmt.Printf("error: failed to start %s data aggregation job\n", endpoint)
 		os.Exit(1)
 	}
 }
