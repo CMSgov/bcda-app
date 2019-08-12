@@ -166,7 +166,7 @@ func main() {
 			fmt.Println("checking job status...")
 			status := get(result.Header["Content-Location"][0])
 	
-			# Acquire new token if the current token has expired
+			// Acquire new token if the current token has expired
 			if status.StatusCode  == 401 {
 				fmt.Println("acquire new token..."
 				accessToken  = getAccessToken() 
