@@ -145,7 +145,7 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to revoke token")
+		return errors.Wrap(err, "bad request structure")
 	}
 
 	resp, err := c.Do(req)
@@ -155,7 +155,7 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return errors.Wrap(err, "failed to revoke token")
+		return fmt.Errorf("failed to revoke token; %v", resp.StatusCode)
 	}
 
 	return nil

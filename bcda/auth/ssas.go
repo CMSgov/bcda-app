@@ -46,7 +46,19 @@ func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
 
 // RevokeAccessToken revokes a specific access token identified in a base64-encoded token string.
 func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
-	return s.client.RevokeAccessToken(tokenString)
+	ssas, err := client.NewSSASClient()
+	if err != nil {
+		logger.Errorf("failed to create SSAS client; %s", err.Error())
+		return err
+	}
+
+	err = ssas.RevokeAccessToken(tokenString)
+	if err != nil {
+		logger.Errorf("Failed to revoke token; %s", err.Error())
+		return err
+	}
+
+	return nil
 }
 
 // AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
