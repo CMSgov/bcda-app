@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -15,11 +16,11 @@ import (
 )
 
 var (
-	origSSASURL				string
-	origPublicURL			string
-	origSSASUseTLS			string
-	origSSASClientKeyFile	string
-	origSSASClientCertFile	string
+	origSSASURL            string
+	origPublicURL          string
+	origSSASUseTLS         string
+	origSSASClientKeyFile  string
+	origSSASClientCertFile string
 )
 
 type SSASClientTestSuite struct {
@@ -142,6 +143,69 @@ func (s *SSASClientTestSuite) TestRevokeAccessToken() {
 
 	err = client.RevokeAccessToken("abc-123")
 	assert.Nil(s.T(), err)
+}
+
+func (s *SSASClientTestSuite) TestGetToken() {
+	const tokenString = "totallyfake.tokenstringfor.testing"
+	router := chi.NewRouter()
+	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	respKey, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
+	if err != nil {
+		s.FailNow("Failed to get token", err.Error())
+	}
+
+	assert.Equal(s.T(), tokenString, string(respKey))
+}
+
+func (s *SSASClientTestSuite) TestVerifyPublicToken() {
+	const tokenString = "totallyfake.tokenstringfor.testing"
+	router := chi.NewRouter()
+	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
+		b := []byte(`{"cid":"12345", "active":true, "scp":"bcda-api", "exp":99999999, "iat":99991000, "tid":"98765"}`)
+		if _, err := w.Write(b); err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	b, err := client.VerifyPublicToken(tokenString)
+	if err != nil {
+		s.FailNow("bad stuff", err.Error())
+	}
+
+	var ir map[string]interface{}
+	if err = json.Unmarshal(b, &ir); err != nil {
+		s.FailNow("could not understand response", err.Error())
+	}
+
+	assert.Equal(s.T(), int64(99999999), int64(ir["exp"].(float64)))
+	assert.True(s.T(), ir["active"].(bool))
+	assert.Equal(s.T(), "12345", ir["cid"])
 }
 
 func TestSSASClientTestSuite(t *testing.T) {

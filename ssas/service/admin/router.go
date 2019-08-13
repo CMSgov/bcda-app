@@ -1,18 +1,37 @@
 package admin
 
 import (
+	"fmt"
+	"os"
+	"time"
+
 	"github.com/go-chi/chi"
+
+	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
-var Version = "latest"
-var InfoMap = map[string][]string{}
+var version = "latest"
+var infoMap map[string][]string
+var adminSigningKeyPath string
+var server *service.Server
 
 func init() {
-	InfoMap = make(map[string][]string)
-	InfoMap["admin"] = []string{"system", "group", "token"}
+	infoMap = make(map[string][]string)
+	adminSigningKeyPath = os.Getenv("SSAS_ADMIN_SIGNING_KEY_PATH")
 }
 
-func Routes() *chi.Mux {
+// Server creates an SSAS admin server
+func Server() *service.Server {
+	server = service.NewServer("admin", ":3004", version, infoMap, routes(), true, adminSigningKeyPath, 20*time.Minute)
+	if server != nil {
+		r, _ := server.ListRoutes()
+		infoMap["banner"] = []string{fmt.Sprintf("%s server running on port %s", "admin", ":3004")}
+		infoMap["routes"] = r
+	}
+	return server
+}
+
+func routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/group", createGroup)
 	r.Get("/group", listGroups)

@@ -47,7 +47,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "golang.org/x/crypto"
+  name = "github.com/golang/x"
 
 [[constraint]]
   branch = "master"

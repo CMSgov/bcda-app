@@ -55,6 +55,11 @@ services:
       - AUTH_HASH_KEY_LENGTH=64
       - AUTH_HASH_SALT_SIZE=32
       - CCLF_IMPORT_STATUS_RECORDS_INTERVAL=1000
+      - BCDA_SSAS_CLIENT_ID=${BCDA_SSAS_CLIENT_ID}
+      - BCDA_SSAS_SECRET=${BCDA_SSAS_SECRET}
+      - SSAS_USE_TLS=false
+      - SSAS_URL=${SSAS_URL}
+      - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -118,6 +123,8 @@ services:
       - OKTA_MFA_USER_ID=${OKTA_MFA_USER_ID}
       - OKTA_MFA_USER_PASSWORD=${OKTA_MFA_USER_PASSWORD}
       - OKTA_MFA_SMS_FACTOR_ID=${OKTA_MFA_SMS_FACTOR_ID}
+      - BCDA_SSAS_CLIENT_ID=${BCDA_SSAS_CLIENT_ID}
+      - BCDA_SSAS_SECRET=${BCDA_SSAS_SECRET}
       - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem
       - SSAS_PUBLIC_SIGNING_KEY_PATH=../shared_files/ssas/public_test_signing_key.pem
       - SSAS_ADMIN_PORT=:3003
@@ -136,6 +143,8 @@ services:
       - SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES=15
       - SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES=1440
       - SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES=5
+      - SSAS_URL=${SSAS_URL}
+      - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     ports:

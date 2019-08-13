@@ -3,12 +3,14 @@ package admin
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/CMSgov/bcda-app/ssas/service"
-	"github.com/go-chi/chi"
-	"github.com/pborman/uuid"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
+
+	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
 func createGroup(w http.ResponseWriter, r *http.Request) {

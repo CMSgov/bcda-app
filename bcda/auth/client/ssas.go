@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,6 +23,11 @@ var ssasLogger *logrus.Logger
 type SSASClient struct {
 	http.Client
 	baseURL string
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
 }
 
 func init() {
@@ -63,9 +69,9 @@ func NewSSASClient() (*SSASClient, error) {
 		return nil, errors.New("SSAS client could not be created: no URL provided")
 	}
 
-	client := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
+	c := http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
 
-	return &SSASClient{*client, ssasURL}, nil
+	return &SSASClient{c, ssasURL}, nil
 }
 
 func tlsTransport() (*http.Transport, error) {
@@ -142,6 +148,7 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 	return nil
 }
 
+// RevokeAccessToken DELETEs to the public SSAS /token endpoint to revoke the token
 func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
 	if err != nil {
@@ -159,4 +166,69 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 	}
 
 	return nil
+}
+
+// GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
+func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
+	public := os.Getenv("SSAS_PUBLIC_URL")
+	url := fmt.Sprintf("%s/token", public)
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "bad request structure")
+	}
+
+	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
+	req.Header.Add("Accept", "application/json")
+
+	resp, err := client().Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "token request failed")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token request failed; %v", resp.StatusCode)
+	}
+
+	var t = TokenResponse{}
+	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
+		return nil, errors.Wrap(err, "could not decode token response")
+	}
+
+	return []byte(t.AccessToken), nil
+}
+
+// VerifyPublicToken verifies that the tokenString presented was issued by the public server. It does so using
+// the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
+func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
+	public := os.Getenv("SSAS_PUBLIC_URL")
+	url := fmt.Sprintf("%s/introspect", public)
+	body := strings.NewReader(`"token="` + tokenString + `""`)
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, errors.Wrap(err, "bad request structure")
+	}
+
+	// TODO assuming auth is by self-management
+	req.SetBasicAuth(os.Getenv("BCDA_SSAS_CLIENT_ID"), os.Getenv("BCDA_SSAS_SECRET"))
+	req.Header.Add("Accept", "application/json")
+
+	resp, err := client().Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "introspect request failed")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("introspect request failed; %v", resp.StatusCode)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not read introspect response")
+	}
+
+	return b, nil
 }
