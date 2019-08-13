@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -184,8 +184,11 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	public := os.Getenv("SSAS_PUBLIC_URL")
 	url := fmt.Sprintf("%s/introspect", public)
-	body := strings.NewReader("token="+tokenString)
-	req, err := http.NewRequest("POST", url, body)
+	body, err := json.Marshal(struct{ Token string `json:"token"` }{Token: tokenString})
+	if err != nil {
+		return nil, errors.Wrap(err, "bad request structure")
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "bad request structure")
 	}

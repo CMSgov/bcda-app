@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -147,7 +148,7 @@ func (s *SSASClientTestSuite) TestGetToken() {
 		s.FailNow("Failed to create SSAS client", err.Error())
 	}
 
-	respKey, err := client.GetToken(authclient.Credentials{ClientID:"happy", ClientSecret:"client"})
+	respKey, err := client.GetToken(authclient.Credentials{ClientID: "happy", ClientSecret: "client"})
 	if err != nil {
 		s.FailNow("Failed to get token", err.Error())
 	}
@@ -159,9 +160,26 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 	const tokenString = "totallyfake.tokenstringfor.testing"
 	router := chi.NewRouter()
 	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
-		b := []byte(`{"cid":"12345", "active":true, "scp":"bcda-api", "exp":99999999, "iat":99991000, "tid":"98765"}`)
-		if _, err := w.Write(b);  err != nil {
-			log.Fatal(err)
+		var (
+			buf   []byte
+			input struct{ Token string `json:"token"` }
+		)
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			s.FailNow("unexpected failure %s", err.Error())
+		}
+
+		if err := json.Unmarshal(buf, &input); err != nil {
+			s.FailNow("unexpected failure %s", err.Error())
+		}
+
+		body, err := json.Marshal(struct{ Active bool `json:"active"` }{Active: true})
+		if err != nil {
+			s.FailNow("Invalid response in mock ssas server")
+		}
+
+		if _, err := w.Write(body); err != nil {
+			s.FailNow("Write failure in mock ssas server; %s", err)
 		}
 	})
 	server := httptest.NewServer(router)
@@ -175,6 +193,7 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
+	assert.Equal(s.T(), os.Getenv("SSAS_PUBLIC_URL"), server.URL)
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -183,7 +202,7 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 
 	b, err := client.VerifyPublicToken(tokenString)
 	if err != nil {
-		s.FailNow("bad stuff", err.Error())
+		s.FailNow("unexpected failure", err.Error())
 	}
 
 	var ir map[string]interface{}
@@ -191,9 +210,7 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 		s.FailNow("could not understand response", err.Error())
 	}
 
-	assert.Equal(s.T(), int64(99999999), int64(ir["exp"].(float64)))
 	assert.True(s.T(), ir["active"].(bool))
-	assert.Equal(s.T(), "12345", ir["cid"])
 }
 
 func TestSSASClientTestSuite(t *testing.T) {
