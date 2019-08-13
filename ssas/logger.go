@@ -120,6 +120,11 @@ func BlacklistedTokenPresented(data Event) {
 	mergeNonEmpty(data).WithField("Event", "BlacklistedTokenPresented").Print(data.Help)
 }
 
+// CacheSyncFailure is called when an in-memory cache cannot be refreshed from the database
+func CacheSyncFailure(data Event) {
+	mergeNonEmpty(data).WithField("Event", "CacheSyncFailure").Print(data.Help)
+}
+
 // AuthorizationFailure should be called by middleware to record token or credential issues
 func AuthorizationFailure(data Event) {
 	mergeNonEmpty(data).WithField("Event", "AuthorizationFailure").Print(data.Help)

@@ -52,7 +52,9 @@ func (s *TokenCacheTestSuite) TestLoadFromDatabaseEmpty() {
 	}
 	assert.Len(s.T(), s.t.c.Items(), 0)
 
-	s.t.BlacklistToken(key, expiration)
+	if err := s.t.BlacklistToken(key, expiration); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
 
 	s.db.Unscoped().Find(&blackListEntries)
 	assert.Len(s.T(), blackListEntries, 1)

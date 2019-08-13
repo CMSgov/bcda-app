@@ -36,23 +36,28 @@ func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Bl
 	event := ssas.Event{Op: "InitBlacklist", TrackingID: trackingID}
 	ssas.OperationStarted(event)
 
-	bl := Blacklist{}
+	bl := Blacklist{ID: trackingID}
 	bl.c = cache.New(cacheTimeout, cleanupInterval)
 
 	if err := bl.LoadFromDatabase(); err != nil {
 		event.Help = "unable to load blacklist from database: " + err.Error()
 		ssas.OperationFailed(event)
+		// Log this failure, but allow the cache to operate.  It's conceivable the next cache refresh will work.
+		// Any alerts should be based on the error logged in BlackList.LoadFromDatabase().
+	} else
+	{
+		ssas.OperationSucceeded(event)
 	}
 
 	cacheRefreshTicker = bl.startCacheRefreshTicker(cacheRefreshFreq)
 
-	ssas.OperationSucceeded(event)
 	TokenBlacklist = bl
 	return &bl
 }
 
 type Blacklist struct {
-	c *cache.Cache
+	c 	*cache.Cache
+	ID	string
 }
 
 //	BlacklistToken invalidates the specified tokenID
@@ -75,7 +80,7 @@ func (t *Blacklist) BlacklistToken(tokenID string, blacklistExpiration time.Dura
 //	- This queries the cache only, so if a tokenID has been blacklisted on a different instance, it will return "false"
 //		until the cached blacklist is refreshed from the database.
 func (t *Blacklist) IsTokenBlacklisted(tokenID string) bool {
-	bEvent := ssas.Event{Op: "TokenVerification", TrackingID: tokenID, TokenID: tokenID}
+	bEvent := ssas.Event{Op: "TokenVerification", TrackingID: t.ID, TokenID: tokenID}
 	if _, found := t.c.Get(tokenID); found {
 		ssas.BlacklistedTokenPresented(bEvent)
 		return true
@@ -91,6 +96,7 @@ func (t *Blacklist) LoadFromDatabase() error {
 	)
 
 	if entries, err = ssas.GetUnexpiredBlacklistEntries(); err != nil {
+		ssas.CacheSyncFailure(ssas.Event{Op: "BlacklistLoadFromDatabase", TrackingID: t.ID, Help: err.Error()})
 		return err
 	}
 
@@ -105,8 +111,7 @@ func (t *Blacklist) LoadFromDatabase() error {
 }
 
 func (t *Blacklist) startCacheRefreshTicker(refreshFreq time.Duration) *time.Ticker {
-	trackingID := uuid.NewRandom().String()
-	event := ssas.Event{Op: "CacheRefreshTicker", TrackingID: trackingID}
+	event := ssas.Event{Op: "CacheRefreshTicker", TrackingID: t.ID}
 	ssas.ServiceStarted(event)
 
 	ticker := time.NewTicker(refreshFreq)
