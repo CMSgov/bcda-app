@@ -185,7 +185,7 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BCDA-CMSID", cmsID)
 
 	if utils.FromEnv("ENABLE_PLAINTEXT_HICN", "false") == "true" {
-		req.Header.Add("IncludeIdentifiers","true")
+		req.Header.Add("includeIdentifiers","true")
 	}
 }
 
