@@ -99,10 +99,6 @@ type BeneDataFunc func(string, string, string) (string, error)
 func (bbc *BlueButtonClient) GetPatientData(patientID, jobID, cmsID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
-
-	if utils.FromEnv("ENABLE_PLAINTEXT_HICN", "false") == "true" {
-		params.Set("includeIdentifiers", "true")
-	}
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
@@ -187,6 +183,10 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BlueButton-BackendCall", "")
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
+
+	if utils.FromEnv("ENABLE_PLAINTEXT_HICN", "false") == "true" {
+		req.Header.Add("IncludeIdentifiers","true")
+	}
 }
 
 func (bbc *BlueButtonClient) tryRequest(req *http.Request) (string, error) {
