@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -26,6 +27,7 @@ type suppressionFileMetadata struct {
 	filePath     string
 	imported     bool
 	deliveryDate time.Time
+	fileId       uint
 }
 
 const (
@@ -54,7 +56,7 @@ func ImportSuppressionDirectory(filePath string) (success, failure, skipped int,
 			log.Errorf("Failed to validate suppression file: %s", metadata)
 			failure++
 		} else {
-			if err = importSuppressionData(metadata); err != nil {
+			if err = importSuppressionData(&metadata); err != nil {
 				fmt.Printf("Failed to import suppression file: %s.\n", metadata)
 				log.Errorf("Failed to import suppression file: %s ", metadata)
 				failure++
@@ -211,7 +213,7 @@ func validate(metadata suppressionFileMetadata) error {
 	return nil
 }
 
-func importSuppressionData(metadata suppressionFileMetadata) error {
+func importSuppressionData(metadata *suppressionFileMetadata) error {
 	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, db *gorm.DB) error {
 		var (
 			hicnStart, hicnEnd                           = 0, 11
@@ -274,13 +276,14 @@ func importSuppressionData(metadata suppressionFileMetadata) error {
 		return nil
 	})
 	if err != nil {
+		updateImportStatus(metadata, constants.ImportFail)
 		return err
 	}
-
+	updateImportStatus(metadata, constants.ImportComplete)
 	return nil
 }
 
-func importSuppressionMetadata(metadata suppressionFileMetadata, importFunc func(uint, []byte, *gorm.DB) error) error {
+func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc func(uint, []byte, *gorm.DB) error) error {
 	fmt.Printf("Importing suppression file %s...\n", metadata)
 	log.Infof("Importing suppression file %s...", metadata)
 
@@ -289,8 +292,9 @@ func importSuppressionMetadata(metadata suppressionFileMetadata, importFunc func
 	)
 
 	suppressionMetaFile := &models.SuppressionFile{
-		Name:      metadata.name,
-		Timestamp: metadata.timestamp,
+		Name:         metadata.name,
+		Timestamp:    metadata.timestamp,
+		ImportStatus: constants.ImportInprog,
 	}
 
 	db := database.GetGORMDbConnection()
@@ -303,6 +307,8 @@ func importSuppressionMetadata(metadata suppressionFileMetadata, importFunc func
 		log.Error(err)
 		return err
 	}
+
+	metadata.fileId = suppressionMetaFile.ID
 
 	importStatusInterval := utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
 	importedCount := 0
@@ -399,4 +405,18 @@ func (m suppressionFileMetadata) String() string {
 		return m.filePath
 	}
 	return m.name
+}
+
+func updateImportStatus(m *suppressionFileMetadata, status string) {
+	var suppressionFile models.SuppressionFile
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	err := db.Model(&suppressionFile).Where("id = ?", m.fileId).Update("import_status", status).Error
+	if err != nil {
+		fmt.Printf("Could not update suppression file record for file: %s. \n", m)
+		err = errors.Wrapf(err, "could not update suppression file record for file: %s.", m)
+		log.Error(err)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io"
 	"io/ioutil"
 	"os"
@@ -215,7 +216,7 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	defer database.Close(db)
 	var cclfFile CCLFFile
 	// todo add a filter here to make sure the file is up to date.
-	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID,constants.ImportComplete).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
 		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
@@ -383,6 +384,7 @@ type CCLFFile struct {
 	ACOCMSID        string    `gorm:"column:aco_cms_id"`
 	Timestamp       time.Time `gorm:"not null"`
 	PerformanceYear int       `gorm:"not null"`
+	ImportStatus    string    `gorm:"column:import_status;not null"`
 }
 
 func (cclfFile *CCLFFile) Delete() error {
@@ -408,8 +410,9 @@ type CCLFBeneficiary struct {
 
 type SuppressionFile struct {
 	gorm.Model
-	Name      string    `gorm:"not null;unique"`
-	Timestamp time.Time `gorm:"not null"`
+	Name         string    `gorm:"not null;unique"`
+	Timestamp    time.Time `gorm:"not null"`
+	ImportStatus string    `gorm:"column:import_status;not null"`
 }
 
 func (suppressionFile *SuppressionFile) Delete() error {
@@ -433,7 +436,7 @@ type Suppression struct {
 	SAMHSASourceCode    string    `gorm:"type:varchar(5)"`
 	SAMHSAEffectiveDt   time.Time `gorm:"column:samhsa_effective_date"`
 	SAMHSAPrefIndicator string    `gorm:"column:samhsa_preference_indicator;type:char(1)"`
-	ACOCMSID  string    `gorm:"column:aco_cms_id;type:char(5)"`
+	ACOCMSID            string    `gorm:"column:aco_cms_id;type:char(5)"`
 	BeneficiaryLinkKey  int
 }
 
