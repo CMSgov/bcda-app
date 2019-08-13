@@ -13,7 +13,11 @@ import (
 
 // Using a constant for this makes the tests more readable; any arbitrary value longer than the test execution time
 // should work
-const expiration = 90*time.Minute
+var (
+	expiration = 90*time.Minute
+	timeExpired = time.Now().Add(time.Minute*-5)
+	timeNotExpired = time.Now().Add(time.Minute*5)
+)
 
 type TokenCacheTestSuite struct {
 	suite.Suite
@@ -37,17 +41,42 @@ func (s *TokenCacheTestSuite) TearDownTest() {
 	assert.Nil(s.T(), err)
 }
 
-func (s *TokenCacheTestSuite) TestLoadFromDatabaseExpired() {
-	var err error
-	entryDate := time.Now().Add(time.Minute*-5).Unix()
-	expiration := time.Now().Add(time.Minute*-5).UnixNano()
-	e1 := ssas.BlacklistEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
-	e2 := ssas.BlacklistEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
+func (s *TokenCacheTestSuite) TestLoadFromDatabaseEmpty() {
+	key := "tokenID"
 
-	if err = s.db.Save(&e1).Error; err != nil {
+	var blackListEntries []ssas.BlacklistEntry
+	s.db.Unscoped().Find(&blackListEntries)
+	assert.Len(s.T(), blackListEntries, 0)
+	if err := s.t.LoadFromDatabase(); err != nil {
 		assert.FailNow(s.T(), err.Error())
 	}
-	if err = s.db.Save(&e2).Error; err != nil {
+	assert.Len(s.T(), s.t.c.Items(), 0)
+
+	s.t.BlacklistToken(key, expiration)
+
+	s.db.Unscoped().Find(&blackListEntries)
+	assert.Len(s.T(), blackListEntries, 1)
+	if err := s.t.LoadFromDatabase(); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	assert.Len(s.T(), s.t.c.Items(), 1)
+}
+
+func (s *TokenCacheTestSuite) TestLoadFromDatabaseSomeExpired() {
+	expiredKey := "expiredKey"
+	notExpiredKey := "notExpiredKey"
+	var err error
+	entryDate := timeExpired.Unix()
+	expired := timeExpired.UnixNano()
+	notExpired := timeNotExpired.UnixNano()
+	entryExpired := ssas.BlacklistEntry{Key: expiredKey, EntryDate: entryDate, CacheExpiration: expired}
+	entryDuplicateExpired := ssas.BlacklistEntry{Key: notExpiredKey, EntryDate: entryDate, CacheExpiration: expired}
+	entryNotExpired := ssas.BlacklistEntry{Key: notExpiredKey, EntryDate: entryDate, CacheExpiration: notExpired}
+
+	if err = s.db.Save(&entryExpired).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	if err = s.db.Save(&entryDuplicateExpired).Error; err != nil {
 		assert.FailNow(s.T(), err.Error())
 	}
 
@@ -56,19 +85,27 @@ func (s *TokenCacheTestSuite) TestLoadFromDatabaseExpired() {
 	}
 
 	assert.Len(s.T(), s.t.c.Items(), 0)
-	assert.False(s.T(), s.t.IsTokenBlacklisted(e1.Key))
-	assert.False(s.T(), s.t.IsTokenBlacklisted(e2.Key))
+	assert.False(s.T(), s.t.IsTokenBlacklisted(expiredKey))
+	// This result changes after putting a new entry in the database that has not expired.
+	assert.False(s.T(), s.t.IsTokenBlacklisted(notExpiredKey))
 
-	err = s.db.Unscoped().Delete(&e1).Error
-	assert.Nil(s.T(), err)
-	err = s.db.Unscoped().Delete(&e2).Error
-	assert.Nil(s.T(), err)
+	if err = s.db.Save(&entryNotExpired).Error; err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+	if err = s.t.LoadFromDatabase(); err != nil {
+		assert.FailNow(s.T(), err.Error())
+	}
+
+	assert.Len(s.T(), s.t.c.Items(), 1)
+	assert.False(s.T(), s.t.IsTokenBlacklisted(expiredKey))
+	// The second time we check, this key is blacklisted
+	assert.True(s.T(), s.t.IsTokenBlacklisted(notExpiredKey))
 }
 
 func (s *TokenCacheTestSuite) TestLoadFromDatabase() {
 	var err error
-	entryDate := time.Now().Add(time.Minute*-5).Unix()
-	expiration := time.Now().Add(time.Minute*5).UnixNano()
+	entryDate := timeExpired.Unix()
+	expiration := timeNotExpired.UnixNano()
 	e1 := ssas.BlacklistEntry{Key: "key1", EntryDate: entryDate, CacheExpiration: expiration}
 	e2 := ssas.BlacklistEntry{Key: "key2", EntryDate: entryDate, CacheExpiration: expiration}
 
@@ -98,11 +135,6 @@ func (s *TokenCacheTestSuite) TestLoadFromDatabase() {
 	insertedDate2, ok := obj2.(int64)
 	assert.True(s.T(), ok)
 	assert.Equal(s.T(), entryDate, insertedDate2)
-
-	err = s.db.Unscoped().Delete(&e1).Error
-	assert.Nil(s.T(), err)
-	err = s.db.Unscoped().Delete(&e2).Error
-	assert.Nil(s.T(), err)
 }
 
 func (s *TokenCacheTestSuite) TestIsTokenBlacklistedTrue() {
@@ -149,8 +181,8 @@ func (s *TokenCacheTestSuite) TestStartCacheRefreshTicker() {
 	stopCacheRefreshTicker()
 
 	var err error
-	entryDate := time.Now().Add(time.Minute*-5).Unix()
-	expiration := time.Now().Add(time.Minute*5).UnixNano()
+	entryDate := timeExpired.Unix()
+	expiration := timeNotExpired.UnixNano()
 	key1 := "key1"
 	key2 := "key2"
 
@@ -177,11 +209,6 @@ func (s *TokenCacheTestSuite) TestStartCacheRefreshTicker() {
 	time.Sleep(time.Millisecond*250)
 	assert.True(s.T(), s.t.IsTokenBlacklisted(key1))
 	assert.True(s.T(), s.t.IsTokenBlacklisted(key2))
-
-	err = s.db.Unscoped().Delete(&e1).Error
-	assert.Nil(s.T(), err)
-	err = s.db.Unscoped().Delete(&e2).Error
-	assert.Nil(s.T(), err)
 }
 
 func (s *TokenCacheTestSuite) TestBlacklistTokenKeyExists() {
