@@ -54,7 +54,7 @@ type cclfFileMetadata struct {
 	filePath     string
 	imported     bool
 	deliveryDate time.Time
-	fileId       uint
+	fileID       uint
 }
 
 type cclfFileValidator struct {
@@ -269,7 +269,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		return err
 	}
 
-	fileMetadata.fileId = cclfFile.ID
+	fileMetadata.fileID = cclfFile.ID
 
 	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
 	importedCount := 0
@@ -624,7 +624,7 @@ func updateImportStatus(m *cclfFileMetadata, status string) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	err := db.Model(&cclfFile).Where("id = ?", m.fileId).Update("import_status", status).Error
+	err := db.Model(&cclfFile).Where("id = ?", m.fileID).Update("import_status", status).Error
 	if err != nil {
 		fmt.Printf("Could not update cclf file record for file: %s. \n", m)
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", m)

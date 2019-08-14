@@ -27,7 +27,7 @@ type suppressionFileMetadata struct {
 	filePath     string
 	imported     bool
 	deliveryDate time.Time
-	fileId       uint
+	fileID       uint
 }
 
 const (
@@ -308,7 +308,7 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 		return err
 	}
 
-	metadata.fileId = suppressionMetaFile.ID
+	metadata.fileID = suppressionMetaFile.ID
 
 	importStatusInterval := utils.GetEnvInt("SUPPRESS_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
 	importedCount := 0
@@ -413,7 +413,7 @@ func updateImportStatus(m *suppressionFileMetadata, status string) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	err := db.Model(&suppressionFile).Where("id = ?", m.fileId).Update("import_status", status).Error
+	err := db.Model(&suppressionFile).Where("id = ?", m.fileID).Update("import_status", status).Error
 	if err != nil {
 		fmt.Printf("Could not update suppression file record for file: %s. \n", m)
 		err = errors.Wrapf(err, "could not update suppression file record for file: %s.", m)
