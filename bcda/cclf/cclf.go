@@ -60,8 +60,6 @@ type cclfFileValidator struct {
 	maxRecordLength  int
 }
 
-const deleteThresholdHr = 8
-
 func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
 	if fileMetadata == nil {
 		fmt.Println("File CCLF0 not found.")
@@ -568,7 +566,8 @@ func cleanupCCLF(cclfmap map[string][]*cclfFileMetadata) error {
 			if !cclf.imported {
 				// check the timestamp on the failed files
 				elapsed := time.Since(cclf.deliveryDate).Hours()
-				if int(elapsed) > deleteThresholdHr {
+				deleteThreshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+				if int(elapsed) > deleteThreshold {
 					err := os.Rename(cclf.filePath, newpath)
 					if err != nil {
 						errCount++
