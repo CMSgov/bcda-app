@@ -183,7 +183,7 @@ func addRegDataContext(req *http.Request, groupID string, groupIDs []string) *ht
 }
 
 func (s *APITestSuite) TestTokenSuccess() {
-	groupID := "T0007"
+	groupID := ssas.RandomHexID()[0:4]
 	group := ssas.Group{GroupID: groupID}
 	err := s.db.Create(&group).Error
 	if err != nil {
@@ -203,7 +203,7 @@ func (s *APITestSuite) TestTokenSuccess() {
 	assert.Equal(s.T(), "Token Test", creds.ClientName)
 	assert.NotNil(s.T(), creds.ClientSecret)
 
-	_, _ = MakeServer()
+	_ = Server()
 	req := httptest.NewRequest("POST", "/token", nil)
 	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
 	req.Header.Add("Accept", "application/json")
@@ -214,6 +214,58 @@ func (s *APITestSuite) TestTokenSuccess() {
 	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
 	assert.NotEmpty(s.T(), t)
 	assert.NotEmpty(s.T(), t.AccessToken)
+
+	err = ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
+}
+
+func (s *APITestSuite) TestIntrospectSuccess() {
+	groupID := ssas.RandomHexID()[0:4]
+
+	group := ssas.Group{GroupID: groupID}
+	err := s.db.Create(&group).Error
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	_, pubKey, err := ssas.GenerateTestKeys(2048)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	pemString, err := ssas.ConvertPublicKeyToPEMString(&pubKey)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+	creds, err := ssas.RegisterSystem("Introspect Test", groupID, ssas.DefaultScope, pemString, uuid.NewRandom().String())
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "Introspect Test", creds.ClientName)
+	assert.NotNil(s.T(), creds.ClientSecret)
+
+	_ = Server()
+	req := httptest.NewRequest("POST", "/token", nil)
+	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(token)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	t := TokenResponse{}
+	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
+	assert.NotEmpty(s.T(), t)
+	assert.NotEmpty(s.T(), t.AccessToken)
+
+	body := strings.NewReader(fmt.Sprintf(`{"token":"%s"}`, t.AccessToken))
+	req = httptest.NewRequest("POST", "/introspect", body)
+	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	handler = http.HandlerFunc(introspect)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+
+	var v map[string]bool
+	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&v))
+	assert.NotEmpty(s.T(), v)
+	assert.True(s.T(), v["active"])
 
 	err = ssas.CleanDatabase(group)
 	assert.Nil(s.T(), err)
