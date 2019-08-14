@@ -60,13 +60,14 @@ echo "Importing GPG Key files"
 /usr/bin/gpg --batch --import $GPG_SEC_KEY_FILE
 /usr/bin/rpm --import $GPG_PUB_KEY_FILE
 
-SSAS_RPM="ssas-*.rpm"
+cd ../bcda
+BCDA_RPM="bcda-*.rpm"
 echo "%_signature gpg %_gpg_path $PWD %_gpg_name $GPG_RPM_USER %_gpgbin /usr/bin/gpg" > $PWD/.rpmmacros
 echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
 
-echo "Signing ssas RPM"
-echo $SSAS_RPM
-echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $SSAS_RPM
+echo "Signing bcda RPM"
+echo $BCDA_RPM
+echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $BCDA_RPM
 
 cd ../bcdaworker
 WORKER_RPM="bcdaworker-*.rpm"
@@ -77,11 +78,11 @@ echo "Signing bcdaworker RPM"
 echo $WORKER_RPM
 echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $WORKER_RPM
 
-cd ../bcda
-BCDA_RPM="bcda-*.rpm"
+cd ../ssas
+SSAS_RPM="ssas-*.rpm"
 echo "%_signature gpg %_gpg_path $PWD %_gpg_name $GPG_RPM_USER %_gpgbin /usr/bin/gpg" > $PWD/.rpmmacros
 echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
 
-echo "Signing bcda RPM"
-echo $BCDA_RPM
-echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $BCDA_RPM
+echo "Signing ssas RPM"
+echo $SSAS_RPM
+echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $SSAS_RPM
