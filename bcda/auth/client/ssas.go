@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -51,7 +51,7 @@ func NewSSASClient() (*SSASClient, error) {
 		transport = &http.Transport{}
 		err       error
 	)
-	if os.Getenv("SSAS_USE_TLS") != "false" {
+	if os.Getenv("SSAS_USE_TLS") == "true" {
 		transport, err = tlsTransport()
 		if err != nil {
 			return nil, errors.Wrap(err, "SSAS client could not be created")
@@ -180,7 +180,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 	req.Header.Add("Accept", "application/json")
 
-	resp, err := client().Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "token request failed")
 	}
@@ -204,8 +204,13 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	public := os.Getenv("SSAS_PUBLIC_URL")
 	url := fmt.Sprintf("%s/introspect", public)
-	body := strings.NewReader(`"token="` + tokenString + `""`)
-	req, err := http.NewRequest("POST", url, body)
+	body, err := json.Marshal(struct {
+		Token string `json:"token"`
+	}{Token: tokenString})
+	if err != nil {
+		return nil, errors.Wrap(err, "bad request structure")
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "bad request structure")
 	}
@@ -214,7 +219,7 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	req.SetBasicAuth(os.Getenv("BCDA_SSAS_CLIENT_ID"), os.Getenv("BCDA_SSAS_SECRET"))
 	req.Header.Add("Accept", "application/json")
 
-	resp, err := client().Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "introspect request failed")
 	}

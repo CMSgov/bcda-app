@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -58,10 +59,21 @@ func (s *SSASClientTestSuite) TestNewSSASClient_NoKeypair() {
 	os.Setenv("SSAS_URL", "http://ssas-url")
 	os.Unsetenv("SSAS_CLIENT_KEY_FILE")
 	os.Unsetenv("SSAS_CLIENT_CERT_FILE")
+
 	client, err := authclient.NewSSASClient()
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), client)
 	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
+}
+
+func (s *SSASClientTestSuite) TestNewSSASClient_NoURL() {
+	os.Unsetenv("SSAS_USE_TLS")
+	os.Unsetenv("SSAS_URL")
+
+	client, err := authclient.NewSSASClient()
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), client)
+	assert.EqualError(s.T(), err, "SSAS client could not be created: no URL provided")
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
@@ -72,6 +84,16 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), client)
 	assert.EqualError(s.T(), err, "SSAS client could not be created: no URL provided")
+}
+
+func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrueNoKey() {
+	os.Setenv("SSAS_USE_TLS", "true")
+	os.Unsetenv("SSAS_CLIENT_CERT_FILE")
+
+	client, err := authclient.NewSSASClient()
+	assert.NotNil(s.T(), err)
+	assert.Nil(s.T(), client)
+	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
 }
 
 func (s *SSASClientTestSuite) TestCreateSystem() {}
@@ -177,9 +199,30 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 	const tokenString = "totallyfake.tokenstringfor.testing"
 	router := chi.NewRouter()
 	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
-		b := []byte(`{"cid":"12345", "active":true, "scp":"bcda-api", "exp":99999999, "iat":99991000, "tid":"98765"}`)
-		if _, err := w.Write(b); err != nil {
-			log.Fatal(err)
+		var (
+			buf   []byte
+			input struct {
+				Token string `json:"token"`
+			}
+		)
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			s.FailNow("unexpected failure %s", err.Error())
+		}
+
+		if err := json.Unmarshal(buf, &input); err != nil {
+			s.FailNow("unexpected failure %s", err.Error())
+		}
+
+		body, err := json.Marshal(struct {
+			Active bool `json:"active"`
+		}{Active: true})
+		if err != nil {
+			s.FailNow("Invalid response in mock ssas server")
+		}
+
+		if _, err := w.Write(body); err != nil {
+			s.FailNow("Write failure in mock ssas server; %s", err)
 		}
 	})
 	server := httptest.NewServer(router)
@@ -195,7 +238,7 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 
 	b, err := client.VerifyPublicToken(tokenString)
 	if err != nil {
-		s.FailNow("bad stuff", err.Error())
+		s.FailNow("unexpected failure", err.Error())
 	}
 
 	var ir map[string]interface{}
@@ -203,9 +246,7 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 		s.FailNow("could not understand response", err.Error())
 	}
 
-	assert.Equal(s.T(), int64(99999999), int64(ir["exp"].(float64)))
 	assert.True(s.T(), ir["active"].(bool))
-	assert.Equal(s.T(), "12345", ir["cid"])
 }
 
 func TestSSASClientTestSuite(t *testing.T) {
