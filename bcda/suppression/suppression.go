@@ -33,7 +33,6 @@ type suppressionFileMetadata struct {
 const (
 	headerCode        = "HDR_BENEDATASHR"
 	trailerCode       = "TRL_BENEDATASHR"
-	deleteThresholdHr = 8
 )
 
 func ImportSuppressionDirectory(filePath string) (success, failure, skipped int, err error) {
@@ -357,7 +356,8 @@ func cleanupSuppression(suppresslist []suppressionFileMetadata) error {
 		if !suppressionFile.imported {
 			// check the timestamp on the failed files
 			elapsed := time.Since(suppressionFile.deliveryDate).Hours()
-			if int(elapsed) > deleteThresholdHr {
+			deleteThreshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+			if int(elapsed) > deleteThreshold {
 				err := os.Rename(suppressionFile.filePath, newpath)
 				if err != nil {
 					errCount++
