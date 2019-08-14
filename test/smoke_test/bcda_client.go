@@ -195,7 +195,7 @@ func main() {
 				for _, fileItem := range data {
 				
 					// Acquire new access token for each file download
-					accessToken = getAccessToken();
+					accessToken = getAccessToken()
 
 					fmt.Printf("fetching: %s\n", fileItem.Url)
 					download := get(fileItem.Url)
