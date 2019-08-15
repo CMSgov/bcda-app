@@ -74,6 +74,12 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
 
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
+	}
+	s.p = SSASPlugin{client: c}
+
 	creds, err := s.p.ResetSecret("1")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
@@ -149,7 +155,13 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
 
-	err := s.p.RevokeAccessToken("i.am.not.a.token")
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
+	}
+	s.p = SSASPlugin{client: c}
+
+	err = s.p.RevokeAccessToken("i.am.not.a.token")
 	assert.Nil(s.T(), err)
 }
 
