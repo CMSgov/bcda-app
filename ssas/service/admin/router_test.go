@@ -18,7 +18,15 @@ type RouterTestSuite struct {
 }
 
 func (s *RouterTestSuite) SetupTest() {
-	s.router = Routes()
+	s.router = routes()
+}
+
+func (s *RouterTestSuite) TestRevokeToken() {
+	req := httptest.NewRequest("DELETE", "/token/abc-123", nil)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestPostGroup() {
@@ -63,6 +71,7 @@ func (s *RouterTestSuite) TestPostSystem() {
 
 func (s *RouterTestSuite) TestDeactivateSystemCredentials() {
 	db := ssas.GetGORMDbConnection()
+	defer db.Close()
 	group := ssas.Group{GroupID: "delete-system-credentials-test-group"}
 	db.Create(&group)
 	system := ssas.System{GroupID: group.GroupID, ClientID: "delete-system-credentials-test-system"}
@@ -75,11 +84,13 @@ func (s *RouterTestSuite) TestDeactivateSystemCredentials() {
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 
-	_ = ssas.CleanDatabase(group)
+	err := ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
 }
 
 func (s *RouterTestSuite) TestPutSystemCredentials() {
 	db := ssas.GetGORMDbConnection()
+	defer db.Close()
 	group := ssas.Group{GroupID: "put-system-credentials-test-group"}
 	db.Create(&group)
 	system := ssas.System{GroupID: group.GroupID, ClientID: "put-system-credentials-test-system"}
@@ -92,7 +103,8 @@ func (s *RouterTestSuite) TestPutSystemCredentials() {
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusCreated, res.StatusCode)
 
-	_ = ssas.CleanDatabase(group)
+	err := ssas.CleanDatabase(group)
+	assert.Nil(s.T(), err)
 }
 
 func TestRouterTestSuite(t *testing.T) {

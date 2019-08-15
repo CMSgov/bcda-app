@@ -71,7 +71,7 @@ func empty(arr []string) bool {
 	return empty
 }
 
-func tokenValidity(tokenString string, tokenType string) error {
+func tokenValidity(tokenString string, requiredTokenType string) error {
 	tknEvent := ssas.Event{Op: "tokenValidity"}
 	ssas.OperationStarted(tknEvent)
 	t, err := server.VerifyToken(tokenString)
@@ -83,7 +83,7 @@ func tokenValidity(tokenString string, tokenType string) error {
 
 	c := t.Claims.(*service.CommonClaims)
 
-	err = checkAllClaims(c, tokenType)
+	err = checkAllClaims(c, requiredTokenType)
 	if err != nil {
 		tknEvent.Help = err.Error()
 		ssas.OperationFailed(tknEvent)
@@ -92,6 +92,13 @@ func tokenValidity(tokenString string, tokenType string) error {
 
 	err = c.Valid()
 	if err != nil {
+		tknEvent.Help = err.Error()
+		ssas.OperationFailed(tknEvent)
+		return err
+	}
+
+	if service.TokenBlacklist.IsTokenBlacklisted(c.Id) {
+		err = fmt.Errorf("token has been revoked")
 		tknEvent.Help = err.Error()
 		ssas.OperationFailed(tknEvent)
 		return err

@@ -234,7 +234,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 
 	if empty(groupIDs) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		event.Help = "no authorized groups: " + err.Error()
+		event.Help = "no authorized groups"
 		ssas.OperationFailed(event)
 		return
 	}
@@ -466,4 +466,45 @@ func token(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Pragma", "no-cache")
 
 	render.JSON(w, r, m)
+}
+
+func introspect(w http.ResponseWriter, r *http.Request) {
+	clientID, secret, ok := r.BasicAuth()
+
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	system, err := ssas.GetSystemByClientID(clientID)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	savedSecret, err := system.GetSecret()
+	if err != nil || !ssas.Hash(savedSecret).IsHashOf(secret) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	defer r.Body.Close()
+
+
+	var reqV map[string]string
+	if err = json.NewDecoder(r.Body).Decode(&reqV); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	var answer = make(map[string]bool)
+	answer["active"] = true
+	if err = tokenValidity(reqV["token"], "AccessToken"); err != nil {
+		answer["active"] = false
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	render.JSON(w, r, answer)
 }

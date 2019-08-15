@@ -50,7 +50,11 @@ func GetProvider() Provider {
 	case Okta:
 		return NewOktaAuthPlugin(client.NewOktaClient())
 	case SSAS:
-		return SSASPlugin{}
+		c, err := client.NewSSASClient()
+		if err != nil {
+			log.Fatalf("no client for SSAS; %s", err.Error())
+		}
+		return SSASPlugin{client:c}
 	default:
 		return AlphaAuthPlugin{}
 	}

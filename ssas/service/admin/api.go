@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
+
+	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
 func createGroup(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +211,21 @@ func deactivateSystemCredentials(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func revokeToken(w http.ResponseWriter, r *http.Request) {
+	tokenID := chi.URLParam(r, "tokenID")
+
+	event := ssas.Event{Op: "TokenBlacklist", TokenID: tokenID}
+	ssas.OperationCalled(event)
+
+	if err := service.TokenBlacklist.BlacklistToken(tokenID, service.TokenCacheLifetime); err != nil {
+		event.Help = err.Error()
+		ssas.OperationFailed(event)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
 	w.WriteHeader(http.StatusOK)

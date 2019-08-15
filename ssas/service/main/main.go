@@ -9,7 +9,6 @@ import (
 	"github.com/go-chi/chi"
 
 	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/CMSgov/bcda-app/ssas/service"
 	"github.com/CMSgov/bcda-app/ssas/service/admin"
 	"github.com/CMSgov/bcda-app/ssas/service/public"
 )
@@ -17,7 +16,6 @@ import (
 var startMeUp bool
 var migrateAndStart bool
 var unsafeMode bool
-var adminSigningKeyPath string
 
 func init() {
 	const usageStart = "start the service"
@@ -27,7 +25,6 @@ func init() {
 	flag.BoolVar(&migrateAndStart, "migrate", false, usageMigrate)
 	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate+" (shorthand)")
 	unsafeMode = os.Getenv("HTTP_ONLY") == "true"
-	adminSigningKeyPath = os.Getenv("SSAS_ADMIN_SIGNING_KEY_PATH")
 }
 
 func main() {
@@ -37,6 +34,7 @@ func main() {
 		if os.Getenv("DEBUG") == "true" {
 			ssas.InitializeGroupModels()
 			ssas.InitializeSystemModels()
+			ssas.InitializeBlacklistModels()
 		}
 		start()
 	}
@@ -48,24 +46,23 @@ func main() {
 func start() {
 	ssas.Logger.Infof("%s", "Starting ssas...")
 
-	ps, err := public.MakeServer()
-	if err != nil {
-		ssas.Logger.Fatalf("unable to start public server because %s", err.Error())
+	ps := public.Server()
+	if ps == nil {
+		ssas.Logger.Error("unable to create public server")
+		os.Exit(-1)
 	}
-
 	ps.LogRoutes()
 	ps.Serve()
 
-	as := service.NewServer("admin", ":3004", admin.Version, admin.InfoMap, admin.Routes(), unsafeMode)
-	// the signing key is separate from the [future] cert / private key used for https or tls or whatever
-	if err := as.SetSigningKeys(adminSigningKeyPath); err != nil {
-		ssas.Logger.Fatalf("unable to get signing key for admin server because %s; can't start", err.Error())
+	as := admin.Server()
+	if as == nil {
+		ssas.Logger.Error("unable to create admin server")
+		os.Exit(-1)
 	}
-
 	as.LogRoutes()
 	as.Serve()
 
-	// Accepts and redirects HTTP requests to HTTPS.
+	// Accepts and redirects HTTP requests to HTTPS. Not sure we should do this.
 	forwarder := &http.Server{
 		Handler:      newForwardingRouter(),
 		Addr:         ":3005",

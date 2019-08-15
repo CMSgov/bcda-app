@@ -1,12 +1,13 @@
 package public
 
 import (
-	"github.com/CMSgov/bcda-app/ssas/service"
-	"github.com/go-chi/chi"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
 type PublicTokenTestSuite struct {
@@ -17,7 +18,7 @@ type PublicTokenTestSuite struct {
 func (s *PublicTokenTestSuite) SetupSuite() {
 	info := make(map[string][]string)
 	info["public"] = []string{"token", "register"}
-	s.server = service.NewServer("test-server", ":9999", "9.99.999", info, chi.NewRouter(), true)
+	s.server = Server()
 	err := os.Setenv("DEBUG", "true")
 	assert.Nil(s.T(), err)
 }

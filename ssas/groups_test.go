@@ -200,7 +200,6 @@ func (s *GroupsTestSuite) TestGetAuthorizedGroupsForOktaID() {
 		s.FailNow(err.Error())
 	}
 	if len(authorizedGroups) != 2 {
-		fmt.Println("authorizedGroups:", authorizedGroups)
 		s.FailNow("oktaID should be authorized for exactly two groups")
 	}
 	assert.Equal(s.T(), "T0001", authorizedGroups[0])
