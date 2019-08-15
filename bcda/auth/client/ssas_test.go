@@ -144,6 +144,7 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 	}
 
 	resp, err := client.ResetCredentials("1")
+	fmt.Println(string(resp))
 	assert.Nil(s.T(), err)
 	creds := auth.Credentials{}
 	err = json.Unmarshal(resp, &creds)
