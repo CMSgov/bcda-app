@@ -178,12 +178,6 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
-	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
-	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
