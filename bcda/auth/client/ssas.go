@@ -127,22 +127,22 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to delete credentials")
+		return nil, errors.Wrap(err, "failed to reset credentials")
 	}
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to delete credentials")
+		return nil, errors.Wrap(err, "failed to reset credentials")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, errors.New(fmt.Sprintf("failed to delete credentials. status code: %v", resp.StatusCode))
+		return nil, errors.New(fmt.Sprintf("failed to reset credentials. status code: %v", resp.StatusCode))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to delete credentials")
+		return nil, errors.Wrap(err, "failed to reset credentials")
 	}
 
 	return body, nil
