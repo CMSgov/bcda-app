@@ -3,12 +3,10 @@ package service
 import (
 	"crypto/rsa"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -20,7 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/ssas/cfg"
 )
 
-// A Server defines the configuration of an SSAS server
+// Server configures and provisions an SSAS server
 type Server struct {
 	name string
 	// port server is running on; must have leading :, as in ":3000"
@@ -28,71 +26,78 @@ type Server struct {
 	// version of code running this server
 	version string
 	// info contains json metadata about server
-	info   interface{}
+	info interface{}
+	// router associates handlers to server endpoints
 	router chi.Router
-	// when true, not running in http mode   // TODO set this from HTTP_ONLY envv
-	notSecure         bool
-	srvr              http.Server
-	privateSigningKey *rsa.PrivateKey
-	tokenTTL          time.Duration
+	// notSecure flag; when true, not running in https mode   // TODO set this from HTTP_ONLY envv
+	notSecure       bool
+	tokenSigningKey *rsa.PrivateKey
+	tokenTTL        time.Duration
+	server          http.Server
 }
 
-// NewServer initializes an instance of the Server type. Subsequent to initialization, a signing key
-// must be assigned to the server.
-func NewServer(name, port, version string, info interface{}, routes *chi.Mux, notSecure bool) *Server {
+// NewServer correctly initializes an instance of the Server type.
+func NewServer(name, port, version string, info interface{}, routes *chi.Mux, notSecure bool, signingKeyPath string, ttl time.Duration) *Server {
+	sk, err := getPrivateKey(signingKeyPath);
+	if err != nil {
+		msg := fmt.Sprintf("bad signing key; path %s; %v", signingKeyPath, err)
+		ssas.Logger.Info(msg)
+		return nil
+	}
+
 	s := Server{}
 	s.name = name
 	s.port = port
 	s.version = version
 	s.info = info
 	s.router = s.newBaseRouter()
-	s.router.Mount("/", routes)
+	if routes != nil {
+		s.router.Mount("/", routes)
+	}
 	s.notSecure = notSecure
-	s.srvr = http.Server{
+	s.tokenSigningKey = sk
+	s.tokenTTL = ttl
+	s.server = http.Server{
 		Handler:      s.router,
 		Addr:         s.port,
 		ReadTimeout:  time.Duration(cfg.GetEnvInt("SSAS_READ_TIMEOUT", 10)) * time.Second,
 		WriteTimeout: time.Duration(cfg.GetEnvInt("SSAS_WRITE_TIMEOUT", 20)) * time.Second,
 		IdleTimeout:  time.Duration(cfg.GetEnvInt("SSAS_IDLE_TIMEOUT", 120)) * time.Second,
 	}
-	s.initTokenDuration()
+
 	return &s
 }
 
-// SetSigningKeys sets the RSA key pair to be used by this server for signing tokens
-func (s *Server) SetSigningKeys(privateKeyPath string) error {
-	var err error
-	if s.privateSigningKey, err = getPrivateKey(privateKeyPath); err != nil {
-		msg := fmt.Sprintf("bad signing key;fpath %s; %v", privateKeyPath, err)
-		ssas.Logger.Info(msg)
-		return errors.New(msg)
+func (s *Server) ListRoutes() ([]string, error) {
+	var routes []string
+	walker := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		routes = append(routes, fmt.Sprintf("%s %s", method, route))
+		return nil
 	}
-	return nil
+	err := chi.Walk(s.router, walker)
+	return routes, err
 }
 
 // LogRoutes reports the routes supported by this server to the active log. Code is based on an example
 // from https://itnext.io/structuring-a-production-grade-rest-api-in-golang-c0229b3feedc
 func (s *Server) LogRoutes() {
-	routes := fmt.Sprintf("Routes for %s at port %s: ", s.name, s.port)
-	walker := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		routes = fmt.Sprintf("%s %s %s, ", routes, method, route)
-		return nil
+	banner := fmt.Sprintf("Routes for %s at port %s: ", s.name, s.port)
+	routes, err := s.ListRoutes()
+	if err != nil {
+		ssas.Logger.Infof("%s routing error: %v", banner, err)
 	}
-	if err := chi.Walk(s.router, walker); err != nil {
-		ssas.Logger.Fatalf("bad route: %s", err.Error())
-	}
-	ssas.Logger.Infof(routes)
+	ssas.Logger.Infof("%s %v", banner, routes)
 }
 
 // Serve starts the server listening for and responding to requests.
 func (s *Server) Serve() {
 	if s.notSecure {
 		ssas.Logger.Infof("starting %s server running UNSAFE http only mode; do not do this in production environments", s.name)
-		go func() { log.Fatal(s.srvr.ListenAndServe()) }()
+		go func() { log.Fatal(s.server.ListenAndServe()) }()
 	} else {
-		tlsCertPath := os.Getenv("BCDA_TLS_CERT") // borrowing for now; we need to get our own
+		tlsCertPath := os.Getenv("BCDA_TLS_CERT") // borrowing for now; we need to get our own (for both servers?)
 		tlsKeyPath := os.Getenv("BCDA_TLS_KEY")
-		go func() { log.Fatal(s.srvr.ListenAndServeTLS(tlsCertPath, tlsKeyPath)) }()
+		go func() { log.Fatal(s.server.ListenAndServeTLS(tlsCertPath, tlsKeyPath)) }()
 	}
 }
 
@@ -131,7 +136,7 @@ func (s *Server) getHealthCheck(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, m)
 }
 
-// is this the right health check for this service? the db could be up but the service down
+// is this the right health check for a service? the db could be up but the service down
 // is there any condition under which the server could be running but become invalid?
 // is there any circumstance where the server could be partially disabled? (e.g., unable to sign tokens but still running)
 // could less than 3 servers be running?
@@ -139,6 +144,7 @@ func (s *Server) getHealthCheck(w http.ResponseWriter, r *http.Request) {
 func doHealthCheck() bool {
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
+		// TODO health check failed event
 		ssas.Logger.Error("health check: database connection error: ", err.Error())
 		return false
 	}
@@ -158,7 +164,7 @@ func doHealthCheck() bool {
 }
 
 // This method gets the private key from the file system. Given that the server is completely unable to fulfill its
-// purpose without a signing key, it will panic and bubble up an error if the file is not present or not readable.
+// purpose without a signing key, a server should be considered invalid if it this function returns an error.
 func getPrivateKey(keyPath string) (*rsa.PrivateKey, error) {
 	keyData, err := ssas.ReadPEMFile(keyPath)
 	if err != nil {
@@ -167,22 +173,20 @@ func getPrivateKey(keyPath string) (*rsa.PrivateKey, error) {
 	return ssas.ReadPrivateKey(keyData)
 }
 
-// NYI provides a convenient handler for endpoints that are not yet implemented
+// NYI provides a convenience handler for endpoints that are not yet implemented
 func NYI(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string]string)
 	response["msg"] = "Not Yet Implemented"
 	render.JSON(w, r, response)
 }
 
-// ConnectionClose provides a convenience function for closing http.Handlers
+// ConnectionClose provides a convenience handler for closing the http connection
 func ConnectionClose(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "close")
 		next.ServeHTTP(w, r)
 	})
 }
-
-var ttlScale = time.Minute
 
 // CommonClaims contains the superset of claims that may be found in the token
 type CommonClaims struct {
@@ -217,8 +221,9 @@ func (s *Server) mintToken(claims CommonClaims, issuedAt int64, expiresAt int64)
 	claims.UUID = tokenID
 	claims.IssuedAt = issuedAt
 	claims.ExpiresAt = expiresAt
+	claims.Id = tokenID
 	token.Claims = claims
-	var signedString, err = token.SignedString(s.privateSigningKey)
+	var signedString, err = token.SignedString(s.tokenSigningKey)
 	if err != nil {
 		ssas.TokenMintingFailure(ssas.Event{TokenID: tokenID})
 		ssas.Logger.Errorf("token signing error %s", err)
@@ -232,30 +237,13 @@ func newTokenID() string {
 	return uuid.NewRandom().String()
 }
 
-// initTokenDuration sets (again) the tokenTTL from the JWT_EXPIRATION_DELTA environment variable. This function
-// should only be used for initialization or testing; we don't support changing the ttl during runtime
-func (s *Server) initTokenDuration() {
-	s.tokenTTL = time.Hour
-	if ttl := os.Getenv("SSAS_TOKEN_TTL_IN_MINUTES"); ttl != "" {
-		var (
-			n   int
-			err error
-		)
-		if n, err = strconv.Atoi(ttl); err == nil {
-			s.tokenTTL = ttlScale * time.Duration(n)
-			ssas.Logger.Infof("set token duration from env var value %s", ttl)
-		}
-	}
-	ssas.Logger.Infof("Token ttl is %d minutes", s.tokenTTL/ttlScale)
-}
-
 func (s *Server) VerifyToken(tokenString string) (*jwt.Token, error) {
 
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return &s.privateSigningKey.PublicKey, nil
+		return &s.tokenSigningKey.PublicKey, nil
 	}
 
 	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)
@@ -270,8 +258,9 @@ func (s *Server) CheckRequiredClaims(claims *CommonClaims, RequiredTokenType str
 	}
 
 	if RequiredTokenType != claims.TokenType {
-		return fmt.Errorf("wrong token type: " + claims.TokenType)
+		return fmt.Errorf(fmt.Sprintf("wrong token type: %s; required type: %s", claims.TokenType, RequiredTokenType))
 	}
 
 	return nil
 }
+

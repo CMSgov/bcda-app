@@ -184,6 +184,14 @@
   version = "v2.1.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:192ae5ee10b592d53a75b5513986dc4d322652d06bdb7eebcb768b842a309213"
+  name = "github.com/patrickmn/go-cache"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5633e0862627c011927fa39556acae8b1f1df58a"
+
+[[projects]]
   digest = "1:8aa28c7fb16a7b9afb08568f21f06aa869f18e3637f6f024413e45c2e211072b"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -377,6 +385,7 @@
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
+    "github.com/patrickmn/go-cache",
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
