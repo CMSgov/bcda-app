@@ -145,7 +145,7 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to delete credentials")
 	}
 
-	return []byte(body), nil
+	return body, nil
 
 }
 
