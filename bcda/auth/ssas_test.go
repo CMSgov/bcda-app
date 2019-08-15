@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +62,23 @@ func (s *SSASPluginTestSuite) TestUpdateSystem() {}
 
 func (s *SSASPluginTestSuite) TestDeleteSystem() {}
 
-func (s *SSASPluginTestSuite) TestResetSecret() {}
+func (s *SSASPluginTestSuite) TestResetSecret() {
+	router := chi.NewRouter()
+	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, "fake-client-id", "fake-secret")
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	creds, err := s.p.ResetSecret("1")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
+}
 
 func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {}
 
