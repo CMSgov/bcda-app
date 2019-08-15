@@ -89,6 +89,7 @@ func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 	passwordEvent := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingId}
 	ssas.OperationStarted(passwordEvent)
 
+	// Look up Okta ID for logging purposes
 	oktaUserID, err := o.getUser(userIdentifier, trackingId)
 	if err != nil {
 		passwordEvent.Help = "matching user not found: " + err.Error()
@@ -96,9 +97,9 @@ func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 		err = errors.New(passwordEvent.Help)
 		return
 	}
-
 	passwordEvent.UserID = oktaUserID
-	passwordResponse, err := o.postPassword(oktaUserID, password, trackingId)
+
+	passwordResponse, err := o.postPassword(userIdentifier, password, trackingId)
 	if err != nil {
 		passwordEvent.Help = "error validating factor passcode: " + err.Error()
 		ssas.OperationFailed(passwordEvent)

@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/dgrijalva/jwt-go"
-
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/dgrijalva/jwt-go"
 )
 
 // SSASPlugin is an implementation of Provider that uses the SSAS API.
@@ -54,7 +53,13 @@ func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
 
 // RevokeAccessToken revokes a specific access token identified in a base64-encoded token string.
 func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
-	return errors.New("not yet implemented")
+	err := s.client.RevokeAccessToken(tokenString)
+	if err != nil {
+		logger.Errorf("Failed to revoke token; %s", err.Error())
+		return err
+	}
+
+	return nil
 }
 
 // AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API.
@@ -77,6 +82,6 @@ func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 		return nil, errors.New("inactive token")
 	}
 	parser := jwt.Parser{}
-	token, _, err := parser.ParseUnverified( tokenString, &CommonClaims{})
+	token, _, err := parser.ParseUnverified(tokenString, &CommonClaims{})
 	return token, err
 }

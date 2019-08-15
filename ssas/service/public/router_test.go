@@ -48,8 +48,9 @@ func (s *PublicRouterTestSuite) SetupSuite() {
 	}
 }
 
-func (s *PublicRouterTestSuite) TearDownTestSuite() {
-	s.db.Unscoped().Delete(&s.group)
+func (s *PublicRouterTestSuite) TearDownSuite() {
+	err := ssas.CleanDatabase(s.group)
+	assert.Nil(s.T(), err)
 	ssas.Close(s.db)
 }
 
@@ -136,6 +137,6 @@ func (s *PublicRouterTestSuite) TestAuthnVerifyRouteNoToken() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
-func TestAuthRouterTestSuite(t *testing.T) {
+func TestPublicRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(PublicRouterTestSuite))
 }

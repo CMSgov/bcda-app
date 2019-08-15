@@ -148,6 +148,26 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 	return nil
 }
 
+// RevokeAccessToken DELETEs to the public SSAS /token endpoint to revoke the token
+func (c *SSASClient) RevokeAccessToken(tokenID string) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
+	if err != nil {
+		return errors.Wrap(err, "bad request structure")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed to revoke token")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to revoke token; %v", resp.StatusCode)
+	}
+
+	return nil
+}
+
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
 func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	public := os.Getenv("SSAS_PUBLIC_URL")
@@ -184,7 +204,9 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	public := os.Getenv("SSAS_PUBLIC_URL")
 	url := fmt.Sprintf("%s/introspect", public)
-	body, err := json.Marshal(struct{ Token string `json:"token"` }{Token: tokenString})
+	body, err := json.Marshal(struct {
+		Token string `json:"token"`
+	}{Token: tokenString})
 	if err != nil {
 		return nil, errors.Wrap(err, "bad request structure")
 	}

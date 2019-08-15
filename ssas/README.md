@@ -71,7 +71,9 @@ Required values must be present in the docker-compose.*.yml files.
 | SSAS_IDLE_TIMEOUT    | No       | Sets the idle timeout on |
 | SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | Provides the location of the admin server signing key |
 | SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | Provides the location of the public server signing key |
-
+| SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES | No | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
+| SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES | No | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours.
+| SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES | No | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
 
 # Build
 

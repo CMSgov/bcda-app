@@ -20,6 +20,14 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
+var (
+	origSSASURL            string
+	origPublicURL          string
+	origSSASUseTLS         string
+	origSSASClientKeyFile  string
+	origSSASClientCertFile string
+)
+
 type SSASPluginTestSuite struct {
 	suite.Suite
 	p SSASPlugin
@@ -31,6 +39,22 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
 	s.p = SSASPlugin{client:c}
+}
+
+func (s *SSASPluginTestSuite) BeforeTest() {
+	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
+	origSSASURL = os.Getenv("SSAS_URL")
+	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
+	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
+	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
+}
+
+func (s *SSASPluginTestSuite) AfterTest() {
+	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", origSSASURL)
+	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
+	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem() {}
@@ -64,12 +88,6 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
-	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
-	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
@@ -105,7 +123,20 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	assert.Contains(s.T(), err.Error(), "401")
 }
 
-func (s *SSASPluginTestSuite) TestRevokeAccessToken() {}
+func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
+	router := chi.NewRouter()
+	router.Delete("/token/{tokenID}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	err := s.p.RevokeAccessToken("i.am.not.a.token")
+	assert.Nil(s.T(), err)
+}
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccess() {}
 

@@ -20,8 +20,9 @@ func init() {
 	adminSigningKeyPath = os.Getenv("SSAS_ADMIN_SIGNING_KEY_PATH")
 }
 
+// Server creates an SSAS admin server
 func Server() *service.Server {
-	server = service.NewServer("admin", ":3004", version, infoMap, routes(), true, adminSigningKeyPath, 20 * time.Minute)
+	server = service.NewServer("admin", ":3004", version, infoMap, routes(), true, adminSigningKeyPath, 20*time.Minute)
 	if server != nil {
 		r, _ := server.ListRoutes()
 		infoMap["banner"] = []string{fmt.Sprintf("%s server running on port %s", "admin", ":3004")}
@@ -40,5 +41,6 @@ func routes() *chi.Mux {
 	r.Put("/system/{systemID}/credentials", resetCredentials)
 	r.Get("/system/{systemID}/key", getPublicKey)
 	r.Delete("/system/{systemID}/credentials", deactivateSystemCredentials)
+	r.Delete("/token/{tokenID}", revokeToken)
 	return r
 }
