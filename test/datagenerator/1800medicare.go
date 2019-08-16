@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -27,15 +28,18 @@ type record struct {
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
+	now := time.Now()
 
 	// 1-800-MEDICARE filename format: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
-	fileName := fmt.Sprintf("P#EFT.ON.ACO.NGD1800.DPRF.%s", time.Now().Format("D060102.T0304050"))
+	fileName := fmt.Sprintf("P#EFT.ON.ACO.NGD1800.DPRF.%s", now.Format("D060102.T0304050"))
 	outf, err := os.Create(fileName)
 	if err != nil {
 		panic(err)
 	}
 
-	for _, acoID := range []string{"A9990", "A9991", "A9992", "A9993", "A9994"} {
+	outf.WriteString(fmt.Sprintf("HDR_BENEDATASHR%s\n", now.Format("20060102")))
+
+	for _, acoID := range []string{ /*"A9990", "A9991", "A9992", "A9993", */ "A9994"} {
 		inf, err := os.Open(fmt.Sprintf("%s-HICNs", acoID))
 		if err != nil {
 			panic(err)
@@ -66,33 +70,27 @@ func main() {
 	outf.Close()
 }
 
-func ccyymmdd(min, max time.Time) string {
-	diffHrs := max.Sub(min).Hours()
-	dt := min.Add(time.Duration(rand.Float64()*diffHrs) * time.Hour)
-	return dt.Format("2006-01-02")
-}
-
 func profile(hicn string, acoID string) record {
 	dobMin, _ := time.Parse("2006-01-02", "1900-01-01")
 	dobMax := time.Now().Add(-65 * 365 * 24 * time.Hour)
 
 	p := record{
-		hicn:       field{l: 11, v: hicn},                    // HICN
-		blk:        field{l: 10},                             // Beneficiary link key
-		firstName:  field{l: 30, v: "First"},                 // Beneficiary first name
-		middleName: field{l: 30},                             // Beneficiary middle name
-		lastName:   field{l: 40, v: "Last"},                  // Beneficiary last name
-		dob:        field{l: 8, v: ccyymmdd(dobMin, dobMax)}, // Beneficiary date of birth
-		addr1:      field{l: 55, v: "1 Main St."},            // Beneficiary address line 1
-		addr2:      field{l: 55},                             // Beneficiary address line 2
-		addr3:      field{l: 55},                             // Beneficiary address line 3
-		city:       field{l: 40, v: "City"},                  // Beneficiary city
-		state:      field{l: 2, v: "ST"},                     // Beneficiary state
-		zip5:       field{l: 5, v: "00000"},                  // Beneficiary first five digits of ZIP code
-		zip4:       field{l: 4},                              // Beneficiary last four digits of ZIP code
-		gender:     field{l: 1, v: randStr("M", "F", "U")},   // Beneficiary gender
-		acoID:      field{l: 5, v: acoID},                    // ACO identifier
-		acoName:    field{l: 70},                             // ACO legal name
+		hicn:       field{l: 11, v: hicn},                     // HICN
+		blk:        field{l: 10},                              // Beneficiary link key
+		firstName:  field{l: 30, v: randWord(1, 30)},          // Beneficiary first name
+		middleName: field{l: 30},                              // Beneficiary middle name
+		lastName:   field{l: 40, v: randWord(1, 30)},          // Beneficiary last name
+		dob:        field{l: 8, v: ccyymmdd(dobMin, dobMax)},  // Beneficiary date of birth
+		addr1:      field{l: 55, v: addr1()},                  // Beneficiary address line 1
+		addr2:      field{l: 55},                              // Beneficiary address line 2
+		addr3:      field{l: 55},                              // Beneficiary address line 3
+		city:       field{l: 40, v: randWord(1, 40)},          // Beneficiary city
+		state:      field{l: 2, v: "ST"},                      // Beneficiary state
+		zip5:       field{l: 5, v: "00000"},                   // Beneficiary first five digits of ZIP code
+		zip4:       field{l: 4},                               // Beneficiary last four digits of ZIP code
+		gender:     field{l: 1, v: oneOfStr("M", "F", "U")},   // Beneficiary gender
+		acoID:      field{l: 5, v: acoID},                     // ACO identifier
+		acoName:    field{l: 70, v: randWord(1, 66) + " ACO"}, // ACO legal name
 	}
 
 	return p
@@ -109,13 +107,13 @@ func records(profile record) []record {
 		r := profile
 		r.encDate = field{l: 8, v: ccyymmdd(encDtMin, encDtMax)} // Encounter date
 		r.effDate = field{l: 8, v: ccyymmdd(effDtMin, effDtMax)} // Beneficiary data sharing effective date
-		r.srcCode = field{l: 5}                                  // Beneficiary data sharing source code
-		r.mechCode = field{l: 1}                                 // Beneficiary option data sharing decision mechanism code
-		r.prefInd = field{l: 1, v: randStr("Y", "N", "")}        // Beneficiary data sharing preference indicator
+		r.srcCode = field{l: 5, v: oneOfStr("1800", "")}         // Beneficiary data sharing source code
+		r.mechCode = field{l: 1, v: oneOfStr("T", "")}           // Beneficiary option data sharing decision mechanism code
+		r.prefInd = field{l: 1, v: oneOfStr("Y", "N", "")}       // Beneficiary data sharing preference indicator
 		r.saEffDate = field{l: 8}                                // Beneficiary substance abuse data sharing effective date
-		r.saSrcCode = field{l: 5}                                // Beneficiary substance abuse data sharing source code
-		r.saMechCode = field{l: 1}                               // Beneficiary option substance abuse decision mechanism code
-		r.saPrefInd = field{l: 1, v: randStr("N", "")}           // Beneficiary substance abuse data sharing preference indicator
+		r.saSrcCode = field{l: 5, v: oneOfStr("1-800", "")}      // Beneficiary substance abuse data sharing source code
+		r.saMechCode = field{l: 1, v: oneOfStr("T", "")}         // Beneficiary option substance abuse decision mechanism code
+		r.saPrefInd = field{l: 1, v: oneOfStr("N", "")}          // Beneficiary substance abuse data sharing preference indicator
 
 		records = append(records, r)
 	}
@@ -123,6 +121,26 @@ func records(profile record) []record {
 	return records
 }
 
-func randStr(strs ...string) string {
+func ccyymmdd(min, max time.Time) string {
+	diffHrs := max.Sub(min).Hours()
+	dt := min.Add(time.Duration(rand.Float64()*diffHrs) * time.Hour)
+	return dt.Format("20060102")
+}
+
+func oneOfStr(strs ...string) string {
 	return strs[rand.Intn(len(strs))]
+}
+
+func randWord(minLen, maxLen int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz"
+	l := rand.Intn(maxLen-minLen) + minLen
+	w := ""
+	for i := 0; i < l; i++ {
+		w = w + string(letters[rand.Intn(len(letters))])
+	}
+	return strings.Title(w)
+}
+
+func addr1() string {
+	return fmt.Sprintf("%d %s %s", rand.Intn(50000), randWord(1, 44), oneOfStr("St", "Ave", "Dr", "Blvd", "Way"))
 }
