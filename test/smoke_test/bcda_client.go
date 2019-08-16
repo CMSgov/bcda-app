@@ -165,8 +165,12 @@ func main() {
 
 			fmt.Println("checking job status...")
 			status := get(result.Header["Content-Location"][0])
-
-			if status.StatusCode == 200 {
+	
+			// Acquire new token if the current token has expired
+			if status.StatusCode  == 401 {
+				fmt.Println("acquire new token...")
+				accessToken  = getAccessToken() 
+			} else if status.StatusCode == 200 {
 				fmt.Println("file is ready for download...")
 
 				defer status.Body.Close()
@@ -189,6 +193,10 @@ func main() {
 				}
 
 				for _, fileItem := range data {
+				
+					// Acquire new access token for each file download
+					accessToken = getAccessToken()
+
 					fmt.Printf("fetching: %s\n", fileItem.Url)
 					download := get(fileItem.Url)
 					if download.StatusCode == 200 {
@@ -207,7 +215,7 @@ func main() {
 						}
 
 						fmt.Println("decrypting the file...")
-						encryptedKey := string(encryptData[path.Base(data[0].Url)])
+						encryptedKey := string(encryptData[path.Base(fileItem.Url)])
 						if encryptedKey == "" {
 							fmt.Println("Error: no key found in data")
 							os.Exit(1)
