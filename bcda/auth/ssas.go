@@ -14,7 +14,7 @@ type SSASPlugin struct {
 }
 
 // RegisterSystem adds a software client for the ACO identified by localID.
-func (s SSASPlugin) RegisterSystem(localID string) (Credentials, error) {
+func (s SSASPlugin) RegisterSystem(localID, publicKey string) (Credentials, error) {
 	// s.client.CreateSystem()
 	return Credentials{}, errors.New("not yet implemented")
 }

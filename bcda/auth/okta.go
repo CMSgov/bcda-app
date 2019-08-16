@@ -38,7 +38,7 @@ func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
 	return OktaAuthPlugin{backend}
 }
 
-func (o OktaAuthPlugin) RegisterSystem(localID string) (Credentials, error) {
+func (o OktaAuthPlugin) RegisterSystem(localID, publicKey string) (Credentials, error) {
 	if localID == "" {
 		return Credentials{}, errors.New("you must provide a localID")
 	}

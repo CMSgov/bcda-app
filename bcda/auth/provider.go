@@ -77,7 +77,7 @@ type Credentials struct {
 // Provider defines operations performed through an authentication provider.
 type Provider interface {
 	// RegisterSystem adds a software client for the ACO identified by localID.
-	RegisterSystem(localID string) (Credentials, error)
+	RegisterSystem(localID, publicKey string) (Credentials, error)
 
 	// UpdateSystem changes data associated with the registered software client identified by clientID
 	UpdateSystem(params []byte) ([]byte, error)
