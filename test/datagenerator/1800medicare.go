@@ -30,16 +30,19 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	now := time.Now()
 
-	// 1-800-MEDICARE filename format: P#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
-	fileName := fmt.Sprintf("P#EFT.ON.ACO.NGD1800.DPRF.%s", now.Format("D060102.T0304050"))
+	// 1-800-MEDICARE filename format: (T|P)#EFT.ON.ACO.NGD1800.DPRF.Dyymmdd.Thhmmsst
+	fileName := fmt.Sprintf("T#EFT.ON.ACO.NGD1800.DPRF.%s", now.Format("D060102.T1504050"))
 	outf, err := os.Create(fileName)
 	if err != nil {
 		panic(err)
 	}
 
-	outf.WriteString(fmt.Sprintf("HDR_BENEDATASHR%s\n", now.Format("20060102")))
+	_, err = outf.WriteString(fmt.Sprintf("HDR_BENEDATASHR%s\n", now.Format("20060102")))
+	if err != nil {
+		panic(err)
+	}
 
-	for _, acoID := range []string{ /*"A9990", "A9991", "A9992", "A9993", */ "A9994"} {
+	for _, acoID := range []string{"A9990", "A9991", "A9992", "A9993", "A9994"} {
 		inf, err := os.Open(fmt.Sprintf("%s-HICNs", acoID))
 		if err != nil {
 			panic(err)
@@ -58,16 +61,28 @@ func main() {
 			recs := records(p)
 			for _, r := range recs {
 				for _, f := range []field{r.hicn, r.blk, r.firstName, r.middleName, r.lastName, r.dob, r.addr1, r.addr2, r.addr3, r.city, r.state, r.zip5, r.zip4, r.gender, r.encDate, r.effDate, r.srcCode, r.mechCode, r.prefInd, r.saEffDate, r.saSrcCode, r.saMechCode, r.saPrefInd, r.acoID, r.acoName} {
-					outf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
+					_, err = outf.WriteString(fmt.Sprintf("%-"+fmt.Sprint(f.l)+"s", f.v))
+					if err != nil {
+						panic(err)
+					}
 				}
-				outf.WriteString("\n")
+				_, err = outf.WriteString("\n")
+				if err != nil {
+					panic(err)
+				}
 			}
 		}
 
-		inf.Close()
+		err = inf.Close()
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	outf.Close()
+	err = outf.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func profile(hicn string, acoID string) record {

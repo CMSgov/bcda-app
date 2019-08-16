@@ -1,15 +1,16 @@
 package suppression
 
 import (
-	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/jinzhu/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -34,10 +35,10 @@ func TestSuppressionTestSuite(t *testing.T) {
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	defer db.Close()
 
-	// positive
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
+	// 181120 file
+	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := &suppressionFileMetadata{
 		timestamp:    fileTime,
 		filePath:     BASE_FILE_PATH + "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
@@ -56,7 +57,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 
 	suppressions := []models.Suppression{}
 	db.Find(&suppressions, "file_id = ?", suppressionFile.ID)
-	assert.Equal(4, len(suppressions))
+	assert.Len(suppressions, 4)
 	assert.Equal("1000087481", suppressions[0].HICN)
 	assert.Equal("1-800", suppressions[0].SourceCode)
 	assert.Equal("1000093939", suppressions[1].HICN)
@@ -65,17 +66,56 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("", suppressions[2].SourceCode)
 	assert.Equal("1000050218", suppressions[3].HICN)
 	assert.Equal("1-800", suppressions[3].SourceCode)
-	assert.Nil(err)
+
 	err = deleteFilesByFileID(suppressionFile.ID, db)
 	assert.Nil(err)
 
-	// negative
-	metadata = &suppressionFileMetadata{name: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000001"}
+	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
+	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
+	metadata = &suppressionFileMetadata{
+		timestamp:    fileTime,
+		filePath:     BASE_FILE_PATH + "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
+		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
+		deliveryDate: time.Now(),
+	}
 	err = importSuppressionData(metadata)
+	assert.Nil(err)
+
+	suppressionFile = models.SuppressionFile{}
+	db.First(&suppressionFile, "name = ?", metadata.name)
+	assert.NotNil(suppressionFile)
+	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390", suppressionFile.Name)
+	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
+
+	suppressions = []models.Suppression{}
+	db.Find(&suppressions, "file_id = ?", suppressionFile.ID)
+	assert.Len(suppressions, 250)
+	assert.Equal("1000000019", suppressions[0].HICN)
+	assert.Equal("N", suppressions[0].PrefIndicator)
+	assert.Equal("1000039915", suppressions[20].HICN)
+	assert.Equal("N", suppressions[20].PrefIndicator)
+	assert.Equal("1000099805", suppressions[100].HICN)
+	assert.Equal("N", suppressions[100].PrefIndicator)
+	assert.Equal("1000026399", suppressions[200].HICN)
+	assert.Equal("N", suppressions[200].PrefIndicator)
+	assert.Equal("1000098787", suppressions[249].HICN)
+	assert.Equal(" ", suppressions[249].PrefIndicator)
+
+	err = deleteFilesByFileID(suppressionFile.ID, db)
+	assert.Nil(err)
+}
+
+func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
+	assert := assert.New(s.T())
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	metadata := &suppressionFileMetadata{}
+	err := importSuppressionData(metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
-	suppressionFile = models.SuppressionFile{}
+	suppressionFile := models.SuppressionFile{}
 	db.First(&suppressionFile, "name = ?", metadata.name)
 	assert.NotNil(suppressionFile)
 	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
@@ -211,7 +251,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	testUtils.ResetFiles(s.Suite, filePath)
 	err := filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
-	assert.Equal(1, len(suppresslist))
+	assert.Equal(2, len(suppresslist))
 	assert.Equal(0, skipped)
 
 	suppresslist = []suppressionFileMetadata{}
@@ -230,26 +270,35 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	testUtils.ResetFiles(s.Suite, filePath)
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
-	modtimeBefore := suppresslist[0].deliveryDate
 	modtimeAfter := time.Now().Truncate(time.Second)
-	for _, suppress := range suppresslist {
-		assert.Equal(modtimeBefore.Format("010203040506"), suppress.deliveryDate.Format("010203040506"))
+	assert.Len(suppresslist, 2)
+	s1 := suppresslist[0]
+	s2 := suppresslist[1]
+	f1Info, _ := os.Stat(s1.filePath)
+	f2Info, _ := os.Stat(s2.filePath)
+	assert.Equal(f1Info.ModTime().Format("010203040506"), s1.deliveryDate.Format("010203040506"))
+	assert.Equal(f2Info.ModTime().Format("010203040506"), s2.deliveryDate.Format("010203040506"))
 
-		// change the modification time for all the files
-		err := os.Chtimes(suppress.filePath, modtimeAfter, modtimeAfter)
-		if err != nil {
-			s.FailNow("Failed to change modified time for file", err)
-		}
+	// change the modification time for all the files
+	err = os.Chtimes(s1.filePath, modtimeAfter, modtimeAfter)
+	if err != nil {
+		s.FailNow("Failed to change modified time for file", err)
+	}
+	err = os.Chtimes(s2.filePath, modtimeAfter, modtimeAfter)
+	if err != nil {
+		s.FailNow("Failed to change modified time for file", err)
 	}
 
 	suppresslist = []suppressionFileMetadata{}
 	filePath = BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
-	for _, suppress := range suppresslist {
-		// check for the new modification time
-		assert.Equal(modtimeAfter.Format("010203040506"), suppress.deliveryDate.Format("010203040506"))
-	}
+	assert.Len(suppresslist, 2)
+	s1 = suppresslist[0]
+	s2 = suppresslist[1]
+	assert.Equal(modtimeAfter.Format("010203040506"), s1.deliveryDate.Format("010203040506"))
+	assert.Equal(modtimeAfter.Format("010203040506"), s2.deliveryDate.Format("010203040506"))
+
 	testUtils.ResetFiles(s.Suite, filePath)
 }
 
