@@ -29,10 +29,20 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 	return errors.New("Not supported")
 }
 
-// ResetSecret creates new or replaces existing credentials for the given clientID.
-func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
-	// s.client.ResetCredentials()
-	return Credentials{}, errors.New("not yet implemented")
+// ResetSecret creates new or replaces existing credentials for the given ssasID.
+func (s SSASPlugin) ResetSecret(ssasID string) (Credentials, error) {
+	resp, err := s.client.ResetCredentials(ssasID)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	creds := Credentials{}
+	err = json.Unmarshal(resp, &creds)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	return creds, nil
 }
 
 // RevokeSystemCredentials revokes any existing credentials for the given clientID.
