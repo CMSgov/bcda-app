@@ -27,8 +27,8 @@ type field struct {
 
 func main() {
 	acoIDs := []string{ /*"A9990", "A9991", "A9992", "A9993", */ "A9994"}
-	for _, a := range acoIDs {
-		file, _ := os.Open(fmt.Sprintf("%s-HICNs", a))
+	for _, acoID := range acoIDs {
+		file, _ := os.Open(fmt.Sprintf("%s-HICNs", acoID))
 		s := bufio.NewScanner(file)
 		for s.Scan() {
 			// Randomly select HICNs from ACO
@@ -36,7 +36,7 @@ func main() {
 				continue
 			}
 			hicn := string(s.Bytes())
-			p := makeProfile(hicn, a)
+			p := makeProfile(hicn, acoID)
 			records := makeRecords(p)
 			for _, r := range records {
 				for _, f := range []field{r.hicn, r.blk, r.firstName, r.middleName, r.lastName, r.dob, r.addr1, r.addr2, r.addr3, r.city, r.state, r.zip5, r.zip4, r.gender, r.encDate, r.effDate, r.srcCode, r.mechCode, r.prefInd, r.saEffDate, r.saSrcCode, r.saMechCode, r.saPrefInd, r.acoID, r.acoName} {
@@ -50,8 +50,9 @@ func main() {
 }
 
 func makeCCYYMMDD(min, max time.Time) string {
-	// TODO: Get a random date in range
-	return "19060417"
+	diffHrs := max.Sub(min).Hours()
+	dt := min.Add(time.Duration(rand.Float64()*diffHrs) * time.Hour)
+	return dt.Format("2006-01-02")
 }
 
 func makeProfile(hicn string, acoID string) record {
