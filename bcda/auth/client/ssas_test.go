@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -9,11 +10,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 )
 
 var (
@@ -125,7 +126,31 @@ func (s *SSASClientTestSuite) TestGetPublicKey() {
 	assert.Equal(s.T(), keyStr, string(respKey))
 }
 
-func (s *SSASClientTestSuite) TestResetCredentials() {}
+func (s *SSASClientTestSuite) TestResetCredentials() {
+	router := chi.NewRouter()
+	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, "fake-client-id", "fake-secret")
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	resp, err := client.ResetCredentials("1")
+	assert.Nil(s.T(), err)
+	creds := auth.Credentials{}
+	err = json.Unmarshal(resp, &creds)
+	assert.Nil(s.T(), err, nil)
+	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
+}
 
 func (s *SSASClientTestSuite) TestDeleteCredentials() {
 	router := chi.NewRouter()
