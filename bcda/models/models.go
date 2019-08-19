@@ -391,7 +391,7 @@ type CCLFFile struct {
 	ACOCMSID        string    `gorm:"column:aco_cms_id"`
 	Timestamp       time.Time `gorm:"not null"`
 	PerformanceYear int       `gorm:"not null"`
-	ImportStatus    string    `gorm:"column:import_status;not null"`
+	ImportStatus    string    `gorm:"column:import_status"`
 }
 
 func (cclfFile *CCLFFile) Delete() error {
@@ -419,7 +419,7 @@ type SuppressionFile struct {
 	gorm.Model
 	Name         string    `gorm:"not null;unique"`
 	Timestamp    time.Time `gorm:"not null"`
-	ImportStatus string    `gorm:"column:import_status;not null"`
+	ImportStatus string    `gorm:"column:import_status"`
 }
 
 func (suppressionFile *SuppressionFile) Delete() error {
