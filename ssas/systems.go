@@ -83,9 +83,9 @@ type Secret struct {
 }
 
 type AuthRegData struct {
-	GroupID 		string
+	GroupID         string
 	AllowedGroupIDs []string
-	OktaID			string
+	OktaID          string
 }
 
 /*
@@ -508,10 +508,16 @@ func CleanDatabase(group Group) error {
 	defer Close(db)
 
 	if group.ID == 0 {
-		return fmt.Errorf("must have valid group id")
+		return fmt.Errorf("invalid group.ID")
 	}
 
-	err := db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
+	foundGroup := Group{GroupID: group.GroupID}
+	err := db.Unscoped().Find(&foundGroup).Error
+	if err != nil {
+		return fmt.Errorf("unable to find group %s: %s", group.GroupID, err.Error())
+	}
+
+	err = db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
 		return fmt.Errorf("unable to find associated systems: %s", err.Error())
 	}

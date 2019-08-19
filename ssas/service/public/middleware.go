@@ -2,13 +2,11 @@ package public
 
 import (
 	"context"
+	"fmt"
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/service"
 	"net/http"
 	"regexp"
-
-	"github.com/dgrijalva/jwt-go"
-	log "github.com/sirupsen/logrus"
 )
 
 
@@ -47,8 +45,11 @@ func readGroupID(next http.Handler) http.Handler {
 // occurs in requireRegTokenAuth() or requireMFATokenAuth().
 func parseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		event := ssas.Event{Op: "ParseToken"}
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			event.Help = "no authorization header found"
+			ssas.AuthorizationFailure(event)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -56,7 +57,8 @@ func parseToken(next http.Handler) http.Handler {
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
-			log.Warn("Invalid Authorization header value")
+			event.Help = "invalid Authorization header value"
+			ssas.AuthorizationFailure(event)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -64,7 +66,8 @@ func parseToken(next http.Handler) http.Handler {
 		tokenString := authSubmatches[1]
 		token, err := server.VerifyToken(tokenString)
 		if err != nil {
-			log.Errorf("Unable to decode Authorization header value; %s", err)
+			event.Help = fmt.Sprintf("unable to decode authorization header value; %s", err)
+			ssas.AuthorizationFailure(event)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -78,7 +81,7 @@ func parseToken(next http.Handler) http.Handler {
 			rd.AllowedGroupIDs = claims.GroupIDs
 			rd.OktaID = claims.OktaID
 		}
-		ctx := context.WithValue(r.Context(), "token", token)
+		ctx := context.WithValue(r.Context(), "ts", tokenString)
 		ctx = context.WithValue(ctx, "rd", rd)
 		service.LogEntrySetField(r, "rd", rd)
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -95,22 +98,36 @@ func requireMFATokenAuth(next http.Handler) http.Handler {
 
 func tokenAuth(next http.Handler, tokenType string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Context().Value("token")
-		if token == nil {
-			log.Error("No token found")
+		var (
+			ts string
+			ok bool
+		)
+		event := ssas.Event{Op: "TokenAuth"}
+
+		tsObj := r.Context().Value("ts")
+		if tsObj == nil {
+			event.Help = "no token string found"
+			ssas.AuthorizationFailure(event)
+			respond(w, http.StatusUnauthorized)
+			return
+		}
+		ts, ok = tsObj.(string)
+		if !ok {
+			event.Help = "token string invalid"
+			ssas.AuthorizationFailure(event)
 			respond(w, http.StatusUnauthorized)
 			return
 		}
 
-		if token, ok := token.(*jwt.Token); ok {
-			err := tokenValidity(token.Raw, tokenType)
-			if err != nil {
-				respond(w, http.StatusUnauthorized)
-				return
-			}
-
-			next.ServeHTTP(w, r)
+		err := tokenValidity(ts, tokenType)
+		if err != nil {
+			event.Help = "token invalid"
+			ssas.AuthorizationFailure(event)
+			respond(w, http.StatusUnauthorized)
+			return
 		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 

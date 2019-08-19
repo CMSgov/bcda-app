@@ -221,6 +221,7 @@ func (s *Server) mintToken(claims CommonClaims, issuedAt int64, expiresAt int64)
 	claims.UUID = tokenID
 	claims.IssuedAt = issuedAt
 	claims.ExpiresAt = expiresAt
+	claims.Id = tokenID
 	token.Claims = claims
 	var signedString, err = token.SignedString(s.tokenSigningKey)
 	if err != nil {
@@ -257,7 +258,7 @@ func (s *Server) CheckRequiredClaims(claims *CommonClaims, RequiredTokenType str
 	}
 
 	if RequiredTokenType != claims.TokenType {
-		return fmt.Errorf("wrong token type: " + claims.TokenType)
+		return fmt.Errorf(fmt.Sprintf("wrong token type: %s; required type: %s", claims.TokenType, RequiredTokenType))
 	}
 
 	return nil

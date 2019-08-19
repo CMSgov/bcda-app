@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -9,15 +10,21 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
-
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+)
 
-	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
+var (
+	origSSASURL            string
+	origPublicURL          string
+	origSSASUseTLS         string
+	origSSASClientKeyFile  string
+	origSSASClientCertFile string
 )
 
 type SSASPluginTestSuite struct {
@@ -30,7 +37,23 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 	if err != nil {
 		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
-	s.p = SSASPlugin{client:c}
+	s.p = SSASPlugin{client: c}
+}
+
+func (s *SSASPluginTestSuite) BeforeTest() {
+	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
+	origSSASURL = os.Getenv("SSAS_URL")
+	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
+	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
+	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
+}
+
+func (s *SSASPluginTestSuite) AfterTest() {
+	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	os.Setenv("SSAS_URL", origSSASURL)
+	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
+	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem() {}
@@ -39,7 +62,29 @@ func (s *SSASPluginTestSuite) TestUpdateSystem() {}
 
 func (s *SSASPluginTestSuite) TestDeleteSystem() {}
 
-func (s *SSASPluginTestSuite) TestResetSecret() {}
+func (s *SSASPluginTestSuite) TestResetSecret() {
+	router := chi.NewRouter()
+	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, "fake-client-id", "fake-secret")
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
+	}
+	s.p = SSASPlugin{client: c}
+
+	creds, err := s.p.ResetSecret("1")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
+}
 
 func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {}
 
@@ -64,12 +109,6 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
-	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
-	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
@@ -105,12 +144,31 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	assert.Contains(s.T(), err.Error(), "401")
 }
 
-func (s *SSASPluginTestSuite) TestRevokeAccessToken() {}
+func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
+	router := chi.NewRouter()
+	router.Delete("/token/{tokenID}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
+	}
+	s.p = SSASPlugin{client: c}
+
+	err = s.p.RevokeAccessToken("i.am.not.a.token")
+	assert.Nil(s.T(), err)
+}
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccess() {}
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
-	const fakeTokenString= "eyJhbGciOiJSUzI1NiIsIng1dCI6IjdkRC1nZWNOZ1gxWmY3R0xrT3ZwT0IyZGNWQSIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2NvbnRvc28uY29tIiwiaXNzIjoiaHR0cHM6Ly9zdHMud2luZG93cy5uZXQvZTQ4MTc0N2YtNWRhNy00NTM4LWNiYmUtNjdlNTdmN2QyMTRlLyIsIm5iZiI6MTM5MTIxMDg1MCwiZXhwIjoxMzkxMjE0NDUwLCJzdWIiOiIyMTc0OWRhYWUyYTkxMTM3YzI1OTE5MTYyMmZhMSJ9.C4Ny4LeVjEEEybcA1SVaFYFS6nH-Ezae_RrTXUYInjXGt-vBOkAa2ryb-kpOlzU_R4Ydce9tKDNp1qZTomXgHjl-cKybAz0Ut90-dlWgXGvJYFkWRXJ4J0JyS893EDwTEHYaAZH_lCBvoYPhXexD2yt1b-73xSP6oxVlc_sMvz3DY__1Y_OyvbYrThHnHglxvjh88x_lX7RN-Bq82ztumxy97rTWaa_1WJgYuy7h7okD24FtsD9PPLYAply0ygl31ReI0FZOdX12Hl4THJm4uI_4_bPXL6YR2oZhYWp-4POWIPHzG9c_GL8asBjoDY9F5q1ykQiotUBESoMML7_N1g"
+	const fakeTokenString = "eyJhbGciOiJSUzI1NiIsIng1dCI6IjdkRC1nZWNOZ1gxWmY3R0xrT3ZwT0IyZGNWQSIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2NvbnRvc28uY29tIiwiaXNzIjoiaHR0cHM6Ly9zdHMud2luZG93cy5uZXQvZTQ4MTc0N2YtNWRhNy00NTM4LWNiYmUtNjdlNTdmN2QyMTRlLyIsIm5iZiI6MTM5MTIxMDg1MCwiZXhwIjoxMzkxMjE0NDUwLCJzdWIiOiIyMTc0OWRhYWUyYTkxMTM3YzI1OTE5MTYyMmZhMSJ9.C4Ny4LeVjEEEybcA1SVaFYFS6nH-Ezae_RrTXUYInjXGt-vBOkAa2ryb-kpOlzU_R4Ydce9tKDNp1qZTomXgHjl-cKybAz0Ut90-dlWgXGvJYFkWRXJ4J0JyS893EDwTEHYaAZH_lCBvoYPhXexD2yt1b-73xSP6oxVlc_sMvz3DY__1Y_OyvbYrThHnHglxvjh88x_lX7RN-Bq82ztumxy97rTWaa_1WJgYuy7h7okD24FtsD9PPLYAply0ygl31ReI0FZOdX12Hl4THJm4uI_4_bPXL6YR2oZhYWp-4POWIPHzG9c_GL8asBjoDY9F5q1ykQiotUBESoMML7_N1g"
 	router := chi.NewRouter()
 	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
 		clientId, secret, ok := r.BasicAuth()
@@ -120,7 +178,9 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 		}
 
 		if clientId == os.Getenv("BCDA_SSAS_CLIENT_ID") && secret == os.Getenv("BCDA_SSAS_SECRET") {
-			b, _ := json.Marshal(struct{ Active bool `json:"active"` }{Active: true})
+			b, _ := json.Marshal(struct {
+				Active bool `json:"active"`
+			}{Active: true})
 			if _, err := w.Write(b); err != nil {
 				log.Fatal(err)
 			}
@@ -130,12 +190,6 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
-	origPublicURL := os.Getenv("SSAS_PUBLIC_URL")
-	defer os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")

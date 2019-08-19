@@ -102,7 +102,7 @@ func OperationFailed(data Event) {
 // TokenMintingFailure is emitted when a token can't be created. Usually, this is due to a
 // issue with the signing key.
 func TokenMintingFailure(data Event) {
-	mergeNonEmpty(data).WithField("Event", "AccessTokenIssued").Print(data.Help)
+	mergeNonEmpty(data).WithField("Event", "TokenMintingFailure").Print(data.Help)
 }
 
 // AccessTokenIssued should be called to log the successful creation of every access token
@@ -110,6 +110,25 @@ func AccessTokenIssued(data Event) {
 	mergeNonEmpty(data).WithField("Event", "AccessTokenIssued").Print(data.Help)
 }
 
+// TokenBlacklisted records that a token with a specific key is invalidated
+func TokenBlacklisted(data Event) {
+	mergeNonEmpty(data).WithField("Event", "TokenBlacklisted").Print(data.Help)
+}
+
+// BlacklistedTokenPresented logs an attempt to verify a blacklisted token
+func BlacklistedTokenPresented(data Event) {
+	mergeNonEmpty(data).WithField("Event", "BlacklistedTokenPresented").Print(data.Help)
+}
+
+// CacheSyncFailure is called when an in-memory cache cannot be refreshed from the database
+func CacheSyncFailure(data Event) {
+	mergeNonEmpty(data).WithField("Event", "CacheSyncFailure").Print(data.Help)
+}
+
+// AuthorizationFailure should be called by middleware to record token or credential issues
+func AuthorizationFailure(data Event) {
+	mergeNonEmpty(data).WithField("Event", "AuthorizationFailure").Print(data.Help)
+}
 
 // SecureHashTime should be called with the time taken to create a hash, logs of which can be used
 // to approximate the security provided by the hash

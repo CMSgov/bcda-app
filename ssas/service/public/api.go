@@ -234,7 +234,7 @@ func VerifyMultifactorResponse(w http.ResponseWriter, r *http.Request) {
 
 	if empty(groupIDs) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		event.Help = "no authorized groups: " + err.Error()
+		event.Help = "no authorized groups"
 		ssas.OperationFailed(event)
 		return
 	}

@@ -221,25 +221,32 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	if err := db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error; err != nil {
+	var suppressedHICNs []string
+	if !includeSuppressed {
+		db.Raw(`SELECT DISTINCT s.hicn
+			FROM (
+				SELECT hicn, MAX(effective_date) max_date
+				FROM suppressions 
+				WHERE effective_date <= NOW() AND preference_indicator != '' 
+				GROUP BY hicn
+			) h
+			JOIN suppressions s ON s.hicn = h.hicn and s.effective_date = h.max_date
+			WHERE preference_indicator = 'N'`).Pluck("hicn", &suppressedHICNs)
+	}
+
+	var err error
+	if suppressedHICNs != nil {
+		err = db.Not("hicn", suppressedHICNs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	} else {
+		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	}
+
+	if err != nil {
 		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
 		return nil, err
 	} else if len(cclfBeneficiaries) == 0 {
 		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
 		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
-	}
-
-	if !includeSuppressed {
-		unsuppressedBeneficiaries := []CCLFBeneficiary{}
-
-		for _, b := range cclfBeneficiaries {
-			var s Suppression
-			found := !db.Order("effective_date desc").First(&s, "hicn = ? AND effective_date <= ? AND preference_indicator != '' AND preference_indicator IS NOT NULL", b.HICN, time.Now()).RecordNotFound()
-			if (found && s.PrefIndicator != "N") || !found {
-				unsuppressedBeneficiaries = append(unsuppressedBeneficiaries, b)
-			}
-		}
-		return unsuppressedBeneficiaries, nil
 	}
 
 	return cclfBeneficiaries, nil
