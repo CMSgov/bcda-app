@@ -834,7 +834,8 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	testUtils.ResetFiles(s.Suite, path)
 
 	fs := []models.SuppressionFile{}
-	db.Where("name in (?)", "'T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009', 'T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390'").Find(&fs)
+	db.Where("name in (?)", []string{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"}).Find(&fs)
+	assert.Len(fs, 2)
 	for _, f := range fs {
 		err := f.Delete()
 		assert.Nil(err)
