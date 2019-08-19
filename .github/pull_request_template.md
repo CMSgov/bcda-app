@@ -25,7 +25,8 @@
 
 ### Security Implications
 
-<!-- Does the change deal with PII/PHI at all? What should reviewers look for in terms of security concerns? -->
+<!-- Does the change deal with PII/PHI at all? What should reviewers look for in
+terms of security concerns? -->
 
 - [ ] new software dependencies
 
@@ -42,6 +43,12 @@
 - [ ] security checklist is completed for this change
 
 <!-- If yes, provide a link to the security checklist in Confluence here. -->
+
+- [ ] requires more information or team discussion to evaluate security implications
+
+<!-- Use this to indicate you're unsure how this change may impact system security
+and would like to solicit the team's feedback. Optionally, provide background
+information regarding your questions and concerns. -->
 
 ### Acceptance Validation
 
