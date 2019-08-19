@@ -1,6 +1,7 @@
 package cclf
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -382,6 +383,37 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal(expTime.Format("010203040506"), metadata.timestamp.Format("010203040506"))
 	assert.Equal(19, metadata.perfYear)
 	assert.Nil(err)
+
+	// CMS EFT file format with BCD identifier
+	metadata, err = getCCLFFileMetadata("/BCD/T.BCD.ACO.ZC0Y18.D181120.T0001000")
+	date := fmt.Sprintf("D181120.T%s", time.Now().Format("150405"))
+	timestamp, _ := time.Parse("D060102.T150405", date)
+	assert.Equal("test", metadata.env)
+	assert.Equal("A0001", metadata.acoID)
+	assert.Equal(0, metadata.cclfNum)
+	assert.Equal(timestamp.Format("010203040506"), metadata.timestamp.Format("010203040506"))
+	assert.Equal(18, metadata.perfYear)
+	assert.Nil(err)
+
+	metadata, err = getCCLFFileMetadata("/BCD/T.BCD.ACO.ZC8Y18.D190112.T0012000")
+	date = fmt.Sprintf("D190112.T%s", time.Now().Format("150405"))
+	timestamp, _ = time.Parse("D060102.T150405", date)
+	assert.Equal("test", metadata.env)
+	assert.Equal("A0012", metadata.acoID)
+	assert.Equal(8, metadata.cclfNum)
+	assert.Equal(timestamp.Format("010203040506"), metadata.timestamp.Format("010203040506"))
+	assert.Equal(18, metadata.perfYear)
+	assert.Nil(err)
+
+	metadata, err = getCCLFFileMetadata("/BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
+	date = fmt.Sprintf("D180610.T%s", time.Now().Format("150405"))
+	timestamp, _ = time.Parse("D060102.T150405", date)
+	assert.Equal("production", metadata.env)
+	assert.Equal("A0002", metadata.acoID)
+	assert.Equal(9, metadata.cclfNum)
+	assert.Equal(timestamp.Format("010203040506"), metadata.timestamp.Format("010203040506"))
+	assert.Equal(19, metadata.perfYear)
+	assert.Nil(err)
 }
 
 func (s *CCLFTestSuite) TestGetCCLFFileMetadata_InvalidFilename() {
@@ -407,6 +439,14 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 
 	filePath := BASE_FILE_PATH + "cclf/"
 	err := filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
+	assert.Nil(err)
+	assert.Equal(3, len(cclfmap["A0001_18"]))
+	assert.Equal(0, skipped)
+
+	cclfmap = make(map[string][]*cclfFileMetadata)
+	skipped = 0
+	filePath = BASE_FILE_PATH + "cclf_BCD/"
+	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	assert.Equal(3, len(cclfmap["A0001_18"]))
 	assert.Equal(0, skipped)
