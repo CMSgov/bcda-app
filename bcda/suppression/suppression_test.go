@@ -1,6 +1,7 @@
 package suppression
 
 import (
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/jinzhu/gorm"
@@ -37,7 +38,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 
 	// positive
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
-	metadata := suppressionFileMetadata{
+	metadata := &suppressionFileMetadata{
 		timestamp:    fileTime,
 		filePath:     BASE_FILE_PATH + "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
@@ -51,6 +52,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.NotNil(suppressionFile)
 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
+	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
 
 	suppressions := []models.Suppression{}
 	db.Find(&suppressions, "file_id = ?", suppressionFile.ID)
@@ -68,13 +70,20 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Nil(err)
 
 	// negative
-	metadata = suppressionFileMetadata{}
+	metadata = &suppressionFileMetadata{name: "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000001"}
 	err = importSuppressionData(metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
+	suppressionFile = models.SuppressionFile{}
+	db.First(&suppressionFile, "name = ?", metadata.name)
+	assert.NotNil(suppressionFile)
+	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
+	err = deleteFilesByFileID(suppressionFile.ID, db)
+	assert.Nil(err)
+
 	filepath := BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011"
-	metadata = suppressionFileMetadata{
+	metadata = &suppressionFileMetadata{
 		timestamp:    time.Now(),
 		filePath:     filepath,
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011",
@@ -84,8 +93,15 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "failed to parse the effective date '20191301' from file: "+filepath)
 
+	suppressionFile = models.SuppressionFile{}
+	db.First(&suppressionFile, "name = ?", metadata.name)
+	assert.NotNil(suppressionFile)
+	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
+	err = deleteFilesByFileID(suppressionFile.ID, db)
+	assert.Nil(err)
+
 	filepath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012"
-	metadata = suppressionFileMetadata{
+	metadata = &suppressionFileMetadata{
 		timestamp:    time.Now(),
 		filePath:     filepath,
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012",
@@ -95,8 +111,15 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "failed to parse the samhsa effective date '20191301' from file: "+filepath)
 
+	suppressionFile = models.SuppressionFile{}
+	db.First(&suppressionFile, "name = ?", metadata.name)
+	assert.NotNil(suppressionFile)
+	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
+	err = deleteFilesByFileID(suppressionFile.ID, db)
+	assert.Nil(err)
+
 	filepath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013"
-	metadata = suppressionFileMetadata{
+	metadata = &suppressionFileMetadata{
 		timestamp:    time.Now(),
 		filePath:     filepath,
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013",
@@ -105,6 +128,13 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	err = importSuppressionData(metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "failed to parse beneficiary link key from file: "+filepath)
+
+	suppressionFile = models.SuppressionFile{}
+	db.First(&suppressionFile, "name = ?", metadata.name)
+	assert.NotNil(suppressionFile)
+	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
+	err = deleteFilesByFileID(suppressionFile.ID, db)
+	assert.Nil(err)
 }
 
 func (s *SuppressionTestSuite) TestValidate() {
