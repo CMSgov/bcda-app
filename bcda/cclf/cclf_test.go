@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
+
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/jinzhu/gorm"
 
@@ -166,6 +168,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Equal(acoID, file.ACOCMSID)
 	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
+	assert.Equal(constants.ImportComplete, file.ImportStatus)
 
 	beneficiaries := []models.CCLFBeneficiary{}
 	db.Find(&beneficiaries, "file_id = ?", file.ID)
@@ -219,6 +222,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	assert.Equal(acoID, file.ACOCMSID)
 	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
+	assert.Equal(constants.ImportComplete, file.ImportStatus)
 
 	beneficiaries := []models.CCLFBeneficiary{}
 	db.Find(&beneficiaries, "file_id = ?", file.ID)
@@ -278,6 +282,7 @@ func (s *CCLFTestSuite) TestImportCCLF9() {
 	assert.Equal(acoID, file.ACOCMSID)
 	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
+	assert.Equal(constants.ImportComplete, file.ImportStatus)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
 	db.Where("current_num = ? and file_id = ?", "1A69B98CD35", file.ID).Last(&savedCCLF9)
@@ -322,6 +327,7 @@ func (s *CCLFTestSuite) TestImportCCLF9_SplitFiles() {
 	assert.Equal(acoID, file.ACOCMSID)
 	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
+	assert.Equal(constants.ImportComplete, file.ImportStatus)
 
 	var savedCCLF9 models.CCLFBeneficiaryXref
 	db.Find(&savedCCLF9, "file_id = ?", &file.ID)

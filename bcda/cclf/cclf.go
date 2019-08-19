@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -54,6 +55,7 @@ type cclfFileMetadata struct {
 	filePath     string
 	imported     bool
 	deliveryDate time.Time
+	fileID       uint
 }
 
 type cclfFileValidator struct {
@@ -177,9 +179,10 @@ func importCCLF8(fileMetadata *cclfFileMetadata) error {
 	})
 
 	if err != nil {
+		updateImportStatus(fileMetadata,constants.ImportFail)
 		return err
 	}
-
+	updateImportStatus(fileMetadata,constants.ImportComplete)
 	return nil
 }
 
@@ -211,9 +214,10 @@ func importCCLF9(fileMetadata *cclfFileMetadata) error {
 	})
 
 	if err != nil {
+		updateImportStatus(fileMetadata,constants.ImportFail)
 		return err
 	}
-
+	updateImportStatus(fileMetadata,constants.ImportComplete)
 	return nil
 }
 
@@ -250,6 +254,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		ACOCMSID:        fileMetadata.acoID,
 		Timestamp:       fileMetadata.timestamp,
 		PerformanceYear: fileMetadata.perfYear,
+		ImportStatus: constants.ImportInprog,
 	}
 
 	db := database.GetGORMDbConnection()
@@ -262,6 +267,8 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		log.Error(err)
 		return err
 	}
+
+	fileMetadata.fileID = cclfFile.ID
 
 	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
 	importedCount := 0
@@ -675,4 +682,21 @@ func (m cclfFileMetadata) String() string {
 		return m.filePath
 	}
 	return m.name
+}
+
+func updateImportStatus(m *cclfFileMetadata, status string) {
+	if m == nil {
+		return
+	}
+	var cclfFile models.CCLFFile
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	err := db.Model(&cclfFile).Where("id = ?", m.fileID).Update("import_status", status).Error
+	if err != nil {
+		fmt.Printf("Could not update cclf file record for file: %s. \n", m)
+		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", m)
+		log.Error(err)
+	}
 }

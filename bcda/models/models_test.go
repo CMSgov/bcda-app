@@ -656,6 +656,65 @@ func (s *ModelsTestSuite) TestGetBeneficiaries() {
 
 }
 
+func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
+	acoCMSID := "T0000"
+	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
+	err := s.db.Save(&aco).Error
+	if err != nil {
+		s.FailNow("Failed to save ACO", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&aco)
+
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now().Add(-24 * time.Hour), ImportStatus:constants.ImportComplete}
+	err = s.db.Save(&cclfFile).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFile)
+
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene1hicn"}
+	err = s.db.Save(&bene1).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1)
+
+	// same aco newer file - in progress status
+	cclfFileInProgress := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now(), ImportStatus:constants.ImportInprog}
+	err = s.db.Save(&cclfFileInProgress).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFileInProgress)
+
+	bene2 := CCLFBeneficiary{FileID: cclfFileInProgress.ID, HICN: "bene2hicn"}
+	err = s.db.Save(&bene2).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2)
+
+	// same aco newer file - failed status
+	cclfFileFailed := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now(), ImportStatus:constants.ImportFail}
+	err = s.db.Save(&cclfFileFailed).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFileFailed)
+
+	bene3 := CCLFBeneficiary{FileID: cclfFileFailed.ID, HICN: "bene2hicn"}
+	err = s.db.Save(&bene3).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3)
+
+	result, err := aco.GetBeneficiaries(false)
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), result, 1)
+	assert.Equal(s.T(),cclfFile.ID,result[0].FileID)
+}
+
 func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	acoCMSID := "T0000"
 	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
@@ -665,7 +724,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	}
 	defer s.db.Unscoped().Delete(&aco)
 
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID}
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus:constants.ImportComplete}
 	err = s.db.Save(&cclfFile).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
