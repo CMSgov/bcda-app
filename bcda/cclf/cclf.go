@@ -370,7 +370,7 @@ func getCCLFFileMetadataBCD(filePath string) (cclfFileMetadata, error) {
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Y**.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
 	filenameRegexp := regexp.MustCompile(`(T|P).BCD.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
-	if len(filenameMatches) < 4 {
+	if len(filenameMatches) < 5 {
 		fmt.Printf("Invalid filename for file: %s.\n", filePath)
 		err := fmt.Errorf("invalid filename for file: %s", filePath)
 		log.Error(err)
