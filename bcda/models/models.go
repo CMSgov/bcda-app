@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io"
 	"io/ioutil"
 	"os"
@@ -215,30 +216,37 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	defer database.Close(db)
 	var cclfFile CCLFFile
 	// todo add a filter here to make sure the file is up to date.
-	if db.Where("aco_cms_id = ? and cclf_num = 8", aco.CMSID).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID,constants.ImportComplete).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
 		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	if err := db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error; err != nil {
+	var suppressedHICNs []string
+	if !includeSuppressed {
+		db.Raw(`SELECT DISTINCT s.hicn
+			FROM (
+				SELECT hicn, MAX(effective_date) max_date
+				FROM suppressions 
+				WHERE effective_date <= NOW() AND preference_indicator != '' 
+				GROUP BY hicn
+			) h
+			JOIN suppressions s ON s.hicn = h.hicn and s.effective_date = h.max_date
+			WHERE preference_indicator = 'N'`).Pluck("hicn", &suppressedHICNs)
+	}
+
+	var err error
+	if suppressedHICNs != nil {
+		err = db.Not("hicn", suppressedHICNs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	} else {
+		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	}
+
+	if err != nil {
 		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
 		return nil, err
 	} else if len(cclfBeneficiaries) == 0 {
 		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
 		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
-	}
-
-	if !includeSuppressed {
-		unsuppressedBeneficiaries := []CCLFBeneficiary{}
-
-		for _, b := range cclfBeneficiaries {
-			var s Suppression
-			found := !db.Order("effective_date desc").First(&s, "hicn = ? AND effective_date <= ? AND preference_indicator != '' AND preference_indicator IS NOT NULL", b.HICN, time.Now()).RecordNotFound()
-			if (found && s.PrefIndicator != "N") || !found {
-				unsuppressedBeneficiaries = append(unsuppressedBeneficiaries, b)
-			}
-		}
-		return unsuppressedBeneficiaries, nil
 	}
 
 	return cclfBeneficiaries, nil
@@ -383,6 +391,7 @@ type CCLFFile struct {
 	ACOCMSID        string    `gorm:"column:aco_cms_id"`
 	Timestamp       time.Time `gorm:"not null"`
 	PerformanceYear int       `gorm:"not null"`
+	ImportStatus    string    `gorm:"column:import_status"`
 }
 
 func (cclfFile *CCLFFile) Delete() error {
@@ -408,8 +417,9 @@ type CCLFBeneficiary struct {
 
 type SuppressionFile struct {
 	gorm.Model
-	Name      string    `gorm:"not null;unique"`
-	Timestamp time.Time `gorm:"not null"`
+	Name         string    `gorm:"not null;unique"`
+	Timestamp    time.Time `gorm:"not null"`
+	ImportStatus string    `gorm:"column:import_status"`
 }
 
 func (suppressionFile *SuppressionFile) Delete() error {
@@ -433,7 +443,7 @@ type Suppression struct {
 	SAMHSASourceCode    string    `gorm:"type:varchar(5)"`
 	SAMHSAEffectiveDt   time.Time `gorm:"column:samhsa_effective_date"`
 	SAMHSAPrefIndicator string    `gorm:"column:samhsa_preference_indicator;type:char(1)"`
-	ACOCMSID  string    `gorm:"column:aco_cms_id;type:char(5)"`
+	ACOCMSID            string    `gorm:"column:aco_cms_id;type:char(5)"`
 	BeneficiaryLinkKey  int
 }
 

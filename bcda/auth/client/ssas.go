@@ -124,8 +124,29 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 }
 
 // ResetCredentials PUTs to the SSAS /system/{systemID}/credentials endpoint to reset the system's credentials.
-func (c *SSASClient) ResetCredentials(systemID int) ([]byte, error) {
-	return nil, nil
+func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to reset credentials")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to reset credentials")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, errors.New(fmt.Sprintf("failed to reset credentials. status code: %v", resp.StatusCode))
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to reset credentials")
+	}
+
+	return body, nil
+
 }
 
 // DeleteCredentials DELETEs from the SSAS /system/{systemID}/credentials endpoint to deactivate credentials associated with the system.
@@ -141,8 +162,28 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.Wrap(err, "failed to delete credentials")
+	}
+
+	return nil
+}
+
+// RevokeAccessToken DELETEs to the public SSAS /token endpoint to revoke the token
+func (c *SSASClient) RevokeAccessToken(tokenID string) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
+	if err != nil {
+		return errors.Wrap(err, "bad request structure")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed to revoke token")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to revoke token; %v", resp.StatusCode)
 	}
 
 	return nil
@@ -184,7 +225,9 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	public := os.Getenv("SSAS_PUBLIC_URL")
 	url := fmt.Sprintf("%s/introspect", public)
-	body, err := json.Marshal(struct{ Token string `json:"token"` }{Token: tokenString})
+	body, err := json.Marshal(struct {
+		Token string `json:"token"`
+	}{Token: tokenString})
 	if err != nil {
 		return nil, errors.Wrap(err, "bad request structure")
 	}

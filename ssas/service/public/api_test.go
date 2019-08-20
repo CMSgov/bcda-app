@@ -160,7 +160,6 @@ func (s *APITestSuite) TestResetSecretSuccess() {
 	}
 	hash := ssas.Hash(newSecret.Hash)
 
-	fmt.Println("TestResetSecretSuccess body:", s.rr.Body.String())
 	j := map[string]string{}
 	err = json.Unmarshal(s.rr.Body.Bytes(), &j)
 	assert.Nil(s.T(), err)
