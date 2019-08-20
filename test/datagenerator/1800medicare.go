@@ -90,22 +90,22 @@ func profile(hicn string, acoID string) record {
 	dobMax := time.Now().Add(-65 * 365 * 24 * time.Hour)
 
 	p := record{
-		hicn:       field{l: 11, v: hicn},                     // HICN
-		blk:        field{l: 10},                              // Beneficiary link key
-		firstName:  field{l: 30, v: randWord(1, 30)},          // Beneficiary first name
-		middleName: field{l: 30},                              // Beneficiary middle name
-		lastName:   field{l: 40, v: randWord(1, 30)},          // Beneficiary last name
-		dob:        field{l: 8, v: ccyymmdd(dobMin, dobMax)},  // Beneficiary date of birth
-		addr1:      field{l: 55, v: addr1()},                  // Beneficiary address line 1
-		addr2:      field{l: 55},                              // Beneficiary address line 2
-		addr3:      field{l: 55},                              // Beneficiary address line 3
-		city:       field{l: 40, v: randWord(1, 40)},          // Beneficiary city
-		state:      field{l: 2, v: "ST"},                      // Beneficiary state
-		zip5:       field{l: 5, v: "00000"},                   // Beneficiary first five digits of ZIP code
-		zip4:       field{l: 4},                               // Beneficiary last four digits of ZIP code
-		gender:     field{l: 1, v: oneOfStr("M", "F", "U")},   // Beneficiary gender
-		acoID:      field{l: 5, v: acoID},                     // ACO identifier
-		acoName:    field{l: 70, v: randWord(1, 66) + " ACO"}, // ACO legal name
+		hicn:       field{l: 11, v: hicn},                       // HICN
+		blk:        field{l: 10},                                // Beneficiary link key
+		firstName:  field{l: 30, v: randWord(1, 30)},            // Beneficiary first name
+		middleName: field{l: 30},                                // Beneficiary middle name
+		lastName:   field{l: 40, v: randWord(1, 30)},            // Beneficiary last name
+		dob:        field{l: 8, v: ccyymmdd(dobMin, dobMax, 0)}, // Beneficiary date of birth
+		addr1:      field{l: 55, v: addr1()},                    // Beneficiary address line 1
+		addr2:      field{l: 55},                                // Beneficiary address line 2
+		addr3:      field{l: 55},                                // Beneficiary address line 3
+		city:       field{l: 40, v: randWord(1, 40)},            // Beneficiary city
+		state:      field{l: 2, v: "ST"},                        // Beneficiary state
+		zip5:       field{l: 5, v: "00000"},                     // Beneficiary first five digits of ZIP code
+		zip4:       field{l: 4},                                 // Beneficiary last four digits of ZIP code
+		gender:     field{l: 1, v: oneOfStr("M", "F", "U")},     // Beneficiary gender
+		acoID:      field{l: 5, v: acoID},                       // ACO identifier
+		acoName:    field{l: 70, v: randWord(1, 66) + " ACO"},   // ACO legal name
 	}
 
 	return p
@@ -120,15 +120,15 @@ func records(profile record) []record {
 
 	for i := 0; i < ct; i++ {
 		r := profile
-		r.encDate = field{l: 8, v: ccyymmdd(encDtMin, encDtMax)} // Encounter date
-		r.effDate = field{l: 8, v: ccyymmdd(effDtMin, effDtMax)} // Beneficiary data sharing effective date
-		r.srcCode = field{l: 5, v: oneOfStr("1800", "")}         // Beneficiary data sharing source code
-		r.mechCode = field{l: 1, v: oneOfStr("T", "")}           // Beneficiary option data sharing decision mechanism code
-		r.prefInd = field{l: 1, v: oneOfStr("Y", "N", "")}       // Beneficiary data sharing preference indicator
-		r.saEffDate = field{l: 8}                                // Beneficiary substance abuse data sharing effective date
-		r.saSrcCode = field{l: 5, v: oneOfStr("1-800", "")}      // Beneficiary substance abuse data sharing source code
-		r.saMechCode = field{l: 1, v: oneOfStr("T", "")}         // Beneficiary option substance abuse decision mechanism code
-		r.saPrefInd = field{l: 1, v: oneOfStr("N", "")}          // Beneficiary substance abuse data sharing preference indicator
+		r.encDate = field{l: 8, v: ccyymmdd(encDtMin, encDtMax, 0)}    // Encounter date
+		r.effDate = field{l: 8, v: ccyymmdd(effDtMin, effDtMax, 10)}   // Beneficiary data sharing effective date
+		r.srcCode = field{l: 5, v: oneOfStr("1800", "")}               // Beneficiary data sharing source code
+		r.mechCode = field{l: 1, v: oneOfStr("T", "")}                 // Beneficiary option data sharing decision mechanism code
+		r.prefInd = field{l: 1, v: oneOfStr("Y", "N", "")}             // Beneficiary data sharing preference indicator
+		r.saEffDate = field{l: 8, v: ccyymmdd(effDtMin, effDtMax, 10)} // Beneficiary substance abuse data sharing effective date
+		r.saSrcCode = field{l: 5, v: oneOfStr("1-800", "")}            // Beneficiary substance abuse data sharing source code
+		r.saMechCode = field{l: 1, v: oneOfStr("T", "")}               // Beneficiary option substance abuse decision mechanism code
+		r.saPrefInd = field{l: 1, v: oneOfStr("N", "")}                // Beneficiary substance abuse data sharing preference indicator
 
 		records = append(records, r)
 	}
@@ -136,10 +136,14 @@ func records(profile record) []record {
 	return records
 }
 
-func ccyymmdd(min, max time.Time) string {
-	diffHrs := max.Sub(min).Hours()
-	dt := min.Add(time.Duration(rand.Float64()*diffHrs) * time.Hour)
-	return dt.Format("20060102")
+// blankPct indicates likelihood of blank result (0-100)
+func ccyymmdd(min, max time.Time, blankPct int) string {
+	if blankPct < rand.Intn(100)+1 {
+		diffHrs := max.Sub(min).Hours()
+		dt := min.Add(time.Duration(rand.Float64()*diffHrs) * time.Hour)
+		return dt.Format("20060102")
+	}
+	return ""
 }
 
 func oneOfStr(strs ...string) string {
