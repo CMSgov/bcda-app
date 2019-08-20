@@ -97,7 +97,33 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrueNoKey() {
 	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
 }
 
-func (s *SSASClientTestSuite) TestCreateSystem() {}
+func (s *SSASClientTestSuite) TestCreateSystem() {
+	router := chi.NewRouter()
+	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, err := w.Write([]byte(`{"system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name"}`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	resp, err := client.CreateSystem("fake-name", "fake-group", "fake-scope", "fake-key", "fake-tracking")
+	assert.Nil(s.T(), err)
+	creds := auth.Credentials{}
+	err = json.Unmarshal(resp, &creds)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
+}
 
 func (s *SSASClientTestSuite) TestGetPublicKey() {
 	router := chi.NewRouter()

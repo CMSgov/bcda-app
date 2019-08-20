@@ -2,10 +2,12 @@ package auth
 
 import (
 	"encoding/json"
-	"errors"
+	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 )
 
 // SSASPlugin is an implementation of Provider that uses the SSAS API.
@@ -15,8 +17,30 @@ type SSASPlugin struct {
 
 // RegisterSystem adds a software client for the ACO identified by localID.
 func (s SSASPlugin) RegisterSystem(localID, publicKey string) (Credentials, error) {
-	// s.client.CreateSystem()
-	return Credentials{}, errors.New("not yet implemented")
+	creds := Credentials{}
+	aco, err := GetACOByClientID(localID)
+	if err != nil {
+		return creds, errors.Wrap(err, "failed to create system")
+	}
+	trackingID := uuid.NewRandom().String()
+
+	cb, err := s.client.CreateSystem(
+		aco.Name,
+		*aco.CMSID,
+		os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE"),
+		publicKey,
+		trackingID,
+	)
+	if err != nil {
+		return creds, errors.Wrap(err, "failed to create system")
+	}
+
+	err = json.Unmarshal(cb, &creds)
+	if err != nil {
+		return creds, errors.Wrap(err, "failed to create system")
+	}
+
+	return creds, nil
 }
 
 // UpdateSystem changes data associated with the registered software client identified by clientID.
