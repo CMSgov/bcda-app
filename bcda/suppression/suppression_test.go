@@ -271,33 +271,24 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
-	assert.Len(suppresslist, 2)
-	s1 := suppresslist[0]
-	s2 := suppresslist[1]
-	f1Info, _ := os.Stat(s1.filePath)
-	f2Info, _ := os.Stat(s2.filePath)
-	assert.Equal(f1Info.ModTime().Format("010203040506"), s1.deliveryDate.Format("010203040506"))
-	assert.Equal(f2Info.ModTime().Format("010203040506"), s2.deliveryDate.Format("010203040506"))
+	// check current value and change mod time
+	for _, f := range suppresslist {
+		fInfo, _ := os.Stat(f.filePath)
+		assert.Equal(fInfo.ModTime().Format("010203040506"), f.deliveryDate.Format("010203040506"))
 
-	// change the modification time for all the files
-	err = os.Chtimes(s1.filePath, modtimeAfter, modtimeAfter)
-	if err != nil {
-		s.FailNow("Failed to change modified time for file", err)
-	}
-	err = os.Chtimes(s2.filePath, modtimeAfter, modtimeAfter)
-	if err != nil {
-		s.FailNow("Failed to change modified time for file", err)
+		err = os.Chtimes(f.filePath, modtimeAfter, modtimeAfter)
+		if err != nil {
+			s.FailNow("Failed to change modified time for file", err)
+		}
 	}
 
 	suppresslist = []suppressionFileMetadata{}
 	filePath = BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
-	assert.Len(suppresslist, 2)
-	s1 = suppresslist[0]
-	s2 = suppresslist[1]
-	assert.Equal(modtimeAfter.Format("010203040506"), s1.deliveryDate.Format("010203040506"))
-	assert.Equal(modtimeAfter.Format("010203040506"), s2.deliveryDate.Format("010203040506"))
+	for _, f := range suppresslist {
+		assert.Equal(modtimeAfter.Format("010203040506"), f.deliveryDate.Format("010203040506"))
+	}
 
 	testUtils.ResetFiles(s.Suite, filePath)
 }
