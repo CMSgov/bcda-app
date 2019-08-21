@@ -41,6 +41,7 @@ create table cclf_files (
     aco_cms_id char(5),
     "timestamp" timestamp with time zone not null,
     performance_year integer not null,
+    import_status varchar,
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
     deleted_at timestamp with time zone
@@ -74,6 +75,7 @@ create table suppression_files (
     id serial primary key,
     name varchar not null,
     "timestamp" timestamp with time zone not null,
+    import_status varchar,
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
     deleted_at timestamp with time zone

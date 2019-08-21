@@ -5,10 +5,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -53,6 +55,7 @@ type cclfFileMetadata struct {
 	filePath     string
 	imported     bool
 	deliveryDate time.Time
+	fileID       uint
 }
 
 type cclfFileValidator struct {
@@ -176,9 +179,10 @@ func importCCLF8(fileMetadata *cclfFileMetadata) error {
 	})
 
 	if err != nil {
+		updateImportStatus(fileMetadata,constants.ImportFail)
 		return err
 	}
-
+	updateImportStatus(fileMetadata,constants.ImportComplete)
 	return nil
 }
 
@@ -210,9 +214,10 @@ func importCCLF9(fileMetadata *cclfFileMetadata) error {
 	})
 
 	if err != nil {
+		updateImportStatus(fileMetadata,constants.ImportFail)
 		return err
 	}
-
+	updateImportStatus(fileMetadata,constants.ImportComplete)
 	return nil
 }
 
@@ -249,6 +254,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		ACOCMSID:        fileMetadata.acoID,
 		Timestamp:       fileMetadata.timestamp,
 		PerformanceYear: fileMetadata.perfYear,
+		ImportStatus: constants.ImportInprog,
 	}
 
 	db := database.GetGORMDbConnection()
@@ -261,6 +267,8 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		log.Error(err)
 		return err
 	}
+
+	fileMetadata.fileID = cclfFile.ID
 
 	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
 	importedCount := 0
@@ -300,12 +308,16 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 }
 
 func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
+	if strings.Contains(filePath,"BCD") {
+		return getCCLFFileMetadataBCD(filePath)
+	}
+
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
 	// Prefix: T = test, P = prod; A**** or T**** (test) = ACO ID; ZC* = CCLF file number; Y** = performance year
 	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
-	if len(filenameMatches) < 5 {
+	if len(filenameMatches) < 6 {
 		fmt.Printf("Invalid filename for file: %s.\n", filePath)
 		err := fmt.Errorf("invalid filename for file: %s", filePath)
 		log.Error(err)
@@ -346,6 +358,71 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	metadata.name = filenameMatches[0]
 	metadata.cclfNum = cclfNum
 	metadata.acoID = filenameMatches[2]
+	metadata.timestamp = t
+	metadata.perfYear = perfYear
+
+	return metadata, nil
+}
+
+
+func getCCLFFileMetadataBCD(filePath string) (cclfFileMetadata, error) {
+	var metadata cclfFileMetadata
+	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Y**.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
+	filenameRegexp := regexp.MustCompile(`(T|P).BCD.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
+	if len(filenameMatches) < 5 {
+		fmt.Printf("Invalid filename for file: %s.\n", filePath)
+		err := fmt.Errorf("invalid filename for file: %s", filePath)
+		log.Error(err)
+		return metadata, err
+	}
+
+	cclfNum, err := strconv.Atoi(filenameMatches[2])
+	if err != nil {
+		fmt.Printf("Failed to parse CCLF number from file: %s.\n", filePath)
+		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", filePath)
+		log.Error(err)
+		return metadata, err
+	}
+
+	perfYear, err := strconv.Atoi(filenameMatches[3])
+	if err != nil {
+		fmt.Printf("Failed to parse performance year from file: %s.\n", filePath)
+		err = errors.Wrapf(err, "failed to parse performance year from file: %s", filePath)
+		log.Error(err)
+		return metadata, err
+	}
+
+	dateTime := strings.Split(filenameMatches[4], ".")
+
+	date := dateTime[0]
+	date = fmt.Sprintf("%s.T%s", date, time.Now().Format("150405"))
+	t, err := time.Parse("D060102.T150405", date)
+	if err != nil || t.IsZero() {
+		fmt.Printf("Failed to parse date '%s' from file: %s.\n", date, filePath)
+		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", date, filePath)
+		log.Error(err)
+		return metadata, err
+	}
+
+	timestamp := dateTime[1]
+	acoID := fmt.Sprintf("A%s", timestamp[1:5])
+	if len(acoID) < 4 {
+		fmt.Printf("Failed to parse aco id '%s' from file: %s.\n", timestamp, filePath)
+		err = errors.Wrapf(err, "failed to parse aco id '%s' from file: %s", timestamp, filePath)
+		log.Error(err)
+		return metadata, err
+	}
+
+	if filenameMatches[1] == "T" {
+		metadata.env = "test"
+	} else if filenameMatches[1] == "P" {
+		metadata.env = "production"
+	}
+
+	metadata.name = filenameMatches[0]
+	metadata.cclfNum = cclfNum
+	metadata.acoID = acoID
 	metadata.timestamp = t
 	metadata.perfYear = perfYear
 
@@ -605,4 +682,21 @@ func (m cclfFileMetadata) String() string {
 		return m.filePath
 	}
 	return m.name
+}
+
+func updateImportStatus(m *cclfFileMetadata, status string) {
+	if m == nil {
+		return
+	}
+	var cclfFile models.CCLFFile
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	err := db.Model(&cclfFile).Where("id = ?", m.fileID).Update("import_status", status).Error
+	if err != nil {
+		fmt.Printf("Could not update cclf file record for file: %s. \n", m)
+		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", m)
+		log.Error(err)
+	}
 }

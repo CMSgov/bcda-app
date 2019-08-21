@@ -10,27 +10,52 @@
 -->
 
 <!-- Replace xxx with the JIRA ticket number: -->
+
 ### Fixes [BCDA-xxx](https://jira.cms.gov/browse/BCDA-xxx)
 
-<!-- describe the problem being solved here -->
+<!-- Describe the problem being solved here: -->
 
-### Proposed changes:
+### Proposed Changes
+
 <!-- List of changes with bullet points here: -->
 
-
 ### Change Details
-<!-- add detailed discussion of changes here: -->
 
+<!-- Add detailed discussion of changes here: -->
 
 ### Security Implications
-<!-- Does the change deal with PII at all? What should reviewers look for in terms of security concerns? -->
 
+<!-- Does the change deal with PII/PHI at all? What should reviewers look for in
+terms of security concerns? -->
+
+- [ ] new software dependencies
+
+<!-- If yes, list the new dependencies and briefly note any relevant security impacts -->
+
+- [ ] security controls or supporting software altered
+
+<!-- If yes, what security controls or supporting software are affected? -->
+
+- [ ] new data stored or transmitted
+
+<!-- If yes, what new data are we storing or transmitting? Is the data considered PII/PHI? -->
+
+- [ ] security checklist is completed for this change
+
+<!-- If yes, provide a link to the security checklist in Confluence here. -->
+
+- [ ] requires more information or team discussion to evaluate security implications
+
+<!-- Use this to indicate you're unsure how this change may impact system security
+and would like to solicit the team's feedback. Optionally, provide background
+information regarding your questions and concerns. -->
 
 ### Acceptance Validation
-<!-- were you able to fully test the acceptance criteria on the related ticket? if not, why not? -->
 
-<!-- insert screenshots if applicable (drag images here) -->
+<!-- Were you able to fully test the acceptance criteria on the related ticket? if not, why not? -->
 
+<!-- Insert screenshots if applicable (drag images here) -->
 
 ### Feedback Requested
-<!-- what type of feedback you want from your reviewers? -->
+
+<!-- What type of feedback you want from your reviewers? -->
