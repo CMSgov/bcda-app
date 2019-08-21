@@ -412,6 +412,7 @@ func readRegData(r *http.Request) (data ssas.AuthRegData, err error) {
 }
 
 func jsonError(w http.ResponseWriter, error string, description string) {
+	ssas.Logger.Printf("%s; %s", description, error)
 	w.WriteHeader(http.StatusBadRequest)
 	body := []byte(fmt.Sprintf(`{"error":"%s","error_description":"%s"}`, error, description))
 	_, err := w.Write(body)
@@ -441,18 +442,23 @@ func token(w http.ResponseWriter, r *http.Request) {
 
 	system, err := ssas.GetSystemByClientID(clientID)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		jsonError(w, http.StatusText(http.StatusUnauthorized), "invalid client id")
 		return
 	}
 
 	savedSecret, err := system.GetSecret()
 	if err != nil || !ssas.Hash(savedSecret).IsHashOf(secret) {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		jsonError(w, http.StatusText(http.StatusUnauthorized), "invalid client secret")
 		return
 	}
 
+	trackingID := uuid.NewRandom().String()
+	event := ssas.Event{Op: "Token", TrackingID: trackingID, Help: "calling from public.token()"}
+	ssas.OperationCalled(event)
 	token, ts, err := MintAccessToken(system.GroupID, nil)
 	if err != nil {
+		event.Help = "failure minting token: " + err.Error()
+		ssas.OperationFailed(event)
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
@@ -464,7 +470,8 @@ func token(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
-
+	ssas.AccessTokenIssued(event)
+	ssas.OperationSucceeded(event)
 	render.JSON(w, r, m)
 }
 
@@ -472,33 +479,44 @@ func introspect(w http.ResponseWriter, r *http.Request) {
 	clientID, secret, ok := r.BasicAuth()
 
 	if !ok {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		jsonError(w, http.StatusText(http.StatusUnauthorized), "invalid auth header")
+		return
+	}
+
+	if clientID == "" || secret == "" {
+		msg := fmt.Sprint("empty value in clientID and/or secret")
+		jsonError(w, http.StatusText(http.StatusUnauthorized), msg)
 		return
 	}
 
 	system, err := ssas.GetSystemByClientID(clientID)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		jsonError(w, http.StatusText(http.StatusUnauthorized), fmt.Sprintf("invalid client id; %s", err))
 		return
 	}
 
 	savedSecret, err := system.GetSecret()
-	if err != nil || !ssas.Hash(savedSecret).IsHashOf(secret) {
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	if err != nil {
+		jsonError(w, http.StatusText(http.StatusUnauthorized), fmt.Sprintf("can't get secret; %s", err))
+		return
+	}
+
+	if !ssas.Hash(savedSecret).IsHashOf(secret) {
+		jsonError(w, http.StatusText(http.StatusUnauthorized), "invalid client secret")
 		return
 	}
 
 	defer r.Body.Close()
 
-
 	var reqV map[string]string
 	if err = json.NewDecoder(r.Body).Decode(&reqV); err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
+		jsonError(w, http.StatusText(http.StatusBadRequest), "invalid body")
 		return
 	}
 	var answer = make(map[string]bool)
 	answer["active"] = true
 	if err = tokenValidity(reqV["token"], "AccessToken"); err != nil {
+		ssas.Logger.Infof("token failed tokenValidity")
 		answer["active"] = false
 	}
 
