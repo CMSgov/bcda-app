@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/dgrijalva/jwt-go"
@@ -16,7 +15,7 @@ type SSASPlugin struct {
 }
 
 // RegisterSystem adds a software client for the ACO identified by localID.
-func (s SSASPlugin) RegisterSystem(localID, publicKey string) (Credentials, error) {
+func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
 	creds := Credentials{}
 	aco, err := GetACOByClientID(localID)
 	if err != nil {
@@ -26,8 +25,8 @@ func (s SSASPlugin) RegisterSystem(localID, publicKey string) (Credentials, erro
 
 	cb, err := s.client.CreateSystem(
 		aco.Name,
-		*aco.CMSID,
-		os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE"),
+		groupID,
+		"bcda-api",
 		publicKey,
 		trackingID,
 	)
