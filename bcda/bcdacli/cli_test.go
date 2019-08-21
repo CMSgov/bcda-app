@@ -827,14 +827,15 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed 1-800-MEDICARE suppression data import.")
-	assert.Contains(buf.String(), "Files imported: 1")
+	assert.Contains(buf.String(), "Files imported: 2")
 	assert.Contains(buf.String(), "Files failed: 0")
 	assert.Contains(buf.String(), "Files skipped: 0")
 
 	testUtils.ResetFiles(s.Suite, path)
 
 	fs := []models.SuppressionFile{}
-	db.Where("name = ?", "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009").Find(&fs)
+	db.Where("name in (?)", []string{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"}).Find(&fs)
+	assert.Len(fs, 2)
 	for _, f := range fs {
 		err := f.Delete()
 		assert.Nil(err)
