@@ -100,6 +100,7 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrueNoKey() {
 func (s *SSASClientTestSuite) TestCreateGroup() {
 	router := chi.NewRouter()
 	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
 		_, err := w.Write([]byte(`{ "id": "123456", "name": "group name" }`))
 		if err != nil {
 			log.Fatal(err)

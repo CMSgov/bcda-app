@@ -2,6 +2,7 @@ package bcdacli
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
@@ -27,6 +26,7 @@ import (
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -133,11 +133,11 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				groupID, err := createGroup(groupID, groupName)
+				ssasID, err := createGroup(groupID, groupName)
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(app.Writer, "Created group %s\n", groupID)
+				fmt.Fprintf(app.Writer, fmt.Sprint(ssasID))
 				return nil
 			},
 		},
@@ -464,13 +464,29 @@ func autoMigrate() {
 	fmt.Println("Completed Database Initialization")
 }
 
-func createGroup(id, name string) (string, error) {
+func createGroup(id, name string) (int, error) {
 	ssas, err := authclient.NewSSASClient()
 	if err != nil {
-		return "", err
+		return -1, err
 	}
-	ssas.CreateGroup(id, name)
-	return "", nil
+
+	b, err := ssas.CreateGroup(id, name)
+	if err != nil {
+		return -1, err
+	}
+
+	var g map[string]interface{}
+	err = json.Unmarshal(b, &g)
+	if err != nil {
+		return -1, err
+	}
+
+	ssasID, err := strconv.Atoi((g["ID"]).(string))
+	if err != nil {
+		return -1, err
+	}
+
+	return ssasID, nil
 }
 
 func createACO(name, cmsID, groupID string) (string, error) {
