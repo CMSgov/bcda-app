@@ -112,7 +112,7 @@ func (c *SSASClient) CreateGroup(id, name string) ([]byte, error) {
 	}
 
 	rb, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create group")
 	}
@@ -138,7 +138,7 @@ func (c *SSASClient) DeleteGroup(id int) error {
 
 	if resp.StatusCode != http.StatusOK {
 		rb, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
+		defer resp.Body.Close()
 		if err != nil {
 			return errors.Wrap(err, "could not delete group")
 		}

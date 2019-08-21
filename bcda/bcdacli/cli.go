@@ -503,16 +503,10 @@ func createACO(name, cmsID, groupID string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	var ssas *authclient.SSASClient
 	if groupID != "" {
 		_, err := strconv.Atoi(groupID)
 		if err != nil {
 			return "", errors.New("Group ID (--group-id) is invalid")
-		}
-
-		ssas, err = authclient.NewSSASClient()
-		if err != nil {
-			return "", err
 		}
 	}
 
@@ -521,8 +515,8 @@ func createACO(name, cmsID, groupID string) (string, error) {
 		return "", err
 	}
 
-	if ssas != nil {
-		ssas.CreateSystem()
+	if groupID != "" {
+		_, _ /*c, err :*/ = auth.GetProvider().RegisterSystem(acoUUID.String() /*"",groupID*/)
 	}
 
 	return acoUUID.String(), nil
