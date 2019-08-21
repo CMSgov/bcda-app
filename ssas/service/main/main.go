@@ -131,8 +131,7 @@ func makeSystem(db *gorm.DB, groupID, clientID, clientName, scope, hash string) 
 		Hash:     hash,
 		SystemID: system.ID,
 	}
-	err := db.Save(&secret).Error
-	if err != nil {
+	if err := db.Save(&secret).Error; err != nil {
 		ssas.Logger.Warn(err)
 	}
 }
