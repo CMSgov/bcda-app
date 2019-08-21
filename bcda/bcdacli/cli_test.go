@@ -199,7 +199,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	defer database.Close(db)
 
 	cmsID := "A9901"
-	_, err := models.CreateACO("Public Key Test ACO", &cmsID, "group-id")
+	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
 	assert.Nil(err)
 	aco, err := auth.GetACOByCMSID(cmsID)
 	assert.Nil(err)
@@ -481,7 +481,7 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	acoUUID, err := createACO("ACO "+email, "", "group-id")
+	acoUUID, err := createACO("ACO "+email, "", "1234")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
@@ -680,7 +680,7 @@ func (s *CLITestSuite) TestCreateACO() {
 
 	// Successful ACO creation
 	ACOName := "Unit Test ACO 1"
-	args := []string{"bcda", "create-aco", "--name", ACOName, "--group-id", "group-id"}
+	args := []string{"bcda", "create-aco", "--name", ACOName, "--group-id", "1234"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
@@ -688,7 +688,6 @@ func (s *CLITestSuite) TestCreateACO() {
 	var testACO models.ACO
 	db.First(&testACO, "Name=?", ACOName)
 	assert.Equal(testACO.UUID.String(), acoUUID)
-	assert.Equal("group-id", testACO.GroupID)
 	buf.Reset()
 
 	ACO2Name := "Unit Test ACO 2"

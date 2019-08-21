@@ -101,7 +101,7 @@ func (s *SSASClientTestSuite) TestCreateGroup() {
 	router := chi.NewRouter()
 	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{ "id": "123456", "name": "group name" }`))
+		_, err := w.Write([]byte(`{ "ID": "123456" }`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -125,7 +125,7 @@ func (s *SSASClientTestSuite) TestCreateGroup() {
 		s.FailNow("Failed to create group", err.Error())
 	}
 
-	assert.Equal(s.T(), `{ "id": "123456", "name": "group name" }`, string(resp))
+	assert.Equal(s.T(), `{ "ID": "123456" }`, string(resp))
 }
 
 func (s *SSASClientTestSuite) TestCreateSystem() {}

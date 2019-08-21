@@ -123,12 +123,12 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "id",
-					Usage:       "ID of group (typically ACO CMS ID)",
+					Usage:       "ID of group",
 					Destination: &groupID,
 				},
 				cli.StringFlag{
 					Name:        "name",
-					Usage:       "Name of group (typically ACO name)",
+					Usage:       "Name of group",
 					Destination: &groupName,
 				},
 			},
@@ -503,9 +503,26 @@ func createACO(name, cmsID, groupID string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	acoUUID, err := models.CreateACO(name, cmsIDPt, groupID)
+	var ssas *authclient.SSASClient
+	if groupID != "" {
+		_, err := strconv.Atoi(groupID)
+		if err != nil {
+			return "", errors.New("Group ID (--group-id) is invalid")
+		}
+
+		ssas, err = authclient.NewSSASClient()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	acoUUID, err := models.CreateACO(name, cmsIDPt)
 	if err != nil {
 		return "", err
+	}
+
+	if ssas != nil {
+		ssas.CreateSystem()
 	}
 
 	return acoUUID.String(), nil

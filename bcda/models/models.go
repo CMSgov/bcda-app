@@ -4,13 +4,14 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
@@ -334,8 +335,8 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 	return utils.OpenPrivateKeyFile(atoPrivateKeyFile)
 }
 
-// CreateACO creates an ACO with the provided name, CMS ID, and group ID.
-func CreateACO(name string, cmsID *string, groupID string) (uuid.UUID, error) {
+// CreateACO creates an ACO with the provided name and CMS ID.
+func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -343,7 +344,7 @@ func CreateACO(name string, cmsID *string, groupID string) (uuid.UUID, error) {
 
 	// TODO: remove ClientID below when a future refactor removes the need
 	//    for every ACO to have a client_id at creation
-	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String(), GroupID: groupID}
+	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String()}
 	db.Create(&aco)
 
 	return aco.UUID, db.Error
