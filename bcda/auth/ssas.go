@@ -36,7 +36,7 @@ func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credenti
 
 	err = json.Unmarshal(cb, &creds)
 	if err != nil {
-		return creds, errors.Wrap(err, "failed to create system")
+		return creds, errors.Wrap(err, "failed to unmarshal response json")
 	}
 
 	return creds, nil

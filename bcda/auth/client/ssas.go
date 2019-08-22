@@ -142,7 +142,7 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create system")
+		return nil, errors.Wrap(err, "failed to read response body")
 	}
 
 	return body, nil
