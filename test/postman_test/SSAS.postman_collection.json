@@ -352,16 +352,19 @@
 			"response": []
 		},
 		{
-			"name": "admin get group, no groups",
+			"name": "admin get group, only fixture groups",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
 						"exec": [
-							"pm.test(\"response is 200 and no groups in response\", function () {",
+							"pm.test(\"response is 200 and only fixture groups in response\", function () {",
 							"    pm.response.to.have.status(200);",
-							"    pm.response.to.have.body(\"[]\");",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.length).to.eql(2);",
+							"    pm.expect(jsonData[0].group_id).to.eql(\"admin\");",
+							"    pm.expect(jsonData[1].group_id).to.eql(\"0c527d2e-2e8a-4808-b11d-0fa06baf8254\");",
 							"});"
 						],
 						"type": "text/javascript"

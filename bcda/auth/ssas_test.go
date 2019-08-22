@@ -25,6 +25,8 @@ var (
 	origSSASUseTLS         string
 	origSSASClientKeyFile  string
 	origSSASClientCertFile string
+	origSSASClientID       string
+	origSSASSecret         string
 )
 
 type SSASPluginTestSuite struct {
@@ -46,6 +48,8 @@ func (s *SSASPluginTestSuite) BeforeTest() {
 	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
 	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
 	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
+	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
+	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
 }
 
 func (s *SSASPluginTestSuite) AfterTest() {
@@ -54,6 +58,8 @@ func (s *SSASPluginTestSuite) AfterTest() {
 	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
 	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
 	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
+	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
+	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem() {}
@@ -89,6 +95,9 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 func (s *SSASPluginTestSuite) TestRevokeSystemCredentials() {}
 
 func (s *SSASPluginTestSuite) TestMakeAccessToken() {
+	// mock SSAS server
+	os.Setenv("BCDA_SSAS_CLIENT_ID", "happy")
+	os.Setenv("BCDA_SSAS_SECRET", "customer")
 	const tokenString = "totallyfake.tokenstringfor.testing"
 	router := chi.NewRouter()
 	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +107,7 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 			return
 		}
 
-		if clientId == "happy" && secret == "customer" {
+		if clientId == os.Getenv("BCDA_SSAS_CLIENT_ID") && secret == os.Getenv("BCDA_SSAS_SECRET") {
 			_, err := w.Write([]byte(`{ "token_type": "bearer", "access_token": "` + tokenString + `" }`))
 			if err != nil {
 				log.Fatal(err)
@@ -168,6 +177,8 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 func (s *SSASPluginTestSuite) TestAuthorizeAccess() {}
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
+	os.Setenv("BCDA_SSAS_CLIENT_ID", "happy")
+	os.Setenv("BCDA_SSAS_SECRET", "customer")
 	const fakeTokenString = "eyJhbGciOiJSUzI1NiIsIng1dCI6IjdkRC1nZWNOZ1gxWmY3R0xrT3ZwT0IyZGNWQSIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2NvbnRvc28uY29tIiwiaXNzIjoiaHR0cHM6Ly9zdHMud2luZG93cy5uZXQvZTQ4MTc0N2YtNWRhNy00NTM4LWNiYmUtNjdlNTdmN2QyMTRlLyIsIm5iZiI6MTM5MTIxMDg1MCwiZXhwIjoxMzkxMjE0NDUwLCJzdWIiOiIyMTc0OWRhYWUyYTkxMTM3YzI1OTE5MTYyMmZhMSJ9.C4Ny4LeVjEEEybcA1SVaFYFS6nH-Ezae_RrTXUYInjXGt-vBOkAa2ryb-kpOlzU_R4Ydce9tKDNp1qZTomXgHjl-cKybAz0Ut90-dlWgXGvJYFkWRXJ4J0JyS893EDwTEHYaAZH_lCBvoYPhXexD2yt1b-73xSP6oxVlc_sMvz3DY__1Y_OyvbYrThHnHglxvjh88x_lX7RN-Bq82ztumxy97rTWaa_1WJgYuy7h7okD24FtsD9PPLYAply0ygl31ReI0FZOdX12Hl4THJm4uI_4_bPXL6YR2oZhYWp-4POWIPHzG9c_GL8asBjoDY9F5q1ykQiotUBESoMML7_N1g"
 	router := chi.NewRouter()
 	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
