@@ -23,6 +23,8 @@ var (
 	origSSASUseTLS         string
 	origSSASClientKeyFile  string
 	origSSASClientCertFile string
+	origSSASClientID       string
+	origSSASSecret         string
 )
 
 type SSASClientTestSuite struct {
@@ -35,6 +37,8 @@ func (s *SSASClientTestSuite) BeforeTest() {
 	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
 	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
 	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
+	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
+	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
 }
 
 func (s *SSASClientTestSuite) AfterTest() {
@@ -43,6 +47,8 @@ func (s *SSASClientTestSuite) AfterTest() {
 	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
 	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
 	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
+	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
+	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
@@ -281,6 +287,8 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")
+	os.Setenv("BCDA_SSAS_CLIENT_ID", "happy")
+	os.Setenv("BCDA_SSAS_SECRET", "customer")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {

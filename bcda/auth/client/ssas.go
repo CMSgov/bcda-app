@@ -279,7 +279,12 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	}
 
 	// TODO assuming auth is by self-management
-	req.SetBasicAuth(os.Getenv("BCDA_SSAS_CLIENT_ID"), os.Getenv("BCDA_SSAS_SECRET"))
+	clientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
+	secret := os.Getenv("BCDA_SSAS_SECRET")
+	if clientID == "" || secret == "" {
+		return nil, errors.New("missing clientID or secret")
+	}
+	req.SetBasicAuth(clientID, secret)
 	req.Header.Add("Accept", "application/json")
 
 	resp, err := c.Do(req)
