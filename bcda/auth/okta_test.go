@@ -51,7 +51,7 @@ func (s *OktaAuthPluginTestSuite) SetupTest() {
 }
 
 func (s *OktaAuthPluginTestSuite) TestOktaRegisterSystem() {
-	c, err := s.o.RegisterSystem(KnownFixtureACO)
+	c, err := s.o.RegisterSystem(KnownFixtureACO, "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
 	assert.Regexp(s.T(), regexp.MustCompile("[!-~]+"), c.ClientID)

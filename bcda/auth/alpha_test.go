@@ -62,7 +62,7 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
 	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
-	c, err := s.p.RegisterSystem(acoUUID.String())
+	c, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
 	assert.NotEqual(s.T(), "", c.ClientSecret)
@@ -73,17 +73,17 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	assert.True(s.T(), auth.Hash(aco.AlphaSecret).IsHashOf(c.ClientSecret))
 	defer connections["TestRegisterSystem"].Delete(&aco)
 
-	c, err = s.p.RegisterSystem(acoUUID.String())
+	c, err = s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c.ClientID)
 	assert.Contains(s.T(), err.Error(), "has a secret")
 
-	c, err = s.p.RegisterSystem("")
+	c, err = s.p.RegisterSystem("", "", "")
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c.ClientID)
 	assert.Contains(s.T(), err.Error(), "provide a non-empty string")
 
-	c, err = s.p.RegisterSystem(uuid.NewRandom().String())
+	c, err = s.p.RegisterSystem(uuid.NewRandom().String(), "", "")
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), c.ClientID)
 	assert.Contains(s.T(), err.Error(), "no ACO record found")
@@ -99,7 +99,7 @@ func (s *AlphaAuthPluginTestSuite) TestUpdateSystem() {
 func (s *AlphaAuthPluginTestSuite) TestDeleteSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
 	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
-	c, _ := s.p.RegisterSystem(acoUUID.String())
+	c, _ := s.p.RegisterSystem(acoUUID.String(), "", "")
 	aco, _ := auth.GetACOByClientID(c.ClientID)
 	assert.NotEmpty(s.T(), aco.ClientID)
 	assert.NotEmpty(s.T(), aco.AlphaSecret)
@@ -129,7 +129,7 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	cmsID := testUtils.RandomHexID()[0:4]
 	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
 	user, _ := models.CreateUser("Test Access Token", "testaccesstoken@examplecom", acoUUID)
-	cc, err := s.p.RegisterSystem(acoUUID.String())
+	cc, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), cc)
 	ts, err := s.p.MakeAccessToken(auth.Credentials{ClientID: cc.ClientID, ClientSecret: cc.ClientSecret})

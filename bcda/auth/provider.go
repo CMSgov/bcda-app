@@ -3,6 +3,7 @@ package auth
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
@@ -67,17 +68,19 @@ type AuthData struct {
 }
 
 type Credentials struct {
-	UserID       string `json:"user_id"`
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-	Token        Token  `json:"token"`
-	ClientName   string `json:"client_name"`
+	UserID       string    `json:"user_id"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret"`
+	ClientName   string    `json:"client_name"`
+	SystemID     string    `json:"system_id"`
+	Token        Token     `json:"token"`
+	ExpiresAt    time.Time `json:"expires_at"`
 }
 
 // Provider defines operations performed through an authentication provider.
 type Provider interface {
 	// RegisterSystem adds a software client for the ACO identified by localID.
-	RegisterSystem(localID string) (Credentials, error)
+	RegisterSystem(localID, publicKey, groupID string) (Credentials, error)
 
 	// UpdateSystem changes data associated with the registered software client identified by clientID
 	UpdateSystem(params []byte) ([]byte, error)
