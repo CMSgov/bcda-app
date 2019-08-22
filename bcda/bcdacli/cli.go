@@ -481,12 +481,8 @@ func createGroup(id, name string) (int, error) {
 		return -1, err
 	}
 
-	ssasID, err := strconv.Atoi((g["ID"]).(string))
-	if err != nil {
-		return -1, err
-	}
-
-	return ssasID, nil
+	ssasID := g["ID"].(float64)
+	return int(ssasID), nil
 }
 
 func createACO(name, cmsID, groupID string) (string, error) {
@@ -517,7 +513,7 @@ func createACO(name, cmsID, groupID string) (string, error) {
 
 	aco, err := auth.GetACOByUUID(acoUUID.String())
 	if err != nil {
-		return acoUUID.String(), errors.New("ACO was created without error but could not be retrieved")
+		return acoUUID.String(), errors.New("ACO was created but could not be retrieved")
 	}
 
 	if groupID != "" && auth.GetProviderName() == "ssas" {
@@ -526,8 +522,17 @@ func createACO(name, cmsID, groupID string) (string, error) {
 			return "", err
 		}
 
-		aco.SSASID = c.SystemID
 		log.Infof("Registered system for ACO %s", acoUUID)
+
+		db := database.GetGORMDbConnection()
+		defer database.Close(db)
+
+		aco.ClientID = c.ClientID
+		aco.SSASID = c.SystemID
+
+		if err = db.Save(&aco).Error; err != nil {
+			return acoUUID.String(), errors.New("ACO was created but could not be updated")
+		}
 	}
 
 	return acoUUID.String(), nil
