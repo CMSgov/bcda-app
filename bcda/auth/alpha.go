@@ -15,7 +15,7 @@ import (
 
 type AlphaAuthPlugin struct{}
 
-func (p AlphaAuthPlugin) RegisterSystem(localID string) (Credentials, error) {
+func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
 	regEvent := event{op: "RegisterSystem", trackingID: localID}
 	operationStarted(regEvent)
 	if localID == "" {

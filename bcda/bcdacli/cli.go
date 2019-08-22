@@ -516,7 +516,11 @@ func createACO(name, cmsID, groupID string) (string, error) {
 	}
 
 	if groupID != "" {
-		_, _ /*c, err :*/ = auth.GetProvider().RegisterSystem(acoUUID.String() /*"",groupID*/)
+		c, err := auth.GetProvider().RegisterSystem(acoUUID.String(), "publickey", groupID)
+		if err != nil {
+			return "", err
+		}
+		fmt.Println(c.SystemID)
 	}
 
 	return acoUUID.String(), nil

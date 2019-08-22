@@ -65,7 +65,7 @@ func CreateAlphaToken(ttl int, acoCMSID string) (string, error) {
 		return "", err
 	}
 
-	creds, err := GetProvider().RegisterSystem(aco.UUID.String())
+	creds, err := GetProvider().RegisterSystem(aco.UUID.String(), "", "")
 	if err != nil {
 		return "", fmt.Errorf("could not register client for %s (%s) because %s", aco.UUID.String(), aco.Name, err.Error())
 	}

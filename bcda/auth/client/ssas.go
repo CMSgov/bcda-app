@@ -149,8 +149,50 @@ func (c *SSASClient) DeleteGroup(id int) error {
 }
 
 // CreateSystem POSTs to the SSAS /system endpoint to create a system.
-func (c *SSASClient) CreateSystem() ([]byte, error) {
-	return nil, nil
+func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackingID string) ([]byte, error) {
+	type system struct {
+		ClientName string `json:"client_name"`
+		GroupID    string `json:"group_id"`
+		Scope      string `json:"scope"`
+		PublicKey  string `json:"public_key"`
+		TrackingID string `json:"tracking_id"`
+	}
+
+	sys := system{
+		ClientName: clientName,
+		GroupID:    groupID,
+		Scope:      scope,
+		PublicKey:  publicKey,
+		TrackingID: trackingID,
+	}
+
+	bb, err := json.Marshal(sys)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create system")
+	}
+	br := bytes.NewReader(bb)
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/system", c.baseURL), br)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create system")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create system")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, errors.New(fmt.Sprintf("failed to create system. status code: %v", resp.StatusCode))
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response body")
+	}
+
+	return body, nil
 }
 
 // GetPublicKey GETs the SSAS /system/{systemID}/key endpoint to retrieve a system's public key.
@@ -284,7 +326,12 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	}
 
 	// TODO assuming auth is by self-management
-	req.SetBasicAuth(os.Getenv("BCDA_SSAS_CLIENT_ID"), os.Getenv("BCDA_SSAS_SECRET"))
+	clientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
+	secret := os.Getenv("BCDA_SSAS_SECRET")
+	if clientID == "" || secret == "" {
+		return nil, errors.New("missing clientID or secret")
+	}
+	req.SetBasicAuth(clientID, secret)
 	req.Header.Add("Accept", "application/json")
 
 	resp, err := c.Do(req)
