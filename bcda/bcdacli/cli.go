@@ -515,12 +515,19 @@ func createACO(name, cmsID, groupID string) (string, error) {
 		return "", err
 	}
 
-	if groupID != "" {
+	aco, err := auth.GetACOByUUID(acoUUID.String())
+	if err != nil {
+		return acoUUID.String(), errors.New("ACO was created without error but could not be retrieved")
+	}
+
+	if groupID != "" && auth.GetProviderName() == "ssas" {
 		c, err := auth.GetProvider().RegisterSystem(acoUUID.String(), "publickey", groupID)
 		if err != nil {
 			return "", err
 		}
-		fmt.Println(c.SystemID)
+
+		aco.SSASID = c.SystemID
+		log.Infof("Registered system for ACO %s", acoUUID)
 	}
 
 	return acoUUID.String(), nil

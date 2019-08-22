@@ -187,6 +187,7 @@ type ACO struct {
 	ClientID    string    `json:"client_id"`
 	GroupID     string    `json:"group_id"`
 	SystemID    string    `json:"system_id"`
+	SSASID      string    `json:"ssas_id"`
 	AlphaSecret string    `json:"alpha_secret"`
 	PublicKey   string    `json:"public_key"`
 }
@@ -219,7 +220,7 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	defer database.Close(db)
 	var cclfFile CCLFFile
 	// todo add a filter here to make sure the file is up to date.
-	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID,constants.ImportComplete).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID, constants.ImportComplete).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
 		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}

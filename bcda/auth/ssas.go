@@ -17,7 +17,7 @@ type SSASPlugin struct {
 // RegisterSystem adds a software client for the ACO identified by localID.
 func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
 	creds := Credentials{}
-	aco, err := GetACOByClientID(localID)
+	aco, err := GetACOByUUID(localID)
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to create system")
 	}

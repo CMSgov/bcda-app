@@ -113,10 +113,6 @@ func (s *SSASClientTestSuite) TestCreateGroup() {
 		}
 	})
 	server := httptest.NewServer(router)
-	origSSASURL := os.Getenv("SSAS_URL")
-	defer os.Setenv("SSAS_URL", origSSASURL)
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 
 	os.Setenv("SSAS_URL", server.URL)
 	os.Setenv("SSAS_USE_TLS", "false")

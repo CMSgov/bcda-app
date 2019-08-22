@@ -10,7 +10,6 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type AlphaAuthPlugin struct{}
@@ -25,7 +24,7 @@ func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Cre
 		return Credentials{}, errors.New(regEvent.help)
 	}
 
-	aco, err := getACOFromDB(localID)
+	aco, err := GetACOByUUID(localID)
 	if err != nil {
 		regEvent.help = err.Error()
 		operationFailed(regEvent)
@@ -119,7 +118,7 @@ func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
 		return Credentials{}, errors.New("provide a non-empty string")
 	}
 
-	aco, err := getACOFromDB(clientID)
+	aco, err := GetACOByUUID(clientID)
 	if err != nil {
 		genEvent.help = err.Error()
 		operationFailed(genEvent)
@@ -224,7 +223,7 @@ func (p AlphaAuthPlugin) AuthorizeAccess(tokenString string) error {
 		return err
 	}
 
-	_, err = getACOFromDB(c.ACOID)
+	_, err = GetACOByUUID(c.ACOID)
 	if err != nil {
 		tknEvent.help = err.Error()
 		operationFailed(tknEvent)
@@ -254,18 +253,4 @@ func (p AlphaAuthPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 	}
 
 	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)
-}
-
-func getACOFromDB(acoUUID string) (models.ACO, error) {
-	var (
-		db  = database.GetGORMDbConnection()
-		aco models.ACO
-		err error
-	)
-	defer database.Close(db)
-
-	if db.Find(&aco, "UUID = ?", uuid.Parse(acoUUID)).RecordNotFound() {
-		err = errors.New("no ACO record found for " + acoUUID)
-	}
-	return aco, err
 }

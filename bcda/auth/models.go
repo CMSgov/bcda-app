@@ -31,7 +31,7 @@ type Token struct {
 	TokenString string    `json:"token_string"`
 }
 
-func GetACOByClientID(clientID string) (models.ACO, error) {
+func GetACO(col, val string) (models.ACO, error) {
 	var (
 		db  = database.GetGORMDbConnection()
 		aco models.ACO
@@ -39,24 +39,22 @@ func GetACOByClientID(clientID string) (models.ACO, error) {
 	)
 	defer database.Close(db)
 
-	if db.Find(&aco, "client_id = ?", clientID).RecordNotFound() {
-		err = errors.New("no ACO record found for " + clientID)
+	if db.Find(&aco, col+" = ?", val).RecordNotFound() {
+		err = errors.New("no ACO record found for " + val)
 	}
 	return aco, err
 }
 
-func GetACOByCMSID(cmsID string) (models.ACO, error) {
-	var (
-		db  = database.GetGORMDbConnection()
-		aco models.ACO
-		err error
-	)
-	defer database.Close(db)
+func GetACOByUUID(id string) (models.ACO, error) {
+	return GetACO("uuid", id)
+}
 
-	if db.Find(&aco, "cms_id = ?", cmsID).RecordNotFound() {
-		err = errors.New("no ACO record found for " + cmsID)
-	}
-	return aco, err
+func GetACOByClientID(clientID string) (models.ACO, error) {
+	return GetACO("client_id", clientID)
+}
+
+func GetACOByCMSID(cmsID string) (models.ACO, error) {
+	return GetACO("cms_id", cmsID)
 }
 
 func CreateAlphaToken(ttl int, acoCMSID string) (string, error) {
