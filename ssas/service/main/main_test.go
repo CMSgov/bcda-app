@@ -2,18 +2,45 @@ package main
 
 import (
 	"bytes"
-	"strings"
-	"testing"
-
 	"github.com/CMSgov/bcda-app/ssas"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"io"
+	"testing"
 )
 
-func TestSSASMain(t *testing.T) {
+type MainTestSuite struct {
+	suite.Suite
+}
+
+func (s *MainTestSuite) TestResetCredentials() {
+	addFixtureData()
+	fixtureClientID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	output := captureOutput(func() {resetCredentials(fixtureClientID)})
+	assert.NotEqual(s.T(), "", output)
+}
+
+func (s *MainTestSuite) TestMainLog() {
 	var str bytes.Buffer
 	ssas.Logger.SetOutput(&str)
 	main()
-	s := str.String()
-	if !strings.Contains(s, "Future home of") {
-		t.Errorf("expected log containing 'Future home of'; got %s", s)
-	}
+	output := str.String()
+	assert.Contains(s.T(), output, "Future home of")
+}
+
+func TestMainTestSuite(t *testing.T) {
+	suite.Run(t, new(MainTestSuite))
+}
+
+func captureOutput(f func()) string {
+	var (
+		buf bytes.Buffer
+		outOrig io.Writer
+	)
+
+	outOrig = output
+	output = &buf
+	f()
+	output = outOrig
+	return buf.String()
 }

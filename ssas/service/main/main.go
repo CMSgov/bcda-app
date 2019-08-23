@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/pborman/uuid"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -21,8 +22,11 @@ var startMeUp bool
 var migrateAndStart bool
 var resetCreds bool
 var clientID string
+var output io.Writer
 
 func init() {
+	output = os.Stdout
+
 	const usageStart = "start the service"
 	flag.BoolVar(&startMeUp, "start", false, usageStart)
 	flag.BoolVar(&startMeUp, "s", false, usageStart+" (shorthand)")
@@ -159,6 +163,6 @@ func resetCredentials(clientID string) {
 	if c, err = s.ResetSecret(clientID); err != nil {
 		ssas.Logger.Warn(err)
 	} else {
-		fmt.Println(c.ClientSecret)
+		_, _ = fmt.Fprintf(output, "%s\n", c.ClientSecret)
 	}
 }
