@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
@@ -87,7 +88,6 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
-	// TODO: Mock client instead of server
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -132,7 +132,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.ResetSecret("1")
+	creds, err := s.p.ResetSecret(models.ACO{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
 	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)

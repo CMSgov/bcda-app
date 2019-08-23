@@ -481,7 +481,7 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	acoUUID, err := createACO("ACO "+email, "", "1234")
+	acoUUID, err := createACO("ACO "+email, "", "", "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
@@ -634,7 +634,7 @@ func (s *CLITestSuite) TestCreateGroup() {
 	router := chi.NewRouter()
 	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{ "ID": "100" }`))
+		_, err := w.Write([]byte(`{ "ID": 100 }`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -680,7 +680,7 @@ func (s *CLITestSuite) TestCreateACO() {
 
 	// Successful ACO creation
 	ACOName := "Unit Test ACO 1"
-	args := []string{"bcda", "create-aco", "--name", ACOName, "--group-id", "1234"}
+	args := []string{"bcda", "create-aco", "--name", ACOName}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
