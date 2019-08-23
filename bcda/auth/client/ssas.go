@@ -124,7 +124,7 @@ func (c *SSASClient) CreateGroup(id, name string) ([]byte, error) {
 	return rb, nil
 }
 
-// DeleteGroup DELETEs to the SSAS /group endpoint to delete a system.
+// DeleteGroup DELETEs to the SSAS /group endpoint to delete a group.
 func (c *SSASClient) DeleteGroup(id int) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/group/%d", c.baseURL, id), nil)
 	if err != nil {

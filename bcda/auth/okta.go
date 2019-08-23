@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
@@ -60,7 +61,8 @@ func (o OktaAuthPlugin) DeleteSystem(clientID string) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
+func (o OktaAuthPlugin) ResetSecret(aco models.ACO) (Credentials, error) {
+	clientID := aco.ClientID
 	clientSecret, err := o.backend.GenerateNewClientSecret(clientID)
 	if err != nil {
 		return Credentials{}, err

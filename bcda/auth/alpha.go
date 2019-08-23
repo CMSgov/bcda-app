@@ -10,6 +10,7 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type AlphaAuthPlugin struct{}
@@ -108,7 +109,8 @@ func (p AlphaAuthPlugin) DeleteSystem(clientID string) error {
 	return nil
 }
 
-func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
+func (p AlphaAuthPlugin) ResetSecret(aco models.ACO) (Credentials, error) {
+	clientID := aco.ClientID
 	genEvent := event{op: "ResetSecret", trackingID: clientID}
 	operationStarted(genEvent)
 

@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 const (
@@ -73,7 +74,7 @@ type Credentials struct {
 	ClientSecret string    `json:"client_secret"`
 	ClientName   string    `json:"client_name"`
 	SystemID     string    `json:"system_id"`
-	Token        Token     `json:"token"`
+	Token        string    `json:"token"`
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
@@ -89,7 +90,7 @@ type Provider interface {
 	DeleteSystem(clientID string) error
 
 	// ResetSecret new or replace existing Credentials for the given clientID
-	ResetSecret(clientID string) (Credentials, error)
+	ResetSecret(aco models.ACO) (Credentials, error)
 
 	// RevokeSystemCredentials any existing Credentials for the given clientID
 	RevokeSystemCredentials(clientID string) error

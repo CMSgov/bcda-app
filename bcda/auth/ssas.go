@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -53,8 +54,8 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 }
 
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
-func (s SSASPlugin) ResetSecret(ssasID string) (Credentials, error) {
-	resp, err := s.client.ResetCredentials(ssasID)
+func (s SSASPlugin) ResetSecret(aco models.ACO) (Credentials, error) {
+	resp, err := s.client.ResetCredentials(aco.SSASID)
 	if err != nil {
 		return Credentials{}, err
 	}
