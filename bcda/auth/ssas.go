@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
@@ -54,16 +55,25 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 }
 
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
-func (s SSASPlugin) ResetSecret(aco models.ACO) (Credentials, error) {
-	resp, err := s.client.ResetCredentials(aco.SystemID)
-	if err != nil {
-		return Credentials{}, err
+func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
+	creds := Credentials{}
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var aco models.ACO
+	if nf := db.First(&aco, "client_id = ?", clientID).RecordNotFound(); nf {
+		return creds, errors.New("no ACO found for client ID")
 	}
 
-	creds := Credentials{}
+	resp, err := s.client.ResetCredentials(aco.SystemID)
+	if err != nil {
+		return creds, err
+	}
+
 	err = json.Unmarshal(resp, &creds)
 	if err != nil {
-		return Credentials{}, err
+		return creds, err
 	}
 
 	return creds, nil

@@ -9,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 const (
@@ -90,7 +89,7 @@ type Provider interface {
 	DeleteSystem(clientID string) error
 
 	// ResetSecret new or replace existing Credentials for the given clientID
-	ResetSecret(aco models.ACO) (Credentials, error)
+	ResetSecret(clientID string) (Credentials, error)
 
 	// RevokeSystemCredentials any existing Credentials for the given clientID
 	RevokeSystemCredentials(clientID string) error

@@ -113,13 +113,13 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteSystem() {
 
 func (s *AlphaAuthPluginTestSuite) TestResetSecret() {
 	validClientID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	c, err := s.p.ResetSecret(models.ACO{ClientID: validClientID})
+	c, err := s.p.ResetSecret(validClientID)
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", c.ClientSecret)
 	assert.Equal(s.T(), validClientID, c.ClientID)
 
 	invalidClientID := "IDontexist"
-	c, err = s.p.ResetSecret(models.ACO{ClientID: invalidClientID})
+	c, err = s.p.ResetSecret(invalidClientID)
 	assert.NotNil(s.T(), err)
 	assert.Equal(s.T(), "", c.ClientSecret)
 	assert.Equal(s.T(), "", c.ClientID)

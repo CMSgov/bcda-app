@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
@@ -132,7 +131,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.ResetSecret(models.ACO{})
+	creds, err := s.p.ResetSecret("0c527d2e-2e8a-4808-b11d-0fa06baf8254")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
 	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)

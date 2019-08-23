@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -162,14 +161,9 @@ func setUpApp() *cli.App {
 					Usage:       "Auth group ID (required for SSAS)",
 					Destination: &groupID,
 				},
-				cli.StringFlag{
-					Name:        "key-file",
-					Usage:       "Location of public key in PEM format (required for SSAS)",
-					Destination: &filePath,
-				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName, acoCMSID, groupID, filePath)
+				acoUUID, err := createACO(acoName, acoCMSID, groupID)
 				if err != nil {
 					return err
 				}
@@ -330,7 +324,7 @@ func setUpApp() *cli.App {
 				}
 
 				// Generate new credentials
-				creds, err := auth.GetProvider().ResetSecret(aco)
+				creds, err := auth.GetProvider().ResetSecret(aco.ClientID)
 				if err != nil {
 					return err
 				}
@@ -489,7 +483,7 @@ func createGroup(id, name string) (int, error) {
 	return int(ssasID), nil
 }
 
-func createACO(name, cmsID, groupID, filePath string) (string, error) {
+func createACO(name, cmsID, groupID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
@@ -503,10 +497,6 @@ func createACO(name, cmsID, groupID, filePath string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	if groupID != "" && filePath == "" {
-		return "", errors.New("Public key file path (--key-file) is required when creating a system")
-	}
-
 	acoUUID, err := models.CreateACO(name, cmsIDPt)
 	if err != nil {
 		return "", err
@@ -518,26 +508,10 @@ func createACO(name, cmsID, groupID, filePath string) (string, error) {
 	}
 
 	if groupID != "" && auth.GetProviderName() == "ssas" {
-		f, err := os.Open(filepath.Clean(filePath))
-		if err != nil {
-			return acoUUID.String(), errors.Wrap(err, "ACO was created, but public key could not be read")
-		}
-
-		b, err := ioutil.ReadAll(bufio.NewReader(f))
-		if err != nil {
-			return acoUUID.String(), errors.Wrap(err, "ACO was created, but public key could not be read")
-		}
-
-		c, err := auth.GetProvider().RegisterSystem(acoUUID.String(), string(b), groupID)
-		if err != nil {
-			return "", err
-		}
-
 		db := database.GetGORMDbConnection()
 		defer database.Close(db)
 
-		aco.ClientID = c.ClientID
-		aco.SystemID = c.SystemID
+		aco.GroupID = groupID
 
 		if err = db.Save(&aco).Error; err != nil {
 			return acoUUID.String(), errors.Wrap(err, "ACO was created but could not be updated")

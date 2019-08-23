@@ -70,12 +70,12 @@ func (s *OktaAuthPluginTestSuite) TestOktaDeleteSystem() {
 
 func (s *OktaAuthPluginTestSuite) TestResetSecret() {
 	validClientID := "0oaj4590j9B5uh8rC0h7"
-	c, err := s.o.ResetSecret(models.ACO{ClientID: validClientID})
+	c, err := s.o.ResetSecret(validClientID)
 	assert.Nil(s.T(), err)
 	assert.NotEqual(s.T(), "", c.ClientSecret)
 
 	invalidClientID := "IDontexist"
-	c, err = s.o.ResetSecret(models.ACO{ClientID: invalidClientID})
+	c, err = s.o.ResetSecret(invalidClientID)
 	assert.Equal(s.T(), "404 Not Found", err.Error())
 }
 

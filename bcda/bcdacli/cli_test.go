@@ -481,7 +481,7 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	acoUUID, err := createACO("ACO "+email, "", "", "")
+	acoUUID, err := createACO("ACO "+email, "", "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
