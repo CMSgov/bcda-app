@@ -537,7 +537,7 @@ func createACO(name, cmsID, groupID, filePath string) (string, error) {
 		defer database.Close(db)
 
 		aco.ClientID = c.ClientID
-		aco.SSASID = c.SystemID
+		aco.SystemID = c.SystemID
 
 		if err = db.Save(&aco).Error; err != nil {
 			return acoUUID.String(), errors.Wrap(err, "ACO was created but could not be updated")

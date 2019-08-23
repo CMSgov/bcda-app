@@ -185,9 +185,7 @@ type ACO struct {
 	CMSID       *string   `gorm:"type:char(5);unique" json:"cms_id"`
 	Name        string    `json:"name"`
 	ClientID    string    `json:"client_id"`
-	GroupID     string    `json:"group_id"`
 	SystemID    string    `json:"system_id"`
-	SSASID      string    `json:"ssas_id"`
 	AlphaSecret string    `json:"alpha_secret"`
 	PublicKey   string    `json:"public_key"`
 }

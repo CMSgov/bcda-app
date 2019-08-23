@@ -55,7 +55,7 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
 func (s SSASPlugin) ResetSecret(aco models.ACO) (Credentials, error) {
-	resp, err := s.client.ResetCredentials(aco.SSASID)
+	resp, err := s.client.ResetCredentials(aco.SystemID)
 	if err != nil {
 		return Credentials{}, err
 	}

@@ -7,7 +7,7 @@ CLIENT_ID=${CREDS[0]}
 CLIENT_SECRET=${CREDS[1]}
 echo "- Client ID: $CLIENT_ID"
 echo "- Client secret: $CLIENT_SECRET"
-go run bcda_client.go -host=localhost:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=ExplanationOfBenefit
+# go run bcda_client.go -host=localhost:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=ExplanationOfBenefit
 # go run bcda_client.go -host=localhost:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=Patient
 # go run bcda_client.go -host=localhost:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=Coverage
 docker exec -it bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM acos WHERE cms_id = '"'"'A9996'"'"'"'
