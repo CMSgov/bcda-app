@@ -3,4 +3,4 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app/test/postman_test
 COPY ./test/postman_test .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/
 ENV NODE_OPTIONS "--max-old-space-size=2048"
-ENTRYPOINT ["newman", "run", "test/postman_test/BCDA_Tests_Sequential.postman_collection.json",  "--timeout-script", "99999", "-e"]
+ENTRYPOINT ["newman", "run"]

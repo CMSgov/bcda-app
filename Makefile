@@ -21,14 +21,15 @@ lint-ssas:
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./ssas/...
 
 #
-# The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token
+# The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token.
 # The CLIENT_ID and CLIENT_SECRET values can be overridden by environmental variables e.g.:
 #    export CLIENT_ID=1234; export CLIENT_SECRET=abcd; make postman env=local
 # or 
 #    CLIENT_ID=1234 CLIENT_SECRET=abcd make postman env=local
 #
-# If the values for CLIENT_ID and CLIENT_SECRET are not overwritten, then by default, generate-client-credentials is called using ACO CMS ID "A9994" (to generate credentials for the `ACO Dev` which has a CMS ID of A9994 in our test data)
-# This can be overridden using the same technique above (exporting the env var and running make).
+# If the values for CLIENT_ID and CLIENT_SECRET are not overridden, then by default, generate-client-credentials is
+# called using ACO CMS ID "A9994" (to generate credentials for the `ACO Dev` which has a CMS ID of A9994 in our test
+# data). This can be overridden using the same technique as above (exporting the env var and running make).
 # For example:
 #    export ACO_CMS_ID=A9999; make postman env=local
 # or
@@ -41,15 +42,20 @@ CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:
 	CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh 
 
+SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
+SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'tmp/ssas-service --reset-credentials --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
+smoke-test-ssas:
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json --timeout-script 99999 -e test/postman_test/ssas-local.postman_environment.json --global-var "token=$(token)" --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
+
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json --timeout-script 99999 -e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
 
 postman-ssas:
-	docker-compose -f docker-compose.test.yml run --rm postman_test_ssas test/postman_test/ssas-local.postman_environment.json
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS.postman_collection.json --timeout-script 99999 -e test/postman_test/ssas-local.postman_environment.json
 
 unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
@@ -71,7 +77,7 @@ test-ssas:
 	$(MAKE) lint-ssas
 	$(MAKE) unit-test-ssas
 	$(MAKE) postman-ssas
-	@echo "No smoke-test (yet)"
+	$(MAKE) smoke-test-ssas
 
 load-fixtures:
 	docker-compose up -d db
