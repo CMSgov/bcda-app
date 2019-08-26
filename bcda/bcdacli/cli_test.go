@@ -744,6 +744,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	// dir has 4 files, but 2 will be ignored because of bad file names.
 	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_BadFileNames/"}
 	err = s.testApp.Run(args)
+	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Skipped 3 files.")
