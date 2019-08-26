@@ -145,6 +145,14 @@
   revision = "c2b33e84"
 
 [[projects]]
+  digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
+
+[[projects]]
   digest = "1:2d370ad7a48d3523291ad53a04b9b1510c182880927f800b46221cc465427800"
   name = "github.com/lib/pq"
   packages = [
@@ -231,14 +239,15 @@
   revision = "6a9ea43bcacdf716a5c1b38efff722c07adf0069"
 
 [[projects]]
-  digest = "1:411720dfef30789c7933810e994ccbad0003929a84b22980be86e55838c5a9e8"
+  digest = "1:31538f8d774e8bf2fb9380d2d2a82d69e206a7d0603946586926f1819c546c26"
   name = "github.com/sirupsen/logrus"
   packages = [
     ".",
     "hooks/test",
   ]
   pruneopts = "UT"
-  revision = "d329d24db4313262a3b0a24d8aeb1dc4bd294fb0"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
 
 [[projects]]
   digest = "1:30e06e6d62a1d694e3cdbff29d8a9a96022e05a487d0c6eaf0ef898965ef28fb"
@@ -301,12 +310,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:35ce874cf16f78a2da908ab28b0277497e36603d289db00d39da5200bc8ace08"
+  digest = "1:f92f6956e4059f6a3efc14924d2dd58ba90da25cc57fe07ae3779ef2f5e0c5f2"
   name = "golang.org/x/crypto"
-  packages = [
-    "pbkdf2",
-    "ssh/terminal",
-  ]
+  packages = ["pbkdf2"]
   pruneopts = "UT"
   revision = "a29dc8fdc73485234dbef99ebedb95d2eced08de"
 
@@ -324,12 +330,9 @@
   revision = "c10e9556a7bc0e7c942242b606f0acf024ad5d6a"
 
 [[projects]]
-  digest = "1:4d16433c0d2c24761b8a507e8c2e9c8cf9193b497d6b38aaeffca038070bc8f5"
+  digest = "1:76b5ca88193bf744f729c2fde12151b24364ffaca3fd092069d9ca2ea6e1f999"
   name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows",
-  ]
+  packages = ["unix"]
   pruneopts = "UT"
   revision = "904bdc257025c7b3f43c19360ad3ab85783fad78"
 

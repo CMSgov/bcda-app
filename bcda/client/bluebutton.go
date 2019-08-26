@@ -44,6 +44,7 @@ type BlueButtonClient struct {
 func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
+	logger.SetReportCaller(true)
 	filePath := os.Getenv("BCDA_BB_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */

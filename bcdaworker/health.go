@@ -11,6 +11,7 @@ import (
 func NewHealthLogger() *HealthLogger {
 	l := HealthLogger{logrus.New()}
 	l.Logger.Formatter = &logrus.JSONFormatter{}
+	l.Logger.SetReportCaller(true)
 	filePath := os.Getenv("WORKER_HEALTH_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
