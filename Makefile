@@ -73,6 +73,7 @@ test:
 	$(MAKE) postman env=local
 	$(MAKE) postman-ssas
 	$(MAKE) smoke-test
+	$(MAKE) smoke-test-ssas
 
 test-ssas:
 	$(MAKE) lint-ssas
