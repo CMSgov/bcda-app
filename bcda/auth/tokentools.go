@@ -12,12 +12,13 @@ import (
 
 // TokenTTL contains the token ttl in nanoseconds (1,000,000,000 nanos/sec)
 var (
-	TokenTTL = time.Hour
+	TokenTTL  = time.Hour
 	ttlScalar = time.Minute
 )
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
+	log.SetReportCaller(true)
 	SetTokenDuration()
 }
 
