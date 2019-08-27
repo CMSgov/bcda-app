@@ -199,7 +199,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	defer database.Close(db)
 
 	cmsID := "A9901"
-	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
+	_, err := models.CreateACO("Public Key Test ACO", &cmsID, "")
 	assert.Nil(err)
 	aco, err := auth.GetACOByCMSID(cmsID)
 	assert.Nil(err)

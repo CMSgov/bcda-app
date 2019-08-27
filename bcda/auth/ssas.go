@@ -5,7 +5,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -61,9 +60,9 @@ func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var aco models.ACO
-	if nf := db.First(&aco, "client_id = ?", clientID).RecordNotFound(); nf {
-		return creds, errors.New("no ACO found for client ID")
+	aco, err := GetACOByClientID(clientID)
+	if err != nil {
+		return creds, err
 	}
 
 	resp, err := s.client.ResetCredentials(aco.SystemID)

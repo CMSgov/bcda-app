@@ -1,3 +1,4 @@
+#!/bin/bash
 # TODO: Change order, creating ACO before group
 GROUP_ID=$(docker-compose run --rm api sh -c 'tmp/bcda create-group --id="smoke-test-group" --name="Smoke Test Group"' | tail -n1 | tr -d '\r')
 echo "- Group ID: $GROUP_ID"

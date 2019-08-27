@@ -497,25 +497,9 @@ func createACO(name, cmsID, groupID string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	acoUUID, err := models.CreateACO(name, cmsIDPt)
+	acoUUID, err := models.CreateACO(name, cmsIDPt, groupID)
 	if err != nil {
 		return "", err
-	}
-
-	aco, err := auth.GetACOByUUID(acoUUID.String())
-	if err != nil {
-		return acoUUID.String(), errors.Wrap(err, "ACO was created but could not be retrieved")
-	}
-
-	if groupID != "" && auth.GetProviderName() == "ssas" {
-		db := database.GetGORMDbConnection()
-		defer database.Close(db)
-
-		aco.GroupID = groupID
-
-		if err = db.Save(&aco).Error; err != nil {
-			return acoUUID.String(), errors.Wrap(err, "ACO was created but could not be updated")
-		}
 	}
 
 	return acoUUID.String(), nil

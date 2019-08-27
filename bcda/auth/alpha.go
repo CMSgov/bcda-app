@@ -118,6 +118,7 @@ func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
 		return Credentials{}, errors.New("provide a non-empty string")
 	}
 
+	// Although this should be GetACOByClientID, fixing it impacts tests that were built with the assumption is that client ID = UUID.
 	aco, err := GetACOByUUID(clientID)
 	if err != nil {
 		genEvent.help = err.Error()
