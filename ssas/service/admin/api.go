@@ -173,7 +173,7 @@ func resetCredentials(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, systemID, credentials.ClientSecret)
+	fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, credentials.ClientID, credentials.ClientSecret)
 }
 
 func getPublicKey(w http.ResponseWriter, r *http.Request) {

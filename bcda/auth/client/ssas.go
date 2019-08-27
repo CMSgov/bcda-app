@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -100,6 +101,52 @@ func tlsTransport() (*http.Transport, error) {
 	tlsConfig.BuildNameToCertificate()
 
 	return &http.Transport{TLSClientConfig: tlsConfig}, nil
+}
+
+// CreateGroup POSTs to the SSAS /group endpoint to create a system.
+func (c *SSASClient) CreateGroup(id, name string) ([]byte, error) {
+	b := fmt.Sprintf(`{"id": "%s", "name": "%s", "scopes": ["bcda-api"]}`, id, name)
+
+	resp, err := c.Post(fmt.Sprintf("%s/group", c.baseURL), "application/json", strings.NewReader(b))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create group")
+	}
+
+	rb, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create group")
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, errors.Errorf("could not create group: %s", rb)
+	}
+
+	return rb, nil
+}
+
+// DeleteGroup DELETEs to the SSAS /group/{id} endpoint to delete a group.
+func (c *SSASClient) DeleteGroup(id int) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/group/%d", c.baseURL, id), nil)
+	if err != nil {
+		return errors.Wrap(err, "could not delete group")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "could not delete group")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		rb, err := ioutil.ReadAll(resp.Body)
+		defer resp.Body.Close()
+		if err != nil {
+			return errors.Wrap(err, "could not delete group")
+		}
+		return errors.Errorf("could not delete group: %s", rb)
+	}
+
+	return nil
 }
 
 // CreateSystem POSTs to the SSAS /system endpoint to create a system.
