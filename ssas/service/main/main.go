@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/pborman/uuid"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -18,14 +20,23 @@ import (
 
 var startMeUp bool
 var migrateAndStart bool
+var resetCreds bool
+var clientID string
+var output io.Writer
 
 func init() {
+	output = os.Stdout
+
 	const usageStart = "start the service"
 	flag.BoolVar(&startMeUp, "start", false, usageStart)
 	flag.BoolVar(&startMeUp, "s", false, usageStart+" (shorthand)")
 	const usageMigrate = "migrate the db and start the service"
 	flag.BoolVar(&migrateAndStart, "migrate", false, usageMigrate)
 	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate+" (shorthand)")
+
+	const usageResetCreds = "rotate system credentials for the given client_id"
+	flag.BoolVar(&resetCreds, "reset-credentials", false, usageResetCreds)
+	flag.StringVar(&clientID, "client-id", "", "")
 }
 
 func main() {
@@ -42,6 +53,9 @@ func main() {
 	}
 	if startMeUp {
 		start()
+	}
+	if resetCreds && clientID != "" {
+		resetCredentials(clientID)
 	}
 }
 
@@ -133,5 +147,22 @@ func makeSystem(db *gorm.DB, groupID, clientID, clientName, scope, hash string) 
 	}
 	if err := db.Save(&secret).Error; err != nil {
 		ssas.Logger.Warn(err)
+	}
+}
+
+func resetCredentials(clientID string) {
+	var (
+		err error
+		s ssas.System
+		c ssas.Credentials
+	)
+	if s, err = ssas.GetSystemByClientID(clientID); err != nil  {
+		ssas.Logger.Warn(err)
+	}
+	ssas.OperationCalled(ssas.Event{Op: "ResetSecret", TrackingID: uuid.NewRandom().String(), Help: "calling from main.resetCredentials()"})
+	if c, err = s.ResetSecret(clientID); err != nil {
+		ssas.Logger.Warn(err)
+	} else {
+		_, _ = fmt.Fprintf(output, "%s\n", c.ClientSecret)
 	}
 }
