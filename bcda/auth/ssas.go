@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -17,7 +18,7 @@ type SSASPlugin struct {
 // RegisterSystem adds a software client for the ACO identified by localID.
 func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
 	creds := Credentials{}
-	aco, err := GetACOByClientID(localID)
+	aco, err := GetACOByUUID(localID)
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to create system")
 	}
@@ -53,16 +54,25 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 }
 
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
-func (s SSASPlugin) ResetSecret(ssasID string) (Credentials, error) {
-	resp, err := s.client.ResetCredentials(ssasID)
+func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
+	creds := Credentials{}
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	aco, err := GetACOByClientID(clientID)
 	if err != nil {
-		return Credentials{}, err
+		return creds, err
 	}
 
-	creds := Credentials{}
+	resp, err := s.client.ResetCredentials(aco.SystemID)
+	if err != nil {
+		return creds, err
+	}
+
 	err = json.Unmarshal(resp, &creds)
 	if err != nil {
-		return Credentials{}, err
+		return creds, err
 	}
 
 	return creds, nil
