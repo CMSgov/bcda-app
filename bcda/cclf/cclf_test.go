@@ -136,6 +136,22 @@ func (s *CCLFTestSuite) TestValidate_SplitFiles() {
 	assert.Nil(err)
 }
 
+func (s *CCLFTestSuite) TestValidate_FileName() {
+	assert := assert.New(s.T())
+
+	filePath := BASE_FILE_PATH + "cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	err := validateFileName(filePath)
+	assert.Nil(err)
+
+	filePath = BASE_FILE_PATH + "cclf_BadFileNames/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009"
+	err = validateFileName(filePath)
+	assert.EqualError(err,fmt.Sprintf("invalid filename for file: %s", filePath))
+
+	filePath = BASE_FILE_PATH + "cclf_BCD/T.BCD.ACO.ZC0Y18.D181120.T0001000"
+	err = validateFileName(filePath)
+	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
+}
+
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
@@ -426,16 +442,16 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata_InvalidFilename() {
 	assert := assert.New(s.T())
 
 	_, err := getCCLFFileMetadata("/path/to/file")
-	assert.EqualError(err, "invalid filename for file: /path/to/file")
+	assert.EqualError(err, "invalid zipped filename for file: /path/to/file")
 
 	_, err = getCCLFFileMetadata("/path/T.A0000.ACO.ZC8Y18.D190117.T9909420")
 	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: /path/T.A0000.ACO.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 
 	_, err = getCCLFFileMetadata("/cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
-	assert.EqualError(err, "invalid filename for file: /cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
+	assert.EqualError(err, "invalid zipped filename for file: /cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
 
 	_, err = getCCLFFileMetadata("/cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
-	assert.EqualError(err, "invalid filename for file: /cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
+	assert.EqualError(err, "invalid zipped filename for file: /cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
 }
 
 func (s *CCLFTestSuite) TestSortCCLFFiles() {
