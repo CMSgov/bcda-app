@@ -7,12 +7,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
-	"time"
-
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
@@ -408,9 +407,19 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 	return creds, nil
 }
 
-/*
-	GetSystemByClientID returns the system associated with the provided clientID
-*/
+// DataForSystem returns the group extra data associated with this system
+func XDataFor(system System) (string, error) {
+	group, err := FindByGroupID(system.GroupID)
+	if err != nil {
+		return "", fmt.Errorf("no group for system %d; %s", system.ID, err)
+	}
+	Logger.Info("group xdata '", group, "'")
+	//strconv.Unquote here?
+	return group.XData, nil
+}
+
+
+// GetSystemByClientID returns the system associated with the provided clientID
 func GetSystemByClientID(clientID string) (System, error) {
 	var (
 		db     = GetGORMDbConnection()
@@ -425,9 +434,7 @@ func GetSystemByClientID(clientID string) (System, error) {
 	return system, err
 }
 
-/*
-	GetSystemByID returns the system associated with the provided ID
-*/
+// GetSystemByID returns the system associated with the provided ID
 func GetSystemByID(id string) (System, error) {
 	var (
 		db     = GetGORMDbConnection()
@@ -452,9 +459,7 @@ func GenerateSecret() (string, error) {
 	return fmt.Sprintf("%x", b), nil
 }
 
-/*
-	ResetSecret creates a new secret for the current system.
-*/
+// ResetSecret creates a new secret for the current system.
 func (system *System) ResetSecret(trackingID string) (Credentials, error) {
 	db := GetGORMDbConnection()
 	defer Close(db)
@@ -494,9 +499,7 @@ func (system *System) ResetSecret(trackingID string) (Credentials, error) {
 	return creds, nil
 }
 
-/*
-	CleanDatabase deletes the given group and associated systems, encryption keys, and secrets.
-*/
+// CleanDatabase deletes the given group and associated systems, encryption keys, and secrets.
 func CleanDatabase(group Group) error {
 	var (
 		system        System
@@ -519,22 +522,22 @@ func CleanDatabase(group Group) error {
 
 	err = db.Table("systems").Where("group_id = ?", group.GroupID).Pluck("ID", &systemIds).Error
 	if err != nil {
-		return fmt.Errorf("unable to find associated systems: %s", err.Error())
-	}
+		Logger.Errorf("unable to find associated systems: %s", err.Error())
+	} else {
+		err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
+		if err != nil {
+			Logger.Errorf("unable to delete encryption keys: %s", err.Error())
+		}
 
-	err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&encryptionKey).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete encryption keys: %s", err.Error())
-	}
+		err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&secret).Error
+		if err != nil {
+			Logger.Errorf("unable to delete secrets: %s", err.Error())
+		}
 
-	err = db.Unscoped().Where("system_id IN (?)", systemIds).Delete(&secret).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete secrets: %s", err.Error())
-	}
-
-	err = db.Unscoped().Where("id IN (?)", systemIds).Delete(&system).Error
-	if err != nil {
-		return fmt.Errorf("unable to delete systems: %s", err.Error())
+		err = db.Unscoped().Where("id IN (?)", systemIds).Delete(&system).Error
+		if err != nil {
+			Logger.Errorf("unable to delete systems: %s", err.Error())
+		}
 	}
 
 	err = db.Unscoped().Delete(&group).Error

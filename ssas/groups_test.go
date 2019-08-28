@@ -7,45 +7,43 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 const SampleGroup string = `{  
-	"id":"A12345",
-	"name":"ACO Corp Systems",
-	"users":[  
-		"00uiqolo7fEFSfif70h7",
-		"l0vckYyfyow4TZ0zOKek",
-		"HqtEi2khroEZkH4sdIzj"
-	],
-	"scopes":[  
-		"user-admin",
-		"system-admin"
-	],
-	"resources":[  
-		{  
-			"id":"xxx",
-			"name":"BCDA API",
-			"scopes":[  
-				"bcda-api"
-			]
-		},
-		{  
-			"id":"eft",
-			"name":"EFT CCLF",
-			"scopes":[  
-				"eft-app:download",
-				"eft-data:read"
-			]
-		}
-	],
-	"system":
-		{  
-		"client_id":"4tuhiOIFIwriIOH3zn",
-		"software_id":"4NRB1-0XZABZI9E6-5SM3R",
-		"client_name":"ACO System A"
-		}
+  "group_id":"%s",
+  "name": "ACO Corp Systems",
+  "resources": [
+    {
+      "id": "xxx",
+      "name": "BCDA API",
+      "scopes": [
+        "bcda-api"
+      ]
+    },
+    {
+      "id": "eft",
+      "name": "EFT CCLF",
+      "scopes": [
+        "eft-app:download",
+        "eft-data:read"
+      ]
+    }
+  ],
+  "scopes": [
+    "user-admin",
+    "system-admin"
+  ],
+  "users": [
+    "00uiqolo7fEFSfif70h7",
+    "l0vckYyfyow4TZ0zOKek",
+    "HqtEi2khroEZkH4sdIzj"
+  ],
+  "xdata": %s
 }`
+
+const SampleXdata string = `"{\"cms_ids\":[\"T67890\",\"T54321\"]}"`
 
 type GroupsTestSuite struct {
 	suite.Suite
@@ -66,16 +64,21 @@ func (s *GroupsTestSuite) AfterTest() {
 }
 
 func (s *GroupsTestSuite) TestCreateGroup() {
-	groupBytes := []byte(SampleGroup)
+	gid := RandomHexID()
 	gd := GroupData{}
-	err := json.Unmarshal(groupBytes, &gd)
+	err := json.Unmarshal([]byte(fmt.Sprintf(SampleGroup, gid, SampleXdata)), &gd)
 	assert.Nil(s.T(), err)
 	g, err := CreateGroup(gd)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), g)
-	assert.Equal(s.T(), "A12345", g.GroupID)
-	assert.Equal(s.T(), "A12345", g.Data.ID)
+
+	require.Nil(s.T(), err)
+	require.NotNil(s.T(), g)
+	assert.NotZero(s.T(), g.ID)
+	assert.Equal(s.T(), gid, g.GroupID)
+	assert.Equal(s.T(), gid, g.Data.GroupID)
 	assert.Equal(s.T(), 3, len(g.Data.Users))
+	assert.NotEmpty(s.T(), g.XData)
+	assert.NotEmpty(s.T(), g.Data.XData)
+	assert.Equal(s.T(), g.Data.XData, g.XData)
 
 	dbGroup := Group{}
 	db := GetGORMDbConnection()
@@ -83,76 +86,83 @@ func (s *GroupsTestSuite) TestCreateGroup() {
 	if db.Where("id = ?", g.ID).Find(&dbGroup).RecordNotFound() {
 		assert.FailNow(s.T(), fmt.Sprintf("record not found for id=%d", g.ID))
 	}
-	assert.Equal(s.T(), "A12345", dbGroup.GroupID)
-	assert.Equal(s.T(), "A12345", dbGroup.Data.ID)
-	assert.Equal(s.T(), 3, len(dbGroup.Data.Users))
+	assert.Equal(s.T(), gid, dbGroup.GroupID)
+	assert.Equal(s.T(), gid, dbGroup.Data.GroupID)
+	assert.Equal(s.T(), g.XData, dbGroup.XData)
+	assert.Equal(s.T(), g.Data, dbGroup.Data)
+	assert.Equal(s.T(), dbGroup.Data.XData, dbGroup.XData)
 
 	err = CleanDatabase(g)
 	assert.Nil(s.T(), err)
-	gd.ID = ""
+	gd.GroupID = ""
 	_, err = CreateGroup(gd)
 	assert.EqualError(s.T(), err, "group_id cannot be blank")
 }
 
 func (s *GroupsTestSuite) TestListGroups() {
-	groupBytes := []byte(SampleGroup)
+	var startingCount int
+	GetGORMDbConnection().Table("groups").Count(&startingCount)
+	groupBytes := []byte(fmt.Sprintf(SampleGroup, RandomHexID(), SampleXdata))
 	gd := GroupData{}
 	err := json.Unmarshal(groupBytes, &gd)
-	assert.Nil(s.T(), err)
+	require.Nil(s.T(), err)
 	g1, err := CreateGroup(gd)
-	assert.Nil(s.T(), err)
+	require.Nil(s.T(), err)
 
-	gd.ID = "some-fake-id"
+
+	gd.GroupID = RandomHexID()
 	gd.Name = "some-fake-name"
 	g2, err := CreateGroup(gd)
 	assert.Nil(s.T(), err)
 
 	groups, err := ListGroups("test-list-groups")
 	assert.Nil(s.T(), err)
-	assert.Len(s.T(), groups, 2)
+	assert.Len(s.T(), groups, 2+startingCount)
 
 	err = CleanDatabase(g1)
 	assert.Nil(s.T(), err)
 	err = CleanDatabase(g2)
 	assert.Nil(s.T(), err)
+
+	groups, err = ListGroups("test-list-groups")
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), groups, startingCount)
 }
 
 func (s *GroupsTestSuite) TestUpdateGroup() {
-	groupBytes := []byte(SampleGroup)
+	gid1 := RandomHexID()
+	groupBytes := []byte(fmt.Sprintf(SampleGroup, gid1, SampleXdata))
 	gd := GroupData{}
 	err := json.Unmarshal(groupBytes, &gd)
 	assert.Nil(s.T(), err)
-	g := Group{}
-	g.Data = gd
-	err = s.db.Save(&g).Error
-	assert.Nil(s.T(), err)
+	orig := Group{}
+	orig.Data = gd
+	err = s.db.Save(&orig).Error
+	require.Nil(s.T(), err)
 
 	gd.Scopes = []string{"aScope", "anotherScope"}
-	gd.ID = "aNewGroupID"
+	gd.GroupID = 	RandomHexID()
 	gd.Name = "aNewGroupName"
-	newG, err := UpdateGroup(fmt.Sprint(g.ID), gd)
+	changed, err := UpdateGroup(fmt.Sprint(orig.ID), gd)
 	assert.Nil(s.T(), err)
 
 	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), []string{"aScope", "anotherScope"}, newG.Data.Scopes)
-	assert.NotEqual(s.T(), "aNewGroupID", newG.Data.ID)
-	assert.NotEqual(s.T(), "aNewGroupName", newG.Data.Name)
-	err = CleanDatabase(g)
+	assert.Equal(s.T(), []string{"aScope", "anotherScope"}, changed.Data.Scopes)
+	assert.NotEqual(s.T(), "aNewGroupID", changed.Data.GroupID)
+	assert.NotEqual(s.T(), "aNewGroupName", changed.Data.Name)
+	err = CleanDatabase(orig)
 	assert.Nil(s.T(), err)
 }
 
 func (s *GroupsTestSuite) TestDeleteGroup() {
-	group := Group{GroupID: "groups-test-delete-group-id"}
+	gid := fmt.Sprintf("delete-group-%s", RandomHexID())
+	group := Group{GroupID: gid}
 	err := s.db.Create(&group).Error
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err, "unexpected error")
 
 	system := System{GroupID: group.GroupID, ClientID: "groups-test-delete-client-id"}
 	err = s.db.Create(&system).Error
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err, "unexpected error")
 
 	keyStr := "publickey"
 	encrKey := EncryptionKey{
@@ -160,21 +170,18 @@ func (s *GroupsTestSuite) TestDeleteGroup() {
 		Body:     keyStr,
 	}
 	err = s.db.Create(&encrKey).Error
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err, "unexpected error")
 
 	err = DeleteGroup(fmt.Sprint(group.ID))
 	assert.Nil(s.T(), err)
 	err = CleanDatabase(group)
 	assert.Nil(s.T(), err)
-
 }
 
 func (s *GroupsTestSuite) TestGetAuthorizedGroupsForOktaID() {
-	group1bytes := []byte(`{"id":"T0001","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
-	group2bytes := []byte(`{"id":"T0002","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
-	group3bytes := []byte(`{"id":"T0003","users":["qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
+	group1bytes := []byte(`{"group_id":"T0001","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
+	group2bytes := []byte(`{"group_id":"T0002","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
+	group3bytes := []byte(`{"group_id":"T0003","users":["qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
 
 	g1 := GroupData{}
 	err := json.Unmarshal(group1bytes, &g1)

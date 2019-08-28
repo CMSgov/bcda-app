@@ -63,9 +63,12 @@ func GetProvider() Provider {
 }
 
 type AuthData struct {
-	ACOID   string
-	UserID  string
-	TokenID string
+	ACOID    string
+	UserID   string
+	TokenID  string
+	ClientID string
+	SystemID string
+	CMSID    string
 }
 
 type Credentials struct {
@@ -101,6 +104,7 @@ type Provider interface {
 	// RevokeAccessToken a specific access token identified in a base64 encoded token string
 	RevokeAccessToken(tokenString string) error
 
+	// TODO refactor input to be AuthData
 	// AuthorizeAccess asserts that a base64 encoded token string is valid for accessing the BCDA API
 	AuthorizeAccess(tokenString string) error
 
