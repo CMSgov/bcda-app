@@ -34,6 +34,7 @@ type TokenResponse struct {
 func init() {
 	ssasLogger = logrus.New()
 	ssasLogger.Formatter = &logrus.JSONFormatter{}
+	ssasLogger.SetReportCaller(true)
 	filePath := os.Getenv("BCDA_SSAS_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */

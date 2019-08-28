@@ -53,6 +53,7 @@ func init() {
 	}
 
 	log.SetFormatter(&log.JSONFormatter{})
+	log.SetReportCaller(true)
 	filePath := os.Getenv("BCDA_ERROR_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
