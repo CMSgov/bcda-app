@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"regexp"
 	"strconv"
@@ -11,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/cclf"
-
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/go-chi/chi"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -197,7 +199,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	defer database.Close(db)
 
 	cmsID := "A9901"
-	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
+	_, err := models.CreateACO("Public Key Test ACO", &cmsID, "")
 	assert.Nil(err)
 	aco, err := auth.GetACOByCMSID(cmsID)
 	assert.Nil(err)
@@ -479,7 +481,7 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	acoUUID, err := cclf.CreateACO("ACO "+email, "")
+	acoUUID, err := createACO("ACO "+email, "", "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
@@ -626,6 +628,42 @@ func (s *CLITestSuite) TestStartAPI() {
 	os.Setenv("QUEUE_DATABASE_URL", originalQueueDBURL)
 
 	// We cannot test the positive case because we don't want to start the HTTP Server in unit test environment
+}
+
+func (s *CLITestSuite) TestCreateGroup() {
+	router := chi.NewRouter()
+	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, err := w.Write([]byte(`{ "ID": 100 }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	origSSASURL := os.Getenv("SSAS_URL")
+	os.Setenv("SSAS_URL", server.URL)
+	defer os.Setenv("SSAS_URL", origSSASURL)
+
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	os.Setenv("SSAS_USE_TLS", "false")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	assert := assert.New(s.T())
+
+	id := "unit-test-group-1"
+	name := "Unit Test Group 1"
+	args := []string{"bcda", "create-group", "--id", id, "--name", name}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	out := buf.String()
+	assert.NotEmpty(out)
+	ssasID, err := strconv.Atoi(out)
+	assert.Nil(err)
+	assert.Equal(100, ssasID)
 }
 
 func (s *CLITestSuite) TestCreateACO() {

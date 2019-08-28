@@ -62,7 +62,52 @@ func (s *SSASPluginTestSuite) AfterTest() {
 	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
 }
 
-func (s *SSASPluginTestSuite) TestRegisterSystem() {}
+func (s *SSASPluginTestSuite) TestRegisterSystem() {
+	// TODO: Mock client instead of server
+	router := chi.NewRouter()
+	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		fmt.Fprintf(w, `{ "system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name" }`)
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
+	}
+	s.p = SSASPlugin{client: c}
+
+	creds, err := s.p.RegisterSystem("", "", "")
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), "1", creds.SystemID)
+}
+
+func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
+	router := chi.NewRouter()
+	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		fmt.Fprintf(w, `"this is": "invalid"`)
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
+	}
+	s.p = SSASPlugin{client: c}
+
+	creds, err := s.p.RegisterSystem("", "", "")
+	assert.Contains(s.T(), err.Error(), "failed to unmarshal response json")
+	assert.Empty(s.T(), creds.SystemID)
+}
 
 func (s *SSASPluginTestSuite) TestUpdateSystem() {}
 
@@ -86,7 +131,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.ResetSecret("1")
+	creds, err := s.p.ResetSecret("0c527d2e-2e8a-4808-b11d-0fa06baf8254")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
 	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)

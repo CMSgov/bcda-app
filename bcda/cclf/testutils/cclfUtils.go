@@ -25,6 +25,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	switch acoSize {
 	case
 		"dev",
+		"dev-auth",
 		"small",
 		"medium",
 		"large",

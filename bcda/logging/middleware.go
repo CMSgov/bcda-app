@@ -20,6 +20,7 @@ import (
 func NewStructuredLogger() func(next http.Handler) http.Handler {
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
+	logger.SetReportCaller(true)
 	filePath := os.Getenv("BCDA_REQUEST_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */

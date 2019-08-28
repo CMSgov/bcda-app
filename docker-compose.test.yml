@@ -69,6 +69,12 @@ services:
   postman_test_ssas:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.postman_test_ssas
+      dockerfile: Dockerfiles/Dockerfile.postman_test
     volumes:
         - .:/go/src/github.com/CMSgov/bcda-app
+  smoke_test_ssas:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.postman_test
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app

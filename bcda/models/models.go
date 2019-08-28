@@ -4,13 +4,14 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
@@ -177,13 +178,15 @@ type JobKey struct {
 	FileName     string `gorm:"type:char(127)"`
 }
 
-// ACO-Beneficiary relationship models based on https://github.com/jinzhu/gorm/issues/719#issuecomment-168485989
+// ACO represents an Accountable Care Organization.
 type ACO struct {
 	gorm.Model
 	UUID        uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
 	CMSID       *string   `gorm:"type:char(5);unique" json:"cms_id"`
 	Name        string    `json:"name"`
 	ClientID    string    `json:"client_id"`
+	GroupID     string    `json:"group_id"`
+	SystemID    string    `json:"system_id"`
 	AlphaSecret string    `json:"alpha_secret"`
 	PublicKey   string    `json:"public_key"`
 }
@@ -216,7 +219,7 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	defer database.Close(db)
 	var cclfFile CCLFFile
 	// todo add a filter here to make sure the file is up to date.
-	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID,constants.ImportComplete).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
+	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID, constants.ImportComplete).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
 		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
@@ -332,7 +335,8 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 	return utils.OpenPrivateKeyFile(atoPrivateKeyFile)
 }
 
-func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
+// CreateACO creates an ACO with the provided name and CMS ID.
+func CreateACO(name string, cmsID *string, groupID string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -340,7 +344,7 @@ func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 
 	// TODO: remove ClientID below when a future refactor removes the need
 	//    for every ACO to have a client_id at creation
-	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String()}
+	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String(), GroupID: groupID}
 	db.Create(&aco)
 
 	return aco.UUID, db.Error

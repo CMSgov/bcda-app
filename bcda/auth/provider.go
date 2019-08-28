@@ -21,6 +21,7 @@ var providerName = Alpha
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
+	log.SetReportCaller(true)
 	SetProvider(strings.ToLower(os.Getenv(`BCDA_AUTH_PROVIDER`)))
 }
 
@@ -73,7 +74,7 @@ type Credentials struct {
 	ClientSecret string    `json:"client_secret"`
 	ClientName   string    `json:"client_name"`
 	SystemID     string    `json:"system_id"`
-	Token        Token     `json:"token"`
+	Token        string    `json:"token"`
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 

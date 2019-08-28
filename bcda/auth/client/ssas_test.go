@@ -103,6 +103,33 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrueNoKey() {
 	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
 }
 
+func (s *SSASClientTestSuite) TestCreateGroup() {
+	router := chi.NewRouter()
+	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, err := w.Write([]byte(`{ "ID": "123456" }`))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	resp, err := client.CreateGroup("1", "name")
+	if err != nil {
+		s.FailNow("Failed to create group", err.Error())
+	}
+
+	assert.Equal(s.T(), `{ "ID": "123456" }`, string(resp))
+}
+
 func (s *SSASClientTestSuite) TestCreateSystem() {
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
