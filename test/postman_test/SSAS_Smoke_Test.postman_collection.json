@@ -400,7 +400,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"id\": \"{{group.group_id}}\",\n  \"name\": \"Smoke Test Group\",\n  \"resources\": [\n    {\n      \"id\": \"bcda\",\n      \"name\": \"BCDA API\",\n      \"scopes\": [\n        \"bcda-api\"\n      ]\n    }\n  ]\n}"
+					"raw": "{\n  \"group_id\": \"{{group.group_id}}\",\n  \"name\": \"Smoke Test Group\",\n  \"xdata\": \"{\\\"cms_ids\\\":[\\\"A9994\\\"]}\",\n  \"resources\": [\n    {\n      \"id\": \"bcda\",\n      \"name\": \"BCDA API\",\n      \"scopes\": [\n        \"bcda-api\"\n      ]\n    }\n  ]\n}"
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group",
@@ -911,11 +911,11 @@
 							"",
 							"",
 							"pm.test(\"Can parse token ID\", function () {",
-							"    pm.expect(t.id).to.not.eql(\"\");",
+							"    pm.expect(t.jti).to.not.eql(\"\");",
 							"});",
 							"",
 							"",
-							"pm.environment.set(\"token_id\", t.id)"
+							"pm.environment.set(\"token_id\", t.jti)"
 						],
 						"type": "text/javascript"
 					}
