@@ -185,13 +185,13 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
 
-	validToken := *jwt.New(jwt.SigningMethodRS512)
+	validToken := jwt.New(jwt.SigningMethodRS512)
 	validToken.Claims = validClaims
 	validTokenString, _ := s.backend.SignJwtToken(validToken)
 	err := s.p.AuthorizeAccess(validTokenString)
 	assert.Nil(s.T(), err)
 
-	unknownAco := *jwt.New(jwt.SigningMethodRS512)
+	unknownAco := jwt.New(jwt.SigningMethodRS512)
 	unknownAco.Claims = jwt.MapClaims{
 		"sub": userID,
 		"aco": uuid.NewRandom().String(),
@@ -214,7 +214,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "crypto/rsa: verification error")
 
-	missingClaims := *jwt.New(jwt.SigningMethodRS512)
+	missingClaims := jwt.New(jwt.SigningMethodRS512)
 	missingClaims.Claims = jwt.MapClaims{
 		"sub": userID,
 		"aco": acoID,
@@ -225,7 +225,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	assert.NotNil(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "missing one or more required claims")
 
-	expiredToken := *jwt.New(jwt.SigningMethodRS512)
+	expiredToken := jwt.New(jwt.SigningMethodRS512)
 	expiredToken.Claims = jwt.MapClaims{
 		"sub": userID,
 		"aco": acoID,

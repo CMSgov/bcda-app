@@ -24,6 +24,8 @@ func init() {
 
 type CommonClaims struct {
 	ClientID string   `json:"cid,omitempty"`
+	SystemID string   `json:"sys,omitempty"`
+	Data     string   `json:"dat,omitempty"`
 	Scopes   []string `json:"scp,omitempty"`
 	ACOID    string   `json:"aco,omitempty"`
 	UUID     string   `json:"id,omitempty"`
@@ -66,7 +68,7 @@ func SetTokenDuration() {
 			return
 		}
 		TokenTTL = ttlScalar * time.Duration(n)
-		logger.Infof("Environment token duration of %d", time.Duration(n) / ttlScalar)
+		logger.Infof("Environment token duration of %d", time.Duration(n)/ttlScalar)
 	}
-	logger.Infof("Token ttl set to %d minutes", TokenTTL / ttlScalar)
+	logger.Infof("Token ttl set to %d minutes", TokenTTL/ttlScalar)
 }

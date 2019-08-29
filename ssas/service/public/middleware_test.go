@@ -172,7 +172,7 @@ func (s *PublicMiddlewareTestSuite) TestRequireRegTokenAuthRevoked() {
 	token, ts, err := MintRegistrationToken("fake_okta_id", groupIDs)
 	assert.Nil(s.T(), err)
 
-	claims := token.Claims.(service.CommonClaims)
+	claims := token.Claims.(*service.CommonClaims)
 	err = service.TokenBlacklist.BlacklistToken(claims.Id, service.TokenCacheLifetime)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), service.TokenBlacklist.IsTokenBlacklisted(claims.Id))

@@ -115,3 +115,9 @@ point your browser at one of the following ports, or use the postman test collec
 
 To run a test suite inside of Goland IDE, edit its configuration from the `Run` menu and add values for all necessary
 environmental variables.  It is also possible to run individual tests, but that may require configurations for each test.
+
+# Docker Fun
+
+```
+docker run --rm --network bcda-app_default -it postgres pg_dump -s -h bcda-app_db_1 -U postgres bcda > schema.sql
+```
