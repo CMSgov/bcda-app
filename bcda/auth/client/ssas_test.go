@@ -31,7 +31,7 @@ type SSASClientTestSuite struct {
 	suite.Suite
 }
 
-func (s *SSASClientTestSuite) BeforeTest() {
+func (s *SSASClientTestSuite) SetupTest() {
 	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
 	origSSASURL = os.Getenv("SSAS_URL")
 	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
@@ -41,7 +41,7 @@ func (s *SSASClientTestSuite) BeforeTest() {
 	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
 }
 
-func (s *SSASClientTestSuite) AfterTest() {
+func (s *SSASClientTestSuite) TearDownTest() {
 	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", origSSASURL)
 	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
