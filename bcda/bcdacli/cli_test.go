@@ -260,6 +260,23 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 	assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
 }
 
+func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+	assert := assert.New(s.T())
+
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", "9994"}
+	err := s.testApp.Run(args)
+	assert.EqualError(err, "no ACO record found for 9994")
+	assert.Empty(buf)
+	buf.Reset()
+
+	args = []string{"bcda", "generate-client-credentials", "--cms-id", "A6543"}
+	err = s.testApp.Run(args)
+	assert.EqualError(err, "no ACO record found for A6543")
+	assert.Empty(buf)
+}
+
 func (s *CLITestSuite) TestResetSecretCLI() {
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
