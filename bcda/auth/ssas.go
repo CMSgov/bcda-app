@@ -44,6 +44,16 @@ func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credenti
 		return creds, errors.Wrap(err, "failed to unmarshal response json")
 	}
 
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	aco.ClientID = creds.ClientID
+	aco.SystemID = creds.SystemID
+
+	if err = db.Save(&aco).Error; err != nil {
+		return creds, errors.Wrapf(err, "could not update ACO %s with client and system IDs", *aco.CMSID)
+	}
+
 	return creds, nil
 }
 

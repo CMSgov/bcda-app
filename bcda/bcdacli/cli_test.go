@@ -249,6 +249,17 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	assert.Contains(buf.String(), "Public key saved for ACO")
 }
 
+func (s *CLITestSuite) TestGenerateClientCredentials() {
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+	assert := assert.New(s.T())
+
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
+}
+
 func (s *CLITestSuite) TestResetSecretCLI() {
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -259,21 +270,21 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
 	// execute positive scenarios via CLI
-	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
+	args := []string{"bcda", "reset-client-credentials", "--cms-id", "A9994"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
 
 	// Execute CLI with invalid ACO CMS ID
-	args = []string{"bcda", "generate-client-credentials", "--cms-id", "BLAH"}
+	args = []string{"bcda", "reset-client-credentials", "--cms-id", "BLAH"}
 	err = s.testApp.Run(args)
 	assert.Equal("no ACO record found for BLAH", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Execute CLI with invalid inputs
-	args = []string{"bcda", "generate-client-credentials", "--abcd", "efg"}
+	args = []string{"bcda", "reset-client-credentials", "--abcd", "efg"}
 	err = s.testApp.Run(args)
 	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")

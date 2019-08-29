@@ -665,7 +665,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	}
 	defer s.db.Unscoped().Delete(&aco)
 
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now().Add(-24 * time.Hour), ImportStatus:constants.ImportComplete}
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now().Add(-24 * time.Hour), ImportStatus: constants.ImportComplete}
 	err = s.db.Save(&cclfFile).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
@@ -680,7 +680,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	defer s.db.Unscoped().Delete(&bene1)
 
 	// same aco newer file - in progress status
-	cclfFileInProgress := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now(), ImportStatus:constants.ImportInprog}
+	cclfFileInProgress := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now(), ImportStatus: constants.ImportInprog}
 	err = s.db.Save(&cclfFileInProgress).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
@@ -695,7 +695,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	defer s.db.Unscoped().Delete(&bene2)
 
 	// same aco newer file - failed status
-	cclfFileFailed := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now(), ImportStatus:constants.ImportFail}
+	cclfFileFailed := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now(), ImportStatus: constants.ImportFail}
 	err = s.db.Save(&cclfFileFailed).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
@@ -712,7 +712,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	result, err := aco.GetBeneficiaries(false)
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), result, 1)
-	assert.Equal(s.T(),cclfFile.ID,result[0].FileID)
+	assert.Equal(s.T(), cclfFile.ID, result[0].FileID)
 }
 
 func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
@@ -724,7 +724,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	}
 	defer s.db.Unscoped().Delete(&aco)
 
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus:constants.ImportComplete}
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
 	err = s.db.Save(&cclfFile).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())

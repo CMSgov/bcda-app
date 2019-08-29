@@ -314,6 +314,26 @@ func setUpApp() *cli.App {
 		{
 			Name:     "generate-client-credentials",
 			Category: "Authentication tools",
+			Usage:    "Register a system and generate credentials for an ACO client specified by ACO CMS ID",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				msg, err := generateClientCredentials(acoCMSID)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(app.Writer, msg)
+				return nil
+			},
+		},
+		{
+			Name:     "reset-client-credentials",
+			Category: "Authentication tools",
 			Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -573,6 +593,35 @@ func createUser(acoID, name, email string) (string, error) {
 	}
 
 	return user.UUID.String(), nil
+}
+
+func generateClientCredentials(acoCMSID string) (string, error) {
+	if acoCMSID == "" {
+		return "", errors.New("ACO CMS ID (--cms-id) is required")
+	}
+
+	aco, err := auth.GetACOByCMSID(acoCMSID)
+	if err != nil {
+		return "", err
+	}
+
+	publicKey := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
+I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
+/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL
+cN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ
+lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
+XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
+HwIDAQAB
+-----END PUBLIC KEY-----`
+	creds, err := auth.GetProvider().RegisterSystem(aco.UUID.String(), publicKey, aco.GroupID)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
+	}
+
+	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+
+	return msg, nil
 }
 
 func revokeAccessToken(accessToken string) error {
