@@ -605,6 +605,8 @@ func generateClientCredentials(acoCMSID string) (string, error) {
 		return "", err
 	}
 
+	/* Providing this hardcoded test key to SSAS because a public key is required when registering a system. However,
+	the key will not actually be used. BCDA will continue to manage public keys. */
 	publicKey := `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
 I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK

@@ -662,7 +662,7 @@ func (s *CLITestSuite) TestCreateGroup() {
 	router := chi.NewRouter()
 	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{ "ID": "100", "group_id": "test-create-group-id" }`))
+		_, err := w.Write([]byte(`{ "ID": 100, "group_id": "test-create-group-id" }`))
 		if err != nil {
 			log.Fatal(err)
 		}
