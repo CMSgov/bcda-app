@@ -60,6 +60,7 @@ func (s *SSASMiddlewareTestSuite) SetupSuite() {
 }
 
 func (s *SSASMiddlewareTestSuite) TearDownSuite() {
+	s.server.Close()
 	os.Setenv("SSAS_URL", originalSSASURL)
 	os.Setenv("SSAS_PUBLIC_URL", originalPublicSSASURL)
 	os.Setenv("SSAS_USE_TLS", originalSSASUseTLS)
@@ -70,19 +71,20 @@ func (s *SSASMiddlewareTestSuite) TearDownSuite() {
 
 func (s *SSASMiddlewareTestSuite) TestSSASToken() {
 	req, err := http.NewRequest("GET", s.server.URL, nil)
-	require.NotNil(s.T(), err)
+	require.NotNil(s.T(), req, "req not created; ", err)
 
 	s.ad = auth.AuthData{}
 
 	s.token, s.tokenString, err = auth.MockSSASToken()
-	assert.Nil(s.T(), err, "token signing error")
+	assert.NotNil(s.T(), s.tokenString, "token creation error; ", err)
 	auth.MockSSASServer(s.tokenString)
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.tokenString))
 	client := s.server.Client()
 	resp, err := client.Do(req)
-	require.Nil(s.T(), err)
+	require.Nil(s.T(), err, "request failed; ", err)
 	assert.Equal(s.T(), "200 OK", resp.Status)
+
 	b, _ := ioutil.ReadAll(resp.Body)
 	assert.NotZero(s.T(), len(b), "no content in response body")
 	var ad auth.AuthData

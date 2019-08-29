@@ -199,23 +199,26 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 
 func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 	_, ts, err := MockSSASToken()
-	require.Nil(s.T(), err, "unexpected error")
+	require.NotNil(s.T(), ts, "no token for SSAS", err)
+	require.Nil(s.T(), err,"unexpected error; ", err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), "no client for SSAS", err.Error())
+	require.NotNil(s.T(), c,"no client for SSAS; ", err)
 	s.p = SSASPlugin{client: c}
 	err = s.p.AuthorizeAccess(ts)
-	require.NotNil(s.T(), err)
+	require.Nil(s.T(), err)
 }
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
 	_, ts, err := MockSSASToken()
-	require.Nil(s.T(), err, "unexpected error")
+	require.NotNil(s.T(),ts, "no token for SSAS; ", err)
+	require.Nil(s.T(), err,"unexpected error; ", err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), "no client for SSAS; %s", err.Error())
+	require.NotNil(s.T(), c,"no client for SSAS; ")
+	require.Nil(s.T(), err,"unexpected error; ", err)
 	s.p = SSASPlugin{client: c}
 
 	t, err := s.p.VerifyToken(ts)
@@ -232,7 +235,7 @@ func TestSSASPluginSuite(t *testing.T) {
 	suite.Run(t, new(SSASPluginTestSuite))
 }
 
-func MockSSASServer(tokenString string) {
+func   MockSSASServer(tokenString string) {
 	os.Setenv("BCDA_SSAS_CLIENT_ID", "bcda")
 	os.Setenv("BCDA_SSAS_SECRET", "api")
 	router := chi.NewRouter()
@@ -272,10 +275,10 @@ func MockSSASServer(tokenString string) {
 }
 
 func MockSSASToken() (*jwt.Token, string, error) {
+	// NB: currently, BCDA expects only 1 item in the array of cms_ids. At some point, ACO-MS will want to send more than one
 	claims := CommonClaims{
 		SystemID: "mock-system",
-		Data:     `{"cms_id":"A9995"}`,
-		UUID:     "mock-uuid",
+		Data:     `{"cms_ids":["A9995"]}`,
 		ClientID: "mock-client",
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    "ssas",
@@ -285,6 +288,6 @@ func MockSSASToken() (*jwt.Token, string, error) {
 		},
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodRS512, claims)
-	ts, err := InitAlphaBackend().SignJwtToken(*t) // TODO use ssas key
+	ts, err := InitAlphaBackend().SignJwtToken(t)
 	return t, ts, err
 }
