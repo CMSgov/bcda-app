@@ -487,9 +487,9 @@ func autoMigrate() {
 	fmt.Println("Completed Database Initialization")
 }
 
-func createGroup(id, name, acoID string) (int, error) {
+func createGroup(id, name, acoID string) (string, error) {
 	if id == "" || name == "" {
-		return -1, errors.New("ID (--id) and name (--name) are required")
+		return "", errors.New("ID (--id) and name (--name) are required")
 	}
 
 	var aco models.ACO
@@ -497,44 +497,44 @@ func createGroup(id, name, acoID string) (int, error) {
 		if match, err := regexp.MatchString("A\\d{4}", acoID); err == nil && match {
 			aco, err = auth.GetACOByCMSID(acoID)
 			if err != nil {
-				return -1, err
+				return "", err
 			}
 		} else if match, err := regexp.MatchString("[0-9a-f]{6}-([0-9a-f]{4}-){3}[0-9a-f]{12}", acoID); err == nil && match {
 			aco, err = auth.GetACOByUUID(acoID)
 			if err != nil {
-				return -1, err
+				return "", err
 			}
 		} else {
-			return -1, errors.New("ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
+			return "", errors.New("ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
 		}
 	}
 
 	ssas, err := authclient.NewSSASClient()
 	if err != nil {
-		return -1, err
+		return "", err
 	}
 
 	b, err := ssas.CreateGroup(id, name)
 	if err != nil {
-		return -1, err
+		return "", err
 	}
 
 	var g map[string]interface{}
 	err = json.Unmarshal(b, &g)
 	if err != nil {
-		return -1, err
+		return "", err
 	}
 
-	ssasID := int(g["ID"].(float64))
+	ssasID := g["group_id"].(string)
 	if aco.UUID != nil {
-		aco.GroupID = strconv.Itoa(ssasID)
+		aco.GroupID = ssasID
 
 		db := database.GetGORMDbConnection()
 		defer db.Close()
 
 		err = db.Save(&aco).Error
 		if err != nil {
-			return ssasID, errors.Wrapf(err, "group %d was created, but ACO could not be updated", ssasID)
+			return ssasID, errors.Wrapf(err, "group %s was created, but ACO could not be updated", ssasID)
 		}
 	}
 

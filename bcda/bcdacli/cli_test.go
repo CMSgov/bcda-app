@@ -662,7 +662,7 @@ func (s *CLITestSuite) TestCreateGroup() {
 	router := chi.NewRouter()
 	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{ "ID": 100 }`))
+		_, err := w.Write([]byte(`{ "ID": "100", "group_id": "test-create-group-id" }`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -687,11 +687,7 @@ func (s *CLITestSuite) TestCreateGroup() {
 	args := []string{"bcda", "create-group", "--id", id, "--name", name}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	out := buf.String()
-	assert.NotEmpty(out)
-	ssasID, err := strconv.Atoi(out)
-	assert.Nil(err)
-	assert.Equal(100, ssasID)
+	assert.Equal("test-create-group-id", buf.String())
 	buf.Reset()
 
 	id = "unit-test-group-2"
@@ -700,11 +696,7 @@ func (s *CLITestSuite) TestCreateGroup() {
 	args = []string{"bcda", "create-group", "--id", id, "--name", name, "--aco-id", acoID}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
-	out = buf.String()
-	assert.NotEmpty(out)
-	ssasID, err = strconv.Atoi(out)
-	assert.Nil(err)
-	assert.Equal(100, ssasID)
+	assert.Equal("test-create-group-id", buf.String())
 }
 
 func (s *CLITestSuite) TestCreateGroup_InvalidACOID() {
