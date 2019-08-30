@@ -34,6 +34,7 @@ type TokenResponse struct {
 func init() {
 	ssasLogger = logrus.New()
 	ssasLogger.Formatter = &logrus.JSONFormatter{}
+	ssasLogger.SetReportCaller(true)
 	filePath := os.Getenv("BCDA_SSAS_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
@@ -103,9 +104,8 @@ func tlsTransport() (*http.Transport, error) {
 }
 
 // CreateGroup POSTs to the SSAS /group endpoint to create a system.
-func (c *SSASClient) CreateGroup(id, name string) ([]byte, error) {
-	b := fmt.Sprintf(`{"id": "%s", "name": "%s", "scopes": ["bcda-api"]}`, id, name)
-
+func (c *SSASClient) CreateGroup(id, name, acoCMSID string) ([]byte, error) {
+	b := fmt.Sprintf(`{"group_id": "%s", "name": "%s", "scopes": ["bcda-api"], "xdata": "{\"cms_ids\": [\"%s\"]}"}`, id, name, acoCMSID)
 	resp, err := c.Post(fmt.Sprintf("%s/group", c.baseURL), "application/json", strings.NewReader(b))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create group")
