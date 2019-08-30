@@ -10,45 +10,43 @@ import (
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
-	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 )
 
 var (
-	origSSASURL            string
-	origPublicURL          string
-	origSSASUseTLS         string
-	origSSASClientKeyFile  string
-	origSSASClientCertFile string
-	origSSASClientID       string
-	origSSASSecret         string
+	origSSASURL      string
+	origPublicURL    string
+	origSSASUseTLS   string
+	origSSASClientID string
+	origSSASSecret   string
+	origBCDACAFile   string
 )
 
 type SSASClientTestSuite struct {
 	suite.Suite
 }
 
-func (s *SSASClientTestSuite) BeforeTest() {
+func (s *SSASClientTestSuite) SetupTest() {
 	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
 	origSSASURL = os.Getenv("SSAS_URL")
 	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
-	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
-	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
+	origBCDACAFile = os.Getenv("BCDA_CA_FILE")
 	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
 	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
 }
 
-func (s *SSASClientTestSuite) AfterTest() {
+func (s *SSASClientTestSuite) TearDownTest() {
 	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", origSSASURL)
 	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
-	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
-	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
 	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
 	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
+	os.Setenv("BCDA_CA_FILE", origBCDACAFile)
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
@@ -61,16 +59,26 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
 	assert.IsType(s.T(), &authclient.SSASClient{}, client)
 }
 
-func (s *SSASClientTestSuite) TestNewSSASClient_NoKeypair() {
+func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrue() {
+	os.Setenv("SSAS_USE_TLS", "true")
+	os.Setenv("SSAS_URL", "https://ssas-url")
+	os.Setenv("BCDA_CA_FILE", "../../../shared_files/bcda.ca.pem")
+
+	client, err := authclient.NewSSASClient()
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), client)
+	assert.IsType(s.T(), &authclient.SSASClient{}, client)
+}
+
+func (s *SSASClientTestSuite) TestNewSSASClient_NoCertFile() {
 	os.Setenv("SSAS_USE_TLS", "true")
 	os.Setenv("SSAS_URL", "http://ssas-url")
-	os.Unsetenv("SSAS_CLIENT_KEY_FILE")
-	os.Unsetenv("SSAS_CLIENT_CERT_FILE")
+	os.Unsetenv("BCDA_CA_FILE")
 
 	client, err := authclient.NewSSASClient()
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), client)
-	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
+	assert.EqualError(s.T(), err, "SSAS client could not be created: could not read CA file: read .: is a directory")
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_NoURL() {
@@ -91,16 +99,6 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), client)
 	assert.EqualError(s.T(), err, "SSAS client could not be created: no URL provided")
-}
-
-func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrueNoKey() {
-	os.Setenv("SSAS_USE_TLS", "true")
-	os.Unsetenv("SSAS_CLIENT_CERT_FILE")
-
-	client, err := authclient.NewSSASClient()
-	assert.NotNil(s.T(), err)
-	assert.Nil(s.T(), client)
-	assert.EqualError(s.T(), err, "SSAS client could not be created: could not load SSAS keypair: open : no such file or directory")
 }
 
 func (s *SSASClientTestSuite) TestCreateGroup() {
@@ -286,8 +284,8 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 		var (
 			buf   []byte
 			input struct {
-				Token string `json:"token"`
-			}
+					  Token string `json:"token"`
+				  }
 		)
 		buf, err := ioutil.ReadAll(r.Body)
 		if err != nil {
