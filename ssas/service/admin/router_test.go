@@ -22,7 +22,7 @@ type RouterTestSuite struct {
 func (s *RouterTestSuite) SetupSuite() {
 	clientID := "31e029ef-0e97-47f8-873c-0e8b7e7f99bf"
 	system, _ := ssas.GetSystemByClientID(clientID)
-	creds, _ := system.ResetSecret("trackingID")
+	creds, _ := system.ResetSecret(clientID)
 	secret := creds.ClientSecret
 	basicAuth := clientID + ":" + secret
 	s.basicAuth = base64.StdEncoding.EncodeToString([]byte(basicAuth))
