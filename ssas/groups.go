@@ -209,14 +209,18 @@ type GroupData struct {
 	GroupID   string     `json:"group_id"`
 	Name      string     `json:"name"`
 	XData     string     `json:"xdata"`
-	Users     []string   `json:"users"`
-	Scopes    []string   `json:"scopes"`
-	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
-	Resources []Resource `json:"resources"`
+	Users     []string   `json:"users,omitempty"`
+	Scopes    []string   `json:"scopes,omitempty"`
+	Systems   []System   `gorm:"-" json:"systems,omitempty"`
+	Resources []Resource `json:"resources,omitempty"`
 }
 
 // Value implements the driver.Value interface for GroupData.
 func (gd GroupData) Value() (driver.Value, error) {
+	systems, _ := GetSystemsByGroupID(gd.GroupID)
+
+	gd.Systems = systems
+
 	return json.Marshal(gd)
 }
 
@@ -227,7 +231,14 @@ func (gd *GroupData) Scan(value interface{}) error {
 		return errors.New("type assertion to []byte failed")
 	}
 
-	return json.Unmarshal(b, &gd)
+	if err := json.Unmarshal(b, &gd); err != nil {
+		return err
+	}
+	systems, _ := GetSystemsByGroupID(gd.GroupID)
+
+	gd.Systems = systems
+
+	return nil
 }
 
 type Resource struct {

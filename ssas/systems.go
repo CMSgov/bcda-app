@@ -418,6 +418,20 @@ func XDataFor(system System) (string, error) {
 	return group.XData, nil
 }
 
+//	GetSystemsByGroupID returns the systems associated with the provided group_id
+func GetSystemsByGroupID(groupId string) ([]System, error) {
+	var (
+		db      = GetGORMDbConnection()
+		systems []System
+		err     error
+	)
+	defer Close(db)
+
+	if err = db.Where("group_id = ?", groupId).Find(&systems).Error; err != nil {
+		err = fmt.Errorf("no Systems found with group_id %s", groupId)
+	}
+	return systems, err
+}
 
 // GetSystemByClientID returns the system associated with the provided clientID
 func GetSystemByClientID(clientID string) (System, error) {
