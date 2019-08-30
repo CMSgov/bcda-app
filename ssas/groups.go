@@ -6,13 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/jinzhu/gorm"
 )
 
-/*
-	InitializeGroupModels will call gorm.DB.AutoMigrate() for Group{}
-*/
+// InitializeGroupModels creates and updates the schema for groups
 func InitializeGroupModels() *gorm.DB {
 	log.Println("Initialize group models")
 	db := GetGORMDbConnection()
@@ -28,22 +27,30 @@ func InitializeGroupModels() *gorm.DB {
 type Group struct {
 	gorm.Model
 	GroupID string    `gorm:"unique;not null" json:"group_id"`
+	XData   string    `gorm:"type:text" json:"xdata"`
 	Data    GroupData `gorm:"type:jsonb" json:"data"`
 }
 
 func CreateGroup(gd GroupData) (Group, error) {
-	event := Event{Op: "CreateGroup", TrackingID: gd.ID}
+	event := Event{Op: "CreateGroup", TrackingID: gd.GroupID}
 	OperationStarted(event)
 
-	if gd.ID == "" {
+	if gd.GroupID == "" {
 		err := fmt.Errorf("group_id cannot be blank")
 		event.Help = err.Error()
 		OperationFailed(event)
 		return Group{}, err
 	}
 
+	xd := gd.XData
+	if xd != "" {
+		if s, err := strconv.Unquote(xd); err == nil {
+			xd = s
+		}
+	}
 	g := Group{
-		GroupID: gd.ID,
+		GroupID: gd.GroupID,
+		XData:   xd,
 		Data:    gd,
 	}
 
@@ -92,7 +99,7 @@ func UpdateGroup(id string, gd GroupData) (Group, error) {
 		return Group{}, err
 	}
 
-	gd.ID = g.Data.ID
+	gd.GroupID = g.Data.GroupID
 	gd.Name = g.Data.Name
 
 	g.Data = gd
@@ -199,22 +206,21 @@ func cascadeDeleteGroup(group Group) error {
 }
 
 type GroupData struct {
-	ID        string      `json:"id"`
-	Name      string      `json:"name"`
-	Users     []string    `json:"users"`
-	Scopes    []string    `json:"scopes"`
-	System    System      `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
-	Resources []Resource  `json:"resources"`
+	GroupID   string     `json:"group_id"`
+	Name      string     `json:"name"`
+	XData     string     `json:"xdata"`
+	Users     []string   `json:"users"`
+	Scopes    []string   `json:"scopes"`
+	System    System     `gorm:"foreignkey:GroupID;association_foreignkey:GroupID" json:"system"`
+	Resources []Resource `json:"resources"`
 }
 
-// Make the GroupData struct implement the driver.Valuer interface. This method
-// simply returns the JSON-encoded representation of the struct.
+// Value implements the driver.Value interface for GroupData.
 func (gd GroupData) Value() (driver.Value, error) {
 	return json.Marshal(gd)
 }
 
-// Make the GroupData struct implement the sql.Scanner interface. This method
-// simply decodes a JSON-encoded value into the struct fields.
+// Make the GroupData struct implement the sql.Scanner interface
 func (gd *GroupData) Scan(value interface{}) error {
 	b, ok := value.([]byte)
 	if !ok {
@@ -230,15 +236,17 @@ type Resource struct {
 	Scopes []string `json:"scopes"`
 }
 
-func FindByGroupID(groupID string) (Group, error){
-	db := GetGORMDbConnection()
+func FindByGroupID(groupID string) (Group, error) {
+	var (
+		db    = GetGORMDbConnection()
+		group Group
+		err   error
+	)
 	defer Close(db)
 
-	group := Group{GroupID:groupID}
-	err := db.Find(&group).Error
-	if err != nil {
-		return group, err
+	if db.Find(&group, "group_id = ?", groupID).RecordNotFound() {
+		err = fmt.Errorf("no Group record found for groupID %s", groupID)
 	}
 
-	return group, nil
+	return group, err
 }

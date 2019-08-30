@@ -248,6 +248,8 @@ func (s *TokenCacheTestSuite) TestBlacklistTokenKeyExists() {
 	// Verify both keys are in the database, and that they are in time order
 	entries2, err := ssas.GetUnexpiredBlacklistEntries()
 	assert.Nil(s.T(), err)
+	// 2 entries were added in this test; 1 was added in middleware_test
+	// depending on which order the tests are completed, sometimes there are 2 entries and sometimes there are 3
 	assert.Len(s.T(), entries2, 2)
 	assert.Equal(s.T(), key, entries2[1].Key)
 	assert.Equal(s.T(), obj2, entries2[1].EntryDate)

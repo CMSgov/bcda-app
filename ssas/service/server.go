@@ -41,7 +41,7 @@ func NewServer(name, port, version string, info interface{}, routes *chi.Mux, no
 	sk, err := getPrivateKey(signingKeyPath);
 	if err != nil {
 		msg := fmt.Sprintf("bad signing key; path %s; %v", signingKeyPath, err)
-		ssas.Logger.Info(msg)
+		ssas.Logger.Error(msg)
 		return nil
 	}
 
@@ -99,6 +99,11 @@ func (s *Server) Serve() {
 		tlsKeyPath := os.Getenv("BCDA_TLS_KEY")
 		go func() { log.Fatal(s.server.ListenAndServeTLS(tlsCertPath, tlsKeyPath)) }()
 	}
+}
+
+// Stops the server listening for and responding to requests.
+func (s *Server) Stop() {
+	ssas.Logger.Infof("closing server %s; %+v", s.name, s.server.Close())
 }
 
 func (s *Server) newBaseRouter() *chi.Mux {
@@ -192,36 +197,39 @@ func ConnectionClose(next http.Handler) http.Handler {
 type CommonClaims struct {
 	jwt.StandardClaims
 	// AccessToken, MFAToken, or RegistrationToken
-	TokenType string	 `json:"use,omitempty"`
+	TokenType string `json:"use,omitempty"`
 	// In an MFA token, presence of an OktaID is taken as proof of username/password authentication
-	OktaID	 string		 `json:"oid,omitempty"`
-	ClientID string      `json:"cid,omitempty"`
+	OktaID   string `json:"oid,omitempty"`
+	ClientID string `json:"cid,omitempty"`
+	SystemID string `json:"sys,omitempty"`
 	// In a registration token, GroupIDs contains a list of all groups this user is authorized to manage
-	GroupIDs []string	 `json:"gid,omitempty"`
-	Scopes   []string    `json:"scp,omitempty"`
-	ACOID    string      `json:"aco,omitempty"`
-	UUID     string      `json:"id,omitempty"`
-	Data     interface{} `json:"dat,omitempty"`
+	GroupIDs []string `json:"gid,omitempty"`
+	Data     string   `json:"dat,omitempty"`
+	Scopes   []string `json:"scp,omitempty"`
+	// deprecated
+	ACOID string `json:"aco,omitempty"`
+	// deprecated
+	UUID string `json:"id,omitempty"`
 }
 
 // MintTokenWithDuration generates a tokenstring that expires after a specific duration from now.
 // If duration is <= 0, the token will be expired upon creation
-func (s *Server) MintTokenWithDuration(claims CommonClaims, duration time.Duration) (*jwt.Token, string, error) {
+func (s *Server) MintTokenWithDuration(claims *CommonClaims, duration time.Duration) (*jwt.Token, string, error) {
 	return s.mintToken(claims, time.Now().Unix(), time.Now().Add(duration).Unix())
 }
 
 // MintToken generates a tokenstring that expires in tokenTTL time
-func (s *Server) MintToken(claims CommonClaims) (*jwt.Token, string, error) {
+func (s *Server) MintToken(claims *CommonClaims) (*jwt.Token, string, error) {
 	return s.mintToken(claims, time.Now().Unix(), time.Now().Add(s.tokenTTL).Unix())
 }
 
-func (s *Server) mintToken(claims CommonClaims, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
+func (s *Server) mintToken(claims *CommonClaims, issuedAt int64, expiresAt int64) (*jwt.Token, string, error) {
 	token := jwt.New(jwt.SigningMethodRS512)
 	tokenID := newTokenID()
-	claims.UUID = tokenID
 	claims.IssuedAt = issuedAt
 	claims.ExpiresAt = expiresAt
 	claims.Id = tokenID
+	claims.Issuer = "ssas"
 	token.Claims = claims
 	var signedString, err = token.SignedString(s.tokenSigningKey)
 	if err != nil {
@@ -249,18 +257,17 @@ func (s *Server) VerifyToken(tokenString string) (*jwt.Token, error) {
 	return jwt.ParseWithClaims(tokenString, &CommonClaims{}, keyFunc)
 }
 
-func (s *Server) CheckRequiredClaims(claims *CommonClaims, RequiredTokenType string) error {
+func (s *Server) CheckRequiredClaims(claims *CommonClaims, requiredTokenType string) error {
 	if claims.ExpiresAt == 0 ||
 		claims.IssuedAt == 0 ||
-		claims.UUID == "" ||
+		claims.Issuer == "" ||
 		claims.TokenType == "" {
 		return fmt.Errorf("missing one or more claims")
 	}
 
-	if RequiredTokenType != claims.TokenType {
-		return fmt.Errorf(fmt.Sprintf("wrong token type: %s; required type: %s", claims.TokenType, RequiredTokenType))
+	if requiredTokenType != claims.TokenType {
+		return fmt.Errorf(fmt.Sprintf("wrong token type: %s; required type: %s", claims.TokenType, requiredTokenType))
 	}
 
 	return nil
 }
-
