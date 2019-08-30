@@ -97,7 +97,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.RegisterSystem("dd0a19eb-c614-46c7-9ec0-95bbae959f37", "", "")
+	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "1", creds.SystemID)
 	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
@@ -121,7 +121,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.RegisterSystem("dd0a19eb-c614-46c7-9ec0-95bbae959f37", "", "")
+	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
 	assert.Contains(s.T(), err.Error(), "failed to unmarshal response json")
 	assert.Empty(s.T(), creds.SystemID)
 }
@@ -148,7 +148,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.ResetSecret("dd0a19eb-c614-46c7-9ec0-95bbae959f37")
+	creds, err := s.p.ResetSecret(testACOUUID)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
 	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)

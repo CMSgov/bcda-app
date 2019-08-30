@@ -36,7 +36,7 @@ lint-ssas:
 #    ACO_CMS_ID=A9999 make postman env=local
 #
 ACO_CMS_ID ?= A9994
-clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda generate-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
+clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:
