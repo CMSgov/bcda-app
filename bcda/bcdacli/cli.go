@@ -133,7 +133,7 @@ func setUpApp() *cli.App {
 				},
 				cli.StringFlag{
 					Name:        "aco-id",
-					Usage:       "(Optional) CMS ID or UUID of ACO associated with group",
+					Usage:       "CMS ID or UUID of ACO associated with group",
 					Destination: &acoID,
 				},
 			},
@@ -161,14 +161,9 @@ func setUpApp() *cli.App {
 					Usage:       "CMS ID of ACO",
 					Destination: &acoCMSID,
 				},
-				cli.StringFlag{
-					Name:        "group-id",
-					Usage:       "(Optional) Auth group ID",
-					Destination: &groupID,
-				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName, acoCMSID, groupID)
+				acoUUID, err := createACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -488,25 +483,24 @@ func autoMigrate() {
 }
 
 func createGroup(id, name, acoID string) (string, error) {
-	if id == "" || name == "" {
-		return "", errors.New("ID (--id) and name (--name) are required")
+	if id == "" || name == "" || acoID == "" {
+		return "", errors.New("ID (--id), name (--name), and ACO ID (--aco-id) are required")
 	}
 
 	var aco models.ACO
-	if acoID != "" {
-		if match, err := regexp.MatchString("A\\d{4}", acoID); err == nil && match {
-			aco, err = auth.GetACOByCMSID(acoID)
-			if err != nil {
-				return "", err
-			}
-		} else if match, err := regexp.MatchString("[0-9a-f]{6}-([0-9a-f]{4}-){3}[0-9a-f]{12}", acoID); err == nil && match {
-			aco, err = auth.GetACOByUUID(acoID)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			return "", errors.New("ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
+
+	if match, err := regexp.MatchString("A\\d{4}", acoID); err == nil && match {
+		aco, err = auth.GetACOByCMSID(acoID)
+		if err != nil {
+			return "", err
 		}
+	} else if match, err := regexp.MatchString("[0-9a-f]{6}-([0-9a-f]{4}-){3}[0-9a-f]{12}", acoID); err == nil && match {
+		aco, err = auth.GetACOByUUID(acoID)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		return "", errors.New("ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
 	}
 
 	ssas, err := authclient.NewSSASClient()
@@ -514,7 +508,7 @@ func createGroup(id, name, acoID string) (string, error) {
 		return "", err
 	}
 
-	b, err := ssas.CreateGroup(id, name)
+	b, err := ssas.CreateGroup(id, name, *aco.CMSID)
 	if err != nil {
 		return "", err
 	}
@@ -541,7 +535,7 @@ func createGroup(id, name, acoID string) (string, error) {
 	return ssasID, nil
 }
 
-func createACO(name, cmsID, groupID string) (string, error) {
+func createACO(name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
@@ -555,7 +549,7 @@ func createACO(name, cmsID, groupID string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	acoUUID, err := models.CreateACO(name, cmsIDPt, groupID)
+	acoUUID, err := models.CreateACO(name, cmsIDPt)
 	if err != nil {
 		return "", err
 	}
