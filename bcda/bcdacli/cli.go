@@ -329,7 +329,7 @@ func setUpApp() *cli.App {
 		{
 			Name:     "reset-client-credentials",
 			Category: "Authentication tools",
-			Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
+			Usage:    "Generate a new secret for a client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "cms-id",
