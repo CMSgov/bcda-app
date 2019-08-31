@@ -50,22 +50,17 @@ Very long keys have been split across two rows for formatting purposes.
 | SSAS_HASH_KEY_LENGTH | Yes      | X |   | Controls the key length used by our secure hashing mechanism. Service will panic if this key does not have a value. |
 | SSAS_HASH_SALT_SIZE  | Yes      | X |   | Controls salt size used by our secure hashing mechanism performs. Service will panic if this key does not have a value. |
 | SSAS_MFA_PROVIDER    | No       | X |   | Switches between mock Okta MFA calls and live calls.  Defaults to "Mock". |
-| SSAS_MFA_CHALLENGE_  |    |   |   |    |
-| REQUEST_MILLISECONDS | No | X |   | Minimum execution time for RequestFactorChallenge().  If not present, defaults to 1500.  In production, this should always be set longer than the longest expected execution time.  (Actual execution time is logged.)|
-| SSAS_MFA_TOKEN_  |    |   |   |    |
-|  TIMEOUT_MINUTES | No | X |   | Token lifetime for self-registration (MFA tokens and Registration tokens).  Defaults to 60 (minutes). |
+| SSAS_MFA_CHALLENGE_ <br/> REQUEST_MILLISECONDS | No | X |   | Minimum execution time for RequestFactorChallenge().  If not present, defaults to 1500.  In production, this should always be set longer than the longest expected execution time.  (Actual execution time is logged.)|
+| SSAS_MFA_TOKEN_ <br/> TIMEOUT_MINUTES | No | X |   | Token lifetime for self-registration (MFA tokens and Registration tokens).  Defaults to 60 (minutes). |
 | SSAS_READ_TIMEOUT    | No       | X |   | Sets the read timeout on server requests |
 | SSAS_WRITE_TIMEOUT   | No       | X |   | Sets the write timeout on server responses |
 | SSAS_IDLE_TIMEOUT    | No       | X |   | Sets the idle timeout on |
 | SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | X |   | Provides the location of the admin server signing key |
 | SSAS_LOG                     | No  | X |   | Directs all ssas logging to a specific file |
 | SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | X |   | Provides the location of the public server signing key |
-| SSAS_TOKEN_BLACKLIST_CACHE_
-| CLEANUP_MINUTES  | No | X | | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
-| SSAS_TOKEN_BLACKLIST_CACHE_
-| TIMEOUT_MINUTES  | No | X | | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours. |
-| SSAS_TOKEN_BLACKLIST_CACHE_
-| REFRESH_MINUTES  | No | X | | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
+| SSAS_TOKEN_BLACKLIST_CACHE <br/> CLEANUP_MINUTES  | No | X | | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
+| SSAS_TOKEN_BLACKLIST_CACHE_ <br/> TIMEOUT_MINUTES  | No | X | | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours. |
+| SSAS_TOKEN_BLACKLIST_CACHE_ <br/> REFRESH_MINUTES  | No | X | | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
 | SSAS_USE_TLS     | Yes |   | X | Should be renamed to BCDA_SSAS_USE_TLS |
 | SSAS_URL         | Yes |   | X | The url of the SSAS admin server. Should be renamed to BCDA_SSAS_URL |
 | SSAS_PUBLIC_URL  | Yes |   | X | The url of the SSAS public server (auth endpoints). Should be renamed to BCDA_SSAS_PUBLIC_PUBLIC |
