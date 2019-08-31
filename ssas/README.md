@@ -4,76 +4,64 @@ The SSAS can be run as a standalone web service or embedded as a library.
 
 # Code Organization
 
-The service package contains a standalone http service that encapsulates the authorization library.
+The service package contains a standalone http server that presents the authorization library as a service.
 
-Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In order to maintain the service and library distinction, the ssas package and packages in plugins must not import from packages in the service directory.
-
-The outline below shows physical the directory structure of the code, with package names highlighted. The service and plugins directories are used for organization, but are not packages themselves. The main package is located in the service directory. Currently, the go files listed are the intended locations of code that will be migrated from bcda auth when an in-progress refactor is completed. The go files currently in place are placeholders that served to set up the code tree and illustrate the intended relationship between the service (main.go) and the ssas.
+Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In short, the ssas and okta packages must not import from packages in the service directory.
 
 Not shown: _test files for every .go file are assumed to be present parallel to their test subject.
 
 - **ssas**
     - **cfg**
-      - envv.go
-      - _configuration management; nothing in cfg should import from ssas packages_
-    - _service_
+      - _configuration management; cfg should not import from ssas packages_
+    - **okta**
+    - **service**
       - **admin**
-        - api.go
-        - middleware.go
-        - router.go
+        - _contains the REST API for managing the service implementation_
+      - **main**
       - **public**
-        - api.go
-        - middleware.go
-        - router.go
-      - **server**
-      - main.go
-    - _plugins_
-      - **alpha**
-        - alpha.go
-        - backend.go
-      - **okta**
-        - mokta.go
-        - okta.go
-        - oktaclient.go
-        - oktajwk.go
-    - provider.go
-    - logger.go
-    - credentials.go
-      - _data model and functions related to credentials_
-    - groups.go
-      - _data model and functions related to groups_
-    - systems.go
-      - _data model and functions related to systems_
-    - tokentools.go
-      - _functions related to tokens; should perhaps be renamed tokens_
+        - _contains the REST API for API consumers_
 
 # Configuration
 
-Required values must be present in the docker-compose.*.yml files.
+Required values must be present in the docker-compose.*.yml files. Some values are primarily for the use of the ACO API, and are only used by SSAS for testing purposes.
 
-| Key                  | Required | Purpose |
-| -------------------- |:--------:| ------- |
-| SSAS_HASH_ITERATIONS | Yes      | Controls how many iterations our secure hashing mechanism performs. Service will panic if this key does not have a value. |
-| SSAS_HASH_KEY_LENGTH | Yes      | Controls the key length used by our secure hashing mechanism. Service will panic if this key does not have a value. |
-| SSAS_HASH_SALT_SIZE  | Yes      | Controls salt size used by our secure hashing mechanism performs. Service will panic if this key does not have a value. |
-| SSAS_MFA_PROVIDER    | No       | Switches between mock Okta MFA calls and live calls.  Defaults to "Mock".
-| SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS | No | Minimum execution time for RequestFactorChallenge().  If not present, defaults to 1500.  In production, this should always be set longer than the longest expected execution time.  (Actual execution time is logged.)|
-| SSAS_MFA_TOKEN_TIMEOUT_MINUTES | No | Token lifetime for self-registration (MFA tokens and Registration tokens).  Defaults to 60 (minutes). |
-| OKTA_CLIENT_ORGURL   | Yes      | Sets the URL for contacting Okta (will vary between production/non-production environments). |
-| OKTA_CLIENT_TOKEN    | Yes      | A token providing limited admin-level API rights to Okta. |
-| OKTA_CA_CERT_FINGERPRINT | Yes  | SHA1 fingerprint for the CA certificate signing the Okta TLS cert.  If the fingerprint does not match the CA certificate presented when we visit Okta, the HTTPS connection is terminated |
-| OKTA_MFA_EMAIL       | No       | The email address (Okta account identifier) for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
-| OKTA_MFA_USER_ID     | No       | The user ID for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
-| OKTA_MFA_USER_PASSWORD| No      | The password for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
-| OKTA_MFA_SMS_FACTOR_ID | No     | The SMS MFA factor ID enrolled for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
-| SSAS_READ_TIMEOUT    | No       | Sets the read timeout on server requests |
-| SSAS_WRITE_TIMEOUT   | No       | Sets the write timeout on server responses |
-| SSAS_IDLE_TIMEOUT    | No       | Sets the idle timeout on |
-| SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | Provides the location of the admin server signing key |
-| SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | Provides the location of the public server signing key |
-| SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES | No | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
-| SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES | No | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours.
-| SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES | No | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
+|  Key                 | Required | SSAS | ACO | Purpose |
+| -------------------- |:--------:|:----:|:---:| ------- |
+| BCDA_TLS_CERT        | Depends  | X |   | The cert used when the SSAS service is running in secure mode. This var should be renamed to SSAS_TLS_CERT. |
+| BCDA_TLS_KEY         | Depends  | X |   | The private key used when the SSAS service is running in secure mode. This var should be renamed. |
+| BCDA_AUTH_PROVIDER   | ?        |   | X | Tells ACO API which auth provider to use |
+| BCDA_CA_FILE         | Yes      |   | X | Tells ACO API the certificate file with which to validate its TLS connection to SSAS |
+| BCDA_SSAS_CLIENT_ID  | Yes      |   | X | Tells ACO API the client_id to use with the SSAS REST API. |
+| BCDA_SSAS_SECRET     | Yes      |   | X | Tells ACO API the secret to use with the SSAS REST API. |
+| DATABASE_URL         | Yes      | X |   | Provides the database url |
+| DEBUG                | Depends  | X |   | Flag to indicate that the system is running in a development environments X | | |
+| HTTP_ONLY            | Depends  | X |   | Flag to indicate that the system should run in not secure mode |
+| OKTA_CLIENT_ORGURL   | Yes      | X |   | Sets the URL for contacting Okta (will vary between production/non-production environments). |
+| OKTA_CLIENT_TOKEN    | Yes      | X |   | A token providing limited admin-level API rights to Okta. |
+| OKTA_CA_CERT_FINGERPRINT | Yes  | X |   | SHA1 fingerprint for the CA certificate signing the Okta TLS cert.  If the fingerprint does not match the CA certificate presented when we visit Okta, the HTTPS connection is terminated |
+| OKTA_MFA_EMAIL       | No       | X |   | The email address (Okta account identifier) for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
+| OKTA_MFA_USER_ID     | No       | X |   | The user ID for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
+| OKTA_MFA_USER_PASSWORD| No      | X |   | The password for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
+| OKTA_MFA_SMS_FACTOR_ID | No     | X |   | The SMS MFA factor ID enrolled for the account to test in the Okta sandbox. Required only if running the live Okta MFA tests. |
+| SSAS_DEFAULT_SYSTEM_SCOPE | Yes | X |   | Used to set the scope on systems that do not specify their scope. Must be set or runtime failures will occur. |
+| SSAS_HASH_ITERATIONS | Yes      | X |   | Controls how many iterations our secure hashing mechanism performs. Service will panic if this key does not have a value. |
+| SSAS_HASH_KEY_LENGTH | Yes      | X |   | Controls the key length used by our secure hashing mechanism. Service will panic if this key does not have a value. |
+| SSAS_HASH_SALT_SIZE  | Yes      | X |   | Controls salt size used by our secure hashing mechanism performs. Service will panic if this key does not have a value. |
+| SSAS_MFA_PROVIDER    | No       | X |   | Switches between mock Okta MFA calls and live calls.  Defaults to "Mock". |
+| SSAS_MFA_CHALLENGE_REQUEST_MILLISECONDS | No | X |   | Minimum execution time for RequestFactorChallenge().  If not present, defaults to 1500.  In production, this should always be set longer than the longest expected execution time.  (Actual execution time is logged.)|
+| SSAS_MFA_TOKEN_TIMEOUT_MINUTES | No | X |   | Token lifetime for self-registration (MFA tokens and Registration tokens).  Defaults to 60 (minutes). |
+| SSAS_READ_TIMEOUT    | No       | X |   | Sets the read timeout on server requests |
+| SSAS_WRITE_TIMEOUT   | No       | X |   | Sets the write timeout on server responses |
+| SSAS_IDLE_TIMEOUT    | No       | X |   | Sets the idle timeout on |
+| SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | X |   | Provides the location of the admin server signing key |
+| SSAS_LOG                     | No  | X |   | Directs all ssas logging to a specific file |
+| SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | X |   | Provides the location of the public server signing key |
+| SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES  | No | X | | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
+| SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES  | No | X | | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours. |
+| SSAS_TOKEN_BLACKLIST_CACHE_REFRES H_MINUTES | No | X | | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
+| SSAS_USE_TLS    | Yes |   | X | Should be renamed to BCDA_SSAS_USE_TLS |
+| SSAS_URL        | Yes |   | X | The url of the SSAS admin server. Should be renamed to BCDA_SSAS_URL |
+| SSAS_PUBLIC_URL | Yes |   | X | The url of the SSAS public server (auth endpoints). Should be renamed to BCDA_SSAS_PUBLIC_PUBLIC |
 
 # Build
 
