@@ -19,7 +19,9 @@ Not shown: _test files for every .go file are assumed to be present parallel to 
         - _contains the REST API for managing the service implementation_
       - **main**
       - **public**
-        - _contains the REST API for API consumers_
+        - _contains the rest API for authorization services_
+      - **main**
+        - _cli for running servers and some admin tasks_
 
 # Configuration
 
@@ -27,17 +29,17 @@ Required values must be present in the docker-compose.*.yml files. Some values a
 
 Very long keys have been split across two rows for formatting purposes.
 
-|  Key                 | Required | SSAS | ACO | Purpose |
+|  Key                 | Required | SSAS | BCDA | Purpose |
 | -------------------- |:--------:|:----:|:---:| ------- |
-| BCDA_TLS_CERT        | Depends  | X |   | The cert used when the SSAS service is running in secure mode. This var should be renamed to SSAS_TLS_CERT. |
-| BCDA_TLS_KEY         | Depends  | X |   | The private key used when the SSAS service is running in secure mode. This var should be renamed. |
-| BCDA_AUTH_PROVIDER   | ?        |   | X | Tells ACO API which auth provider to use |
-| BCDA_CA_FILE         | Yes      |   | X | Tells ACO API the certificate file with which to validate its TLS connection to SSAS |
+| BCDA_TLS_CERT        | Depends  | X |   | The cert used when the SSAS service is running in secure mode. This var should be renamed to SSAS_TLS_CERT. When setting vars for AWS envs, you must include a var for the cert material |
+| BCDA_TLS_KEY         | Depends  | X |   | The private key used when the SSAS service is running in secure mode. When setting vars for AWS envs, you must include a var for the key material. This var should be renamed. |
+| BCDA_AUTH_PROVIDER   | Yes      |   | X | Tells ACO API which auth provider to use |
+| BCDA_CA_FILE         | Yes      |   | X | Tells ACO API the certificate file with which to validate its TLS connection to SSAS. When setting vars for AWS envs, you must include a var for the key material  |
 | BCDA_SSAS_CLIENT_ID  | Yes      |   | X | Tells ACO API the client_id to use with the SSAS REST API. |
 | BCDA_SSAS_SECRET     | Yes      |   | X | Tells ACO API the secret to use with the SSAS REST API. |
 | DATABASE_URL         | Yes      | X |   | Provides the database url |
 | DEBUG                | Depends  | X |   | Flag to indicate that the system is running in a development environments X | | |
-| HTTP_ONLY            | Depends  | X |   | Flag to indicate that the system should run in not secure mode |
+| HTTP_ONLY            | Depends  | X |   | Flag to operation of the system. By default, the servers will use https. When HTTP_ONLY is present **and** set to true, they will use http |
 | OKTA_CLIENT_ORGURL   | Yes      | X |   | Sets the URL for contacting Okta (will vary between production/non-production environments). |
 | OKTA_CLIENT_TOKEN    | Yes      | X |   | A token providing limited admin-level API rights to Okta. |
 | OKTA_CA_CERT_FINGERPRINT | Yes  | X |   | SHA1 fingerprint for the CA certificate signing the Okta TLS cert.  If the fingerprint does not match the CA certificate presented when we visit Okta, the HTTPS connection is terminated |
@@ -54,10 +56,11 @@ Very long keys have been split across two rows for formatting purposes.
 | SSAS_MFA_TOKEN_ <br/> TIMEOUT_MINUTES | No | X |   | Token lifetime for self-registration (MFA tokens and Registration tokens).  Defaults to 60 (minutes). |
 | SSAS_READ_TIMEOUT    | No       | X |   | Sets the read timeout on server requests |
 | SSAS_WRITE_TIMEOUT   | No       | X |   | Sets the write timeout on server responses |
-| SSAS_IDLE_TIMEOUT    | No       | X |   | Sets the idle timeout on |
-| SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | X |   | Provides the location of the admin server signing key |
+| SSAS_IDLE_TIMEOUT    | No       | X |   | Sets how long the server will keep open idle connections |
 | SSAS_LOG                     | No  | X |   | Directs all ssas logging to a specific file |
-| SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | X |   | Provides the location of the public server signing key |
+| SSAS_ADMIN_PORT <br/> SSAS_PUBLIC_PORT <br/> SSAS_HTTP_TO_HTTPS_PORT | No  | X | X | These values are not yet used by code. Intended to allow changing port assignments. If used, will affect BCDA SSAS URL vars. |
+| SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | X |   | Provides the location of the admin server signing key. When setting vars for AWS envs, you must include a var for the key material. |
+| SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | X |   | Provides the location of the public server signing key. When setting vars for AWS envs, you must include a var for the key material. |
 | SSAS_TOKEN_BLACKLIST_CACHE <br/> CLEANUP_MINUTES  | No | X | | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
 | SSAS_TOKEN_BLACKLIST_CACHE_ <br/> TIMEOUT_MINUTES  | No | X | | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours. |
 | SSAS_TOKEN_BLACKLIST_CACHE_ <br/> REFRESH_MINUTES  | No | X | | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
