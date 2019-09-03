@@ -53,7 +53,7 @@ func (s *RouterTestSuite) TearDownSuite() {
 	db := ssas.GetGORMDbConnection()
 	defer ssas.Close(db)
 
-	ssas.CleanDatabase(s.group)
+	_ = ssas.CleanDatabase(s.group)
 }
 
 func (s *RouterTestSuite) TestRevokeToken() {
