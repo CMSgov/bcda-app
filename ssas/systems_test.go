@@ -640,13 +640,23 @@ func (s *SystemsTestSuite) TestGetSystemByIDWithNonExistentID() {
 }
 
 func (s *SystemsTestSuite) TestGetSystemByIDWithEmptyID() {
-	system, err := GetSystemByID("")
-	require.NotNil(s.T(), err, "found system for empty id; %d, %s", system.ID, system.ClientName)
+	_, err := GetSystemByID("")
+	require.NotNil(s.T(), err, "found system for empty id")
+}
+
+func (s *SystemsTestSuite) TestGetSystemBySystemIDWithNonNumberID() {
+	_, err := GetSystemByID("i am not a number")
+	require.NotNil(s.T(), err, "found system for non-number id")
 }
 
 func (s *SystemsTestSuite) TestGetSystemByClientIDWithEmptyID() {
-	system, err := GetSystemByClientID("")
-	require.NotNil(s.T(), err, "found system for empty id; %d, %s", system.ID, system.ClientName)
+	_, err := GetSystemByClientID("")
+	require.NotNil(s.T(), err, "found system for empty id")
+}
+
+func (s *SystemsTestSuite) TestGetSystemByClientIDWithNonNumberID() {
+	_, err := GetSystemByClientID("i am not a number")
+	require.NotNil(s.T(), err, "found system for non-number id")
 }
 
 func TestSystemsTestSuite(t *testing.T) {
