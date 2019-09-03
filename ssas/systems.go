@@ -278,11 +278,9 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 }
 
 type Credentials struct {
-	UserID       string    `json:"user_id"`
 	ClientID     string    `json:"client_id"`
 	ClientSecret string    `json:"client_secret"`
 	SystemID     string    `json:"system_id"`
-	TokenString  string    `json:"token"`
 	ClientName   string    `json:"client_name"`
 	ExpiresAt    time.Time `json:"expires_at"`
 }
