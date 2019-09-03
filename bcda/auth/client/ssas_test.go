@@ -122,7 +122,7 @@ func (s *SSASClientTestSuite) TestCreateGroup() {
 		s.FailNow("Failed to create SSAS client", err.Error())
 	}
 
-	resp, err := client.CreateGroup("1", "name")
+	resp, err := client.CreateGroup("1", "name", "")
 	if err != nil {
 		s.FailNow("Failed to create group", err.Error())
 	}

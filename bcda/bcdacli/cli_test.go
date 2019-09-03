@@ -199,7 +199,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	defer database.Close(db)
 
 	cmsID := "A9901"
-	_, err := models.CreateACO("Public Key Test ACO", &cmsID, "")
+	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
 	assert.Nil(err)
 	aco, err := auth.GetACOByCMSID(cmsID)
 	assert.Nil(err)
@@ -509,7 +509,7 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	acoUUID, err := createACO("ACO "+email, "", "")
+	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
@@ -684,17 +684,9 @@ func (s *CLITestSuite) TestCreateGroup() {
 
 	id := "unit-test-group-1"
 	name := "Unit Test Group 1"
-	args := []string{"bcda", "create-group", "--id", id, "--name", name}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Equal("test-create-group-id", buf.String())
-	buf.Reset()
-
-	id = "unit-test-group-2"
-	name = "Unit Test Group 2"
 	acoID := "A9995"
-	args = []string{"bcda", "create-group", "--id", id, "--name", name, "--aco-id", acoID}
-	err = s.testApp.Run(args)
+	args := []string{"bcda", "create-group", "--id", id, "--name", name, "--aco-id", acoID}
+	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Equal("test-create-group-id", buf.String())
 }
