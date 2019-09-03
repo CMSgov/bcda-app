@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
@@ -599,6 +600,38 @@ func (s *SystemsTestSuite) TestScopeEnvFailure() {
 	}
 
 	assert.Panics(s.T(), func() { getEnvVars() })
+}
+
+func (s *SystemsTestSuite) TestGetSystemByIDWithKnownSystem() {
+	adminClientID := "31e029ef-0e97-47f8-873c-0e8b7e7f99bf"
+	systemFromClientID, err := GetSystemByClientID(adminClientID)
+	require.Nil(s.T(), err, "unexpected error ", err)
+	systemFromID, err := GetSystemByID(fmt.Sprint(systemFromClientID.ID))
+	assert.Nil(s.T(), err, "unexpected error ", err)
+	assert.Equal(s.T(), systemFromClientID, systemFromID)
+}
+
+func (s *SystemsTestSuite) TestGetSystemByIDWithNonExistentID() {
+	var max uint
+	row := s.db.Table("systems").Select("MAX(id)").Row()
+	err := row.Scan(&max)
+	assert.Nil(s.T(), err, "no max id?")
+	_, err = GetSystemByID(fmt.Sprint(max + 1))
+	require.NotEmpty(s.T(), err, "no system for ID: ", max+1)
+}
+
+func (s *SystemsTestSuite) TestGetSystemByIDWithEmptyID() {
+	system, err := GetSystemByID("")
+	require.NotNil(s.T(), err, "found system for empty id; %d, %s", system.ID, system.ClientName)
+}
+
+func (s *SystemsTestSuite) TestGetSystemByClientIDWithEmptyID() {
+	system, err := GetSystemByClientID("")
+	require.NotNil(s.T(), err, "found system for empty id; %d, %s", system.ID, system.ClientName)
+}
+
+func (s *SystemsTestSuite) TestGetAllSystems() {
+
 }
 
 func TestSystemsTestSuite(t *testing.T) {
