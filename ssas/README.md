@@ -4,11 +4,9 @@ The SSAS can be run as a standalone web service or embedded as a library.
 
 # Code Organization
 
-The service package contains a standalone http server that presents the authorization library as a service.
+The outline below shows the physical directory structure of the code, with package names highlighted. The service package contains a standalone http service that presents the authorization library via two http servers, one for admin tasks and one for authorization tasks.
 
-Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In short, the ssas and okta packages must not import from packages in the service directory.
-
-Not shown: _test files for every .go file are assumed to be present parallel to their test subject.
+Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In short, the ssas package and okta packages must not import from packages in the service directory.
 
 - **ssas**
     - **cfg**
@@ -18,10 +16,9 @@ Not shown: _test files for every .go file are assumed to be present parallel to 
       - **admin**
         - _contains the REST API for managing the service implementation_
       - **main**
+        - _cli for running servers and some admin tasks_
       - **public**
         - _contains the rest API for authorization services_
-      - **main**
-        - _cli for running servers and some admin tasks_
 
 # Configuration
 
@@ -61,7 +58,7 @@ Very long keys have been split across two rows for formatting purposes.
 | SSAS_ADMIN_PORT <br/> SSAS_PUBLIC_PORT <br/> SSAS_HTTP_TO_HTTPS_PORT | No  | X | X | These values are not yet used by code. Intended to allow changing port assignments. If used, will affect BCDA SSAS URL vars. |
 | SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | X |   | Provides the location of the admin server signing key. When setting vars for AWS envs, you must include a var for the key material. |
 | SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | X |   | Provides the location of the public server signing key. When setting vars for AWS envs, you must include a var for the key material. |
-| SSAS_TOKEN_BLACKLIST_CACHE <br/> CLEANUP_MINUTES  | No | X | | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
+| SSAS_TOKEN_BLACKLIST_CACHE_ <br/> CLEANUP_MINUTES  | No | X | | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
 | SSAS_TOKEN_BLACKLIST_CACHE_ <br/> TIMEOUT_MINUTES  | No | X | | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours. |
 | SSAS_TOKEN_BLACKLIST_CACHE_ <br/> REFRESH_MINUTES  | No | X | | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
 | SSAS_USE_TLS     | Yes |   | X | Should be renamed to BCDA_SSAS_USE_TLS |
