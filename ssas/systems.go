@@ -63,8 +63,8 @@ type System struct {
 	SoftwareID     string          `json:"software_id"`
 	ClientName     string          `json:"client_name"`
 	APIScope       string          `json:"api_scope"`
-	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
-	Secrets        []Secret        `json:"secrets"`
+	EncryptionKeys []EncryptionKey `json:"encryption_keys,omitempty"`
+	Secrets        []Secret        `json:"secrets,omitempty"`
 }
 
 type EncryptionKey struct {
