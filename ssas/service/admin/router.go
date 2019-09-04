@@ -34,15 +34,15 @@ func Server() *service.Server {
 
 func routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(service.NewAPILogger(), service.ConnectionClose)
-	r.With(requireBasicAuth).Post("/group", createGroup)
-	r.With(requireBasicAuth).Get("/group", listGroups)
-	r.With(requireBasicAuth).Put("/group/{id}", updateGroup)
-	r.With(requireBasicAuth).Delete("/group/{id}", deleteGroup)
-	r.With(requireBasicAuth).Post("/system", createSystem)
-	r.With(requireBasicAuth).Put("/system/{systemID}/credentials", resetCredentials)
-	r.With(requireBasicAuth).Get("/system/{systemID}/key", getPublicKey)
-	r.With(requireBasicAuth).Delete("/system/{systemID}/credentials", deactivateSystemCredentials)
-	r.With(requireBasicAuth).Delete("/token/{tokenID}", revokeToken)
+	r.Use(service.NewAPILogger(), service.ConnectionClose, requireBasicAuth)
+	r.Post("/group", createGroup)
+	r.Get("/group", listGroups)
+	r.Put("/group/{id}", updateGroup)
+	r.Delete("/group/{id}", deleteGroup)
+	r.Post("/system", createSystem)
+	r.Put("/system/{systemID}/credentials", resetCredentials)
+	r.Get("/system/{systemID}/key", getPublicKey)
+	r.Delete("/system/{systemID}/credentials", deactivateSystemCredentials)
+	r.Delete("/token/{tokenID}", revokeToken)
 	return r
 }
