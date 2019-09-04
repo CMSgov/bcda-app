@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -18,31 +18,64 @@ import (
 	"github.com/CMSgov/bcda-app/ssas/service/public"
 )
 
-var startMeUp bool
-var migrateAndStart bool
-var resetCreds bool
+var doMigrate bool
+var doAddFixtureData bool
+var doResetSecret bool
+var doNewAdminSystem bool
+var doMigrateAndStart bool
+var doStart bool
 var clientID string
+var systemName string
 var output io.Writer
 
 func init() {
-	output = os.Stdout
+	const usageMigrate = "unconditionally migrate the db"
+	flag.BoolVar(&doMigrate, "migrate", false, usageMigrate)
+
+	const usageAddFixtureData = "unconditionally add fixture data"
+	flag.BoolVar(&doAddFixtureData, "add-fixture-data", false, usageAddFixtureData)
+
+	const usageResetSecret = "reset system secret for the given client_id; requires client-id flag with argument"
+	flag.BoolVar(&doResetSecret, "reset-secret", false, usageResetSecret)
+	flag.StringVar(&clientID, "client-id", "", "a system's client id")
+
+	const usageNewAdminSystem = "add a new admin system to the service; requires system-name flag with argument"
+	flag.BoolVar(&doNewAdminSystem, "new-admin-system", false, usageNewAdminSystem)
+	flag.StringVar(&systemName, "system-name", "", "the system's name (e.g., 'BCDA Admin')")
+
+	// we need this all-in-one command to start using fresh in the docker container
+	const usageMigrateAndStart = "start the service; if DEBUG=true, will also migrate the db"
+	flag.BoolVar(&doMigrateAndStart, "migrate-and-start", false, usageMigrateAndStart)
 
 	const usageStart = "start the service"
-	flag.BoolVar(&startMeUp, "start", false, usageStart)
-	flag.BoolVar(&startMeUp, "s", false, usageStart+" (shorthand)")
-	const usageMigrate = "migrate the db and start the service"
-	flag.BoolVar(&migrateAndStart, "migrate", false, usageMigrate)
-	flag.BoolVar(&migrateAndStart, "m", false, usageMigrate+" (shorthand)")
-
-	const usageResetCreds = "rotate system credentials for the given client_id"
-	flag.BoolVar(&resetCreds, "reset-credentials", false, usageResetCreds)
-	flag.StringVar(&clientID, "client-id", "", "")
+	flag.BoolVar(&doStart, "start", false, usageStart)
 }
 
+// We provide some simple commands for bootstrapping the system into place. Commands cannot be combined.
 func main() {
-	ssas.Logger.Info("Future home of the System-to-System Authentication Service")
+	ssas.Logger.Info("Home of the System-to-System Authentication Service")
+	output = os.Stdout
+
 	flag.Parse()
-	if migrateAndStart {
+	if doMigrate {
+		ssas.InitializeGroupModels()
+		ssas.InitializeSystemModels()
+		ssas.InitializeBlacklistModels()
+		return
+	}
+	if doAddFixtureData {
+		addFixtureData()
+		return
+	}
+	if doResetSecret && clientID != "" {
+		resetSecret(clientID)
+		return
+	}
+	if doNewAdminSystem && systemName != "" {
+		newAdminSystem(systemName)
+		return
+	}
+	if doMigrateAndStart {
 		if os.Getenv("DEBUG") == "true" {
 			ssas.InitializeGroupModels()
 			ssas.InitializeSystemModels()
@@ -50,12 +83,11 @@ func main() {
 			addFixtureData()
 		}
 		start()
+		return
 	}
-	if startMeUp {
+	if doStart {
 		start()
-	}
-	if resetCreds && clientID != "" {
-		resetCredentials(clientID)
+		return
 	}
 }
 
@@ -77,6 +109,8 @@ func start() {
 	}
 	as.LogRoutes()
 	as.Serve()
+
+	service.StartBlacklist()
 
 	// Accepts and redirects HTTP requests to HTTPS. Not sure we should do this.
 	forwarder := &http.Server{
@@ -134,6 +168,7 @@ func makeSystem(db *gorm.DB, groupID, clientID, clientName, scope, hash string) 
 	if err := db.Save(&system).Error; err != nil {
 		ssas.Logger.Warn(err)
 	}
+
 	encryptionKey := ssas.EncryptionKey{
 		Body:     pem,
 		SystemID: system.ID,
@@ -141,6 +176,7 @@ func makeSystem(db *gorm.DB, groupID, clientID, clientName, scope, hash string) 
 	if err := db.Save(&encryptionKey).Error; err != nil {
 		ssas.Logger.Warn(err)
 	}
+
 	secret := ssas.Secret{
 		Hash:     hash,
 		SystemID: system.ID,
@@ -150,19 +186,56 @@ func makeSystem(db *gorm.DB, groupID, clientID, clientName, scope, hash string) 
 	}
 }
 
-func resetCredentials(clientID string) {
+func resetSecret(clientID string) {
 	var (
 		err error
-		s ssas.System
-		c ssas.Credentials
+		s   ssas.System
+		c   ssas.Credentials
 	)
-	if s, err = ssas.GetSystemByClientID(clientID); err != nil  {
+	if s, err = ssas.GetSystemByClientID(clientID); err != nil {
 		ssas.Logger.Warn(err)
 	}
-	ssas.OperationCalled(ssas.Event{Op: "ResetSecret", TrackingID: uuid.NewRandom().String(), Help: "calling from main.resetCredentials()"})
+	ssas.OperationCalled(ssas.Event{Op: "ResetSecret", TrackingID: cliTrackingID(), Help: "calling from main.resetSecret()"})
 	if c, err = s.ResetSecret(clientID); err != nil {
 		ssas.Logger.Warn(err)
 	} else {
 		_, _ = fmt.Fprintf(output, "%s\n", c.ClientSecret)
 	}
+}
+
+func newAdminSystem(name string) {
+	var (
+		err error
+		pk  string
+		c   ssas.Credentials
+		u   uint64
+	)
+	if pk, err = ssas.GeneratePublicKey(2048); err != nil {
+		ssas.Logger.Errorf("no public key; %s", err)
+		return
+	}
+
+	trackingID := cliTrackingID()
+	ssas.OperationCalled(ssas.Event{Op: "RegisterSystem", TrackingID: trackingID, Help: "calling from main.newAdminSystem()"})
+	if c, err = ssas.RegisterSystem(name, "admin", "bcda-api", pk, trackingID); err != nil {
+		ssas.Logger.Error(err)
+		return
+	}
+
+	if u, err = strconv.ParseUint(c.SystemID, 10, 64); err != nil {
+		ssas.Logger.Errorf("invalid systemID %d; %s", u, err)
+		return
+	}
+
+	db := ssas.GetGORMDbConnection()
+	defer db.Close()
+	if err = db.Model(&ssas.System{}).Where("id = ?", uint(u)).Update("api_scope", "bcda-admin").Error; err != nil {
+		ssas.Logger.Warnf("bcda-admin scope not set for new system %s", c.SystemID)
+	} else {
+		_, _ = fmt.Fprintf(output, "%s\n", c.ClientID)
+	}
+}
+
+func cliTrackingID() string {
+	return fmt.Sprintf("cli-command-%d", time.Now().Unix())
 }

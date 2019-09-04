@@ -1,14 +1,14 @@
 # System-to-System Authentication Service (SSAS)
 
-The SSAS can be run as a standalone web service or embedded as a library. 
+The SSAS can be run as a standalone web service or embedded as a library.
 
 # Code Organization
 
 The service package contains a standalone http service that encapsulates the authorization library.
 
-Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In order to maintain the service and library distinction, the ssas package and packages in plugins must not import from packages in the service directory. 
+Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In order to maintain the service and library distinction, the ssas package and packages in plugins must not import from packages in the service directory.
 
-The outline below shows physical the directory structure of the code, with package names highlighted. The service and plugins directories are used for organization, but are not packages themselves. The main package is located in the service directory. Currently, the go files listed are the intended locations of code that will be migrated from bcda auth when an in-progress refactor is completed. The go files currently in place are placeholders that served to set up the code tree and illustrate the intended relationship between the service (main.go) and the ssas. 
+The outline below shows physical the directory structure of the code, with package names highlighted. The service and plugins directories are used for organization, but are not packages themselves. The main package is located in the service directory. Currently, the go files listed are the intended locations of code that will be migrated from bcda auth when an in-progress refactor is completed. The go files currently in place are placeholders that served to set up the code tree and illustrate the intended relationship between the service (main.go) and the ssas.
 
 Not shown: _test files for every .go file are assumed to be present parallel to their test subject.
 
@@ -46,12 +46,12 @@ Not shown: _test files for every .go file are assumed to be present parallel to 
       - _data model and functions related to systems_
     - tokentools.go
       - _functions related to tokens; should perhaps be renamed tokens_
-      
+
 # Configuration
 
 Required values must be present in the docker-compose.*.yml files.
 
-| Key                  | Required | Purpose | 
+| Key                  | Required | Purpose |
 | -------------------- |:--------:| ------- |
 | SSAS_HASH_ITERATIONS | Yes      | Controls how many iterations our secure hashing mechanism performs. Service will panic if this key does not have a value. |
 | SSAS_HASH_KEY_LENGTH | Yes      | Controls the key length used by our secure hashing mechanism. Service will panic if this key does not have a value. |
@@ -77,7 +77,23 @@ Required values must be present in the docker-compose.*.yml files.
 
 # Build
 
-Build the code and containers with `make docker-bootstrap`. Alternatively, `docker-compose up ssas` will build and run the SSAS by itself.
+Build all the code and containers with `make docker-bootstrap`. Alternatively, `docker-compose up ssas` will build and run the SSAS by itself. Note that SSAS needs the db container to be running as well.
+
+## Bootstrapping CLI
+
+SSAS currently has a simple CLI intended to make bootstrapping tasks and manual testing easier to accomplish. The CLI will only run one command at a time; commands do not chain.
+
+The sequence of commands needed to bootstrap the SSAS into a new environment is as follows:
+
+1. migrate, which will build or update the tables
+1. add-fixture-data, which adds the admin group and seeds minimal data for smoke Testing
+1. new-admin-system, which adds an admin system and returns its client_id
+1. reset-secret, which replaces the secret associated with a client_id and returns that new secret
+1. start, which starts the servers and the token blacklist cache
+
+You will need the admin client_id and secret to use the service's admin endpoints.
+
+Note that to initialize our docker container, we use migrate-and-start, which combines the first three of the steps above with some conditional logic to make sure we're running in a development environment. This command should most likely not be used elsewhere.
 
 # Test
 
@@ -120,4 +136,10 @@ environmental variables.  It is also possible to run individual tests, but that 
 
 ```
 docker run --rm --network bcda-app_default -it postgres pg_dump -s -h bcda-app_db_1 -U postgres bcda > schema.sql
+```
+```
+docker-compose run --rm ssas sh -c 'tmp/ssas-service --reset-secret --client-id=[client_id]'
+```
+```
+docker-compose run --rm ssas sh -c 'tmp/ssas-service --new-admin-system --system-name=[entity name]'
 ```
