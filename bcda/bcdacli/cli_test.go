@@ -765,9 +765,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 3 files.")
+	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 0 files.")
+	assert.Contains(buf.String(), "Skipped 1 files.")
 
 	buf.Reset()
 
@@ -782,10 +782,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	// dir has 4 files, but 2 will be ignored because of bad file names.
 	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_BadFileNames/"}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "one or more files failed to import correctly")
+	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Failed to import 1 files.")
 	assert.Contains(buf.String(), "Skipped 3 files.")
 	buf.Reset()
 
@@ -843,9 +842,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 3 files.")
+	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 0 files.")
+	assert.Contains(buf.String(), "Skipped 1 files.")
 
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_split/")
 }

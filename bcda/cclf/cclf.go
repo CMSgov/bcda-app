@@ -91,7 +91,7 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 			if len(bytes.TrimSpace(b)) > 0 {
 				filetype := string(bytes.TrimSpace(b[fileNumStart:fileNumEnd]))
 
-				if filetype == "CCLF8" || filetype == "CCLF9" {
+				if filetype == "CCLF8" {
 					if validator == nil {
 						validator = make(map[string]cclfFileValidator)
 					}
@@ -129,12 +129,6 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 		log.Error(err)
 		return nil, err
 	}
-	if _, ok := validator["CCLF9"]; !ok {
-		fmt.Printf("Failed to parse CCLF9 from CCLF0 file: %s.\n", fileMetadata)
-		err := fmt.Errorf("failed to parse CCLF9 from CCLF0 file: %s", fileMetadata)
-		log.Error(err)
-		return nil, err
-	}
 	fmt.Printf("Successfully imported CCLF0 file %s.\n", fileMetadata)
 	log.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
 
@@ -156,41 +150,6 @@ func importCCLF8(fileMetadata *cclfFileMetadata) error {
 		if err != nil {
 			fmt.Println("Could not create CCLF8 beneficiary record.")
 			err = errors.Wrap(err, "could not create CCLF8 beneficiary record")
-			log.Error(err)
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
-		updateImportStatus(fileMetadata,constants.ImportFail)
-		return err
-	}
-	updateImportStatus(fileMetadata,constants.ImportComplete)
-	return nil
-}
-
-func importCCLF9(fileMetadata *cclfFileMetadata) error {
-	err := importCCLF(fileMetadata, func(fileID uint, b []byte, db *gorm.DB) error {
-		const (
-			currIDStart, currIDEnd               = 1, 12
-			prevIDStart, prevIDEnd               = 12, 23
-			prevIDEffDateStart, prevIDEffDateEnd = 23, 33
-			prevIDObsDateStart, prevIDObsDateEnd = 33, 43
-		)
-
-		cclf9 := models.CCLFBeneficiaryXref{
-			FileID:        fileID,
-			XrefIndicator: string(b[0:1]),
-			CurrentNum:    string(b[currIDStart:currIDEnd]),
-			PrevNum:       string(b[prevIDStart:prevIDEnd]),
-			PrevsEfctDt:   string(b[prevIDEffDateStart:prevIDEffDateEnd]),
-			PrevsObsltDt:  string(b[prevIDObsDateStart:prevIDObsDateEnd]),
-		}
-		err := db.Create(&cclf9).Error
-		if err != nil {
-			fmt.Println("Could not create CCLF9 cross reference record.")
-			err = errors.Wrap(err, "could not create CCLF9 cross reference record")
 			log.Error(err)
 			return err
 		}
@@ -299,7 +258,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP: P.A****.ACO.ZC*Y**.Dyymmdd.Thhmmsst
 	// Prefix: T = test, P = prod; A**** or T**** (test) = ACO ID; ZC* = CCLF file number; Y** = performance year
-	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 6 {
 		fmt.Printf("Invalid zipped filename for file: %s.\n", filePath)
@@ -352,7 +311,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 func getCCLFFileMetadataBCD(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Y**.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
-	filenameRegexp := regexp.MustCompile(`(T|P).BCD.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	filenameRegexp := regexp.MustCompile(`(T|P).BCD.ACO.*\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 5 {
 		fmt.Printf("Invalid zipped filename for file: %s.\n", filePath)
@@ -427,20 +386,18 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	}
 
 	for _, cclflist := range cclfmap {
-		var cclf0, cclf8, cclf9 *cclfFileMetadata
+		var cclf0, cclf8 *cclfFileMetadata
 		for _, cclf := range cclflist {
 			if cclf.cclfNum == 0 {
 				cclf0 = cclf
 			} else if cclf.cclfNum == 8 {
 				cclf8 = cclf
-			} else if cclf.cclfNum == 9 {
-				cclf9 = cclf
 			}
 		}
 		cclfvalidator, err := importCCLF0(cclf0)
 		if err != nil {
-			fmt.Printf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s and CCLF9 file: %s.\n ", cclf0, cclf8, cclf9)
-			log.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s and CCLF9 file: %s ", cclf0, cclf8, cclf9)
+			fmt.Printf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s.\n ", cclf0, cclf8)
+			log.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
 			failure++
 			skipped += 2
 			continue
@@ -462,22 +419,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 				success++
 			}
 		}
-		err = validate(cclf9, cclfvalidator)
-		if err != nil {
-			fmt.Printf("Failed to validate CCLF9 file: %s.\n", cclf9)
-			log.Errorf("Failed to validate CCLF9 file: %s", cclf9)
-			failure++
-		} else {
-			if err = importCCLF9(cclf9); err != nil {
-				fmt.Printf("Failed to import CCLF9 file: %s.\n", cclf9)
-				log.Errorf("Failed to import CCLF9 file: %s ", cclf9)
-				failure++
-			} else {
-				cclf9.imported = true
-				success++
-			}
-		}
-		cclf0.imported = cclf8 != nil && cclf8.imported && cclf9 != nil && cclf9.imported
+		cclf0.imported = cclf8 != nil && cclf8.imported
 	}
 
 	err = cleanupCCLF(cclfmap)
@@ -558,8 +500,6 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 	var key string
 	if fileMetadata.cclfNum == 8 {
 		key = "CCLF8"
-	} else if fileMetadata.cclfNum == 9 {
-		key = "CCLF9"
 	} else {
 		fmt.Printf("Unknown file type when validating file: %s.\n", fileMetadata)
 		err := fmt.Errorf("unknown file type when validating file: %s", fileMetadata)
