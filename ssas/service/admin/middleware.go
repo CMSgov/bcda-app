@@ -26,6 +26,8 @@ func requireBasicAuth(next http.Handler) http.Handler {
 			jsonError(w, http.StatusText(http.StatusUnauthorized), "invalid client secret")
 			return
 		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 

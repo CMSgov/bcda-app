@@ -22,21 +22,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "POST",
 				"header": [
 					{
@@ -97,21 +82,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "POST",
 				"header": [
 					{
@@ -157,21 +127,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "PUT",
 				"header": [
 					{
@@ -265,21 +220,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "PUT",
 				"header": [
 					{
@@ -326,21 +266,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						},
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
@@ -375,21 +300,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -424,21 +334,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -476,21 +371,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
@@ -524,21 +404,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{adminClientSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{adminClientID}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -888,6 +753,43 @@
 				}
 			},
 			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "{{adminClientSecret}}",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "{{adminClientId}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "e3311938-8ba3-4d78-a5fc-82d922c68b48",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "5bef9511-420b-4bd0-9f12-3a1ad54e2315",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
 		}
 	]
 }
