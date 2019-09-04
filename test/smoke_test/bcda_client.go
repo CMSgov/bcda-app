@@ -29,6 +29,7 @@ type Output struct {
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
+	ExpiresIn   string `json:"expires_in,omitempty"`
 }
 
 func init() {
@@ -69,7 +70,7 @@ func getAccessToken() string {
 
 	var t = TokenResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
-		panic("unexpected token response format")
+		panic(fmt.Sprintf("unexpected token response format: %s", err.Error()))
 	}
 
 	return t.AccessToken
