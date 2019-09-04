@@ -265,7 +265,7 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 
 	expTime, _ = time.Parse(time.RFC3339, "2019-01-08T23:55:00Z")
 	metadata, err = getCCLFFileMetadata("/path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
-	assert.EqualError(err, "invalid filename for file: /path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
+	assert.EqualError(err, "invalid zipped filename for file: /path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
 
 	// CMS EFT file format structure
 	expTime, _ = time.Parse(time.RFC3339, "2019-01-19T20:13:01Z")
@@ -299,7 +299,7 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Nil(err)
 
 	metadata, err = getCCLFFileMetadata("/BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
-	assert.EqualError(err, "invalid filename for file: /BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
+	assert.EqualError(err, "invalid zipped filename for file: /BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
 }
 
 func (s *CCLFTestSuite) TestGetCCLFFileMetadata_InvalidFilename() {
