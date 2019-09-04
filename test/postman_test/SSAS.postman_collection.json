@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "3bee0e43-45c8-4e3c-a50f-4171956b4a0b",
+		"_postman_id": "514c3338-a3f4-4cfe-82cf-5a8335a8b414",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -22,6 +22,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [
 					{
@@ -82,6 +97,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [
 					{
@@ -127,6 +157,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [
 					{
@@ -220,6 +265,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [
 					{
@@ -266,6 +326,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {
@@ -300,6 +375,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -334,6 +424,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -371,6 +476,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {
@@ -404,6 +524,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
