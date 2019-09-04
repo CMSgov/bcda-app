@@ -21,7 +21,7 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ssas.OperationCalled(ssas.Event{Op: "CreateGroup", TrackingID: gd.ID, Help: "calling from admin.createGroup()"})
+	ssas.OperationCalled(ssas.Event{Op: "CreateGroup", TrackingID: gd.GroupID, Help: "calling from admin.createGroup()"})
 	g, err := ssas.CreateGroup(gd)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create group. Error: %s", err), http.StatusBadRequest)
@@ -30,7 +30,7 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 
 	groupJSON, err := json.Marshal(g)
 	if err != nil {
-		ssas.OperationFailed(ssas.Event{Op: "admin.createGroup", TrackingID: gd.ID, Help: err.Error()})
+		ssas.OperationFailed(ssas.Event{Op: "admin.createGroup", TrackingID: gd.GroupID, Help: err.Error()})
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -39,7 +39,7 @@ func createGroup(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(groupJSON)
 	if err != nil {
-		ssas.OperationFailed(ssas.Event{Op: "admin.createGroup", TrackingID: gd.ID, Help: err.Error()})
+		ssas.OperationFailed(ssas.Event{Op: "admin.createGroup", TrackingID: gd.GroupID, Help: err.Error()})
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}
 }

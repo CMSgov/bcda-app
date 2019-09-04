@@ -453,9 +453,16 @@ func token(w http.ResponseWriter, r *http.Request) {
 	}
 
 	trackingID := uuid.NewRandom().String()
+	data, err := ssas.XDataFor(system)
+	ssas.Logger.Infof("public.api.token: XDataFor(%d) returned '%s'", system.ID, data)
+	if err != nil {
+		jsonError(w, http.StatusText(http.StatusUnauthorized), "no group for system")
+		return
+	}
+
 	event := ssas.Event{Op: "Token", TrackingID: trackingID, Help: "calling from public.token()"}
 	ssas.OperationCalled(event)
-	token, ts, err := MintAccessToken(system.GroupID, nil)
+	token, ts, err := MintAccessToken(fmt.Sprintf("%d", system.ID), system.ClientID, data)
 	if err != nil {
 		event.Help = "failure minting token: " + err.Error()
 		ssas.OperationFailed(event)
@@ -465,7 +472,7 @@ func token(w http.ResponseWriter, r *http.Request) {
 
 	// https://tools.ietf.org/html/rfc6749#section-5.1
 	// expires_in is duration in seconds
-	expiresIn := token.Claims.(service.CommonClaims).ExpiresAt - token.Claims.(service.CommonClaims).IssuedAt
+	expiresIn := token.Claims.(*service.CommonClaims).ExpiresAt - token.Claims.(*service.CommonClaims).IssuedAt
 	m := TokenResponse{AccessToken: ts, TokenType: "bearer", ExpiresIn: strconv.FormatInt(expiresIn, 10)}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")

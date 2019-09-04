@@ -15,11 +15,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 )
 
-// Puts the decoded token and identity values into the request context. Decoded values have been
-// verified to be tokens signed by our server and to have not expired. Additional authorization
-// occurs in RequireTokenAuth(). Only auth code should look at the token claims; API code should
-// rely on the values in AuthData. We do this to insulate API code from the differences among
-// Provider tokens.
+// ParseToken puts the decoded token and AuthData value into the request context. Decoded values come from
+// tokens verified by our provider as correct and unexpired. Tokens may be presented in requests to
+// unauthenticated endpoints (mostly swagger?). We still want to extract the token data for logging purposes,
+// even when we don't use it for authorization. Authorization for protected endpoints occurs in RequireTokenAuth().
+// Only auth code should look at the token claims; API code should rely on the values in AuthData. We use AuthData
+// to insulate API code from the differences among Provider tokens.
 func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -37,9 +38,10 @@ func ParseToken(next http.Handler) http.Handler {
 		}
 
 		tokenString := authSubmatches[1]
+
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
-			log.Errorf("Unable to decode Authorization header value; %s", err)
+			log.Errorf("Unable to verify token; %s", err)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -47,7 +49,10 @@ func ParseToken(next http.Handler) http.Handler {
 		var ad AuthData
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
 			// okta token
-			if claims.ClientID != "" && claims.Subject == claims.ClientID {
+			switch claims.Issuer {
+			case "ssas":
+				ad, _ = adFromClaims(claims)
+			case "okta":
 				var aco, err = GetACOByClientID(claims.ClientID)
 				if err != nil {
 					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
@@ -59,7 +64,7 @@ func ParseToken(next http.Handler) http.Handler {
 				defer database.Close(db)
 
 				var user models.User
-				if db.First(&user, "ACOID = ?", aco.UUID).RecordNotFound() {
+				if db.First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
 					log.Errorf("no user for ACO with id of %v", aco.UUID)
 					next.ServeHTTP(w, r)
 					return
@@ -68,7 +73,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
 				ad.UserID = user.UUID.String()
-			} else {
+			default:
 				ad.TokenID = claims.UUID
 				ad.ACOID = claims.ACOID
 				ad.UserID = claims.Subject

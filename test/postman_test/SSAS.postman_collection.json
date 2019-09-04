@@ -93,7 +93,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
+					"raw": "{\n    \"group_id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group",
@@ -231,7 +231,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\",\n        \"new-user\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\",\n        \"new-scope\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
+					"raw": "{\n    \"group_id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\",\n        \"new-user\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\",\n        \"new-scope\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group/{{group-id}}",
@@ -359,10 +359,9 @@
 					"script": {
 						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
 						"exec": [
-							"pm.test(\"response is 200 and only fixture groups in response\", function () {",
+							"pm.test(\"response is 200 and at least 2 fixture groups in response\", function () {",
 							"    pm.response.to.have.status(200);",
 							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData.length).to.eql(2);",
 							"    pm.expect(jsonData[0].group_id).to.eql(\"admin\");",
 							"    pm.expect(jsonData[1].group_id).to.eql(\"0c527d2e-2e8a-4808-b11d-0fa06baf8254\");",
 							"});"

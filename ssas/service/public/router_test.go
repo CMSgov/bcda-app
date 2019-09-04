@@ -34,7 +34,7 @@ func (s *PublicRouterTestSuite) SetupSuite() {
 	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
-	groupBytes := []byte(`{"id":"T1234","users":["fake_okta_id","abcdefg"]}`)
+	groupBytes := []byte(`{"group_id":"T1234","users":["fake_okta_id","abcdefg"]}`)
 	gd := ssas.GroupData{}
 	err := json.Unmarshal(groupBytes, &gd)
 	assert.Nil(s.T(), err)

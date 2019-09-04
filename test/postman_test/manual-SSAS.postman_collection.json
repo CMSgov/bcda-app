@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "46602b35-6ed4-4ebd-bbca-c426572f5c92",
-		"name": "SSAS",
+		"name": "manual-SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -418,3 +418,4 @@
 		}
 	]
 }
+

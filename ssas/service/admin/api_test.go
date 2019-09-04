@@ -19,41 +19,38 @@ import (
 )
 
 const SampleGroup string = `{  
-	"id":"A12345",
-	"name":"ACO Corp Systems",
-	"users":[  
-		"00uiqolo7fEFSfif70h7",
-		"l0vckYyfyow4TZ0zOKek",
-		"HqtEi2khroEZkH4sdIzj"
-	],
-	"scopes":[  
-		"user-admin",
-		"system-admin"
-	],
-	"resources":[  
-		{  
-			"id":"xxx",
-			"name":"BCDA API",
-			"scopes":[  
-				"bcda-api"
-			]
-		},
-		{  
-			"id":"eft",
-			"name":"EFT CCLF",
-			"scopes":[  
-				"eft-app:download",
-				"eft-data:read"
-			]
-		}
-	],
-	"system":
-		{  
-		"client_id":"4tuhiOIFIwriIOH3zn",
-		"software_id":"4NRB1-0XZABZI9E6-5SM3R",
-		"client_name":"ACO System A"
-		}
+  "group_id":"%s",
+  "name": "ACO Corp Systems",
+  "resources": [
+    {
+      "id": "xxx",
+      "name": "BCDA API",
+      "scopes": [
+        "bcda-api"
+      ]
+    },
+    {
+      "id": "eft",
+      "name": "EFT CCLF",
+      "scopes": [
+        "eft-app:download",
+        "eft-data:read"
+      ]
+    }
+  ],
+  "scopes": [
+    "user-admin",
+    "system-admin"
+  ],
+  "users": [
+    "00uiqolo7fEFSfif70h7",
+    "l0vckYyfyow4TZ0zOKek",
+    "HqtEi2khroEZkH4sdIzj"
+  ],
+  "xdata": %s
 }`
+
+const SampleXdata string = `"{\"cms_ids\":[\"T67890\",\"T54321\"]}"`
 
 type APITestSuite struct {
 	suite.Suite
@@ -71,27 +68,35 @@ func (s *APITestSuite) TearDownSuite() {
 }
 
 func (s *APITestSuite) TestCreateGroup() {
-	req := httptest.NewRequest("POST", "/group", strings.NewReader(SampleGroup))
+	gid := ssas.RandomHexID()
+	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
+	req := httptest.NewRequest("POST", "/group", strings.NewReader(testInput))
 	handler := http.HandlerFunc(createGroup)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	g := ssas.Group{}
-	s.db.Where("group_id = ?", "A12345").Find(&g)
+	if s.db.Where("group_id = ?", gid).Find(&g).RecordNotFound() {
+		assert.FailNow(s.T(), fmt.Sprintf("record not found for group_id=%s", gid))
+	}
 	err := ssas.CleanDatabase(g)
 	assert.Nil(s.T(), err)
 }
 
 func (s *APITestSuite) TestListGroups() {
-	groupBytes := []byte(SampleGroup)
+	var startingCount int
+	ssas.GetGORMDbConnection().Table("groups").Count(&startingCount)
+
+	gid := ssas.RandomHexID()
+	testInput1 := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	gd := ssas.GroupData{}
-	err := json.Unmarshal(groupBytes, &gd)
+	err := json.Unmarshal([]byte(testInput1), &gd)
 	assert.Nil(s.T(), err)
 	g1, err := ssas.CreateGroup(gd)
 	assert.Nil(s.T(), err)
 
-	gd.ID = "another-fake-id"
+	gd.GroupID = ssas.RandomHexID()
 	gd.Name = "another-fake-name"
 	g2, err := ssas.CreateGroup(gd)
 	assert.Nil(s.T(), err)
@@ -105,7 +110,7 @@ func (s *APITestSuite) TestListGroups() {
 	groups := []ssas.Group{}
 	err = json.Unmarshal(rr.Body.Bytes(), &groups)
 	assert.Nil(s.T(), err)
-	assert.True(s.T(), len(groups) >= 2)
+	assert.True(s.T(), len(groups) == 2+startingCount)
 
 	err = ssas.CleanDatabase(g1)
 	assert.Nil(s.T(), err)
@@ -114,15 +119,16 @@ func (s *APITestSuite) TestListGroups() {
 }
 
 func (s *APITestSuite) TestUpdateGroup() {
-	groupBytes := []byte(SampleGroup)
+	gid := ssas.RandomHexID()
+	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	gd := ssas.GroupData{}
-	err := json.Unmarshal(groupBytes, &gd)
+	err := json.Unmarshal([]byte(testInput), &gd)
 	assert.Nil(s.T(), err)
 	g, err := ssas.CreateGroup(gd)
 	assert.Nil(s.T(), err)
 
 	url := fmt.Sprintf("/group/%v", g.ID)
-	req := httptest.NewRequest("PUT", url, strings.NewReader(SampleGroup))
+	req := httptest.NewRequest("PUT", url, strings.NewReader(testInput))
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", fmt.Sprint(g.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
@@ -153,7 +159,9 @@ func (s *APITestSuite) TestRevokeToken() {
 }
 
 func (s *APITestSuite) TestDeleteGroup() {
-	groupBytes := []byte(SampleGroup)
+	gid := ssas.RandomHexID()
+	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
+	groupBytes := []byte(testInput)
 	gd := ssas.GroupData{}
 	err := json.Unmarshal(groupBytes, &gd)
 	assert.Nil(s.T(), err)
