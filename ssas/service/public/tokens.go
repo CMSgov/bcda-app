@@ -2,11 +2,13 @@ package public
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
+
 	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/cfg"
 	"github.com/CMSgov/bcda-app/ssas/service"
-	"github.com/dgrijalva/jwt-go"
-	"time"
 )
 
 var selfRegistrationTokenDuration time.Duration
@@ -27,7 +29,7 @@ func MintMFAToken(oktaID string) (*jwt.Token, string, error) {
 		return nil, "", err
 	}
 
-	return server.MintTokenWithDuration(claims, selfRegistrationTokenDuration)
+	return server.MintTokenWithDuration(&claims, selfRegistrationTokenDuration)
 }
 
 // MintRegistrationToken generates a tokenstring for system self-registration endpoints
@@ -42,14 +44,15 @@ func MintRegistrationToken(oktaID string, groupIDs []string) (*jwt.Token, string
 		return nil, "", err
 	}
 
-	return server.MintTokenWithDuration(claims, selfRegistrationTokenDuration)
+	return server.MintTokenWithDuration(&claims, selfRegistrationTokenDuration)
 }
 
 // MintAccessToken generates a tokenstring that expires in server.tokenTTL time
-func MintAccessToken(acoID string, data interface{}) (*jwt.Token, string, error) {
+func MintAccessToken(systemID, clientID string, data string) (*jwt.Token, string, error) {
 	claims := service.CommonClaims{
 		TokenType: "AccessToken",
-		ACOID: acoID,
+		SystemID: systemID,
+		ClientID: clientID,
 		Data:  data,
 	}
 
@@ -57,7 +60,7 @@ func MintAccessToken(acoID string, data interface{}) (*jwt.Token, string, error)
 		return nil, "", err
 	}
 
-	return server.MintToken(claims)
+	return server.MintToken(&claims)
 }
 
 func empty(arr []string) bool {
@@ -130,8 +133,8 @@ func checkTokenClaims(claims *service.CommonClaims) error {
 			return fmt.Errorf("registration token must have GroupIDs claim")
 		}
 	case "AccessToken":
-		if claims.ACOID == "" {
-			return fmt.Errorf("access token must have ACOID claim")
+		if claims.Data == "" {
+			return fmt.Errorf("access token must have Data claim")
 		}
 	default:
 		return fmt.Errorf("missing token type claim")

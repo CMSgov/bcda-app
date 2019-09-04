@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/require"
 
 	"github.com/CMSgov/bcda-app/ssas"
 
@@ -25,14 +26,19 @@ type APITestSuite struct {
 	db *gorm.DB
 }
 
-func (s *APITestSuite) SetupTest() {
+func (s *APITestSuite) SetupSuite() {
 	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
+	s.db = ssas.GetGORMDbConnection()
+	_ = Server()
+}
+
+func (s *APITestSuite) SetupTest() {
 	s.db = ssas.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
 
-func (s *APITestSuite) TearDownTest() {
+func (s *APITestSuite) TearDownSuite() {
 	ssas.Close(s.db)
 }
 
@@ -169,10 +175,6 @@ func (s *APITestSuite) TestResetSecretSuccess() {
 	assert.Nil(s.T(), err)
 }
 
-func TestAuthAPITestSuite(t *testing.T) {
-	suite.Run(t, new(APITestSuite))
-}
-
 func addRegDataContext(req *http.Request, groupID string, groupIDs []string) *http.Request {
 	rctx := chi.NewRouteContext()
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
@@ -183,26 +185,22 @@ func addRegDataContext(req *http.Request, groupID string, groupIDs []string) *ht
 
 func (s *APITestSuite) TestTokenSuccess() {
 	groupID := ssas.RandomHexID()[0:4]
-	group := ssas.Group{GroupID: groupID}
+	group := ssas.Group{GroupID: groupID, XData: "x_data"}
 	err := s.db.Create(&group).Error
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err)
 
 	_, pubKey, err := ssas.GenerateTestKeys(2048)
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err)
+
 	pemString, err := ssas.ConvertPublicKeyToPEMString(&pubKey)
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err)
+
 	creds, err := ssas.RegisterSystem("Token Test", groupID, ssas.DefaultScope, pemString, uuid.NewRandom().String())
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "Token Test", creds.ClientName)
 	assert.NotNil(s.T(), creds.ClientSecret)
 
-	_ = Server()
+	// now for the actual test
 	req := httptest.NewRequest("POST", "/token", nil)
 	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
 	req.Header.Add("Accept", "application/json")
@@ -221,26 +219,20 @@ func (s *APITestSuite) TestTokenSuccess() {
 func (s *APITestSuite) TestIntrospectSuccess() {
 	groupID := ssas.RandomHexID()[0:4]
 
-	group := ssas.Group{GroupID: groupID}
+	group := ssas.Group{GroupID: groupID, XData: "x_data"}
 	err := s.db.Create(&group).Error
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err)
 
 	_, pubKey, err := ssas.GenerateTestKeys(2048)
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err)
 	pemString, err := ssas.ConvertPublicKeyToPEMString(&pubKey)
-	if err != nil {
-		s.FailNow(err.Error())
-	}
+	require.Nil(s.T(), err)
+
 	creds, err := ssas.RegisterSystem("Introspect Test", groupID, ssas.DefaultScope, pemString, uuid.NewRandom().String())
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "Introspect Test", creds.ClientName)
 	assert.NotNil(s.T(), creds.ClientSecret)
 
-	_ = Server()
 	req := httptest.NewRequest("POST", "/token", nil)
 	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
 	req.Header.Add("Accept", "application/json")
@@ -252,6 +244,7 @@ func (s *APITestSuite) TestIntrospectSuccess() {
 	assert.NotEmpty(s.T(), t)
 	assert.NotEmpty(s.T(), t.AccessToken)
 
+	// the actual test
 	body := strings.NewReader(fmt.Sprintf(`{"token":"%s"}`, t.AccessToken))
 	req = httptest.NewRequest("POST", "/introspect", body)
 	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)

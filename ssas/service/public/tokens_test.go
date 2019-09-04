@@ -1,10 +1,13 @@
 package public
 
 import (
+	"encoding/json"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/ssas/service"
@@ -36,7 +39,7 @@ func (s *PublicTokenTestSuite) TestMintMFATokenMissingID() {
 
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), token)
-	assert.Equal(s.T(),"", ts)
+	assert.Equal(s.T(), "", ts)
 }
 
 func (s *PublicTokenTestSuite) TestMintRegistrationToken() {
@@ -55,6 +58,31 @@ func (s *PublicTokenTestSuite) TestMintRegistrationTokenMissingID() {
 	assert.NotNil(s.T(), err)
 	assert.Nil(s.T(), token)
 	assert.Equal(s.T(), "", ts)
+}
+
+func (s *PublicTokenTestSuite) TestMintAccessToken() {
+	data := `"{\"cms_ids\":[\"T67890\",\"T54321\"]}"`
+	t, ts, err := MintAccessToken("2", "0c527d2e-2e8a-4808-b11d-0fa06baf8254", data)
+
+	require.Nil(s.T(), err, )
+	assert.NotEmpty(s.T(), ts, "missing token string value")
+	assert.NotNil(s.T(), t, "missing token value")
+
+	claims := t.Claims.(*service.CommonClaims)
+	assert.NotNil(s.T(), claims.Data, "missing data claim")
+	type XData struct {
+		IDList []string `json:"cms_ids"`
+	}
+
+	var xData XData
+	d, err := strconv.Unquote(claims.Data)
+	require.Nil(s.T(), err, "couldn't unquote ", d)
+	err = json.Unmarshal([]byte(d), &xData)
+	require.Nil(s.T(), err, "unexpected error in: ", d)
+	require.NotEmpty(s.T(), xData, "no data in data :(")
+	assert.Equal(s.T(), 2, len(xData.IDList))
+	assert.Equal(s.T(), "T67890", xData.IDList[0])
+	assert.Equal(s.T(), "T54321", xData.IDList[1])
 }
 
 func (s *PublicTokenTestSuite) TestEmpty() {

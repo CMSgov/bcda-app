@@ -149,6 +149,6 @@ func getPublicKey() *rsa.PublicKey {
 }
 
 // SignJwtToken signs a prepared JWT token, returning it as a base-64 encoded string suitable for use as a Bearer token.
-func (backend *AlphaBackend) SignJwtToken(token jwt.Token) (string, error) {
+func (backend *AlphaBackend) SignJwtToken(token *jwt.Token) (string, error) {
 	return token.SignedString(backend.PrivateKey)
 }

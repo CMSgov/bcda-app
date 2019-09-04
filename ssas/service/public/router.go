@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi"
 
+	"github.com/CMSgov/bcda-app/ssas"
 	"github.com/CMSgov/bcda-app/ssas/service"
 )
 
@@ -18,6 +19,7 @@ var server *service.Server
 func init() {
 	infoMap = make(map[string][]string)
 	publicSigningKeyPath = os.Getenv("SSAS_PUBLIC_SIGNING_KEY_PATH")
+	ssas.Logger.Info("public signing key sourced from ", publicSigningKeyPath)
 }
 
 func Server() (*service.Server) {
