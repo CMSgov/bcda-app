@@ -2,14 +2,12 @@ package admin
 
 import (
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/ssas"
-	"github.com/jinzhu/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -23,19 +21,10 @@ type RouterTestSuite struct {
 }
 
 func (s *RouterTestSuite) SetupSuite() {
-	db := ssas.GetGORMDbConnection()
-	defer ssas.Close(db)
-
-	group := ssas.Group{GroupID: "admin"}
-	if err := db.Save(&group).Error; err != nil {
-		fmt.Println(err)
+	system, err := ssas.GetSystemByClientID("31e029ef-0e97-47f8-873c-0e8b7e7f99bf")
+	if err != nil {
+		s.FailNow(err.Error())
 	}
-	s.group = group
-
-	system := makeSystem(db, "admin", "31e029ef-0e97-47f8-873c-0e8b7e7f99bf",
-		"BCDA API Admin", "bcda-admin",
-		"nbZ5oAnTlzyzeep46bL4qDGGuidXuYxs3xknVWBKjTI=:9s/Tnqvs8M7GN6VjGkLhCgjmS59r6TaVguos8dKV9lGqC1gVG8ywZVEpDMkdwOaj8GoNe4TU3jS+OZsK3kTfEQ==",
-	)
 	creds, err := system.ResetSecret("31e029ef-0e97-47f8-873c-0e8b7e7f99bf")
 	if err != nil {
 		s.FailNow(err.Error())
@@ -152,36 +141,4 @@ func (s *RouterTestSuite) TestPutSystemCredentials() {
 
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))
-}
-
-func makeSystem(db *gorm.DB, groupID, clientID, clientName, scope, hash string) ssas.System {
-	pem := `-----BEGIN PUBLIC KEY-----
-	MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
-	I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
-	/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL
-	cN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ
-	lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
-	XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
-	HwIDAQAB
-	-----END PUBLIC KEY-----`
-	system := ssas.System{GroupID: groupID, ClientID: clientID, ClientName: clientName, APIScope: scope}
-	if err := db.Save(&system).Error; err != nil {
-		ssas.Logger.Warn(err)
-	}
-	encryptionKey := ssas.EncryptionKey{
-		Body:     pem,
-		SystemID: system.ID,
-	}
-	if err := db.Save(&encryptionKey).Error; err != nil {
-		ssas.Logger.Warn(err)
-	}
-	secret := ssas.Secret{
-		Hash:     hash,
-		SystemID: system.ID,
-	}
-	if err := db.Save(&secret).Error; err != nil {
-		ssas.Logger.Warn(err)
-	}
-
-	return system
 }
