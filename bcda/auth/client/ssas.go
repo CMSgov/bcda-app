@@ -77,16 +77,7 @@ func NewSSASClient() (*SSASClient, error) {
 }
 
 func tlsTransport() (*http.Transport, error) {
-	certFile := os.Getenv("SSAS_CLIENT_CERT_FILE")
-	keyFile := os.Getenv("SSAS_CLIENT_KEY_FILE")
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not load SSAS keypair")
-	}
-
-	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-
-	caFile := os.Getenv("SSAS_CLIENT_CA_FILE")
+	caFile := os.Getenv("BCDA_CA_FILE")
 	caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not read CA file")
@@ -97,8 +88,8 @@ func tlsTransport() (*http.Transport, error) {
 		return nil, errors.New("could not append CA certificate(s)")
 	}
 
-	tlsConfig.RootCAs = caCertPool
-	tlsConfig.BuildNameToCertificate()
+	ssasLogger.Println("Using ca cert sourced from ", filepath.Clean(caFile))
+	tlsConfig := &tls.Config{RootCAs: caCertPool}
 
 	return &http.Transport{TLSClientConfig: tlsConfig}, nil
 }

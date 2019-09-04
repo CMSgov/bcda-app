@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
@@ -599,6 +600,63 @@ func (s *SystemsTestSuite) TestScopeEnvFailure() {
 	}
 
 	assert.Panics(s.T(), func() { getEnvVars() })
+}
+
+func makeTestSystem(db *gorm.DB) (Group, System, error) {
+	groupID := "T" + RandomHexID()[:4]
+	group := Group{GroupID: groupID}
+	if err := db.Save(&group).Error; err != nil {
+		return Group{}, System{}, err
+	}
+	system := System{GroupID: group.GroupID, ClientID: "system-for-test-group-" + groupID}
+	if err := db.Save(&system).Error; err != nil {
+		return Group{}, System{}, err
+	}
+	return group, system, nil
+}
+
+func (s *SystemsTestSuite) TestGetSystemByIDWithKnownSystem() {
+	g, system, err := makeTestSystem(s.db)
+	assert.Nil(s.T(), err, "unexpected error")
+	require.Nil(s.T(), err, "unexpected error ", err)
+	systemFromID, err := GetSystemByID(fmt.Sprint(system.ID))
+	assert.Nil(s.T(), err, "unexpected error ", err)
+	assert.Equal(s.T(), system.ID, systemFromID.ID)
+	assert.Equal(s.T(), system.GroupID, systemFromID.GroupID)
+	_ = CleanDatabase(g)
+}
+
+func (s *SystemsTestSuite) TestGetSystemByIDWithNonExistentID() {
+	// make sure there's at least one system
+	g, _, err := makeTestSystem(s.db)
+	assert.Nil(s.T(), err, "can't make test system")
+	var max uint
+	row := s.db.Table("systems").Select("MAX(id)").Row()
+	err = row.Scan(&max)
+	assert.Nil(s.T(), err, "no max id?")
+	_, err = GetSystemByID(fmt.Sprint(max + 1))
+	require.NotEmpty(s.T(), err, "should not have found system for ID: ", max+1)
+	_ = CleanDatabase(g)
+}
+
+func (s *SystemsTestSuite) TestGetSystemByIDWithEmptyID() {
+	_, err := GetSystemByID("")
+	require.NotNil(s.T(), err, "found system for empty id")
+}
+
+func (s *SystemsTestSuite) TestGetSystemBySystemIDWithNonNumberID() {
+	_, err := GetSystemByID("i am not a number")
+	require.NotNil(s.T(), err, "found system for non-number id")
+}
+
+func (s *SystemsTestSuite) TestGetSystemByClientIDWithEmptyID() {
+	_, err := GetSystemByClientID("")
+	require.NotNil(s.T(), err, "found system for empty id")
+}
+
+func (s *SystemsTestSuite) TestGetSystemByClientIDWithNonNumberID() {
+	_, err := GetSystemByClientID("i am not a number")
+	require.NotNil(s.T(), err, "found system for non-number id")
 }
 
 func TestSystemsTestSuite(t *testing.T) {
