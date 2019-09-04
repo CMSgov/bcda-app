@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"testing"
 
@@ -21,16 +22,9 @@ type RouterTestSuite struct {
 }
 
 func (s *RouterTestSuite) SetupSuite() {
-	system, err := ssas.GetSystemByClientID("31e029ef-0e97-47f8-873c-0e8b7e7f99bf")
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-	creds, err := system.ResetSecret("31e029ef-0e97-47f8-873c-0e8b7e7f99bf")
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-	secret := creds.ClientSecret
-	basicAuth := system.ClientID + ":" + secret
+	id := os.Getenv("SSAS_ADMIN_CLIENT_ID")
+	secret := os.Getenv("SSAS_ADMIN_CLIENT_SECRET")
+	basicAuth := id + ":" + secret
 	s.basicAuth = base64.StdEncoding.EncodeToString([]byte(basicAuth))
 }
 
