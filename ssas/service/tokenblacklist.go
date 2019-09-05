@@ -23,11 +23,15 @@ func init() {
 	cacheCleanupInterval = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_CLEANUP_MINUTES", 15)) * time.Minute
 	TokenCacheLifetime	 = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_TIMEOUT_MINUTES", 60*24)) * time.Minute
 	cacheRefreshFreq	 = time.Duration(cfg.GetEnvInt("SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES", 5)) * time.Minute
+}
+
+// This function should only be called by main
+func StartBlacklist() {
 	NewBlacklist(defaultCacheTimeout, cacheCleanupInterval)
 }
 
-//	NewBlacklist allows for easy Blacklist{} creation and manipulation during testing, and should not be called
-//		outside a test suite
+//	NewBlacklist allows for easy Blacklist{} creation and manipulation during testing, and, outside a test suite,
+//	should not be called
 func NewBlacklist(cacheTimeout time.Duration, cleanupInterval time.Duration) *Blacklist {
 	// In case a Blacklist timer has already been started:
 	stopCacheRefreshTicker()
