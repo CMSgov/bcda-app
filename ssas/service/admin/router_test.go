@@ -23,8 +23,17 @@ type RouterTestSuite struct {
 
 func (s *RouterTestSuite) SetupSuite() {
 	id := os.Getenv("SSAS_ADMIN_CLIENT_ID")
-	secret := os.Getenv("SSAS_ADMIN_CLIENT_SECRET")
-	basicAuth := id + ":" + secret
+	system, err := ssas.GetSystemByClientID(id)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	creds, err := system.ResetSecret(id)
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	basicAuth := id + ":" + creds.ClientSecret
 	s.basicAuth = base64.StdEncoding.EncodeToString([]byte(basicAuth))
 }
 
@@ -54,7 +63,7 @@ func (s *RouterTestSuite) TestPostGroup() {
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestGetGroup() {
@@ -72,7 +81,7 @@ func (s *RouterTestSuite) TestPutGroup() {
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestDeleteGroup() {
@@ -81,7 +90,7 @@ func (s *RouterTestSuite) TestDeleteGroup() {
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestPostSystem() {
@@ -90,7 +99,7 @@ func (s *RouterTestSuite) TestPostSystem() {
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestDeactivateSystemCredentials() {
@@ -127,7 +136,7 @@ func (s *RouterTestSuite) TestPutSystemCredentials() {
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
+	assert.Equal(s.T(), http.StatusCreated, res.StatusCode)
 
 	err := ssas.CleanDatabase(group)
 	assert.Nil(s.T(), err)

@@ -43,6 +43,7 @@ services:
       - CCLF_IMPORT_STATUS_RECORDS_INTERVAL=10
       - BCDA_SSAS_CLIENT_ID=${CLIENT_ID}
       - BCDA_SSAS_SECRET=${CLIENT_SECRET}
+      - SSAS_ADMIN_CLIENT_ID=31e029ef-0e97-47f8-873c-0e8b7e7f99bf
       - SSAS_ADMIN_SIGNING_KEY_PATH=../../../shared_files/ssas/admin_test_signing_key.pem
       - SSAS_PUBLIC_SIGNING_KEY_PATH=../../../shared_files/ssas/public_test_signing_key.pem
       - SSAS_PUBLIC_PORT=:3003
