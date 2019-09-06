@@ -89,12 +89,14 @@ func UpdateGroup(id string, gd GroupData) (Group, error) {
 	event := Event{Op: "UpdateGroup", TrackingID: id}
 	OperationStarted(event)
 
-	g := Group{}
 	db := GetGORMDbConnection()
 	defer Close(db)
-	if db.Where("id = ?", id).Find(&g).RecordNotFound() {
-		err := fmt.Errorf("record not found for id=%s", id)
-		event.Help = err.Error()
+
+	g, err := GetGroupByID(id)
+	if err != nil {
+		errString := fmt.Sprintf("record not found for id=%s", id)
+		event.Help = errString + ": " + err.Error()
+		err := fmt.Errorf(errString)
 		OperationFailed(event)
 		return Group{}, err
 	}
@@ -103,7 +105,7 @@ func UpdateGroup(id string, gd GroupData) (Group, error) {
 	gd.Name = g.Data.Name
 
 	g.Data = gd
-	err := db.Save(&g).Error
+	err = db.Save(&g).Error
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
@@ -112,7 +114,6 @@ func UpdateGroup(id string, gd GroupData) (Group, error) {
 
 	OperationSucceeded(event)
 	return g, nil
-
 }
 
 func DeleteGroup(id string) error {
@@ -121,8 +122,7 @@ func DeleteGroup(id string) error {
 
 	db := GetGORMDbConnection()
 	defer Close(db)
-	g := Group{}
-	err := db.Where("id = ?", id).First(&g).Error
+	g, err := GetGroupByID(id)
 	if err != nil {
 		event.Help = err.Error()
 		OperationFailed(event)
@@ -248,5 +248,24 @@ func FindByGroupID(groupID string) (Group, error) {
 		err = fmt.Errorf("no Group record found for groupID %s", groupID)
 	}
 
+	return group, err
+}
+
+// GetGroupByID returns the group associated with the provided ID
+func GetGroupByID(id string) (Group, error) {
+	var (
+		db     = GetGORMDbConnection()
+		group Group
+		err    error
+	)
+	defer Close(db)
+
+	if _, err = strconv.ParseUint(id, 10, 64); err != nil {
+		return Group{}, fmt.Errorf("invalid input %s; %s", id, err)
+	}
+	// must use the explicit where clause here because the id argument is a string
+	if err = db.Find(&group, "id = ?", id).Error; err != nil {
+		err = fmt.Errorf("no Group record found with ID %s", id)
+	}
 	return group, err
 }
