@@ -28,6 +28,24 @@ func (s *MainTestSuite) TestResetSecret() {
 	assert.NotEqual(s.T(), "", output)
 }
 
+func (s *MainTestSuite) TestResetCredentialsBadClientID() {
+	badClientID := "This client does not exist"
+	output := captureOutput(func() {resetSecret(badClientID)})
+	assert.Equal(s.T(), "", output)
+}
+
+func (s *MainTestSuite) TestMainResetCredentials() {
+	doResetSecret = true
+	clientID = "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+
+	output := captureOutput(func() {main()})
+	assert.NotEqual(s.T(), output, "")
+
+	doResetSecret = false
+	clientID = ""
+}
+
+
 func (s *MainTestSuite) TestNewAdminSystem() {
 	output := captureOutput(func() { newAdminSystem("Main Test System") })
 	assert.NotEqual(s.T(), "", output)
