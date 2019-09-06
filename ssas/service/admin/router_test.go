@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"testing"
 
@@ -22,7 +21,7 @@ type RouterTestSuite struct {
 }
 
 func (s *RouterTestSuite) SetupSuite() {
-	id := os.Getenv("SSAS_ADMIN_CLIENT_ID")
+	id := "31e029ef-0e97-47f8-873c-0e8b7e7f99bf"
 	system, err := ssas.GetSystemByClientID(id)
 	if err != nil {
 		s.FailNow(err.Error())
