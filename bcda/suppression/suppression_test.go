@@ -56,7 +56,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
 
 	suppressions := []models.Suppression{}
-	db.Find(&suppressions, "file_id = ?", suppressionFile.ID)
+	db.Find(&suppressions, "file_id = ?", suppressionFile.ID).Order("created_at")
 	assert.Len(suppressions, 4)
 	assert.Equal("1000087481", suppressions[0].HICN)
 	assert.Equal("1-800", suppressions[0].SourceCode)
