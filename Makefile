@@ -60,11 +60,9 @@ postman-ssas:
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
 
 unit-test:
-	docker-compose run --rm ssas sh -c 'tmp/ssas-service --add-fixture-data'
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 unit-test-ssas:
-	docker-compose run --rm ssas sh -c 'tmp/ssas-service --add-fixture-data'
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test_ssas.sh
 
 performance-test:
@@ -106,6 +104,11 @@ load-synthetic-suppression-data:
 	docker-compose up -d api
 	docker-compose up -d db
 	docker-compose run api sh -c 'tmp/bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
+
+load-fixtures-ssas:
+	docker-compose up -d db
+	docker-compose run ssas sh -c 'tmp/ssas-service --migrate'
+	docker-compose run ssas sh -c 'tmp/ssas-service --add-fixture-data'
 
 docker-build:
 	docker-compose build --force-rm
