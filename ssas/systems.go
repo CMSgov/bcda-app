@@ -30,6 +30,10 @@ func getEnvVars() {
 	DefaultScope = os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE")
 
 	if DefaultScope == "" {
+		if os.Getenv("DEBUG") == "true" {
+			DefaultScope = "bcda-api"
+			return
+		}
 		ServiceHalted(Event{Help: "SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
 		panic("SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set")
 	}

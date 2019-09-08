@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -26,9 +27,15 @@ type Hash string
 // The time for hash comparison should be about 1s.  Increase hashIter if this is significantly faster in production.
 // Note that changing hashIter or hashKeyLen will result in invalidating existing stored hashes (e.g. credentials).
 func init() {
-	hashIter = cfg.GetEnvInt("SSAS_HASH_ITERATIONS", 0)
-	hashKeyLen = cfg.GetEnvInt("SSAS_HASH_KEY_LENGTH", 0)
-	saltSize = cfg.GetEnvInt("SSAS_HASH_SALT_SIZE", 0)
+	if (os.Getenv("DEBUG") == "true") {
+		hashIter = cfg.GetEnvInt("SSAS_HASH_ITERATIONS", 130000)
+		hashKeyLen = cfg.GetEnvInt("SSAS_HASH_KEY_LENGTH", 64)
+		saltSize = cfg.GetEnvInt("SSAS_HASH_SALT_SIZE", 32)
+	} else {
+		hashIter = cfg.GetEnvInt("SSAS_HASH_ITERATIONS", 0)
+		hashKeyLen = cfg.GetEnvInt("SSAS_HASH_KEY_LENGTH", 0)
+		saltSize = cfg.GetEnvInt("SSAS_HASH_SALT_SIZE", 0)
+	}
 
 	if hashIter == 0 || hashKeyLen == 0 || saltSize == 0 {
 		// ServiceHalted(Event{Help:"SSAS_HASH_ITERATIONS, SSAS_HASH_KEY_LENGTH and SSAS_HASH_SALT_SIZE environment values must be set"})
