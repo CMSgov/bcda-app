@@ -16,10 +16,10 @@ CLIENT_SECRET=${CREDS[1]}
 
 CLIENT_ID=$CLIENT_ID CLIENT_SECRET=$CLIENT_SECRET docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
 
-docker-compose exec bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM jobs WHERE aco_id = '"'"$ACO_ID"'"'"'
-docker-compose exec bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM users WHERE aco_id = '"'"$ACO_ID"'"'"'
-docker-compose exec bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM acos WHERE cms_id = '"'"'A9996'"'"'"'
-docker-compose exec bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM encryption_keys WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"'smoke-test-group'"'"')"'
-docker-compose exec bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM secrets WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"'smoke-test-group'"'"')"'
-docker-compose exec bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM systems WHERE group_id = '"'"'smoke-test-group'"'"'"'
-docker-compose exec bcda-app_db_1 sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM groups WHERE group_id = '"'"'smoke-test-group'"'"'"'
+docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM jobs WHERE aco_id = '"'"$ACO_ID"'"'"'
+docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM users WHERE aco_id = '"'"$ACO_ID"'"'"'
+docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM acos WHERE cms_id = '"'"'A9996'"'"'"'
+docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM encryption_keys WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"'smoke-test-group'"'"')"'
+docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM secrets WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"'smoke-test-group'"'"')"'
+docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM systems WHERE group_id = '"'"'smoke-test-group'"'"'"'
+docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM groups WHERE group_id = '"'"'smoke-test-group'"'"'"'
