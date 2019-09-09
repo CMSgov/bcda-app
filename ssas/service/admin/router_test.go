@@ -47,6 +47,16 @@ func (s *RouterTestSuite) TearDownSuite() {
 	_ = ssas.CleanDatabase(s.group)
 }
 
+func (s *RouterTestSuite) TestUnauthorized() {
+	req := httptest.NewRequest("GET", "/group", nil)
+	basicAuth := base64.StdEncoding.EncodeToString([]byte("bad:creds"))
+	req.Header.Add("Authorization", "Basic "+basicAuth)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestRevokeToken() {
 	req := httptest.NewRequest("DELETE", "/token/abc-123", nil)
 	req.Header.Add("Authorization", "Basic "+s.basicAuth)
