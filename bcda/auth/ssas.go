@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -139,7 +139,7 @@ func adFromClaims(claims *CommonClaims) (AuthData, error) {
 		d = ud
 	}
 	type XData struct {
-			IDList []string `json:"cms_ids"`
+		IDList []string `json:"cms_ids"`
 	}
 	var xData XData
 	if err = json.Unmarshal([]byte(d), &xData); err != nil {

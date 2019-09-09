@@ -105,7 +105,6 @@ func (c *SSASClient) CreateGroup(id, name, acoCMSID string) ([]byte, error) {
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	req.Header.Add("Accept", "application/json")
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create group")
@@ -133,7 +132,6 @@ func (c *SSASClient) DeleteGroup(id int) error {
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
-	req.Header.Add("Accept", "application/json")
 	resp, err := c.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "could not delete group")
@@ -182,7 +180,6 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	req.Header.Add("Accept", "application/json")
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create system")
@@ -211,7 +208,6 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	req.Header.Add("Accept", "application/json")
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get public key")
@@ -236,7 +232,6 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
-	req.Header.Add("Accept", "application/json")
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to reset credentials")
@@ -311,7 +306,6 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 		return nil, errors.Wrap(err, "bad request structure")
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
-	req.Header.Add("Accept", "application/json")
 
 	resp, err := c.Do(req)
 	if err != nil {
@@ -354,7 +348,6 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 		return nil, errors.New("missing clientID or secret")
 	}
 	req.SetBasicAuth(clientID, secret)
-	req.Header.Add("Accept", "application/json")
 
 	resp, err := c.Do(req)
 	if err != nil {
