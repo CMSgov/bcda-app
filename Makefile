@@ -16,13 +16,14 @@ lint:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
-# The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test-ssas, postman-ssas, and unit-test-ssas
-SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
-SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'tmp/ssas-service --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
-
 lint-ssas:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run ./ssas/...
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./ssas/...
+
+# The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test-ssas, postman-ssas, and unit-test-ssas
+# Note that these variables should only be used for smoke tests, must be set before the api starts, and cannot be changed after the api starts
+SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
+SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'tmp/ssas-service --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
 
 #
 # The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token.
@@ -44,10 +45,11 @@ clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-c
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:
-	CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh 
+	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose.test.yml -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
 
 smoke-test-ssas:
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json --global-var "token=$(token)" --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
+	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose.test.yml -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh ssas_test.sh
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
@@ -89,6 +91,7 @@ load-fixtures:
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
+	$(MAKE) load-fixtures-ssas
 
 load-synthetic-cclf-data:
 	docker-compose up -d api
