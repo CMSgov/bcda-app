@@ -97,7 +97,15 @@ func tlsTransport() (*http.Transport, error) {
 // CreateGroup POSTs to the SSAS /group endpoint to create a system.
 func (c *SSASClient) CreateGroup(id, name, acoCMSID string) ([]byte, error) {
 	b := fmt.Sprintf(`{"group_id": "%s", "name": "%s", "scopes": ["bcda-api"], "xdata": "{\"cms_ids\": [\"%s\"]}"}`, id, name, acoCMSID)
-	resp, err := c.Post(fmt.Sprintf("%s/group", c.baseURL), "application/json", strings.NewReader(b))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/group", c.baseURL), strings.NewReader(b))
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("invalid input for new group_id %s", id))
+	}
+
+	if err := c.setAuthHeader(req); err != nil {
+		return nil, err
+	}
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create group")
 	}
@@ -121,7 +129,9 @@ func (c *SSASClient) DeleteGroup(id int) error {
 	if err != nil {
 		return errors.Wrap(err, "could not delete group")
 	}
-
+	if err := c.setAuthHeader(req); err != nil {
+		return err
+	}
 	resp, err := c.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "could not delete group")
@@ -167,7 +177,9 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create system")
 	}
-
+	if err := c.setAuthHeader(req); err != nil {
+		return nil, err
+	}
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create system")
@@ -188,11 +200,18 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 
 // GetPublicKey GETs the SSAS /system/{systemID}/key endpoint to retrieve a system's public key.
 func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
-	resp, err := c.Get(fmt.Sprintf("%s/system/%v/key", c.baseURL, systemID))
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/system/%v/key", c.baseURL, systemID), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get public key")
 	}
 
+	if err := c.setAuthHeader(req); err != nil {
+		return nil, err
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get public key")
+	}
 	defer resp.Body.Close()
 
 	var respMap map[string]string
@@ -203,13 +222,16 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 	return []byte(respMap["public_key"]), nil
 }
 
-// ResetCredentials PUTs to the SSAS /system/{systemID}/credentials endpoint to reset the system's credentials.
+// ResetCredentials PUTs to the SSAS /system/{systemID}/credentials endpoint to reset the system's secret.
 func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to reset credentials")
 	}
 
+	if err := c.setAuthHeader(req); err != nil {
+		return nil, err
+	}
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to reset credentials")
@@ -235,7 +257,9 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to delete credentials")
 	}
-
+	if err := c.setAuthHeader(req); err != nil {
+		return err
+	}
 	resp, err := c.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to delete credentials")
@@ -254,6 +278,10 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
 	if err != nil {
 		return errors.Wrap(err, "bad request structure")
+	}
+
+	if err := c.setAuthHeader(req); err != nil {
+		return err
 	}
 
 	resp, err := c.Do(req)
@@ -277,9 +305,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "bad request structure")
 	}
-
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
-	req.Header.Add("Accept", "application/json")
 
 	resp, err := c.Do(req)
 	if err != nil {
@@ -316,14 +342,12 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 		return nil, errors.Wrap(err, "bad request structure")
 	}
 
-	// TODO assuming auth is by self-management
 	clientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
 	secret := os.Getenv("BCDA_SSAS_SECRET")
 	if clientID == "" || secret == "" {
 		return nil, errors.New("missing clientID or secret")
 	}
 	req.SetBasicAuth(clientID, secret)
-	req.Header.Add("Accept", "application/json")
 
 	resp, err := c.Do(req)
 	if err != nil {
@@ -342,4 +366,15 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+func (c *SSASClient) setAuthHeader(req *http.Request) error {
+	clientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
+	secret := os.Getenv("BCDA_SSAS_SECRET")
+	if clientID == "" || secret == "" {
+		return errors.New("missing clientID or secret")
+	}
+	req.SetBasicAuth(clientID, secret)
+	req.Header.Add("Accept", "application/json")
+	return nil
 }

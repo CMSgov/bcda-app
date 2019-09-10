@@ -21,11 +21,11 @@ usql $TEST_DB_URL -f db/api.sql
 usql $TEST_DB_URL -f db/fixtures.sql
 usql $TEST_DB_URL -f db/worker.sql
 
-echo "Migrating Database with GORM migration"
+echo "Migrating ACO API Database with GORM migration"
 
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda sql-migrate
 
-echo "Database migration complete"
+echo "ACO API Database migration complete"
 
 echo "Importing CCLF Files to seed data"
 
@@ -35,6 +35,18 @@ DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSg
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize large --environment unit-test
 
 echo "Successfully imported all CCLF Files"
+
+echo "Migrating SSAS Database with GORM migration"
+
+DATABASE_URL=$TEST_DB_URL DEBUG=true go run github.com/CMSgov/bcda-app/ssas/service/main --migrate
+
+echo "SSAS Database migration complete"
+
+echo "Loading SSAS fixture data"
+
+DATABASE_URL=$TEST_DB_URL DEBUG=true go run github.com/CMSgov/bcda-app/ssas/service/main --add-fixture-data
+
+echo "Successfully loaded SSAS fixture data"
 
 echo "Running unit tests and placing results/coverage in test_results/${timestamp} on host..."
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL gotestsum --junitfile test_results/${timestamp}/junit.xml -- -race ./... -coverprofile test_results/${timestamp}/testcoverage.out 2>&1 | tee test_results/${timestamp}/testresults.out

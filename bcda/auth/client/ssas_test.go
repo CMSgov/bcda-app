@@ -284,8 +284,8 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 		var (
 			buf   []byte
 			input struct {
-					  Token string `json:"token"`
-				  }
+				Token string `json:"token"`
+			}
 		)
 		buf, err := ioutil.ReadAll(r.Body)
 		if err != nil {
