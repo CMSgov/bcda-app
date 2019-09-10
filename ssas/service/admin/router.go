@@ -34,7 +34,7 @@ func Server() *service.Server {
 
 func routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(service.NewAPILogger(), service.ConnectionClose)
+	r.Use(service.NewAPILogger(), service.ConnectionClose, requireBasicAuth)
 	r.Post("/group", createGroup)
 	r.Get("/group", listGroups)
 	r.Put("/group/{id}", updateGroup)

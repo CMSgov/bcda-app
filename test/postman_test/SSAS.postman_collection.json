@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "3bee0e43-45c8-4e3c-a50f-4171956b4a0b",
+		"_postman_id": "514c3338-a3f4-4cfe-82cf-5a8335a8b414",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -753,6 +753,43 @@
 				}
 			},
 			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "{{adminClientSecret}}",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "{{adminClientId}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "e3311938-8ba3-4d78-a5fc-82d922c68b48",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "5bef9511-420b-4bd0-9f12-3a1ad54e2315",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
 		}
 	]
 }
