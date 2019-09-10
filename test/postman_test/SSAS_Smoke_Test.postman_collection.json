@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "985c4662-8cb5-4920-8ba7-6f91bc74a6a4",
+		"_postman_id": "dee5abdb-c9d0-476b-9fe7-f4907c710d11",
 		"name": "SSAS Smoke Test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -389,6 +389,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [
 					{
@@ -491,6 +506,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [
 					{
@@ -580,6 +610,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {
@@ -649,6 +694,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [
 					{
@@ -715,6 +775,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [
 					{
@@ -922,6 +997,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -1061,6 +1151,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [
 					{
@@ -1174,6 +1279,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [
 					{
@@ -1283,6 +1403,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"url": {
@@ -1321,6 +1456,21 @@
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{adminClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{adminClientId}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {

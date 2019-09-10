@@ -250,7 +250,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !complete {
-			w.Header().Set("X-Progress", job.Status)
+			w.Header().Set("X-Progress", job.StatusMessage())
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}
