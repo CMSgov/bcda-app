@@ -34,6 +34,44 @@ func TestCCLFTestSuite(t *testing.T) {
 	suite.Run(t, new(CCLFTestSuite))
 }
 
+func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
+	// The order they should be ingested in. 1 and 2 are prioritized; 3 is the other ACO in the directory.
+	var aco1, aco2, aco3 = "A9989", "A9988", "A0001"
+	origACOs := os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS")
+	os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", fmt.Sprintf("%s,%s", aco1, aco2))
+	defer os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", origACOs)
+
+	assert := assert.New(s.T())
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var fs []models.CCLFFile
+	db.Where("aco_cms_id in (?, ?, ?)", aco1, aco2, aco3).Find(&fs)
+	for _, f := range fs {
+		err := f.Delete()
+		assert.Nil(err)
+	}
+
+	testUtils.SetPendingDeletionDir(s.Suite)
+
+	sc, f, sk, err := ImportCCLFDirectory(BASE_FILE_PATH + "cclf/")
+	assert.Nil(err)
+	assert.Equal(6, sc)
+	assert.Equal(0, f)
+	assert.Equal(1, sk)
+
+	var aco1fs, aco2fs, aco3fs []models.CCLFFile
+	db.Where("aco_cms_id = ?", aco1).Find(&aco1fs)
+	db.Where("aco_cms_id = ?", aco2).Find(&aco2fs)
+	db.Where("aco_cms_id = ?", aco3).Find(&aco3fs)
+
+	assert.True(aco1fs[0].CreatedAt.Before(aco2fs[0].CreatedAt))
+	assert.True(aco2fs[0].CreatedAt.Before(aco3fs[0].CreatedAt))
+
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/")
+}
+
 func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
