@@ -535,7 +535,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), "In Progress", s.rr.Header().Get("X-Progress"))
+	assert.Equal(s.T(), "In Progress (0%)", s.rr.Header().Get("X-Progress"))
 	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
 
 	s.db.Delete(&j)
