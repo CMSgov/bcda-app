@@ -45,7 +45,7 @@ func (s *ModelsTestSuite) TestCreateACO() {
 
 	const ACOName = "ACO Name"
 	cmsID := "A0000"
-	acoUUID, err := CreateACO(ACOName, &cmsID, "")
+	acoUUID, err := CreateACO(ACOName, &cmsID)
 
 	assert.Nil(err)
 	assert.NotNil(acoUUID)
@@ -562,6 +562,17 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+}
+
+func (s *ModelsTestSuite) TestJobStatusMessage() {
+	j := Job{Status: "In Progress", JobCount: 25, CompletedJobCount: 6}
+	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage())
+
+	j = Job{Status: "In Progress", JobCount: 0, CompletedJobCount: 0}
+	assert.Equal(s.T(), "In Progress", j.StatusMessage())
+
+	j = Job{Status: "Completed", JobCount: 25, CompletedJobCount: 25}
+	assert.Equal(s.T(), "Completed", j.StatusMessage())
 }
 
 func (s *ModelsTestSuite) TestGetMaxBeneCount() {

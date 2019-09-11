@@ -10,6 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
+
+	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
@@ -17,9 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 var (
@@ -31,6 +33,8 @@ var (
 	origSSASClientID       string
 	origSSASSecret         string
 )
+
+var testACOUUID = "dd0a19eb-c614-46c7-9ec0-95bbae959f37"
 
 type SSASPluginTestSuite struct {
 	suite.Suite
@@ -48,6 +52,17 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
 }
 
+func (s *SSASPluginTestSuite) SetupTest() {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	db.Create(&models.ACO{
+		UUID:     uuid.Parse(testACOUUID),
+		Name:     "SSAS Plugin Test ACO",
+		ClientID: testACOUUID,
+	})
+}
+
 func (s *SSASPluginTestSuite) TearDownTest() {
 	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 	os.Setenv("SSAS_URL", origSSASURL)
@@ -56,6 +71,11 @@ func (s *SSASPluginTestSuite) TearDownTest() {
 	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
 	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
 	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
+
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	db.Unscoped().Delete(models.ACO{}, "uuid = ?", testACOUUID)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem() {
@@ -77,9 +97,10 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.RegisterSystem("", "", "")
+	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "1", creds.SystemID)
+	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
@@ -100,7 +121,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.RegisterSystem("", "", "")
+	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
 	assert.Contains(s.T(), err.Error(), "failed to unmarshal response json")
 	assert.Empty(s.T(), creds.SystemID)
 }
@@ -127,7 +148,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.ResetSecret("0c527d2e-2e8a-4808-b11d-0fa06baf8254")
+	creds, err := s.p.ResetSecret(testACOUUID)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
 	assert.Equal(s.T(), "fake-secret", creds.ClientSecret)
@@ -200,11 +221,11 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 	_, ts, err := MockSSASToken()
 	require.NotNil(s.T(), ts, "no token for SSAS", err)
-	require.Nil(s.T(), err,"unexpected error; ", err)
+	require.Nil(s.T(), err, "unexpected error; ", err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c,"no client for SSAS; ", err)
+	require.NotNil(s.T(), c, "no client for SSAS; ", err)
 	s.p = SSASPlugin{client: c}
 	err = s.p.AuthorizeAccess(ts)
 	require.Nil(s.T(), err)
@@ -212,13 +233,13 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 
 func (s *SSASPluginTestSuite) TestVerifyToken() {
 	_, ts, err := MockSSASToken()
-	require.NotNil(s.T(),ts, "no token for SSAS; ", err)
-	require.Nil(s.T(), err,"unexpected error; ", err)
+	require.NotNil(s.T(), ts, "no token for SSAS; ", err)
+	require.Nil(s.T(), err, "unexpected error; ", err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
-	require.NotNil(s.T(), c,"no client for SSAS; ")
-	require.Nil(s.T(), err,"unexpected error; ", err)
+	require.NotNil(s.T(), c, "no client for SSAS; ")
+	require.Nil(s.T(), err, "unexpected error; ", err)
 	s.p = SSASPlugin{client: c}
 
 	t, err := s.p.VerifyToken(ts)
@@ -235,7 +256,7 @@ func TestSSASPluginSuite(t *testing.T) {
 	suite.Run(t, new(SSASPluginTestSuite))
 }
 
-func   MockSSASServer(tokenString string) {
+func MockSSASServer(tokenString string) {
 	os.Setenv("BCDA_SSAS_CLIENT_ID", "bcda")
 	os.Setenv("BCDA_SSAS_SECRET", "api")
 	router := chi.NewRouter()

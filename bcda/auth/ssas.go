@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -42,6 +42,16 @@ func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credenti
 	err = json.Unmarshal(cb, &creds)
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to unmarshal response json")
+	}
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	aco.ClientID = creds.ClientID
+	aco.SystemID = creds.SystemID
+
+	if err = db.Save(&aco).Error; err != nil {
+		return creds, errors.Wrapf(err, "could not update ACO %s with client and system IDs", *aco.CMSID)
 	}
 
 	return creds, nil
@@ -129,7 +139,7 @@ func adFromClaims(claims *CommonClaims) (AuthData, error) {
 		d = ud
 	}
 	type XData struct {
-			IDList []string `json:"cms_ids"`
+		IDList []string `json:"cms_ids"`
 	}
 	var xData XData
 	if err = json.Unmarshal([]byte(d), &xData); err != nil {

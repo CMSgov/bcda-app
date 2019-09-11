@@ -131,9 +131,14 @@ func setUpApp() *cli.App {
 					Usage:       "Name of group",
 					Destination: &groupName,
 				},
+				cli.StringFlag{
+					Name:        "aco-id",
+					Usage:       "CMS ID or UUID of ACO associated with group",
+					Destination: &acoID,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				ssasID, err := createGroup(groupID, groupName)
+				ssasID, err := createGroup(groupID, groupName, acoID)
 				if err != nil {
 					return err
 				}
@@ -156,14 +161,9 @@ func setUpApp() *cli.App {
 					Usage:       "CMS ID of ACO",
 					Destination: &acoCMSID,
 				},
-				cli.StringFlag{
-					Name:        "group-id",
-					Usage:       "Auth group ID (required for SSAS)",
-					Destination: &groupID,
-				},
 			},
 			Action: func(c *cli.Context) error {
-				acoUUID, err := createACO(acoName, acoCMSID, groupID)
+				acoUUID, err := createACO(acoName, acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -309,7 +309,27 @@ func setUpApp() *cli.App {
 		{
 			Name:     "generate-client-credentials",
 			Category: "Authentication tools",
-			Usage:    "Generate new credentials for an ACO client specified by ACO CMS ID",
+			Usage:    "Register a system and generate credentials for client specified by ACO CMS ID",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				msg, err := generateClientCredentials(acoCMSID)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(app.Writer, msg)
+				return nil
+			},
+		},
+		{
+			Name:     "reset-client-credentials",
+			Category: "Authentication tools",
+			Usage:    "Generate a new secret for a client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "cms-id",
@@ -462,28 +482,60 @@ func autoMigrate() {
 	fmt.Println("Completed Database Initialization")
 }
 
-func createGroup(id, name string) (int, error) {
-	ssas, err := authclient.NewSSASClient()
-	if err != nil {
-		return -1, err
+func createGroup(id, name, acoID string) (string, error) {
+	if id == "" || name == "" || acoID == "" {
+		return "", errors.New("ID (--id), name (--name), and ACO ID (--aco-id) are required")
 	}
 
-	b, err := ssas.CreateGroup(id, name)
+	var aco models.ACO
+
+	if match, err := regexp.MatchString("A\\d{4}", acoID); err == nil && match {
+		aco, err = auth.GetACOByCMSID(acoID)
+		if err != nil {
+			return "", err
+		}
+	} else if match, err := regexp.MatchString("[0-9a-f]{6}-([0-9a-f]{4}-){3}[0-9a-f]{12}", acoID); err == nil && match {
+		aco, err = auth.GetACOByUUID(acoID)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		return "", errors.New("ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
+	}
+
+	ssas, err := authclient.NewSSASClient()
 	if err != nil {
-		return -1, err
+		return "", err
+	}
+
+	b, err := ssas.CreateGroup(id, name, *aco.CMSID)
+	if err != nil {
+		return "", err
 	}
 
 	var g map[string]interface{}
 	err = json.Unmarshal(b, &g)
 	if err != nil {
-		return -1, err
+		return "", err
 	}
 
-	ssasID := g["ID"].(float64)
-	return int(ssasID), nil
+	ssasID := g["group_id"].(string)
+	if aco.UUID != nil {
+		aco.GroupID = ssasID
+
+		db := database.GetGORMDbConnection()
+		defer db.Close()
+
+		err = db.Save(&aco).Error
+		if err != nil {
+			return ssasID, errors.Wrapf(err, "group %s was created, but ACO could not be updated", ssasID)
+		}
+	}
+
+	return ssasID, nil
 }
 
-func createACO(name, cmsID, groupID string) (string, error) {
+func createACO(name, cmsID string) (string, error) {
 	if name == "" {
 		return "", errors.New("ACO name (--name) must be provided")
 	}
@@ -497,7 +549,7 @@ func createACO(name, cmsID, groupID string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	acoUUID, err := models.CreateACO(name, cmsIDPt, groupID)
+	acoUUID, err := models.CreateACO(name, cmsIDPt)
 	if err != nil {
 		return "", err
 	}
@@ -535,6 +587,37 @@ func createUser(acoID, name, email string) (string, error) {
 	}
 
 	return user.UUID.String(), nil
+}
+
+func generateClientCredentials(acoCMSID string) (string, error) {
+	if acoCMSID == "" {
+		return "", errors.New("ACO CMS ID (--cms-id) is required")
+	}
+
+	aco, err := auth.GetACOByCMSID(acoCMSID)
+	if err != nil {
+		return "", err
+	}
+
+	/* Providing this hardcoded test key to SSAS because a public key is required when registering a system. However,
+	the key will not actually be used. BCDA will continue to manage public keys. */
+	publicKey := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
+I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
+/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL
+cN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ
+lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
+XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
+HwIDAQAB
+-----END PUBLIC KEY-----`
+	creds, err := auth.GetProvider().RegisterSystem(aco.UUID.String(), publicKey, aco.GroupID)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
+	}
+
+	msg := fmt.Sprintf("%s\n%s\n%s", creds.ClientName, creds.ClientID, creds.ClientSecret)
+
+	return msg, nil
 }
 
 func revokeAccessToken(accessToken string) error {
