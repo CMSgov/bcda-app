@@ -350,8 +350,6 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 func cleanupSuppression(suppresslist []*suppressionFileMetadata) error {
 	errCount := 0
 	for _, suppressionFile := range suppresslist {
-		log.Infof("imported status: %s", suppressionFile.imported)
-		fmt.Printf("imported status: %s", suppressionFile.imported)
 		fmt.Printf("Cleaning up file %s.\n", suppressionFile)
 		log.Infof("Cleaning up file %s", suppressionFile)
 		newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), suppressionFile.name)
