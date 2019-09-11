@@ -44,3 +44,13 @@ func GetDirPath(dir string) (string, error) {
 	}
 	return "", fmt.Errorf("unable to locate %s in file path", dir)
 }
+
+// ContainsString returns true if `os` is in the array `sa` and false if it is not.
+func ContainsString(sa []string, os string) bool {
+	for _, s := range sa {
+		if s == os {
+			return true
+		}
+	}
+	return false
+}
