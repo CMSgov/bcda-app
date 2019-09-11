@@ -23,6 +23,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -63,9 +64,9 @@ func (s *APITestSuite) TearDownTest() {
 func (s *APITestSuite) TestBulkEOBRequest() {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
-	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
-	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), err)
 	user, err := models.CreateUser("api.go Test User", "testbulkeobrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
@@ -186,7 +187,7 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	assert.Nil(s.T(), err)
 	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
 	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
-	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	acoID := constants.DevACOUUID
 	user, err := models.CreateUser("api.go Test User", "testbulkpatientrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
@@ -230,7 +231,7 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 	origPtExp := os.Getenv("ENABLE_COVERAGE_EXPORT")
 	os.Setenv("ENABLE_COVERAGE_EXPORT", "true")
 
-	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	acoID := constants.DevACOUUID
 	user, err := models.CreateUser("api.go Test User", "testbulkcoveragerequest@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
@@ -280,10 +281,10 @@ func (s *APITestSuite) TestBulkRequestInvalidType() {
 
 func (s *APITestSuite) TestBulkConcurrentRequest() {
 	os.Setenv("DEPLOYMENT_TARGET", "prod")
-	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	acoID := constants.DevACOUUID
 	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
-	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), err)
 
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
@@ -395,13 +396,12 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	os.Unsetenv("DEPLOYMENT_TARGET")
 }
 
-
 func (s *APITestSuite) TestBulkConcurrentRequestTime() {
-        os.Setenv("DEPLOYMENT_TARGET", "prod")
-	acoID := "0c527d2e-2e8a-4808-b11d-0fa06baf8254"
+	os.Setenv("DEPLOYMENT_TARGET", "prod")
+	acoID := constants.DevACOUUID
 	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
-	assert.Nil(s.T(),err)
+	assert.Nil(s.T(), err)
 
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),

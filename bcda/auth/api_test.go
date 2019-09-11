@@ -58,7 +58,7 @@ func (s *AuthAPITestSuite) TearDownTest() {
 
 func (s *AuthAPITestSuite) TestAuthToken() {
 	var aco models.ACO
-	err := s.db.Where("uuid = ?", constants.DEVACOUUID).First(&aco).Error
+	err := s.db.Where("uuid = ?", constants.DevACOUUID).First(&aco).Error
 	assert.Nil(s.T(), err)
 	aco.AlphaSecret = ""
 	s.db.Save(&aco)
@@ -90,7 +90,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	// Success!?
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterSystem(constants.DEVACOUUID, "", "")
+	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", "")
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)
