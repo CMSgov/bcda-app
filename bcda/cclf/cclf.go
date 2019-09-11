@@ -570,9 +570,9 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 }
 
 func validateFileName(fileName string) error {
-	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(fileName)
-	if len(filenameMatches) < 6 {
+	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	valid := filenameRegexp.MatchString(fileName)
+	if !valid {
 		fmt.Printf("Invalid filename for file: %s.\n", fileName)
 		err := fmt.Errorf("invalid filename for file: %s", fileName)
 		log.Error(err)
