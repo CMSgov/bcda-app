@@ -155,7 +155,7 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	qc = nil
 
-	acoID := "3461C774-B48F-11E8-96F8-529269fb1459"
+	acoID := constants.SmallACOUUID
 	user, err := models.CreateUser("api.go Test User", "testbulkrequestnoqueue@example.com", uuid.Parse(acoID))
 	if err != nil {
 		s.T().Error(err)
@@ -899,7 +899,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("3461C774-B48F-11E8-96F8-529269fb1459", j.UserID.String())
+	ad := makeContextValues(constants.SmallACOUUID, j.UserID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
 	handler.ServeHTTP(s.rr, req)
