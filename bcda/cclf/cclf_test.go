@@ -134,7 +134,8 @@ func (s *CCLFTestSuite) TestParseTimestamp() {
 	fileName := "T.A0001.ACO.ZC8Y18.D181120.T1000009"
 	err := parseTimestamp(cclfMetadata,fileName)
 	assert.Nil(err)
-	assert.Equal("test", cclfMetadata.timestamp)
+	assert.Equal(10, cclfMetadata.timestamp.Hour())
+	assert.Equal(00, cclfMetadata.timestamp.Minute())
 
 	// valid file name out of range
 	fileName = "T.A0000.ACO.ZC8Y18.D190117.T9909420"

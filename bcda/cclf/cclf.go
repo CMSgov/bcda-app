@@ -593,8 +593,6 @@ func parseTimestamp(fileMetadata *cclfFileMetadata,fileName string) error {
 		return err
 	}
 	fileMetadata.timestamp = t
-	log.Info("TIMSTAMP: ", fileMetadata.timestamp)
-	fmt.Print("TIMSTAMP: ", fileMetadata.timestamp)
 	return nil
 }
 
