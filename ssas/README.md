@@ -26,6 +26,8 @@ Required values must be present in the docker-compose.*.yml files. Some values a
 
 Very long keys have been split across two rows for formatting purposes.
 
+Some variables below have a note indicating their name should be changed. These changes serve to make the names consistent with established naming patterns and/or to clarify their purpose. They should be made after we complete the initial deployments to AWS envs so that we don't have to change all of our existing deployment checklists in a short timeframe.
+
 |  Key                 | Required | SSAS | BCDA | Purpose |
 | -------------------- |:--------:|:----:|:---:| ------- |
 | BCDA_AUTH_PROVIDER   | Yes      |   | X | Tells ACO API which auth provider to use |
@@ -34,7 +36,7 @@ Very long keys have been split across two rows for formatting purposes.
 | BCDA_SSAS_SECRET     | Yes      |   | X | Tells ACO API the secret to use with the SSAS REST API. |
 | SSAS_USE_TLS         | Yes      |   | X | Should be renamed to BCDA_SSAS_USE_TLS |
 | SSAS_URL             | Yes      |   | X | The url of the SSAS admin server. Should be renamed to BCDA_SSAS_URL |
-| SSAS_PUBLIC_URL      | Yes      |   | X | The url of the SSAS public server (auth endpoints). Should be renamed to BCDA_SSAS_PUBLIC_PUBLIC |
+| SSAS_PUBLIC_URL      | Yes      |   | X | The url of the SSAS public server (auth endpoints). Should be renamed to BCDA_SSAS_URL_PUBLIC |
 | DATABASE_URL         | Yes      | X |   | Provides the database url |
 | DEBUG                | Depends  | X |   | Flag to indicate that the system is running in a development environments. Generally not used outside of docker. | | |
 | HTTP_ONLY            | Depends  | X |   | Flag to operation of the system. By default, the servers will use https. When HTTP_ONLY is present **and** set to true, they will use http. Generally not used outside of docker. |
@@ -54,15 +56,15 @@ Very long keys have been split across two rows for formatting purposes.
 | SSAS_MFA_TOKEN_ <br/> TIMEOUT_MINUTES | No | X |   | Token lifetime for self-registration (MFA tokens and Registration tokens).  Defaults to 60 (minutes). |
 | SSAS_READ_TIMEOUT    | No       | X |   | Sets the read timeout on server requests |
 | SSAS_WRITE_TIMEOUT   | No       | X |   | Sets the write timeout on server responses |
-| SSAS_IDLE_TIMEOUT    | No       | X |   | Sets how long the server will keep open idle connections |
-| SSAS_LOG                     | No  | X |   | Directs all ssas logging to a specific file |
+| SSAS_IDLE_TIMEOUT    | No       | X |   | Sets how long the server will keep idle connections open |
+| SSAS_LOG                     | No  | X |   | Directs all ssas logging to a named file |
 | SSAS_ADMIN_PORT <br/> SSAS_PUBLIC_PORT <br/> SSAS_HTTP_TO_HTTPS_PORT | No  | X | X | These values are not yet used by code. Intended to allow changing port assignments. If used, will affect BCDA SSAS URL vars. |
 | SSAS_ADMIN_SIGNING_KEY_PATH  | Yes | X |   | Provides the location of the admin server signing key. When setting vars for AWS envs, you must include a var for the key material. |
 | SSAS_PUBLIC_SIGNING_KEY_PATH | Yes | X |   | Provides the location of the public server signing key. When setting vars for AWS envs, you must include a var for the key material. |
 | SSAS_TOKEN_BLACKLIST_CACHE_ <br/> CLEANUP_MINUTES  | No | X | | Tunes the frequency that expired entries are cleared from the token blacklist cache.  Defaults to 15 minutes. |
 | SSAS_TOKEN_BLACKLIST_CACHE_ <br/> TIMEOUT_MINUTES  | No | X | | Sets the lifetime of token blacklist cache entries.  Defaults to 24 hours. |
-| SSAS_TOKEN_BLACKLIST_CACHE_ <br/> REFRESH_MINUTES  | No | X | | Configures the number of minutes between times the token blacklist cache is refreshed from the database. This var should be renamed to SSAS_TLS_CERT. |
-| BCDA_TLS_CERT        | Depends  | X |   | The cert used when the SSAS service is running in secure mode. When setting vars for AWS envs, you must include a var for the cert material. |
+| SSAS_TOKEN_BLACKLIST_CACHE_ <br/> REFRESH_MINUTES  | No | X | | Configures the number of minutes between times the token blacklist cache is refreshed from the database. |
+| BCDA_TLS_CERT        | Depends  | X |   | The cert used when the SSAS service is running in secure mode. When setting vars for AWS envs, you must include a var for the cert material. This var should be renamed to SSAS_TLS_CERT. |
 | BCDA_TLS_KEY         | Depends  | X |   | The private key used when the SSAS service is running in secure mode. When setting vars for AWS envs, you must include a var for the key material. This var should be renamed to SSAS_TLS_KEY. |
 
 # Build
