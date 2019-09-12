@@ -36,7 +36,7 @@ const (
 )
 
 func ImportSuppressionDirectory(filePath string) (success, failure, skipped int, err error) {
-	var suppresslist []suppressionFileMetadata
+	var suppresslist []*suppressionFileMetadata
 
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	if err != nil {
@@ -55,7 +55,7 @@ func ImportSuppressionDirectory(filePath string) (success, failure, skipped int,
 			log.Errorf("Failed to validate suppression file: %s", metadata)
 			failure++
 		} else {
-			if err = importSuppressionData(&metadata); err != nil {
+			if err = importSuppressionData(metadata); err != nil {
 				fmt.Printf("Failed to import suppression file: %s.\n", metadata)
 				log.Errorf("Failed to import suppression file: %s ", metadata)
 				failure++
@@ -79,7 +79,7 @@ func ImportSuppressionDirectory(filePath string) (success, failure, skipped int,
 	return success, failure, skipped, err
 }
 
-func getSuppressionFileMetadata(suppresslist *[]suppressionFileMetadata, skipped *int) filepath.WalkFunc {
+func getSuppressionFileMetadata(suppresslist *[]*suppressionFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			var fileName = "nil"
@@ -118,7 +118,7 @@ func getSuppressionFileMetadata(suppresslist *[]suppressionFileMetadata, skipped
 			}
 			return nil
 		}
-		*suppresslist = append(*suppresslist, metadata)
+		*suppresslist = append(*suppresslist, &metadata)
 		return nil
 	}
 }
@@ -151,7 +151,7 @@ func parseMetadata(filename string) (suppressionFileMetadata, error) {
 	return metadata, nil
 }
 
-func validate(metadata suppressionFileMetadata) error {
+func validate(metadata *suppressionFileMetadata) error {
 	fmt.Printf("Validating suppression file %s...\n", metadata)
 	log.Infof("Validating suppression file %s...", metadata)
 
@@ -347,7 +347,7 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 	return nil
 }
 
-func cleanupSuppression(suppresslist []suppressionFileMetadata) error {
+func cleanupSuppression(suppresslist []*suppressionFileMetadata) error {
 	errCount := 0
 	for _, suppressionFile := range suppresslist {
 		fmt.Printf("Cleaning up file %s.\n", suppressionFile)
