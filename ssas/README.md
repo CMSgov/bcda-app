@@ -6,7 +6,7 @@ The SSAS can be run as a standalone web service or embedded as a library.
 
 The outline below shows the physical directory structure of the code, with package names highlighted. The service package contains a standalone http service that presents the authorization library via two http servers, one for admin tasks and one for authorization tasks.
 
-Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In short, the ssas package and okta packages must not import from packages in the service directory.
+Imports always go up the directory tree from leaves; that is, parents do not import from their children. Children may import from their siblings. In short, the `ssas` and `okta` packages must not import from packages in the service directory.
 
 - **ssas**
     - **cfg**
