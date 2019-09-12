@@ -1,6 +1,7 @@
 package suppression
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -182,7 +183,7 @@ func (s *SuppressionTestSuite) TestValidate() {
 
 	// positive
 	suppressionfilePath := BASE_FILE_PATH + "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
-	metadata := suppressionFileMetadata{timestamp: time.Now(), filePath: suppressionfilePath}
+	metadata := &suppressionFileMetadata{timestamp: time.Now(), filePath: suppressionfilePath}
 	err := validate(metadata)
 	assert.Nil(err)
 
@@ -243,7 +244,7 @@ func (s *SuppressionTestSuite) TestParseMetadata_InvalidFilename() {
 
 func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	assert := assert.New(s.T())
-	var suppresslist []suppressionFileMetadata
+	var suppresslist []*suppressionFileMetadata
 	var skipped int
 	testUtils.SetPendingDeletionDir(s.Suite)
 
@@ -254,7 +255,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	assert.Equal(2, len(suppresslist))
 	assert.Equal(0, skipped)
 
-	suppresslist = []suppressionFileMetadata{}
+	suppresslist = []*suppressionFileMetadata{}
 	skipped = 0
 	filePath = BASE_FILE_PATH + "suppressionfile_BadFileNames/"
 	testUtils.ResetFiles(s.Suite, filePath)
@@ -264,7 +265,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	assert.Equal(2, skipped)
 	testUtils.ResetFiles(s.Suite, filePath)
 
-	suppresslist = []suppressionFileMetadata{}
+	suppresslist = []*suppressionFileMetadata{}
 	skipped = 0
 	filePath = BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
 	testUtils.ResetFiles(s.Suite, filePath)
@@ -282,7 +283,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 		}
 	}
 
-	suppresslist = []suppressionFileMetadata{}
+	suppresslist = []*suppressionFileMetadata{}
 	filePath = BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
@@ -295,7 +296,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 
 func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 	assert := assert.New(s.T())
-	var suppresslist []suppressionFileMetadata
+	var suppresslist []*suppressionFileMetadata
 	var skipped int
 	testUtils.SetPendingDeletionDir(s.Suite)
 	folderPath := BASE_FILE_PATH + "suppressionfile_BadFileNames/"
@@ -324,7 +325,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 		s.FailNow("Failed to change modified time for file", err)
 	}
 
-	suppresslist = []suppressionFileMetadata{}
+	suppresslist = []*suppressionFileMetadata{}
 	skipped = 0
 	err = filepath.Walk(folderPath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
@@ -340,22 +341,22 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 
 func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	assert := assert.New(s.T())
-	var suppresslist []suppressionFileMetadata
+	var suppresslist []*suppressionFileMetadata
 	testUtils.SetPendingDeletionDir(s.Suite)
 
 	// failed import: file that's within the threshold - stay put
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
-	metadata := suppressionFileMetadata{
+	metadata := &suppressionFileMetadata{
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
+		filePath:     BASE_FILE_PATH + "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
 		imported:     false,
 		deliveryDate: time.Now(),
 	}
 
 	// failed import: file that's over the threshold - should move
 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata2 := suppressionFileMetadata{
+	metadata2 := &suppressionFileMetadata{
 		name:         "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009",
 		timestamp:    fileTime,
 		filePath:     BASE_FILE_PATH + "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009",
@@ -363,7 +364,16 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 		deliveryDate: fileTime,
 	}
 
-	suppresslist = []suppressionFileMetadata{metadata, metadata2}
+	// successful import: should move
+	metadata3 := &suppressionFileMetadata{
+		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
+		timestamp:    fileTime,
+		filePath:     BASE_FILE_PATH + "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
+		imported:     true,
+		deliveryDate: time.Now(),
+	}
+
+	suppresslist = []*suppressionFileMetadata{metadata, metadata2, metadata3}
 	err := cleanupSuppression(suppresslist)
 	assert.Nil(err)
 
@@ -371,9 +381,16 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	if err != nil {
 		s.FailNow("failed to read directory: %s", os.Getenv("PENDING_DELETION_DIR"), err)
 	}
+
 	for _, file := range files {
 		assert.NotEqual("T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", file.Name())
+
+		if file.Name() != "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420" && file.Name() != "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009" {
+			err = fmt.Errorf("unknown file moved %s", file.Name())
+			s.FailNow("test files did not correctly cleanup", err)
+		}
 	}
+
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"suppressionfile_BadFileNames/")
 }
 
