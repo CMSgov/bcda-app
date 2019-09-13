@@ -61,6 +61,7 @@ func (s *APITestSuite) SetupSuite() {
 	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
+	service.StartBlacklist()
 }
 
 func (s *APITestSuite) TearDownSuite() {

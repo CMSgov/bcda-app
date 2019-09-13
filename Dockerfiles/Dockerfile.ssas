@@ -18,4 +18,4 @@ RUN go install ./vendor/github.com/pressly/fresh
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
-CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--migrate"]
+CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--migrate-and-start"]

@@ -177,9 +177,9 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-        // Update the Cloudwatch Metric for job queue count
-        updateJobQueueCountCloudwatchMetric()
-
+	// Update the Cloudwatch Metric for job queue count
+	updateJobQueueCountCloudwatchMetric()
+	db.Model(&exportJob).Update("completed_job_count", exportJob.CompletedJobCount+1)
 	log.Info("Worker finished processing job ", j.ID)
 
 	return nil

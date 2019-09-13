@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -29,6 +30,10 @@ func getEnvVars() {
 	DefaultScope = os.Getenv("SSAS_DEFAULT_SYSTEM_SCOPE")
 
 	if DefaultScope == "" {
+		if os.Getenv("DEBUG") == "true" {
+			DefaultScope = "bcda-api"
+			return
+		}
 		ServiceHalted(Event{Help: "SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set"})
 		panic("SSAS_DEFAULT_SYSTEM_SCOPE environment value must be set")
 	}
@@ -412,7 +417,7 @@ func XDataFor(system System) (string, error) {
 		return "", fmt.Errorf("no group for system %d; %s", system.ID, err)
 	}
 	Logger.Info("group xdata '", group, "'")
-	//strconv.Unquote here?
+	// strconv.Unquote here?
 	return group.XData, nil
 }
 
@@ -455,7 +460,11 @@ func GetSystemByID(id string) (System, error) {
 	)
 	defer Close(db)
 
-	if err = db.First(&system, id).Error; err != nil {
+	if _, err = strconv.ParseUint(id, 10, 64); err != nil {
+		return System{}, fmt.Errorf("invalid input %s; %s", id, err)
+	}
+	// must use the explicit where clause here because the id argument is a string
+	if err = db.Find(&system, "id = ?", id).Error; err != nil {
 		err = fmt.Errorf("no System record found with ID %s", id)
 	}
 	return system, err

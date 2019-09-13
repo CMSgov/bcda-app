@@ -20,6 +20,11 @@ lint-ssas:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run ./ssas/...
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./ssas/...
 
+# The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test-ssas, postman-ssas, and unit-test-ssas
+# Note that these variables should only be used for smoke tests, must be set before the api starts, and cannot be changed after the api starts
+SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
+SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'tmp/ssas-service --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
+
 #
 # The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token.
 # The CLIENT_ID and CLIENT_SECRET values can be overridden by environmental variables e.g.:
@@ -36,17 +41,15 @@ lint-ssas:
 #    ACO_CMS_ID=A9999 make postman env=local
 #
 ACO_CMS_ID ?= A9994
-clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda generate-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
+clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:
-	CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh 
+	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
 
-# The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test-ssas.
-SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
-SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'tmp/ssas-service --reset-credentials --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
 smoke-test-ssas:
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS_Smoke_Test.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json --global-var "token=$(token)" --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
+	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/ssas_test.sh
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
@@ -56,8 +59,7 @@ postman:
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json -e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
 
 postman-ssas:
-	@echo "postman-ssas under revision"
-#	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
 
 unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
@@ -89,6 +91,7 @@ load-fixtures:
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
+	$(MAKE) load-fixtures-ssas
 
 load-synthetic-cclf-data:
 	docker-compose up -d api
@@ -104,6 +107,11 @@ load-synthetic-suppression-data:
 	docker-compose up -d api
 	docker-compose up -d db
 	docker-compose run api sh -c 'tmp/bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
+
+load-fixtures-ssas:
+	docker-compose up -d db
+	docker-compose run ssas sh -c 'tmp/ssas-service --migrate'
+	docker-compose run ssas sh -c 'tmp/ssas-service --add-fixture-data'
 
 docker-build:
 	docker-compose build --force-rm

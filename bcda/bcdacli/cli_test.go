@@ -199,7 +199,7 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	defer database.Close(db)
 
 	cmsID := "A9901"
-	_, err := models.CreateACO("Public Key Test ACO", &cmsID, "")
+	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
 	assert.Nil(err)
 	aco, err := auth.GetACOByCMSID(cmsID)
 	assert.Nil(err)
@@ -249,6 +249,34 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	assert.Contains(buf.String(), "Public key saved for ACO")
 }
 
+func (s *CLITestSuite) TestGenerateClientCredentials() {
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+	assert := assert.New(s.T())
+
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+	assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
+}
+
+func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+	assert := assert.New(s.T())
+
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", "9994"}
+	err := s.testApp.Run(args)
+	assert.EqualError(err, "no ACO record found for 9994")
+	assert.Empty(buf)
+	buf.Reset()
+
+	args = []string{"bcda", "generate-client-credentials", "--cms-id", "A6543"}
+	err = s.testApp.Run(args)
+	assert.EqualError(err, "no ACO record found for A6543")
+	assert.Empty(buf)
+}
+
 func (s *CLITestSuite) TestResetSecretCLI() {
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
@@ -259,21 +287,21 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
 	// execute positive scenarios via CLI
-	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
+	args := []string{"bcda", "reset-client-credentials", "--cms-id", "A9994"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
 
 	// Execute CLI with invalid ACO CMS ID
-	args = []string{"bcda", "generate-client-credentials", "--cms-id", "BLAH"}
+	args = []string{"bcda", "reset-client-credentials", "--cms-id", "BLAH"}
 	err = s.testApp.Run(args)
 	assert.Equal("no ACO record found for BLAH", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Execute CLI with invalid inputs
-	args = []string{"bcda", "generate-client-credentials", "--abcd", "efg"}
+	args = []string{"bcda", "reset-client-credentials", "--abcd", "efg"}
 	err = s.testApp.Run(args)
 	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
@@ -481,7 +509,7 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	acoUUID, err := createACO("ACO "+email, "", "")
+	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
 	userUUID, err := createUser(acoUUID, "Unit Test", email)
@@ -634,7 +662,7 @@ func (s *CLITestSuite) TestCreateGroup() {
 	router := chi.NewRouter()
 	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{ "ID": 100 }`))
+		_, err := w.Write([]byte(`{ "ID": 100, "group_id": "test-create-group-id" }`))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -656,18 +684,33 @@ func (s *CLITestSuite) TestCreateGroup() {
 
 	id := "unit-test-group-1"
 	name := "Unit Test Group 1"
-	args := []string{"bcda", "create-group", "--id", id, "--name", name}
+	acoID := "A9995"
+	args := []string{"bcda", "create-group", "--id", id, "--name", name, "--aco-id", acoID}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	out := buf.String()
-	assert.NotEmpty(out)
-	ssasID, err := strconv.Atoi(out)
-	assert.Nil(err)
-	assert.Equal(100, ssasID)
+	assert.Equal("test-create-group-id", buf.String())
+}
+
+func (s *CLITestSuite) TestCreateGroup_InvalidACOID() {
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	// Invalid format
+	args := []string{"bcda", "create-group", "--id", "invalid-aco-id-group", "--name", "Invalid ACO ID Group", "--aco-id", "1234"}
+	err := s.testApp.Run(args)
+	assert.EqualError(s.T(), err, "ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
+	assert.Empty(s.T(), buf.String())
+	buf.Reset()
+
+	// Valid format, but no matching ACO
+	aUUID := "4e5519cb-428d-4934-a3f8-6d3efb1277b7"
+	args = []string{"bcda", "create-group", "--id", "invalid-aco-id-group", "--name", "Invalid ACO ID Group", "--aco-id", aUUID}
+	err = s.testApp.Run(args)
+	assert.EqualError(s.T(), err, "no ACO record found for "+aUUID)
+	assert.Empty(s.T(), buf.String())
 }
 
 func (s *CLITestSuite) TestCreateACO() {
-
 	// init
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -765,9 +808,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 3 files.")
+	assert.Contains(buf.String(), "Successfully imported 6 files.")
 	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 0 files.")
+	assert.Contains(buf.String(), "Skipped 1 files.")
 
 	buf.Reset()
 
@@ -782,10 +825,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	// dir has 4 files, but 2 will be ignored because of bad file names.
 	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_BadFileNames/"}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "one or more files failed to import correctly")
+	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Failed to import 1 files.")
 	assert.Contains(buf.String(), "Skipped 3 files.")
 	buf.Reset()
 
@@ -843,9 +885,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 3 files.")
+	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 0 files.")
+	assert.Contains(buf.String(), "Skipped 1 files.")
 
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_split/")
 }
