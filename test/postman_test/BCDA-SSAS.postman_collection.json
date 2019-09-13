@@ -17,13 +17,28 @@
 							"    pm.response.to.have.status(201);",
 							"});",
 							"",
-							"pm.environment.set(\"group1_id\", pm.response.json().ID);"
+							"pm.environment.set(\"group1ID\", pm.response.json().ID);"
 						],
 						"type": "text/javascript"
 					}
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{bcdaSSASClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{bcdaSSASClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [],
 				"body": {
@@ -31,10 +46,10 @@
 					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-1\",\n\t\"name\": \"PM BCDA-SSAS Group 1\",\n\t\"scopes\": [ \"bcda-api\" ],\n\t\"xdata\": \"{ \\\"cms_ids\\\": [\\\"A9994\\\"] }\"\n}"
 				},
 				"url": {
-					"raw": "{{scheme}}://{{ssas-admin-host}}/group",
+					"raw": "{{scheme}}://{{ssasAdminHost}}/group",
 					"protocol": "{{scheme}}",
 					"host": [
-						"{{ssas-admin-host}}"
+						"{{ssasAdminHost}}"
 					],
 					"path": [
 						"group"
@@ -56,15 +71,30 @@
 							"});",
 							"",
 							"respJSON = pm.response.json()",
-							"pm.environment.set(\"system_1_id\", respJSON.system_id)",
-							"pm.environment.set(\"system_1_client_id\", respJSON.client_id)",
-							"pm.environment.set(\"system_1_client_secret\", respJSON.client_secret)"
+							"pm.environment.set(\"system1ID\", respJSON.system_id)",
+							"pm.environment.set(\"system1ClientID\", respJSON.client_id)",
+							"pm.environment.set(\"system1ClientSecret\", respJSON.client_secret)"
 						],
 						"type": "text/javascript"
 					}
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{bcdaSSASClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{bcdaSSASClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [],
 				"body": {
@@ -72,10 +102,10 @@
 					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-1\",\n\t\"client_name\": \"PM BCDA-SSAS System 1\",\n\t\"scope\": \"bcda-api\",\n\t\"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n\t\"tracking_id\": \"pm-bcda-ssas-system-1\"\n}"
 				},
 				"url": {
-					"raw": "{{scheme}}://{{ssas-admin-host}}/system",
+					"raw": "{{scheme}}://{{ssasAdminHost}}/system",
 					"protocol": "{{scheme}}",
 					"host": [
-						"{{ssas-admin-host}}"
+						"{{ssasAdminHost}}"
 					],
 					"path": [
 						"system"
@@ -96,7 +126,7 @@
 							"    pm.response.to.have.status(200);",
 							"});",
 							"",
-							"pm.environment.set(\"system_1_token\", pm.response.json().access_token)"
+							"pm.environment.set(\"system1Token\", pm.response.json().access_token)"
 						],
 						"type": "text/javascript"
 					}
@@ -108,12 +138,12 @@
 					"basic": [
 						{
 							"key": "password",
-							"value": "{{system_1_client_secret}}",
+							"value": "{{system1ClientSecret}}",
 							"type": "string"
 						},
 						{
 							"key": "username",
-							"value": "{{system_1_client_id}}",
+							"value": "{{system1ClientID}}",
 							"type": "string"
 						}
 					]
@@ -146,13 +176,28 @@
 							"    pm.response.to.have.status(201);",
 							"});",
 							"",
-							"pm.environment.set(\"group2_id\", pm.response.json().ID);"
+							"pm.environment.set(\"group2ID\", pm.response.json().ID);"
 						],
 						"type": "text/javascript"
 					}
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{bcdaSSASClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{bcdaSSASClientID}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [],
 				"body": {
@@ -160,10 +205,10 @@
 					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-2\",\n\t\"name\": \"PM BCDA-SSAS Group 2\",\n\t\"scopes\": [ \"bcda-api\" ],\n\t\"xdata\": \"{ \\\"cms_ids\\\": [\\\"A9992\\\"] }\"\n}"
 				},
 				"url": {
-					"raw": "{{scheme}}://{{ssas-admin-host}}/group",
+					"raw": "{{scheme}}://{{ssasAdminHost}}/group",
 					"protocol": "{{scheme}}",
 					"host": [
-						"{{ssas-admin-host}}"
+						"{{ssasAdminHost}}"
 					],
 					"path": [
 						"group"
@@ -185,15 +230,18 @@
 							"});",
 							"",
 							"respJSON = pm.response.json()",
-							"pm.environment.set(\"system_2_id\", respJSON.system_id)",
-							"pm.environment.set(\"system_2_client_id\", respJSON.client_id)",
-							"pm.environment.set(\"system_2_client_secret\", respJSON.client_secret)"
+							"pm.environment.set(\"system2ID\", respJSON.system_id)",
+							"pm.environment.set(\"system2ClientID\", respJSON.client_id)",
+							"pm.environment.set(\"system2ClientSecret\", respJSON.client_secret)"
 						],
 						"type": "text/javascript"
 					}
 				}
 			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "POST",
 				"header": [],
 				"body": {
@@ -201,10 +249,10 @@
 					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-2\",\n\t\"client_name\": \"PM BCDA-SSAS System 2\",\n\t\"scope\": \"bcda-api\",\n\t\"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n\t\"tracking_id\": \"pm-bcda-ssas-system-2\"\n}"
 				},
 				"url": {
-					"raw": "{{scheme}}://{{ssas-admin-host}}/system",
+					"raw": "{{scheme}}://{{ssasAdminHost}}/system",
 					"protocol": "{{scheme}}",
 					"host": [
-						"{{ssas-admin-host}}"
+						"{{ssasAdminHost}}"
 					],
 					"path": [
 						"system"
@@ -225,7 +273,7 @@
 							"    pm.response.to.have.status(200);",
 							"});",
 							"",
-							"pm.environment.set(\"system_2_token\", pm.response.json().access_token)"
+							"pm.environment.set(\"system2Token\", pm.response.json().access_token)"
 						],
 						"type": "text/javascript"
 					}
@@ -237,12 +285,12 @@
 					"basic": [
 						{
 							"key": "password",
-							"value": "{{system_2_client_secret}}",
+							"value": "{{system2ClientSecret}}",
 							"type": "string"
 						},
 						{
 							"key": "username",
-							"value": "{{system_2_client_id}}",
+							"value": "{{system2ClientID}}",
 							"type": "string"
 						}
 					]
@@ -279,7 +327,7 @@
 							"    pm.response.to.have.header(\"Content-Location\");",
 							"});",
 							"",
-							"pm.environment.set(\"job_url\", pm.response.headers.get(\"Content-Location\"));"
+							"pm.environment.set(\"jobURL\", pm.response.headers.get(\"Content-Location\"));"
 						],
 						"type": "text/javascript"
 					}
@@ -291,7 +339,7 @@
 					"bearer": [
 						{
 							"key": "token",
-							"value": "{{system_1_token}}",
+							"value": "{{system1Token}}",
 							"type": "string"
 						}
 					]
@@ -333,6 +381,44 @@
 					"script": {
 						"id": "16131bfc-6797-4e06-9d6b-2554b7ab9333",
 						"exec": [
+							"pm.test(\"Status code is 200 or 202\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200,202]);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{system1Token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{jobURL}}",
+					"host": [
+						"{{jobURL}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Request system 1 job status as system 2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "16131bfc-6797-4e06-9d6b-2554b7ab9333",
+						"exec": [
 							"pm.test(\"Status code is 401\", function () {",
 							"    pm.response.to.have.status(401);",
 							"});"
@@ -347,7 +433,7 @@
 					"bearer": [
 						{
 							"key": "token",
-							"value": "{{system_2_token}}",
+							"value": "{{system2Token}}",
 							"type": "string"
 						}
 					]
@@ -355,9 +441,9 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{job_url}}",
+					"raw": "{{jobURL}}",
 					"host": [
-						"{{job_url}}"
+						"{{jobURL}}"
 					]
 				}
 			},
