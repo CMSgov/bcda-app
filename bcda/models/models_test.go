@@ -245,7 +245,7 @@ OwIDAQAB
 func (s *ModelsTestSuite) TestACOPublicKeyFixtures() {
 	assert := s.Assert()
 	acoUUID1 := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	acoUUID2 := "0C527D2E-2E8A-4808-B11D-0FA06BAF8254"
+	acoUUID2 := constants.DevACOUUID
 
 	var aco1 ACO
 	var aco2 ACO
@@ -467,12 +467,11 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 
 }
 
-func (s *ModelsTestSuite) TestGetEnqueJobs() {
+func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 	assert := s.Assert()
 
-	// Patient
 	j := Job{
-		ACOID:      uuid.Parse(constants.DEVACOUUID),
+		ACOID:      uuid.Parse(constants.DevACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
@@ -492,15 +491,18 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 			s.T().Error(err)
 		}
 		assert.Equal(int(j.ID), jobArgs.ID)
-		assert.Equal(constants.DEVACOUUID, jobArgs.ACOID)
+		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
 		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		assert.Equal("Patient", jobArgs.ResourceType)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
+}
 
-	// ExplanationOfBenefit
-	j = Job{
-		ACOID:      uuid.Parse(constants.DEVACOUUID),
+func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
+	assert := s.Assert()
+
+	j := Job{
+		ACOID:      uuid.Parse(constants.DevACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
@@ -508,11 +510,11 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
+	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
 	if err != nil {
 		s.T().Error(err)
 	}
-	enqueueJobs, err = j.GetEnqueJobs("ExplanationOfBenefit")
+	enqueueJobs, err := j.GetEnqueJobs("ExplanationOfBenefit")
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(4, len(enqueueJobs))
@@ -529,10 +531,13 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
+}
 
-	// Coverage
-	j = Job{
-		ACOID:      uuid.Parse(constants.DEVACOUUID),
+func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
+	assert := s.Assert()
+
+	j := Job{
+		ACOID:      uuid.Parse(constants.DevACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Coverage/$export",
 		Status:     "Pending",
@@ -540,16 +545,16 @@ func (s *ModelsTestSuite) TestGetEnqueJobs() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "5")
+	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "5")
 	if err != nil {
 		s.T().Error(err)
 	}
 
-	enqueueJobs, err = j.GetEnqueJobs("Coverage")
+	enqueueJobs, err := j.GetEnqueJobs("Coverage")
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(10, len(enqueueJobs))
-	enqueuedBenes = 0
+	enqueuedBenes := 0
 	for _, queJob := range enqueueJobs {
 
 		jobArgs := jobEnqueueArgs{}
@@ -629,7 +634,7 @@ func (s *ModelsTestSuite) TestGetMaxBeneCount() {
 func (s *ModelsTestSuite) TestGetBeneficiaries() {
 	assert := s.Assert()
 	var aco, smallACO, mediumACO, largeACO ACO
-	acoUUID := uuid.Parse(constants.DEVACOUUID)
+	acoUUID := uuid.Parse(constants.DevACOUUID)
 
 	err := s.db.Find(&aco, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
@@ -639,7 +644,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries() {
 	assert.Equal(50, len(beneficiaries))
 
 	// small ACO has 10 benes
-	acoUUID = uuid.Parse(constants.SMALLACOUUID)
+	acoUUID = uuid.Parse(constants.SmallACOUUID)
 	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaries, err = smallACO.GetBeneficiaries(true)
@@ -648,7 +653,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries() {
 	assert.Equal(10, len(beneficiaries))
 
 	// Medium ACO has 25 benes
-	acoUUID = uuid.Parse(constants.MEDIUMACOUUID)
+	acoUUID = uuid.Parse(constants.MediumACOUUID)
 	err = s.db.Find(&mediumACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaries, err = mediumACO.GetBeneficiaries(true)
@@ -657,7 +662,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries() {
 	assert.Equal(25, len(beneficiaries))
 
 	// Large ACO has 100 benes
-	acoUUID = uuid.Parse(constants.LARGEACOUUID)
+	acoUUID = uuid.Parse(constants.LargeACOUUID)
 	err = s.db.Find(&largeACO, "UUID = ?", acoUUID).Error
 	assert.Nil(err)
 	beneficiaries, err = largeACO.GetBeneficiaries(true)
