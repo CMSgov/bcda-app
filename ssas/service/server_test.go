@@ -60,33 +60,12 @@ func (s *ServerTestSuite) TestNewServer() {
 
 // test ConnectionClose()
 
-// MintToken(), MintTokenWithDuration(), mintToken()
+// MintToken(), MintTokenWithDuration()
 
 func (s *ServerTestSuite) TestNewServerWithBadSigningKey() {
 	ts := NewServer("test-server", ":9999", "9.99.999", s.info, nil, true, "", 37 * time.Minute)
 	assert.Nil(s.T(), ts)
 }
-
-// TODO belongs in public and admin server testing
-/*
-func (s *ServerTestSuite) TestTokenDurationOverride() {
-	originalValue := os.Getenv("SSAS_TOKEN_TTL_IN_MINUTES")
-	assert.NotEmpty(s.T(), s.server.tokenTTL)
-	assert.Equal(s.T(), time.Hour, s.server.tokenTTL)
-	os.Setenv("SSAS_TOKEN_TTL_IN_MINUTES", "5")
-	s.server.initTokenDuration()
-	assert.Equal(s.T(), 5*time.Minute, s.server.tokenTTL)
-	os.Setenv("SSAS_TOKEN_TTL_IN_MINUTES", originalValue)
-}
-
-func (s *ServerTestSuite) TestTokenDurationEmptyOverride() {
-	assert.NotEmpty(s.T(), s.server.tokenTTL)
-	assert.Equal(s.T(), time.Hour, s.server.tokenTTL)
-	os.Setenv("JWT_EXPIRATION_DELTA", "")
-	s.server.initTokenDuration()
-	assert.Equal(s.T(), time.Hour, s.server.tokenTTL)
-}
-*/
 
 func TestServerTestSuite(t *testing.T) {
 	suite.Run(t, new(ServerTestSuite))
