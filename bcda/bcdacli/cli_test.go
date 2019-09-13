@@ -808,7 +808,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 2 files.")
+	assert.Contains(buf.String(), "Successfully imported 6 files.")
 	assert.Contains(buf.String(), "Failed to import 0 files.")
 	assert.Contains(buf.String(), "Skipped 1 files.")
 
