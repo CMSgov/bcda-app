@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/go-chi/chi"
 )
 
@@ -23,14 +25,9 @@ func NewAPIRouter() http.Handler {
 	}
 	FileServer(r, "/api/v1/swagger", http.Dir(swagger_path))
 
-	// Don't even load up the route in production
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
-		// Serve up the static site
-		jekyll_path := "./_site"
-		if _, err := os.Stat(jekyll_path); os.IsNotExist(err) {
-			jekyll_path = "../_site"
-		}
-		FileServer(r, "/", http.Dir(jekyll_path))
+		r.Get("/", userGuideRedirect)
+		r.Get(`/{p:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
@@ -93,4 +90,9 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 	r.Get(m.WrapHandler(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
 	})))
+}
+
+func userGuideRedirect(w http.ResponseWriter, r *http.Request) {
+	url := fmt.Sprintf("%s/%s", utils.FromEnv("USER_GUIDE_LOC", "https://bcda.cms.gov"), chi.URLParam(r, "p"))
+	http.Redirect(w, r, url, http.StatusMovedPermanently)
 }
