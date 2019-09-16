@@ -8,7 +8,6 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 )
 
 func InitializeGormModels() *gorm.DB {
@@ -39,8 +38,8 @@ func GetACO(col, val string) (models.ACO, error) {
 	)
 	defer database.Close(db)
 
-	if db.Find(&aco, col+" = ?", val).RecordNotFound() {
-		err = errors.New("no ACO record found for " + val)
+	if err = db.First(&aco, col+" = ?", val).Error; err != nil {
+		err = fmt.Errorf("no ACO record found for %s", val)
 	}
 	return aco, err
 }

@@ -58,14 +58,15 @@ func InitializeGormModels() *gorm.DB {
 
 type Job struct {
 	gorm.Model
-	ACO        ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
-	ACOID      uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
-	User       User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
-	UserID     uuid.UUID `gorm:"type:char(36)"`
-	RequestURL string    `json:"request_url"` // request_url
-	Status     string    `json:"status"`      // status
-	JobCount   int
-	JobKeys    []JobKey
+	ACO               ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
+	ACOID             uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
+	User              User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
+	UserID            uuid.UUID `gorm:"type:char(36)"`
+	RequestURL        string    `json:"request_url"` // request_url
+	Status            string    `json:"status"`      // status
+	JobCount          int
+	CompletedJobCount int
+	JobKeys           []JobKey
 }
 
 func (job *Job) CheckCompletedAndCleanup() (bool, error) {
@@ -145,6 +146,15 @@ func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 		}
 	}
 	return enqueJobs, nil
+}
+
+func (j *Job) StatusMessage() string {
+	if j.Status == "In Progress" && j.JobCount > 0 {
+		pct := float64(j.CompletedJobCount) / float64(j.JobCount) * 100
+		return fmt.Sprintf("%s (%d%%)", j.Status, int(pct))
+	}
+
+	return j.Status
 }
 
 func GetMaxBeneCount(requestType string) (int, error) {
@@ -336,7 +346,7 @@ func GetATOPrivateKey() *rsa.PrivateKey {
 }
 
 // CreateACO creates an ACO with the provided name and CMS ID.
-func CreateACO(name string, cmsID *string, groupID string) (uuid.UUID, error) {
+func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -344,7 +354,7 @@ func CreateACO(name string, cmsID *string, groupID string) (uuid.UUID, error) {
 
 	// TODO: remove ClientID below when a future refactor removes the need
 	//    for every ACO to have a client_id at creation
-	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String(), GroupID: groupID}
+	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String()}
 	db.Create(&aco)
 
 	return aco.UUID, db.Error

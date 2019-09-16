@@ -19,7 +19,6 @@ type MainTestSuite struct {
 func (s *MainTestSuite) SetupSuite() {
 	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
-	addFixtureData()
 }
 
 func (s *MainTestSuite) TestResetSecret() {
@@ -59,7 +58,7 @@ func (s *MainTestSuite) TestMainLog() {
 	assert.Contains(s.T(), output, "Home of")
 }
 
-func (s *MainTestSuite) TestAddFixtureData() {
+func (s *MainTestSuite) TestFixtureData() {
 	q := `select distinct g.id as gid, g.group_id, s.id as sid, s.client_name, ek.id as ekid, s.id as scrtid
 	from groups g
 	join systems s on g.group_id = s.group_id

@@ -66,6 +66,11 @@ type ErrorResponse struct {
 	Body OperationOutcomeResponse
 }
 
+// A bulk export job of this resource type is already in progress for the ACO.
+// swagger:response tooManyRequestsResponse
+type TooManyRequestsResponse struct {
+}
+
 // Data export job is in progress.
 // swagger:response jobStatusResponse
 type JobStatusResponse struct {

@@ -18,6 +18,18 @@ echo "TEST_DB_URL is $TEST_DB_URL"
 usql $DB_HOST_URL -c 'drop database if exists bcda_test;'
 usql $DB_HOST_URL -c 'create database bcda_test;'
 
+echo "Migrating SSAS Database with GORM migration"
+
+DATABASE_URL=$TEST_DB_URL DEBUG=true go run github.com/CMSgov/bcda-app/ssas/service/main --migrate
+
+echo "SSAS Database migration complete"
+
+echo "Loading SSAS fixture data"
+
+DATABASE_URL=$TEST_DB_URL DEBUG=true go run github.com/CMSgov/bcda-app/ssas/service/main --add-fixture-data
+
+echo "Successfully loaded SSAS fixture data"
+
 echo "Running SSAS unit tests and placing results/coverage in test_results/${timestamp} on host..."
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL gotestsum --debug --junitfile test_results/${timestamp}/junit.xml -- -race ./ssas/... -coverprofile test_results/${timestamp}/testcoverage.out 2>&1 | tee test_results/${timestamp}/testresults.out
 go tool cover -func test_results/${timestamp}/testcoverage.out > test_results/${timestamp}/testcov_byfunc.out
