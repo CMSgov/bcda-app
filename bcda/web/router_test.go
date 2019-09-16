@@ -41,10 +41,7 @@ func (s *RouterTestSuite) getDataRoute(route string) *http.Response {
 
 func (s *RouterTestSuite) TestDefaultRoute() {
 	res := s.getAPIRoute("/")
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
-	body, _ := ioutil.ReadAll(res.Body)
-	assert.NotContains(s.T(), string(body), "404 page not found", "Default route returned wrong body")
-	assert.Contains(s.T(), string(body), "Beneficiary Claims Data API")
+	assert.Equal(s.T(), http.StatusMovedPermanently, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestDefaultProdRoute() {
