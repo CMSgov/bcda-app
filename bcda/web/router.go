@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -27,7 +26,7 @@ func NewAPIRouter() http.Handler {
 
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
-		r.Get(`/{p:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
+		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
@@ -93,6 +92,5 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 }
 
 func userGuideRedirect(w http.ResponseWriter, r *http.Request) {
-	url := fmt.Sprintf("%s/%s", utils.FromEnv("USER_GUIDE_LOC", "https://bcda.cms.gov"), chi.URLParam(r, "p"))
-	http.Redirect(w, r, url, http.StatusMovedPermanently)
+	http.Redirect(w, r, utils.FromEnv("USER_GUIDE_LOC", "https://bcda.cms.gov"), http.StatusMovedPermanently)
 }

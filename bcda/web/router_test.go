@@ -44,6 +44,11 @@ func (s *RouterTestSuite) TestDefaultRoute() {
 	assert.Equal(s.T(), http.StatusMovedPermanently, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestUGRoute() {
+	res := s.getAPIRoute("/user_guide.html")
+	assert.Equal(s.T(), http.StatusMovedPermanently, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestDefaultProdRoute() {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	if err != nil {
