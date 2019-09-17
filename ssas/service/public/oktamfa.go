@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -82,9 +83,7 @@ func NewOktaMFA(client *http.Client) *OktaMFAPlugin {
 	return &OktaMFAPlugin{Client: client}
 }
 
-/*
-	VerifyPassword tests a username/password for validity.  This function should be used before calling MFA functions.
-*/
+//	VerifyPassword tests a username/password for validity.  This function should be used before calling MFA functions.
 func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, trackingId string) (passwordReturn *PasswordReturn, oktaId string, err error) {
 	passwordEvent := ssas.Event{Op: "VerifyOktaPassword", TrackingID: trackingId}
 	ssas.OperationStarted(passwordEvent)
@@ -140,10 +139,8 @@ func (o *OktaMFAPlugin) VerifyPassword(userIdentifier string, password string, t
 	return
 }
 
-/*
-	VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
-	except Push.
-*/
+//	VerifyFactorChallenge tests an MFA passcode for validity.  This function should be used for all factor types
+//	except Push.
 func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType string, passcode string, trackingId string) (success bool, oktaID string, groupIDs []string) {
 	startTime := time.Now()
 	success = false
@@ -205,26 +202,22 @@ func (o *OktaMFAPlugin) VerifyFactorChallenge(userIdentifier string, factorType 
 	return
 }
 
-/*
-   VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
-   rejection, waiting, and timeout.
-*/
+//	VerifyFactorTransaction reports the status of a Push factor's transaction.  Possible non-error states include success,
+//	rejection, waiting, and timeout.
 func (o *OktaMFAPlugin) VerifyFactorTransaction(userIdentifier string, factorType string, transactionId string, trackingId string) (string, error) {
 	return "", errors.New("function VerifyFactorTransaction() not yet implemented in OktaMFAPlugin")
 }
 
-/*
-	RequestFactorChallenge is to be called from the /authn/request endpoint.  It looks up the Okta user ID and factor ID, calls okta.postFactorChallenge(),
-	and filters the information returned to minimize information leakage.
-
-	Valid factor types include:
-		"Google TOTP" (Google Authenticator)
-		"Okta TOTP"   (Okta Verify app time-based token)
-		"Push"        (Okta Verify app push)
-		"SMS"
-		"Call"
-		"Email"
-*/
+//	RequestFactorChallenge is to be called from the /authn/request endpoint.  It looks up the Okta user ID and factor ID, calls okta.postFactorChallenge(),
+//	and filters the information returned to minimize information leakage.
+//
+//	Valid factor types include:
+//		"Google TOTP" (Google Authenticator)
+//		"Okta TOTP"   (Okta Verify app time-based token)
+//		"Push"        (Okta Verify app push)
+//		"SMS"
+//		"Call"
+//		"Email"
 func (o *OktaMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType string, trackingId string) (factorReturn *FactorReturn, err error) {
 	startTime := time.Now()
 	requestEvent := ssas.Event{Op: "RequestOktaFactorChallenge", TrackingID: trackingId}
@@ -280,9 +273,7 @@ func (o *OktaMFAPlugin) RequestFactorChallenge(userIdentifier string, factorType
 	return
 }
 
-/*
-	formatFactorReturn generates dummy return values if needed
-*/
+//	formatFactorReturn generates dummy return values if needed
 func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorReturn {
 	if factorReturn == nil || factorReturn.Action == "" {
 		factorReturn = &FactorReturn{Action: "request_sent"}
@@ -307,9 +298,7 @@ func formatFactorReturn(factorType string, factorReturn *FactorReturn) *FactorRe
 	return factorReturn
 }
 
-/*
-	wait() provides fixed-time execution for functions that could leak information based on how quickly they return
-*/
+//	wait() provides fixed-time execution for functions that could leak information based on how quickly they return
 func wait(startTime time.Time, targetDuration time.Duration) {
 	elapsed := time.Since(startTime)
 	time.Sleep(targetDuration - elapsed)
@@ -322,50 +311,19 @@ func (o *OktaMFAPlugin) postPassword(oktaUserId string, password string, trackin
 	passwordUrl := fmt.Sprintf("%s/api/v1/authn", okta.OktaBaseUrl)
 	requestBody := strings.NewReader(fmt.Sprintf(`{"username":"%s","password":"%s"}`, oktaUserId, password))
 
-	req, err := http.NewRequest("POST", passwordUrl, requestBody)
-	if err != nil {
-		requestEvent.Help = "unable to create request: " + err.Error()
-		ssas.OperationFailed(requestEvent)
-		return nil, errors.New(requestEvent.Help)
-	}
+	resp, body, err := o.oktaRequest("POST", passwordUrl, requestBody)
 
-	okta.AddRequestHeaders(req)
-	resp, err := o.Client.Do(req)
-	if err != nil {
-		requestEvent.Help = "request error: " + err.Error()
-		ssas.OperationFailed(requestEvent)
-		return nil, errors.New(requestEvent.Help)
-	}
-
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		requestEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
-		ssas.OperationFailed(requestEvent)
-		return nil, errors.New(requestEvent.Help)
-	}
-
-	if resp.StatusCode == 401 {
+	if resp != nil && resp.StatusCode == 401 {
 		requestEvent.Help = "authentication failure: " + string(body)
 		ssas.OperationFailed(requestEvent)
 		p := PasswordResponse{Status: "AUTHENTICATION_FAILED"}
 		return &p, nil
 	}
 
-	if resp.StatusCode >= 400 {
-		oktaError, err := okta.ParseOktaError(body)
-		if err == nil {
-			requestEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
-				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
-			ssas.OperationFailed(requestEvent)
-			return nil, errors.New(requestEvent.Help)
-		}
-	}
-
-	if resp.StatusCode != 200 {
-		requestEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
+	if err != nil {
+		requestEvent.Help = err.Error()
 		ssas.OperationFailed(requestEvent)
-		return nil, errors.New(requestEvent.Help)
+		return nil, err
 	}
 
 	var p PasswordResponse
@@ -379,53 +337,19 @@ func (o *OktaMFAPlugin) postPassword(oktaUserId string, password string, trackin
 	return &p, nil
 }
 
-/*
-	getUser searches for Okta users using the provided search string.  Only return results if exactly one active user
-	of LOA=3 is found.
-*/
+//	getUser searches for Okta users using the provided search string.  Only return results if exactly one active user
+//	of LOA=3 is found.
 func (o *OktaMFAPlugin) getUser(searchString string, trackingId string) (oktaId string, err error) {
 	userEvent := ssas.Event{Op: "FindOktaUser", TrackingID: trackingId}
 	ssas.OperationStarted(userEvent)
 
 	userUrl := fmt.Sprintf("%s/api/v1/users/?q=%s", okta.OktaBaseUrl, searchString)
 
-	req, err := http.NewRequest("GET", userUrl, nil)
+	_, body, err := o.oktaRequest("GET", userUrl, nil)
 	if err != nil {
-		userEvent.Help = "unable to create request: " + err.Error()
+		userEvent.Help = err.Error()
 		ssas.OperationFailed(userEvent)
-		return "", errors.New(userEvent.Help)
-	}
-
-	okta.AddRequestHeaders(req)
-	resp, err := o.Client.Do(req)
-	if err != nil {
-		userEvent.Help = "request error: " + err.Error()
-		ssas.OperationFailed(userEvent)
-		return "", errors.New(userEvent.Help)
-	}
-
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		userEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
-		ssas.OperationFailed(userEvent)
-		return "", errors.New(userEvent.Help)
-	}
-
-	if resp.StatusCode >= 400 {
-		oktaError, err := okta.ParseOktaError(body)
-		if err == nil {
-			userEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
-				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
-			ssas.OperationFailed(userEvent)
-			return "", errors.New(userEvent.Help)
-		}
-	}
-
-	if resp.StatusCode != 200 && resp.StatusCode != 201 {
-		userEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
-		ssas.OperationFailed(userEvent)
-		return "", errors.New(userEvent.Help)
+		return "", err
 	}
 
 	var users []OktaUser
@@ -465,60 +389,26 @@ func (o *OktaMFAPlugin) getUser(searchString string, trackingId string) (oktaId 
 	return user.Id, nil
 }
 
-/*
-	getUserFactor looks for the active Okta factor of the specified type enrolled for a given user.
-
-	Valid factor types include:
-		"Google TOTP" (Google Authenticator)
-		"Okta TOTP"   (Okta Verify app time-based token)
-		"Push"        (Okta Verify app push)
-		"SMS"
-		"Call"
-		"Email"
-*/
+//	getUserFactor looks for the active Okta factor of the specified type enrolled for a given user.
+//
+//	Valid factor types include:
+//		"Google TOTP" (Google Authenticator)
+//		"Okta TOTP"   (Okta Verify app time-based token)
+//		"Push"        (Okta Verify app push)
+//		"SMS"
+//		"Call"
+//		"Email"
 func (o *OktaMFAPlugin) getUserFactor(oktaUserId string, factorType string, trackingId string) (factor *Factor, err error) {
 	factorEvent := ssas.Event{Op: "FindOktaUserFactors", UserID: oktaUserId, TrackingID: trackingId}
 	ssas.OperationStarted(factorEvent)
 
 	factorUrl := fmt.Sprintf("%s/api/v1/users/%s/factors", okta.OktaBaseUrl, oktaUserId)
 
-	req, err := http.NewRequest("GET", factorUrl, nil)
+	_, body, err := o.oktaRequest("GET", factorUrl, nil)
 	if err != nil {
-		factorEvent.Help = "unable to create request: " + err.Error()
+		factorEvent.Help = err.Error()
 		ssas.OperationFailed(factorEvent)
-		return factor, errors.New(factorEvent.Help)
-	}
-
-	okta.AddRequestHeaders(req)
-	resp, err := o.Client.Do(req)
-	if err != nil {
-		factorEvent.Help = "request error: " + err.Error()
-		ssas.OperationFailed(factorEvent)
-		return factor, errors.New(factorEvent.Help)
-	}
-
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		factorEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
-		ssas.OperationFailed(factorEvent)
-		return factor, errors.New(factorEvent.Help)
-	}
-
-	if resp.StatusCode >= 400 {
-		oktaError, err := okta.ParseOktaError(body)
-		if err == nil {
-			factorEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
-				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
-			ssas.OperationFailed(factorEvent)
-			return factor, errors.New(factorEvent.Help)
-		}
-	}
-
-	if resp.StatusCode != 200 {
-		factorEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
-		ssas.OperationFailed(factorEvent)
-		return factor, errors.New(factorEvent.Help)
+		return factor, err
 	}
 
 	var factors []Factor
@@ -560,44 +450,11 @@ func (o *OktaMFAPlugin) postFactorChallenge(oktaUserId string, oktaFactor Factor
 	ssas.OperationStarted(requestEvent)
 
 	requestUrl := fmt.Sprintf("%s/api/v1/users/%s/factors/%s/verify", okta.OktaBaseUrl, oktaUserId, oktaFactor.Id)
-	req, err := http.NewRequest("POST", requestUrl, nil)
+	_, body, err := o.oktaRequest("POST", requestUrl, nil)
 	if err != nil {
-		requestEvent.Help = "unable to create request: " + err.Error()
+		requestEvent.Help = err.Error()
 		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
-	}
-
-	okta.AddRequestHeaders(req)
-	resp, err := o.Client.Do(req)
-	if err != nil {
-		requestEvent.Help = "request error: " + err.Error()
-		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
-	}
-
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		requestEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
-		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
-	}
-
-	if resp.StatusCode >= 400 {
-		oktaError, err := okta.ParseOktaError(body)
-		if err == nil {
-			requestEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
-				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
-			ssas.OperationFailed(requestEvent)
-			return factorRequest, errors.New(requestEvent.Help)
-		}
-	}
-
-	// HTTP status code 201 is used for push notifications; all others receive 200
-	if resp.StatusCode != 200 && resp.StatusCode != 201 {
-		requestEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
-		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
+		return factorRequest, err
 	}
 
 	f := FactorResponse{}
@@ -617,43 +474,11 @@ func (o *OktaMFAPlugin) postFactorResponse(oktaUserId string, oktaFactor Factor,
 
 	requestUrl := fmt.Sprintf("%s/api/v1/users/%s/factors/%s/verify", okta.OktaBaseUrl, oktaUserId, oktaFactor.Id)
 	requestBody := strings.NewReader(fmt.Sprintf(`{"passCode":"%s"}`, passcode))
-	req, err := http.NewRequest("POST", requestUrl, requestBody)
+	_, body, err := o.oktaRequest("POST", requestUrl, requestBody)
 	if err != nil {
-		requestEvent.Help = "unable to create request: " + err.Error()
+		requestEvent.Help = err.Error()
 		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
-	}
-
-	okta.AddRequestHeaders(req)
-	resp, err := o.Client.Do(req)
-	if err != nil {
-		requestEvent.Help = "request error: " + err.Error()
-		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
-	}
-
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		requestEvent.Help = fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode)
-		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
-	}
-
-	if resp.StatusCode >= 400 {
-		oktaError, err := okta.ParseOktaError(body)
-		if err == nil {
-			requestEvent.Help = fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
-				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary)
-			ssas.OperationFailed(requestEvent)
-			return factorRequest, errors.New(requestEvent.Help)
-		}
-	}
-
-	if resp.StatusCode != 200 {
-		requestEvent.Help = fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body))
-		ssas.OperationFailed(requestEvent)
-		return factorRequest, errors.New(requestEvent.Help)
+		return factorRequest, err
 	}
 
 	f := FactorResponse{}
@@ -667,9 +492,45 @@ func (o *OktaMFAPlugin) postFactorResponse(oktaUserId string, oktaFactor Factor,
 	return &f, nil
 }
 
-/*
-	parsePushTransaction returns the Okta transaction ID for a Push factor request
-*/
+//	oktaRequest consolidates the common steps of requesting and parsing Okta queries
+func (o *OktaMFAPlugin) oktaRequest(verb, url string, requestBody io.Reader, ) (resp *http.Response, body []byte, err error) {
+	req, err := http.NewRequest(verb, url, requestBody)
+	if err != nil {
+		err = errors.New("unable to create request: " + err.Error())
+		return
+	}
+
+	okta.AddRequestHeaders(req)
+	resp, err = o.Client.Do(req)
+	if err != nil {
+		err = errors.New("request error: " + err.Error())
+		return
+	}
+
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = fmt.Errorf(fmt.Sprintf("unexpected status code %d; unable to read response body", resp.StatusCode))
+		return
+	}
+
+	if resp.StatusCode >= 400 {
+		oktaError, e := okta.ParseOktaError(body)
+		if e == nil {
+			err = fmt.Errorf(fmt.Sprintf("error received, HTTP response code %d, Okta error %s: %s",
+				resp.StatusCode, oktaError.ErrorCode, oktaError.ErrorSummary))
+			return
+		}
+	}
+
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+		err = fmt.Errorf(fmt.Sprintf("unexpected status code %d; response: %s", resp.StatusCode, string(body)))
+		return
+	}
+
+	return
+}
+
+//	parsePushTransaction returns the Okta transaction ID for a Push factor request
 func parsePushTransaction(url string) string {
 	re := regexp.MustCompile(`/transactions/(.*)$`)
 	matches := re.FindSubmatch([]byte(url))
