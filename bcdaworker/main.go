@@ -9,15 +9,14 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"regexp"
 	"strconv"
 	"syscall"
 	"time"
 
-	"github.com/pborman/uuid"
-
+	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/newrelic/go-agent"
+	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -27,7 +26,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/bgentry/que-go"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var (
@@ -149,8 +148,7 @@ func processJob(j *que.Job) error {
 
 func createDir(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		err = os.MkdirAll(path, os.ModePerm)
-		if err != nil {
+		if err = os.MkdirAll(path, os.ModePerm); err != nil {
 			return err
 		}
 	}
@@ -166,23 +164,14 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 		return "", err
 	}
 
-	// TODO: Should this error be returned or written to file?
-	var bbFunc client.BeneDataFunc
-	switch t {
-	case "ExplanationOfBenefit":
-		bbFunc = bb.GetExplanationOfBenefit
-	case "Patient":
-		bbFunc = bb.GetPatient
-	case "Coverage":
-		bbFunc = bb.GetCoverage
-	default:
+	bbFunc := bbFuncByType(bb, t)
+	if bbFunc == nil {
 		err := fmt.Errorf("Invalid resource type requested: %s", t)
 		log.Error(err)
 		return "", err
 	}
 
-	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
-	if !re.Match([]byte(acoID)) {
+	if !utils.IsUUID(acoID) {
 		err := errors.New("Invalid ACO ID")
 		log.Error(err)
 		return "", err
@@ -202,31 +191,31 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 	errorCount := 0
 	totalBeneIDs := float64(len(cclfBeneficiaryIDs))
 	failThreshold := getFailureThreshold()
+	failed := false
+
 	db := database.GetGORMDbConnection()
 	defer db.Close()
+
 	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
 		var cclfBeneficiary models.CCLFBeneficiary
 		db.First(&cclfBeneficiary, cclfBeneficiaryID)
 		blueButtonID, err := cclfBeneficiary.GetBlueButtonID(bb)
 		if err != nil {
-			log.Error(err)
-			errorCount++
-			appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
+			handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
 			cclfBeneficiary.BlueButtonID = blueButtonID
 			db.Save(&cclfBeneficiary)
 			pData, err := bbFunc(blueButtonID, jobID, acoCMSID)
 			if err != nil {
-				log.Error(err)
-				errorCount++
-				appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
+				handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
 			} else {
 				fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoCMSID, jobID, fileUUID)
 			}
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
-			return "", errors.New("number of failed requests has exceeded threshold")
+			failed = true
+			break
 		}
 	}
 
@@ -240,7 +229,25 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 		log.Error(err)
 	}
 
+	if failed {
+		return "", errors.New("number of failed requests has exceeded threshold")
+	}
+
 	return fileUUID, nil
+}
+
+func bbFuncByType(bb client.APIClient, t string) client.BeneDataFunc {
+	return map[string]client.BeneDataFunc{
+		"ExplanationOfBenefit": bb.GetExplanationOfBenefit,
+		"Patient":              bb.GetPatient,
+		"Coverage":             bb.GetCoverage,
+	}[t]
+}
+
+func handleBBError(err error, errorCount *int, fileUUID, msg, jobID string) {
+	log.Error(err)
+	(*errorCount)++
+	appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, msg, jobID)
 }
 
 func getFailureThreshold() float64 {

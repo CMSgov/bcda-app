@@ -88,7 +88,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 
 	files, err := ioutil.ReadDir(stagingDir)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(files))
+	assert.Len(t, files, 1)
 
 	for _, f := range files {
 		filePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())

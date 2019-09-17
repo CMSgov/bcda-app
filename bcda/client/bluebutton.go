@@ -116,7 +116,7 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (st
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID string, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
