@@ -31,10 +31,10 @@ var logger *logrus.Logger
 const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
-	GetExplanationOfBenefitData(patientID, jobID, cmsID string) (string, error)
-	GetPatientData(patientID, jobID, cmsID string) (string, error)
-	GetCoverageData(beneficiaryID, jobID, cmsID string) (string, error)
-	GetBlueButtonIdentifier(hashedHICN string) (string, error)
+	GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error)
+	GetPatient(patientID, jobID, cmsID string) (string, error)
+	GetCoverage(beneficiaryID, jobID, cmsID string) (string, error)
+	GetPatientByHICNHash(hashedHICN string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -97,26 +97,26 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 
 type BeneDataFunc func(string, string, string) (string, error)
 
-func (bbc *BlueButtonClient) GetPatientData(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string, error) {
+func (bbc *BlueButtonClient) GetPatientByHICNHash(hashedHICN string) (string, error) {
 	params := GetDefaultParams()
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
 	params.Set("identifier", fmt.Sprintf("http://bluebutton.cms.hhs.gov/identifier#hicnHash|%v", hashedHICN))
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "", "")
 }
 
-func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID string, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID string, jobID, cmsID string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")

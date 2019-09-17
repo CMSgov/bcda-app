@@ -170,11 +170,11 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 	var bbFunc client.BeneDataFunc
 	switch t {
 	case "ExplanationOfBenefit":
-		bbFunc = bb.GetExplanationOfBenefitData
+		bbFunc = bb.GetExplanationOfBenefit
 	case "Patient":
-		bbFunc = bb.GetPatientData
+		bbFunc = bb.GetPatient
 	case "Coverage":
-		bbFunc = bb.GetCoverageData
+		bbFunc = bb.GetCoverage
 	default:
 		err := fmt.Errorf("Invalid resource type requested: %s", t)
 		log.Error(err)
