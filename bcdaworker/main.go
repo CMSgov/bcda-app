@@ -193,18 +193,11 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 	failThreshold := getFailureThreshold()
 	failed := false
 
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-
 	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
-		var cclfBeneficiary models.CCLFBeneficiary
-		db.First(&cclfBeneficiary, cclfBeneficiaryID)
-		blueButtonID, err := cclfBeneficiary.GetBlueButtonID(bb)
+		blueButtonID, err := beneBBID(cclfBeneficiaryID, bb)
 		if err != nil {
 			handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
-			cclfBeneficiary.BlueButtonID = blueButtonID
-			db.Save(&cclfBeneficiary)
 			pData, err := bbFunc(blueButtonID, jobID, acoCMSID)
 			if err != nil {
 				handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
@@ -242,6 +235,24 @@ func bbFuncByType(bb client.APIClient, t string) client.BeneDataFunc {
 		"Patient":              bb.GetPatient,
 		"Coverage":             bb.GetCoverage,
 	}[t]
+}
+
+// beneBBID returns the beneficiary's Blue Button ID. If not already in the BCDA database, the ID value is retrieved from BB and saved.
+func beneBBID(cclfBeneID string, bb client.APIClient) (string, error) {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	var cclfBeneficiary models.CCLFBeneficiary
+	db.First(&cclfBeneficiary, cclfBeneID)
+	bbID, err := cclfBeneficiary.GetBlueButtonID(bb)
+	if err != nil {
+		return "", err
+	}
+
+	cclfBeneficiary.BlueButtonID = bbID
+	db.Save(&cclfBeneficiary)
+
+	return bbID, nil
 }
 
 func handleBBError(err error, errorCount *int, fileUUID, msg, jobID string) {
