@@ -139,7 +139,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	updateJobStats(&exportJob)
+	updateJobStats(exportJob.ID)
 
 	log.Info("Worker finished processing job ", j.ID)
 
@@ -491,13 +491,16 @@ func getQueueJobCount() float64 {
 	return float64(count)
 }
 
-func updateJobStats(j *models.Job) {
+func updateJobStats(jID uint) {
 	updateJobQueueCountCloudwatchMetric()
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	db.Model(j).Update("completed_job_count", j.CompletedJobCount+1)
+	var j models.Job
+	if err := db.First(&j, jID).Error; err == nil {
+		db.Model(&j).Update(models.Job{CompletedJobCount: j.CompletedJobCount + 1})
+	}
 }
 
 func updateJobQueueCountCloudwatchMetric() {

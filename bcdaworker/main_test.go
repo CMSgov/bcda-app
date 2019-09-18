@@ -400,3 +400,21 @@ func (s *MainTestSuite) TestSetupQueue() {
 	os.Setenv("WORKER_POOL_SIZE", "7")
 	setupQueue()
 }
+
+func (s *MainTestSuite) TestUpdateJobStats() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := models.Job{
+		ACOID:             uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:            uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL:        "",
+		Status:            "",
+		JobCount:          4,
+		CompletedJobCount: 1,
+	}
+	db.Create(&j)
+	updateJobStats(j.ID)
+	db.First(&j, j.ID)
+	assert.Equal(s.T(), 2, j.CompletedJobCount)
+}
