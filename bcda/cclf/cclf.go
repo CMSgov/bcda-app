@@ -610,9 +610,9 @@ func validateFileName(fileName string) error {
 }
 
 func parseTimestamp(fileMetadata *cclfFileMetadata, fileName string) error {
-	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8|9)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	filenameRegexp := regexp.MustCompile(`(?:T|P).*\.(?:A|T)\d{4}\.ACO.*\.ZC(?:0|8|9)Y\d{2}\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(fileName)
-	filenameDate := filenameMatches[5]
+	filenameDate := filenameMatches[1]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, fileName)
