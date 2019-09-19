@@ -236,7 +236,7 @@ type Resource struct {
 	Scopes []string `json:"scopes"`
 }
 
-func FindByGroupID(groupID string) (Group, error) {
+func GetGroupByGroupID(groupID string) (Group, error) {
 	var (
 		db    = GetGORMDbConnection()
 		group Group

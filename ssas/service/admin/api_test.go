@@ -69,7 +69,7 @@ func (s *APITestSuite) TearDownSuite() {
 }
 
 func (s *APITestSuite) TestCreateGroup() {
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
 	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	req := httptest.NewRequest("POST", "/group", strings.NewReader(testInput))
 	handler := http.HandlerFunc(createGroup)
@@ -92,7 +92,7 @@ func (s *APITestSuite) TestCreateGroup() {
 }
 
 func (s *APITestSuite) TestCreateGroupFailure() {
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
 	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	req := httptest.NewRequest("POST", "/group", strings.NewReader(testInput))
 	handler := http.HandlerFunc(createGroup)
@@ -112,7 +112,7 @@ func (s *APITestSuite) TestListGroups() {
 	var startingCount int
 	ssas.GetGORMDbConnection().Table("groups").Count(&startingCount)
 
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
 	testInput1 := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	gd := ssas.GroupData{}
 	err := json.Unmarshal([]byte(testInput1), &gd)
@@ -143,7 +143,7 @@ func (s *APITestSuite) TestListGroups() {
 }
 
 func (s *APITestSuite) TestUpdateGroup() {
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
 	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	gd := ssas.GroupData{}
 	err := json.Unmarshal([]byte(testInput), &gd)
@@ -167,7 +167,7 @@ func (s *APITestSuite) TestUpdateGroup() {
 
 
 func (s *APITestSuite) TestUpdateGroupBadGroupID() {
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
 	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	gd := ssas.GroupData{}
 	err := json.Unmarshal([]byte(testInput), &gd)
@@ -430,6 +430,7 @@ func (s *APITestSuite) TestDeactivateSystemCredentialsNotFound() {
 	handler := http.HandlerFunc(deactivateSystemCredentials)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
+	_ = Server()
 	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
 }
 
