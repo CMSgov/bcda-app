@@ -323,76 +323,6 @@
 			"response": []
 		},
 		{
-			"name": "admin delete group, 200",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "95ce3470-8202-4e9f-b4f6-4fe36a09cb0d",
-						"exec": [
-							"pm.test(\"response is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group/{{group-id}}",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{admin-port}}",
-					"path": [
-						"group",
-						"{{group-id}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "admin get group, only fixture groups",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
-						"exec": [
-							"pm.test(\"response is 200 and at least 2 fixture groups in response\", function () {",
-							"    pm.response.to.have.status(200);",
-							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData[0].group_id).to.eql(\"admin\");",
-							"    pm.expect(jsonData[1].group_id).to.eql(\"0c527d2e-2e8a-4808-b11d-0fa06baf8254\");",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{admin-port}}",
-					"path": [
-						"group"
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "admin create system, 400",
 			"event": [
 				{
@@ -401,22 +331,7 @@
 						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
 						"exec": [
 							"pm.test(\"response is 201 and returns json\", function () {",
-							"    pm.response.to.have.status(201);",
-							"",
-							"    const schema = {",
-							"        \"system_id\": {\"type\": \"string\"},",
-							"        \"client_id\": {\"type\": \"string\"},",
-							"        \"client_secret\": {\"type\": \"string\"},",
-							"        \"client_name\": {\"type\": \"string\"},",
-							"        \"expires_at\": {\"type\": \"string\"},",
-							"    };",
-							"    var respJson = pm.response.json();",
-							"    ",
-							"    pm.test(\"schema is valid\", function() {",
-							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-							"    });",
-							"    ",
-							"    pm.environment.set(\"system-id\", respJson.system_id);",
+							"    pm.response.to.have.status(400);",
 							"});"
 						],
 						"type": "text/javascript"
@@ -499,7 +414,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"client_name\": \"Test Client\",\n    \"group_id\": \"test-group-id\",\n    \"scope\": \"bcda-api\",\n    \"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n    \"tracking_id\": \"T00000\"\n}",
+					"raw": "{\n    \"client_name\": \"Test Client\",\n    \"group_id\": \"{{group-id}}\",\n    \"scope\": \"bcda-api\",\n    \"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n    \"tracking_id\": \"T00000\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -521,15 +436,15 @@
 			"response": []
 		},
 		{
-			"name": "admin reset credentials, 400",
+			"name": "admin reset credentials, 404",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
 						"exec": [
-							"pm.test(\"response is 400\", function () {",
-							"    pm.response.to.have.status(400);",
+							"pm.test(\"response is 404\", function () {",
+							"    pm.response.to.have.status(404);",
 							"});"
 						],
 						"type": "text/javascript"
@@ -814,6 +729,76 @@
 						"system",
 						"{{system-id}}",
 						"credentials"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin delete group, 200",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "95ce3470-8202-4e9f-b4f6-4fe36a09cb0d",
+						"exec": [
+							"pm.test(\"response is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group/{{group-id}}",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"group",
+						"{{group-id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin get group, only fixture groups",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 200 and at least 2 fixture groups in response\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData[0].group_id).to.eql(\"admin\");",
+							"    pm.expect(jsonData[1].group_id).to.eql(\"0c527d2e-2e8a-4808-b11d-0fa06baf8254\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"group"
 					]
 				}
 			},
