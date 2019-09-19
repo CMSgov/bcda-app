@@ -183,53 +183,53 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 }
 
 /* Tests that make requests, using clients configured with the 200 response and 500 response httptest.Servers initialized in SetupSuite() */
-func (s *BBRequestTestSuite) TestGetBlueButtonPatientData() {
-	p, err := s.bbClient.GetPatientData("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetPatient() {
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `{ "test": "ok"`)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 }
 
-func (s *BBRequestTestSuite) TestGetBlueButtonPatientData_500() {
-	p, err := s.bbClient.GetPatientData("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetPatient_500() {
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000")
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBRequestTestSuite) TestGetBlueButtonCoverageData() {
-	c, err := s.bbClient.GetCoverageData("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetCoverage() {
+	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), c, `{ "test": "ok"`)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 }
 
-func (s *BBRequestTestSuite) TestGetBlueButtonCoverageData_500() {
-	p, err := s.bbClient.GetCoverageData("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetCoverage_500() {
+	p, err := s.bbClient.GetCoverage("012345", "543210", "A0000")
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBRequestTestSuite) TestGetBlueButtonExplanationOfBenefitData() {
-	e, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), e, `{ "test": "ok"`)
 	assert.Contains(s.T(), e, "excludeSAMHSA=true")
 }
 
-func (s *BBRequestTestSuite) TestGetBlueButtonExplanationOfBenefitData_500() {
-	p, err := s.bbClient.GetExplanationOfBenefitData("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
+	p, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000")
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBRequestTestSuite) TestGetBlueButtonMetadata() {
+func (s *BBRequestTestSuite) TestGetMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), m, `{ "test": "ok"`)
 	assert.NotContains(s.T(), m, "excludeSAMHSA=true")
 }
 
-func (s *BBRequestTestSuite) TestGetBlueButtonMetadata_500() {
+func (s *BBRequestTestSuite) TestGetMetadata_500() {
 	p, err := s.bbClient.GetMetadata()
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)

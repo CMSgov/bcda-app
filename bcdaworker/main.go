@@ -6,17 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pborman/uuid"
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"regexp"
 	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/newrelic/go-agent"
+	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -26,7 +26,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/bgentry/que-go"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var (
@@ -108,15 +108,12 @@ func processJob(j *que.Job) error {
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
-	staging := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	data := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
+	stagingPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	payloadPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
 
-	if _, err := os.Stat(staging); os.IsNotExist(err) {
-		err = os.MkdirAll(staging, os.ModePerm)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+	if err = createDir(stagingPath); err != nil {
+		log.Error(err)
+		return err
 	}
 
 	fileUUID, err := writeBBDataToFile(bb, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
@@ -124,47 +121,12 @@ func processJob(j *que.Job) error {
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
-
 		err = db.Model(&exportJob).Update("status", "Failed").Error
 		if err != nil {
 			return err
 		}
-
 	} else {
-		_, err := ioutil.ReadDir(staging)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-
-		oldpath := staging + "/" + fileName
-		if _, err := os.Stat(data); os.IsNotExist(err) {
-			err = os.Mkdir(data, os.ModePerm)
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-		}
-
-		var aco models.ACO
-		err = db.Model(&exportJob).Association("ACO").Find(&aco).Error
-		if err != nil {
-			log.Error("error getting ACO for job:", err.Error())
-		}
-		if aco.PublicKey == "" {
-			log.Error("no public key found for ACO", aco.UUID.String())
-		}
-		publicKey, err := aco.GetPublicKey()
-		if err != nil {
-			log.Error("error getting public key: ", err.Error(), aco.PublicKey)
-		} else {
-			err := encryption.EncryptAndMove(staging, data, fileName, publicKey, exportJob.ID)
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-		}
-		err = os.Remove(oldpath)
+		err = encryptData(stagingPath, payloadPath, fileName, exportJob)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -177,15 +139,23 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	// Update the Cloudwatch Metric for job queue count
-	updateJobQueueCountCloudwatchMetric()
-	db.Model(&exportJob).Update("completed_job_count", exportJob.CompletedJobCount+1)
+	updateJobStats(exportJob.ID)
+
 	log.Info("Worker finished processing job ", j.ID)
 
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, cmsID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
+func createDir(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err = os.MkdirAll(path, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -194,23 +164,14 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cmsID string, cclfBene
 		return "", err
 	}
 
-	// TODO: Should this error be returned or written to file?
-	var bbFunc client.BeneDataFunc
-	switch t {
-	case "ExplanationOfBenefit":
-		bbFunc = bb.GetExplanationOfBenefitData
-	case "Patient":
-		bbFunc = bb.GetPatientData
-	case "Coverage":
-		bbFunc = bb.GetCoverageData
-	default:
+	bbFunc := bbFuncByType(bb, t)
+	if bbFunc == nil {
 		err := fmt.Errorf("Invalid resource type requested: %s", t)
 		log.Error(err)
 		return "", err
 	}
 
-	re := regexp.MustCompile("[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
-	if !re.Match([]byte(acoID)) {
+	if !utils.IsUUID(acoID) {
 		err := errors.New("Invalid ACO ID")
 		log.Error(err)
 		return "", err
@@ -230,31 +191,24 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cmsID string, cclfBene
 	errorCount := 0
 	totalBeneIDs := float64(len(cclfBeneficiaryIDs))
 	failThreshold := getFailureThreshold()
-	db := database.GetGORMDbConnection()
-	defer db.Close()
+	failed := false
+
 	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
-		var cclfBeneficiary models.CCLFBeneficiary
-		db.First(&cclfBeneficiary, cclfBeneficiaryID)
-		blueButtonID, err := cclfBeneficiary.GetBlueButtonID(bb)
+		blueButtonID, err := beneBBID(cclfBeneficiaryID, bb)
 		if err != nil {
-			log.Error(err)
-			errorCount++
-			appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
+			handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
-			cclfBeneficiary.BlueButtonID = blueButtonID
-			db.Save(&cclfBeneficiary)
-			pData, err := bbFunc(blueButtonID, jobID, cmsID)
+			pData, err := bbFunc(blueButtonID, jobID, acoCMSID)
 			if err != nil {
-				log.Error(err)
-				errorCount++
-				appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
+				handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
 			} else {
-				fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoID, jobID, fileUUID)
+				fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoCMSID, jobID, fileUUID)
 			}
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
-			return "", errors.New("number of failed requests has exceeded threshold")
+			failed = true
+			break
 		}
 	}
 
@@ -268,7 +222,43 @@ func writeBBDataToFile(bb client.APIClient, acoID string, cmsID string, cclfBene
 		log.Error(err)
 	}
 
+	if failed {
+		return "", errors.New("number of failed requests has exceeded threshold")
+	}
+
 	return fileUUID, nil
+}
+
+func bbFuncByType(bb client.APIClient, t string) client.BeneDataFunc {
+	return map[string]client.BeneDataFunc{
+		"ExplanationOfBenefit": bb.GetExplanationOfBenefit,
+		"Patient":              bb.GetPatient,
+		"Coverage":             bb.GetCoverage,
+	}[t]
+}
+
+// beneBBID returns the beneficiary's Blue Button ID. If not already in the BCDA database, the ID value is retrieved from BB and saved.
+func beneBBID(cclfBeneID string, bb client.APIClient) (string, error) {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	var cclfBeneficiary models.CCLFBeneficiary
+	db.First(&cclfBeneficiary, cclfBeneID)
+	bbID, err := cclfBeneficiary.GetBlueButtonID(bb)
+	if err != nil {
+		return "", err
+	}
+
+	cclfBeneficiary.BlueButtonID = bbID
+	db.Save(&cclfBeneficiary)
+
+	return bbID, nil
+}
+
+func handleBBError(err error, errorCount *int, fileUUID, msg, jobID string) {
+	log.Error(err)
+	(*errorCount)++
+	appendErrorToFile(fileUUID, responseutils.Exception, responseutils.BbErr, msg, jobID)
 }
 
 func getFailureThreshold() float64 {
@@ -351,6 +341,62 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 	if err != nil {
 		log.Error(err)
 	}
+}
+
+func encryptData(dataPath, encryptedDataPath, fileName string, exportJob models.Job) error {
+	_, err := ioutil.ReadDir(dataPath)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	oldPath := dataPath + "/" + fileName
+
+	if err = createDir(encryptedDataPath); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var aco models.ACO
+	err = db.Model(&exportJob).Association("ACO").Find(&aco).Error
+	if err != nil {
+		log.Error("error getting ACO for job:", err.Error())
+	}
+	if aco.PublicKey == "" {
+		log.Error("no public key found for ACO", aco.UUID.String())
+	}
+	publicKey, err := aco.GetPublicKey()
+	if err != nil {
+		log.Error("error getting public key: ", err.Error(), aco.PublicKey)
+	} else {
+		ef, ek, err := encryption.EncryptFile(dataPath, fileName, publicKey)
+		if err != nil {
+			return err
+		}
+
+		// Save the encrypted key before trying anything dangerous
+		err = db.Create(&models.JobKey{JobID: exportJob.ID, EncryptedKey: ek, FileName: fileName}).Error
+		if err != nil {
+			return err
+		}
+
+		// Write out the file to the file system
+		err = ioutil.WriteFile(encryptedDataPath+"/"+fileName, ef, os.ModePerm)
+		if err != nil {
+			// Clean out the keys if we failed to write the file
+			db.Where("JobID = ?", exportJob.ID).Delete(models.JobKey{})
+			return err
+		}
+	}
+
+	if err = os.Remove(oldPath); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func waitForSig() {
@@ -443,6 +489,18 @@ func getQueueJobCount() float64 {
 	}
 
 	return float64(count)
+}
+
+func updateJobStats(jID uint) {
+	updateJobQueueCountCloudwatchMetric()
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var j models.Job
+	if err := db.First(&j, jID).Error; err == nil {
+		db.Model(&j).Update(models.Job{CompletedJobCount: j.CompletedJobCount + 1})
+	}
 }
 
 func updateJobQueueCountCloudwatchMetric() {
