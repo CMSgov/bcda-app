@@ -3,6 +3,7 @@ package ssas
 import (
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ func (s *CacheEntriesTestSuite) TearDownSuite() {
 
 func (s *CacheEntriesTestSuite) TestGetUnexpiredCacheEntries() {
 	entries, err := GetUnexpiredBlacklistEntries()
+	require.Nil(s.T(), err)
 	origEntries := len(entries)
 
 	entryDate := time.Now().Add(time.Minute*-5).UnixNano()
