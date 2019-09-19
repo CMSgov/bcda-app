@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
@@ -53,4 +54,10 @@ func ContainsString(sa []string, os string) bool {
 		}
 	}
 	return false
+}
+
+// IsUUID returns true if `s` is a UUID.
+func IsUUID(s string) bool {
+	re := regexp.MustCompile("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$")
+	return re.MatchString(s)
 }

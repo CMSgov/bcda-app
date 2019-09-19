@@ -481,7 +481,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 
 	// didn't find a local value, need to ask BlueButton
 	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
-	jsonData, err := bb.GetBlueButtonIdentifier(hashedHICN)
+	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
 	if err != nil {
 		return "", err
 	}
