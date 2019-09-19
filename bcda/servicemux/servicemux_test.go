@@ -20,7 +20,7 @@ type ServiceMuxTestSuite struct {
 }
 
 func (s *ServiceMuxTestSuite) TestNew() {
-	addr := getConfig().testAddress
+	addr := getConfig().TestAddress
 	sm := New(addr)
 	go func() {
 		defer sm.Close()
@@ -34,7 +34,7 @@ func (s *ServiceMuxTestSuite) TestNew() {
 }
 
 func (s *ServiceMuxTestSuite) TestAddServer() {
-	sm := New(getConfig().testAddress)
+	sm := New(getConfig().TestAddress)
 	go func() {
 		defer sm.Close()
 	}()
@@ -90,7 +90,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 		Handler: testHandler,
 	}
 
-	sm := New(getConfig().testAddress)
+	sm := New(getConfig().TestAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(srv, "/test")
@@ -134,7 +134,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 		Handler: testHandler,
 	}
 
-	sm := New(getConfig().testAddress)
+	sm := New(getConfig().TestAddress)
 	sm.AddServer(srv, "/test")
 
 	defer sm.Close()
@@ -155,7 +155,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTP() {
 		Handler: testHandler,
 	}
 
-	sm := New(getConfig().testAddress)
+	sm := New(getConfig().TestAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "/test")
@@ -193,7 +193,7 @@ func (s *ServiceMuxTestSuite) TestServeHTTPEmptyPath() {
 		Handler: testHandler,
 	}
 
-	sm := New(getConfig().testAddress)
+	sm := New(getConfig().TestAddress)
 	addr := sm.Listener.Addr().String()
 
 	sm.AddServer(&srv, "")
@@ -246,7 +246,7 @@ func resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly string) {
 }
 
 type config struct {
-	testAddress string
+	TestAddress string `json:"testAddress"`
 }
 
 func getConfig() config {

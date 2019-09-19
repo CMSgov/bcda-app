@@ -15,22 +15,22 @@ type BlueButtonClient struct {
 	HICN *string
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefitData(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error) {
 	args := bbc.Called(patientID)
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetBlueButtonIdentifier(hashedHICN string) (string, error) {
+func (bbc *BlueButtonClient) GetPatientByHICNHash(hashedHICN string) (string, error) {
 	args := bbc.Called(hashedHICN)
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetPatientData(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string, error) {
 	args := bbc.Called(patientID, jobID, cmsID)
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetCoverageData(beneficiaryID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (string, error) {
 	args := bbc.Called(beneficiaryID, jobID, cmsID)
 	return args.String(0), args.Error(1)
 }

@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/mock"
 	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
@@ -77,7 +78,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		db.Create(&cclfBeneficiary)
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-		bbc.On("GetExplanationOfBenefitData", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryID))
+		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryID))
 	}
 
 	_, err := writeBBDataToFile(&bbc, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
@@ -87,7 +88,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 
 	files, err := ioutil.ReadDir(stagingDir)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(files))
+	assert.Len(t, files, 1)
 
 	for _, f := range files {
 		filePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
@@ -138,9 +139,9 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefitData", "10000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefitData", "11000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefitData", "12000").Return(bbc.GetData("ExplanationOfBenefit", "12000"))
+	bbc.On("GetExplanationOfBenefit", "10000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "11000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "12000").Return(bbc.GetData("ExplanationOfBenefit", "12000"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	cmsID := "A00234"
 	beneficiaryIDs := []string{"10000", "11000", "12000"}
@@ -191,8 +192,8 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefitData", "1000089833").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefitData", "1000065301").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "1000089833").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "1000065301").Return("", errors.New("error"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	cmsID := "A00234"
 	beneficiaryIDs := []string{"1000089833", "1000065301", "1000012463"}
@@ -233,7 +234,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(t, "GetExplanationOfBenefitData", "1000012463")
+	bbc.AssertNotCalled(t, "GetExplanationOfBenefit", "1000012463")
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(errorFilePath)
@@ -255,7 +256,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	defer db.Delete(&cclfFile)
 
 	bbc := testUtils.BlueButtonClient{}
-	bbc.On("GetBlueButtonIdentifier", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
+	bbc.On("GetPatientByHICNHash", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
 
 	// clean out the data dir before beginning this test
 	os.RemoveAll(stagingDir)
@@ -398,4 +399,22 @@ func (s *MainTestSuite) TestSetupQueue() {
 	setupQueue()
 	os.Setenv("WORKER_POOL_SIZE", "7")
 	setupQueue()
+}
+
+func (s *MainTestSuite) TestUpdateJobStats() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := models.Job{
+		ACOID:             uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:            uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL:        "",
+		Status:            "",
+		JobCount:          4,
+		CompletedJobCount: 1,
+	}
+	db.Create(&j)
+	updateJobStats(j.ID)
+	db.First(&j, j.ID)
+	assert.Equal(s.T(), 2, j.CompletedJobCount)
 }
