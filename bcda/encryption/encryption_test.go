@@ -10,14 +10,12 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"io/ioutil"
-	"log"
 	"os"
 	"testing"
 )
@@ -65,64 +63,24 @@ func (s *EncryptionTestSuite) TestEncryptBytes() {
 
 }
 
-func (s *EncryptionTestSuite) TestEncryptAndMove() {
+func (s *EncryptionTestSuite) TestEncryptFile() {
 	fromPath := "../../shared_files/synthetic_beneficiary_data"
-	toPath := "../../shared_files/synthetic_beneficiary_data/encrypted_files"
-	// This dir might not exist, need to make it
-	if _, err := os.Stat(toPath); os.IsNotExist(err) {
-		err = os.MkdirAll(toPath, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 	fileName := "Coverage"
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-	// Do the Encrypt and Move
-	err := EncryptAndMove(fromPath, toPath, fileName, models.GetATOPublicKey(), j.ID)
-	// No Errors
-	assert.Nil(s.T(), err)
-	// Should have some Job Keys
-	// Get the key back from the Job
-	var jobKey models.JobKey
-	if s.db.First(&jobKey, "job_id = ?", j.ID).RecordNotFound() {
-		assert.NotNil(s.T(), errors.New("unable to find JobKey"))
-	}
 
-	// Check that we have data for each job key
-	for _, jobKey := range j.JobKeys {
-		testUtils.PrintSeparator()
-		assert.NotNil(s.T(), jobKey.EncryptedKey)
-		assert.Equal(s.T(), "Coverage", jobKey.FileName)
-		testUtils.PrintSeparator()
-	}
-	// Open up the encrypted file
-	encryptedBytes, err := ioutil.ReadFile(toPath + "/" + fileName)
+	r, k, err := EncryptFile(fromPath, fileName, models.GetATOPublicKey())
 	assert.Nil(s.T(), err)
-	// Open up the Raw file
+
 	rawBytes, err := ioutil.ReadFile(fromPath + "/" + fileName)
 	assert.Nil(s.T(), err)
-	// Encrypted and Raw can't match
-	assert.NotEqual(s.T(), rawBytes, encryptedBytes)
-	// Get the key back from the Job
+	assert.NotEqual(s.T(), rawBytes, r)
 
-	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, models.GetATOPrivateKey(), jobKey.EncryptedKey, []byte("Coverage"))
+	decryptedKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, models.GetATOPrivateKey(), k, []byte("Coverage"))
 	assert.Nil(s.T(), err)
 	key := [32]byte{}
 	copy(key[:], decryptedKey[0:32])
-	// Decrypt the file
-	decryptedBytes, err := decrypt(encryptedBytes, &key)
+	decryptedBytes, err := decrypt(r, &key)
 	assert.Nil(s.T(), err)
-	// Should be the same as before
 	assert.Equal(s.T(), rawBytes, decryptedBytes)
-
-	os.Remove(toPath + "/" + fileName)
-
 }
 
 func TestEncryptionTestSuite(t *testing.T) {

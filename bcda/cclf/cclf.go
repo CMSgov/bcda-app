@@ -70,6 +70,12 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 	for i, f := range r.File {
 		fmt.Printf("Reading file #%d from archive %s.\n", i, fileMetadata)
 		log.Infof("Reading file #%d from archive %s", i, fileMetadata)
+		if err := validateFileName(f.Name); err != nil {
+			fmt.Printf("Unknown file name when validating file: %s.\n", f.Name)
+			err = errors.Wrapf(err, "unknown file name when validating file: %s.\n", f.Name)
+			log.Error(err)
+			return nil, err
+		}
 		rc, err := f.Open()
 		if err != nil {
 			fmt.Printf("Could not read file %s in CCLF0 archive %s.\n", f.Name, fileMetadata)
@@ -150,10 +156,10 @@ func importCCLF8(fileMetadata *cclfFileMetadata) error {
 	})
 
 	if err != nil {
-		updateImportStatus(fileMetadata,constants.ImportFail)
+		updateImportStatus(fileMetadata, constants.ImportFail)
 		return err
 	}
-	updateImportStatus(fileMetadata,constants.ImportComplete)
+	updateImportStatus(fileMetadata, constants.ImportComplete)
 	return nil
 }
 
@@ -190,7 +196,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		ACOCMSID:        fileMetadata.acoID,
 		Timestamp:       fileMetadata.timestamp,
 		PerformanceYear: fileMetadata.perfYear,
-		ImportStatus: constants.ImportInprog,
+		ImportStatus:    constants.ImportInprog,
 	}
 
 	db := database.GetGORMDbConnection()
@@ -244,7 +250,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 }
 
 func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
-	if strings.Contains(filePath,"BCD") {
+	if strings.Contains(filePath, "BCD") {
 		return getCCLFFileMetadataBCD(filePath)
 	}
 
@@ -254,8 +260,8 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 6 {
-		fmt.Printf("Invalid filename for file: %s.\n", filePath)
-		err := fmt.Errorf("invalid filename for file: %s", filePath)
+		fmt.Printf("Invalid zipped filename for file: %s.\n", filePath)
+		err := fmt.Errorf("invalid zipped filename for file: %s", filePath)
 		log.Error(err)
 		return metadata, err
 	}
@@ -300,15 +306,14 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 	return metadata, nil
 }
 
-
 func getCCLFFileMetadataBCD(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Y**.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
 	filenameRegexp := regexp.MustCompile(`(T|P).BCD.ACO.*\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 5 {
-		fmt.Printf("Invalid filename for file: %s.\n", filePath)
-		err := fmt.Errorf("invalid filename for file: %s", filePath)
+		fmt.Printf("Invalid zipped filename for file: %s.\n", filePath)
+		err := fmt.Errorf("invalid zipped filename for file: %s", filePath)
 		log.Error(err)
 		return metadata, err
 	}
@@ -545,6 +550,12 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 	for i, f := range r.File {
 		fmt.Printf("Reading file #%d from archive %s.\n", i, fileMetadata)
 		log.Infof("Reading file #%d from archive %s", i, fileMetadata)
+		if err := validateFileName(f.Name); err != nil {
+			fmt.Printf("Unknown file name when validating file: %s.\n", f.Name)
+			err = errors.Wrapf(err, "unknown file name when validating file: %s.\n", f.Name)
+			log.Error(err)
+			return err
+		}
 		rc, err := f.Open()
 		if err != nil {
 			fmt.Printf("Could not read file %s in archive %s.\n", f.Name, fileMetadata)
@@ -577,6 +588,18 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 	}
 	fmt.Printf("Successfully validated CCLF%d file %s.\n", fileMetadata.cclfNum, fileMetadata)
 	log.Infof("Successfully validated CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
+	return nil
+}
+
+func validateFileName(fileName string) error {
+	filenameRegexp := regexp.MustCompile(`(T|P).*\.((?:A|T)\d{4})\.ACO.*\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	valid := filenameRegexp.MatchString(fileName)
+	if !valid {
+		fmt.Printf("Invalid filename for file: %s.\n", fileName)
+		err := fmt.Errorf("invalid filename for file: %s", fileName)
+		log.Error(err)
+		return err
+	}
 	return nil
 }
 
