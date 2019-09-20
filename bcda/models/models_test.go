@@ -910,7 +910,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
 	bbc := testUtils.BlueButtonClient{}
 	bbc.HICN = &cclfBeneficiary.HICN
-	bbc.On("GetBlueButtonIdentifier", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
+	bbc.On("GetPatientByHICNHash", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -952,5 +952,5 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 	assert.Nil(err)
 	assert.Equal("DB_VALUE", newBBID)
 	// Should be making only a single call to BB for all 3 attempts.
-	bbc.AssertNumberOfCalls(s.T(), "GetBlueButtonIdentifier", 1)
+	bbc.AssertNumberOfCalls(s.T(), "GetPatientByHICNHash", 1)
 }

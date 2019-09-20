@@ -142,7 +142,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(app.Writer, fmt.Sprint(ssasID))
+				fmt.Fprint(app.Writer, fmt.Sprint(ssasID))
 				return nil
 			},
 		},
