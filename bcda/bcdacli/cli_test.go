@@ -823,7 +823,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/archives/valid/")
 
 	// dir has 4 files, but 2 will be ignored because of bad file names.
-	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/mixed/invalid_filenames/"}
+	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/mixed/with_invalid_filenames/"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
@@ -831,7 +831,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Skipped 3 files.")
 	buf.Reset()
 
-	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/mixed/invalid_filenames/")
+	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/mixed/with_invalid_filenames/")
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {

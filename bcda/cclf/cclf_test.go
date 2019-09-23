@@ -379,7 +379,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles() {
 
 	cclfmap = make(map[string]map[int][]*cclfFileMetadata)
 	skipped = 0
-	filePath = BASE_FILE_PATH + "cclf/mixed/invalid_filenames/"
+	filePath = BASE_FILE_PATH + "cclf/mixed/with_invalid_filenames/"
 	err = filepath.Walk(filePath, sortCCLFFiles(&cclfmap, &skipped))
 	assert.Nil(err)
 	cclflist := cclfmap["A0001"][18]
@@ -450,7 +450,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_TimeChange() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string]map[int][]*cclfFileMetadata)
 	var skipped int
-	folderPath := BASE_FILE_PATH + "cclf/mixed/invalid_filenames/"
+	folderPath := BASE_FILE_PATH + "cclf/mixed/with_invalid_filenames/"
 	filePath := folderPath + "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
 
 	origTime := time.Now().Truncate(time.Second)
@@ -469,7 +469,7 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_TimeChange() {
 	_, err = os.Open(filePath)
 	assert.Nil(err)
 
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/invalid_filenames/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
 
 	timeChange := origTime.Add(-(time.Hour * 25)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
@@ -487,9 +487,9 @@ func (s *CCLFTestSuite) TestSortCCLFFiles_TimeChange() {
 
 	// assert that this file is not still here.
 	_, err = os.Open(filePath)
-	assert.EqualError(err, "open ../../shared_files/cclf/mixed/invalid_filenames/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009: no such file or directory")
+	assert.EqualError(err, "open ../../shared_files/cclf/mixed/with_invalid_filenames/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009: no such file or directory")
 
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/invalid_filenames/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
 }
 
 func (s *CCLFTestSuite) TestSortCCLFFiles_InvalidPath() {
