@@ -69,7 +69,30 @@ func (s *APITestSuite) TearDownSuite() {
 }
 
 func (s *APITestSuite) TestCreateGroup() {
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
+	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
+	req := httptest.NewRequest("POST", "/group", strings.NewReader(testInput))
+	handler := http.HandlerFunc(createGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusCreated, rr.Result().StatusCode)
+	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
+	g := ssas.Group{}
+	if s.db.Where("group_id = ?", gid).Find(&g).RecordNotFound() {
+		assert.FailNow(s.T(), fmt.Sprintf("record not found for group_id=%s", gid))
+	}
+
+	// Duplicate request fails
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
+
+	err := ssas.CleanDatabase(g)
+	assert.Nil(s.T(), err)
+}
+
+func (s *APITestSuite) TestCreateGroupFailure() {
+	gid := ssas.RandomBase64(16)
 	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	req := httptest.NewRequest("POST", "/group", strings.NewReader(testInput))
 	handler := http.HandlerFunc(createGroup)
@@ -89,7 +112,7 @@ func (s *APITestSuite) TestListGroups() {
 	var startingCount int
 	ssas.GetGORMDbConnection().Table("groups").Count(&startingCount)
 
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
 	testInput1 := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	gd := ssas.GroupData{}
 	err := json.Unmarshal([]byte(testInput1), &gd)
@@ -120,7 +143,7 @@ func (s *APITestSuite) TestListGroups() {
 }
 
 func (s *APITestSuite) TestUpdateGroup() {
-	gid := ssas.RandomHexID()
+	gid := ssas.RandomBase64(16)
 	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
 	gd := ssas.GroupData{}
 	err := json.Unmarshal([]byte(testInput), &gd)
@@ -140,6 +163,25 @@ func (s *APITestSuite) TestUpdateGroup() {
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	err = ssas.CleanDatabase(g)
 	assert.Nil(s.T(), err)
+}
+
+
+func (s *APITestSuite) TestUpdateGroupBadGroupID() {
+	gid := ssas.RandomBase64(16)
+	testInput := fmt.Sprintf(SampleGroup, gid, SampleXdata)
+	gd := ssas.GroupData{}
+	err := json.Unmarshal([]byte(testInput), &gd)
+	assert.Nil(s.T(), err)
+
+	// No group exists
+	url := fmt.Sprintf("/group/%v", gid)
+	req := httptest.NewRequest("PUT", url, strings.NewReader(testInput))
+	rctx := chi.NewRouteContext()
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(updateGroup)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusBadRequest, rr.Result().StatusCode)
 }
 
 func (s *APITestSuite) TestRevokeToken() {
@@ -266,6 +308,19 @@ func (s *APITestSuite) TestResetCredentials_InvalidSystemID() {
 	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
 }
 
+func (s *APITestSuite) TestGetPublicKeyBadSystemID() {
+	systemID := strconv.FormatUint(uint64(9999), 10)
+	req := httptest.NewRequest("GET", "/system/"+systemID+"/key", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(getPublicKey)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
+}
+
 func (s *APITestSuite) TestGetPublicKey() {
 	group := ssas.Group{GroupID: "api-test-get-public-key-group"}
 	err := s.db.Create(&group).Error
@@ -364,6 +419,19 @@ func (s *APITestSuite) TestGetPublicKey_Rotation() {
 
 	err = ssas.CleanDatabase(group)
 	assert.Nil(s.T(), err)
+}
+
+func (s *APITestSuite) TestDeactivateSystemCredentialsNotFound() {
+	systemID := strconv.FormatUint(uint64(9999), 10)
+	req := httptest.NewRequest("DELETE", "/system/"+systemID+"/credentials", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("systemID", systemID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler := http.HandlerFunc(deactivateSystemCredentials)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	_ = Server()
+	assert.Equal(s.T(), http.StatusNotFound, rr.Result().StatusCode)
 }
 
 func (s *APITestSuite) TestDeactivateSystemCredentials() {
