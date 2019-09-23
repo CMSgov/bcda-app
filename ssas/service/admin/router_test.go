@@ -17,6 +17,7 @@ type RouterTestSuite struct {
 	suite.Suite
 	router    http.Handler
 	basicAuth string
+	badAuth   string
 	group     ssas.Group
 }
 
@@ -34,6 +35,9 @@ func (s *RouterTestSuite) SetupSuite() {
 
 	basicAuth := id + ":" + creds.ClientSecret
 	s.basicAuth = base64.StdEncoding.EncodeToString([]byte(basicAuth))
+
+	badAuth := id + ":This_is_not_the_secret"
+	s.badAuth = base64.StdEncoding.EncodeToString([]byte(badAuth))
 }
 
 func (s *RouterTestSuite) SetupTest() {
@@ -51,6 +55,24 @@ func (s *RouterTestSuite) TestUnauthorized() {
 	req := httptest.NewRequest("GET", "/group", nil)
 	basicAuth := base64.StdEncoding.EncodeToString([]byte("bad:creds"))
 	req.Header.Add("Authorization", "Basic "+basicAuth)
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestNonBasicAuth() {
+	req := httptest.NewRequest("GET", "/group", nil)
+	req.Header.Add("Authorization", "This is not a base64-encoded username/password pair!")
+	rr := httptest.NewRecorder()
+	s.router.ServeHTTP(rr, req)
+	res := rr.Result()
+	assert.Equal(s.T(), http.StatusBadRequest, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestBadSecret() {
+	req := httptest.NewRequest("GET", "/group", nil)
+	req.Header.Add("Authorization", "Basic "+s.badAuth)
 	rr := httptest.NewRecorder()
 	s.router.ServeHTTP(rr, req)
 	res := rr.Result()

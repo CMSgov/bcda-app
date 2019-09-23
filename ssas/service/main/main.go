@@ -29,6 +29,8 @@ var systemName string
 var output io.Writer
 
 func init() {
+	output = os.Stdout
+
 	const usageMigrate = "unconditionally migrate the db"
 	flag.BoolVar(&doMigrate, "migrate", false, usageMigrate)
 
@@ -54,7 +56,6 @@ func init() {
 // We provide some simple commands for bootstrapping the system into place. Commands cannot be combined.
 func main() {
 	ssas.Logger.Info("Home of the System-to-System Authentication Service")
-	output = os.Stdout
 
 	flag.Parse()
 	if doMigrate {

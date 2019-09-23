@@ -412,7 +412,7 @@ func RegisterSystem(clientName string, groupID string, scope string, publicKeyPE
 
 // DataForSystem returns the group extra data associated with this system
 func XDataFor(system System) (string, error) {
-	group, err := FindByGroupID(system.GroupID)
+	group, err := GetGroupByGroupID(system.GroupID)
 	if err != nil {
 		return "", fmt.Errorf("no group for system %d; %s", system.ID, err)
 	}
