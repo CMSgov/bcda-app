@@ -75,7 +75,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
-	cclf0filePath := BASE_FILE_PATH + "cclf/archives/valid/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC0Y18.D181120.T0001000"
 	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 
 	// positive
@@ -89,13 +89,13 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "could not read CCLF0 archive : read .: is a directory")
 
 	// missing cclf8 from cclf0
-	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.ACO.ZC0Y18.D181120.T0001000"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
-	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file ../../shared_files/cclf/archives/0/missing_data/T.A0001.ACO.ZC0Y18.D181120.T1000011")
+	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file ../../shared_files/cclf/archives/0/missing_data/T.BCD.ACO.ZC0Y18.D181120.T0001000")
 
 	// duplicate file types from cclf0
-	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.A0001.ACO.ZC0Y18.D181120.T1000013"
+	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.ACO.ZC0Y18.D181122.T0001000"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 	_, err = importCCLF0(cclf0metadata)
 	assert.EqualError(err, "duplicate CCLF8 file type found from CCLF0 file")
@@ -104,7 +104,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 	assert := assert.New(s.T())
 
-	cclf0filePath := BASE_FILE_PATH + "cclf/archives/split/T.A0001.ACO.ZC0Y18.D181120.T1000011"
+	cclf0filePath := BASE_FILE_PATH + "cclf/archives/split/T.BCD.ACO.ZC0Y18.D181120.T0001000"
 	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
 
 	validator, err := importCCLF0(cclf0metadata)
@@ -115,7 +115,7 @@ func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 func (s *CCLFTestSuite) TestValidate() {
 	assert := assert.New(s.T())
 
-	cclf8filePath := BASE_FILE_PATH + "cclf/archives/valid/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	cclf8filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC8Y18.D181120.T0001000"
 	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18}
 
 	// positive
@@ -136,7 +136,7 @@ func (s *CCLFTestSuite) TestValidate_SplitFiles() {
 		acoID:     "A0001",
 		cclfNum:   8,
 		timestamp: time.Now(),
-		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.BCD.ACO.ZC8Y18.D181120.T0001000",
 		perfYear:  18,
 	}
 
@@ -151,15 +151,15 @@ func (s *CCLFTestSuite) TestValidate_SplitFiles() {
 func (s *CCLFTestSuite) TestValidate_FileName() {
 	assert := assert.New(s.T())
 
-	filePath := BASE_FILE_PATH + "???/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	filePath := BASE_FILE_PATH + "path/T.A0001.ACO.ZC8Y18.D181120.T1000009"
 	err := validateFileName(filePath)
 	assert.Nil(err)
 
-	filePath = BASE_FILE_PATH + "???/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009"
+	filePath = BASE_FILE_PATH + "path/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009"
 	err = validateFileName(filePath)
 	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
 
-	filePath = BASE_FILE_PATH + "???/T.BCD.ACO.ZC0Y18.D181120.T0001000"
+	filePath = BASE_FILE_PATH + "path/T.BCD.ACO.ZC0Y18.D181120.T0001000"
 	err = validateFileName(filePath)
 	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
 }
@@ -181,7 +181,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC8Y18.D181120.T0001000",
 	}
 
 	err = importCCLF8(metadata)
@@ -235,7 +235,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.BCD.ACO.ZC8Y18.D181120.T0001000",
 	}
 
 	err = importCCLF8(metadata)
