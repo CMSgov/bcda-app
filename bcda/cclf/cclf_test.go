@@ -151,15 +151,15 @@ func (s *CCLFTestSuite) TestValidate_SplitFiles() {
 func (s *CCLFTestSuite) TestValidate_FileName() {
 	assert := assert.New(s.T())
 
-	filePath := BASE_FILE_PATH + "???/T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	filePath := BASE_FILE_PATH + "cclf/archives/valid/T.A0001.ACO.ZC8Y18.D181120.T1000009"
 	err := validateFileName(filePath)
 	assert.Nil(err)
 
-	filePath = BASE_FILE_PATH + "???/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009"
+	filePath = BASE_FILE_PATH + "cclf/files/with_invalid_filenames/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009"
 	err = validateFileName(filePath)
 	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
 
-	filePath = BASE_FILE_PATH + "???/T.BCD.ACO.ZC0Y18.D181120.T0001000"
+	filePath = BASE_FILE_PATH + "cclf/archives/bcd/T.BCD.ACO.ZC0Y18.D181120.T0001000"
 	err = validateFileName(filePath)
 	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
 }
