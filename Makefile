@@ -13,7 +13,7 @@ package:
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 lint:
-	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run 
+	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=2m
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
 lint-ssas:

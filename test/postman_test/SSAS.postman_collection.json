@@ -297,7 +297,7 @@
 						"exec": [
 							"pm.test(\"response is 400 and record not found\", function () {",
 							"    pm.response.to.have.status(400);",
-							"    pm.response.to.have.body(\"Failed to delete group. Error: record not found\\n\")",
+							"    pm.response.to.have.body(\"Failed to delete group. Error: no Group record found with ID 9999\\n\")",
 							"});"
 						],
 						"type": "text/javascript"

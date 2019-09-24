@@ -45,11 +45,15 @@ func (s *SystemsTestSuite) TestRevokeSystemKeyPair() {
 	group := Group{GroupID: "A00001"}
 	s.db.Save(&group)
 	system := System{GroupID: group.GroupID, ClientID: "test-revoke-system-key-pair-client"}
+
+	err := system.RevokeSystemKeyPair()
+	assert.NotNil(err)
+
 	s.db.Save(&system)
 	encryptionKey := EncryptionKey{SystemID: system.ID}
 	s.db.Save(&encryptionKey)
 
-	err := system.RevokeSystemKeyPair()
+	err = system.RevokeSystemKeyPair()
 	assert.Nil(err)
 	assert.Empty(system.EncryptionKeys)
 	s.db.Unscoped().Find(&encryptionKey)
@@ -433,6 +437,11 @@ func (s *SystemsTestSuite) TestRegisterSystemMissingData() {
 	creds, err = RegisterSystem("Register System Success2", groupID, "", pubKey, trackingID)
 	assert.Nil(err)
 	assert.NotEmpty(creds)
+
+	// No scope = success
+	creds, err = RegisterSystem("Register System Failure", groupID, "badScope", pubKey, trackingID)
+	assert.NotNil(err)
+	assert.Empty(creds)
 
 	err = CleanDatabase(group)
 	assert.Nil(err)
