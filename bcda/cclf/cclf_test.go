@@ -164,6 +164,23 @@ func (s *CCLFTestSuite) TestValidate_FileName() {
 	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
 }
 
+func (s *CCLFTestSuite) TestParseTimestamp() {
+	assert := assert.New(s.T())
+
+	cclfMetadata := &cclfFileMetadata{}
+
+	fileName := "T.A0001.ACO.ZC8Y18.D181120.T1000009"
+	err := parseTimestamp(cclfMetadata, fileName)
+	assert.Nil(err)
+	assert.Equal(10, cclfMetadata.timestamp.Hour())
+	assert.Equal(00, cclfMetadata.timestamp.Minute())
+
+	// valid file name out of range
+	fileName = "T.A0000.ACO.ZC8Y18.D190117.T9909420"
+	err = parseTimestamp(cclfMetadata, fileName)
+	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: T.A0000.ACO.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
+}
+
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
