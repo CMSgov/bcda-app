@@ -249,7 +249,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 	return nil
 }
 
-func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
+func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Yyy.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
 	filenameRegexp := regexp.MustCompile(`(T|P)\.BCD\.ACO\.ZC(0|8)Y(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
@@ -312,7 +312,7 @@ func getCCLFFileMetadata(filePath string) (cclfFileMetadata, error) {
 func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	var cclfMap = make(map[string]map[int][]*cclfFileMetadata)
 
-	err = filepath.Walk(filePath, sortCCLFFiles(&cclfMap, &skipped))
+	err = filepath.Walk(filePath, sortCCLFArchives(&cclfMap, &skipped))
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -377,7 +377,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	return success, failure, skipped, err
 }
 
-func sortCCLFFiles(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *int) filepath.WalkFunc {
+func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *int) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			var fileName = "nil"
@@ -390,11 +390,24 @@ func sortCCLFFiles(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *int
 			return err
 		}
 
-		// Directories are not CCLF files
 		if info.IsDir() {
+			msg := fmt.Sprintf("Unable to sort %s: directory, not a CCLF archive.", path)
+			fmt.Println(msg)
+			log.Warn(msg)
 			return nil
 		}
-		metadata, err := getCCLFFileMetadata(info.Name())
+
+		zipReader, err := zip.OpenReader(path)
+		if err != nil {
+			*skipped = *skipped + 1
+			msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
+			fmt.Println(msg)
+			log.Warn(msg)
+			return nil
+		}
+		_ = zipReader.Close()
+
+		metadata, err := getCCLFArchiveMetadata(info.Name())
 		metadata.filePath = path
 		metadata.deliveryDate = info.ModTime()
 		if err != nil {
