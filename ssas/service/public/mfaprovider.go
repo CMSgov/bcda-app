@@ -22,14 +22,15 @@ func init() {
 }
 
 func SetProvider(name string) {
+	n := strings.ToLower(name)
 	if name != "" {
-		switch strings.ToLower(name) {
+		switch n {
 		case Live:
-			providerName = name
+			providerName = n
 		case Mock:
-			providerName = name
+			providerName = n
 		default:
-			providerEvent := ssas.Event{Op: "SetProvider", Help: fmt.Sprintf(`Unknown providerName %s; using %s`, name, providerName)}
+			providerEvent := ssas.Event{Op: "SetProvider", Help: fmt.Sprintf(`Unknown providerName %s; using %s`, n, providerName)}
 			ssas.ServiceStarted(providerEvent)
 		}
 	}

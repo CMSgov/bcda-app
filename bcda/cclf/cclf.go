@@ -76,6 +76,9 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 			log.Error(err)
 			return nil, err
 		}
+		if err = parseTimestamp(fileMetadata, f.Name); err != nil {
+			return nil, err
+		}
 		rc, err := f.Open()
 		if err != nil {
 			fmt.Printf("Could not read file %s in CCLF0 archive %s.\n", f.Name, fileMetadata)
@@ -508,6 +511,9 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 			log.Error(err)
 			return err
 		}
+		if err = parseTimestamp(fileMetadata, f.Name); err != nil {
+			return err
+		}
 		rc, err := f.Open()
 		if err != nil {
 			fmt.Printf("Could not read file %s in archive %s.\n", f.Name, fileMetadata)
@@ -552,6 +558,21 @@ func validateFileName(fileName string) error {
 		log.Error(err)
 		return err
 	}
+	return nil
+}
+
+func parseTimestamp(fileMetadata *cclfFileMetadata, fileName string) error {
+	filenameRegexp := regexp.MustCompile(`(?:T|P).*\.(?:A|T)\d{4}\.ACO.*\.ZC(?:0|8|9)Y\d{2}\.(D\d{6}\.T\d{6})\d`)
+	filenameMatches := filenameRegexp.FindStringSubmatch(fileName)
+	filenameDate := filenameMatches[1]
+	t, err := time.Parse("D060102.T150405", filenameDate)
+	if err != nil || t.IsZero() {
+		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, fileName)
+		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
+		log.Error(err)
+		return err
+	}
+	fileMetadata.timestamp = t
 	return nil
 }
 
