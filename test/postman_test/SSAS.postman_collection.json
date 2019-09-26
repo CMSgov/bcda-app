@@ -98,7 +98,12 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"group_id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
+					"raw": "{\n    \"group_id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group",
@@ -330,7 +335,7 @@
 					"script": {
 						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
 						"exec": [
-							"pm.test(\"response is 201 and returns json\", function () {",
+							"pm.test(\"response is 400\", function () {",
 							"    pm.response.to.have.status(400);",
 							"});"
 						],
@@ -414,7 +419,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"client_name\": \"Test Client\",\n    \"group_id\": \"{{group-id}}\",\n    \"scope\": \"bcda-api\",\n    \"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n    \"tracking_id\": \"T00000\"\n}",
+					"raw": "{\n    \"client_name\": \"Test Client\",\n    \"group_id\": \"fake-id\",\n    \"scope\": \"bcda-api\",\n    \"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n    \"tracking_id\": \"T00000\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -497,6 +502,9 @@
 							"    pm.test(\"schema is valid\", function() {",
 							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
 							"    });",
+							"    ",
+							"    pm.environment.set(\"client-id\", respJson.client_id);",
+							"    pm.environment.set(\"client-secret\", respJson.client_secret);",
 							"});"
 						],
 						"type": "text/javascript"
@@ -833,126 +841,6 @@
 					"path": [
 						"token",
 						"{{token_id}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public register, 400",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "975f80aa-6a6d-4803-84d7-2c6848cfaf8d",
-						"exec": [
-							"pm.test(\"response is 400\", function () {",
-							"    pm.response.to.have.status(400);",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"name": "Content-Type",
-						"type": "text",
-						"value": "application/json"
-					},
-					{
-						"key": "x-fake-token",
-						"type": "text",
-						"value": "T0000"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "\"this-aint-right\"",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/register",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"register"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public register, 201",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "975f80aa-6a6d-4803-84d7-2c6848cfaf8d",
-						"exec": [
-							"pm.test(\"response is 201 and returns json\", function () {",
-							"    pm.response.to.have.status(201);",
-							"    ",
-							"    const schema = {",
-							"        \"client_id\": {\"type\": \"string\"},",
-							"        \"client_secret\": {\"type\": \"string\"},",
-							"        \"client_name\": {\"type\": \"string\"},",
-							"        \"client_secret_expires_at\": {\"type\": \"string\"},",
-							"    };",
-							"    var respJson = pm.response.json();",
-							"    ",
-							"    pm.test(\"schema is valid\", function() {",
-							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-							"    });",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"name": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					},
-					{
-						"key": "x-fake-token",
-						"value": "T0000",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"group_id\": \"T0000\",\n    \"client_id\": \"yet another evil twin\",\n    \"client_name\": \"my sister's evil twin\",\n    \"scope\": \"bcda-api\",\n    \"jwks\": {\n        \"keys\": [\n            {\n                \"e\": \"AAEAAQ\",\n                \"n\": \"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\n                \"kty\": \"RSA\"\n            }\n        ]\n    }\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/register",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"register"
 					]
 				}
 			},
