@@ -4,14 +4,15 @@ import (
 	"archive/zip"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/cclf"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 const DestDir = "tempCCLFDir/"
@@ -43,7 +44,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		return errors.New("invalid argument for environment")
 	}
 
-	sourcedir := filepath.Join("shared_files/syntheticCCLFFiles", environment, acoSize)
+	sourcedir := filepath.Join("shared_files/cclf/files/synthetic", environment, acoSize)
 	sourcedir, err = utils.GetDirPath(sourcedir)
 	if err != nil {
 		return err

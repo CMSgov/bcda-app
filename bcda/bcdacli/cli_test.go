@@ -804,7 +804,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	testUtils.SetPendingDeletionDir(s.Suite)
 
-	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/"}
+	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/archives/valid/"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
@@ -820,10 +820,10 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		assert.Nil(err)
 	}
 
-	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/")
+	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/archives/valid/")
 
 	// dir has 4 files, but 2 will be ignored because of bad file names.
-	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_BadFileNames/"}
+	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/mixed/with_invalid_filenames/"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
@@ -831,7 +831,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Skipped 3 files.")
 	buf.Reset()
 
-	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_BadFileNames/")
+	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/mixed/with_invalid_filenames/")
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
@@ -850,9 +850,9 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	buf.Reset()
 
 	// File, not a directory
-	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
+	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/archives/valid/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "unable to delete Directory Contents because ../../shared_files/cclf/T.A0001.ACO.ZC8Y18.D181120.T1000009 does not reference a directory")
+	assert.EqualError(err, "unable to delete Directory Contents because ../../shared_files/cclf/archives/valid/T.A0001.ACO.ZC8Y18.D181120.T1000009 does not reference a directory")
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
@@ -881,7 +881,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf_split/"}
+	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/archives/split/"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
@@ -889,7 +889,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
 	assert.Contains(buf.String(), "Failed to import 0 files.")
 	assert.Contains(buf.String(), "Skipped 1 files.")
 
-	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf_split/")
+	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/archives/split/")
 }
 
 func (s *CLITestSuite) TestImportSuppressionDirectory() {
