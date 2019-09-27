@@ -7,6 +7,7 @@ import (
 	"github.com/CMSgov/bcda-app/ssas/okta"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"net/http"
@@ -143,7 +144,8 @@ func (s *OTestSuite) TestPostFactorChallengeFactorNotFound() {
 func (s *OTestSuite) TestPostPasswordSuccess() {
 	trackingId := uuid.NewRandom().String()
 	userId := "abc123"
-	password := "not_a_password"
+	password, err := randomCharacters(16)
+	require.Nil(s.T(), err)
 	client := okta.NewTestClient(func(req *http.Request) *http.Response {
 		assert.Equal(s.T(), req.URL.String(), okta.OktaBaseUrl + "/api/v1/authn")
 		b, err := ioutil.ReadAll(req.Body)
@@ -163,7 +165,8 @@ func (s *OTestSuite) TestPostPasswordSuccess() {
 func (s *OTestSuite) TestPostPasswordFailure() {
 	trackingId := uuid.NewRandom().String()
 	userId := "abc123"
-	password := "not_a_password"
+	password, err := randomCharacters(16)
+	require.Nil(s.T(), err)
 	client := okta.NewTestClient(func(req *http.Request) *http.Response {
 		assert.Equal(s.T(), req.URL.String(), okta.OktaBaseUrl + "/api/v1/authn")
 		b, err := ioutil.ReadAll(req.Body)
