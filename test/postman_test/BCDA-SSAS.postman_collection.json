@@ -1,0 +1,453 @@
+{
+	"info": {
+		"_postman_id": "1013173b-e2e6-4cbf-867a-b333d06aa9cc",
+		"name": "BCDA-SSAS",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create group 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0fd18536-7b7c-433f-bd30-c7b1ae57a92d",
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.environment.set(\"group1ID\", pm.response.json().ID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{bcdaSSASClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{bcdaSSASClientID}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-1\",\n\t\"name\": \"PM BCDA-SSAS Group 1\",\n\t\"scopes\": [ \"bcda-api\" ],\n\t\"xdata\": \"{ \\\"cms_ids\\\": [\\\"A9994\\\"] }\"\n}"
+				},
+				"url": {
+					"raw": "{{scheme}}://{{ssasAdminHost}}/group",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{ssasAdminHost}}"
+					],
+					"path": [
+						"group"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create system 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "287532b5-8d18-48e6-abf6-6ed98a9b9440",
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"respJSON = pm.response.json()",
+							"pm.environment.set(\"system1ID\", respJSON.system_id)",
+							"pm.environment.set(\"system1ClientID\", respJSON.client_id)",
+							"pm.environment.set(\"system1ClientSecret\", respJSON.client_secret)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{bcdaSSASClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{bcdaSSASClientID}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-1\",\n\t\"client_name\": \"PM BCDA-SSAS System 1\",\n\t\"scope\": \"bcda-api\",\n\t\"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n\t\"tracking_id\": \"pm-bcda-ssas-system-1\"\n}"
+				},
+				"url": {
+					"raw": "{{scheme}}://{{ssasAdminHost}}/system",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{ssasAdminHost}}"
+					],
+					"path": [
+						"system"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get system 1 token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "00c5dc02-45e2-4aeb-bc9e-ed9efd19c1ef",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.environment.set(\"system1Token\", pm.response.json().access_token)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{system1ClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{system1ClientID}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/auth/token",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"auth",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create group 2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "7b0299ce-ce18-4c45-b0d3-58ed9f190bad",
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.environment.set(\"group2ID\", pm.response.json().ID);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{bcdaSSASClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{bcdaSSASClientID}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-2\",\n\t\"name\": \"PM BCDA-SSAS Group 2\",\n\t\"scopes\": [ \"bcda-api\" ],\n\t\"xdata\": \"{ \\\"cms_ids\\\": [\\\"A9992\\\"] }\"\n}"
+				},
+				"url": {
+					"raw": "{{scheme}}://{{ssasAdminHost}}/group",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{ssasAdminHost}}"
+					],
+					"path": [
+						"group"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create system 2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "876152a7-fd93-45cb-92e9-111c9c60ed64",
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"respJSON = pm.response.json()",
+							"pm.environment.set(\"system2ID\", respJSON.system_id)",
+							"pm.environment.set(\"system2ClientID\", respJSON.client_id)",
+							"pm.environment.set(\"system2ClientSecret\", respJSON.client_secret)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"group_id\": \"pm-bcda-ssas-group-2\",\n\t\"client_name\": \"PM BCDA-SSAS System 2\",\n\t\"scope\": \"bcda-api\",\n\t\"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n\t\"tracking_id\": \"pm-bcda-ssas-system-2\"\n}"
+				},
+				"url": {
+					"raw": "{{scheme}}://{{ssasAdminHost}}/system",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{ssasAdminHost}}"
+					],
+					"path": [
+						"system"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get system 2 token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "eb9d23b7-dbb7-49d8-928e-d83c7ebe39e3",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.environment.set(\"system2Token\", pm.response.json().access_token)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{system2ClientSecret}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{system2ClientID}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/auth/token",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"auth",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Patient export as system 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "dc5452f0-5f37-4c72-9691-7e72038eac47",
+						"exec": [
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"jobURL\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{system1Token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Request system 1 job status as system 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "16131bfc-6797-4e06-9d6b-2554b7ab9333",
+						"exec": [
+							"pm.test(\"Status code is 200 or 202\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200,202]);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{system1Token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{jobURL}}",
+					"host": [
+						"{{jobURL}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Request system 1 job status as system 2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "16131bfc-6797-4e06-9d6b-2554b7ab9333",
+						"exec": [
+							"pm.test(\"Status code is 401\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{system2Token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{jobURL}}",
+					"host": [
+						"{{jobURL}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
