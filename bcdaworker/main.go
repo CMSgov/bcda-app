@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/jackc/pgx"
 	"github.com/newrelic/go-agent"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -87,22 +87,23 @@ func processJob(j *que.Job) error {
 	var exportJob models.Job
 	err = db.First(&exportJob, "ID = ?", jobArgs.ID).Error
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not retrieve job from database")
 	}
 
 	var aco models.ACO
 	err = db.First(&aco, "uuid = ?", exportJob.ACOID).Error
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not retrieve ACO from database")
 	}
 
 	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not update job status in database")
 	}
 
 	bb, err := client.NewBlueButtonClient()
 	if err != nil {
+		err = errors.Wrap(err, "could not create Blue Button client")
 		log.Error(err)
 		return err
 	}
