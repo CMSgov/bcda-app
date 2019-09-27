@@ -828,7 +828,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Skipped 3 files.")
+	assert.Contains(buf.String(), "Skipped 4 files.")
 	buf.Reset()
 
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/mixed/with_invalid_filenames/")
@@ -850,9 +850,9 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	buf.Reset()
 
 	// File, not a directory
-	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/archives/valid/T.A0001.ACO.ZC8Y18.D181120.T1000009"}
+	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/archives/valid/T.BCD.ACO.ZC8Y18.D181120.T0001000"}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "unable to delete Directory Contents because ../../shared_files/cclf/archives/valid/T.A0001.ACO.ZC8Y18.D181120.T1000009 does not reference a directory")
+	assert.EqualError(err, "unable to delete Directory Contents because ../../shared_files/cclf/archives/valid/T.BCD.ACO.ZC8Y18.D181120.T0001000 does not reference a directory")
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
