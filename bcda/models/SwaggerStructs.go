@@ -156,7 +156,7 @@ type TokenResponse struct {
 // swagger:response missingCredentials
 type MissingCredentials struct{}
 
-// Invalid credentials
+// Unauthorized. The provided credentials are invalid for the requested resource.
 // swagger:response invalidCredentials
 type InvalidCredentials struct{}
 

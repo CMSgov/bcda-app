@@ -2,13 +2,12 @@ package public
 
 import (
 	"encoding/json"
-	"os"
-	"strconv"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"os"
+	"strconv"
+	"testing"
 
 	"github.com/CMSgov/bcda-app/ssas/service"
 )
@@ -83,6 +82,15 @@ func (s *PublicTokenTestSuite) TestMintAccessToken() {
 	assert.Equal(s.T(), 2, len(xData.IDList))
 	assert.Equal(s.T(), "T67890", xData.IDList[0])
 	assert.Equal(s.T(), "T54321", xData.IDList[1])
+}
+
+func (s *PublicTokenTestSuite) TestCheckTokenClaimsMissingType() {
+	c := service.CommonClaims{}
+	err := checkTokenClaims(&c)
+	if err == nil {
+		assert.FailNow(s.T(), "must have error with missing token type")
+	}
+	assert.Contains(s.T(), err.Error(), "missing token type claim")
 }
 
 func (s *PublicTokenTestSuite) TestEmpty() {
