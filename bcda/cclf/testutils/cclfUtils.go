@@ -4,14 +4,15 @@ import (
 	"archive/zip"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/cclf"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 const DestDir = "tempCCLFDir/"
@@ -21,17 +22,15 @@ const DestDir = "tempCCLFDir/"
 
 func ImportCCLFPackage(acoSize, environment string) (err error) {
 	acoSize = strings.ToLower(acoSize)
-	// validation is here because this will get called from other locations than the CLI.
-	switch acoSize {
-	case
-		"dev",
-		"dev-auth",
-		"small",
-		"medium",
-		"large",
-		"extra-large":
-
-	default:
+	acoIDNum := map[string]string{
+		"dev":         "9994",
+		"dev-auth":    "9996",
+		"small":       "9990",
+		"medium":      "9991",
+		"large":       "9992",
+		"extra-large": "9993",
+	}[acoSize]
+	if acoIDNum == "" {
 		return errors.New("invalid argument for ACO size")
 	}
 
@@ -43,7 +42,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		return errors.New("invalid argument for environment")
 	}
 
-	sourcedir := filepath.Join("shared_files/syntheticCCLFFiles", environment, acoSize)
+	sourcedir := filepath.Join("shared_files/cclf/files/synthetic", environment, acoSize)
 	sourcedir, err = utils.GetDirPath(sourcedir)
 	if err != nil {
 		return err
@@ -56,14 +55,16 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		}
 	}
 
-	dateString := fmt.Sprintf("%s.D%s.T%s", time.Now().Format("06"), time.Now().Format("060102"), time.Now().Format("1504059"))
-
 	files, err := ioutil.ReadDir(sourcedir)
 	if err != nil {
 		return err
 	}
+
+	dateStr := fmt.Sprintf("%s.D%s", time.Now().Format("06"), time.Now().Format("060102"))
 	for _, file := range files {
-		err = copyFiles(fmt.Sprintf("%s/%s", sourcedir, file.Name()), fmt.Sprintf("%s/%s%s", DestDir, file.Name(), dateString))
+		filename := fmt.Sprintf("T.A%s.ACO.%sY%s.T%s", acoIDNum, file.Name(), dateStr, time.Now().Format("1504059"))
+		archiveName := fmt.Sprintf("T.BCD.ACO.%sY%s.T%s%s", file.Name(), dateStr, acoIDNum, "000")
+		err = zipTo(fmt.Sprintf("%s/%s", sourcedir, file.Name()), filename, fmt.Sprintf("%s/%s", DestDir, archiveName))
 		if err != nil {
 			return err
 		}
@@ -83,13 +84,13 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	}
 }
 
-func copyFiles(src, dst string) error {
-	sourceFileStat, err := os.Stat(src)
+func zipTo(src, dstFile, dstArchive string) error {
+	srcFileStat, err := os.Stat(src)
 	if err != nil {
 		return err
 	}
 
-	if !sourceFileStat.Mode().IsRegular() {
+	if !srcFileStat.Mode().IsRegular() {
 		return fmt.Errorf("%s is not a regular file", src)
 	}
 
@@ -99,7 +100,7 @@ func copyFiles(src, dst string) error {
 	}
 	defer source.Close()
 
-	newZipFile, err := os.Create(dst)
+	newZipFile, err := os.Create(dstArchive)
 	if err != nil {
 		return err
 	}
@@ -108,17 +109,12 @@ func copyFiles(src, dst string) error {
 	zipWriter := zip.NewWriter(newZipFile)
 	defer zipWriter.Close()
 
-	header, err := zip.FileInfoHeader(sourceFileStat)
+	header, err := zip.FileInfoHeader(srcFileStat)
 	if err != nil {
 		return err
 	}
 
-	// Using FileInfoHeader() above only uses the basename of the file. If we want
-	// to preserve the folder structure we can overwrite this with the full path.
-	header.Name = dst
-
-	// Change to deflate to gain better compression
-	// see http://golang.org/pkg/archive/zip/#pkg-constants
+	header.Name = dstFile
 	header.Method = zip.Deflate
 
 	writer, err := zipWriter.CreateHeader(header)

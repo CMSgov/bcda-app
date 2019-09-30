@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"strconv"
+
+	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"net/http"
 	"os"
@@ -48,6 +49,7 @@ var qc *que.Client
 	Responses:
 		202: BulkRequestResponse
 		400: badRequestResponse
+		401: invalidCredentials
 		429: tooManyRequestsResponse
 		500: errorResponse
 */
@@ -72,6 +74,7 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 	Responses:
 		202: BulkRequestResponse
 		400: badRequestResponse
+		401: invalidCredentials
 		429: tooManyRequestsResponse
 		500: errorResponse
 */
@@ -95,6 +98,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	Responses:
 		202: BulkRequestResponse
 		400: badRequestResponse
+		401: invalidCredentials
 		429: tooManyRequestsResponse
 		500: errorResponse
 */
@@ -219,6 +223,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		202: jobStatusResponse
 		200: completedJobResponse
 		400: badRequestResponse
+		401: invalidCredentials
 		404: notFoundResponse
 		410: goneResponse
 		500: errorResponse
@@ -352,6 +357,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	Responses:
 		200: ExplanationOfBenefitNDJSON
 		400: badRequestResponse
+		401: invalidCredentials
         404: notFoundResponse
 		500: errorResponse
 */
