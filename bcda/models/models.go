@@ -84,14 +84,26 @@ func (job *Job) CheckCompletedAndCleanup() (bool, error) {
 	if int(completedJobs) >= job.JobCount {
 
 		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), job.ID)
-		err := os.Remove(staging)
+		payload := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), job.ID)
 
+		files, err := ioutil.ReadDir(staging)
 		if err != nil {
 			log.Error(err)
 		}
 
+		for _, f := range files {
+			oldPath := fmt.Sprintf("%s/%s",staging,f.Name())
+			newPath := fmt.Sprintf("%s/%s",payload,f.Name())
+			err := os.Rename(oldPath,newPath)
+			if err != nil {
+				log.Error(err)
+			}
+		}
+		err = os.Remove(staging)
+		if err != nil {
+			log.Error(err)
+		}
 		return true, db.Model(&job).Update("status", "Completed").Error
-
 	}
 
 	return false, nil
