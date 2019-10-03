@@ -37,7 +37,7 @@ fi
 
 cd ../bcda
 go clean
-echo "Building bcda binary..." 
+echo "Building bcda binary..."
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api _site=/etc/sv/api
@@ -47,12 +47,12 @@ echo "Building bcdaworker..."
 go build
 echo "Packaging bcdaworker binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker
-cd ../ssas
-go clean
-echo "Building ssas..."
-go build -o ssas ./service/main
-echo "Packaging ssas binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n ssas ssas=/usr/local/bin/ssas
+# cd ../ssas
+# go clean
+# echo "Building ssas..."
+# go build -o ssas ./service/main
+# echo "Packaging ssas binary into RPM..."
+# fpm -v $VERSION -s dir -t rpm -n ssas ssas=/usr/local/bin/ssas
 
 #Sign RPMs
 echo "Importing GPG Key files"
@@ -78,11 +78,11 @@ echo "Signing bcdaworker RPM"
 echo $WORKER_RPM
 echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $WORKER_RPM
 
-cd ../ssas
-SSAS_RPM="ssas-*.rpm"
-echo "%_signature gpg %_gpg_path $PWD %_gpg_name $GPG_RPM_USER %_gpgbin /usr/bin/gpg" > $PWD/.rpmmacros
-echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+# cd ../ssas
+# SSAS_RPM="ssas-*.rpm"
+# echo "%_signature gpg %_gpg_path $PWD %_gpg_name $GPG_RPM_USER %_gpgbin /usr/bin/gpg" > $PWD/.rpmmacros
+# echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
 
-echo "Signing ssas RPM"
-echo $SSAS_RPM
-echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $SSAS_RPM
+# echo "Signing ssas RPM"
+# echo $SSAS_RPM
+# echo $BCDA_GPG_RPM_PASSPHRASE | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --sign $SSAS_RPM
