@@ -62,11 +62,11 @@ postman-ssas:
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
 
 unit-test:
-        docker-compose up -d db
+	docker-compose up -d db
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 unit-test-ssas:
-        docker-compose up -d db
+	docker-compose up -d db
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test_ssas.sh
 
 performance-test:
