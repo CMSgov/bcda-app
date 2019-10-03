@@ -1,7 +1,7 @@
 FROM golang:1.11.5-alpine
 
 RUN apk update upgrade
-RUN apk add git openssl
+RUN apk add git openssl curl
 
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
@@ -11,6 +11,9 @@ RUN go get -u github.com/derekparker/delve/cmd/dlv
 RUN go get github.com/BurntSushi/toml
 RUN go get github.com/howeyc/fsnotify
 RUN go get github.com/mattn/go-colorable
+
+RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.6.1/migrate.linux-amd64.tar.gz | tar xvz
+RUN ./migrate.linux-amd64 up -database "$DB" -file ssas/db/migrations up
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
 COPY . .
