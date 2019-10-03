@@ -282,9 +282,18 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient|Coverage)/\$export`)
 		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
 
-		var files []fileItem
-		var errFiles []fileItem
 		keyMap := make(map[string]string)
+
+		rb := bulkResponseBody{
+			TransactionTime:     job.CreatedAt,
+			RequestURL:          job.RequestURL,
+			RequiresAccessToken: true,
+			Files:               []fileItem{},
+			Errors:              []fileItem{},
+			KeyMap:              keyMap,
+			JobID:               job.ID,
+		}
+
 		var jobKeysObj []models.JobKey
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
@@ -296,7 +305,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 				EncryptedKey: hex.EncodeToString(jobKey.EncryptedKey),
 			}
-			files = append(files, fi)
+			rb.Files = append(rb.Files, fi)
 
 			// error files
 			errFileName := strings.Split(jobKey.FileName,".")[0]
@@ -306,18 +315,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 					Type: "OperationOutcome",
 					URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
 				}
-				errFiles = append(errFiles, errFI)
+				rb.Errors = append(rb.Errors, errFI)
 			}
-		}
-
-		rb := bulkResponseBody{
-			TransactionTime:     job.CreatedAt,
-			RequestURL:          job.RequestURL,
-			RequiresAccessToken: true,
-			Files:               files,
-			Errors:              errFiles,
-			KeyMap:              keyMap,
-			JobID:               job.ID,
 		}
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
