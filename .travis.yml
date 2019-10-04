@@ -45,4 +45,4 @@ before_script:
 script:
   - make docker-bootstrap
   - make test
-  - make test-ssas
+  #- make test-ssas
