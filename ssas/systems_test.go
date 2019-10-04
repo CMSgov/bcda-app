@@ -678,7 +678,7 @@ func (s *SystemsTestSuite) TestGetSystemsByGroupIDWithNonexistentID() {
 	g, _, err := makeTestSystem(s.db)
 	assert.Nil(s.T(), err, "can't make test system")
 	randomGroupID := RandomHexID()[:4]
-	systems, err := GetSystemsByGroupID(randomGroupID)
+	systems, _ := GetSystemsByGroupID(randomGroupID)
 	assert.Empty(s.T(), systems, "should not have found system for ID: " + randomGroupID)
 	_ = CleanDatabase(g)
 }
