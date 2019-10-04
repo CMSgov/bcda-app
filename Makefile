@@ -13,8 +13,8 @@ package:
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 lint:
-	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=2m
-	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
+	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=2m --skip-dirs=ssas
+	docker-compose -f docker-compose.test.yml run --rm tests gosec -exclude-dir=ssas ./...
 
 lint-ssas:
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run ./ssas/...
@@ -62,9 +62,11 @@ postman-ssas:
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
 
 unit-test:
+	docker-compose up -d db
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 unit-test-ssas:
+	docker-compose up -d db
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test_ssas.sh
 
 performance-test:
@@ -74,9 +76,7 @@ test:
 	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
-	$(MAKE) postman-ssas
 	$(MAKE) smoke-test
-	$(MAKE) smoke-test-ssas
 
 test-ssas:
 	$(MAKE) lint-ssas
