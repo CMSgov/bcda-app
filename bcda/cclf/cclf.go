@@ -419,7 +419,7 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 			log.Errorf("Unknown file found: %s", metadata)
 			*skipped = *skipped + 1
 
-			deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+			deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("CCLF_ARCHIVE_THRESHOLD_HR", 72))
 			if metadata.deliveryDate.Add(deleteThreshold).Before(time.Now()) {
 				newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), info.Name())
 				err = os.Rename(metadata.filePath, newpath)
@@ -587,7 +587,7 @@ func cleanUpCCLF(cclfMap map[string]map[int][]*cclfFileMetadata) error {
 				if !cclf.imported {
 					// check the timestamp on the failed files
 					elapsed := time.Since(cclf.deliveryDate).Hours()
-					deleteThreshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
+					deleteThreshold := utils.GetEnvInt("CCLF_ARCHIVE_THRESHOLD_HR", 72)
 					if int(elapsed) > deleteThreshold {
 						err := os.Rename(cclf.filePath, newpath)
 						if err != nil {
