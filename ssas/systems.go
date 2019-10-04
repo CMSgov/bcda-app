@@ -68,8 +68,8 @@ type System struct {
 	SoftwareID     string          `json:"software_id"`
 	ClientName     string          `json:"client_name"`
 	APIScope       string          `json:"api_scope"`
-	EncryptionKeys []EncryptionKey `json:"encryption_keys"`
-	Secrets        []Secret        `json:"secrets"`
+	EncryptionKeys []EncryptionKey `json:"encryption_keys,omitempty"`
+	Secrets        []Secret        `json:"secrets,omitempty"`
 }
 
 type EncryptionKey struct {
@@ -283,11 +283,9 @@ func (system *System) GenerateSystemKeyPair() (string, error) {
 }
 
 type Credentials struct {
-	UserID       string    `json:"user_id"`
 	ClientID     string    `json:"client_id"`
 	ClientSecret string    `json:"client_secret"`
 	SystemID     string    `json:"system_id"`
-	TokenString  string    `json:"token"`
 	ClientName   string    `json:"client_name"`
 	ExpiresAt    time.Time `json:"expires_at"`
 }
@@ -421,6 +419,21 @@ func XDataFor(system System) (string, error) {
 	Logger.Info("group xdata '", group, "'")
 	// strconv.Unquote here?
 	return group.XData, nil
+}
+
+//	GetSystemsByGroupID returns the systems associated with the provided group_id
+func GetSystemsByGroupID(groupId string) ([]System, error) {
+	var (
+		db      = GetGORMDbConnection()
+		systems []System
+		err     error
+	)
+	defer Close(db)
+
+	if err = db.Where("group_id = ?", groupId).Find(&systems).Error; err != nil {
+		err = fmt.Errorf("no Systems found with group_id %s", groupId)
+	}
+	return systems, err
 }
 
 // GetSystemByClientID returns the system associated with the provided clientID
