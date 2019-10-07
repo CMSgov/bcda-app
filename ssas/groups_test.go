@@ -40,6 +40,7 @@ const SampleGroup string = `{
     "l0vckYyfyow4TZ0zOKek",
     "HqtEi2khroEZkH4sdIzj"
   ],
+  "systems": [],
   "xdata": %s
 }`
 
@@ -179,9 +180,9 @@ func (s *GroupsTestSuite) TestDeleteGroup() {
 }
 
 func (s *GroupsTestSuite) TestGetAuthorizedGroupsForOktaID() {
-	group1bytes := []byte(`{"group_id":"T0001","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
-	group2bytes := []byte(`{"group_id":"T0002","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
-	group3bytes := []byte(`{"group_id":"T0003","users":["qrstuv"],"scopes":[],"resources":[],"system":{},"name":""}`)
+	group1bytes := []byte(`{"group_id":"T0001","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"systems":[],"name":""}`)
+	group2bytes := []byte(`{"group_id":"T0002","users":["abcdef","qrstuv"],"scopes":[],"resources":[],"systems":[],"name":""}`)
+	group3bytes := []byte(`{"group_id":"T0003","users":["qrstuv"],"scopes":[],"resources":[],"systems":[],"name":""}`)
 
 	g1 := GroupData{}
 	err := json.Unmarshal(group1bytes, &g1)

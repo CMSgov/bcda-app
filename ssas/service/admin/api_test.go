@@ -241,10 +241,8 @@ func (s *APITestSuite) TestCreateSystem() {
 	assert.Equal(s.T(), "application/json", rr.Result().Header.Get("Content-Type"))
 	var result map[string]interface{}
 	_ = json.Unmarshal(rr.Body.Bytes(), &result)
-	assert.NotNil(s.T(), result["user_id"])
 	assert.NotEmpty(s.T(), result["client_id"])
 	assert.NotEmpty(s.T(), result["client_secret"])
-	assert.NotNil(s.T(), result["token"])
 	assert.Equal(s.T(), "Test Client", result["client_name"])
 
 	err = ssas.CleanDatabase(group)
