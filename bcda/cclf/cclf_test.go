@@ -484,7 +484,7 @@ func (s *CCLFTestSuite) TestSortCCLFArchives_TimeChange() {
 
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
 
-	timeChange := origTime.Add(-(time.Hour * 25)).Truncate(time.Second)
+	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
 	if err != nil {
 		s.FailNow("Failed to change modified time for file", err)
