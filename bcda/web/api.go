@@ -318,6 +318,15 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 				rb.Errors = append(rb.Errors, errFI)
 			}
 		}
+
+		encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
+		if !encryptionEnabled {
+			rb.KeyMap = nil
+			for _, file := range rb.Files {
+				file.EncryptedKey = ""
+			}
+		}
+
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -494,7 +503,7 @@ type fileItem struct {
 	// URL of the file
 	URL string `json:"url"`
 	// Encrypted Symmetric Key used to encrypt this file
-	EncryptedKey string `json:"encryptedKey"`
+	EncryptedKey string `json:"encryptedKey,omitempty"`
 }
 
 /*
@@ -518,7 +527,7 @@ type bulkResponseBody struct {
 	Files []fileItem `json:"output"`
 	// Information about error files, including URLs for downloading
 	Errors []fileItem        `json:"error"`
-	KeyMap map[string]string `json:"KeyMap"`
+	KeyMap map[string]string `json:"KeyMap,omitempty"`
 	JobID  uint
 }
 

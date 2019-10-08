@@ -67,7 +67,6 @@ type Job struct {
 	JobCount          int
 	CompletedJobCount int
 	JobKeys           []JobKey
-	FileName          string     `json:"filename"`
 }
 
 func (job *Job) CheckCompletedAndCleanup() (bool, error) {
