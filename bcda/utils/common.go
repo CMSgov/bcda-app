@@ -31,6 +31,17 @@ func GetEnvInt(varName string, defaultVal int) int {
 	return defaultVal
 }
 
+func GetEnvBool(varName string, defaultVal bool) bool {
+	v := os.Getenv(varName)
+	if v != "" {
+		b, err := strconv.ParseBool(v)
+		if err == nil {
+			return b
+		}
+	}
+	return defaultVal
+}
+
 // Look for a directory by increasingly looking up the directory tree by appending '.../'
 // It will look a max of 5 levels up before accepting failure and returning an empty string and an error
 func GetDirPath(dir string) (string, error) {
