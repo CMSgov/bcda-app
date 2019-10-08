@@ -56,7 +56,3 @@
 [[constraint]]
   branch = "master"
   name = "github.com/patrickmn/go-cache"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/dhui/dktest"
