@@ -282,39 +282,42 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient|Coverage)/\$export`)
 		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
 
-		var files []fileItem
 		keyMap := make(map[string]string)
-		var jobKeysObj []models.JobKey
-		db.Find(&jobKeysObj, "job_id = ?", job.ID)
-		for _, jobKey := range jobKeysObj {
-			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
-			fi := fileItem{
-				Type:         resourceType,
-				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
-				EncryptedKey: hex.EncodeToString(jobKey.EncryptedKey),
-			}
-			files = append(files, fi)
-		}
 
 		rb := bulkResponseBody{
 			TransactionTime:     job.CreatedAt,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
-			Files:               files,
+			Files:               []fileItem{},
 			Errors:              []fileItem{},
 			KeyMap:              keyMap,
 			JobID:               job.ID,
 		}
 
-		errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, job.ACOID)
-		if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
-			errFI := fileItem{
-				Type: "OperationOutcome",
-				URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, job.ACOID),
-			}
-			rb.Errors = append(rb.Errors, errFI)
-		}
+		var jobKeysObj []models.JobKey
+		db.Find(&jobKeysObj, "job_id = ?", job.ID)
+		for _, jobKey := range jobKeysObj {
+			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
 
+			// data files
+			fi := fileItem{
+				Type:         resourceType,
+				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				EncryptedKey: hex.EncodeToString(jobKey.EncryptedKey),
+			}
+			rb.Files = append(rb.Files, fi)
+
+			// error files
+			errFileName := strings.Split(jobKey.FileName,".")[0]
+			errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
+			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
+				errFI := fileItem{
+					Type: "OperationOutcome",
+					URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
+				}
+				rb.Errors = append(rb.Errors, errFI)
+			}
+		}
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
