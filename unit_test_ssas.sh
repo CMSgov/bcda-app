@@ -18,9 +18,9 @@ echo "TEST_DB_URL is $TEST_DB_URL"
 usql $DB_HOST_URL -c 'drop database if exists bcda_test;'
 usql $DB_HOST_URL -c 'create database bcda_test;'
 
-echo "Migrating SSAS Database with GORM migration"
+echo "Migrating SSAS Database with golang/migrate"
 
-DATABASE_URL=$TEST_DB_URL DEBUG=true go run github.com/CMSgov/bcda-app/ssas/service/main --migrate
+migrate -database "$TEST_DB_URL" -path ssas/db/migrations up
 
 echo "SSAS Database migration complete"
 
