@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -315,7 +316,8 @@ func main() {
 							}
 						} else {
 							fmt.Println("reading file contents...")
-							bytes, err := ioutil.ReadFile(filename)
+							// #nosec
+							bytes, err := ioutil.ReadFile(filepath.Clean(filename))
 							if err != nil {
 								panic(err)
 							}
