@@ -1,3 +1,4 @@
+BEGIN;
 CREATE TABLE public.blacklist_entries (
                                           id integer NOT NULL,
                                           created_at timestamp with time zone,
@@ -130,3 +131,4 @@ ALTER TABLE ONLY public.secrets
     ADD CONSTRAINT secrets_system_id_systems_id_foreign FOREIGN KEY (system_id) REFERENCES public.systems(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
 ALTER TABLE ONLY public.systems
     ADD CONSTRAINT systems_group_id_groups_group_id_foreign FOREIGN KEY (group_id) REFERENCES public.groups(group_id) ON UPDATE RESTRICT ON DELETE RESTRICT;
+COMMIT;

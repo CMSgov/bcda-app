@@ -108,8 +108,7 @@ docker-compose up ssas
 Seed the database with a minimal group:
 
 ```
-docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
-	insert into groups(group_id) values ('T0000');
+docker-compose run --rm ssas sh -c 'tmp/ssas-service --add-fixture-data'
 ```
 
 point your browser at one of the following ports, or use the postman test collection in tests.

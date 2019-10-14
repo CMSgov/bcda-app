@@ -65,7 +65,10 @@ unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 unit-test-ssas:
-	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test_ssas.sh
+	docker-compose -f docker-compose.test.yml run --rm tests_ssas bash unit_test_ssas.sh
+
+migrations-test-ssas:
+	docker-compose -f docker-compose.test.yml run --rm tests_ssas bash ssas/ops/migrations_test.sh
 
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh

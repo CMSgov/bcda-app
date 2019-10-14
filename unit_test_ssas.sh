@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# This script is intended to be run from within the Docker "unit_test" container
+# This script is intended to be run from within the Docker "tests_ssas" container
 # The docker-compose file brings forward the env vars: DB
 #
 set -e

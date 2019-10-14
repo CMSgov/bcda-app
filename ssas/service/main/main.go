@@ -18,11 +18,9 @@ import (
 	"github.com/CMSgov/bcda-app/ssas/service/public"
 )
 
-var doMigrate bool
 var doAddFixtureData bool
 var doResetSecret bool
 var doNewAdminSystem bool
-var doMigrateAndStart bool
 var doStart bool
 var clientID string
 var systemName string
@@ -30,9 +28,6 @@ var output io.Writer
 
 func init() {
 	output = os.Stdout
-
-	const usageMigrate = "unconditionally migrate the db"
-	flag.BoolVar(&doMigrate, "migrate", false, usageMigrate)
 
 	const usageAddFixtureData = "unconditionally add fixture data"
 	flag.BoolVar(&doAddFixtureData, "add-fixture-data", false, usageAddFixtureData)
@@ -45,10 +40,6 @@ func init() {
 	flag.BoolVar(&doNewAdminSystem, "new-admin-system", false, usageNewAdminSystem)
 	flag.StringVar(&systemName, "system-name", "", "the system's name (e.g., 'BCDA Admin')")
 
-	// we need this all-in-one command to start using fresh in the docker container
-	const usageMigrateAndStart = "start the service; if DEBUG=true, will also migrate the db"
-	flag.BoolVar(&doMigrateAndStart, "migrate-and-start", false, usageMigrateAndStart)
-
 	const usageStart = "start the service"
 	flag.BoolVar(&doStart, "start", false, usageStart)
 }
@@ -58,12 +49,6 @@ func main() {
 	ssas.Logger.Info("Home of the System-to-System Authentication Service")
 
 	flag.Parse()
-	if doMigrate {
-		ssas.InitializeGroupModels()
-		ssas.InitializeSystemModels()
-		ssas.InitializeBlacklistModels()
-		return
-	}
 	if doAddFixtureData {
 		addFixtureData()
 		return
@@ -74,16 +59,6 @@ func main() {
 	}
 	if doNewAdminSystem && systemName != "" {
 		newAdminSystem(systemName)
-		return
-	}
-	if doMigrateAndStart {
-		if os.Getenv("DEBUG") == "true" {
-			ssas.InitializeGroupModels()
-			ssas.InitializeSystemModels()
-			ssas.InitializeBlacklistModels()
-			addFixtureData()
-		}
-		start()
 		return
 	}
 	if doStart {

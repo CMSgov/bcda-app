@@ -1,10 +1,17 @@
-FROM golang:1.11.5-alpine
+FROM golang:1.11-stretch
 
-RUN apk update upgrade
-RUN apk add git openssl
+ARG DATABASE_URL
+
+RUN apt-get update
+RUN apt-get install apt-transport-https ca-certificates openssl -y
 
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
+
+RUN curl -L https://packagecloud.io/golang-migrate/migrate/gpgkey | apt-key add -
+RUN echo "deb https://packagecloud.io/golang-migrate/migrate/debian/ stretch main" > /etc/apt/sources.list.d/migrate.list
+RUN apt-get update
+RUN apt-get install migrate -y
 
 RUN go get -u github.com/golang/dep/cmd/dep
 RUN go get -u github.com/derekparker/delve/cmd/dlv
@@ -15,7 +22,9 @@ RUN go get github.com/mattn/go-colorable
 WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
 COPY . .
 RUN go install ./vendor/github.com/pressly/fresh
+
 RUN dep ensure
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
-CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--migrate-and-start"]
+WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas/ops
+
+ENTRYPOINT ["sh", "ssas_migrate_and_run.sh"]
