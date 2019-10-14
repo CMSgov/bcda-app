@@ -1,12 +1,12 @@
 {
 	"info": {
-		"_postman_id": "514c3338-a3f4-4cfe-82cf-5a8335a8b414",
+		"_postman_id": "fb633ab8-9995-4ff3-9f28-88ff04e69e07",
 		"name": "SSAS",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "admin post group, no group_id",
+			"name": "admin post group, 400",
 			"event": [
 				{
 					"listen": "test",
@@ -33,7 +33,12 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"bad-json\": \"is-bad\"\n}"
+					"raw": "{\n    \"no-group-id\": \"here\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group",
@@ -50,7 +55,7 @@
 			"response": []
 		},
 		{
-			"name": "admin post group, success",
+			"name": "admin post group, 201",
 			"event": [
 				{
 					"listen": "test",
@@ -93,7 +98,12 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"group_id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ],\n    \"system\": {\n        \"client_id\": \"4tuhiOIFIwriIOH3zn\",\n        \"software_id\": \"4NRB1-0XZABZI9E6-5SM3R\",\n        \"client_name\": \"ACO System A\"\n    }\n}"
+					"raw": "{\n    \"group_id\": \"fake-id\",\n    \"name\": \"fake-name\",\n    \"users\": [\n        \"00uiqolo7fEFSfif70h7\",\n        \"l0vckYyfyow4TZ0zOKek\",\n        \"HqtEi2khroEZkH4sdIzj\"\n    ],\n    \"scopes\": [\n        \"user-admin\",\n        \"system-admin\"\n    ],\n    \"resources\": [\n        {\n            \"id\": \"xxx\",\n            \"name\": \"BCDA API\",\n            \"scopes\": [\n                \"bcda-api\"\n            ]\n        },\n        {\n            \"id\": \"eft\",\n            \"name\": \"EFT CCLF\",\n            \"scopes\": [\n                \"eft-app:download\",\n                \"eft-data:read\"\n            ]\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
 				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}:{{admin-port}}/group",
@@ -110,7 +120,7 @@
 			"response": []
 		},
 		{
-			"name": "admin put group, invalid id",
+			"name": "admin put group, 400",
 			"event": [
 				{
 					"listen": "test",
@@ -156,7 +166,7 @@
 			"response": []
 		},
 		{
-			"name": "admin put group, success",
+			"name": "admin put group, 200",
 			"event": [
 				{
 					"listen": "test",
@@ -283,7 +293,7 @@
 			"response": []
 		},
 		{
-			"name": "admin delete group, invalid id",
+			"name": "admin delete group, 400",
 			"event": [
 				{
 					"listen": "test",
@@ -318,7 +328,422 @@
 			"response": []
 		},
 		{
-			"name": "admin delete group, success",
+			"name": "admin create system, 400",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"not-gonna\": \"fly\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin create system, 201",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 201 and returns json\", function () {",
+							"    pm.response.to.have.status(201);",
+							"",
+							"    const schema = {",
+							"        \"system_id\": {\"type\": \"string\"},",
+							"        \"client_id\": {\"type\": \"string\"},",
+							"        \"client_secret\": {\"type\": \"string\"},",
+							"        \"client_name\": {\"type\": \"string\"},",
+							"        \"expires_at\": {\"type\": \"string\"},",
+							"    };",
+							"    var respJson = pm.response.json();",
+							"    ",
+							"    pm.test(\"schema is valid\", function() {",
+							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"    });",
+							"    ",
+							"    pm.environment.set(\"system-id\", respJson.system_id);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"client_name\": \"Test Client\",\n    \"group_id\": \"fake-id\",\n    \"scope\": \"bcda-api\",\n    \"public_key\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L\\nI8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK\\n/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL\\ncN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ\\nlT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI\\nXK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2\\nHwIDAQAB\\n-----END PUBLIC KEY-----\",\n    \"tracking_id\": \"T00000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin reset credentials, 404",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 404\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system/9999/credentials",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system",
+						"9999",
+						"credentials"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin reset credentials, 201",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 201 and returns json\", function () {",
+							"    pm.response.to.have.status(201);",
+							"",
+							"    const schema = {",
+							"        \"client_id\": {\"type\": \"string\"},",
+							"        \"client_secret\": {\"type\": \"string\"},",
+							"    };",
+							"    var respJson = pm.response.json();",
+							"    ",
+							"    pm.test(\"schema is valid\", function() {",
+							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"    });",
+							"    ",
+							"    pm.environment.set(\"client-id\", respJson.client_id);",
+							"    pm.environment.set(\"client-secret\", respJson.client_secret);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system/{{system-id}}/credentials",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system",
+						"{{system-id}}",
+						"credentials"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin get public key, 404",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 404\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system/9999/key",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system",
+						"9999",
+						"key"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin get public key, 200",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 200 and returns json\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    ",
+							"    const schema = {",
+							"        \"client_id\": {\"type\": \"string\"},",
+							"        \"public_key\": {\"type\": \"string\"},",
+							"    };",
+							"    var respJson = pm.response.json();",
+							"    ",
+							"    pm.test(\"schema is valid\", function() {",
+							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system/{{system-id}}/key",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system",
+						"{{system-id}}",
+						"key"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin delete credentials, 404",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 404\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system/9999/credentials",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system",
+						"9999",
+						"credentials"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin delete credentials, 200",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "fc625fc2-e25e-4fd2-a110-fc1528839ca7",
+						"exec": [
+							"pm.test(\"response is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}:{{admin-port}}/system/{{system-id}}/credentials",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"port": "{{admin-port}}",
+					"path": [
+						"system",
+						"{{system-id}}",
+						"credentials"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "admin delete group, 200",
 			"event": [
 				{
 					"listen": "test",
@@ -416,155 +841,6 @@
 					"path": [
 						"token",
 						"{{token_id}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public register",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"name": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					},
-					{
-						"key": "x-fake-token",
-						"value": "T0000",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\"group_id\":\"T0000\",\"client_id\":\"yet another evil twin\",\"client_name\":\"my sister's evil twin\",\"scope\":\"bcda-api\",\"jwks\":{\"keys\":[{\"e\":\"AAEAAQ\",\"n\":\"ok6rvXu95337IxsDXrKzlIqw_I_zPDG8JyEw2CTOtNMoDi1QzpXQVMGj2snNEmvNYaCTmFf51I-EDgeFLLexr40jzBXlg72quV4aw4yiNuxkigW0gMA92OmaT2jMRIdDZM8mVokoxyPfLub2YnXHFq0XuUUgkX_TlutVhgGbyPN0M12teYZtMYo2AUzIRggONhHvnibHP0CPWDjCwSfp3On1Recn4DPxbn3DuGslF2myalmCtkujNcrhHLhwYPP-yZFb8e0XSNTcQvXaQxAqmnWH6NXcOtaeWMQe43PNTAyNinhndgI8ozG3Hz-1NzHssDH_yk6UYFSszhDbWAzyqw\",\"kty\":\"RSA\"}]}}"
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/register",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"register"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public info",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/_info",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"_info"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "admin health",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/_health",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"_health"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "admin _version",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{public-port}}/_version",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{public-port}}",
-					"path": [
-						"_version"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public info",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_info",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{admin-port}}",
-					"path": [
-						"_info"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public health",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_health",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{admin-port}}",
-					"path": [
-						"_health"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "public _version",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{scheme}}://{{host}}:{{admin-port}}/_version",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"port": "{{admin-port}}",
-					"path": [
-						"_version"
 					]
 				}
 			},
@@ -791,5 +1067,6 @@
 				]
 			}
 		}
-	]
+	],
+	"protocolProfileBehavior": {}
 }

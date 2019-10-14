@@ -304,7 +304,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 		issue := issues[0].(map[string]interface{})
 		assert.Equal(t, "Error", issue["severity"])
 		details := issue["details"].(map[string]interface{})
-		assert.Equal(t,fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
+		assert.Equal(t, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
 		assert.Nil(t, err)
 	}
 	assert.False(t, errorFileScanner.Scan(), "There should be only 2 entries in the file.")
@@ -360,7 +360,7 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/Patient/$export",
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Pending",
 		JobCount:   1,
 	}
@@ -393,6 +393,63 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	assert.Nil(s.T(), err)
 	// As this test actually connects to BB, we can't be sure it will succeed
 	assert.Contains(s.T(), []string{"Failed", "Completed"}, completedJob.Status)
+}
+
+func (s *MainTestSuite) TestProcessJob_InvalidArgs() {
+	j := que.Job{Args: []byte("{ this is not valid JSON }")}
+	assert.EqualError(s.T(), processJob(&j), "invalid character 't' looking for beginning of object key string")
+}
+
+func (s *MainTestSuite) TestProcessJob_InvalidJobID() {
+	qjArgs, _ := json.Marshal(jobEnqueueArgs{
+		ID:             99999999,
+		ACOID:          "00000000-0000-0000-0000-000000000000",
+		UserID:         "00000000-0000-0000-0000-000000000000",
+		BeneficiaryIDs: []string{},
+		ResourceType:   "Patient",
+	})
+
+	qj := que.Job{
+		Type: "ProcessJob",
+		Args: qjArgs,
+	}
+
+	assert.Contains(s.T(), processJob(&qj).Error(), "could not retrieve job from database")
+}
+
+func (s *MainTestSuite) TestProcessJob_NoBBClient() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     "Pending",
+		JobCount:   1,
+	}
+	db.Save(&j)
+
+	qjArgs, _ := json.Marshal(jobEnqueueArgs{
+		ID:             int(j.ID),
+		ACOID:          j.ACOID.String(),
+		UserID:         j.UserID.String(),
+		BeneficiaryIDs: []string{},
+		ResourceType:   "Patient",
+	})
+
+	qj := que.Job{
+		Type: "ProcessJob",
+		Args: qjArgs,
+	}
+
+	origBBCert := os.Getenv("BB_CLIENT_CERT_FILE")
+	defer os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
+	os.Unsetenv("BB_CLIENT_CERT_FILE")
+
+	assert.Contains(s.T(), processJob(&qj).Error(), "could not create Blue Button client")
+
+	db.Unscoped().Delete(&j)
 }
 
 func (s *MainTestSuite) TestSetupQueue() {
