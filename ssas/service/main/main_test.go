@@ -17,7 +17,6 @@ type MainTestSuite struct {
 }
 
 func (s *MainTestSuite) SetupSuite() {
-	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
 }
 

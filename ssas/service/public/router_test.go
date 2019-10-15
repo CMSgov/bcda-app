@@ -30,7 +30,6 @@ type PublicRouterTestSuite struct {
 func (s *PublicRouterTestSuite) SetupSuite() {
 	os.Setenv("DEBUG", "true")
 	s.publicRouter = routes()
-	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()

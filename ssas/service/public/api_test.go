@@ -28,7 +28,6 @@ type APITestSuite struct {
 }
 
 func (s *APITestSuite) SetupSuite() {
-	ssas.InitializeGroupModels()
 	ssas.InitializeSystemModels()
 	s.db = ssas.GetGORMDbConnection()
 	_ = Server()

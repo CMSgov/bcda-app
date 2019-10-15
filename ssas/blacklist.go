@@ -1,26 +1,12 @@
 package ssas
 
 import (
-"fmt"
+	"fmt"
 	"github.com/pborman/uuid"
-	"log"
 	"time"
 
 	"github.com/jinzhu/gorm"
 )
-
-//	InitializeBlacklistModels will call gorm.DB.AutoMigrate() for BlacklistEntries{}
-func InitializeBlacklistModels() *gorm.DB {
-	log.Println("Initialize blacklist models")
-	db := GetGORMDbConnection()
-	defer Close(db)
-
-	db.AutoMigrate(
-		&BlacklistEntry{},
-	)
-
-	return db
-}
 
 type BlacklistEntry struct {
 	gorm.Model

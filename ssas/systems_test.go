@@ -28,7 +28,6 @@ type SystemsTestSuite struct {
 
 func (s *SystemsTestSuite) SetupSuite() {
 	s.db = GetGORMDbConnection()
-	InitializeGroupModels()
 	InitializeSystemModels()
 }
 

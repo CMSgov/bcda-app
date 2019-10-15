@@ -16,7 +16,6 @@ type CacheEntriesTestSuite struct {
 
 func (s *CacheEntriesTestSuite) SetupSuite() {
 	s.db = GetGORMDbConnection()
-	InitializeBlacklistModels()
 }
 
 func (s *CacheEntriesTestSuite) TearDownSuite() {

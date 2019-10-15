@@ -48,12 +48,6 @@ func InitializeSystemModels() *gorm.DB {
 	db := GetGORMDbConnection()
 	defer Close(db)
 
-	db.AutoMigrate(
-		&System{},
-		&EncryptionKey{},
-		&Secret{},
-	)
-
 	db.Model(&System{}).AddForeignKey("group_id", "groups(group_id)", "RESTRICT", "RESTRICT")
 	db.Model(&EncryptionKey{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")
 	db.Model(&Secret{}).AddForeignKey("system_id", "systems(id)", "RESTRICT", "RESTRICT")

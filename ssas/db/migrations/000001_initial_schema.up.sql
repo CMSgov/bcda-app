@@ -124,6 +124,7 @@ CREATE INDEX idx_encryption_keys_deleted_at ON public.encryption_keys USING btre
 CREATE INDEX idx_groups_deleted_at ON public.groups USING btree (deleted_at);
 CREATE INDEX idx_secrets_deleted_at ON public.secrets USING btree (deleted_at);
 CREATE INDEX idx_systems_deleted_at ON public.systems USING btree (deleted_at);
+CREATE UNIQUE INDEX idx_client ON public.systems USING btree (client_id);
 
 ALTER TABLE ONLY public.encryption_keys
     ADD CONSTRAINT encryption_keys_system_id_systems_id_foreign FOREIGN KEY (system_id) REFERENCES public.systems(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
