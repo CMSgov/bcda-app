@@ -20,4 +20,5 @@ RUN echo "deb https://packagecloud.io/golang-migrate/migrate/debian/ stretch mai
 RUN apt-get update
 RUN apt-get install migrate -y
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
+WORKDIR /go/src/github.com/CMSgov/bcda-app
+ENTRYPOINT []

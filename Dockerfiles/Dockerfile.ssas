@@ -25,6 +25,7 @@ RUN go install ./vendor/github.com/pressly/fresh
 
 RUN dep ensure
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas/ops
+WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
 
-ENTRYPOINT ["sh", "ssas_migrate_and_run.sh"]
+ENTRYPOINT []
+CMD ["sh", "ops/ssas_migrate_and_run.sh"]

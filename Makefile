@@ -113,8 +113,8 @@ load-synthetic-suppression-data:
 
 load-fixtures-ssas:
 	docker-compose up -d db
-	docker-compose run ssas sh -c 'tmp/ssas-service --migrate'
-	docker-compose run ssas sh -c 'tmp/ssas-service --add-fixture-data'
+	docker-compose -f docker-compose.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/ssas/db/migrations ssas migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path ./ up
+	docker-compose -f docker-compose.yml run ssas sh -c 'tmp/ssas-service --add-fixture-data'
 
 docker-build:
 	docker-compose build --force-rm
