@@ -21,5 +21,5 @@ echo "Running SSAS migration tests"
 cd ssas/db/migrations
 DATABASE_URL=$TEST_DB_URL DEBUG=true go test -tags=migrations -v
 
-#echo "Cleaning up test DB (bcda_test)..."
-#usql $DB_HOST_URL -c 'drop database bcda_test;'
+echo "Cleaning up test DB (bcda_test)..."
+usql $DB_HOST_URL -c 'drop database bcda_test;'

@@ -28,18 +28,18 @@ func TestAllMigrations(t *testing.T) {
 	dbURL = os.Getenv("DATABASE_URL")
 	db = 	ssas.GetGORMDbConnection()
 
-	t.Run("Schema1Up", Schema1Up)
-//	t.Run("Schema2Up", Schema2Up)
+	t.Run("up1", up1)
+//	t.Run("up2", up2)
 	// Place all "up" migrations in order above this comment
 
 	// Place all "down" migrations in reverse order below this comment
-//	t.Run("Schema2Down", Schema2Down)
-	t.Run("Schema1Down", Schema1Down)
+//	t.Run("down2", down2)
+	t.Run("down1", down1)
 
 	ssas.Close(db)
 }
 
-func Schema1Up(t *testing.T) {
+func up1(t *testing.T) {
 	success := runMigration(t, "1")
 
 	if success {
@@ -52,7 +52,7 @@ func Schema1Up(t *testing.T) {
 	}
 }
 
-func Schema1Down(t *testing.T) {
+func down1(t *testing.T) {
 	success := true
 	// This is a special case, because there is no migration index for what comes before schema 1. Typically,
 	// we would want to be certain we're testing the right migration and the next two lines would be replaced by:
