@@ -86,6 +86,7 @@ test-ssas:
 	$(MAKE) unit-test-ssas
 	$(MAKE) postman-ssas
 	$(MAKE) smoke-test-ssas
+	$(MAKE) migrations-test-ssas
 
 load-fixtures:
 	docker-compose up -d db
