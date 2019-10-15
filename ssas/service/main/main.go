@@ -143,7 +143,7 @@ func addFixtureData() {
 		fmt.Println(err)
 	}
 	// group for cms_id A9994; client_id 0c527d2e-2e8a-4808-b11d-0fa06baf8254
-	if err := db.Save(&ssas.Group{GroupID: "0c527d2e-2e8a-4808-b11d-0fa06baf8254", XData: `"{\"cms_ids\":[\"A9994\"]}"`}).Error; err != nil {
+	if err := db.Save(&ssas.Group{GroupID: "0c527d2e-2e8a-4808-b11d-0fa06baf8254", Data: ssas.GroupData{GroupID: "0c527d2e-2e8a-4808-b11d-0fa06baf8254"}, XData: `"{\"cms_ids\":[\"A9994\"]}"`}).Error; err != nil {
 		fmt.Println(err)
 	}
 	makeSystem(db, "admin", "31e029ef-0e97-47f8-873c-0e8b7e7f99bf",

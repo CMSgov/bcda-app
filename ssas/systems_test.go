@@ -668,6 +668,40 @@ func (s *SystemsTestSuite) TestGetSystemByClientIDWithNonNumberID() {
 	require.NotNil(s.T(), err, "found system for non-number id")
 }
 
+func (s *SystemsTestSuite) TestGetSystemsByGroupIDWithEmptyID() {
+	systems, _ := GetSystemsByGroupID("")
+	assert.Empty(s.T(), systems, "found system for empty group id")
+}
+
+func (s *SystemsTestSuite) TestGetSystemsByGroupIDWithNonexistentID() {
+	// make sure there's at least one system
+	g, _, err := makeTestSystem(s.db)
+	assert.Nil(s.T(), err, "can't make test system")
+	randomGroupID := RandomHexID()[:4]
+	systems, _ := GetSystemsByGroupID(randomGroupID)
+	assert.Empty(s.T(), systems, "should not have found system for ID: " + randomGroupID)
+	_ = CleanDatabase(g)
+}
+
+func (s *SystemsTestSuite) TestGetSystemsByGroupIDWithKnownSystem() {
+	g, system, err := makeTestSystem(s.db)
+
+	require.Nil(s.T(), err, "unexpected error ", err)
+	systemsFromGroupID, err := GetSystemsByGroupID(g.GroupID)
+	assert.Nil(s.T(), err, "unexpected error ", err)
+
+	assert.Len(s.T(), systemsFromGroupID, 1, "should find exactly one system")
+
+	// Don't stop the test (so we can run CleanDatabase() at the end), but also don't bother with the next two
+	// assertions unless the previous one was true.
+	if len(systemsFromGroupID) == 1 {
+		assert.Equal(s.T(), system.ID, systemsFromGroupID[0].ID)
+		assert.Equal(s.T(), system.GroupID, systemsFromGroupID[0].GroupID)
+	}
+
+	_ = CleanDatabase(g)
+}
+
 func TestSystemsTestSuite(t *testing.T) {
 	suite.Run(t, new(SystemsTestSuite))
 }
