@@ -120,20 +120,27 @@ func profile(hicn string, acoID string) record {
 }
 
 func records(profile record) []record {
-	// Create 0-5 suppression records for this profile
-	ct := rand.Intn(6)
+	// Create 0-3 suppression records for this profile
+	ct := rand.Intn(4)
 	encDtMin, encDtMax := time.Now().Add(-7*24*time.Hour), time.Now()
 	effDtMin, effDtMax := time.Now().Add(-7*24*time.Hour), time.Now().Add(3*24*time.Hour)
 	records := []record{}
 
 	for i := 0; i < ct; i++ {
 		r := profile
+
+		r.srcCode = field{l: 5, v: oneOfStr("1800", "")}    // Beneficiary data sharing source code
+		r.saSrcCode = field{l: 5, v: oneOfStr("1-800", "")} // Beneficiary substance abuse data sharing source code
+		if r.srcCode.v == "" && r.saSrcCode.v == "" {
+			// One or both types of data sharing should have values
+			continue
+		}
+
 		r.encDate = field{l: 8, v: ccyymmdd(encDtMin, encDtMax)} // Encounter date
 
-		r.effDate = field{l: 8, v: ""}                   // Beneficiary data sharing effective date
-		r.srcCode = field{l: 5, v: oneOfStr("1800", "")} // Beneficiary data sharing source code
-		r.mechCode = field{l: 1, v: ""}                  // Beneficiary option data sharing decision mechanism code
-		r.prefInd = field{l: 1, v: ""}                   // Beneficiary data sharing preference indicator
+		r.effDate = field{l: 8, v: ""}  // Beneficiary data sharing effective date
+		r.mechCode = field{l: 1, v: ""} // Beneficiary option data sharing decision mechanism code
+		r.prefInd = field{l: 1, v: ""}  // Beneficiary data sharing preference indicator
 		// If beneficiary data sharing source code is populated, also populate its associated fields (ICD v9.1 p.11)
 		if r.srcCode.v != "" {
 			r.effDate.v = ccyymmdd(effDtMin, effDtMax)
@@ -141,10 +148,9 @@ func records(profile record) []record {
 			r.prefInd.v = oneOfStr("Y", "N")
 		}
 
-		r.saEffDate = field{l: 8, v: ""}                    // Beneficiary substance abuse data sharing effective date
-		r.saSrcCode = field{l: 5, v: oneOfStr("1-800", "")} // Beneficiary substance abuse data sharing source code
-		r.saMechCode = field{l: 1, v: ""}                   // Beneficiary option substance abuse decision mechanism code
-		r.saPrefInd = field{l: 1, v: ""}                    // Beneficiary substance abuse data sharing preference indicator
+		r.saEffDate = field{l: 8, v: ""}  // Beneficiary substance abuse data sharing effective date
+		r.saMechCode = field{l: 1, v: ""} // Beneficiary option substance abuse decision mechanism code
+		r.saPrefInd = field{l: 1, v: ""}  // Beneficiary substance abuse data sharing preference indicator
 		// If beneficiary substance abuse data sharing source code is populated, also populate its associated fields (ICD v9.1 p.11)
 		if r.saSrcCode.v != "" {
 			r.saEffDate.v = ccyymmdd(effDtMin, effDtMax)
