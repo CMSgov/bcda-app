@@ -117,6 +117,11 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
+	if err = createDir(payloadPath); err != nil {
+		log.Error(err)
+		return err
+	}
+
 	fileUUID, err := writeBBDataToFile(bb, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 	fileName := fileUUID + ".ndjson"
 
@@ -127,7 +132,13 @@ func processJob(j *que.Job) error {
 			return err
 		}
 	} else {
-		err = encryptData(stagingPath, payloadPath, fileName, exportJob)
+		encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
+		if encryptionEnabled {
+			err = encryptData(stagingPath, payloadPath, fileName, exportJob)
+		} else {
+			// this will be the only method called in this block after the full removal of encryption. Or we can just add the code here.
+			err = addJobFileName(fileName, exportJob)
+		}
 		if err != nil {
 			log.Error(err)
 			return err
@@ -502,6 +513,18 @@ func updateJobStats(jID uint) {
 	if err := db.First(&j, jID).Error; err == nil {
 		db.Model(&j).Update(models.Job{CompletedJobCount: j.CompletedJobCount + 1})
 	}
+}
+
+func addJobFileName(fileName string, exportJob models.Job) error {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	err := db.Create(&models.JobKey{JobID: exportJob.ID, FileName: fileName}).Error
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
 }
 
 func updateJobQueueCountCloudwatchMetric() {
