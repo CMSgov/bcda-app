@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -633,7 +634,12 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 
 	}
 
-	assert.NotNil(s.T(), rb.KeyMap)
+	encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
+	if encryptionEnabled {
+		assert.NotNil(s.T(), rb.KeyMap)
+	} else {
+		assert.Nil(s.T(), rb.KeyMap)
+	}
 	assert.Empty(s.T(), rb.Errors)
 
 	s.db.Delete(&j)

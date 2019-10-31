@@ -135,7 +135,7 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
-        // NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
+	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") && (!db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound()) {
 		for _, job := range jobs {
 			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
@@ -308,7 +308,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			rb.Files = append(rb.Files, fi)
 
 			// error files
-			errFileName := strings.Split(jobKey.FileName,".")[0]
+			errFileName := strings.Split(jobKey.FileName, ".")[0]
 			errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
 			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 				errFI := fileItem{
@@ -316,6 +316,14 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 					URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
 				}
 				rb.Errors = append(rb.Errors, errFI)
+			}
+		}
+
+		encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
+		if !encryptionEnabled {
+			rb.KeyMap = nil
+			for _, file := range rb.Files {
+				file.EncryptedKey = ""
 			}
 		}
 		jsonData, err := json.Marshal(rb)
@@ -494,7 +502,7 @@ type fileItem struct {
 	// URL of the file
 	URL string `json:"url"`
 	// Encrypted Symmetric Key used to encrypt this file
-	EncryptedKey string `json:"encryptedKey"`
+	EncryptedKey string `json:"encryptedKey,omitempty"`
 }
 
 /*
@@ -518,7 +526,7 @@ type bulkResponseBody struct {
 	Files []fileItem `json:"output"`
 	// Information about error files, including URLs for downloading
 	Errors []fileItem        `json:"error"`
-	KeyMap map[string]string `json:"KeyMap"`
+	KeyMap map[string]string `json:"KeyMap,omitempty"`
 	JobID  uint
 }
 
