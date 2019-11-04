@@ -105,12 +105,11 @@ type MetadataResponse struct {
 	Body fhirmodels.CapabilityStatement `json:"body,omitempty"`
 }
 
-// File of newline-delimited JSON FHIR ExplanationOfBenefit objects
-// swagger:response ExplanationOfBenefitNDJSON
-type ExplanationOfBenefitNDJSON struct {
+// File of newline-delimited JSON FHIR objects
+// swagger:response FileNDJSON
+type FileNDJSON struct {
 	// in: body
-	// minimum items: 1
-	Body *[]fhirmodels.ExplanationOfBenefit
+	Body string `json:"ndjson"`
 }
 
 // A JobStatus parameter model.

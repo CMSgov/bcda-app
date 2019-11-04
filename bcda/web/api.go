@@ -366,7 +366,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		bearer_token:
 
 	Responses:
-		200: ExplanationOfBenefitNDJSON
+		200: FileNDJSON
 		400: badRequestResponse
 		401: invalidCredentials
         404: notFoundResponse
