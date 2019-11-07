@@ -11,11 +11,13 @@ RUN go get -u github.com/derekparker/delve/cmd/dlv
 RUN go get github.com/BurntSushi/toml
 RUN go get github.com/howeyc/fsnotify
 RUN go get github.com/mattn/go-colorable
+RUN go get github.com/CMSgov/bcda-ssas-app/ssas/service/main
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
-COPY . .
+COPY --from=migrate/migrate /migrate /usr/local/bin/migrate
+
+WORKDIR /go/src/github.com/CMSgov/bcda-app/
+COPY vendor/github.com/pressly/fresh vendor/github.com/pressly/fresh
 RUN go install ./vendor/github.com/pressly/fresh
-RUN dep ensure
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/ssas
-CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--migrate-and-start"]
+WORKDIR /go/src/github.com/CMSgov/bcda-ssas-app/ssas
+CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--start"]
