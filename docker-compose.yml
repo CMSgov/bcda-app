@@ -27,7 +27,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda
     environment:
-      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
+      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue?sslmode=disable
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
       - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
@@ -73,7 +73,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcdaworker
     environment:
-      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
+      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue?sslmode=disable
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
       - FHIR_PAYLOAD_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/data
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata

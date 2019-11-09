@@ -134,10 +134,10 @@ func processJob(j *que.Job) error {
 	} else {
 		encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
 		if encryptionEnabled {
-			err = encryptData(stagingPath, payloadPath, fileName, exportJob)
+			err = encryptData(stagingPath, payloadPath, fileName, jobArgs.ResourceType, exportJob)
 		} else {
 			// this will be the only method called in this block after the full removal of encryption. Or we can just add the code here.
-			err = addJobFileName(fileName, exportJob)
+			err = addJobFileName(fileName, jobArgs.ResourceType, exportJob)
 		}
 		if err != nil {
 			log.Error(err)
@@ -355,7 +355,7 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 	}
 }
 
-func encryptData(dataPath, encryptedDataPath, fileName string, exportJob models.Job) error {
+func encryptData(dataPath, encryptedDataPath, fileName, resourceType string, exportJob models.Job) error {
 	_, err := ioutil.ReadDir(dataPath)
 	if err != nil {
 		log.Error(err)
@@ -390,7 +390,7 @@ func encryptData(dataPath, encryptedDataPath, fileName string, exportJob models.
 		}
 
 		// Save the encrypted key before trying anything dangerous
-		err = db.Create(&models.JobKey{JobID: exportJob.ID, EncryptedKey: ek, FileName: fileName}).Error
+		err = db.Create(&models.JobKey{JobID: exportJob.ID, EncryptedKey: ek, FileName: fileName, ResourceType: resourceType}).Error
 		if err != nil {
 			return err
 		}
@@ -515,11 +515,10 @@ func updateJobStats(jID uint) {
 	}
 }
 
-func addJobFileName(fileName string, exportJob models.Job) error {
+func addJobFileName(fileName, resourceType string, exportJob models.Job) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
-	err := db.Create(&models.JobKey{JobID: exportJob.ID, FileName: fileName}).Error
+	err := db.Create(&models.JobKey{JobID: exportJob.ID, FileName: fileName, ResourceType: resourceType}).Error
 	if err != nil {
 		log.Error(err)
 		return err
