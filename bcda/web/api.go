@@ -177,7 +177,6 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// TODO: add return for errors
 func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
 	var unworkedTypes []string
 
@@ -215,8 +214,6 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 			if requestedTypes, ok := req.Query()["_type"]; ok {
 				// if this type is being worked no need to keep looking, break out and go to the next type.
 				if strings.Contains(requestedTypes[0], t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-					fmt.Println("in first check")
-					fmt.Printf("type: %s, being worked \n", t)
 					worked = true
 					break
 				}
@@ -225,9 +222,6 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
 					id := strconv.Itoa(int(job.ID))
 
-					// TODO: this should be looked at again for the most efficient query possible
-					// db.Raw("SELECT name, age FROM users WHERE name = ?", 3).Scan(&result)
-					// rows, err := db.Query(`select args ->> 'ResourceType' AS ResourceType from que_jobs where args ->> 'ID' = '9';`)
 					rows, err = db.Query(`select args ->> 'ResourceType' AS ResourceType from que_jobs where cast(args ->> 'ID' as INTEGER)  =` + id + `;`)
 					if err != nil {
 						log.Error(err)
@@ -246,7 +240,6 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 						}
 						// break out of que_jobs
 						if t == resourceType {
-							fmt.Printf("type: %s being worked \n", t)
 							worked = true
 							break
 						}
@@ -262,7 +255,6 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 			unworkedTypes = append(unworkedTypes, t)
 		}
 	}
-	fmt.Println("unworked array:", unworkedTypes)
 	if len(unworkedTypes) == 0 {
 		return nil, false
 	} else {
