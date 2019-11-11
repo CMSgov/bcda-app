@@ -172,18 +172,20 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
-	req.Header.Add("BlueButton-BeneficiaryId", "")
-	req.Header.Add("BlueButton-OriginatingIpAddress", "")
-
 	req.Header.Add("keep-alive", "")
 	req.Header.Add("X-Forwarded-Proto", "https")
 	req.Header.Add("X-Forwarded-Host", "")
-
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
-	req.Header.Add("BlueButton-BackendCall", "")
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
+
+        // Do not set BB-specific headers with blank values
+        // Leaving them here, commented out, in case we want to set them to real values in future
+        //req.Header.Add("BlueButton-BeneficiaryId", "")
+        //req.Header.Add("BlueButton-OriginatingIpAddress", "")
+        //req.Header.Add("BlueButton-BackendCall", "")
+
 }
 
 func (bbc *BlueButtonClient) tryRequest(req *http.Request) (string, error) {
