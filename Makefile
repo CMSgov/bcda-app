@@ -41,7 +41,7 @@ clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-c
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:
-	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
+	CLIENT_ID=$(CLIENT_ID) CLIENT_SECRET=$(CLIENT_SECRET) docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh smoke_test.sh
 
 smoke-test-ssas:
 	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/ssas_test.sh
@@ -53,16 +53,9 @@ postman:
 	# For example: make postman env=test token=<MY_TOKEN>
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json -e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
 
-postman-ssas:
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/SSAS.postman_collection.json -e test/postman_test/ssas-local.postman_environment.json --global-var adminClientId=$(SSAS_ADMIN_CLIENT_ID) --global-var adminClientSecret=$(SSAS_ADMIN_CLIENT_SECRET)
-
 unit-test:
 	docker-compose up -d db
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
-
-unit-test-ssas:
-	docker-compose up -d db
-	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test_ssas.sh
 
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
@@ -72,12 +65,6 @@ test:
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
 	$(MAKE) smoke-test
-
-test-ssas:
-	$(MAKE) lint-ssas
-	$(MAKE) unit-test-ssas
-	$(MAKE) postman-ssas
-	$(MAKE) smoke-test-ssas
 
 load-fixtures:
 	docker-compose up -d db
@@ -135,4 +122,4 @@ debug-worker:
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
-.PHONY: docker-build docker-bootstrap load-fixtures load-synthetic-cclf-data load-synthetic-suppression-data test debug-api debug-worker api-shell worker-shell package release smoke-test postman unit-test performance-test lint
+.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test smoke-test-ssas test unit-test worker-shell
