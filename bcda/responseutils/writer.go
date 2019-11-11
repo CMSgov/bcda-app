@@ -81,7 +81,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					{
 						Name: "export",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/ExplanationOfBenefit/$export",
+							Reference: baseurl + "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 							Type:      "Endpoint",
 						},
 					},
@@ -129,7 +129,7 @@ func addPatientEndpointToStatement(statement *fhirmodels.CapabilityStatement, ba
 		element := fhirmodels.CapabilityStatementRestOperationComponent{
 			Name: "export",
 			Definition: &fhirmodels.Reference{
-				Reference: baseUrl + "/api/v1/Patient/$export",
+				Reference: baseUrl + "/api/v1/Patient/$export?_type=Patient",
 				Type:      "Endpoint",
 			},
 		}
@@ -145,7 +145,7 @@ func addCoverageEndpointToStatement(statement *fhirmodels.CapabilityStatement, b
 		element := fhirmodels.CapabilityStatementRestOperationComponent{
 			Name: "export",
 			Definition: &fhirmodels.Reference{
-				Reference: baseUrl + "/api/v1/Coverage/$export",
+				Reference: baseUrl + "/api/v1/Patient/$export?_type=Coverage",
 				Type:      "Endpoint",
 			},
 		}
