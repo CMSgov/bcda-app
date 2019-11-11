@@ -358,7 +358,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export",
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -367,7 +367,7 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export"
+						"$export?_type=Patient"
 					]
 				}
 			},

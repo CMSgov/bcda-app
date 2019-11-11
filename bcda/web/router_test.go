@@ -105,7 +105,7 @@ func (s *RouterTestSuite) TestVersionRoute() {
 }
 
 func (s *RouterTestSuite) TestEOBExportRoute() {
-	res := s.getAPIRoute("/api/v1/ExplanationOfBenefit/$export")
+	res := s.getAPIRoute("/api/v1/Patient/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
@@ -113,48 +113,22 @@ func (s *RouterTestSuite) TestPatientExportRoute() {
 	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
 	defer os.Setenv("ENABLE_PATIENT_EXPORT", origPtExp)
 
-	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient", nil)
 	rr := httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-
-	os.Setenv("ENABLE_PATIENT_EXPORT", "false")
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
-	os.Unsetenv("ENABLE_PATIENT_EXPORT")
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestCoverageExportRoute() {
 	origCovExp := os.Getenv("ENABLE_COVERAGE_EXPORT")
 	defer os.Setenv("ENABLE_COVERAGE_EXPORT", origCovExp)
 
-	os.Setenv("ENABLE_COVERAGE_EXPORT", "true")
-	req := httptest.NewRequest("GET", "/api/v1/Coverage/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Coverage", nil)
 	rr := httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-
-	os.Setenv("ENABLE_COVERAGE_EXPORT", "false")
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
-	os.Unsetenv("ENABLE_COVERAGE_EXPORT")
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestJobStatusRoute() {

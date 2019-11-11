@@ -63,7 +63,7 @@ func main() {
 }
 
 func makeTarget(accessToken string) vegeta.Targeter {
-	url := fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, endpoint)
+	url := fmt.Sprintf("%s://%s/api/v1/Patient/$export?_type=%s", proto, apiHost, endpoint)
 
 	header := map[string][]string{
 		"Prefer":        {"respond-async"},

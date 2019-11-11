@@ -81,7 +81,7 @@ func getAccessToken() string {
 func startJob(resourceType string) *http.Response {
 	client := &http.Client{}
 
-	var url string = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType)
+	var url string = fmt.Sprintf("%s://%s/api/v1/Patient/$export?_type=%s", proto, apiHost, resourceType)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
