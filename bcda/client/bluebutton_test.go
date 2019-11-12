@@ -270,8 +270,6 @@ func (s *BBTestSuite) TestAddRequestHeaders() {
 
 	assert.Equal(s.T(), reqID.String(), req.Header.Get("BlueButton-OriginalQueryId"))
 	assert.Equal(s.T(), "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
-	assert.Equal(s.T(), "", req.Header.Get("BlueButton-BeneficiaryId"))
-	assert.Equal(s.T(), "", req.Header.Get("BlueButton-OriginatingIpAddress"))
 
 	assert.Equal(s.T(), "", req.Header.Get("keep-alive"))
 	assert.Equal(s.T(), "https", req.Header.Get("X-Forwarded-Proto"))
@@ -279,7 +277,6 @@ func (s *BBTestSuite) TestAddRequestHeaders() {
 
 	assert.Equal(s.T(), req.URL.String(), req.Header.Get("BlueButton-OriginalUrl"))
 	assert.Equal(s.T(), req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
-	assert.Equal(s.T(), "", req.Header.Get("BlueButton-BackendCall"))
 
 	assert.Equal(s.T(), "543210", req.Header.Get("BCDA-JOBID"))
 	assert.Equal(s.T(), "A00234", req.Header.Get("BCDA-CMSID"))
