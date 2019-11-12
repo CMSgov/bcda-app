@@ -91,7 +91,7 @@ load-synthetic-suppression-data:
 	docker-compose run api sh -c 'tmp/bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
 
 load-fixtures-ssas:
-	docker-compose run ssas migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
+	docker-compose -f docker-compose.ssas-migrate.yml run --rm ssas-migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
 	docker-compose run ssas sh -c 'main --add-fixture-data'
 
 docker-build:

@@ -1,0 +1,9 @@
+FROM migrate/migrate
+
+RUN apk update upgrade && \
+    apk add git
+
+RUN mkdir -p /go/src/github.com/CMSgov
+
+WORKDIR /go/src/github.com/CMSgov
+RUN git clone https://github.com/CMSgov/bcda-ssas-app.git
