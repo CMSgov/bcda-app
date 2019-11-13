@@ -15,7 +15,7 @@ trap cleanup EXIT
 docker-compose stop api
 SSAS_URL="http://ssas:3004" SSAS_PUBLIC_URL="http://ssas:3003" BCDA_AUTH_PROVIDER=ssas BCDA_SSAS_CLIENT_ID=$BCDA_SSAS_CLIENT_ID BCDA_SSAS_SECRET=$BCDA_SSAS_SECRET SSAS_ADMIN_CLIENT_ID=$BCDA_SSAS_CLIENT_ID SSAS_ADMIN_CLIENT_SECRET=$BCDA_SSAS_SECRET DEBUG=true docker-compose up -d api ssas
 
-echo "waiting for API to rebuild"
+echo "waiting for API to rebuild with SSAS as auth provider"
 sleep 30
 
 ACO_ID=$(docker-compose exec api sh -c 'tmp/bcda create-aco --name "Smoke Test ACO" --cms-id A9996' | tail -n1 | tr -d '\r')
@@ -29,6 +29,6 @@ CLIENT_SECRET=${CREDS[1]}
 CLIENT_ID=$CLIENT_ID CLIENT_SECRET=$CLIENT_SECRET docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh bulk_data_requests.sh
 docker-compose stop api ssas
 
-echo "waiting for API to rebuild"
+echo "waiting for API to rebuild with alpha as auth provider"
 sleep 30
 docker-compose up -d api
