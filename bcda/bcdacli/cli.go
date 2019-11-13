@@ -599,18 +599,8 @@ func generateClientCredentials(acoCMSID string) (string, error) {
 		return "", err
 	}
 
-	/* Providing this hardcoded test key to SSAS because a public key is required when registering a system. However,
-	the key will not actually be used. BCDA will continue to manage public keys. */
-	publicKey := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
-I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
-/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL
-cN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ
-lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
-XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
-HwIDAQAB
------END PUBLIC KEY-----`
-	creds, err := auth.GetProvider().RegisterSystem(aco.UUID.String(), publicKey, aco.GroupID)
+	// The public key is optional for SSAS, and not used by the ACO API
+	creds, err := auth.GetProvider().RegisterSystem(aco.UUID.String(), "", aco.GroupID)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
 	}
