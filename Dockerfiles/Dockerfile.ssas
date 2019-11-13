@@ -1,7 +1,8 @@
 FROM golang:1.11.5-alpine
+ENV SSAS_COMMIT fe8a51f
 
 RUN apk update upgrade
-RUN apk add git openssl
+RUN apk add git curl openssl
 
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
@@ -11,11 +12,19 @@ RUN go get -u github.com/derekparker/delve/cmd/dlv
 RUN go get github.com/BurntSushi/toml
 RUN go get github.com/howeyc/fsnotify
 RUN go get github.com/mattn/go-colorable
-RUN go get github.com/CMSgov/bcda-ssas-app/ssas/service/main
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/
 COPY vendor/github.com/pressly/fresh vendor/github.com/pressly/fresh
 RUN go install ./vendor/github.com/pressly/fresh
+
+RUN mkdir -p /go/src/github.com/CMSgov/bcda-ssas-app
+WORKDIR /go/src/github.com/CMSgov
+RUN curl -sSL https://github.com/CMSgov/bcda-ssas-app/tarball/$SSAS_COMMIT \
+		| tar -v -C bcda-ssas-app -xz --strip-components=1
+
+WORKDIR /go/src/github.com/CMSgov/bcda-ssas-app/ssas/service/main
+RUN go build \
+    && go install
 
 WORKDIR /go/src/github.com/CMSgov/bcda-ssas-app/ssas
 CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--start"]

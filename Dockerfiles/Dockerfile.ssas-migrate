@@ -1,9 +1,12 @@
 FROM migrate/migrate
+ENV SSAS_COMMIT fe8a51f
 
 RUN apk update upgrade && \
-    apk add git
+    apk add git curl
 
 RUN mkdir -p /go/src/github.com/CMSgov
 
+RUN mkdir -p /go/src/github.com/CMSgov/bcda-ssas-app
 WORKDIR /go/src/github.com/CMSgov
-RUN git clone https://github.com/CMSgov/bcda-ssas-app.git
+RUN curl -sSL https://github.com/CMSgov/bcda-ssas-app/tarball/$SSAS_COMMIT \
+		| tar -v -C bcda-ssas-app -xz --strip-components=1
