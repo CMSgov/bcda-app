@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  ssas-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.ssas-migrate
