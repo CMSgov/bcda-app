@@ -480,7 +480,6 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	if cclfBeneficiary.BlueButtonID != "" {
 		return cclfBeneficiary.BlueButtonID, nil
 	}
-	var oldRecord CCLFBeneficiary
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
