@@ -480,8 +480,6 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	if cclfBeneficiary.BlueButtonID != "" {
 		return cclfBeneficiary.BlueButtonID, nil
 	}
-	db := database.GetGORMDbConnection()
-	defer db.Close()
 
 	// didn't find a local value, need to ask BlueButton
 	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
