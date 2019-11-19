@@ -30,12 +30,8 @@ func NewAPIRouter() http.Handler {
 	}
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
-		if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
-		}
-		if os.Getenv("ENABLE_COVERAGE_EXPORT") == "true" {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Coverage/$export", bulkCoverageRequest))
-		}
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Coverage/$export", bulkCoverageRequest))
 		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
 	})

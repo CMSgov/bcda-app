@@ -187,8 +187,6 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 func (s *APITestSuite) TestBulkPatientRequest() {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
-	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
-	os.Setenv("ENABLE_PATIENT_EXPORT", "true")
 	acoID := constants.DevACOUUID
 	user, err := models.CreateUser("api.go Test User", "testbulkpatientrequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -196,7 +194,6 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	}
 
 	defer func() {
-		os.Setenv("ENABLE_PATIENT_EXPORT", origPtExp)
 		s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
 		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
@@ -230,9 +227,6 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 }
 
 func (s *APITestSuite) TestBulkCoverageRequest() {
-	origPtExp := os.Getenv("ENABLE_COVERAGE_EXPORT")
-	os.Setenv("ENABLE_COVERAGE_EXPORT", "true")
-
 	acoID := constants.DevACOUUID
 	user, err := models.CreateUser("api.go Test User", "testbulkcoveragerequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -240,7 +234,6 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 	}
 
 	defer func() {
-		os.Setenv("ENABLE_COVERAGE_EXPORT", origPtExp)
 		s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
 		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
