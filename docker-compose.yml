@@ -39,8 +39,6 @@ services:
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - HTTP_ONLY=true
-      - ENABLE_PATIENT_EXPORT=true
-      - ENABLE_COVERAGE_EXPORT=true
       - BB_CLIENT_CERT_FILE=../shared_files/bb-dev-test-cert.pem
       - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem
       - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
