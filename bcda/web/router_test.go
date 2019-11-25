@@ -110,25 +110,32 @@ func (s *RouterTestSuite) TestEOBExportRoute() {
 }
 
 func (s *RouterTestSuite) TestPatientExportRoute() {
-	origPtExp := os.Getenv("ENABLE_PATIENT_EXPORT")
-	defer os.Setenv("ENABLE_PATIENT_EXPORT", origPtExp)
-
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
 	rr := httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	req = httptest.NewRequest("GET", "/api/v1/Patients/$export", nil)
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestCoverageExportRoute() {
-	origCovExp := os.Getenv("ENABLE_COVERAGE_EXPORT")
-	defer os.Setenv("ENABLE_COVERAGE_EXPORT", origCovExp)
-
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Coverage", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Coverage/$export", nil)
 	rr := httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	req = httptest.NewRequest("GET", "/api/v1/Coverages/$export", nil)
+	rr = httptest.NewRecorder()
+	NewAPIRouter().ServeHTTP(rr, req)
+	res = rr.Result()
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
 }
 
 func (s *RouterTestSuite) TestJobStatusRoute() {

@@ -113,45 +113,25 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 							Type:      "Endpoint",
 						},
 					},
+					{
+						Name: "export",
+						Definition: &fhirmodels.Reference{
+							Reference: baseurl + "/api/v1/Patient/$export",
+							Type:      "Endpoint",
+						},
+					},
+					{
+						Name: "export",
+						Definition: &fhirmodels.Reference{
+							Reference: baseurl + "/api/v1/Coverage/$export",
+							Type:      "Endpoint",
+						},
+					},
 				},
 			},
 		},
 	}
-	addPatientEndpointToStatement(statement, baseurl)
-	addCoverageEndpointToStatement(statement, baseurl)
 	return statement
-}
-
-func addPatientEndpointToStatement(statement *fhirmodels.CapabilityStatement, baseUrl string) {
-	if os.Getenv("ENABLE_PATIENT_EXPORT") == "true" {
-		restComponent := statement.Rest[0].Operation
-
-		element := fhirmodels.CapabilityStatementRestOperationComponent{
-			Name: "export",
-			Definition: &fhirmodels.Reference{
-				Reference: baseUrl + "/api/v1/Patient/$export?_type=Patient",
-				Type:      "Endpoint",
-			},
-		}
-		restComponent = append(restComponent, element)
-		statement.Rest[0].Operation = restComponent
-	}
-}
-
-func addCoverageEndpointToStatement(statement *fhirmodels.CapabilityStatement, baseUrl string) {
-	if os.Getenv("ENABLE_COVERAGE_EXPORT") == "true" {
-		restComponent := statement.Rest[0].Operation
-
-		element := fhirmodels.CapabilityStatementRestOperationComponent{
-			Name: "export",
-			Definition: &fhirmodels.Reference{
-				Reference: baseUrl + "/api/v1/Patient/$export?_type=Coverage",
-				Type:      "Endpoint",
-			},
-		}
-		restComponent = append(restComponent, element)
-		statement.Rest[0].Operation = restComponent
-	}
 }
 
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
