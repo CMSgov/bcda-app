@@ -110,13 +110,13 @@ func (s *RouterTestSuite) TestEOBExportRoute() {
 }
 
 func (s *RouterTestSuite) TestPatientExportRoute() {
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient", nil)
 	rr := httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
-	req = httptest.NewRequest("GET", "/api/v1/Patients/$export", nil)
+	req = httptest.NewRequest("GET", "/api/v1/Patients/$export?_type=Patient", nil)
 	rr = httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res = rr.Result()
@@ -124,13 +124,13 @@ func (s *RouterTestSuite) TestPatientExportRoute() {
 }
 
 func (s *RouterTestSuite) TestCoverageExportRoute() {
-	req := httptest.NewRequest("GET", "/api/v1/Coverage/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Coverage", nil)
 	rr := httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res := rr.Result()
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
-	req = httptest.NewRequest("GET", "/api/v1/Coverages/$export", nil)
+	req = httptest.NewRequest("GET", "/api/v1/Patients/$export?_type=Coverage", nil)
 	rr = httptest.NewRecorder()
 	NewAPIRouter().ServeHTTP(rr, req)
 	res = rr.Result()

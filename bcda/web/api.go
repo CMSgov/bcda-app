@@ -33,31 +33,11 @@ import (
 var qc *que.Client
 
 /*
-	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
-	Start explanation of benefit data export
-	Initiates a job to collect explanation of benefit data from the Blue Button API for your ACO.
-	Produces:
-	- application/fhir+json
-	Security:
-		bearer_token:
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
-*/
-
-func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
-	bulkRequest([]string{"ExplanationOfBenefit"}, w, r)
-}
-
-/*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
-	Start patient data export
+	Start patient, explanation of benefit, and coverage data export
 
-	Initiates a job to collect patient data from the Blue Button API for your ACO.
+	Initiates a job to collect patient, explanation of benefit, and coverage data from the Blue Button API for your ACO.
 
 	Produces:
 	- application/fhir+json
@@ -99,25 +79,6 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 	}
 	bulkRequest(resourceTypes, w, r)
-}
-
-/*
-	swagger:route GET /api/v1/Coverage/$export bulkData bulkCoverageRequest
-	Start coverage data export
-	Initiates a job to collect coverage data from the Blue Button API for your ACO.
-	Produces:
-	- application/fhir+json
-	Security:
-		bearer_token:
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
-*/
-func bulkCoverageRequest(w http.ResponseWriter, r *http.Request) {
-	bulkRequest([]string{"Coverage"}, w, r)
 }
 
 func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request) {
