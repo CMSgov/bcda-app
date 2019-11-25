@@ -1,7 +1,6 @@
 package web
 
 import (
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -219,27 +218,6 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
 	var unworkedTypes []string
 
-	db := database.GetQueueDbConnection()
-	var rows *sql.Rows
-
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		}
-	}()
-
-	defer func() {
-		if rows != nil {
-			if err := rows.Close(); err != nil {
-				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			}
-		}
-	}()
-
 	for _, t := range types {
 		worked := false
 		for _, job := range jobs {
@@ -259,34 +237,7 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 			} else {
 				// check to see if the export all is still being worked
 				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-					id := strconv.Itoa(int(job.ID))
-
-					rows, err = db.Query(`select args ->> 'ResourceType' AS ResourceType from que_jobs where cast(args ->> 'ID' as INTEGER)  =` + id + `;`)
-					if err != nil {
-						log.Error(err)
-						oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-						responseutils.WriteError(oo, w, http.StatusInternalServerError)
-					}
-
-					var resourceType string
-
-					//iterate through the que_jobs related to this main one to determine which fhir resources are currently being processed.
-					for rows.Next() {
-						if err = rows.Scan(&resourceType); err != nil {
-							log.Error(err)
-							oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-							responseutils.WriteError(oo, w, http.StatusInternalServerError)
-						}
-						// break out of que_jobs
-						if t == resourceType {
-							worked = true
-							break
-						}
-					}
-					// break out of main job loop and go to the next type
-					if worked {
-						break
-					}
+					return nil, false
 				}
 			}
 		}
