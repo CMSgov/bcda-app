@@ -38,18 +38,3 @@ func GetGORMDbConnection() *gorm.DB {
 	}
 	return db
 }
-
-func GetQueueDbConnection() *sql.DB {
-	databaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	db, err := sql.Open("postgres", databaseURL)
-	if err != nil {
-		LogFatal(err)
-	}
-
-	pingErr := db.Ping()
-	if pingErr != nil {
-		LogFatal(pingErr)
-	}
-
-	return db
-}
