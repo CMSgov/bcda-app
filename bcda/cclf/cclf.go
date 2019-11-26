@@ -255,7 +255,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Yyy.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
-	filenameRegexp := regexp.MustCompile(`(T|P)\.BCD\.ACO\.ZC(0|8)Y(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
+	filenameRegexp := regexp.MustCompile(`(T|P)\.BCD\.ACO.*\.ZC(0|8)Y(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
 	filenameMatches := filenameRegexp.FindStringSubmatch(filePath)
 	if len(filenameMatches) < 5 {
 		fmt.Printf("Invalid zipped filename for file: %s.\n", filePath)

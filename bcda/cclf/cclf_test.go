@@ -338,6 +338,18 @@ func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata() {
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
+	//CMS EFT file format with ACOB identifier
+	metadata, err = getCCLFArchiveMetadata("/BCD/T.BCD.ACOB.ZC0Y18.D181120.T0001000")
+	expDate, _ = time.Parse("2006-01-02", "2018-11-20")
+	assert.Equal("test", metadata.env)
+	assert.Equal("A0001", metadata.acoID)
+	assert.Equal(0, metadata.cclfNum)
+	assert.Equal(expDate.Year(), metadata.timestamp.Year())
+	assert.Equal(expDate.Month(), metadata.timestamp.Month())
+	assert.Equal(expDate.Day(), metadata.timestamp.Day())
+	assert.Equal(18, metadata.perfYear)
+	assert.Nil(err)
+
 	metadata, err = getCCLFArchiveMetadata("/BCD/T.BCD.ACO.ZC8Y18.D190112.T0012000")
 	expDate, _ = time.Parse("2006-01-02", "2019-01-12")
 	assert.Equal("test", metadata.env)
@@ -377,7 +389,7 @@ func (s *CCLFTestSuite) TestSortCCLFArchives() {
 	filePath := BASE_FILE_PATH + "cclf/archives/valid/"
 	err := filepath.Walk(filePath, sortCCLFArchives(&cclfmap, &skipped))
 	assert.Nil(err)
-	assert.Equal(2, len(cclfmap["A0001"][18]))
+	assert.Equal(3, len(cclfmap["A0001"][18]))
 	assert.Equal(1, skipped)
 	testUtils.ResetFiles(s.Suite, filePath)
 
