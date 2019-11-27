@@ -35,9 +35,9 @@ var qc *que.Client
 /*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
-	Start patient, explanation of benefit, and coverage data export
+	Start data export for all supported resource types
 
-	Initiates a job to collect patient, explanation of benefit, and coverage data from the Blue Button API for your ACO.
+	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
 	Produces:
 	- application/fhir+json
