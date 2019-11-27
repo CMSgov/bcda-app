@@ -81,7 +81,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					{
 						Name: "export",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+							Reference: baseurl + "/api/v1/Patient/$export",
 							Type:      "Endpoint",
 						},
 					},
@@ -110,20 +110,6 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 						Name: "data",
 						Definition: &fhirmodels.Reference{
 							Reference: baseurl + "/data/[jobID]/[random_UUID].ndjson",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "export",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/Patient/$export",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "export",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/Coverage/$export",
 							Type:      "Endpoint",
 						},
 					},
