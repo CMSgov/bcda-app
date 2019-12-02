@@ -132,6 +132,15 @@ type FileParam struct {
 	Filename string `json:"filename"`
 }
 
+// swagger:parameters bulkPatientRequest
+type ResourceTypeParam struct {
+	// Resource types requested
+	// in: query
+	// style: form
+	// explode: false
+	ResourceType []string `json:"_type"`
+}
+
 // swagger:parameters bulkPatientRequest bulkEOBRequest bulkCoverageRequest
 type BulkRequestHeaders struct {
 	// required: true
