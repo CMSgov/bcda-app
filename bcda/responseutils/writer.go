@@ -57,15 +57,9 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					Service: []fhirmodels.CodeableConcept{
 						{
 							Coding: []fhirmodels.Coding{
-								{Display: "OAuth", Code: "OAuth", System: "http://hl7.org/fhir/ValueSet/restful-security-service"},
-							},
-							Text: "OAuth",
-						},
-						{
-							Coding: []fhirmodels.Coding{
 								{Display: "SMART-on-FHIR", Code: "SMART-on-FHIR", System: "http://hl7.org/fhir/ValueSet/restful-security-service"},
 							},
-							Text: "SMART-on-FHIR",
+							Text: "OAuth2 using SMART-on-FHIR",
 						},
 					},
 				},
@@ -117,7 +111,23 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 			},
 		},
 	}
+	addOauthEndpointToStatement(statement, baseurl)
 	return statement
+}
+
+func addOauthEndpointToStatement(statement *fhirmodels.CapabilityStatement, baseUrl string) {
+	securityComponent := statement.Rest[0].Security
+	extension := []fhirmodels.Extension{
+		{
+			Url: "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris",
+		},
+		{
+			Url:      "token",
+			ValueUri: baseUrl + "/auth/token",
+		},
+	}
+	securityComponent.Extension = extension
+	statement.Rest[0].Security = securityComponent
 }
 
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
