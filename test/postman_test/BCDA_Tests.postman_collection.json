@@ -51,7 +51,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/ExplanationOfBenefit/$export",
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
@@ -59,8 +59,8 @@
 							"path": [
 								"api",
 								"v1",
-								"ExplanationOfBenefit",
-								"$export"
+								"Patient",
+								"$export?_type=ExplanationOfBenefit"
 							]
 						}
 					},
@@ -115,7 +115,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/ExplanationOfBenefit/$export",
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
@@ -123,8 +123,8 @@
 							"path": [
 								"api",
 								"v1",
-								"ExplanationOfBenefit",
-								"$export"
+								"Patient",
+								"$export?_type=ExplanationOfBenefit"
 							]
 						}
 					},
@@ -205,7 +205,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export",
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
@@ -214,7 +214,7 @@
 								"api",
 								"v1",
 								"Patient",
-								"$export"
+								"$export?_type=Patient"
 							]
 						}
 					},
@@ -262,7 +262,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export",
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
@@ -271,7 +271,7 @@
 								"api",
 								"v1",
 								"Patient",
-								"$export"
+								"$export?_type=Patient"
 							]
 						}
 					},
@@ -330,7 +330,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Coverage/$export",
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
@@ -338,8 +338,8 @@
 							"path": [
 								"api",
 								"v1",
-								"Coverage",
-								"$export"
+								"Patient",
+								"$export?_type=Coverage"
 							]
 						}
 					},
@@ -387,7 +387,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{scheme}}://{{host}}/api/v1/Coverage/$export",
+							"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
 							"protocol": "{{scheme}}",
 							"host": [
 								"{{host}}"
@@ -395,8 +395,8 @@
 							"path": [
 								"api",
 								"v1",
-								"Coverage",
-								"$export"
+								"Patient",
+								"$export?_type=Coverage"
 							]
 						}
 					},

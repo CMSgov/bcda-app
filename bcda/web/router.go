@@ -29,9 +29,7 @@ func NewAPIRouter() http.Handler {
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/ExplanationOfBenefit/$export", bulkEOBRequest))
 		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Coverage/$export", bulkCoverageRequest))
 		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
 	})

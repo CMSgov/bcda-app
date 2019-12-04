@@ -74,7 +74,7 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 		s.T().Error(err)
 	}
 
-	req := httptest.NewRequest("GET", "/api/v1/test/ExplanationOfBenefit/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -95,11 +95,11 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 
 	qc = que.NewClient(pgxpool)
 
-	handler := http.HandlerFunc(bulkEOBRequest)
+	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/ExplanationOfBenefit/$export").Delete(models.Job{})
+	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export?_type=ExplanationOfBenefit").Delete(models.Job{})
 	s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
 	s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 }
@@ -108,7 +108,7 @@ func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "A40404F7-1EF2-485A-9B71-40FE7ACDCBC2"
 
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 	ad := makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -129,16 +129,16 @@ func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 
 	qc = que.NewClient(pgxpool)
 
-	handler := http.HandlerFunc(bulkEOBRequest)
+	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 
-	handler := http.HandlerFunc(bulkEOBRequest)
+	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
@@ -164,11 +164,11 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	}
 	defer s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
-	handler := http.HandlerFunc(bulkEOBRequest)
+	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
@@ -198,7 +198,7 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
 
-	req := httptest.NewRequest("GET", "/api/v1/test/Patient/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test/Patient/$export?_type=Patient", nil)
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -222,7 +222,7 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export").Delete(models.Job{})
+	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export?_type=Patient").Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
@@ -238,7 +238,7 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
 
-	req := httptest.NewRequest("GET", "/api/v1/test/Coverage/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test/Patient/$export?_type=Coverage", nil)
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -259,17 +259,17 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 
 	qc = que.NewClient(pgxpool)
 
-	handler := http.HandlerFunc(bulkCoverageRequest)
+	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 
-	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Coverage/$export").Delete(models.Job{})
+	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export?_type=Coverage").Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
 func (s *APITestSuite) TestBulkRequestInvalidType() {
-	req := httptest.NewRequest("GET", "/api/v1/test/Foo/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test/Foo/$export?_type=Foo", nil)
 
-	bulkRequest("Foo", s.rr, req)
+	bulkPatientRequest(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
@@ -284,20 +284,20 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		UserID:     uuid.Parse(userID),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "In Progress",
 		JobCount:   1,
 	}
 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 	ad := makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 	pool := makeConnPool(s)
 	defer pool.Close()
 
 	// serve job
-	handler := http.HandlerFunc(bulkEOBRequest)
+	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
 
@@ -366,12 +366,12 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	// same aco different endpoint
-	handler = http.HandlerFunc(bulkEOBRequest)
+	handler = http.HandlerFunc(bulkPatientRequest)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 
-	req = httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient", nil)
 	ad = makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 	handler = http.HandlerFunc(bulkPatientRequest)
@@ -401,20 +401,20 @@ func (s *APITestSuite) TestBulkConcurrentRequestTime() {
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		UserID:     uuid.Parse(userID),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "In Progress",
 		JobCount:   1,
 	}
 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", "/api/v1/ExplanationOfBenefit/$export", nil)
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 	ad := makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 	pool := makeConnPool(s)
 	defer pool.Close()
 
 	// serve job
-	handler := http.HandlerFunc(bulkEOBRequest)
+	handler := http.HandlerFunc(bulkPatientRequest)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
 
@@ -482,7 +482,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Pending",
 		JobCount:   1,
 	}
@@ -511,7 +511,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "In Progress",
 		JobCount:   1,
 	}
@@ -540,7 +540,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Failed",
 	}
 
@@ -568,7 +568,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
@@ -579,7 +579,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
 		expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
 		expectedUrls = append(expectedUrls, expectedurl)
-		jobKey := models.JobKey{JobID: j.ID, EncryptedKey: []byte("FOO"), FileName: fileName}
+		jobKey := models.JobKey{JobID: j.ID, EncryptedKey: []byte("FOO"), FileName: fileName, ResourceType: "ExplanationOfBenefit"}
 		err := s.db.Save(&jobKey).Error
 		assert.Nil(s.T(), err)
 
@@ -642,7 +642,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Completed",
 	}
 	s.db.Save(&j)
@@ -651,6 +651,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		JobID:        j.ID,
 		FileName:     fileName,
 		EncryptedKey: []byte("Encrypted Key"),
+		ResourceType: "ExplanationOfBenefit",
 	}
 	s.db.Save(&jobKey)
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
@@ -708,7 +709,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Expired",
 	}
 
@@ -737,7 +738,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Completed",
 	}
 
@@ -767,7 +768,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Archived",
 	}
 
@@ -887,7 +888,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	j := models.Job{
 		ACOID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
 		UserID:     uuid.Parse("82503a18-bf3b-436d-ba7b-bae09b7ffd2f"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Pending",
 	}
 	s.db.Save(&j)

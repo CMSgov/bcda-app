@@ -40,7 +40,7 @@ func init() {
 	flag.StringVar(&clientSecret, "clientSecret", "", "client secret for retrieving an access token")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
-	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
+	flag.StringVar(&endpoint, "endpoint", "", "endpoint to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
 	flag.Parse()
 
@@ -80,8 +80,13 @@ func getAccessToken() string {
 
 func startJob(resourceType string) *http.Response {
 	client := &http.Client{}
+	var url string
 
-	var url string = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, resourceType)
+	if resourceType != "" {
+		url = fmt.Sprintf("%s://%s/api/v1/Patient/$export?_type=%s", proto, apiHost, resourceType)
+	} else {
+		url = fmt.Sprintf("%s://%s/api/v1/Patient/$export", proto, apiHost)
+	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

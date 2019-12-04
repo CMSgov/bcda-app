@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
-
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"net/url"
+	"strconv"
 
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -34,36 +33,11 @@ import (
 var qc *que.Client
 
 /*
-  	swagger:route GET /api/v1/ExplanationOfBenefit/$export bulkData bulkEOBRequest
-
-	Start explanation of benefit data export
-
-	Initiates a job to collect explanation of benefit data from the Blue Button API for your ACO.
-
-	Produces:
-	- application/fhir+json
-
-	Security:
-		bearer_token:
-
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
-*/
-
-func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
-	bulkRequest("ExplanationOfBenefit", w, r)
-}
-
-/*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
-	Start patient data export
+	Start data export for all supported resource types
 
-	Initiates a job to collect patient data from the Blue Button API for your ACO.
+	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
 	Produces:
 	- application/fhir+json
@@ -79,40 +53,35 @@ func bulkEOBRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	bulkRequest("Patient", w, r)
-}
-
-/*
-	swagger:route GET /api/v1/Coverage/$export bulkData bulkCoverageRequest
-
-	Start coverage data export
-
-	Initiates a job to collect coverage data from the Blue Button API for your ACO.
-
-	Produces:
-	- application/fhir+json
-
-	Security:
-		bearer_token:
-
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
-*/
-func bulkCoverageRequest(w http.ResponseWriter, r *http.Request) {
-	bulkRequest("Coverage", w, r)
-}
-
-func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
-	if t != "ExplanationOfBenefit" && t != "Patient" && t != "Coverage" {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
+	var resourceTypes []string
+	params, ok := r.URL.Query()["_type"]
+	if ok {
+		resourceMap := make(map[string]bool)
+		params = strings.Split(params[0], ",")
+		for _, p := range params {
+			if p != "ExplanationOfBenefit" && p != "Patient" && p != "Coverage" {
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
+				responseutils.WriteError(oo, w, http.StatusBadRequest)
+				return
+			} else {
+				if !resourceMap[p] {
+					resourceMap[p] = true
+					resourceTypes = append(resourceTypes, p)
+				} else {
+					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Repeated resource type", responseutils.RequestErr)
+					responseutils.WriteError(oo, w, http.StatusBadRequest)
+					return
+				}
+			}
+		}
+	} else {
+		// patient all request, all resource types applied
+		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 	}
+	bulkRequest(resourceTypes, w, r)
+}
 
+func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request) {
 	var (
 		ad  auth.AuthData
 		err error
@@ -130,19 +99,18 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 	acoID := ad.ACOID
 
 	var jobs []models.Job
-
 	// If we really do find this record with the below matching criteria then this particular ACO has already made
 	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") && (!db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound()) {
-		for _, job := range jobs {
-			if strings.Contains(job.RequestURL, t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-				w.WriteHeader(http.StatusTooManyRequests)
-				return
-			}
+		if types, ok := check429(jobs, resourceTypes, w); !ok {
+			w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		} else {
+			resourceTypes = types
 		}
 	}
 
@@ -176,12 +144,16 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enqueueJobs, err := newJob.GetEnqueJobs(t)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
+	var enqueueJobs []*que.Job
+	for _, t := range resourceTypes {
+		jobs, err := newJob.GetEnqueJobs(t)
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+		enqueueJobs = append(enqueueJobs, jobs...)
 	}
 
 	for _, j := range enqueueJobs {
@@ -202,6 +174,43 @@ func bulkRequest(t string, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
+	var unworkedTypes []string
+
+	for _, t := range types {
+		worked := false
+		for _, job := range jobs {
+			req, err := url.Parse(job.RequestURL)
+			if err != nil {
+				log.Error(err)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			}
+
+			if requestedTypes, ok := req.Query()["_type"]; ok {
+				// if this type is being worked no need to keep looking, break out and go to the next type.
+				if strings.Contains(requestedTypes[0], t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+					worked = true
+					break
+				}
+			} else {
+				// check to see if the export all is still being worked
+				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+					return nil, false
+				}
+			}
+		}
+		if !worked {
+			unworkedTypes = append(unworkedTypes, t)
+		}
+	}
+	if len(unworkedTypes) == 0 {
+		return nil, false
+	} else {
+		return unworkedTypes, true
+	}
 }
 
 /*
@@ -279,9 +288,6 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			scheme = "https"
 		}
 
-		re := regexp.MustCompile(`/(ExplanationOfBenefit|Patient|Coverage)/\$export`)
-		resourceType := re.FindStringSubmatch(job.RequestURL)[1]
-
 		keyMap := make(map[string]string)
 
 		rb := bulkResponseBody{
@@ -301,7 +307,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 			// data files
 			fi := fileItem{
-				Type:         resourceType,
+				Type:         jobKey.ResourceType,
 				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 				EncryptedKey: hex.EncodeToString(jobKey.EncryptedKey),
 			}
