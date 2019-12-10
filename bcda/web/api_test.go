@@ -429,6 +429,70 @@ func (s *APITestSuite) TestBulkConcurrentRequestTime() {
         os.Unsetenv("DEPLOYMENT_TARGET")
 }
 
+func (s *APITestSuite) TestValidateRequest() {
+	req := httptest.NewRequest("GET", "/api/v1/Patient/$export", nil)
+	resourceTypes, err := validateRequest(req)
+	assert.Nil(s.T(),err)
+	assert.Equal(s.T(), 3, len(resourceTypes))
+	for _, t := range resourceTypes {
+		if t != "ExplanationOfBenefit" && t!= "Patient" && t!= "Coverage" {
+			assert.Fail(s.T(),"Invalid Resource type found")
+		}
+	}
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit,Patient", nil)
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(),err)
+	assert.Equal(s.T(), 2, len(resourceTypes))
+	for _, t := range resourceTypes {
+		if t != "ExplanationOfBenefit" && t!= "Patient" {
+			assert.Fail(s.T(),"Invalid Resource type found")
+		}
+	}
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Coverage,Patient", nil)
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(),err)
+	assert.Equal(s.T(), 2, len(resourceTypes))
+	for _, t := range resourceTypes {
+		if t != "Coverage" && t!= "Patient" {
+			assert.Fail(s.T(),"Invalid Resource type found")
+		}
+	}
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(),err)
+	assert.Equal(s.T(), 1, len(resourceTypes))
+	assert.Contains(s.T(), resourceTypes,"ExplanationOfBenefit")
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient", nil)
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(),err)
+	assert.Equal(s.T(), 1, len(resourceTypes))
+	assert.Contains(s.T(), resourceTypes,"Patient")
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Coverage", nil)
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(),err)
+	assert.Equal(s.T(), 1, len(resourceTypes))
+	assert.Contains(s.T(), resourceTypes,"Coverage")
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Practitioner", nil)
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(),resourceTypes)
+	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
+
+	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient,Patient", nil)
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(),resourceTypes)
+	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
+}
+
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", "test"), nil)
 
