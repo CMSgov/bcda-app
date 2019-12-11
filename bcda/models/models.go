@@ -436,9 +436,9 @@ func (cclfFile *CCLFFile) Delete() error {
 type CCLFBeneficiary struct {
 	gorm.Model
 	CCLFFile     CCLFFile
-	FileID       uint   `gorm:"not null"`
-	HICN         string `gorm:"type:varchar(11);not null"`
-	MBI          string `gorm:"type:char(11);not null"`
+	FileID       uint   `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
+	HICN         string `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
+	MBI          string `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
 	BlueButtonID string `gorm:"type: text"`
 }
 
