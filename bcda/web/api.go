@@ -37,7 +37,7 @@ const (
 )
 
 /*
-	swagger:route GET /api/v1/Group/[id]/$export bulkData bulkGroupRequest
+	swagger:route GET /api/v1/Group/{id}/$export bulkData bulkGroupRequest
 
 	Start data export for all supported resource types
 
