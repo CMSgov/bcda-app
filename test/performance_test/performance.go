@@ -64,8 +64,9 @@ func main() {
 }
 
 func makeTarget(accessToken string) vegeta.Targeter {
-	if endpoint != "Patient" {
-		endpoint = "Group/all"
+	if endpoint == "Group" {
+		groupId := "all"
+		endpoint = fmt.Sprintf("%s/%s",endpoint, groupId)
 	}
 
 	var url string

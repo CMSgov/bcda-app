@@ -83,8 +83,10 @@ func startJob(endpoint, resourceType string) *http.Response {
 	client := &http.Client{}
 	var url string
 
-	if endpoint != "Patient" {
-		endpoint = "Group/all"
+	// currently hard-coding groupId as this is the only value at the moment
+	if endpoint == "Group" {
+		groupId := "all"
+		endpoint = fmt.Sprintf("%s/%s",endpoint, groupId)
 	}
 
 	if resourceType != "" {

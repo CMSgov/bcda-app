@@ -252,7 +252,7 @@ func validateRequest (r *http.Request) ([]string, *fhirmodels.OperationOutcome) 
 			}
 		}
 	} else {
-		// patient all request, all resource types applied
+		// resource types not supplied in request; default to applying all resource types.
 		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 	}
 	return resourceTypes, nil
