@@ -149,6 +149,17 @@ type BulkRequestHeaders struct {
 	Prefer string
 }
 
+// A BulkGroupRequest parameter model.
+//
+// This is used for operations that want the groupID of a group in the path
+// swagger:parameters bulkGroupRequest
+type GroupIDParam struct {
+	// ID of group export
+	// in: path
+	// required: true
+	GroupID string `json:"groupID"`
+}
+
 // JSON with a valid JWT
 // swagger:response tokenResponse
 type TokenResponse struct {
