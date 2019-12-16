@@ -37,11 +37,39 @@ const (
 )
 
 /*
-	swagger:route GET /api/v1/Group/{groupID}/$export bulkData bulkGroupRequest
+	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
 	Start data export for all supported resource types
 
 	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	resourceTypes, err := validateRequest(r); if err != nil {
+		responseutils.WriteError(err, w, http.StatusBadRequest)
+		return
+	}
+	bulkRequest(resourceTypes, w, r)
+}
+
+/*
+	swagger:route GET /api/v1/Group/{groupID}/$export bulkData bulkGroupRequest
+
+    Start data export (for the specified group identifier) for all supported resource types
+
+	Initiates a job to collect data from the Blue Button API for your ACO. At this time, the only Group identifier supported by the system is `all`, which returns the same data as the Patient endpoint. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
 	Produces:
 	- application/fhir+json
@@ -69,34 +97,6 @@ func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
-}
-
-/*
-	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
-
-	Start data export for all supported resource types
-
-	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
-
-	Produces:
-	- application/fhir+json
-
-	Security:
-		bearer_token:
-
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
-*/
-func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := validateRequest(r); if err != nil {
-		responseutils.WriteError(err, w, http.StatusBadRequest)
-		return
-	}
-	bulkRequest(resourceTypes, w, r)
 }
 
 func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request) {

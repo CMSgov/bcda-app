@@ -15,7 +15,7 @@ import (
 // might add a with metrics bool option
 var (
 	appTestToken, workerTestToken, apiHost, proto, resourceType, reportFilePath, endpoint string
-	freq, duration                                                          int
+	freq, duration                                                                        int
 )
 
 func init() {
