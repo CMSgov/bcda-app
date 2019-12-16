@@ -5,12 +5,12 @@
 set -e
 
 echo echo "Running EOB"
-go run performance.go -host=api:3000 -resourceType=ExplanationOfBenefit -endpointBase=Patient
+go run performance.go -host=api:3000 -resourceType=ExplanationOfBenefit -endpoint=Patient
 echo "Running Patient"
-go run performance.go -host=api:3000 -resourceType=Patient -endpointBase=Patient
+go run performance.go -host=api:3000 -resourceType=Patient -endpoint=Patient
 echo "Running Coverage"
-go run performance.go -host=api:3000 -resourceType=Coverage -endpointBase=Patient
+go run performance.go -host=api:3000 -resourceType=Coverage -endpoint=Patient
 echo "Running Patient All"
-go run performance.go -host=api:3000 -endpointBase=Patient
+go run performance.go -host=api:3000 -endpoint=Patient
 echo "Running Group All"
-go run performance.go -host=api:3000 -endpointBase=Group
+go run performance.go -host=api:3000 -endpoint=Group

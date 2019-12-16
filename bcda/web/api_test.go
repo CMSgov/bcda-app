@@ -133,7 +133,7 @@ func (s *APITestSuite) TestValidateRequest() {
 	validateRequestHelper("Group", s)
 }
 
-func bulkEOBRequestHelper(endpointBase string, s *APITestSuite) {
+func bulkEOBRequestHelper(endpoint string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -144,7 +144,7 @@ func bulkEOBRequestHelper(endpointBase string, s *APITestSuite) {
 		s.T().Error(err)
 	}
 
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpointBase, "ExplanationOfBenefit")
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -175,11 +175,11 @@ func bulkEOBRequestHelper(endpointBase string, s *APITestSuite) {
 	s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 }
 
-func bulkEOBRequestNoBeneficiariesInACOHelper(endpointBase string, s *APITestSuite) {
+func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "A40404F7-1EF2-485A-9B71-40FE7ACDCBC2"
 
-	_, handlerFunc, req := bulkRequestHelper(endpointBase, "ExplanationOfBenefit")
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 	ad := makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -206,8 +206,8 @@ func bulkEOBRequestNoBeneficiariesInACOHelper(endpointBase string, s *APITestSui
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 }
 
-func bulkEOBRequestMissingTokenHelper(endpointBase string, s *APITestSuite) {
-	_, handlerFunc, req := bulkRequestHelper(endpointBase, "ExplanationOfBenefit")
+func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -225,7 +225,7 @@ func bulkEOBRequestMissingTokenHelper(endpointBase string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
-func bulkEOBRequestNoQueueHelper(endpointBase string, s *APITestSuite) {
+func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	qc = nil
 
 	acoID := constants.SmallACOUUID
@@ -235,7 +235,7 @@ func bulkEOBRequestNoQueueHelper(endpointBase string, s *APITestSuite) {
 	}
 	defer s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 
-	_, handlerFunc, req := bulkRequestHelper(endpointBase, "ExplanationOfBenefit")
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
@@ -256,7 +256,7 @@ func bulkEOBRequestNoQueueHelper(endpointBase string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
 }
 
-func bulkPatientRequestHelper(endpointBase string, s *APITestSuite) {
+func bulkPatientRequestHelper(endpoint string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -270,7 +270,7 @@ func bulkPatientRequestHelper(endpointBase string, s *APITestSuite) {
 		s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
 
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpointBase, "Patient")
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "Patient")
 
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
@@ -299,7 +299,7 @@ func bulkPatientRequestHelper(endpointBase string, s *APITestSuite) {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
-func bulkCoverageRequestHelper(endpointBase string, s *APITestSuite) {
+func bulkCoverageRequestHelper(endpoint string, s *APITestSuite) {
 	acoID := constants.DevACOUUID
 	user, err := models.CreateUser("api.go Test User", "testbulkcoveragerequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -311,7 +311,7 @@ func bulkCoverageRequestHelper(endpointBase string, s *APITestSuite) {
 		s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
 
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpointBase, "Coverage")
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "Coverage")
 
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
@@ -340,13 +340,13 @@ func bulkCoverageRequestHelper(endpointBase string, s *APITestSuite) {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
-func bulkRequestInvalidTypeHelper(endpointBase string, s *APITestSuite) {
-	_, handlerFunc, req := bulkRequestHelper(endpointBase+"/test/Foo/", "Foo")
+func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {
+	_, handlerFunc, req := bulkRequestHelper(endpoint+"/test/Foo/", "Foo")
 	handlerFunc(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
-func bulkConcurrentRequestHelper(endpointBase string, s *APITestSuite) {
+func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -354,7 +354,7 @@ func bulkConcurrentRequestHelper(endpointBase string, s *APITestSuite) {
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpointBase, "ExplanationOfBenefit")
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
@@ -445,7 +445,7 @@ func bulkConcurrentRequestHelper(endpointBase string, s *APITestSuite) {
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 
-	_, handlerFunc, req = bulkRequestHelper(endpointBase, "Patient")
+	_, handlerFunc, req = bulkRequestHelper(endpoint, "Patient")
 	ad = makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 	handler = http.HandlerFunc(handlerFunc)
@@ -465,7 +465,7 @@ func bulkConcurrentRequestHelper(endpointBase string, s *APITestSuite) {
 	os.Unsetenv("DEPLOYMENT_TARGET")
 }
 
-func bulkConcurrentRequestTimeHelper(endpointBase string, s *APITestSuite) {
+func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -473,7 +473,7 @@ func bulkConcurrentRequestTimeHelper(endpointBase string, s *APITestSuite) {
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpointBase, "ExplanationOfBenefit")
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
@@ -506,8 +506,8 @@ func bulkConcurrentRequestTimeHelper(endpointBase string, s *APITestSuite) {
 	os.Unsetenv("DEPLOYMENT_TARGET")
 }
 
-func validateRequestHelper(endpointBase string, s *APITestSuite) {
-	_, _, req := bulkRequestHelper(endpointBase, "")
+func validateRequestHelper(endpoint string, s *APITestSuite) {
+	_, _, req := bulkRequestHelper(endpoint, "")
 
 	resourceTypes, err := validateRequest(req)
 	assert.Nil(s.T(), err)
@@ -518,7 +518,7 @@ func validateRequestHelper(endpointBase string, s *APITestSuite) {
 		}
 	}
 
-	_, _, req = bulkRequestHelper(endpointBase, "ExplanationOfBenefit,Patient")
+	_, _, req = bulkRequestHelper(endpoint, "ExplanationOfBenefit,Patient")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 2, len(resourceTypes))
@@ -528,7 +528,7 @@ func validateRequestHelper(endpointBase string, s *APITestSuite) {
 		}
 	}
 
-	_, _, req = bulkRequestHelper(endpointBase, "Coverage,Patient")
+	_, _, req = bulkRequestHelper(endpoint, "Coverage,Patient")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 2, len(resourceTypes))
@@ -538,32 +538,32 @@ func validateRequestHelper(endpointBase string, s *APITestSuite) {
 		}
 	}
 
-	_, _, req = bulkRequestHelper(endpointBase, "ExplanationOfBenefit")
+	_, _, req = bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(resourceTypes))
 	assert.Contains(s.T(), resourceTypes, "ExplanationOfBenefit")
 
-	_, _, req = bulkRequestHelper(endpointBase, "Patient")
+	_, _, req = bulkRequestHelper(endpoint, "Patient")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(resourceTypes))
 	assert.Contains(s.T(), resourceTypes, "Patient")
 
-	_, _, req = bulkRequestHelper(endpointBase, "Coverage")
+	_, _, req = bulkRequestHelper(endpoint, "Coverage")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(resourceTypes))
 	assert.Contains(s.T(), resourceTypes, "Coverage")
 
-	_, _, req = bulkRequestHelper(endpointBase, "Practitioner")
+	_, _, req = bulkRequestHelper(endpoint, "Practitioner")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), resourceTypes)
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
 
-	_, _, req = bulkRequestHelper(endpointBase, "Patient,Patient")
+	_, _, req = bulkRequestHelper(endpoint, "Patient,Patient")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), resourceTypes)
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
@@ -571,27 +571,27 @@ func validateRequestHelper(endpointBase string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
 }
 
-func bulkRequestHelper(endpointBase, resourceType string) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
+func bulkRequestHelper(endpoint, resourceType string) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
 	var requestUrl string
 	var handlerFunc http.HandlerFunc
 	var req *http.Request
 
-	if endpointBase == "Patient" {
+	if endpoint == "Patient" {
 		if resourceType != "" {
-			requestUrl = fmt.Sprintf("/api/v1/%s/$export?_type=%s", endpointBase, resourceType)
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export?_type=%s", endpoint, resourceType)
 		} else {
-			requestUrl = fmt.Sprintf("/api/v1/%s/$export", endpointBase)
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export", endpoint)
 		}
 		req = httptest.NewRequest("GET", requestUrl, nil)
 		handlerFunc = bulkPatientRequest
 		return requestUrl, handlerFunc, req
 
 	} else {
-		endpointBase = "Group/all"
+		endpoint = "Group/all"
 		if resourceType != "" {
-			requestUrl = fmt.Sprintf("/api/v1/%s/$export?_type=%s", endpointBase, resourceType)
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export?_type=%s", endpoint, resourceType)
 		} else {
-			requestUrl = fmt.Sprintf("/api/v1/%s/$export", endpointBase)
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export", endpoint)
 		}
 		req = httptest.NewRequest("GET", requestUrl, nil)
 		handlerFunc = bulkGroupRequest

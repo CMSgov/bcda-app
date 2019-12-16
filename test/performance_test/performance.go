@@ -14,7 +14,7 @@ import (
 
 // might add a with metrics bool option
 var (
-	appTestToken, workerTestToken, apiHost, proto, resourceType, reportFilePath, endpointBase string
+	appTestToken, workerTestToken, apiHost, proto, resourceType, reportFilePath, endpoint string
 	freq, duration                                                          int
 )
 
@@ -27,7 +27,7 @@ func init() {
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&resourceType, "resourceType", "", "resourceType to test")
 	flag.StringVar(&reportFilePath, "report_path", "../../test_results/performance", "path to write the result.html")
-	flag.StringVar(&endpointBase, "endpointBase", "", "base type of request endpoint")
+	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint")
 	flag.Parse()
 
 	// create folder if doesn't exist for storing the results
@@ -48,7 +48,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		writeResults(fmt.Sprintf("%s_%s_api_plot", endpointBase, resourceType), buf)
+		writeResults(fmt.Sprintf("%s_%s_api_plot", endpoint, resourceType), buf)
 	}
 
 	if workerTestToken != "" {
@@ -64,15 +64,15 @@ func main() {
 }
 
 func makeTarget(accessToken string) vegeta.Targeter {
-	if endpointBase != "Patient" {
-		endpointBase = "Group/all"
+	if endpoint != "Patient" {
+		endpoint = "Group/all"
 	}
 
 	var url string
 	if resourceType != "" {
-		url = fmt.Sprintf("%s://%s/api/v1/%s/$export?_type=%s", proto, apiHost, endpointBase, resourceType)
+		url = fmt.Sprintf("%s://%s/api/v1/%s/$export?_type=%s", proto, apiHost, endpoint, resourceType)
 	} else {
-		url = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, endpointBase)
+		url = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, endpoint)
 	}
 
 	header := map[string][]string{
@@ -90,8 +90,8 @@ func makeTarget(accessToken string) vegeta.Targeter {
 }
 
 func runAPITest(target vegeta.Targeter) *plot.Plot {
-	fmt.Printf("running api performance for: %s_%s\n", endpointBase, resourceType)
-	title := plot.Title(fmt.Sprintf("apiTest_%s_%s", endpointBase, resourceType))
+	fmt.Printf("running api performance for: %s_%s\n", endpoint, resourceType)
+	title := plot.Title(fmt.Sprintf("apiTest_%s_%s", endpoint, resourceType))
 	p := plot.New(title)
 	defer p.Close()
 
@@ -104,8 +104,8 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 }
 
 func runWorkerTest(target vegeta.Targeter) *plot.Plot {
-	fmt.Printf("running worker performance for: %s_%s\n", endpointBase, resourceType)
-	title := plot.Title(fmt.Sprintf("workerTest_%s_%s", endpointBase, resourceType))
+	fmt.Printf("running worker performance for: %s_%s\n", endpoint, resourceType)
+	title := plot.Title(fmt.Sprintf("workerTest_%s_%s", endpoint, resourceType))
 	p := plot.New(title)
 	defer p.Close()
 
