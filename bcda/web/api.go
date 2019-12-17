@@ -65,7 +65,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/Group/{groupID}/$export bulkData bulkGroupRequest
+	swagger:route GET /api/v1/Group/{groupId}/$export bulkData bulkGroupRequest
 
     Start data export (for the specified group identifier) for all supported resource types
 
@@ -85,7 +85,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	groupID := chi.URLParam(r, "groupID")
+	groupID := chi.URLParam(r, "groupId")
 	if groupID == groupAll {
 		resourceTypes, err := validateRequest(r); if err != nil {
 			responseutils.WriteError(err, w, http.StatusBadRequest)

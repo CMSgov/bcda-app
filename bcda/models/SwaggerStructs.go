@@ -157,7 +157,7 @@ type GroupIDParam struct {
 	// ID of group export
 	// in: path
 	// required: true
-	GroupID string `json:"groupID"`
+	GroupID string `json:"groupId"`
 }
 
 // JSON with a valid JWT

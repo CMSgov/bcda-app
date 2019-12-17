@@ -596,7 +596,7 @@ func bulkRequestHelper(endpoint, resourceType string) (string, func(http.Respons
 		req = httptest.NewRequest("GET", requestUrl, nil)
 		handlerFunc = bulkGroupRequest
 		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("groupID", groupAll)
+		rctx.URLParams.Add("groupId", groupAll)
 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 		return requestUrl, handlerFunc, req
 	}
