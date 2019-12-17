@@ -4,6 +4,13 @@
 #
 set -e
 
-go run performance.go -host=api:3000 -endpoint=ExplanationOfBenefit
+echo echo "Running EOB"
+go run performance.go -host=api:3000 -resourceType=ExplanationOfBenefit -endpoint=Patient
+echo "Running Patient"
+go run performance.go -host=api:3000 -resourceType=Patient -endpoint=Patient
+echo "Running Coverage"
+go run performance.go -host=api:3000 -resourceType=Coverage -endpoint=Patient
+echo "Running Patient All"
 go run performance.go -host=api:3000 -endpoint=Patient
-go run performance.go -host=api:3000 -endpoint=Coverage
+echo "Running Group All"
+go run performance.go -host=api:3000 -endpoint=Group

@@ -14,8 +14,8 @@ import (
 
 // might add a with metrics bool option
 var (
-	appTestToken, workerTestToken, apiHost, proto, endpoint, reportFilePath string
-	freq, duration                                                          int
+	appTestToken, workerTestToken, apiHost, proto, resourceType, reportFilePath, endpoint string
+	freq, duration                                                                        int
 )
 
 func init() {
@@ -25,8 +25,9 @@ func init() {
 	flag.IntVar(&duration, "duration", 60, "seconds: the total time to run the test")
 	flag.IntVar(&freq, "freq", 10, "the number of requests per second")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
-	flag.StringVar(&endpoint, "endpoint", "ExplanationOfBenefit", "endpoint to test")
+	flag.StringVar(&resourceType, "resourceType", "", "resourceType to test")
 	flag.StringVar(&reportFilePath, "report_path", "../../test_results/performance", "path to write the result.html")
+	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint")
 	flag.Parse()
 
 	// create folder if doesn't exist for storing the results
@@ -47,7 +48,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		writeResults(fmt.Sprintf("%s_api_plot", endpoint), buf)
+		writeResults(fmt.Sprintf("%s_%s_api_plot", endpoint, resourceType), buf)
 	}
 
 	if workerTestToken != "" {
@@ -63,7 +64,17 @@ func main() {
 }
 
 func makeTarget(accessToken string) vegeta.Targeter {
-	url := fmt.Sprintf("%s://%s/api/v1/Patient/$export?_type=%s", proto, apiHost, endpoint)
+	if endpoint == "Group" {
+		groupId := "all"
+		endpoint = fmt.Sprintf("%s/%s",endpoint, groupId)
+	}
+
+	var url string
+	if resourceType != "" {
+		url = fmt.Sprintf("%s://%s/api/v1/%s/$export?_type=%s", proto, apiHost, endpoint, resourceType)
+	} else {
+		url = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, endpoint)
+	}
 
 	header := map[string][]string{
 		"Prefer":        {"respond-async"},
@@ -80,8 +91,8 @@ func makeTarget(accessToken string) vegeta.Targeter {
 }
 
 func runAPITest(target vegeta.Targeter) *plot.Plot {
-	fmt.Printf("running api performance for: %s\n", endpoint)
-	title := plot.Title(fmt.Sprintf("apiTest_%s", endpoint))
+	fmt.Printf("running api performance for: %s_%s\n", endpoint, resourceType)
+	title := plot.Title(fmt.Sprintf("apiTest_%s_%s", endpoint, resourceType))
 	p := plot.New(title)
 	defer p.Close()
 
@@ -94,8 +105,8 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 }
 
 func runWorkerTest(target vegeta.Targeter) *plot.Plot {
-	fmt.Printf("running worker performance for: %s\n", endpoint)
-	title := plot.Title(fmt.Sprintf("workerTest_%s", endpoint))
+	fmt.Printf("running worker performance for: %s_%s\n", endpoint, resourceType)
+	title := plot.Title(fmt.Sprintf("workerTest_%s_%s", endpoint, resourceType))
 	p := plot.New(title)
 	defer p.Close()
 
@@ -121,8 +132,7 @@ func plotAttack(p *plot.Plot, t vegeta.Targeter, r vegeta.Rate, du time.Duration
 func writeResults(filename string, buf bytes.Buffer) {
 	data := buf.Bytes()
 	if len(data) > 0 {
-		var s string
-		fn := fmt.Sprintf("%s/%s%s.html", reportFilePath, filename, s)
+		fn := fmt.Sprintf("%s/%s.html", reportFilePath, filename)
 		fmt.Printf("Writing results: %s\n", fn)
 		err := ioutil.WriteFile(fn, data, 0644)
 		if err != nil {

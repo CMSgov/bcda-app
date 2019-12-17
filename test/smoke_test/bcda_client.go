@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	accessToken, apiHost, proto, endpoint, clientID, clientSecret string
-	timeout                                                       int
+	accessToken, apiHost, proto, resourceType, clientID, clientSecret, endpoint string
+	timeout                                                                     int
 )
 
 type OutputCollection []Output
@@ -40,8 +40,9 @@ func init() {
 	flag.StringVar(&clientSecret, "clientSecret", "", "client secret for retrieving an access token")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
-	flag.StringVar(&endpoint, "endpoint", "", "endpoint to test")
+	flag.StringVar(&resourceType, "resourceType", "", "resourceType to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
+	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint")
 	flag.Parse()
 
 	if accessToken == "" {
@@ -78,14 +79,20 @@ func getAccessToken() string {
 	return t.AccessToken
 }
 
-func startJob(resourceType string) *http.Response {
+func startJob(endpoint, resourceType string) *http.Response {
 	client := &http.Client{}
 	var url string
 
+	// currently hard-coding groupId as this is the only value at the moment
+	if endpoint == "Group" {
+		groupId := "all"
+		endpoint = fmt.Sprintf("%s/%s",endpoint, groupId)
+	}
+
 	if resourceType != "" {
-		url = fmt.Sprintf("%s://%s/api/v1/Patient/$export?_type=%s", proto, apiHost, resourceType)
+		url = fmt.Sprintf("%s://%s/api/v1/%s/$export?_type=%s", proto, apiHost, endpoint, resourceType)
 	} else {
-		url = fmt.Sprintf("%s://%s/api/v1/Patient/$export", proto, apiHost)
+		url = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, endpoint)
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -160,9 +167,9 @@ func isValidNDJSONText(data string) bool {
 }
 
 func main() {
-	fmt.Printf("making request to start %s data aggregation job\n", endpoint)
+	fmt.Printf("making request to start %s %s data aggregation job\n", endpoint, resourceType)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
-	if result := startJob(endpoint); result.StatusCode == 202 {
+	if result := startJob(endpoint, resourceType); result.StatusCode == 202 {
 		for {
 			<-time.After(5 * time.Second)
 
@@ -173,11 +180,11 @@ func main() {
 
 			fmt.Println("checking job status...")
 			status := get(result.Header["Content-Location"][0])
-	
+
 			// Acquire new token if the current token has expired
-			if status.StatusCode  == 401 {
+			if status.StatusCode == 401 {
 				fmt.Println("acquire new token...")
-				accessToken  = getAccessToken() 
+				accessToken = getAccessToken()
 			} else if status.StatusCode == 200 {
 				fmt.Println("file is ready for download...")
 
@@ -205,7 +212,7 @@ func main() {
 				}
 
 				for _, fileItem := range data {
-				
+
 					// Acquire new access token for each file download
 					accessToken = getAccessToken()
 
@@ -347,7 +354,7 @@ func main() {
 			}
 		}
 	} else {
-		fmt.Printf("error: failed to start %s data aggregation job\n", endpoint)
+		fmt.Printf("error: failed to start %s %s data aggregation job\n", endpoint, resourceType)
 		os.Exit(1)
 	}
 }

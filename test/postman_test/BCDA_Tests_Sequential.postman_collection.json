@@ -1216,7 +1216,7 @@
 			"response": []
 		},
 		{
-			"name": "Start repeated type for EOB export",
+			"name": "Start repeated type for /Patient EOB export",
 			"event": [
 				{
 					"listen": "test",
@@ -1282,7 +1282,7 @@
 			"response": []
 		},
 		{
-			"name": "Start non-existing resource type export",
+			"name": "Start /Patient non-existing resource type export",
 			"event": [
 				{
 					"listen": "test",
@@ -1342,6 +1342,204 @@
 						"v1",
 						"Patient",
 						"$export?_type=Practitioner"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start repeated type for /Group EOB export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=ExplanationOfBenefit,ExplanationOfBenefit",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group/all",
+						"$export?_type=ExplanationOfBenefit,ExplanationOfBenefit"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start /Group non-existing resource type export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Practitioner",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group/all",
+						"$export?_type=Practitioner"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group export, invalid group id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/sub/$export?_type=ExplanationOfBenefit",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group/sub",
+						"$export?_type=ExplanationOfBenefit"
 					]
 				}
 			},

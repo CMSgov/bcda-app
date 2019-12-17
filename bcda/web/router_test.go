@@ -107,33 +107,47 @@ func (s *RouterTestSuite) TestVersionRoute() {
 func (s *RouterTestSuite) TestEOBExportRoute() {
 	res := s.getAPIRoute("/api/v1/Patient/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/Patients/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// group all
+	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
 }
 
 func (s *RouterTestSuite) TestPatientExportRoute() {
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient", nil)
-	rr := httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res := rr.Result()
+	res := s.getAPIRoute("/api/v1/Patient/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
-	req = httptest.NewRequest("GET", "/api/v1/Patients/$export?_type=Patient", nil)
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
+	res = s.getAPIRoute("/api/v1/Patients/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// group all
+	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
 }
 
 func (s *RouterTestSuite) TestCoverageExportRoute() {
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Coverage", nil)
-	rr := httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res := rr.Result()
+	res := s.getAPIRoute("/api/v1/Patient/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
-	req = httptest.NewRequest("GET", "/api/v1/Patients/$export?_type=Coverage", nil)
-	rr = httptest.NewRecorder()
-	NewAPIRouter().ServeHTTP(rr, req)
-	res = rr.Result()
+	res = s.getAPIRoute("/api/v1/Patients/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// group all
+	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 }

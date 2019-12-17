@@ -64,6 +64,76 @@ func (s *APITestSuite) TearDownTest() {
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
+	bulkEOBRequestHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
+	bulkEOBRequestNoBeneficiariesInACOHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestNoBeneficiariesInACOHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
+	bulkEOBRequestMissingTokenHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestMissingTokenHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
+	bulkEOBRequestNoQueueHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestNoQueueHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkPatientRequest() {
+	bulkPatientRequestHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkPatientRequestHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequest() {
+	bulkCoverageRequestHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkRequestInvalidType() {
+	bulkRequestInvalidTypeHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkRequestInvalidTypeHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkConcurrentRequest() {
+	bulkConcurrentRequestHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkConcurrentRequestHelper("Group", s)
+}
+
+func (s *APITestSuite) TestBulkConcurrentRequestTime() {
+	bulkConcurrentRequestTimeHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkConcurrentRequestTimeHelper("Group", s)
+}
+
+func (s *APITestSuite) TestValidateRequest() {
+	validateRequestHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	validateRequestHelper("Group", s)
+}
+
+func bulkEOBRequestHelper(endpoint string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -74,7 +144,7 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 		s.T().Error(err)
 	}
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -95,20 +165,21 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 
 	qc = que.NewClient(pgxpool)
 
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export?_type=ExplanationOfBenefit").Delete(models.Job{})
-	s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
-	s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
+
+	s.db.Unscoped().Where("request_url = ?", requestUrl).Delete(models.Job{})
+	s.db.Unscoped().Where("user_id = ?", user.UUID).Delete(models.Job{})
+	s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 }
 
-func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
+func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) {
 	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "A40404F7-1EF2-485A-9B71-40FE7ACDCBC2"
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 	ad := makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -129,16 +200,16 @@ func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 
 	qc = que.NewClient(pgxpool)
 
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 }
 
-func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
+func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
@@ -154,7 +225,7 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Display)
 }
 
-func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
+func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	qc = nil
 
 	acoID := constants.SmallACOUUID
@@ -162,13 +233,14 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	if err != nil {
 		s.T().Error(err)
 	}
-	defer s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
+	defer s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
+
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
@@ -184,7 +256,7 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
 }
 
-func (s *APITestSuite) TestBulkPatientRequest() {
+func bulkPatientRequestHelper(endpoint string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -194,11 +266,12 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	}
 
 	defer func() {
-		s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
-		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
+		s.db.Unscoped().Where("user_id = ?", user.UUID).Delete(models.Job{})
+		s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
 
-	req := httptest.NewRequest("GET", "/api/v1/test/Patient/$export?_type=Patient", nil)
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "Patient")
+
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -219,14 +292,14 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 
 	qc = que.NewClient(pgxpool)
 
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
-	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export?_type=Patient").Delete(models.Job{})
+	s.db.Unscoped().Where("request_url = ?", requestUrl).Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
-func (s *APITestSuite) TestBulkCoverageRequest() {
+func bulkCoverageRequestHelper(endpoint string, s *APITestSuite) {
 	acoID := constants.DevACOUUID
 	user, err := models.CreateUser("api.go Test User", "testbulkcoveragerequest@example.com", uuid.Parse(acoID))
 	if err != nil {
@@ -234,11 +307,12 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 	}
 
 	defer func() {
-		s.db.Where("user_id = ?", user.UUID).Delete(models.Job{})
-		s.db.Where("uuid = ?", user.UUID).Delete(models.User{})
+		s.db.Unscoped().Where("user_id = ?", user.UUID).Delete(models.Job{})
+		s.db.Unscoped().Where("uuid = ?", user.UUID).Delete(models.User{})
 	}()
 
-	req := httptest.NewRequest("GET", "/api/v1/test/Patient/$export?_type=Coverage", nil)
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "Coverage")
+
 	ad := makeContextValues(acoID, user.UUID.String())
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 
@@ -259,61 +333,61 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 
 	qc = que.NewClient(pgxpool)
 
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
-	s.db.Unscoped().Where("request_url = ?", "http://example.com/api/v1/test/Patient/$export?_type=Coverage").Delete(models.Job{})
+	s.db.Unscoped().Where("request_url = ?", requestUrl).Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
-func (s *APITestSuite) TestBulkRequestInvalidType() {
-	req := httptest.NewRequest("GET", "/api/v1/test/Foo/$export?_type=Foo", nil)
-
-	bulkPatientRequest(s.rr, req)
-
+func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {
+	_, handlerFunc, req := bulkRequestHelper(endpoint+"/test/Foo/", "Foo")
+	handlerFunc(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
-func (s *APITestSuite) TestBulkConcurrentRequest() {
-	os.Setenv("DEPLOYMENT_TARGET", "prod")
+func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
+	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
+	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
-	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
+
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		UserID:     uuid.Parse(userID),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: requestUrl,
 		Status:     "In Progress",
 		JobCount:   1,
 	}
 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 	ad := makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 	pool := makeConnPool(s)
 	defer pool.Close()
 
 	// serve job
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
 
 	// change status to Pending and serve job
 	var job models.Job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(),err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status","Pending").Error)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Pending").Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
 
 	// change status to Completed and serve job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(),err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status","Completed").Error)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Completed").Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -323,8 +397,8 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 
 	// change status to Failed and serve job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(),err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status","Failed").Error)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Failed").Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -334,8 +408,8 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 
 	// change status to Archived
 	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(),err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status","Archived").Error)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Archived").Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -345,8 +419,8 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 
 	// change status to Expired
 	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(),err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status","Expired").Error)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Expired").Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -356,8 +430,8 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 
 	// different aco same endpoint
 	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(),err)
-	assert.Nil(s.T(), s.db.Model(&job).Updates(models.Job{ACOID:uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), Status:"In Progress"}).Error)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), s.db.Model(&job).Updates(models.Job{ACOID: uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), Status: "In Progress"}).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -366,15 +440,15 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	// same aco different endpoint
-	handler = http.HandlerFunc(bulkPatientRequest)
+	handler = http.HandlerFunc(handlerFunc)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 
-	req = httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=Patient", nil)
+	_, handlerFunc, req = bulkRequestHelper(endpoint, "Patient")
 	ad = makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
-	handler = http.HandlerFunc(bulkPatientRequest)
+	handler = http.HandlerFunc(handlerFunc)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -391,42 +465,141 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	os.Unsetenv("DEPLOYMENT_TARGET")
 }
 
-func (s *APITestSuite) TestBulkConcurrentRequestTime() {
-	os.Setenv("DEPLOYMENT_TARGET", "prod")
+func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
+	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
+	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	userID := "82503a18-bf3b-436d-ba7b-bae09b7ffd2f"
-	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
+
+	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		UserID:     uuid.Parse(userID),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		RequestURL: requestUrl,
 		Status:     "In Progress",
 		JobCount:   1,
 	}
 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", "/api/v1/Patient/$export?_type=ExplanationOfBenefit", nil)
 	ad := makeContextValues(acoID, userID)
 	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
 	pool := makeConnPool(s)
 	defer pool.Close()
 
 	// serve job
-	handler := http.HandlerFunc(bulkPatientRequest)
+	handler := http.HandlerFunc(handlerFunc)
+	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
 
 	// change created_at timestamp
 	var job models.Job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(),err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("created_at",job.CreatedAt.Add(-GetJobTimeout())).Error)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), s.db.Model(&job).Update("created_at", job.CreatedAt.Add(-GetJobTimeout())).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-        os.Unsetenv("DEPLOYMENT_TARGET")
+	os.Unsetenv("DEPLOYMENT_TARGET")
+}
+
+func validateRequestHelper(endpoint string, s *APITestSuite) {
+	_, _, req := bulkRequestHelper(endpoint, "")
+
+	resourceTypes, err := validateRequest(req)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 3, len(resourceTypes))
+	for _, t := range resourceTypes {
+		if t != "ExplanationOfBenefit" && t != "Patient" && t != "Coverage" {
+			assert.Fail(s.T(), "Invalid Resource type found")
+		}
+	}
+
+	_, _, req = bulkRequestHelper(endpoint, "ExplanationOfBenefit,Patient")
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 2, len(resourceTypes))
+	for _, t := range resourceTypes {
+		if t != "ExplanationOfBenefit" && t != "Patient" {
+			assert.Fail(s.T(), "Invalid Resource type found")
+		}
+	}
+
+	_, _, req = bulkRequestHelper(endpoint, "Coverage,Patient")
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 2, len(resourceTypes))
+	for _, t := range resourceTypes {
+		if t != "Coverage" && t != "Patient" {
+			assert.Fail(s.T(), "Invalid Resource type found")
+		}
+	}
+
+	_, _, req = bulkRequestHelper(endpoint, "ExplanationOfBenefit")
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 1, len(resourceTypes))
+	assert.Contains(s.T(), resourceTypes, "ExplanationOfBenefit")
+
+	_, _, req = bulkRequestHelper(endpoint, "Patient")
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 1, len(resourceTypes))
+	assert.Contains(s.T(), resourceTypes, "Patient")
+
+	_, _, req = bulkRequestHelper(endpoint, "Coverage")
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 1, len(resourceTypes))
+	assert.Contains(s.T(), resourceTypes, "Coverage")
+
+	_, _, req = bulkRequestHelper(endpoint, "Practitioner")
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(), resourceTypes)
+	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
+
+	_, _, req = bulkRequestHelper(endpoint, "Patient,Patient")
+	resourceTypes, err = validateRequest(req)
+	assert.Nil(s.T(), resourceTypes)
+	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
+}
+
+func bulkRequestHelper(endpoint, resourceType string) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
+	var requestUrl string
+	var handlerFunc http.HandlerFunc
+	var req *http.Request
+
+	if endpoint == "Patient" {
+		if resourceType != "" {
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export?_type=%s", endpoint, resourceType)
+		} else {
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export", endpoint)
+		}
+		req = httptest.NewRequest("GET", requestUrl, nil)
+		handlerFunc = bulkPatientRequest
+		return requestUrl, handlerFunc, req
+
+	} else {
+		endpoint = "Group/all"
+		if resourceType != "" {
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export?_type=%s", endpoint, resourceType)
+		} else {
+			requestUrl = fmt.Sprintf("/api/v1/%s/$export", endpoint)
+		}
+		req = httptest.NewRequest("GET", requestUrl, nil)
+		handlerFunc = bulkGroupRequest
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("groupId", groupAll)
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		return requestUrl, handlerFunc, req
+	}
 }
 
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
@@ -504,7 +677,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	assert.Equal(s.T(), "Pending", s.rr.Header().Get("X-Progress"))
 	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestJobStatusInProgress() {
@@ -533,7 +706,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	assert.Equal(s.T(), "In Progress (0%)", s.rr.Header().Get("X-Progress"))
 	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
 
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestJobStatusFailed() {
@@ -560,7 +733,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 // https://stackoverflow.com/questions/34585957/postgresql-9-3-how-to-insert-upper-case-uuid-into-table
@@ -635,7 +808,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	}
 	assert.Empty(s.T(), rb.Errors)
 
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
@@ -673,7 +846,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		}
 	}
 
-	errFileName := strings.Split(jobKey.FileName,".")[0]
+	errFileName := strings.Split(jobKey.FileName, ".")[0]
 	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
 	_, err := os.Create(errFilePath)
 	if err != nil {
@@ -701,7 +874,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
 	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
 
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 	os.Remove(errFilePath)
 }
 
@@ -730,7 +903,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
 	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
 	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 // THis job is old, but has not yet been marked as expired.
@@ -761,7 +934,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
 	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
 	assert.Equal(s.T(), j.UpdatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestJobStatusArchived() {
@@ -789,7 +962,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
 	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
 	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestServeData() {
@@ -908,7 +1081,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 
-	s.db.Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestHealthCheck() {

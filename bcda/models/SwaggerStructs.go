@@ -132,7 +132,7 @@ type FileParam struct {
 	Filename string `json:"filename"`
 }
 
-// swagger:parameters bulkPatientRequest
+// swagger:parameters bulkPatientRequest bulkGroupRequest
 type ResourceTypeParam struct {
 	// Resource types requested
 	// in: query
@@ -141,12 +141,23 @@ type ResourceTypeParam struct {
 	ResourceType []string `json:"_type"`
 }
 
-// swagger:parameters bulkPatientRequest bulkEOBRequest bulkCoverageRequest
+// swagger:parameters bulkPatientRequest bulkGroupRequest
 type BulkRequestHeaders struct {
 	// required: true
 	// in: header
 	// enum: respond-async
 	Prefer string
+}
+
+// A BulkGroupRequest parameter model.
+//
+// This is used for operations that want the groupID of a group in the path
+// swagger:parameters bulkGroupRequest
+type GroupIDParam struct {
+	// ID of group export
+	// in: path
+	// required: true
+	GroupID string `json:"groupId"`
 }
 
 // JSON with a valid JWT

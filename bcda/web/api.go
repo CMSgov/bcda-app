@@ -32,6 +32,10 @@ import (
 
 var qc *que.Client
 
+const (
+	groupAll = "all"
+)
+
 /*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
@@ -53,32 +57,46 @@ var qc *que.Client
 		500: errorResponse
 */
 func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	var resourceTypes []string
-	params, ok := r.URL.Query()["_type"]
-	if ok {
-		resourceMap := make(map[string]bool)
-		params = strings.Split(params[0], ",")
-		for _, p := range params {
-			if p != "ExplanationOfBenefit" && p != "Patient" && p != "Coverage" {
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
-				responseutils.WriteError(oo, w, http.StatusBadRequest)
-				return
-			} else {
-				if !resourceMap[p] {
-					resourceMap[p] = true
-					resourceTypes = append(resourceTypes, p)
-				} else {
-					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Repeated resource type", responseutils.RequestErr)
-					responseutils.WriteError(oo, w, http.StatusBadRequest)
-					return
-				}
-			}
-		}
-	} else {
-		// patient all request, all resource types applied
-		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+	resourceTypes, err := validateRequest(r); if err != nil {
+		responseutils.WriteError(err, w, http.StatusBadRequest)
+		return
 	}
 	bulkRequest(resourceTypes, w, r)
+}
+
+/*
+	swagger:route GET /api/v1/Group/{groupId}/$export bulkData bulkGroupRequest
+
+    Start data export (for the specified group identifier) for all supported resource types
+
+	Initiates a job to collect data from the Blue Button API for your ACO. At this time, the only Group identifier supported by the system is `all`, which returns the same data as the Patient endpoint. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	groupID := chi.URLParam(r, "groupId")
+	if groupID == groupAll {
+		resourceTypes, err := validateRequest(r); if err != nil {
+			responseutils.WriteError(err, w, http.StatusBadRequest)
+			return
+		}
+		bulkRequest(resourceTypes, w, r)
+	} else {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid groupID", responseutils.RequestErr)
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
 }
 
 func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request) {
@@ -211,6 +229,33 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 	} else {
 		return unworkedTypes, true
 	}
+}
+
+func validateRequest (r *http.Request) ([]string, *fhirmodels.OperationOutcome)  {
+	var resourceTypes []string
+	params, ok := r.URL.Query()["_type"]
+	if ok {
+		resourceMap := make(map[string]bool)
+		params = strings.Split(params[0], ",")
+		for _, p := range params {
+			if p != "ExplanationOfBenefit" && p != "Patient" && p != "Coverage" {
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
+				return nil, oo
+			} else {
+				if !resourceMap[p] {
+					resourceMap[p] = true
+					resourceTypes = append(resourceTypes, p)
+				} else {
+					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Repeated resource type", responseutils.RequestErr)
+					return nil, oo
+				}
+			}
+		}
+	} else {
+		// resource types not supplied in request; default to applying all resource types.
+		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+	}
+	return resourceTypes, nil
 }
 
 /*
