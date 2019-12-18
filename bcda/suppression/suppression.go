@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"os"
 	"path/filepath"
@@ -419,4 +420,38 @@ func updateImportStatus(m *suppressionFileMetadata, status string) {
 		err = errors.Wrapf(err, "could not update suppression file record for file: %s.", m)
 		log.Error(err)
 	}
+}
+
+// ImportSuppressionBBID returns the suppression beneficiary's Blue Button ID. If not already in the BCDA database,
+// the ID value is retrieved from BB and saved.
+func ImportSuppressionBBID() (success int, err error) {
+	db := database.GetGORMDbConnection()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	}()
+
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		err = errors.Wrap(err, "could not create Blue Button client")
+		log.Error(err)
+		return 0, err
+	}
+
+	// add lots of logging
+	var suppressList []models.Suppression
+	db.Find(&suppressList, "blue_button_id = ''")
+	for _, suppressBene := range suppressList {
+		bbID, err := suppressBene.GetBlueButtonID(bb)
+		if err != nil {
+			log.Error(err)
+			return success, err
+		}
+		suppressBene.BlueButtonID = bbID
+		db.Save(&suppressBene)
+	}
+	return success, nil
 }

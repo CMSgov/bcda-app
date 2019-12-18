@@ -471,6 +471,17 @@ func setUpApp() *cli.App {
 				return err
 			},
 		},
+		{
+			Name:     "import-suppression-bluebuttonIds",
+			Category: "Data import",
+			Usage:    "Populate suppression model with BlueButton IDs",
+
+			Action: func(c *cli.Context) error {
+				s, err := suppression.ImportSuppressionBBID()
+				fmt.Fprintf(app.Writer, "Completed Suppression model with BlueButtonId import.\nSuccessfully updated: %v suppression files.", s)
+				return err
+			},
+		},
 	}
 	return app
 }
