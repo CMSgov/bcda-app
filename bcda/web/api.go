@@ -303,21 +303,9 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	case "Pending":
 		fallthrough
 	case "In Progress":
-		// Check the job status in case it is done and just needs a small poke
-		complete, err := job.CheckCompletedAndCleanup()
-
-		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-		if !complete {
-			w.Header().Set("X-Progress", job.StatusMessage())
-			w.WriteHeader(http.StatusAccepted)
-			return
-		}
-		fallthrough
-
+		w.Header().Set("X-Progress", job.StatusMessage())
+		w.WriteHeader(http.StatusAccepted)
+		return
 	case "Completed":
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(GetJobTimeout()).Before(time.Now()) {
