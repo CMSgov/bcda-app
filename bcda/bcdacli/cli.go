@@ -472,13 +472,13 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "import-suppression-bluebuttonIds",
+			Name:     "retrieve-suppression-hicn-to-bbid",
 			Category: "Data import",
 			Usage:    "Populate suppression model with BlueButton IDs",
 
 			Action: func(c *cli.Context) error {
-				s, err := suppression.ImportSuppressionBBID()
-				fmt.Fprintf(app.Writer, "Completed Suppression model with BlueButtonId import.\nSuccessfully updated: %v suppression files.", s)
+				s, f, err := suppression.GetSuppressionBBID()
+				fmt.Fprintf(app.Writer, "Completed Suppression model with BlueButtonId retrieval.\n Successfully retrieve %v BB ids. Failed to retrieve %v BB ids.", s, f)
 				return err
 			},
 		},

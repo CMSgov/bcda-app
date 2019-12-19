@@ -247,22 +247,22 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	var suppressedBBIds []string
+	var suppressedHICNs []string
 	if !includeSuppressed {
-		db.Raw(`SELECT DISTINCT s.blue_button_id
+		db.Raw(`SELECT DISTINCT s.hicn
 			FROM (
-				SELECT blue_button_id, MAX(effective_date) max_date
+				SELECT hicn, MAX(effective_date) max_date
 				FROM suppressions 
-				WHERE effective_date <= NOW() AND preference_indicator != '' 
-				GROUP BY blue_button_id
+				WHERE effective_date <= NOW() AND preference_indicator != ''
+				GROUP BY hicn
 			) h
-			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
-			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIds)
+			JOIN suppressions s ON s.hicn = h.hicn and s.effective_date = h.max_date
+			WHERE preference_indicator = 'N'`).Pluck("hicn", &suppressedHICNs)
 	}
 
 	var err error
-	if suppressedBBIds != nil {
-		err = db.Not("blue_button_id", suppressedBBIds).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	if suppressedHICNs != nil {
+		err = db.Not("hicn", suppressedHICNs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	} else {
 		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	}
@@ -533,12 +533,6 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use suppressionBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-	// If this is set already, just give it back.
-	if suppressionBeneficiary.BlueButtonID != "" {
-		return suppressionBeneficiary.BlueButtonID, nil
-	}
-
-	// didn't find a local value, need to ask BlueButton
 	hashedHICN := client.HashHICN(suppressionBeneficiary.HICN)
 	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
 	if err != nil {
