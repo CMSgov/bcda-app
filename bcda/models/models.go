@@ -482,9 +482,19 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		return cclfBeneficiary.BlueButtonID, nil
 	}
 
+	patientIdMode := "HICN"
+	identifier :=  cclfBeneficiary.HICN
+	systemMode := "hicn-hash"
+	if utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE") == "MBI_MODE"  {
+		patientIdMode = "MBI"
+		identifier = cclfBeneficiary.MBI
+		systemMode = "hicn-mbi"
+	}
+
 	// didn't find a local value, need to ask BlueButton
-	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
-	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
+	hashedIdentifier := client.HashIdentifier(identifier)
+	// pass in two variables later
+	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier)
 	if err != nil {
 		return "", err
 	}
@@ -500,13 +510,13 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		log.Error(err)
 		return "", err
 	}
-	var foundHICN = false
+	var foundIdentifier = false
 	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
 	for _, identifier := range patient.Entry[0].Resource.Identifier {
-		if strings.Contains(identifier.System, "hicn-hash") {
-			if identifier.Value == hashedHICN {
-				foundHICN = true
+		if strings.Contains(identifier.System, systemMode) {
+			if identifier.Value == hashedIdentifier {
+				foundIdentifier = true
 			}
 		} else if strings.Contains(identifier.System, "bene_id") {
 			if identifier.Value == blueButtonID {
@@ -515,8 +525,8 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		}
 
 	}
-	if !foundHICN {
-		err = fmt.Errorf("hashed HICN not found in the identifiers")
+	if !foundIdentifier {
+		err = fmt.Errorf("hashed %v not found in the identifiers", patientIdMode)
 		log.Error(err)
 		return "", err
 	}

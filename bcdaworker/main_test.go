@@ -256,7 +256,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	defer db.Delete(&cclfFile)
 
 	bbc := testUtils.BlueButtonClient{}
-	bbc.On("GetPatientByHICNHash", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
+	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
 
 	// clean out the data dir before beginning this test
 	os.RemoveAll(stagingDir)

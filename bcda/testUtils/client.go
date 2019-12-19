@@ -20,8 +20,8 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID str
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetPatientByHICNHash(hashedHICN string) (string, error) {
-	args := bbc.Called(hashedHICN)
+func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
+	args := bbc.Called(hashedIdentifier)
 	return args.String(0), args.Error(1)
 }
 
@@ -48,7 +48,7 @@ func (bbc *BlueButtonClient) GetData(endpoint, patientID string) (string, error)
 	}
 	cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
 	if bbc.HICN != nil {
-		cleanData = strings.Replace(cleanData, "c945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe", client.HashHICN(*bbc.HICN), -1)
+		cleanData = strings.Replace(cleanData, "c945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe", client.HashIdentifier(*bbc.HICN), -1)
 	}
 
 	return cleanData, err

@@ -34,7 +34,7 @@ type APIClient interface {
 	GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error)
 	GetPatient(patientID, jobID, cmsID string) (string, error)
 	GetCoverage(beneficiaryID, jobID, cmsID string) (string, error)
-	GetPatientByHICNHash(hashedHICN string) (string, error)
+	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -103,10 +103,17 @@ func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string,
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetPatientByHICNHash(hashedHICN string) (string, error) {
+func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
 	params := GetDefaultParams()
+
+	identifier := "hicnHash"
+	// will probably get rid of this by passing in an extra param
+	if utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE") == "MBI_MODE" {
+		identifier = "hicnMbi"
+	}
+
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
-	params.Set("identifier", fmt.Sprintf("http://bluebutton.cms.hhs.gov/identifier#hicnHash|%v", hashedHICN))
+	params.Set("identifier", fmt.Sprintf("http://bluebutton.cms.hhs.gov/identifier#%s|%v", identifier, hashedIdentifier))
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "", "")
 }
 
@@ -238,7 +245,7 @@ func GetDefaultParams() (params url.Values) {
 	return params
 }
 
-func HashHICN(toHash string) (hashedValue string) {
+func HashIdentifier(toHash string) (hashedValue string) {
 	blueButtonPepper := os.Getenv("BB_HASH_PEPPER")
 	blueButtonIter := utils.GetEnvInt("BB_HASH_ITER", 1000)
 
