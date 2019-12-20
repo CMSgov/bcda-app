@@ -252,7 +252,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 	return nil
 }
 
-func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
+func getCCLFArchiveMetadata(filePath string, refDate time.Time) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Yyy.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
 	filenameRegexp := regexp.MustCompile(`(T|P)\.BCD\.ACOB?\.ZC(0|8)Y(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
@@ -285,6 +285,12 @@ func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
 	if err != nil || t.IsZero() {
 		fmt.Printf("Failed to parse date '%s' from file: %s.\n", date, filePath)
 		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", date, filePath)
+		log.Error(err)
+		return metadata, err
+	}
+	if t.Before(time.Now().Add(-45 * 24 * time.Hour)) || t.After(time.Now()) {
+		fmt.Printf("Date '%s' from file %s is out of range\n", date, filePath)
+		err = errors.Wrapf(err, "date '%s' from file %s out of range", date, filePath)
 		log.Error(err)
 		return metadata, err
 	}
@@ -410,7 +416,7 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 		}
 		_ = zipReader.Close()
 
-		metadata, err := getCCLFArchiveMetadata(info.Name())
+		metadata, err := getCCLFArchiveMetadata(info.Name(), time.Now())
 		metadata.filePath = path
 		metadata.deliveryDate = info.ModTime()
 		if err != nil {
