@@ -252,7 +252,13 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 	return nil
 }
 
-func getCCLFArchiveMetadata(filePath string, refDate time.Time) (cclfFileMetadata, error) {
+func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
+	refDateString := os.Getenv("CCLF_REF_DATE")
+	refDate, err := time.Parse("060102", refDateString)
+	if err != nil {
+		refDate = time.Now()
+	}
+
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Yyy.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
 	filenameRegexp := regexp.MustCompile(`(T|P)\.BCD\.ACOB?\.ZC(0|8)Y(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
@@ -288,9 +294,12 @@ func getCCLFArchiveMetadata(filePath string, refDate time.Time) (cclfFileMetadat
 		log.Error(err)
 		return metadata, err
 	}
-	if t.Before(time.Now().Add(-45 * 24 * time.Hour)) || t.After(time.Now()) {
-		fmt.Printf("Date '%s' from file %s is out of range\n", date, filePath)
-		err = errors.Wrapf(err, "date '%s' from file %s out of range", date, filePath)
+
+	// Files must be no older than 45 days
+	filesBefore := refDate.Add(time.Duration(int64(time.Hour) * int64(24)))
+	if t.Before(filesBefore) || t.After(time.Now()) {
+		fmt.Printf("Date '%s' from file %s is out of range; comparison date %s\n", date, filePath, refDate.Format("060102"))
+		err = errors.New(fmt.Sprintf("date '%s' from file %s out of range; comparison date %s", date, filePath, refDate.Format("060102")))
 		log.Error(err)
 		return metadata, err
 	}
@@ -416,7 +425,7 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 		}
 		_ = zipReader.Close()
 
-		metadata, err := getCCLFArchiveMetadata(info.Name(), time.Now())
+		metadata, err := getCCLFArchiveMetadata(info.Name())
 		metadata.filePath = path
 		metadata.deliveryDate = info.ModTime()
 		if err != nil {
