@@ -253,6 +253,7 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 }
 
 func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
+	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
 	refDateString := os.Getenv("CCLF_REF_DATE")
 	refDate, err := time.Parse("060102", refDateString)
 	if err != nil {
@@ -295,8 +296,8 @@ func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
 		return metadata, err
 	}
 
-	// Files must be no older than 45 days
-	filesNotBefore := refDate.Add(-1 * time.Duration(int64(time.Hour) * int64(24 * 45)))
+	// Files must not be too old
+	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24) * int64(time.Hour)))
 	filesNotAfter := refDate
 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
 		fmt.Printf("Date '%s' from file %s is out of range; comparison date %s\n", date, filePath, refDate.Format("060102"))
