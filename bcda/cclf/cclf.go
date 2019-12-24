@@ -253,6 +253,13 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 }
 
 func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
+	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
+	refDateString := os.Getenv("CCLF_REF_DATE")
+	refDate, err := time.Parse("060102", refDateString)
+	if err != nil {
+		refDate = time.Now()
+	}
+
 	var metadata cclfFileMetadata
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.ACO.ZC0Yyy.Dyymmdd.Thhmmsst (timestamp will include the ACO ID value)
 	filenameRegexp := regexp.MustCompile(`(T|P)\.BCD\.ACOB?\.ZC(0|8)Y(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
@@ -285,6 +292,16 @@ func getCCLFArchiveMetadata(filePath string) (cclfFileMetadata, error) {
 	if err != nil || t.IsZero() {
 		fmt.Printf("Failed to parse date '%s' from file: %s.\n", date, filePath)
 		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", date, filePath)
+		log.Error(err)
+		return metadata, err
+	}
+
+	// Files must not be too old
+	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24) * int64(time.Hour)))
+	filesNotAfter := refDate
+	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
+		fmt.Printf("Date '%s' from file %s is out of range; comparison date %s\n", date, filePath, refDate.Format("060102"))
+		err = errors.New(fmt.Sprintf("date '%s' from file %s out of range; comparison date %s", date, filePath, refDate.Format("060102")))
 		log.Error(err)
 		return metadata, err
 	}
