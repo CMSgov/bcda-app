@@ -29,12 +29,6 @@ then
   exit 1
 fi
 
-if [ ! -f ../bcda/_site/feed.xml ]
-then
-  echo "Static Site generation must be completed prior to creating package."
-  exit 1
-fi
-
 cd ../bcda
 go clean
 echo "Building bcda binary..." 
