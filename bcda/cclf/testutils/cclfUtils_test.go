@@ -14,9 +14,21 @@ type CCLFUtilTestSuite struct {
 	suite.Suite
 }
 
+var origDate string
+
+func (s *CCLFUtilTestSuite) SetupSuite() {
+	origDate = os.Getenv("CCLF_REF_DATE")
+}
+
 func (s *CCLFUtilTestSuite) SetupTest() {
 	models.InitializeGormModels()
+	os.Setenv("CCLF_REF_DATE", "D181201")
 }
+
+func (s *CCLFUtilTestSuite) TearDownSuite() {
+	os.Setenv("CCLF_REF_DATE", origDate)
+}
+
 
 func TestCCLFTestSuite(t *testing.T) {
 	suite.Run(t, new(CCLFUtilTestSuite))
@@ -24,6 +36,7 @@ func TestCCLFTestSuite(t *testing.T) {
 
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
+	os.Setenv("CCLF_REF_DATE", "D190617")
 	err := ImportCCLFPackage("NOTREAL", "test")
 	assert.EqualError(err, "invalid argument for ACO size")
 }
