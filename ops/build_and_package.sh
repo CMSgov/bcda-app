@@ -29,18 +29,12 @@ then
   exit 1
 fi
 
-if [ ! -f ../bcda/_site/feed.xml ]
-then
-  echo "Static Site generation must be completed prior to creating package."
-  exit 1
-fi
-
 cd ../bcda
 go clean
 echo "Building bcda binary..." 
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api _site=/etc/sv/api
+fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api
 cd ../bcdaworker
 go clean
 echo "Building bcdaworker..."
