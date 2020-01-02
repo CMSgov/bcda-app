@@ -467,7 +467,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 
 }
 
-func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
+func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
 	assert := s.Assert()
 
 	j := Job{
@@ -479,7 +479,45 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	enqueueJobs, err := j.GetEnqueJobs("Patient")
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"})
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	assert.Equal(3, len(enqueueJobs))
+	var count = 0
+	for _, queJob := range enqueueJobs {
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		assert.Equal(int(j.ID), jobArgs.ID)
+		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
+		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
+		if count == 0 {
+			assert.Equal("Patient", jobArgs.ResourceType)
+		} else if count == 1 {
+			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
+		} else {
+			assert.Equal("Coverage", jobArgs.ResourceType)
+		}
+		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+		count++
+	}
+}
+
+func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
+	assert := s.Assert()
+
+	j := Job{
+		ACOID:      uuid.Parse(constants.DevACOUUID),
+		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
+		RequestURL: "/api/v1/Patient/$export?_type=Patient",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
+
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"})
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(1, len(enqueueJobs))
@@ -504,7 +542,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Pending",
 	}
 	s.db.Save(&j)
@@ -514,7 +552,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	if err != nil {
 		s.T().Error(err)
 	}
-	enqueueJobs, err := j.GetEnqueJobs("ExplanationOfBenefit")
+	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"})
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(4, len(enqueueJobs))
@@ -539,7 +577,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
 		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
-		RequestURL: "/api/v1/Coverage/$export",
+		RequestURL: "/api/v1/Patient/$export?_type=Coverage",
 		Status:     "Pending",
 	}
 	s.db.Save(&j)
@@ -550,7 +588,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		s.T().Error(err)
 	}
 
-	enqueueJobs, err := j.GetEnqueJobs("Coverage")
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"})
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(10, len(enqueueJobs))

@@ -109,14 +109,7 @@ func (job *Job) CheckCompletedAndCleanup() (bool, error) {
 	return false, nil
 }
 
-func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
-	var jobIDs []string
-	var rowCount = 0
-	maxBeneficiaries, err := GetMaxBeneCount(t)
-	if err != nil {
-		return nil, err
-	}
-
+func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	var aco ACO
@@ -131,30 +124,38 @@ func (job *Job) GetEnqueJobs(t string) (enqueJobs []*que.Job, err error) {
 		return nil, err
 	}
 
-	for _, b := range beneficiaries {
-		rowCount++
-		jobIDs = append(jobIDs, fmt.Sprint(b.ID))
-		if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-
-			args, err := json.Marshal(jobEnqueueArgs{
-				ID:             int(job.ID),
-				ACOID:          job.ACOID.String(),
-				UserID:         job.UserID.String(),
-				BeneficiaryIDs: jobIDs,
-				ResourceType:   t,
-			})
-			if err != nil {
-				return nil, err
+	for _, rt := range resourceTypes {
+		var rowCount = 0
+		var jobIDs []string
+		maxBeneficiaries, err := GetMaxBeneCount(rt)
+       		if err != nil {
+                	return nil, err
+        	}
+		for _, b := range beneficiaries {
+			rowCount++
+			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
+			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
+	
+				args, err := json.Marshal(jobEnqueueArgs{
+					ID:             int(job.ID),
+					ACOID:          job.ACOID.String(),
+					UserID:         job.UserID.String(),
+					BeneficiaryIDs: jobIDs,
+					ResourceType:   rt,
+				})
+				if err != nil {
+					return nil, err
+				}
+	
+				j := &que.Job{
+					Type: "ProcessJob",
+					Args: args,
+				}
+	
+				enqueJobs = append(enqueJobs, j)
+	
+				jobIDs = []string{}
 			}
-
-			j := &que.Job{
-				Type: "ProcessJob",
-				Args: args,
-			}
-
-			enqueJobs = append(enqueJobs, j)
-
-			jobIDs = []string{}
 		}
 	}
 	return enqueJobs, nil
