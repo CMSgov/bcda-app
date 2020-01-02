@@ -479,7 +479,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	enqueueJobs, err := j.GetEnqueJobs("Patient")
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"})
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(1, len(enqueueJobs))
@@ -514,7 +514,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	if err != nil {
 		s.T().Error(err)
 	}
-	enqueueJobs, err := j.GetEnqueJobs("ExplanationOfBenefit")
+	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"})
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(4, len(enqueueJobs))
@@ -550,7 +550,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		s.T().Error(err)
 	}
 
-	enqueueJobs, err := j.GetEnqueJobs("Coverage")
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"})
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(10, len(enqueueJobs))
