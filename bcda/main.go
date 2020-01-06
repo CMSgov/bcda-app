@@ -4,7 +4,7 @@
  The Beneficiary Claims Data API (BCDA) allows downloading of claims data in accordance with the FHIR Bulk Data Export specification.
 
  If you have a Client ID and Secret you can use this page to explore the API.  To do this:
-  1. Click the green "Authorize" button below and enter your Client ID and secret in the Basic Authentication username and passsword boxes.
+  1. Click the green "Authorize" button below and enter your Client ID and secret in the Basic Authentication boxes.
   2. Request a bearer token from /auth/token
   3. Click the green "Authorize" button below and put "Bearer {YOUR_TOKEN}" in the bearer_token box.
 
