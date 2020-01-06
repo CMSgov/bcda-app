@@ -16,7 +16,7 @@ import (
 	"github.com/soheilhy/cmux"
 )
 
-var keepAliveInterval int = 30
+var keepAliveInterval int = 60
 
 func init() {
 	interval := os.Getenv("SERVICE_MUX_KEEP_ALIVE_INTERVAL")

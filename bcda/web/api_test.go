@@ -44,11 +44,16 @@ type APITestSuite struct {
 	reset func()
 }
 
+var origDate string
+
 func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
+	origDate = os.Getenv("CCLF_REF_DATE")
+	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102"))
 }
 
 func (s *APITestSuite) TearDownSuite() {
+	os.Setenv("CCLF_REF_DATE", origDate)
 	s.reset()
 }
 

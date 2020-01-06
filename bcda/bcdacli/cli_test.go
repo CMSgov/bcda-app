@@ -29,6 +29,7 @@ import (
 )
 
 const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
+var origDate string
 
 type CLITestSuite struct {
 	suite.Suite
@@ -45,6 +46,8 @@ func (s *CLITestSuite) SetupSuite() {
 	}
 	testUtils.SetUnitTestKeysForAuth()
 	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
+	origDate = os.Getenv("CCLF_REF_DATE")
+	os.Setenv("CCLF_REF_DATE", "181125")
 }
 
 func (s *CLITestSuite) SetupTest() {
@@ -54,6 +57,10 @@ func (s *CLITestSuite) SetupTest() {
 
 func (s *CLITestSuite) TearDownTest() {
 	testUtils.PrintSeparator()
+}
+
+func (s *CLITestSuite) TearDownSuite() {
+	os.Setenv("CCLF_REF_DATE", origDate)
 }
 
 func TestCLITestSuite(t *testing.T) {

@@ -163,16 +163,20 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	}
 
 	var enqueueJobs []*que.Job
-	for _, t := range resourceTypes {
-		jobs, err := newJob.GetEnqueJobs(t)
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-		enqueueJobs = append(enqueueJobs, jobs...)
+	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
 	}
+
+        if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
+                log.Error(err)
+                oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+                responseutils.WriteError(oo, w, http.StatusInternalServerError)
+                return
+        }
 
 	for _, j := range enqueueJobs {
 		if err = qc.Enqueue(j); err != nil {
@@ -181,13 +185,6 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
-	}
-
-	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
 	}
 
 	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
