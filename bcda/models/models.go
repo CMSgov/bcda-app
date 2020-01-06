@@ -489,12 +489,11 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	if utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE") == "MBI_MODE"  {
 		patientIdMode = "MBI"
 		identifier = cclfBeneficiary.MBI
-		systemMode = "hicn-mbi"
+		systemMode = "mbi-hash"
 	}
 
 	// didn't find a local value, need to ask BlueButton
 	hashedIdentifier := client.HashIdentifier(identifier)
-	// pass in two variables later
 	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier)
 	if err != nil {
 		return "", err

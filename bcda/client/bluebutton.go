@@ -107,9 +107,8 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string)
 	params := GetDefaultParams()
 
 	identifier := "hicnHash"
-	// will probably get rid of this by passing in an extra param
 	if utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE") == "MBI_MODE" {
-		identifier = "hicnMbi"
+		identifier = "mbiHash"
 	}
 
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
