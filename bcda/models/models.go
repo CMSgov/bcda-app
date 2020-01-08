@@ -29,8 +29,6 @@ const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
 const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 5000
 const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
 
-var suppressedBBIds []string
-
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
 	db := database.GetGORMDbConnection()
@@ -250,16 +248,10 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
+	var suppressedBBIds []string
+
 	if !includeSuppressed {
-		db.Raw(`SELECT DISTINCT s.blue_button_id
-			FROM (
-				SELECT blue_button_id, MAX(effective_date) max_date
-				FROM suppressions
-				WHERE effective_date <= NOW() AND preference_indicator != ''
-				GROUP BY blue_button_id
-			) h
-			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
-			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIds)
+		suppressedBBIds = GetSuppressedBlueButtonIDs()
 	}
 
 	var err error
@@ -281,6 +273,21 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 }
 
 func GetSuppressedBlueButtonIDs() []string {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var suppressedBBIds []string
+
+	db.Raw(`SELECT DISTINCT s.blue_button_id
+			FROM (
+				SELECT blue_button_id, MAX(effective_date) max_date
+				FROM suppressions
+				WHERE effective_date <= NOW() AND preference_indicator != '' AND blue_button_id != ''
+				GROUP BY blue_button_id
+			) h
+			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
+			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIds)
+
 	return suppressedBBIds
 }
 
@@ -445,7 +452,7 @@ type CCLFBeneficiary struct {
 	FileID       uint   `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
 	HICN         string `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
 	MBI          string `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
-	BlueButtonID string `gorm:"type: text"`
+	BlueButtonID string `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
 }
 
 type SuppressionFile struct {
