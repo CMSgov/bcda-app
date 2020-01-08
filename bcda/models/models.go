@@ -29,6 +29,8 @@ const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
 const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 5000
 const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
 
+var suppressedBBIds []string
+
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
 	db := database.GetGORMDbConnection()
@@ -248,22 +250,21 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	var suppressedHICNs []string
 	if !includeSuppressed {
-		db.Raw(`SELECT DISTINCT s.hicn
+		db.Raw(`SELECT DISTINCT s.blue_button_id
 			FROM (
-				SELECT hicn, MAX(effective_date) max_date
-				FROM suppressions 
+				SELECT blue_button_id, MAX(effective_date) max_date
+				FROM suppressions
 				WHERE effective_date <= NOW() AND preference_indicator != ''
-				GROUP BY hicn
+				GROUP BY blue_button_id
 			) h
-			JOIN suppressions s ON s.hicn = h.hicn and s.effective_date = h.max_date
-			WHERE preference_indicator = 'N'`).Pluck("hicn", &suppressedHICNs)
+			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
+			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIds)
 	}
 
 	var err error
-	if suppressedHICNs != nil {
-		err = db.Not("hicn", suppressedHICNs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	if suppressedBBIds != nil {
+		err = db.Not("blue_button_id", suppressedBBIds).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	} else {
 		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	}
@@ -277,6 +278,10 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	}
 
 	return cclfBeneficiaries, nil
+}
+
+func GetSuppressedBlueButtonIDs() []string {
+	return suppressedBBIds
 }
 
 type CCLFBeneficiaryXref struct {
@@ -547,7 +552,7 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 	}
 
 	if len(patient.Entry) == 0 {
-		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", suppressionBeneficiary.ID)
+		err = fmt.Errorf("patient identifier not found from Blue Button for Suppression beneficiary ID: %v", suppressionBeneficiary.ID)
 		log.Error(err)
 		return "", err
 	}
