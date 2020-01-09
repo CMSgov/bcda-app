@@ -450,6 +450,7 @@ func GetSuppressionBBID() (success, failure int, err error) {
 			fmt.Printf("Failed to find bluebutton id for suppression file: %v.\n", suppressBene.FileID)
 			log.Errorf("Failed to find bluebutton id for suppression file: %v", suppressBene.FileID)
 			failure++
+			continue
 		}
 		suppressBene.BlueButtonID = bbID
 		db.Save(&suppressBene)

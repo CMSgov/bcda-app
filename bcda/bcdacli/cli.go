@@ -478,7 +478,7 @@ func setUpApp() *cli.App {
 
 			Action: func(c *cli.Context) error {
 				s, f, err := suppression.GetSuppressionBBID()
-				fmt.Fprintf(app.Writer, "Completed Suppression model with BlueButtonId retrieval.\n Successfully retrieve %v BB ids. Failed to retrieve %v BB ids.", s, f)
+				fmt.Fprintf(app.Writer, "Completed Suppression model with BlueButtonId retrieval.\nSuccessfully retrieved %v Blue Button ids.\nFailed to retrieve %v Blue Button ids.\n", s, f)
 				return err
 			},
 		},
