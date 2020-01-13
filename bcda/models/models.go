@@ -248,15 +248,15 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	var suppressedBBIds []string
+	var suppressedBBIDs []string
 
 	if !includeSuppressed {
-		suppressedBBIds = GetSuppressedBlueButtonIDs()
+		suppressedBBIDs = GetSuppressedBlueButtonIDs()
 	}
 
 	var err error
-	if suppressedBBIds != nil {
-		err = db.Not("blue_button_id", suppressedBBIds).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	if suppressedBBIDs != nil {
+		err = db.Not("blue_button_id", suppressedBBIDs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	} else {
 		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	}
@@ -276,7 +276,7 @@ func GetSuppressedBlueButtonIDs() []string {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var suppressedBBIds []string
+	var suppressedBBIDs []string
 
 	db.Raw(`SELECT DISTINCT s.blue_button_id
 			FROM (
@@ -286,9 +286,9 @@ func GetSuppressedBlueButtonIDs() []string {
 				GROUP BY blue_button_id
 			) h
 			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
-			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIds)
+			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIDs)
 
-	return suppressedBBIds
+	return suppressedBBIDs
 }
 
 type CCLFBeneficiaryXref struct {
@@ -495,58 +495,30 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	if cclfBeneficiary.BlueButtonID != "" {
 		return cclfBeneficiary.BlueButtonID, nil
 	}
-
-	// didn't find a local value, need to ask BlueButton
-	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
-	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
+	blueButtonID, err = GetBlueButtonID(bb, cclfBeneficiary.HICN, cclfBeneficiary.ID)
 	if err != nil {
 		return "", err
 	}
-	var patient Patient
-	err = json.Unmarshal([]byte(jsonData), &patient)
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-
-	if len(patient.Entry) == 0 {
-		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", cclfBeneficiary.ID)
-		log.Error(err)
-		return "", err
-	}
-	var foundHICN = false
-	var foundBlueButtonID = false
-	blueButtonID = patient.Entry[0].Resource.ID
-	for _, identifier := range patient.Entry[0].Resource.Identifier {
-		if strings.Contains(identifier.System, "hicn-hash") {
-			if identifier.Value == hashedHICN {
-				foundHICN = true
-			}
-		} else if strings.Contains(identifier.System, "bene_id") {
-			if identifier.Value == blueButtonID {
-				foundBlueButtonID = true
-			}
-		}
-
-	}
-	if !foundHICN {
-		err = fmt.Errorf("hashed HICN not found in the identifiers")
-		log.Error(err)
-		return "", err
-	}
-	if !foundBlueButtonID {
-		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
-		log.Error(err)
-		return "", err
-	}
-
 	return blueButtonID, nil
 }
 
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use suppressionBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-	hashedHICN := client.HashHICN(suppressionBeneficiary.HICN)
+	// If this is set already, just give it back.
+	if suppressionBeneficiary.BlueButtonID != "" {
+		return suppressionBeneficiary.BlueButtonID, nil
+	}
+	blueButtonID, err = GetBlueButtonID(bb, suppressionBeneficiary.HICN, suppressionBeneficiary.ID)
+	if err != nil {
+		return "", err
+	}
+	return blueButtonID, nil
+}
+
+func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueButtonID string, err error) {
+	// didn't find a local value, need to ask BlueButton
+	hashedHICN := client.HashHICN(modelHicn)
 	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
 	if err != nil {
 		return "", err
@@ -559,7 +531,7 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 	}
 
 	if len(patient.Entry) == 0 {
-		err = fmt.Errorf("patient identifier not found from Blue Button for Suppression beneficiary ID: %v", suppressionBeneficiary.ID)
+		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", modelID)
 		log.Error(err)
 		return "", err
 	}
@@ -576,7 +548,6 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 				foundBlueButtonID = true
 			}
 		}
-
 	}
 	if !foundHICN {
 		err = fmt.Errorf("hashed HICN not found in the identifiers")
