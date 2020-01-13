@@ -592,6 +592,43 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 	return blueButtonID, nil
 }
 
+// GetSuppressionBBID returns the suppression beneficiary's Blue Button ID. If not already in the BCDA database,
+// the ID value is retrieved from BB and saved.
+func GetSuppressionBBID() (success, failure int, err error) {
+	db := database.GetGORMDbConnection()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	}()
+
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		err = errors.Wrap(err, "could not create Blue Button client")
+		log.Error(err)
+		return 0, 0, err
+	}
+
+	// add lots of logging
+	var suppressList []Suppression
+	db.Find(&suppressList, "blue_button_id = ''")
+	for _, suppressBene := range suppressList {
+		bbID, err := suppressBene.GetBlueButtonID(bb)
+		if err != nil {
+			fmt.Printf("Failed to find bluebutton id for suppression file: %v.\n", suppressBene.FileID)
+			log.Errorf("Failed to find bluebutton id for suppression file: %v", suppressBene.FileID)
+			failure++
+			continue
+		}
+		suppressBene.BlueButtonID = bbID
+		db.Save(&suppressBene)
+		success++
+	}
+	return success, failure, nil
+}
+
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
 // swagger:ignore
 type jobEnqueueArgs struct {
