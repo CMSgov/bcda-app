@@ -563,7 +563,7 @@ func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueB
 	return blueButtonID, nil
 }
 
-// GetSuppressionBBID returns the suppression beneficiary's Blue Button ID. If not already in the BCDA database,
+// StoreSuppressionBBID returns the suppression beneficiary's Blue Button ID. If not already in the BCDA database,
 // the ID value is retrieved from BB and saved.
 func StoreSuppressionBBID() (success, failure int, err error) {
 	db := database.GetGORMDbConnection()
