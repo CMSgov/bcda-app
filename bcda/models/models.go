@@ -565,7 +565,7 @@ func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueB
 
 // GetSuppressionBBID returns the suppression beneficiary's Blue Button ID. If not already in the BCDA database,
 // the ID value is retrieved from BB and saved.
-func GetSuppressionBBID() (success, failure int, err error) {
+func StoreSuppressionBBID() (success, failure int, err error) {
 	db := database.GetGORMDbConnection()
 	defer func() {
 		err := db.Close()
@@ -582,7 +582,6 @@ func GetSuppressionBBID() (success, failure int, err error) {
 		return 0, 0, err
 	}
 
-	// add lots of logging
 	var suppressList []Suppression
 	db.Find(&suppressList, "blue_button_id = ''")
 	for _, suppressBene := range suppressList {
