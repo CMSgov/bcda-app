@@ -502,30 +502,6 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/welcome metadata welcome
-
-	Test authentication
-
-	If a valid token is presented, show a welcome message.
-
-	Produces:
-	- applicationjson
-
-	Schemes: http, https
-
-	Security:
-		bearer_token:
-
-	Responses:
-		200: welcome
-		401: invalidCredentials
-*/
-func welcome(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"success":"Welcome to the Beneficiary Claims Data API!"}`))
-}
-
-/*
    swagger:route GET /_auth metadata getAuthInfo
 
    Get details about auth

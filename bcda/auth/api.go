@@ -50,3 +50,27 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
+
+/*
+	swagger:route GET /auth/welcome auth welcome
+
+	Test authentication
+
+	If a valid token is presented, show a welcome message.
+
+	Produces:
+	- application/json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		200: welcome
+		401: invalidCredentials
+*/
+func Welcome(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(`{"success":"Welcome to the Beneficiary Claims Data API!"}`))
+}

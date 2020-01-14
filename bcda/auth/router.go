@@ -12,5 +12,6 @@ func NewAuthRouter(middlewares ...func(http.Handler) http.Handler) http.Handler 
 	m := monitoring.GetMonitor()
 	r.Use(middlewares...)
 	r.Post(m.WrapHandler("/auth/token", GetAuthToken))
+	r.With(ParseToken, RequireTokenAuth).Get(m.WrapHandler("/auth/welcome", Welcome))
 	return r
 }
