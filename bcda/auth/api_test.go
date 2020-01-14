@@ -148,6 +148,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
 	req.Header.Add("Accept", "application/json")
 	resp, err := client.Do(req)
+	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
 	// Expect success with valid token
@@ -158,6 +159,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.AccessToken))
 	req.Header.Add("Accept", "application/json")
 	resp, err = client.Do(req)
+	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	respMap := make(map[string]string)
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
