@@ -204,9 +204,22 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 	totalBeneIDs := float64(len(cclfBeneficiaryIDs))
 	failThreshold := getFailureThreshold()
 	failed := false
+	suppressedList := models.GetSuppressedBlueButtonIDs()
+	suppressedMap := make(map[string]string)
+
+	// transform this list into a map of suppressed BBID's.
+	for _, val := range suppressedList {
+		suppressedMap[val] = ""
+	}
 
 	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
 		blueButtonID, err := beneBBID(cclfBeneficiaryID, bb)
+
+		// skip over this cclf beneficiary if their blue button id is suppressed
+		if _, found := suppressedMap[blueButtonID]; found {
+			continue
+		}
+		
 		if err != nil {
 			handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
