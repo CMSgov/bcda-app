@@ -282,7 +282,7 @@ func GetSuppressedBlueButtonIDs() []string {
 			FROM (
 				SELECT blue_button_id, MAX(effective_date) max_date
 				FROM suppressions
-				WHERE effective_date <= NOW() AND preference_indicator != '' AND blue_button_id != ''
+				WHERE effective_date <= NOW() AND preference_indicator != '' AND blue_button_id != '' AND blue_button_id IS NOT NULL
 				GROUP BY blue_button_id
 			) h
 			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
@@ -583,7 +583,7 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 	}
 
 	var suppressList []Suppression
-	db.Find(&suppressList, "blue_button_id = ''")
+	db.Find(&suppressList, "blue_button_id = '' OR blue_button_id is NULL")
 	for _, suppressBene := range suppressList {
 		bbID, err := suppressBene.GetBlueButtonID(bb)
 		if err != nil {
