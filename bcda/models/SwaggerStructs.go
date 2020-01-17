@@ -182,3 +182,7 @@ type InvalidCredentials struct{}
 // Server error
 // swagger:response serverError
 type ServerError struct{}
+
+// Welcome message
+// swagger:response welcome
+type Welcome struct{}

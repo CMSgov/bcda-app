@@ -248,22 +248,15 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	var suppressedHICNs []string
+	var suppressedBBIDs []string
+
 	if !includeSuppressed {
-		db.Raw(`SELECT DISTINCT s.hicn
-			FROM (
-				SELECT hicn, MAX(effective_date) max_date
-				FROM suppressions 
-				WHERE effective_date <= NOW() AND preference_indicator != '' 
-				GROUP BY hicn
-			) h
-			JOIN suppressions s ON s.hicn = h.hicn and s.effective_date = h.max_date
-			WHERE preference_indicator = 'N'`).Pluck("hicn", &suppressedHICNs)
+		suppressedBBIDs = GetSuppressedBlueButtonIDs()
 	}
 
 	var err error
-	if suppressedHICNs != nil {
-		err = db.Not("hicn", suppressedHICNs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	if suppressedBBIDs != nil {
+		err = db.Not("blue_button_id", suppressedBBIDs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	} else {
 		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	}
@@ -277,6 +270,25 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	}
 
 	return cclfBeneficiaries, nil
+}
+
+func GetSuppressedBlueButtonIDs() []string {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	var suppressedBBIDs []string
+
+	db.Raw(`SELECT DISTINCT s.blue_button_id
+			FROM (
+				SELECT blue_button_id, MAX(effective_date) max_date
+				FROM suppressions
+				WHERE effective_date <= NOW() AND preference_indicator != '' AND blue_button_id != '' AND blue_button_id IS NOT NULL
+				GROUP BY blue_button_id
+			) h
+			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
+			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIDs)
+
+	return suppressedBBIDs
 }
 
 type CCLFBeneficiaryXref struct {
@@ -440,7 +452,7 @@ type CCLFBeneficiary struct {
 	FileID       uint   `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
 	HICN         string `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
 	MBI          string `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
-	BlueButtonID string `gorm:"type: text"`
+	BlueButtonID string `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
 }
 
 type SuppressionFile struct {
@@ -464,6 +476,7 @@ type Suppression struct {
 	gorm.Model
 	SuppressionFile     SuppressionFile
 	FileID              uint      `gorm:"not null"`
+	BlueButtonID        string    `gorm:"type: text;index:idx_suppression_bb_id"`
 	HICN                string    `gorm:"type:varchar(11);not null"`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
@@ -482,9 +495,30 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	if cclfBeneficiary.BlueButtonID != "" {
 		return cclfBeneficiary.BlueButtonID, nil
 	}
+	blueButtonID, err = GetBlueButtonID(bb, cclfBeneficiary.HICN, cclfBeneficiary.ID)
+	if err != nil {
+		return "", err
+	}
+	return blueButtonID, nil
+}
 
+// This method will ensure that a valid BlueButton ID is returned.
+// If you use suppressionBeneficiary.BlueButtonID you will not be guaranteed a valid value
+func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
+	// If this is set already, just give it back.
+	if suppressionBeneficiary.BlueButtonID != "" {
+		return suppressionBeneficiary.BlueButtonID, nil
+	}
+	blueButtonID, err = GetBlueButtonID(bb, suppressionBeneficiary.HICN, suppressionBeneficiary.ID)
+	if err != nil {
+		return "", err
+	}
+	return blueButtonID, nil
+}
+
+func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueButtonID string, err error) {
 	// didn't find a local value, need to ask BlueButton
-	hashedHICN := client.HashHICN(cclfBeneficiary.HICN)
+	hashedHICN := client.HashHICN(modelHicn)
 	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
 	if err != nil {
 		return "", err
@@ -497,7 +531,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	if len(patient.Entry) == 0 {
-		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", cclfBeneficiary.ID)
+		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", modelID)
 		log.Error(err)
 		return "", err
 	}
@@ -514,7 +548,6 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 				foundBlueButtonID = true
 			}
 		}
-
 	}
 	if !foundHICN {
 		err = fmt.Errorf("hashed HICN not found in the identifiers")
@@ -528,6 +561,42 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	return blueButtonID, nil
+}
+
+// StoreSuppressionBBID returns the suppression beneficiary's Blue Button ID. If not already in the BCDA database,
+// the ID value is retrieved from BB and saved.
+func StoreSuppressionBBID() (success, failure int, err error) {
+	db := database.GetGORMDbConnection()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+	}()
+
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		err = errors.Wrap(err, "could not create Blue Button client")
+		log.Error(err)
+		return 0, 0, err
+	}
+
+	var suppressList []Suppression
+	db.Find(&suppressList, "blue_button_id = '' OR blue_button_id is NULL")
+	for _, suppressBene := range suppressList {
+		bbID, err := suppressBene.GetBlueButtonID(bb)
+		if err != nil {
+			fmt.Printf("Failed to find bluebutton id for suppression file: %v.\n", suppressBene.FileID)
+			log.Errorf("Failed to find bluebutton id for suppression file: %v", suppressBene.FileID)
+			failure++
+			continue
+		}
+		suppressBene.BlueButtonID = bbID
+		db.Save(&suppressBene)
+		success++
+	}
+	return success, failure, nil
 }
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
