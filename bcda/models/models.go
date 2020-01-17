@@ -587,8 +587,6 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 	for _, suppressBene := range suppressList {
 		bbID, err := suppressBene.GetBlueButtonID(bb)
 		if err != nil {
-			fmt.Printf("Failed to find bluebutton id for suppression file: %v.\n", suppressBene.FileID)
-			log.Errorf("Failed to find bluebutton id for suppression file: %v", suppressBene.FileID)
 			failure++
 			continue
 		}
