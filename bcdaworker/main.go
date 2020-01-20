@@ -14,6 +14,7 @@ import (
 
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
+        "github.com/jinzhu/gorm"
 	"github.com/newrelic/go-agent"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -122,7 +123,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	fileUUID, err := writeBBDataToFile(bb, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	fileUUID, err := writeBBDataToFile(bb, db, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
@@ -137,7 +138,7 @@ func processJob(j *que.Job) error {
 			err = encryptData(stagingPath, payloadPath, fileName, jobArgs.ResourceType, exportJob)
 		} else {
 			// this will be the only method called in this block after the full removal of encryption. Or we can just add the code here.
-			err = addJobFileName(fileName, jobArgs.ResourceType, exportJob)
+			err = addJobFileName(fileName, jobArgs.ResourceType, exportJob, db)
 		}
 		if err != nil {
 			log.Error(err)
@@ -145,13 +146,13 @@ func processJob(j *que.Job) error {
 		}
 	}
 
-	_, err = exportJob.CheckCompletedAndCleanup()
+	_, err = exportJob.CheckCompletedAndCleanup(db)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	updateJobStats(exportJob.ID)
+	updateJobStats(exportJob.ID, db)
 
 	log.Info("Worker finished processing job ", j.ID)
 
@@ -167,7 +168,7 @@ func createDir(path string) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
+func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -204,7 +205,7 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 	totalBeneIDs := float64(len(cclfBeneficiaryIDs))
 	failThreshold := getFailureThreshold()
 	failed := false
-	suppressedList := models.GetSuppressedBlueButtonIDs()
+	suppressedList := models.GetSuppressedBlueButtonIDs(db)
 	suppressedMap := make(map[string]string)
 
 	// transform this list into a map of suppressed BBID's.
@@ -213,7 +214,7 @@ func writeBBDataToFile(bb client.APIClient, acoID string, acoCMSID string, cclfB
 	}
 
 	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
-		blueButtonID, err := beneBBID(cclfBeneficiaryID, bb)
+		blueButtonID, err := beneBBID(cclfBeneficiaryID, bb, db)
 
 		// skip over this cclf beneficiary if their blue button id is suppressed
 		if _, found := suppressedMap[blueButtonID]; found {
@@ -263,9 +264,7 @@ func bbFuncByType(bb client.APIClient, t string) client.BeneDataFunc {
 }
 
 // beneBBID returns the beneficiary's Blue Button ID. If not already in the BCDA database, the ID value is retrieved from BB and saved.
-func beneBBID(cclfBeneID string, bb client.APIClient) (string, error) {
-	db := database.GetGORMDbConnection()
-	defer db.Close()
+func beneBBID(cclfBeneID string, bb client.APIClient, db *gorm.DB) (string, error) {
 
 	var cclfBeneficiary models.CCLFBeneficiary
 	db.First(&cclfBeneficiary, cclfBeneID)
@@ -516,11 +515,8 @@ func getQueueJobCount() float64 {
 	return float64(count)
 }
 
-func updateJobStats(jID uint) {
+func updateJobStats(jID uint, db *gorm.DB) {
 	updateJobQueueCountCloudwatchMetric()
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
 	var j models.Job
 	if err := db.First(&j, jID).Error; err == nil {
@@ -528,9 +524,7 @@ func updateJobStats(jID uint) {
 	}
 }
 
-func addJobFileName(fileName, resourceType string, exportJob models.Job) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+func addJobFileName(fileName, resourceType string, exportJob models.Job, db *gorm.DB) error {
 	err := db.Create(&models.JobKey{JobID: exportJob.ID, FileName: fileName, ResourceType: resourceType}).Error
 	if err != nil {
 		log.Error(err)
