@@ -128,7 +128,6 @@ func (s *AlphaAuthPluginTestSuite) TestResetSecret() {
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	cmsID := testUtils.RandomHexID()[0:4]
 	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
-	user, _ := models.CreateUser("Test Access Token", "testaccesstoken@examplecom", acoUUID)
 	cc, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), cc)
@@ -145,7 +144,6 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	assert.Empty(s.T(), ts)
 	assert.Contains(s.T(), err.Error(), "invalid credentials")
 	connections["TestAccessToken"].Where("client_id = ?", cc.ClientID).Delete(&models.ACO{})
-	connections["TestAccessToken"].Delete(&user)
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{})
 	assert.NotNil(s.T(), err)
@@ -175,10 +173,8 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 }
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
-	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	validClaims := jwt.MapClaims{
-		"sub": userID,
 		"aco": acoID,
 		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
 		"iat": time.Now().Unix(),
@@ -193,7 +189,6 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 
 	unknownAco := jwt.New(jwt.SigningMethodRS512)
 	unknownAco.Claims = jwt.MapClaims{
-		"sub": userID,
 		"aco": uuid.NewRandom().String(),
 		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
 		"iat": time.Now().Unix(),
@@ -216,7 +211,6 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 
 	missingClaims := jwt.New(jwt.SigningMethodRS512)
 	missingClaims.Claims = jwt.MapClaims{
-		"sub": userID,
 		"aco": acoID,
 		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
 	}
@@ -227,7 +221,6 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 
 	expiredToken := jwt.New(jwt.SigningMethodRS512)
 	expiredToken.Claims = jwt.MapClaims{
-		"sub": userID,
 		"aco": acoID,
 		"id":  uuid.NewRandom().String(),
 		"iat": time.Now().Unix(),

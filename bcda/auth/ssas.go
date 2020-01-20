@@ -159,11 +159,6 @@ func adFromClaims(claims *CommonClaims) (AuthData, error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var user models.User
-	if err = db.First(&user, "aco_id = ?", aco.UUID).Error; err != nil {
-		return ad, fmt.Errorf("no user for ACO with id of %v", aco.UUID)
-	}
-
 	return ad, nil
 }
 
