@@ -38,7 +38,6 @@ var (
 type jobEnqueueArgs struct {
 	ID             int
 	ACOID          string
-	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
 }

@@ -63,20 +63,11 @@ func ParseToken(next http.Handler) http.Handler {
 				db := database.GetGORMDbConnection()
 				defer database.Close(db)
 
-				var user models.User
-				if db.First(&user, "aco_id = ?", aco.UUID).RecordNotFound() {
-					log.Errorf("no user for ACO with id of %v", aco.UUID)
-					next.ServeHTTP(w, r)
-					return
-				}
-
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
-				ad.UserID = user.UUID.String()
 			default:
 				ad.TokenID = claims.UUID
 				ad.ACOID = claims.ACOID
-				ad.UserID = claims.Subject
 			}
 		}
 		ctx := context.WithValue(r.Context(), "token", token)

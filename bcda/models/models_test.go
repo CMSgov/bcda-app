@@ -367,29 +367,6 @@ OwIDAQAB
 	assert.Equal(s.T(), keyStr, string(pemBytes))
 }
 
-func (s *ModelsTestSuite) TestCreateUser() {
-	name, email, sampleUUID, duplicateName := "First Last", "firstlast@example.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3", "Duplicate Name"
-
-	// Make a user for an ACO that doesn't exist
-	badACOUser, err := CreateUser(name, email, uuid.NewRandom())
-	//No ID because it wasn't saved
-	assert.True(s.T(), badACOUser.ID == 0)
-	// Should get an error
-	assert.NotNil(s.T(), err)
-
-	// Make a good user
-	user, err := CreateUser(name, email, uuid.Parse(sampleUUID))
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), user.UUID)
-	assert.NotNil(s.T(), user.ID)
-
-	// Try making a duplicate user for the same E-mail address
-	duplicateUser, err := CreateUser(duplicateName, email, uuid.Parse(sampleUUID))
-	// Got a user, not the one that was requested
-	assert.True(s.T(), duplicateUser.Name == name)
-	assert.NotNil(s.T(), err)
-}
-
 func TestModelsTestSuite(t *testing.T) {
 	suite.Run(t, new(ModelsTestSuite))
 }
@@ -398,7 +375,6 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 		JobCount:   1,
@@ -420,7 +396,6 @@ func (s *ModelsTestSuite) TestJobDefaultCompleted() {
 	// Job is completed, but no keys exist.  This is fine, it is still complete
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Completed",
 		JobCount:   10,
@@ -437,7 +412,6 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 		JobCount:   10,
@@ -472,7 +446,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 	}
@@ -492,7 +465,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
 		}
 		assert.Equal(int(j.ID), jobArgs.ID)
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		if count == 0 {
 			assert.Equal("Patient", jobArgs.ResourceType)
 		} else if count == 1 {
@@ -510,7 +482,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export?_type=Patient",
 		Status:     "Pending",
 	}
@@ -530,7 +501,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 		}
 		assert.Equal(int(j.ID), jobArgs.ID)
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		assert.Equal("Patient", jobArgs.ResourceType)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
@@ -541,7 +511,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Pending",
 	}
@@ -576,7 +545,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export?_type=Coverage",
 		Status:     "Pending",
 	}

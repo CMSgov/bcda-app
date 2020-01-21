@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -25,7 +24,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
-	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -46,7 +44,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, userName, userEmail, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
+	var acoName, acoCMSID, acoID, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -168,36 +166,6 @@ func setUpApp() *cli.App {
 					return err
 				}
 				fmt.Fprintf(app.Writer, "%s\n", acoUUID)
-				return nil
-			},
-		},
-		{
-			Name:     "create-user",
-			Category: "Authentication tools",
-			Usage:    "Create a user",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "aco-id",
-					Usage:       "UUID of user's ACO",
-					Destination: &acoID,
-				},
-				cli.StringFlag{
-					Name:        "name",
-					Usage:       "Name of user",
-					Destination: &userName,
-				},
-				cli.StringFlag{
-					Name:        "email",
-					Usage:       "Email address of user",
-					Destination: &userEmail,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				userUUID, err := createUser(acoID, userName, userEmail)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(app.Writer, "%s\n", userUUID)
 				return nil
 			},
 		},
@@ -566,38 +534,6 @@ func createACO(name, cmsID string) (string, error) {
 	}
 
 	return acoUUID.String(), nil
-}
-
-func createUser(acoID, name, email string) (string, error) {
-	errMsgs := []string{}
-	var acoUUID uuid.UUID
-	var userUUID string
-
-	if acoID == "" {
-		errMsgs = append(errMsgs, "ACO ID (--aco-id) must be provided")
-	} else {
-		acoUUID = uuid.Parse(acoID)
-		if acoUUID == nil {
-			errMsgs = append(errMsgs, "ACO ID must be a UUID")
-		}
-	}
-	if name == "" {
-		errMsgs = append(errMsgs, "Name (--name) must be provided")
-	}
-	if email == "" {
-		errMsgs = append(errMsgs, "Email address (--email) must be provided")
-	}
-
-	if len(errMsgs) > 0 {
-		return userUUID, errors.New(strings.Join(errMsgs, "\n"))
-	}
-
-	user, err := models.CreateUser(name, email, acoUUID)
-	if err != nil {
-		return userUUID, err
-	}
-
-	return user.UUID.String(), nil
 }
 
 func generateClientCredentials(acoCMSID string) (string, error) {

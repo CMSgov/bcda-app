@@ -2,8 +2,7 @@
 
 set -e
 function cleanup {
-        docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM jobs WHERE aco_id = '"'"$ACO_ID"'"'"'
-        docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM users WHERE aco_id = '"'"$ACO_ID"'"'"'
+        docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM jobs WHERE aco_id IN (SELECT uuid FROM acos where cms_id = '"'"A9996"'"')"'
         docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM acos WHERE cms_id = '"'"'A9996'"'"'"'
         docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM encryption_keys WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"'smoke-test-group'"'"')"'
         docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM secrets WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"'smoke-test-group'"'"')"'
@@ -19,7 +18,6 @@ echo "waiting for API to rebuild with SSAS as auth provider"
 sleep 30
 
 ACO_ID=$(docker-compose exec api sh -c 'tmp/bcda create-aco --name "Smoke Test ACO" --cms-id A9996' | tail -n1 | tr -d '\r')
-USER_ID=$(docker-compose exec api sh -c 'tmp/bcda create-user --name "SSAS Smoke Test User" --email ssassmoketest@example.com --aco-id '$ACO_ID | tail -n1)
 SAVE_KEY_RESULT=$(docker-compose exec api sh -c 'tmp/bcda save-public-key --cms-id A9996 --key-file "../shared_files/ATO_public.pem"' | tail -n1)
 GROUP_ID=$(docker-compose exec api sh -c 'tmp/bcda create-group --id "smoke-test-group" --name "Smoke Test Group" --aco-id A9996' | tail -n1 | tr -d '\r')
 CREDS=($(docker-compose exec api sh -c 'tmp/bcda generate-client-credentials --cms-id A9996' | tail -n2 | tr -d '\r'))
