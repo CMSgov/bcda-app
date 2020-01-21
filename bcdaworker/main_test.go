@@ -128,8 +128,8 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	cmsID := "A00234"
 	beneficiaryIDs := []string{"10000", "11000"}
 
-        db := database.GetGORMDbConnection()
-        defer db.Close()
+	db := database.GetGORMDbConnection()
+	defer db.Close()
 	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit")
 	assert.NotNil(t, err)
 }
