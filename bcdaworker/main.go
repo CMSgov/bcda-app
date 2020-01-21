@@ -14,7 +14,7 @@ import (
 
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
-        "github.com/jinzhu/gorm"
+	"github.com/jinzhu/gorm"
 	"github.com/newrelic/go-agent"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
