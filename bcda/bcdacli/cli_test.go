@@ -28,7 +28,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
-const BADUUID = "QWERTY-ASDFG-ZXCVBN-POIUYT"
 var origDate string
 
 type CLITestSuite struct {
@@ -90,110 +89,6 @@ func (s *CLITestSuite) TestAutoMigrate() {
 	args := []string{"bcda", "sql-migrate"}
 	err := s.testApp.Run(args)
 	assert.Nil(s.T(), err)
-}
-
-func (s *CLITestSuite) TestCreateUser() {
-
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	acoUUID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-	name, email := "Unit Test", "UnitTest@mail.com"
-
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	assert := assert.New(s.T())
-
-	// Successful user creation
-	args := []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", email}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.NotNil(buf)
-	userUUID := strings.TrimSpace(buf.String())
-	var testUser models.User
-	db.First(&testUser, "Email=?", email)
-	assert.Equal(testUser.UUID.String(), userUUID)
-	buf.Reset()
-
-	// Bad/Negative tests
-
-	// No parameters
-	args = []string{"bcda", "create-user"}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO ID (--aco-id) must be provided\nName (--name) must be provided\nEmail address (--email) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Name only
-	args = []string{"bcda", "create-user", "--name", name}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO ID (--aco-id) must be provided\nEmail address (--email) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// ACO ID only
-	args = []string{"bcda", "create-user", "--aco-id", acoUUID}
-	err = s.testApp.Run(args)
-	assert.Equal("Name (--name) must be provided\nEmail address (--email) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Email only
-	args = []string{"bcda", "create-user", "--email", email}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO ID (--aco-id) must be provided\nName (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Unexpected flag
-	args = []string{"bcda", "create-user", "--abcd", "efg"}
-	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-	buf.Reset()
-
-	// Blank UUID
-	args = []string{"bcda", "create-user", "--name", name, "--aco-id", "", "--email", email}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO ID (--aco-id) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Bad UUID
-	args = []string{"bcda", "create-user", "--name", name, "--aco-id", BADUUID, "--email", email}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO ID must be a UUID", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Blank Name
-	args = []string{"bcda", "create-user", "--name", "", "--aco-id", acoUUID, "--email", email}
-	err = s.testApp.Run(args)
-	assert.Equal("Name (--name) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Blank E-mail address
-	args = []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", ""}
-	err = s.testApp.Run(args)
-	assert.Equal("Email address (--email) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Multiple blank input params
-	args = []string{"bcda", "create-user", "--name", "", "--aco-id", "", "--email", ""}
-	err = s.testApp.Run(args)
-	assert.Equal("ACO ID (--aco-id) must be provided\nName (--name) must be provided\nEmail address (--email) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Duplicate User
-	args = []string{"bcda", "create-user", "--name", name, "--aco-id", acoUUID, "--email", email}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "unable to create user for UnitTest@mail.com because a user with that Email address already exists")
-	assert.Equal(0, buf.Len())
 }
 
 func (s *CLITestSuite) TestSavePublicKeyCLI() {
@@ -394,7 +289,6 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	// save a job to our db
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
 	}
@@ -462,7 +356,6 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	// save a job to our db
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
 	}
@@ -519,13 +412,9 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
-	userUUID, err := createUser(acoUUID, "Unit Test", email)
-	assert.Nil(s.T(), err)
-
 	// save a job to our db
 	j := models.Job{
 		ACOID:      uuid.Parse(acoUUID),
-		UserID:     uuid.Parse(userUUID),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Archived",
 	}
