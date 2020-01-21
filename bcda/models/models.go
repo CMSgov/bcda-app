@@ -41,7 +41,6 @@ func InitializeGormModels() *gorm.DB {
 	// you need to run a script to migrate existing data to its new home or shape?
 	db.AutoMigrate(
 		&ACO{},
-		&User{},
 		&Job{},
 		&JobKey{},
 		&CCLFBeneficiaryXref{},
@@ -60,8 +59,6 @@ type Job struct {
 	gorm.Model
 	ACO               ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
 	ACOID             uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
-	User              User      `gorm:"foreignkey:UserID;association_foreignkey:UUID"` // user
-	UserID            uuid.UUID `gorm:"type:char(36)"`
 	RequestURL        string    `json:"request_url"` // request_url
 	Status            string    `json:"status"`      // status
 	JobCount          int
@@ -139,7 +136,6 @@ func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err 
 				args, err := json.Marshal(jobEnqueueArgs{
 					ID:             int(job.ID),
 					ACOID:          job.ACOID.String(),
-					UserID:         job.UserID.String(),
 					BeneficiaryIDs: jobIDs,
 					ResourceType:   rt,
 				})
@@ -386,34 +382,6 @@ func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	return aco.UUID, db.Error
 }
 
-type User struct {
-	gorm.Model
-	UUID  uuid.UUID `gorm:"primary_key; type:char(36)" json:"uuid"` // uuid
-	Name  string    `json:"name"`                                   // name
-	Email string    `json:"email"`                                  // email
-	ACO   ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"`
-	ACOID uuid.UUID `gorm:"type:char(36)" json:"aco_id"` // aco_id
-}
-
-func CreateUser(name string, email string, acoUUID uuid.UUID) (User, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var aco ACO
-	var user User
-	// If we don't find the ACO return a blank user and an error
-	if db.First(&aco, "UUID = ?", acoUUID).RecordNotFound() {
-		return user, fmt.Errorf("unable to locate ACO with id of %v", acoUUID)
-	}
-	// check for duplicate email addresses and only make one if it isn't found
-	if db.First(&user, "email = ?", email).RecordNotFound() {
-		user = User{UUID: uuid.NewRandom(), Name: name, Email: email, ACOID: aco.UUID}
-		db.Create(&user)
-		return user, nil
-	} else {
-		return user, fmt.Errorf("unable to create user for %v because a user with that Email address already exists", email)
-	}
-}
-
 // CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
 func CreateAlphaACO(acoCMSID string, db *gorm.DB) (ACO, error) {
 	var count int
@@ -602,7 +570,6 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 type jobEnqueueArgs struct {
 	ID             int
 	ACOID          string
-	UserID         string
 	BeneficiaryIDs []string
 	ResourceType   string
 }
