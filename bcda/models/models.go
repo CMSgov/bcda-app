@@ -66,14 +66,12 @@ type Job struct {
 	JobKeys           []JobKey
 }
 
-func (job *Job) CheckCompletedAndCleanup() (bool, error) {
+func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 
 	// Trivial case, no need to keep going
 	if job.Status == "Completed" {
 		return true, nil
 	}
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
 	var completedJobs int64
 	db.Model(&JobKey{}).Where("job_id = ?", job.ID).Count(&completedJobs)
@@ -247,7 +245,7 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	var suppressedBBIDs []string
 
 	if !includeSuppressed {
-		suppressedBBIDs = GetSuppressedBlueButtonIDs()
+		suppressedBBIDs = GetSuppressedBlueButtonIDs(db)
 	}
 
 	var err error
@@ -268,9 +266,7 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	return cclfBeneficiaries, nil
 }
 
-func GetSuppressedBlueButtonIDs() []string {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
 
 	var suppressedBBIDs []string
 
