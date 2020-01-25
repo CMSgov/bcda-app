@@ -271,9 +271,11 @@ func beneBBID(cclfBeneID string, bb client.APIClient, db *gorm.DB) (string, erro
 	if err != nil {
 		return "", err
 	}
-
-	cclfBeneficiary.BlueButtonID = bbID
-	db.Save(&cclfBeneficiary)
+	
+	// Update the value in the DB only if necessary
+	if cclfBeneficiary.BlueButtonID != bbID {
+		db.Model(&cclfBeneficiary).Update("blue_button_id", bbID)	
+	}
 
 	return bbID, nil
 }
