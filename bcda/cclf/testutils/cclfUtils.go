@@ -4,15 +4,14 @@ import (
 	"archive/zip"
 	"errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/cclf"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/CMSgov/bcda-app/bcda/cclf"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 const DestDir = "tempCCLFDir/"
@@ -61,13 +60,14 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	}
 
 	dateStr := fmt.Sprintf("%s.D%s", time.Now().Format("06"), time.Now().Format("060102"))
-	for _, file := range files {
-		filename := fmt.Sprintf("T.A%s.ACO.%sY%s.T%s", acoIDNum, file.Name(), dateStr, time.Now().Format("1504059"))
-		archiveName := fmt.Sprintf("T.BCD.ACO.%sY%s.T%s%s", file.Name(), dateStr, acoIDNum, "000")
-		err = zipTo(fmt.Sprintf("%s/%s", sourcedir, file.Name()), filename, fmt.Sprintf("%s/%s", DestDir, archiveName))
-		if err != nil {
-			return err
-		}
+	for i, file := range files {
+		timeStr := time.Now().Add(time.Minute * time.Duration(i-1)).Format("1504059")
+			archiveName := fmt.Sprintf("T.BCD.A%s.ZCY%s.T%s", acoIDNum, dateStr, timeStr)
+			filename := fmt.Sprintf("T.BCD.A%s.%sY%s.T%s", acoIDNum, file.Name(), dateStr, "0000000")
+			err = zipTo(fmt.Sprintf("%s/%s", sourcedir, file.Name()), filename, fmt.Sprintf("%s/%s", DestDir, archiveName))
+			if err != nil {
+				return err
+			}
 	}
 
 	success, failure, skipped, err := cclf.ImportCCLFDirectory(DestDir)

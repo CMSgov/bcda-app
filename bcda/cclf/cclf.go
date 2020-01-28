@@ -294,6 +294,23 @@ func getCCLFFileMetadata(fileName string) (cclfFileMetadata, error) {
 		return metadata, err
 	}
 
+	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
+	refDateString := os.Getenv("CCLF_REF_DATE")
+	refDate, err := time.Parse("060102", refDateString)
+	if err != nil {
+		refDate = time.Now()
+	}
+
+	// Files must not be too old
+	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24) * int64(time.Hour)))
+	filesNotAfter := refDate
+	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
+		fmt.Printf("Date '%s' from file %s is out of range; comparison date %s\n", filenameDate, fileName, refDate.Format("060102"))
+		err = errors.New(fmt.Sprintf("date '%s' from file %s out of range; comparison date %s", filenameDate, fileName, refDate.Format("060102")))
+		log.Error(err)
+		return metadata, err
+	}
+
 	acoID := filenameMatches[2]
 	if len(acoID) < 5 {
 		fmt.Printf("Failed to parse aco id '%s' from file: %s.\n", acoID, fileName)
@@ -406,20 +423,18 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 		}
 
 		zipReader, err := zip.OpenReader(filepath.Clean(path))
-		defer zipReader.Close()
-
 		if err != nil {
-			// this skipped count is not entirely accurate.
 			*skipped = *skipped + 1
 			msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
 			fmt.Println(msg)
 			log.Warn(msg)
 			return nil
 		}
+		_ = zipReader.Close()
 
 		// validate the top level zipped folder
 		err = validateCCLFFolderName(info.Name()); if err != nil {
-			*skipped = *skipped + len(zipReader.File)
+			*skipped = *skipped + 1
 			msg := fmt.Sprintf("Skipping CCLF archive: %s.", info.Name())
 			fmt.Println(msg)
 			log.Warn(msg)
@@ -442,7 +457,6 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
 				fmt.Printf("Unknown file found: %s.\n", f.Name)
 				log.Errorf("Unknown file found: %s", f.Name)
-				*skipped = *skipped + 1
 				continue
 			}
 
@@ -574,40 +588,13 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 func validateCCLFFolderName(folderName string) error {
 	// add comment for new folder format string
 	folderNameRegexp := regexp.MustCompile(`(T|P)\.BCD\.((?:A|T)\d{4})\.ZCY(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
-	folderNameMatches := folderNameRegexp.FindStringSubmatch(folderName)
-	if len(folderNameMatches) < 5 {
+	valid := folderNameRegexp.MatchString(folderName)
+	if !valid {
 		fmt.Printf("Invalid foldername for CCLF archive: %s.\n", folderName)
 		err := fmt.Errorf("invalid foldername for CCLF archive: %s", folderName)
 		log.Error(err)
 		return err
 	}
-
-	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
-	refDateString := os.Getenv("CCLF_REF_DATE")
-	refDate, err := time.Parse("060102", refDateString)
-	if err != nil {
-		refDate = time.Now()
-	}
-
-	date := folderNameMatches[4]
-	t, err := time.Parse("D060102", date)
-	if err != nil || t.IsZero() {
-		fmt.Printf("Failed to parse date '%s' from folder: %s.\n", date, folderName)
-		err = errors.Wrapf(err, "failed to parse date '%s' from folder: %s", date, folderName)
-		log.Error(err)
-		return err
-	}
-
-	// Zipped folder must not be too old
-	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24) * int64(time.Hour)))
-	filesNotAfter := refDate
-	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
-		fmt.Printf("Date '%s' from folder %s is out of range; comparison date %s\n", date, folderName, refDate.Format("060102"))
-		err = errors.New(fmt.Sprintf("date '%s' from folder %s is out of range; comparison date %s", date, folderName, refDate.Format("060102")))
-		log.Error(err)
-		return err
-	}
-
 	return nil
 }
 

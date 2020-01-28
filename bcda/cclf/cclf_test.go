@@ -87,8 +87,8 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert := assert.New(s.T())
 
-	cclf0filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC0Y18.D181120.T0001000"
-	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
+	cclf0filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
+	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011"}
 
 	// positive
 	validator, err := importCCLF0(cclf0metadata)
@@ -101,14 +101,14 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	assert.EqualError(err, "could not read CCLF0 archive : read .: is a directory")
 
 	// missing cclf8 from cclf0
-	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.ACO.ZC0Y18.D181120.T0001000"
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
+	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000"
+	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name:"T.BCD.A0001.ZC0Y18.D181120.T1000011"}
 	_, err = importCCLF0(cclf0metadata)
-	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file ../../shared_files/cclf/archives/0/missing_data/T.BCD.ACO.ZC0Y18.D181120.T0001000")
+	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file T.BCD.A0001.ZC0Y18.D181120.T1000011")
 
 	// duplicate file types from cclf0
-	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.ACO.ZC0Y18.D181122.T0001000"
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
+	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000"
+	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000013"}
 	_, err = importCCLF0(cclf0metadata)
 	assert.EqualError(err, "duplicate CCLF8 file type found from CCLF0 file")
 }
@@ -116,8 +116,8 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 	assert := assert.New(s.T())
 
-	cclf0filePath := BASE_FILE_PATH + "cclf/archives/split/T.BCD.ACO.ZC0Y18.D181120.T0001000"
-	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18}
+	cclf0filePath := BASE_FILE_PATH + "cclf/archives/split/T.BCD.A0001.ZCY18.D181120.T1000000"
+	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name:"T.BCD.A0001.ZC0Y18.D181120.T1000011-1"}
 
 	validator, err := importCCLF0(cclf0metadata)
 	assert.Nil(err)
@@ -127,8 +127,8 @@ func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 func (s *CCLFTestSuite) TestValidate() {
 	assert := assert.New(s.T())
 
-	cclf8filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC8Y18.D181120.T0001000"
-	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18}
+	cclf8filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"
+	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name:"T.BCD.A0001.ZC8Y18.D181120.T1000009"}
 
 	// positive
 	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 6, maxRecordLength: 549}}
@@ -141,6 +141,7 @@ func (s *CCLFTestSuite) TestValidate() {
 	assert.EqualError(err, "maximum record count reached for file CCLF8 (expected: 2, actual: 3)")
 }
 
+/*
 func (s *CCLFTestSuite) TestValidate_SplitFiles() {
 	assert := assert.New(s.T())
 
@@ -159,40 +160,35 @@ func (s *CCLFTestSuite) TestValidate_SplitFiles() {
 	err := validate(cclf8Metadata, validator)
 	assert.Nil(err)
 }
+*/
 
-func (s *CCLFTestSuite) TestValidate_FileName() {
+func (s *CCLFTestSuite) TestValidate_FolderName() {
 	assert := assert.New(s.T())
 
-	filePath := BASE_FILE_PATH + "path/T.A0001.ACO.ZC8Y18.D181120.T1000009"
-	err := validateFileName(filePath)
+	filePath := BASE_FILE_PATH + "path/T.BCD.A0001.ZCY18.D181120.T1000000"
+	err := validateCCLFFolderName(filePath)
 	assert.Nil(err)
 
 	filePath = BASE_FILE_PATH + "path/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009"
-	err = validateFileName(filePath)
-	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
+	err = validateCCLFFolderName(filePath)
+	assert.EqualError(err, fmt.Sprintf("invalid foldername for CCLF archive: %s", filePath))
 
 	filePath = BASE_FILE_PATH + "path/T.BCD.ACO.ZC0Y18.D181120.T0001000"
-	err = validateFileName(filePath)
-	assert.EqualError(err, fmt.Sprintf("invalid filename for file: %s", filePath))
+	err = validateCCLFFolderName(filePath)
+	assert.EqualError(err, fmt.Sprintf("invalid foldername for CCLF archive: %s", filePath))
 }
 
 func (s *CCLFTestSuite) TestParseTimestamp() {
 	assert := assert.New(s.T())
 
-	cclfMetadata := &cclfFileMetadata{}
-
-	os.Setenv("CCLF_REF_DATE", "181120")
-	fileName := "T.A0001.ACO.ZC8Y18.D181120.T1000009"
-	err := parseTimestamp(cclfMetadata, fileName)
+	cclfMetadata, err := getCCLFFileMetadata("T.BCD.A0001.ZC8Y18.D181120.T1000009")
 	assert.Nil(err)
 	assert.Equal(10, cclfMetadata.timestamp.Hour())
 	assert.Equal(00, cclfMetadata.timestamp.Minute())
 
 	// valid file name out of range
-	fileName = "T.A0000.ACO.ZC8Y18.D190117.T9909420"
-	os.Setenv("CCLF_REF_DATE", "190120")
-	err = parseTimestamp(cclfMetadata, fileName)
-	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: T.A0000.ACO.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
+	cclfMetadata, err = getCCLFFileMetadata("T.BCD.A0001.ZC8Y18.D190117.T9909420")
+	assert.EqualError(err, "failed to parse date 'D190117.T990942' from file: T.BCD.A0001.ZC8Y18.D190117.T9909420: parsing time \"D190117.T990942\": hour out of range")
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8() {
@@ -206,13 +202,13 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := &cclfFileMetadata{
-		name:      "T.A0001.ACO.ZC8Y18.D181120.T1000009",
+		name:      "T.BCD.A0001.ZC8Y18.D181120.T1000009",
 		env:       "test",
 		acoID:     acoID,
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC8Y18.D181120.T0001000",
+		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000",
 	}
 
 	err = importCCLF8(metadata)
@@ -223,7 +219,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	file := models.CCLFFile{}
 	db.First(&file, "name = ?", metadata.name)
 	assert.NotNil(file)
-	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
+	assert.Equal("T.BCD.A0001.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
 	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
@@ -249,6 +245,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Nil(err)
 }
 
+/*
 func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
@@ -266,7 +263,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.BCD.ACO.ZC8Y18.D181120.T0001000",
+		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.BCD.A0001.ZCY18.D181121.T1000000",
 	}
 
 	err = importCCLF8(metadata)
@@ -302,6 +299,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
 	err = deleteFilesByACO("A0001", db)
 	assert.Nil(err)
 }
+*/
 
 func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 	assert := assert.New(s.T())
@@ -311,12 +309,12 @@ func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 	assert.EqualError(err, "CCLF file not found")
 }
 
-func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata() {
+func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert := assert.New(s.T())
 
 	expDate, _ := time.Parse("2006-01-02", "2019-01-19")
 	os.Setenv("CCLF_REF_DATE", "190120")
-	metadata, err := getCCLFArchiveMetadata("/path/T.BCD.ACO.ZC0Y18.D190119.T0002000")
+	metadata, err := getCCLFFileMetadata("T.BCD.A0002.ZC0Y18.D190119.T1000009")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0002", metadata.acoID)
 	assert.Equal(0, metadata.cclfNum)
@@ -327,7 +325,7 @@ func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata() {
 	assert.Nil(err)
 
 	expDate, _ = time.Parse("2006-01-02", "2019-01-17")
-	metadata, err = getCCLFArchiveMetadata("/path/T.BCD.ACO.ZC8Y18.D190117.T0000000")
+	metadata, err = getCCLFFileMetadata("T.BCD.A0000.ZC8Y18.D190117.T0000000")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0000", metadata.acoID)
 	assert.Equal(8, metadata.cclfNum)
@@ -338,13 +336,13 @@ func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata() {
 	assert.Nil(err)
 
 	expDate, _ = time.Parse("2006-01-02", "2019-01-08")
-	metadata, err = getCCLFArchiveMetadata("/path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
-	assert.EqualError(err, "invalid zipped filename for file: /path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
+	metadata, err = getCCLFFileMetadata("/path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
+	assert.EqualError(err, "invalid filename for file: /path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
 
 	// CMS EFT file format with BCD identifier
 	expDate, _ = time.Parse("2006-01-02", "2018-11-20")
 	os.Setenv("CCLF_REF_DATE", "181124")
-	metadata, err = getCCLFArchiveMetadata("/BCD/T.BCD.ACO.ZC0Y18.D181120.T0001000")
+	metadata, err = getCCLFFileMetadata("T.BCD.A0001.ZC0Y18.D181120.T0001000")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0001", metadata.acoID)
 	assert.Equal(0, metadata.cclfNum)
@@ -356,19 +354,12 @@ func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata() {
 
 	//CMS EFT file format with ACOB identifier
 	expDate, _ = time.Parse("2006-01-02", "2018-11-20")
-	metadata, err = getCCLFArchiveMetadata("/BCD/T.BCD.ACOB.ZC0Y18.D181120.T0001000")
-	assert.Equal("test", metadata.env)
-	assert.Equal("A0001", metadata.acoID)
-	assert.Equal(0, metadata.cclfNum)
-	assert.Equal(expDate.Year(), metadata.timestamp.Year())
-	assert.Equal(expDate.Month(), metadata.timestamp.Month())
-	assert.Equal(expDate.Day(), metadata.timestamp.Day())
-	assert.Equal(18, metadata.perfYear)
-	assert.Nil(err)
+	metadata, err = getCCLFFileMetadata("/BCD/T.BCD.ACOB.ZC0Y18.D181120.T0001000")
+	assert.EqualError(err, "invalid filename for file: /BCD/T.BCD.ACOB.ZC0Y18.D181120.T0001000")
 
 	expDate, _ = time.Parse("2006-01-02", "2019-01-12")
 	os.Setenv("CCLF_REF_DATE", "190120")
-	metadata, err = getCCLFArchiveMetadata("/BCD/T.BCD.ACO.ZC8Y18.D190112.T0012000")
+	metadata, err = getCCLFFileMetadata("T.BCD.A0012.ZC8Y18.D190112.T1000009")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0012", metadata.acoID)
 	assert.Equal(8, metadata.cclfNum)
@@ -379,39 +370,41 @@ func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata() {
 	assert.Nil(err)
 
 	os.Setenv("CCLF_REF_DATE", "180612")
-	metadata, err = getCCLFArchiveMetadata("/BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
-	assert.EqualError(err, "invalid zipped filename for file: /BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
+	metadata, err = getCCLFFileMetadata("/BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
+	assert.EqualError(err, "invalid filename for file: /BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
+
+	os.Unsetenv("CCLF_REF_DATE")
 }
 
-func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata_DateOutOfRange() {
+func (s *CCLFTestSuite) TestGetCCLFFileMetadata_DateOutOfRange() {
 	assert := assert.New(s.T())
 
 	// File is postdated
 	os.Setenv("CCLF_REF_DATE", "181119")
-	_, err := getCCLFArchiveMetadata("/BCD/T.BCD.ACO.ZC0Y18.D181120.T0001000")
-	assert.EqualError(err, "date 'D181120' from file /BCD/T.BCD.ACO.ZC0Y18.D181120.T0001000 out of range; comparison date 181119")
+	_, err := getCCLFFileMetadata("T.BCD.A0001.ZC0Y18.D181120.T0001000")
+	assert.EqualError(err, "date 'D181120.T000100' from file T.BCD.A0001.ZC0Y18.D181120.T0001000 out of range; comparison date 181119")
 
 	// File is older than 45 days
 	os.Setenv("CCLF_REF_DATE", "190120")
-	_, err = getCCLFArchiveMetadata("/BCD/T.BCD.ACO.ZC0Y18.D181120.T0001000")
-	assert.EqualError(err, "date 'D181120' from file /BCD/T.BCD.ACO.ZC0Y18.D181120.T0001000 out of range; comparison date 190120")
+	_, err = getCCLFFileMetadata("T.BCD.A0001.ZC0Y18.D181120.T0001000")
+	assert.EqualError(err, "date 'D181120.T000100' from file T.BCD.A0001.ZC0Y18.D181120.T0001000 out of range; comparison date 190120")
 }
 
-func (s *CCLFTestSuite) TestGetCCLFArchiveMetadata_InvalidFilename() {
+func (s *CCLFTestSuite) TestGetCCLFFileMetadata_InvalidFilename() {
 	assert := assert.New(s.T())
 	os.Setenv("CCLF_REF_DATE", "190615")
 
-	_, err := getCCLFArchiveMetadata("/path/to/file")
-	assert.EqualError(err, "invalid zipped filename for file: /path/to/file")
+	_, err := getCCLFFileMetadata("/path/to/file")
+	assert.EqualError(err, "invalid filename for file: /path/to/file")
 
-	_, err = getCCLFArchiveMetadata("/path/T.BCD.ACO.ZC8Y18.D191317.T0000000")
-	assert.EqualError(err, "failed to parse date 'D191317' from file: /path/T.BCD.ACO.ZC8Y18.D191317.T0000000: parsing time \"D191317\": month out of range")
+	_, err = getCCLFFileMetadata("T.BCD.A0001.ZC8Y18.D191317.T0000000")
+	assert.EqualError(err, "failed to parse date 'D191317.T000000' from file: T.BCD.A0001.ZC8Y18.D191317.T0000000: parsing time \"D191317.T000000\": month out of range")
 
-	_, err = getCCLFArchiveMetadata("/cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
-	assert.EqualError(err, "invalid zipped filename for file: /cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
+	_, err = getCCLFFileMetadata("/cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
+	assert.EqualError(err, "invalid filename for file: /cclf/T.A0001.ACO.ZC8Y18.D18NOV20.T1000010")
 
-	_, err = getCCLFArchiveMetadata("/cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
-	assert.EqualError(err, "invalid zipped filename for file: /cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
+	_, err = getCCLFFileMetadata("/cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
+	assert.EqualError(err, "invalid filename for file: /cclf/T.ABCDE.ACO.ZC8Y18.D181120.T1000010")
 }
 
 func (s *CCLFTestSuite) TestSortCCLFArchives() {
@@ -422,7 +415,7 @@ func (s *CCLFTestSuite) TestSortCCLFArchives() {
 	filePath := BASE_FILE_PATH + "cclf/archives/valid/"
 	err := filepath.Walk(filePath, sortCCLFArchives(&cclfmap, &skipped))
 	assert.Nil(err)
-	assert.Equal(3, len(cclfmap["A0001"][18]))
+	assert.Equal(2, len(cclfmap["A0001"][18]))
 	assert.Equal(1, skipped)
 	testUtils.ResetFiles(s.Suite, filePath)
 
@@ -601,13 +594,13 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	// failed import: file that's over the threshold - should move
 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	cclf8metadata := &cclfFileMetadata{
-		name:         "T.BCD.ACO.ZC8Y18.D181120.T0001000",
+		name:         "T.BCD.A0001.ZC8Y18.D181120.T1000009",
 		env:          "test",
 		acoID:        acoID,
 		cclfNum:      8,
 		perfYear:     18,
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC8Y18.D181120.T0001000",
+		filePath:     BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000",
 		imported:     false,
 		deliveryDate: fileTime,
 	}
@@ -615,13 +608,13 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	// successfully imported file - should move
 	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	cclf9metadata := &cclfFileMetadata{
-		name:      "T.BCD.ACO.ZC9Y18.D181120.T0001000",
+		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
 		env:       "test",
 		acoID:     acoID,
 		cclfNum:   9,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.BCD.ACO.ZC9Y18.D181120.T0001000",
+		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.T1000000",
 		imported:  true,
 	}
 	cclfmap["A0001"] = map[int][]*cclfFileMetadata{18: []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata}}
