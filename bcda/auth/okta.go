@@ -86,10 +86,6 @@ func (o OktaAuthPlugin) RevokeSystemCredentials(clientID string) error {
 // Manufactures an access token for the given credentials
 func (o OktaAuthPlugin) MakeAccessToken(creds Credentials) (string, error) {
 	clientID := creds.ClientID
-	// Also accept clientID via creds.UserID to match alpha auth implementation
-	if clientID == "" {
-		clientID = creds.UserID
-	}
 
 	if clientID == "" {
 		return "", fmt.Errorf("client ID required")

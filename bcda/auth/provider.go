@@ -64,7 +64,6 @@ func GetProvider() Provider {
 
 type AuthData struct {
 	ACOID    string
-	UserID   string
 	TokenID  string
 	ClientID string
 	SystemID string
@@ -72,7 +71,6 @@ type AuthData struct {
 }
 
 type Credentials struct {
-	UserID       string    `json:"user_id"`
 	ClientID     string    `json:"client_id"`
 	ClientSecret string    `json:"client_secret"`
 	ClientName   string    `json:"client_name"`

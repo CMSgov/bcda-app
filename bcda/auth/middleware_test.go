@@ -47,13 +47,13 @@ func (s *MiddlewareTestSuite) SetupSuite() {
 }
 
 func (s *MiddlewareTestSuite) SetupTest() {
-	userID := "82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"
+	cmsID := "A9995"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 	tokenID := "d63205a8-d923-456b-a01b-0992fcb40968"
 	s.token, _ = auth.TokenStringWithIDs(tokenID, acoID)
 	s.ad = auth.AuthData{
 		TokenID: tokenID,
-		UserID:  userID,
+		CMSID:  cmsID,
 		ACOID:   acoID,
 	}
 	s.server = httptest.NewServer(s.CreateRouter())
