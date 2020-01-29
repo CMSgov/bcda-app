@@ -367,29 +367,6 @@ OwIDAQAB
 	assert.Equal(s.T(), keyStr, string(pemBytes))
 }
 
-func (s *ModelsTestSuite) TestCreateUser() {
-	name, email, sampleUUID, duplicateName := "First Last", "firstlast@example.com", "DBBD1CE1-AE24-435C-807D-ED45953077D3", "Duplicate Name"
-
-	// Make a user for an ACO that doesn't exist
-	badACOUser, err := CreateUser(name, email, uuid.NewRandom())
-	//No ID because it wasn't saved
-	assert.True(s.T(), badACOUser.ID == 0)
-	// Should get an error
-	assert.NotNil(s.T(), err)
-
-	// Make a good user
-	user, err := CreateUser(name, email, uuid.Parse(sampleUUID))
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), user.UUID)
-	assert.NotNil(s.T(), user.ID)
-
-	// Try making a duplicate user for the same E-mail address
-	duplicateUser, err := CreateUser(duplicateName, email, uuid.Parse(sampleUUID))
-	// Got a user, not the one that was requested
-	assert.True(s.T(), duplicateUser.Name == name)
-	assert.NotNil(s.T(), err)
-}
-
 func TestModelsTestSuite(t *testing.T) {
 	suite.Run(t, new(ModelsTestSuite))
 }
@@ -398,19 +375,18 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 		JobCount:   1,
 	}
 	s.db.Save(&j)
-	completed, err := j.CheckCompletedAndCleanup()
+	completed, err := j.CheckCompletedAndCleanup(s.db)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), completed)
 
 	err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
 	assert.Nil(s.T(), err)
-	completed, err = j.CheckCompletedAndCleanup()
+	completed, err = j.CheckCompletedAndCleanup(s.db)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
 	s.db.Delete(&j)
@@ -420,14 +396,13 @@ func (s *ModelsTestSuite) TestJobDefaultCompleted() {
 	// Job is completed, but no keys exist.  This is fine, it is still complete
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Completed",
 		JobCount:   10,
 	}
 	s.db.Save(&j)
 
-	completed, err := j.CheckCompletedAndCleanup()
+	completed, err := j.CheckCompletedAndCleanup(s.db)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
 	s.db.Delete(&j)
@@ -437,13 +412,12 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		UserID:     uuid.Parse("82503A18-BF3B-436D-BA7B-BAE09B7FFD2F"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 		JobCount:   10,
 	}
 	s.db.Save(&j)
-	completed, err := j.CheckCompletedAndCleanup()
+	completed, err := j.CheckCompletedAndCleanup(s.db)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), completed)
 
@@ -452,7 +426,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 		assert.Nil(s.T(), err)
 	}
 	// JobKeys exist, but not enough to make the job complete
-	completed, err = j.CheckCompletedAndCleanup()
+	completed, err = j.CheckCompletedAndCleanup(s.db)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), completed)
 
@@ -460,7 +434,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 		err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
 		assert.Nil(s.T(), err)
 	}
-	completed, err = j.CheckCompletedAndCleanup()
+	completed, err = j.CheckCompletedAndCleanup(s.db)
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
 	s.db.Delete(&j)
@@ -472,7 +446,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 	}
@@ -492,7 +465,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
 		}
 		assert.Equal(int(j.ID), jobArgs.ID)
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		if count == 0 {
 			assert.Equal("Patient", jobArgs.ResourceType)
 		} else if count == 1 {
@@ -510,7 +482,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export?_type=Patient",
 		Status:     "Pending",
 	}
@@ -530,7 +501,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 		}
 		assert.Equal(int(j.ID), jobArgs.ID)
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		assert.Equal("6baf8254-2e8a-4808-b11d-0fa00c527d2e", jobArgs.UserID)
 		assert.Equal("Patient", jobArgs.ResourceType)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
@@ -541,7 +511,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     "Pending",
 	}
@@ -576,7 +545,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 
 	j := Job{
 		ACOID:      uuid.Parse(constants.DevACOUUID),
-		UserID:     uuid.Parse("6baf8254-2e8a-4808-b11d-0fa00c527d2e"),
 		RequestURL: "/api/v1/Patient/$export?_type=Coverage",
 		Status:     "Pending",
 	}
@@ -786,14 +754,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&cclfFile)
 
 	// Beneficiary 1: preference indicator = N, effective date = now - 48 hours
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene1hicn"}
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene1_bbID"}
 	err = s.db.Save(&bene1).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene1)
 
-	bene1Suppression := Suppression{HICN: "bene1hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
+	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
 	err = s.db.Save(&bene1Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -801,14 +769,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene1Suppression)
 
 	// Beneficiary 2: preference indicator = Y, effective date = now - 24 hours
-	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene2hicn"}
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene2_bbID"}
 	err = s.db.Save(&bene2).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene2)
 
-	bene2Suppression := Suppression{HICN: "bene2hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene2Suppression := Suppression{BlueButtonID: "bene2_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene2Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -816,7 +784,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene2Suppression)
 
 	// Beneficiary 3: no suppression record
-	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene3hicn"}
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene3_bbID"}
 	err = s.db.Save(&bene3).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
@@ -824,14 +792,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene3)
 
 	// Beneficiary 4: preference indicator = N, effective date = now + 1 hour
-	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene4hicn"}
+	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene4_bbID"}
 	err = s.db.Save(&bene4).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene4)
 
-	bene4Suppression := Suppression{HICN: "bene4hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(1 * time.Hour)}
+	bene4Suppression := Suppression{BlueButtonID: "bene4_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(1 * time.Hour)}
 	err = s.db.Save(&bene4Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -839,21 +807,21 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene4Suppression)
 
 	// Beneficiary 5: two suppression records, preference indicators = Y, N, effective dates = now - 72, 24 hours
-	bene5 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene5hicn"}
+	bene5 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene5_bbID"}
 	err = s.db.Save(&bene5).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene5)
 
-	bene5Suppression1 := Suppression{HICN: "bene5hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-72 * time.Hour)}
+	bene5Suppression1 := Suppression{BlueButtonID: "bene5_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-72 * time.Hour)}
 	err = s.db.Save(&bene5Suppression1).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene5Suppression1)
 
-	bene5Suppression2 := Suppression{HICN: "bene5hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene5Suppression2 := Suppression{BlueButtonID: "bene5_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene5Suppression2).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -861,14 +829,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene5Suppression2)
 
 	// Beneficiary 6: preference indicator = blank, effective date = now - 12 hours
-	bene6 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene6hicn"}
+	bene6 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene6_bbID"}
 	err = s.db.Save(&bene6).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene6)
 
-	bene6Suppression := Suppression{HICN: "bene6hicn", PrefIndicator: "", EffectiveDt: time.Now().Add(-12 * time.Hour)}
+	bene6Suppression := Suppression{BlueButtonID: "bene6_bbID", PrefIndicator: "", EffectiveDt: time.Now().Add(-12 * time.Hour)}
 	err = s.db.Save(&bene6Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -876,28 +844,28 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene6Suppression)
 
 	// Beneficiary 7: three suppression records: preference indicators = Y, N, Y; effective dates = now - 168, 96, 24 hours
-	bene7 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene7hicn"}
+	bene7 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene7_bbID"}
 	err = s.db.Save(&bene7).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene7)
 
-	bene7Suppression1 := Suppression{HICN: "bene7hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-168 * time.Hour)}
+	bene7Suppression1 := Suppression{BlueButtonID: "bene7_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-168 * time.Hour)}
 	err = s.db.Save(&bene7Suppression1).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene7Suppression1)
 
-	bene7Suppression2 := Suppression{HICN: "bene7hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-96 * time.Hour)}
+	bene7Suppression2 := Suppression{BlueButtonID: "bene7_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-96 * time.Hour)}
 	err = s.db.Save(&bene7Suppression2).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene7Suppression2)
 
-	bene7Suppression3 := Suppression{HICN: "bene7hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene7Suppression3 := Suppression{BlueButtonID: "bene7_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene7Suppression3).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -905,28 +873,28 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene7Suppression3)
 
 	// Beneficiary 8: three suppression records: preference indicators = Y, N, blank; effective dates = now - 96, 48, 24 hours
-	bene8 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene8hicn"}
+	bene8 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene8_bbID"}
 	err = s.db.Save(&bene8).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene8)
 
-	bene8Suppression1 := Suppression{HICN: "bene8hicn", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-96 * time.Hour)}
+	bene8Suppression1 := Suppression{BlueButtonID: "bene8_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-96 * time.Hour)}
 	err = s.db.Save(&bene8Suppression1).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene8Suppression1)
 
-	bene8Suppression2 := Suppression{HICN: "bene8hicn", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
+	bene8Suppression2 := Suppression{BlueButtonID: "bene8_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
 	err = s.db.Save(&bene8Suppression2).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene8Suppression2)
 
-	bene8Suppression3 := Suppression{HICN: "bene8hicn", PrefIndicator: "", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene8Suppression3 := Suppression{BlueButtonID: "bene8_bbID", PrefIndicator: "", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene8Suppression3).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -943,7 +911,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	assert.Equal(s.T(), bene7.ID, result[4].ID)
 }
 
-func (s *ModelsTestSuite) TestGetBlueButtonID() {
+func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	assert := s.Assert()
 	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
 	bbc := testUtils.BlueButtonClient{}
@@ -965,4 +933,22 @@ func (s *ModelsTestSuite) TestGetBlueButtonID() {
 
 	// Should be making only a single call to BB for all 2 attempts.
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 1)
+}
+
+func (s *ModelsTestSuite) TestGetBlueButtonID_Suppression() {
+	assert := s.Assert()
+	suppressBene := Suppression{HICN: "HASH_ME"}
+	bbc := testUtils.BlueButtonClient{}
+	bbc.HICN = &suppressBene.HICN
+	bbc.On("GetPatientByHICNHash", client.HashHICN(suppressBene.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	// New never seen before hicn, asks the mock blue button client for the value
+	blueButtonID, err := suppressBene.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("BB_VALUE", blueButtonID)
+
+	// Should be making only a single call to BB for all 2 attempts.
+	bbc.AssertNumberOfCalls(s.T(), "GetPatientByHICNHash", 1)
 }

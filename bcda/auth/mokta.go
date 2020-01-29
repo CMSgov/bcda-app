@@ -156,7 +156,6 @@ func (m *Mokta) NewCustomToken(overrides OktaToken) (string, error) {
 		"exp": time.Now().Add(time.Hour * time.Duration(values.ExpiresIn)).Unix(),
 		"cid": values.ClientID,
 		"scp": values.Scopes,
-		"sub": values.Subject,
 	}
 
 	return token.SignedString(m.privateKey)

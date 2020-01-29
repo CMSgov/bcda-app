@@ -9,20 +9,9 @@ create table acos (
   public_key text null
 );
 
-create table users (
-  uuid uuid not null primary key,
-  name text not null,
-  email text not null unique,
-  aco_id uuid not null,
-  created_at timestamp with time zone not null default now(),
-  updated_at timestamp with time zone not null default now(),
-  foreign key (aco_id) references acos (uuid)
-);
-
 create table jobs (
   id serial not null primary key,
   aco_id uuid not null references acos,
-  user_id uuid not null references users,
   request_url text not null,
   status text not null,
   created_at timestamp with time zone not null default now()
@@ -84,6 +73,7 @@ create table suppression_files (
 create table suppressions (
     id serial primary key,
     file_id integer not null,
+    blue_button_id text,
     hicn varchar(11) not null,
     source_code varchar(5),
     effective_date timestamp with time zone,
