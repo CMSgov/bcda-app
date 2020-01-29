@@ -13,10 +13,10 @@ services:
       - BCDA_ERROR_LOG=/var/log/bcda-error.log
       - BCDA_REQUEST_LOG=/var/log/bcda-request.log
       - BCDA_BB_LOG=/var/log/bcda-bb-request.log
-      - BB_CLIENT_CERT_FILE=../shared_files/bb-dev-test-key.pem
-      - BB_CLIENT_KEY_FILE=../shared_files/bb-dev-test-key.pem
-      - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
-      - BB_CHECK_CERT=false
+      - BB_CLIENT_CERT_FILE=${BFD_CLIENT_CERT_FILE}
+      - BB_CLIENT_KEY_FILE=${BFD_CLIENT_KEY_FILE}
+      - BB_SERVER_LOCATION=${BFD_SERVER_LOCATION}
+      - BB_CHECK_CERT=${BFD_CHECK_CERT}
       - FHIR_PAYLOAD_DIR=../bcdaworker/data
       - FHIR_STAGING_DIR=../bcdaworker/tmpdata
       - FHIR_ARCHIVE_DIR=../bcdaworker/archive
@@ -30,8 +30,8 @@ services:
       - OKTA_OAUTH_SERVER_ID=${OKTA_OAUTH_SERVER_ID}
       - CLIENT_ID
       - CLIENT_SECRET
-      - BB_HASH_PEPPER=6E6F747468657265616C706570706572
-      - BB_HASH_ITER=2
+      - BB_HASH_PEPPER=${BFD_HASH_PEPPER}
+      - BB_HASH_ITER=${BFD_HASH_ITER}
       - AUTH_HASH_ITERATIONS=130000
       - AUTH_HASH_KEY_LENGTH=64
       - AUTH_HASH_SALT_SIZE=32
