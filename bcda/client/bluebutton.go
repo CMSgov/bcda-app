@@ -34,7 +34,7 @@ type APIClient interface {
 	GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error)
 	GetPatient(patientID, jobID, cmsID string) (string, error)
 	GetCoverage(beneficiaryID, jobID, cmsID string) (string, error)
-	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
+	GetPatientByIdentifierHash(hashedIdentifier, patientIdMode  string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -103,11 +103,11 @@ func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string,
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
+func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error) {
 	params := GetDefaultParams()
 
 	identifier := "hicnHash"
-	if utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE") == "MBI_MODE" {
+	if patientIdMode == "MBI_MODE" {
 		identifier = "mbiHash"
 	}
 

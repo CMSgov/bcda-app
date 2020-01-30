@@ -460,14 +460,13 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 		return cclfBeneficiary.BlueButtonID, nil
 	}
 
-	/*
 	modelIdentifier := cclfBeneficiary.HICN
 	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
 	if patientIdMode == "MBI_MODE" {
 		modelIdentifier = cclfBeneficiary.MBI
-	}*/
+	}
 
-	blueButtonID, err = GetBlueButtonID(bb, cclfBeneficiary.HICN, cclfBeneficiary.ID)
+	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode,"beneficiary", cclfBeneficiary.ID,)
 	if err != nil {
 		return "", err
 	}
@@ -482,62 +481,34 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 		return suppressionBeneficiary.BlueButtonID, nil
 	}
 
-	/*
 	modelIdentifier := suppressionBeneficiary.HICN
+	patientIdMode := "HICN_MODE"
+
+	// uncomment when NGD supports MBI
+	/*
 	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
 	if patientIdMode == "MBI_MODE" {
-		modelIdentifier = suppressionBeneficiary.
+		modelIdentifier = suppressionBeneficiary.MBI
 	}
 	*/
-
-	blueButtonID, err = GetBlueButtonID(bb, suppressionBeneficiary.HICN, suppressionBeneficiary.ID)
+	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "suppression", suppressionBeneficiary.ID)
 	if err != nil {
 		return "", err
 	}
 	return blueButtonID, nil
 }
 
-func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueButtonID string, err error) {
-	/*
-	patientIdMode := "HICN"
-	identifier :=  cclfBeneficiary.HICN
+func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
 	systemMode := "hicn-hash"
-	if utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE") == "MBI_MODE"  {
-		patientIdMode = "MBI"
-		identifier = cclfBeneficiary.MBI
-		systemMode = "mbi-hash"
-	}
-
-
-
-	// didn't find a local value, need to ask BlueButton
-	hashedHICN := client.HashHICN(modelHicn)
-	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
-	if err != nil {
-		return "", err
-	}
-
-	// didn't find a local value, need to ask BlueButton
-	hashedHICN := client.HashHICN(modelHicn)
-	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
-	if err != nil {
-		return "", err
-	}
-	*/
-
-	patientIdMode := "HICN"
-	identifier :=  modelHicn
-	systemMode := "hicn-hash"
-	if utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE") == "MBI_MODE"  {
-		patientIdMode = "MBI"
-		identifier = modelHicn
+	if patientIdMode == "MBI_MODE" {
 		systemMode = "mbi-hash"
 	}
 
 	// didn't find a local value, need to ask BlueButton
-	// didn't find a local value, need to ask BlueButton
-	hashedIdentifier := client.HashIdentifier(identifier)
-	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier)
+	hashedIdentifier := client.HashIdentifier(modelIdentifier)
+
+	// until NGD supports MBI, pass in the patientIdMode
+	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier, patientIdMode)
 	if err != nil {
 		return "", err
 	}
@@ -549,7 +520,9 @@ func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueB
 	}
 
 	if len(patient.Entry) == 0 {
-		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", modelID)
+
+		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF %s ID: %v", reqType, modelID)
+
 		log.Error(err)
 		return "", err
 	}
@@ -566,15 +539,15 @@ func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueB
 				foundBlueButtonID = true
 			}
 		}
-
 	}
 	if !foundIdentifier {
+		patientIdMode = strings.Split(patientIdMode,"_")[0]
 		err = fmt.Errorf("hashed %v not found in the identifiers", patientIdMode)
 		log.Error(err)
 		return "", err
 	}
 	if !foundBlueButtonID {
-		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
+		err = fmt.Errorf("blue Button identifier not found in the identifiers")
 		log.Error(err)
 		return "", err
 	}
