@@ -39,7 +39,7 @@ func contextToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ad := auth.AuthData{
 			ACOID:   "dbbd1ce1-ae24-435c-807d-ed45953077d3",
-			UserID:  "82503a18-bf3b-436d-ba7b-bae09b7ffdff",
+			CMSID:   "A9995",
 			TokenID: "665341c9-7d0c-4844-b66f-5910d9d0822f",
 		}
 
@@ -96,7 +96,7 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), server.URL+"/", logFields["uri"])
 		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
-		assert.Equal("82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["user_id"], "Sub in log entry should match the token.")
+		assert.Equal("A9995", logFields["cms_id"], "CMS ID in log entry should match the token.")
 		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
 	}
 
@@ -173,7 +173,7 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
 		// assert.Equal(s.T(), server.URL+"/panic", logFields["uri"])
 		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
-		assert.Equal("82503a18-bf3b-436d-ba7b-bae09b7ffdff", logFields["user_id"], "Sub in log entry should match the token.")
+		assert.Equal("A9995", logFields["cms_id"], "CMS ID in log entry should match the token.")
 		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
 		if i == 1 {
 			assert.Equal("Test", logFields["panic"])
