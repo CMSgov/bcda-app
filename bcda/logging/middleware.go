@@ -64,8 +64,8 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 
 	if ad, ok := r.Context().Value("ad").(auth.AuthData); ok {
 		logFields["aco_id"] = ad.ACOID
-		logFields["user_id"] = ad.UserID
 		logFields["token_id"] = ad.TokenID
+		logFields["cms_id"] = ad.CMSID
 	}
 
 	entry.Logger = entry.Logger.WithFields(logFields)
