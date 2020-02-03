@@ -78,6 +78,13 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 		}
 	}
 
+	if rawFile == nil {
+		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
+		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
+		log.Error(err)
+		return nil, err
+	}
+
 	rc, err := rawFile.Open()
 	if err != nil {
 		fmt.Printf("Could not read file %s in CCLF0 archive %s.\n", fileMetadata.name, fileMetadata.filePath)
@@ -223,6 +230,13 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
 			log.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
+	}
+
+	if rawFile == nil {
+		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
+		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
+		log.Error(err)
+		return err
 	}
 
 	rc, err := rawFile.Open()
@@ -424,6 +438,8 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 
 		zipReader, err := zip.OpenReader(filepath.Clean(path))
 		if err != nil {
+			// remove this later
+			fmt.Println("Error is: ", err)
 			*skipped = *skipped + 1
 			msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
 			fmt.Println(msg)
@@ -549,6 +565,13 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
 			log.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
+	}
+
+	if rawFile == nil {
+		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
+		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
+		log.Error(err)
+		return err
 	}
 
 	rc, err := rawFile.Open()

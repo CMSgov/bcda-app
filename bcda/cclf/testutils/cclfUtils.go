@@ -59,15 +59,33 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		return err
 	}
 
+	var fileList []string
+	var archiveName string
+
 	dateStr := fmt.Sprintf("%s.D%s", time.Now().Format("06"), time.Now().Format("060102"))
-	for i, file := range files {
-		timeStr := time.Now().Add(time.Minute * time.Duration(i-1)).Format("1504059")
-			archiveName := fmt.Sprintf("T.BCD.A%s.ZCY%s.T%s", acoIDNum, dateStr, timeStr)
-			filename := fmt.Sprintf("T.BCD.A%s.%sY%s.T%s", acoIDNum, file.Name(), dateStr, "0000000")
-			err = zipTo(fmt.Sprintf("%s/%s", sourcedir, file.Name()), filename, fmt.Sprintf("%s/%s", DestDir, archiveName))
-			if err != nil {
-				return err
-			}
+	for _, file := range files {
+		//timeStr := time.Now().Add(time.Minute * time.Duration(i-1)).Format("1504059")
+		archiveName = fmt.Sprintf("T.BCD.A%s.ZCY%s.T%s", acoIDNum, dateStr, "0000000")
+		filename := fmt.Sprintf("T.BCD.A%s.%sY%s.T%s", acoIDNum, file.Name(), dateStr, "0000000")
+		sourceFile_fileName := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(),filename)
+		fileList = append(fileList, sourceFile_fileName)
+	}
+
+	newZipFile, err := os.Create(fmt.Sprintf("%s/%s", DestDir, archiveName))
+	if err != nil {
+		return err
+	}
+	defer newZipFile.Close()
+
+	zipWriter := zip.NewWriter(newZipFile)
+	defer zipWriter.Close()
+
+	// Add all 3 files to the same zip
+	for _, f := range fileList {
+		err = AddFileToZip(zipWriter, f)
+		if err != nil {
+			return err
+		}
 	}
 
 	success, failure, skipped, err := cclf.ImportCCLFDirectory(DestDir)
@@ -84,43 +102,40 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	}
 }
 
-func zipTo(src, dstFile, dstArchive string) error {
-	srcFileStat, err := os.Stat(src)
+func AddFileToZip(zipWriter *zip.Writer, filename string) error {
+	sourceData := strings.Split(filename,"__")
+	src := sourceData[0]
+	filename = sourceData[1]
+
+	fileToZip, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer fileToZip.Close()
+
+	// Get the file information
+	info, err := fileToZip.Stat()
 	if err != nil {
 		return err
 	}
 
-	if !srcFileStat.Mode().IsRegular() {
-		return fmt.Errorf("%s is not a regular file", src)
-	}
-
-	source, err := os.Open(filepath.Clean(src))
-	if err != nil {
-		return err
-	}
-	defer source.Close()
-
-	newZipFile, err := os.Create(dstArchive)
-	if err != nil {
-		return err
-	}
-	defer newZipFile.Close()
-
-	zipWriter := zip.NewWriter(newZipFile)
-	defer zipWriter.Close()
-
-	header, err := zip.FileInfoHeader(srcFileStat)
+	header, err := zip.FileInfoHeader(info)
 	if err != nil {
 		return err
 	}
 
-	header.Name = dstFile
+	// Using FileInfoHeader() above only uses the basename of the file. If we want
+	// to preserve the folder structure we can overwrite this with the full path.
+	header.Name = filename
+
+	// Change to deflate to gain better compression
+	// see http://golang.org/pkg/archive/zip/#pkg-constants
 	header.Method = zip.Deflate
 
 	writer, err := zipWriter.CreateHeader(header)
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(writer, source)
+	_, err = io.Copy(writer, fileToZip)
 	return err
 }
