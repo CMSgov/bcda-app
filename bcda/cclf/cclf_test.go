@@ -141,27 +141,6 @@ func (s *CCLFTestSuite) TestValidate() {
 	assert.EqualError(err, "maximum record count reached for file CCLF8 (expected: 2, actual: 3)")
 }
 
-/*
-func (s *CCLFTestSuite) TestValidate_SplitFiles() {
-	assert := assert.New(s.T())
-
-	cclf8Metadata := &cclfFileMetadata{
-		acoID:     "A0001",
-		cclfNum:   8,
-		timestamp: time.Now(),
-		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.BCD.ACO.ZC8Y18.D181120.T0001000",
-		perfYear:  18,
-	}
-
-	validator := map[string]cclfFileValidator{
-		"CCLF8": {totalRecordCount: 6, maxRecordLength: 549},
-	}
-
-	err := validate(cclf8Metadata, validator)
-	assert.Nil(err)
-}
-*/
-
 func (s *CCLFTestSuite) TestValidate_FolderName() {
 	assert := assert.New(s.T())
 
@@ -244,62 +223,6 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	err = deleteFilesByACO("A0001", db)
 	assert.Nil(err)
 }
-
-/*
-func (s *CCLFTestSuite) TestImportCCLF8_SplitFiles() {
-	assert := assert.New(s.T())
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	err := deleteFilesByACO("A0001", db)
-	assert.Nil(err)
-
-	acoID := "A0001"
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
-	metadata := &cclfFileMetadata{
-		name:      "T.A0001.ACO.ZC8Y18.D181120.T1000009",
-		env:       "test",
-		acoID:     acoID,
-		cclfNum:   8,
-		perfYear:  18,
-		timestamp: fileTime,
-		filePath:  BASE_FILE_PATH + "cclf/archives/split/T.BCD.A0001.ZCY18.D181121.T1000000",
-	}
-
-	err = importCCLF8(metadata)
-	if err != nil {
-		s.FailNow("importCCLF8() error: %s", err.Error())
-	}
-
-	file := models.CCLFFile{}
-	db.First(&file, "name = ?", metadata.name)
-	assert.NotNil(file)
-	assert.Equal("T.A0001.ACO.ZC8Y18.D181120.T1000009", file.Name)
-	assert.Equal(acoID, file.ACOCMSID)
-	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
-	assert.Equal(18, file.PerformanceYear)
-	assert.Equal(constants.ImportComplete, file.ImportStatus)
-
-	beneficiaries := []models.CCLFBeneficiary{}
-	db.Find(&beneficiaries, "file_id = ?", file.ID)
-	assert.Equal(6, len(beneficiaries))
-	assert.Equal("203031401M", beneficiaries[0].HICN)
-	assert.Equal("1A69B98CD30", beneficiaries[0].MBI)
-	assert.Equal("203031402A", beneficiaries[1].HICN)
-	assert.Equal("1A69B98CD31", beneficiaries[1].MBI)
-	assert.Equal("203031403A", beneficiaries[2].HICN)
-	assert.Equal("1A69B98CD32", beneficiaries[2].MBI)
-	assert.Equal("203031404A", beneficiaries[3].HICN)
-	assert.Equal("1A69B98CD33", beneficiaries[3].MBI)
-	assert.Equal("203031405C7", beneficiaries[4].HICN)
-	assert.Equal("1A69B98CD34", beneficiaries[4].MBI)
-	assert.Equal("203031406M", beneficiaries[5].HICN)
-	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
-
-	err = deleteFilesByACO("A0001", db)
-	assert.Nil(err)
-}
-*/
 
 func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 	assert := assert.New(s.T())

@@ -76,9 +76,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		return err
 	}
 	defer newZipFile.Close()
-
 	zipWriter := zip.NewWriter(newZipFile)
-	defer zipWriter.Close()
 
 	// Add all 3 files to the same zip
 	for _, f := range fileList {
@@ -88,6 +86,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		}
 	}
 
+	_ = zipWriter.Close()
 	success, failure, skipped, err := cclf.ImportCCLFDirectory(DestDir)
 	if err != nil {
 		return err
@@ -107,7 +106,7 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 	src := sourceData[0]
 	filename = sourceData[1]
 
-	fileToZip, err := os.Open(src)
+	fileToZip, err := os.Open(filepath.Clean(src))
 	if err != nil {
 		return err
 	}

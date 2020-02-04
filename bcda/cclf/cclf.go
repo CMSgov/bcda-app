@@ -438,8 +438,6 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 
 		zipReader, err := zip.OpenReader(filepath.Clean(path))
 		if err != nil {
-			// remove this later
-			fmt.Println("Error is: ", err)
 			*skipped = *skipped + 1
 			msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
 			fmt.Println(msg)
@@ -609,7 +607,7 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 }
 
 func validateCCLFFolderName(folderName string) error {
-	// add comment for new folder format string
+	// CCLF foldername convention for SSP with BCD identifier: P.BCD.A****.ZCY**.Dyymmdd.Thhmmsst
 	folderNameRegexp := regexp.MustCompile(`(T|P)\.BCD\.((?:A|T)\d{4})\.ZCY(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
 	valid := folderNameRegexp.MatchString(folderName)
 	if !valid {

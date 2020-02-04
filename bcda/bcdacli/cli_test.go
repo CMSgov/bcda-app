@@ -761,35 +761,6 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 
 }
 
-/*
-func (s *CLITestSuite) TestImportCCLFDirectory_SplitFiles() {
-	assert := assert.New(s.T())
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
-
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/archives/split/"}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Failed to import 0 files.")
-	assert.Contains(buf.String(), "Skipped 1 files.")
-
-	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/archives/split/")
-}
- */
-
 func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	assert := assert.New(s.T())
 
