@@ -624,8 +624,8 @@ func cleanUpCCLF(cclfMap map[string]map[int][]*cclfFileMetadata) error {
 	for _, perfYearCCLFFileList := range cclfMap {
 		for _, cclfFileList := range perfYearCCLFFileList {
 			for _, cclf := range cclfFileList {
-				fmt.Printf("Cleaning up file %s.\n", cclf)
-				log.Infof("Cleaning up file %s", cclf)
+				fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
+				log.Infof("Cleaning up file %s", cclf.filePath)
 				folderName := filepath.Base(cclf.filePath)
 				newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), folderName)
 				if !cclf.imported {
@@ -634,38 +634,34 @@ func cleanUpCCLF(cclfMap map[string]map[int][]*cclfFileMetadata) error {
 					deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
 					if int(elapsed) > deleteThreshold {
 						if _, err := os.Stat(newpath); err == nil {
-							fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf)
-							log.Infof("File %s never ingested, moved to the pending deletion dir", cclf)
 							continue
 						}
 						// move the (un)successful files to the deletion dir
 						err := os.Rename(cclf.filePath, newpath)
 						if err != nil {
 							errCount++
-							errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf, err)
+							errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
 							fmt.Println(errMsg)
 							log.Error(errMsg)
 						} else {
-							fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf)
-							log.Infof("File %s never ingested, moved to the pending deletion dir", cclf)
+							fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf.filePath)
+							log.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
 						}
 					}
 				} else {
 					if _, err := os.Stat(newpath); err == nil {
-						fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf)
-						log.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf)
 						continue
 					}
 					// move the successful files to the deletion dir
 					err := os.Rename(cclf.filePath, newpath)
 					if err != nil {
 						errCount++
-						errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf, err)
+						errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
 						fmt.Println(errMsg)
 						log.Error(errMsg)
 					} else {
-						fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf)
-						log.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf)
+						fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf.filePath)
+						log.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
 					}
 				}
 			}
