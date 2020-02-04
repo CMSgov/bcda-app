@@ -634,7 +634,7 @@ func cleanUpCCLF(cclfMap map[string]map[int][]*cclfFileMetadata) error {
 					deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
 					if int(elapsed) > deleteThreshold {
 						if _, err := os.Stat(newpath); err == nil {
-							continue
+							break
 						}
 						// move the (un)successful files to the deletion dir
 						err := os.Rename(cclf.filePath, newpath)
@@ -650,7 +650,7 @@ func cleanUpCCLF(cclfMap map[string]map[int][]*cclfFileMetadata) error {
 					}
 				} else {
 					if _, err := os.Stat(newpath); err == nil {
-						continue
+						break
 					}
 					// move the successful files to the deletion dir
 					err := os.Rename(cclf.filePath, newpath)
