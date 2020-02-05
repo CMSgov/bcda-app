@@ -51,9 +51,9 @@ before_script:
 # .golangci.yml file at the top level of your repo.
 script:
   # Put unencrypted secrets in the expected place
-  - echo $VAULT_PW > .vault_password
-  - bash ops/secrets --decrypt
-  - bash ops/copy.encrypted shared_files/config
+  - echo $VAULT_PW > /home/travis/gopath/src/github.com/CMSgov/bcda-app/.vault_password
+  - bash /home/travis/gopath/src/github.com/CMSgov/bcda-app/ops/secrets --decrypt
+  - bash /home/travis/gopath/src/github.com/CMSgov/bcda-app/ops/copy.encrypted /home/travis/gopath/src/github.com/CMSgov/bcda-app/shared_files/config
   - make docker-bootstrap
   - make test
 
