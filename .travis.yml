@@ -13,6 +13,10 @@ language: go
 go:
   - 1.11.5
 
+# Needed for Ansible Vault
+python:
+  - 2.7
+
 # Only clone the most recent commit.
 git:
   depth: 1
@@ -38,6 +42,8 @@ before_script:
   # Disable services enabled by default to avoid port clashing
   - sudo /etc/init.d/mysql stop
   - sudo /etc/init.d/postgresql stop
+  # Get Ansible Vault
+  - pip install ansible
   # Put unencrypted secrets in the expected place
   - echo $VAULT_PW > .vault_password
   - ops/secrets --decrypt
