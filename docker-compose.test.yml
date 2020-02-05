@@ -18,6 +18,10 @@ services:
       - BB_CLIENT_CERT_FILE=../shared_files/config/bfd-dev-test-cert.pem
       - BB_CLIENT_KEY_FILE=../shared_files/config/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
+# Contained in env_file above
+#     - BB_HASH_ITER
+#     - BB_HASH_PEPPER
+#     - BB_SERVER_LOCATION
       - FHIR_PAYLOAD_DIR=../bcdaworker/data
       - FHIR_STAGING_DIR=../bcdaworker/tmpdata
       - FHIR_ARCHIVE_DIR=../bcdaworker/archive
