@@ -191,7 +191,6 @@ type JobKey struct {
 	gorm.Model
 	Job          Job  `gorm:"foreignkey:jobID"`
 	JobID        uint `gorm:"primary_key" json:"job_id"`
-	EncryptedKey []byte
 	FileName     string `gorm:"type:char(127)"`
 	ResourceType string
 }

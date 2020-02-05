@@ -1,7 +1,6 @@
 package web
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -312,28 +311,23 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			scheme = "https"
 		}
 
-		keyMap := make(map[string]string)
-
 		rb := bulkResponseBody{
 			TransactionTime:     job.CreatedAt,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
 			Files:               []fileItem{},
 			Errors:              []fileItem{},
-			KeyMap:              keyMap,
 			JobID:               job.ID,
 		}
 
 		var jobKeysObj []models.JobKey
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
-			keyMap[strings.TrimSpace(jobKey.FileName)] = hex.EncodeToString(jobKey.EncryptedKey)
 
 			// data files
 			fi := fileItem{
 				Type:         jobKey.ResourceType,
 				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
-				EncryptedKey: hex.EncodeToString(jobKey.EncryptedKey),
 			}
 			rb.Files = append(rb.Files, fi)
 
@@ -349,13 +343,6 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
-		if !encryptionEnabled {
-			rb.KeyMap = nil
-			for _, file := range rb.Files {
-				file.EncryptedKey = ""
-			}
-		}
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -531,8 +518,6 @@ type fileItem struct {
 	Type string `json:"type"`
 	// URL of the file
 	URL string `json:"url"`
-	// Encrypted Symmetric Key used to encrypt this file
-	EncryptedKey string `json:"encryptedKey,omitempty"`
 }
 
 /*
@@ -556,7 +541,6 @@ type bulkResponseBody struct {
 	Files []fileItem `json:"output"`
 	// Information about error files, including URLs for downloading
 	Errors []fileItem        `json:"error"`
-	KeyMap map[string]string `json:"KeyMap,omitempty"`
 	JobID  uint
 }
 

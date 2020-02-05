@@ -12,12 +12,5 @@ COPY . .
 
 RUN dep ensure
 
-RUN apt-get update
-RUN apt-get install libunwind8 icu-devtools python-pip -y
-RUN pip install -r decryption_utils/Python/requirements.txt
-
-RUN ./dotnet-install.sh
-ENV PATH "$PATH:/root/.dotnet/"
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 ENTRYPOINT []

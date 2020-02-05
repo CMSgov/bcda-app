@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -728,7 +727,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
 		expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
 		expectedUrls = append(expectedUrls, expectedurl)
-		jobKey := models.JobKey{JobID: j.ID, EncryptedKey: []byte("FOO"), FileName: fileName, ResourceType: "ExplanationOfBenefit"}
+		jobKey := models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"}
 		err := s.db.Save(&jobKey).Error
 		assert.Nil(s.T(), err)
 
@@ -775,15 +774,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		assert.True(s.T(), inOutput)
 
 	}
-
-	encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
-	if encryptionEnabled {
-		assert.NotNil(s.T(), rb.KeyMap)
-	} else {
-		assert.Nil(s.T(), rb.KeyMap)
-	}
 	assert.Empty(s.T(), rb.Errors)
-
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -798,7 +789,6 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	jobKey := models.JobKey{
 		JobID:        j.ID,
 		FileName:     fileName,
-		EncryptedKey: []byte("Encrypted Key"),
 		ResourceType: "ExplanationOfBenefit",
 	}
 	s.db.Save(&jobKey)

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"strconv"
@@ -22,7 +21,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/encryption"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
@@ -132,13 +130,7 @@ func processJob(j *que.Job) error {
 			return err
 		}
 	} else {
-		encryptionEnabled := utils.GetEnvBool("ENABLE_ENCRYPTION", true)
-		if encryptionEnabled {
-			err = encryptData(stagingPath, payloadPath, fileName, jobArgs.ResourceType, exportJob)
-		} else {
-			// this will be the only method called in this block after the full removal of encryption. Or we can just add the code here.
-			err = addJobFileName(fileName, jobArgs.ResourceType, exportJob, db)
-		}
+		err = addJobFileName(fileName, jobArgs.ResourceType, exportJob, db)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -366,62 +358,6 @@ func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiary
 	if err != nil {
 		log.Error(err)
 	}
-}
-
-func encryptData(dataPath, encryptedDataPath, fileName, resourceType string, exportJob models.Job) error {
-	_, err := ioutil.ReadDir(dataPath)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	oldPath := dataPath + "/" + fileName
-
-	if err = createDir(encryptedDataPath); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var aco models.ACO
-	err = db.Model(&exportJob).Association("ACO").Find(&aco).Error
-	if err != nil {
-		log.Error("error getting ACO for job:", err.Error())
-	}
-	if aco.PublicKey == "" {
-		log.Error("no public key found for ACO", aco.UUID.String())
-	}
-	publicKey, err := aco.GetPublicKey()
-	if err != nil {
-		log.Error("error getting public key: ", err.Error(), aco.PublicKey)
-	} else {
-		ef, ek, err := encryption.EncryptFile(dataPath, fileName, publicKey)
-		if err != nil {
-			return err
-		}
-
-		// Save the encrypted key before trying anything dangerous
-		err = db.Create(&models.JobKey{JobID: exportJob.ID, EncryptedKey: ek, FileName: fileName, ResourceType: resourceType}).Error
-		if err != nil {
-			return err
-		}
-
-		// Write out the file to the file system
-		err = ioutil.WriteFile(encryptedDataPath+"/"+fileName, ef, os.ModePerm)
-		if err != nil {
-			// Clean out the keys if we failed to write the file
-			db.Where("JobID = ?", exportJob.ID).Delete(models.JobKey{})
-			return err
-		}
-	}
-
-	if err = os.Remove(oldPath); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func waitForSig() {
