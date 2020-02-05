@@ -4,6 +4,13 @@ What's in here and why?
 
 * cclf directory
   * sample cclf files related to figuring out attribution of beneficiary data
+* decrypted
+  * git-ignored, decrypted files sourced from the `encrypted/` directory
+* encrypted
+  * sensitive configuration values that should be encrypted in the repository
+    * `bfd-dev-test-cert.pem`: a certificate identifying and authorizing this application to retrieve claims data; encrypted
+    * `bfd-dev-test-key.pem`: the private key for the above certificate; encrypted
+    * `local.env`: a .env file with sensitive environmental variables used by Docker (see `docker-compose.yml` and `docker-compose.test.yml`); encrypted
 * synthetic_beneficiary_data
   * see README.md in this directory
 * ATO_private.pem
@@ -12,9 +19,6 @@ What's in here and why?
 * api_unit_test_auth_private.pem
 * api_unit_test_auth_public.pem
   * a private/public key pair used only for unit testing of api code that uses auth.Provider methods. The private key does not have a passphrase. The auth service will use these keys as its server signing key pair.
-* bb-dev-test-cert.pem
-* bb-dev-test-key.pem
-  * our identity for mutual tls to blue button's testing environment
 * localhost.crt
 * localhost.key
   * our identity for testing ssl locally
