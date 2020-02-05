@@ -53,7 +53,7 @@ script:
   # Put unencrypted secrets in the expected place
   - echo $VAULT_PW > .vault_password
   - bash ops/secrets --decrypt
-  - bash ops/copy.encrypted
+  - bash ops/copy.encrypted shared_files/config
   - make docker-bootstrap
   - make test
 
