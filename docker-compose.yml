@@ -27,7 +27,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda
     env_file:
-      - ./shared_files/config/local.env
+      - ./shared_files/decrypted/local.env
     environment:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue?sslmode=disable
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
@@ -41,8 +41,8 @@ services:
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - HTTP_ONLY=true
-      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/config/bfd-dev-test-cert.pem
-      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/config/bfd-dev-test-key.pem
+      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-cert.pem
+      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
 # Contained in env_file above
 #     - BB_HASH_ITER
@@ -75,7 +75,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcdaworker
     env_file:
-      - ./shared_files/config/local.env
+      - ./shared_files/decrypted/local.env
     environment:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue?sslmode=disable
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
@@ -83,8 +83,8 @@ services:
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata
       - ATO_PUBLIC_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_private.pem
-      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/config/bfd-dev-test-cert.pem
-      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/config/bfd-dev-test-key.pem
+      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-cert.pem
+      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
 # Contained in env_file above
 #     - BB_HASH_ITER

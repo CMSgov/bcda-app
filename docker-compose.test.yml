@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.tests
     env_file:
-      - ./shared_files/config/local.env
+      - ./shared_files/decrypted/local.env
     environment:
       - DB=postgresql://postgres:toor@db:5432
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
@@ -15,8 +15,8 @@ services:
       - BCDA_ERROR_LOG=/var/log/bcda-error.log
       - BCDA_REQUEST_LOG=/var/log/bcda-request.log
       - BCDA_BB_LOG=/var/log/bcda-bb-request.log
-      - BB_CLIENT_CERT_FILE=../shared_files/config/bfd-dev-test-cert.pem
-      - BB_CLIENT_KEY_FILE=../shared_files/config/bfd-dev-test-key.pem
+      - BB_CLIENT_CERT_FILE=../shared_files/decrypted/bfd-dev-test-cert.pem
+      - BB_CLIENT_KEY_FILE=../shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
 # Contained in env_file above
 #     - BB_HASH_ITER

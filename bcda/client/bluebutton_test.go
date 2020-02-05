@@ -28,8 +28,8 @@ type BBRequestTestSuite struct {
 var ts200, ts500 *httptest.Server
 
 func (s *BBTestSuite) SetupSuite() {
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/config/bfd-dev-test-cert.pem")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/config/bfd-dev-test-key.pem")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 }
 

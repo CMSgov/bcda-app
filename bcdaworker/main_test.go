@@ -40,8 +40,8 @@ func (s *MainTestSuite) TearDownSuite() {
 func (s *MainTestSuite) SetupTest() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
 	os.Setenv("FHIR_STAGING_DIR", "data/test")
-	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/config/bfd-dev-test-cert.pem")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/config/bfd-dev-test-key.pem")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/decrypted/bfd-dev-test-cert.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/decrypted/bfd-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
 	os.Setenv("ATO_PUBLIC_KEY_FILE", "../shared_files/ATO_public.pem")
 	os.Setenv("ATO_PRIVATE_KEY_FILE", "../shared_files/ATO_private.pem")
