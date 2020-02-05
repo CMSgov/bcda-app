@@ -65,9 +65,17 @@ func ParseToken(next http.Handler) http.Handler {
 
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
+				ad.CMSID = *aco.CMSID
 			default:
+				var aco, err = GetACOByUUID(claims.ACOID)
+				if err != nil {
+					log.Errorf("no aco for ACO ID %s because %v", claims.ACOID, err)
+					next.ServeHTTP(w, r)
+					return
+				}
 				ad.TokenID = claims.UUID
 				ad.ACOID = claims.ACOID
+				ad.CMSID = *aco.CMSID
 			}
 		}
 		ctx := context.WithValue(r.Context(), "token", token)
