@@ -4,6 +4,8 @@ What's in here and why?
 
 * cclf directory
   * sample cclf files related to figuring out attribution of beneficiary data
+* config
+  * sensitive configuration values that should be encrypted in the repository
 * synthetic_beneficiary_data
   * see README.md in this directory
 * ATO_private.pem
