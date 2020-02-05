@@ -13,10 +13,6 @@ language: go
 go:
   - 1.11.5
 
-# Needed for Ansible Vault
-python:
-  - 2.7
-
 # Only clone the most recent commit.
 git:
   depth: 1
@@ -43,6 +39,7 @@ before_script:
   - sudo /etc/init.d/mysql stop
   - sudo /etc/init.d/postgresql stop
   # Get Ansible Vault
+  - sudo apt-get install python3
   - sudo pip install ansible
 
 
@@ -53,7 +50,7 @@ script:
   # Put unencrypted secrets in the expected place
   - echo $VAULT_PW > /home/travis/gopath/src/github.com/CMSgov/bcda-app/.vault_password
   - bash /home/travis/gopath/src/github.com/CMSgov/bcda-app/ops/secrets --decrypt
-  - cp -fv /home/travis/gopath/src/github.com/CMSgov/bcda-app/shared_files/encrypted/* /home/travis/gopath/src/github.com/CMSgov/bcda-app/shared_files/decrypted/
+  - mv -fv /home/travis/gopath/src/github.com/CMSgov/bcda-app/shared_files/encrypted/* /home/travis/gopath/src/github.com/CMSgov/bcda-app/shared_files/decrypted/
   - make docker-bootstrap
   - make test
 
