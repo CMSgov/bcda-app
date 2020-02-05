@@ -12,3 +12,6 @@ bcdaworker/archive/*
 bcdaworker/tmpdata/*
 .env.sh
 bcda/pending_delete_dir/*
+.vault_password
+shared_files/decrypted/*
+!shared_files/decrypted/README.md

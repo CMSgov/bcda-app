@@ -26,6 +26,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda
+    env_file:
+      - ./shared_files/decrypted/local.env
     environment:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue?sslmode=disable
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
@@ -39,17 +41,18 @@ services:
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - HTTP_ONLY=true
-      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/bb-dev-test-cert.pem
-      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/bb-dev-test-key.pem
-      - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
+      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-cert.pem
+      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
+# Contained in env_file above
+#     - BB_HASH_ITER
+#     - BB_HASH_PEPPER
+#     - BB_SERVER_LOCATION
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
       - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
       - BCDA_AUTH_PROVIDER=${BCDA_AUTH_PROVIDER}
       - OKTA_OAUTH_SERVER_ID=${OKTA_OAUTH_SERVER_ID}
-      - BB_HASH_PEPPER=6E6F747468657265616C706570706572
-      - BB_HASH_ITER=2
       - AUTH_HASH_ITERATIONS=130000
       - AUTH_HASH_KEY_LENGTH=64
       - AUTH_HASH_SALT_SIZE=32
@@ -70,6 +73,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcdaworker
+    env_file:
+      - ./shared_files/decrypted/local.env
     environment:
       - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue?sslmode=disable
       - DATABASE_URL=postgresql://postgres:toor@db:5432/bcda?sslmode=disable
@@ -77,13 +82,14 @@ services:
       - FHIR_STAGING_DIR=/go/src/github.com/CMSgov/bcda-app/bcdaworker/tmpdata
       - ATO_PUBLIC_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/ATO_private.pem
-      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/bb-dev-test-cert.pem
-      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/bb-dev-test-key.pem
-      - BB_SERVER_LOCATION=https://fhir.backend.bluebutton.hhsdevcloud.us
+      - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-cert.pem
+      - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
+# Contained in env_file above
+#     - BB_HASH_ITER
+#     - BB_HASH_PEPPER
+#     - BB_SERVER_LOCATION
       - BB_TIMEOUT_MS=10000
-      - BB_HASH_PEPPER=6E6F747468657265616C706570706572
-      - BB_HASH_ITER=2
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
