@@ -14,3 +14,6 @@ bcdaworker/tmpdata/*
 decryption_utils/C#/bin
 decryption_utils/C#/obj
 bcda/pending_delete_dir/*
+.vault_password
+shared_files/decrypted/*
+!shared_files/decrypted/README.md

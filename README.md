@@ -9,7 +9,35 @@ To get started, install some dependencies:
 1. Install [Go](https://golang.org/doc/install)
 2. Install [Docker](https://docs.docker.com/install/)
 3. Install [Docker Compose](https://docs.docker.com/compose/install/)
-4. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
+4. Install [Ansible Vault](https://docs.ansible.com/ansible/2.4/vault.html)
+5. Ensure all dependencies installed above are on PATH and can be executed directly from command line.
+
+## Sensitive Docker Configuration Files
+
+The files committed in the `shared_files/encrypted` directory hold secret information, and are encrypted with [Ansible Vault](https://docs.ansible.com/ansible/2.4/vault.html).
+
+### Setup
+#### Password
+- See a team member for the Ansible Vault password
+- Create a file named `.vault_password` in the root directory of the repository
+- Place the Ansible Vault password in this file
+
+#### Git hook
+To avoid committing and pushing unencrypted secret files, use the included `scripts/pre-commit` git pre-commit hook by running the following script from the repository root directory:
+```
+cp ops/pre-commit .git/hooks
+```
+
+### Managing encrypted files
+* Temporarily decrypt files by running the following command from the repository root directory: 
+```
+./ops/secrets --decrypt
+```
+* While files are decrypted, copy the files in this directory to the sibling directory `shared_files/decrypted`
+* Encrypt changed files with:
+```
+./ops/secrets --encrypt <filename>
+```  
 
 ## Build / Start
 
