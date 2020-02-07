@@ -97,27 +97,46 @@ func tlsTransport() (*http.Transport, error) {
 // CreateGroup POSTs to the SSAS /group endpoint to create a system.
 func (c *SSASClient) CreateGroup(id, name, acoCMSID string) ([]byte, error) {
 	b := fmt.Sprintf(`{"group_id": "%s", "name": "%s", "scopes": ["bcda-api"], "xdata": "{\"cms_ids\": [\"%s\"]}"}`, id, name, acoCMSID)
+
+	fmt.Printf("Creating group: %s", b)
+	ssasLogger.Info("Creating group: %s", b)
+
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/group", c.baseURL), strings.NewReader(b))
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("invalid input for new group_id %s", id))
+		fmt.Printf("Invalid input for new group_id %s", id)
+		err = errors.Wrap(err, fmt.Sprintf("invalid input for new group_id %s", id))
+		ssasLogger.Error(err)
+		return nil, err
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
+		fmt.Print("Could not create auth header")
+		err = errors.Wrap(err, "could not create auth header")
+		ssasLogger.Error(err)
 		return nil, err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create group")
+		fmt.Print("Could not create group")
+		err = errors.Wrap(err, "could not create group")
+		ssasLogger.Error(err)
+		return nil, err
 	}
 
 	rb, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create group")
+		fmt.Print("Could not create group")
+		err = errors.Wrap(err, "could not create group")
+		ssasLogger.Error(err)
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, errors.Errorf("could not create group: %s", rb)
+		fmt.Printf("Could not create group: %s", rb)
+		err = errors.Errorf("could not create group: %s", rb)
+		ssasLogger.Error(err)
+		return nil, err
 	}
 
 	return rb, nil
@@ -125,25 +144,43 @@ func (c *SSASClient) CreateGroup(id, name, acoCMSID string) ([]byte, error) {
 
 // DeleteGroup DELETEs to the SSAS /group/{id} endpoint to delete a group.
 func (c *SSASClient) DeleteGroup(id int) error {
+	fmt.Printf("Deleting group with id: %d", id)
+	ssasLogger.Info("Deleting group with id: %d", id)
+
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/group/%d", c.baseURL, id), nil)
 	if err != nil {
-		return errors.Wrap(err, "could not delete group")
+		fmt.Print("Could not delete group")
+		err = errors.Wrap(err, "could not delete group")
+		ssasLogger.Error(err)
+		return err
 	}
 	if err := c.setAuthHeader(req); err != nil {
+		fmt.Print("Could not create auth header")
+		err = errors.Wrap(err, "could not create auth header")
+		ssasLogger.Error(err)
 		return err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "could not delete group")
+		fmt.Print("Could not delete group")
+		err = errors.Wrap(err, "could not delete group")
+		ssasLogger.Error(err)
+		return err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		rb, err := ioutil.ReadAll(resp.Body)
 		defer resp.Body.Close()
 		if err != nil {
-			return errors.Wrap(err, "could not delete group")
+			fmt.Print("Could not delete group")
+			err = errors.Wrap(err, "could not delete group")
+			ssasLogger.Error(err)
+			return err
 		}
-		return errors.Errorf("could not delete group: %s", rb)
+		fmt.Printf("Could not delete group: %s", rb)
+		err = errors.Errorf("could not delete group: %s", rb)
+		ssasLogger.Error(err)
+		return err
 	}
 
 	return nil
