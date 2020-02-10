@@ -913,10 +913,16 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 
 func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	assert := s.Assert()
-	cclfBeneficiary := CCLFBeneficiary{HICN: "HASH_ME", MBI: "NOTHING"}
+	cclfBeneficiary := CCLFBeneficiary{HICN: "HICN", MBI: "MBI"}
 	bbc := testUtils.BlueButtonClient{}
 	bbc.HICN = &cclfBeneficiary.HICN
-	bbc.On("GetPatientByHICNHash", client.HashHICN(cclfBeneficiary.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
+	bbc.MBI = &cclfBeneficiary.MBI
+
+	// set to hicn mode
+	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
+	assert.Nil(err)
+	patientIdMode := "HICN_MODE"
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.HICN),patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -932,7 +938,30 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	assert.Equal("LOCAL_VAL", blueButtonID)
 
 	// Should be making only a single call to BB for all 2 attempts.
-	bbc.AssertNumberOfCalls(s.T(), "GetPatientByHICNHash", 1)
+	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 1)
+
+	// set to mbi mode
+	err = os.Setenv("PATIENT_IDENTIFIER_MODE", "MBI_MODE")
+	assert.Nil(err)
+	patientIdMode = "MBI_MODE"
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI),patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
+
+	cclfBeneficiary.BlueButtonID = ""
+	// New never seen before mbi, asks the mock blue button client for the value
+	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("BB_VALUE", blueButtonID)
+
+	// trivial case.  The object has a BB ID set on it already, this does nothing
+	cclfBeneficiary.BlueButtonID = "LOCAL_VAL"
+	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("LOCAL_VAL", blueButtonID)
+
+	// Should be making only a single call but this number will be two with the earlier test in this method.
+	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
+
+	os.Unsetenv("PATIENT_IDENTIFIER_MODE")
 }
 
 func (s *ModelsTestSuite) TestGetBlueButtonID_Suppression() {
@@ -940,7 +969,12 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_Suppression() {
 	suppressBene := Suppression{HICN: "HASH_ME"}
 	bbc := testUtils.BlueButtonClient{}
 	bbc.HICN = &suppressBene.HICN
-	bbc.On("GetPatientByHICNHash", client.HashHICN(suppressBene.HICN)).Return(bbc.GetData("Patient", "BB_VALUE"))
+
+	// set to hicn mode
+	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
+	assert.Nil(err)
+	patientIdMode := "HICN_MODE"
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(suppressBene.HICN),patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -949,6 +983,12 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_Suppression() {
 	assert.Nil(err)
 	assert.Equal("BB_VALUE", blueButtonID)
 
+	// trivial case.  The object has a BB ID set on it already, this does nothing
+	suppressBene.BlueButtonID = "LOCAL_VAL"
+	blueButtonID, err = suppressBene.GetBlueButtonID(&bbc)
+	assert.Nil(err)
+	assert.Equal("LOCAL_VAL", blueButtonID)
+
 	// Should be making only a single call to BB for all 2 attempts.
-	bbc.AssertNumberOfCalls(s.T(), "GetPatientByHICNHash", 1)
+	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 1)
 }

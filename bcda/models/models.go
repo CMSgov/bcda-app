@@ -87,9 +87,9 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 		}
 
 		for _, f := range files {
-			oldPath := fmt.Sprintf("%s/%s",staging,f.Name())
-			newPath := fmt.Sprintf("%s/%s",payload,f.Name())
-			err := os.Rename(oldPath,newPath)
+			oldPath := fmt.Sprintf("%s/%s", staging, f.Name())
+			newPath := fmt.Sprintf("%s/%s", payload, f.Name())
+			err := os.Rename(oldPath, newPath)
 			if err != nil {
 				log.Error(err)
 			}
@@ -123,14 +123,14 @@ func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err 
 		var rowCount = 0
 		var jobIDs []string
 		maxBeneficiaries, err := GetMaxBeneCount(rt)
-       		if err != nil {
-                	return nil, err
-        	}
+		if err != nil {
+			return nil, err
+		}
 		for _, b := range beneficiaries {
 			rowCount++
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-	
+
 				args, err := json.Marshal(jobEnqueueArgs{
 					ID:             int(job.ID),
 					ACOID:          job.ACOID.String(),
@@ -140,14 +140,14 @@ func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err 
 				if err != nil {
 					return nil, err
 				}
-	
+
 				j := &que.Job{
 					Type: "ProcessJob",
 					Args: args,
 				}
-	
+
 				enqueJobs = append(enqueJobs, j)
-	
+
 				jobIDs = []string{}
 			}
 		}
@@ -458,7 +458,14 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	if cclfBeneficiary.BlueButtonID != "" {
 		return cclfBeneficiary.BlueButtonID, nil
 	}
-	blueButtonID, err = GetBlueButtonID(bb, cclfBeneficiary.HICN, cclfBeneficiary.ID)
+
+	modelIdentifier := cclfBeneficiary.HICN
+	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+	if patientIdMode == "MBI_MODE" {
+		modelIdentifier = cclfBeneficiary.MBI
+	}
+
+	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode,"beneficiary", cclfBeneficiary.ID,)
 	if err != nil {
 		return "", err
 	}
@@ -472,17 +479,35 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 	if suppressionBeneficiary.BlueButtonID != "" {
 		return suppressionBeneficiary.BlueButtonID, nil
 	}
-	blueButtonID, err = GetBlueButtonID(bb, suppressionBeneficiary.HICN, suppressionBeneficiary.ID)
+
+	modelIdentifier := suppressionBeneficiary.HICN
+	patientIdMode := "HICN_MODE"
+
+	// uncomment when NGD supports MBI
+	/*
+	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+	if patientIdMode == "MBI_MODE" {
+		modelIdentifier = suppressionBeneficiary.MBI
+	}
+	*/
+	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "suppression", suppressionBeneficiary.ID)
 	if err != nil {
 		return "", err
 	}
 	return blueButtonID, nil
 }
 
-func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueButtonID string, err error) {
+func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
+	systemMode := "hicn-hash"
+	if patientIdMode == "MBI_MODE" {
+		systemMode = "mbi-hash"
+	}
+
 	// didn't find a local value, need to ask BlueButton
-	hashedHICN := client.HashHICN(modelHicn)
-	jsonData, err := bb.GetPatientByHICNHash(hashedHICN)
+	hashedIdentifier := client.HashIdentifier(modelIdentifier)
+
+	// until NGD supports MBI, pass in the patientIdMode
+	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier, patientIdMode)
 	if err != nil {
 		return "", err
 	}
@@ -494,17 +519,19 @@ func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueB
 	}
 
 	if len(patient.Entry) == 0 {
-		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF beneficiary ID: %v", modelID)
+
+		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF %s ID: %v", reqType, modelID)
+
 		log.Error(err)
 		return "", err
 	}
-	var foundHICN = false
+	var foundIdentifier = false
 	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
 	for _, identifier := range patient.Entry[0].Resource.Identifier {
-		if strings.Contains(identifier.System, "hicn-hash") {
-			if identifier.Value == hashedHICN {
-				foundHICN = true
+		if strings.Contains(identifier.System, systemMode) {
+			if identifier.Value == hashedIdentifier {
+				foundIdentifier = true
 			}
 		} else if strings.Contains(identifier.System, "bene_id") {
 			if identifier.Value == blueButtonID {
@@ -512,13 +539,14 @@ func GetBlueButtonID(bb client.APIClient, modelHicn string, modelID uint) (blueB
 			}
 		}
 	}
-	if !foundHICN {
-		err = fmt.Errorf("hashed HICN not found in the identifiers")
+	if !foundIdentifier {
+		patientIdMode = strings.Split(patientIdMode,"_")[0]
+		err = fmt.Errorf("hashed %v not found in the identifiers", patientIdMode)
 		log.Error(err)
 		return "", err
 	}
 	if !foundBlueButtonID {
-		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
+		err = fmt.Errorf("blue Button identifier not found in the identifiers")
 		log.Error(err)
 		return "", err
 	}

@@ -316,7 +316,7 @@ func getCCLFFileMetadata(fileName string) (cclfFileMetadata, error) {
 	}
 
 	// Files must not be too old
-	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24) * int64(time.Hour)))
+	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24)*int64(time.Hour)))
 	filesNotAfter := refDate
 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
 		fmt.Printf("Date '%s' from file %s is out of range; comparison date %s\n", filenameDate, fileName, refDate.Format("060102"))
