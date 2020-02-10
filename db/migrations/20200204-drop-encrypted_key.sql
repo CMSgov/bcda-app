@@ -1,0 +1,1 @@
+ALTER TABLE job_keys DROP COLUMN encrypted_key;

@@ -384,7 +384,7 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), completed)
 
-	err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+	err = s.db.Create(&JobKey{JobID: j.ID, FileName: "SOMETHING.ndjson"}).Error
 	assert.Nil(s.T(), err)
 	completed, err = j.CheckCompletedAndCleanup(s.db)
 	assert.Nil(s.T(), err)
@@ -422,7 +422,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 	assert.False(s.T(), completed)
 
 	for i := 1; i <= 5; i++ {
-		err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+		err = s.db.Create(&JobKey{JobID: j.ID, FileName: "SOMETHING.ndjson"}).Error
 		assert.Nil(s.T(), err)
 	}
 	// JobKeys exist, but not enough to make the job complete
@@ -431,7 +431,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 	assert.False(s.T(), completed)
 
 	for i := 1; i <= 5; i++ {
-		err = s.db.Create(&JobKey{JobID: j.ID, EncryptedKey: []byte("NOT A KEY"), FileName: "SOMETHING.ndjson"}).Error
+		err = s.db.Create(&JobKey{JobID: j.ID, FileName: "SOMETHING.ndjson"}).Error
 		assert.Nil(s.T(), err)
 	}
 	completed, err = j.CheckCompletedAndCleanup(s.db)

@@ -43,7 +43,6 @@ services:
       - BCDA_SSAS_SECRET=fake-secret
       - SSAS_URL=http://ssas:3004
       - SSAS_PUBLIC_URL=http://ssas:3003
-      - ENABLE_ENCRYPTION=false
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
   postman_test:

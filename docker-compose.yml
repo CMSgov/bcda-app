@@ -62,7 +62,6 @@ services:
       - SSAS_USE_TLS=false
       - SSAS_URL=${SSAS_URL}
       - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
-      - ENABLE_ENCRYPTION=false
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -91,7 +90,6 @@ services:
 #     - BB_HASH_PEPPER
 #     - BB_SERVER_LOCATION
       - BB_TIMEOUT_MS=10000
-      - ENABLE_ENCRYPTION=false
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
