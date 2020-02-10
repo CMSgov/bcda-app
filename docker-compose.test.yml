@@ -43,6 +43,7 @@ services:
       - BCDA_SSAS_SECRET=fake-secret
       - SSAS_URL=http://ssas:3004
       - SSAS_PUBLIC_URL=http://ssas:3003
+      - PATIENT_IDENTIFIER_MODE=MBI_MODE
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
   postman_test:

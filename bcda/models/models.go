@@ -460,7 +460,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	modelIdentifier := cclfBeneficiary.HICN
-	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","MBI_MODE")
 	if patientIdMode == "MBI_MODE" {
 		modelIdentifier = cclfBeneficiary.MBI
 	}
@@ -485,7 +485,7 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 
 	// uncomment when NGD supports MBI
 	/*
-	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","MBI_MODE")
 	if patientIdMode == "MBI_MODE" {
 		modelIdentifier = suppressionBeneficiary.MBI
 	}

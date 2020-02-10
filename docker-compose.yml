@@ -62,6 +62,7 @@ services:
       - SSAS_USE_TLS=false
       - SSAS_URL=${SSAS_URL}
       - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
+      - PATIENT_IDENTIFIER_MODE=MBI_MODE
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
@@ -85,6 +86,7 @@ services:
       - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-cert.pem
       - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
+      - PATIENT_IDENTIFIER_MODE=MBI_MODE
 # Contained in env_file above
 #     - BB_HASH_ITER
 #     - BB_HASH_PEPPER
