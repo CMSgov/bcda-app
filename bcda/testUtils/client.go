@@ -64,7 +64,8 @@ func (bbc *BlueButtonClient) GetData(endpoint, patientID string) (string, error)
 			}
 			cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
 			if bbc.MBI != nil {
-				cleanData = strings.Replace(cleanData, "c945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe", client.HashIdentifier(*bbc.MBI), -1)
+				// no longer hashed, but this is only a test file with synthetic test data
+				cleanData = strings.Replace(cleanData, "-1Q03Z002871", *bbc.MBI, -1)
 			}
 			return cleanData, err
 		}

@@ -289,6 +289,7 @@ func (s *BBTestSuite) TestAddRequestHeaders() {
 
 	assert.Equal(s.T(), "543210", req.Header.Get("BCDA-JOBID"))
 	assert.Equal(s.T(), "A00234", req.Header.Get("BCDA-CMSID"))
+	assert.Equal(s.T(), "mbi", req.Header.Get("IncludeIdentifiers"))
 
 }
 

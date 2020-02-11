@@ -500,7 +500,7 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
 	systemMode := "hicn-hash"
 	if patientIdMode == "MBI_MODE" {
-		systemMode = "mbi-hash"
+		systemMode = "us-mbi"
 	}
 
 	// didn't find a local value, need to ask BlueButton
@@ -528,9 +528,14 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 	var foundIdentifier = false
 	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
+	// once this is set to true, what happens with future iterations??
 	for _, identifier := range patient.Entry[0].Resource.Identifier {
 		if strings.Contains(identifier.System, systemMode) {
-			if identifier.Value == hashedIdentifier {
+			hashedOrRawID := hashedIdentifier
+			if patientIdMode == "MBI_MODE" {
+				hashedOrRawID = modelIdentifier
+			}
+			if identifier.Value == hashedOrRawID {
 				foundIdentifier = true
 			}
 		} else if strings.Contains(identifier.System, "bene_id") {
@@ -541,7 +546,7 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 	}
 	if !foundIdentifier {
 		patientIdMode = strings.Split(patientIdMode,"_")[0]
-		err = fmt.Errorf("hashed %v not found in the identifiers", patientIdMode)
+		err = fmt.Errorf("%v not found in the identifiers", patientIdMode)
 		log.Error(err)
 		return "", err
 	}

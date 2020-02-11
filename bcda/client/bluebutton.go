@@ -185,6 +185,7 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
+	req.Header.Add("IncludeIdentifiers","mbi")
 
         // Do not set BB-specific headers with blank values
         // Leaving them here, commented out, in case we want to set them to real values in future
