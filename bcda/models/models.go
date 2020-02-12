@@ -528,7 +528,6 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 	var foundIdentifier = false
 	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
-	// once this is set to true, what happens with future iterations??
 	for _, identifier := range patient.Entry[0].Resource.Identifier {
 		if strings.Contains(identifier.System, systemMode) {
 			hashedOrRawID := hashedIdentifier
