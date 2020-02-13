@@ -33,8 +33,8 @@
             "value": "20000000000001"
           },
           {
-            "system": "https://bluebutton.cms.gov/resources/identifier/mbi-hash",
-            "value": "c945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe"
+            "system": "http://hl7.org/fhir/sid/us-mbi",
+            "value": "-1Q03Z002871"
           }
         ],
         "name": [
