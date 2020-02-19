@@ -2,7 +2,6 @@ package testUtils
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -40,47 +39,18 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (st
 // Returns copy of a static json file (From Blue Button Sandbox originally) after replacing the patient ID of 20000000000001 with the requested identifier
 // This is private in the real function and should remain so, but in the test client it makes maintenance easier to expose it.
 func (bbc *BlueButtonClient) GetData(endpoint, patientID string) (string, error) {
-	if endpoint == "Patient" {
-		if os.Getenv("PATIENT_IDENTIFIER_MODE") == "HICN_MODE" {
-			fData, err := ioutil.ReadFile(filepath.Join("../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint+"_HICN")))
-			if err != nil {
-				fData, err = ioutil.ReadFile(filepath.Join("../../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint+"_HICN")))
-				if err != nil {
-					return "", err
-				}
-			}
-			cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
-			if bbc.HICN != nil {
-				cleanData = strings.Replace(cleanData, "c945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe", client.HashIdentifier(*bbc.HICN), -1)
-			}
-			return cleanData, err
-		} else {
-			fData, err := ioutil.ReadFile(filepath.Join("../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint+"_MBI")))
-			if err != nil {
-				fData, err = ioutil.ReadFile(filepath.Join("../../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint+"_MBI")))
-				if err != nil {
-					return "", err
-				}
-			}
-			cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
-			if bbc.MBI != nil {
-				// no longer hashed, but this is only a test file with synthetic test data
-				cleanData = strings.Replace(cleanData, "-1Q03Z002871", *bbc.MBI, -1)
-			}
-			return cleanData, err
-		}
-	} else {
-		fData, err := ioutil.ReadFile(filepath.Join("../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint)))
+	var fData []byte
+	fData, err := ioutil.ReadFile(filepath.Join("../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint)))
+	if err != nil {
+		fData, err = ioutil.ReadFile(filepath.Join("../../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint)))
 		if err != nil {
-			fData, err = ioutil.ReadFile(filepath.Join("../../shared_files/synthetic_beneficiary_data/", filepath.Clean(endpoint)))
-			if err != nil {
-				return "", err
-			}
+			return "", err
 		}
-		cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
-		if bbc.HICN != nil {
-			cleanData = strings.Replace(cleanData, "c945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe", client.HashIdentifier(*bbc.HICN), -1)
-		}
-		return cleanData, err
 	}
+	cleanData := strings.Replace(string(fData), "20000000000001", patientID, -1)
+	if bbc.MBI != nil {
+		// no longer hashed, but this is only a test file with synthetic test data
+		cleanData = strings.Replace(cleanData, "-1Q03Z002871", *bbc.MBI, -1)
+	}
+	return cleanData, err
 }

@@ -498,11 +498,6 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 }
 
 func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
-	systemMode := "hicn-hash"
-	if patientIdMode == "MBI_MODE" {
-		systemMode = "us-mbi"
-	}
-
 	// didn't find a local value, need to ask BlueButton
 	hashedIdentifier := client.HashIdentifier(modelIdentifier)
 
@@ -529,12 +524,13 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 	var foundBlueButtonID = false
 	blueButtonID = patient.Entry[0].Resource.ID
 	for _, identifier := range patient.Entry[0].Resource.Identifier {
-		if strings.Contains(identifier.System, systemMode) {
-			hashedOrRawID := hashedIdentifier
+		if strings.Contains(identifier.System, "us-mbi") {
 			if patientIdMode == "MBI_MODE" {
-				hashedOrRawID = modelIdentifier
-			}
-			if identifier.Value == hashedOrRawID {
+				if identifier.Value == modelIdentifier {
+					foundIdentifier = true
+				}
+			} else if patientIdMode == "HICN_MODE" {
+				// no value to check against, should be removed when NGD supports MBI
 				foundIdentifier = true
 			}
 		} else if strings.Contains(identifier.System, "bene_id") {
