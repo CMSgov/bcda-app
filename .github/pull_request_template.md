@@ -51,6 +51,8 @@ and would like to solicit the team's feedback. Optionally, provide background
 information regarding your questions and concerns. -->
 
 ### Acceptance Validation
+<!-- Show off how you deployed to the AWS dev environment, or give an excuse why that's totally unnecessary -->
+[ ] This branch has been deployed to the AWS `dev` environment
 
 <!-- Were you able to fully test the acceptance criteria on the related ticket? if not, why not? -->
 
