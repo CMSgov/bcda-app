@@ -134,11 +134,19 @@ type FileParam struct {
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest
 type ResourceTypeParam struct {
-	// Resource types requested
+	// (Optional) Resource types requested
 	// in: query
 	// style: form
 	// explode: false
 	ResourceType []string `json:"_type"`
+}
+
+// swagger:parameters bulkPatientRequest bulkGroupRequest
+type SinceParam struct {
+        // (Optional) Only include resource versions that were created at or after the given instant in time
+        // in: query
+        // required: false
+        FixedInstant string `json:"_since"`
 }
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest
