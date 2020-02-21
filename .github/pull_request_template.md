@@ -51,8 +51,9 @@ and would like to solicit the team's feedback. Optionally, provide background
 information regarding your questions and concerns. -->
 
 ### Acceptance Validation
-<!-- Show off how you deployed to the AWS dev environment, or give an excuse why that's totally unnecessary -->
 [ ] This branch has been deployed to the AWS `dev` environment
+<!-- If no, why does this change not break CI/CD?  How is it not affected by using a persistent
+  database? -->
 
 <!-- Were you able to fully test the acceptance criteria on the related ticket? if not, why not? -->
 
