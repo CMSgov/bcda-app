@@ -51,13 +51,13 @@ and would like to solicit the team's feedback. Optionally, provide background
 information regarding your questions and concerns. -->
 
 ### Acceptance Validation
-- [ ] This branch has been deployed to the AWS `dev` environment
-<!-- If no, why does this change not break CI/CD?  How is it not affected by using a persistent
-  database? -->
-
 <!-- Were you able to fully test the acceptance criteria on the related ticket? if not, why not? -->
 
 <!-- Insert screenshots if applicable (drag images here) -->
+
+<!-- Did you deploy this feature branch to the AWS `dev` environment?  https://bcda-ci.adhocteam.us/job/BCDA%20-%20Deploy/build 
+<!-- If not, why does this change not break CI/CD?  How is it not affected by using a persistent
+  database? -->
 
 ### Feedback Requested
 
