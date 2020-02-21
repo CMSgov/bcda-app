@@ -51,7 +51,7 @@ and would like to solicit the team's feedback. Optionally, provide background
 information regarding your questions and concerns. -->
 
 ### Acceptance Validation
-[ ] This branch has been deployed to the AWS `dev` environment
+- [ ] This branch has been deployed to the AWS `dev` environment
 <!-- If no, why does this change not break CI/CD?  How is it not affected by using a persistent
   database? -->
 
