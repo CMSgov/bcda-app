@@ -104,7 +104,7 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 	return false, nil
 }
 
-func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err error) {
+func (job *Job) GetEnqueJobs(resourceTypes []string, since string) (enqueJobs []*que.Job, err error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	var aco ACO
@@ -136,6 +136,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err 
 					ACOID:          job.ACOID.String(),
 					BeneficiaryIDs: jobIDs,
 					ResourceType:   rt,
+					Since:          since,
 				})
 				if err != nil {
 					return nil, err
@@ -189,8 +190,8 @@ func GetMaxBeneCount(requestType string) (int, error) {
 
 type JobKey struct {
 	gorm.Model
-	Job          Job  `gorm:"foreignkey:jobID"`
-	JobID        uint `gorm:"primary_key" json:"job_id"`
+	Job          Job    `gorm:"foreignkey:jobID"`
+	JobID        uint   `gorm:"primary_key" json:"job_id"`
 	FileName     string `gorm:"type:char(127)"`
 	ResourceType string
 }
@@ -460,12 +461,12 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	}
 
 	modelIdentifier := cclfBeneficiary.HICN
-	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
 	if patientIdMode == "MBI_MODE" {
 		modelIdentifier = cclfBeneficiary.MBI
 	}
 
-	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode,"beneficiary", cclfBeneficiary.ID,)
+	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "beneficiary", cclfBeneficiary.ID)
 	if err != nil {
 		return "", err
 	}
@@ -485,10 +486,10 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 
 	// uncomment when NGD supports MBI
 	/*
-	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
-	if patientIdMode == "MBI_MODE" {
-		modelIdentifier = suppressionBeneficiary.MBI
-	}
+		patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+		if patientIdMode == "MBI_MODE" {
+			modelIdentifier = suppressionBeneficiary.MBI
+		}
 	*/
 	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "suppression", suppressionBeneficiary.ID)
 	if err != nil {
@@ -540,7 +541,7 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 		}
 	}
 	if !foundIdentifier {
-		patientIdMode = strings.Split(patientIdMode,"_")[0]
+		patientIdMode = strings.Split(patientIdMode, "_")[0]
 		err = fmt.Errorf("%v not found in the identifiers", patientIdMode)
 		log.Error(err)
 		return "", err
@@ -595,4 +596,5 @@ type jobEnqueueArgs struct {
 	ACOID          string
 	BeneficiaryIDs []string
 	ResourceType   string
+	Since          string
 }

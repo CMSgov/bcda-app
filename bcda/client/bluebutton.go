@@ -31,10 +31,10 @@ var logger *logrus.Logger
 const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
-	GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error)
-	GetPatient(patientID, jobID, cmsID string) (string, error)
-	GetCoverage(beneficiaryID, jobID, cmsID string) (string, error)
-	GetPatientByIdentifierHash(hashedIdentifier, patientIdMode  string) (string, error)
+	GetExplanationOfBenefit(patientID, jobID, cmsID, since string) (string, error)
+	GetPatient(patientID, jobID, cmsID, since string) (string, error)
+	GetCoverage(beneficiaryID, jobID, cmsID, since string) (string, error)
+	GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -97,9 +97,12 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 
 type BeneDataFunc func(string, string, string) (string, error)
 
-func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
+	if len(since) > 0 {
+		params.Set("_lastUpdated", since)
+	}
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
@@ -116,16 +119,22 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patien
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "", "")
 }
 
-func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
+	if len(since) > 0 {
+		params.Set("_lastUpdated", since)
+	}
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
+	if len(since) > 0 {
+		params.Set("_lastUpdated", since)
+	}
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID, cmsID)
 }
 
@@ -185,13 +194,13 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
-	req.Header.Add("IncludeIdentifiers","mbi")
+	req.Header.Add("IncludeIdentifiers", "mbi")
 
-        // Do not set BB-specific headers with blank values
-        // Leaving them here, commented out, in case we want to set them to real values in future
-        //req.Header.Add("BlueButton-BeneficiaryId", "")
-        //req.Header.Add("BlueButton-OriginatingIpAddress", "")
-        //req.Header.Add("BlueButton-BackendCall", "")
+	// Do not set BB-specific headers with blank values
+	// Leaving them here, commented out, in case we want to set them to real values in future
+	//req.Header.Add("BlueButton-BeneficiaryId", "")
+	//req.Header.Add("BlueButton-OriginatingIpAddress", "")
+	//req.Header.Add("BlueButton-BackendCall", "")
 
 }
 

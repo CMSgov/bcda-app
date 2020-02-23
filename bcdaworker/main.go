@@ -120,7 +120,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	fileUUID, err := writeBBDataToFile(bb, db, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType)
+	fileUUID, err := writeBBDataToFile(bb, db, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType, jobArgs.Since)
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
@@ -159,7 +159,7 @@ func createDir(path string) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t string) (fileUUID string, error error) {
+func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t, since string) (fileUUID string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -211,11 +211,11 @@ func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID 
 		if _, found := suppressedMap[blueButtonID]; found {
 			continue
 		}
-		
+
 		if err != nil {
 			handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
-			pData, err := bbFunc(blueButtonID, jobID, acoCMSID)
+			pData, err := bbFunc(blueButtonID, jobID, acoCMSID, since)
 			if err != nil {
 				handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
 			} else {
@@ -263,10 +263,10 @@ func beneBBID(cclfBeneID string, bb client.APIClient, db *gorm.DB) (string, erro
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Update the value in the DB only if necessary
 	if cclfBeneficiary.BlueButtonID != bbID {
-		db.Model(&cclfBeneficiary).Update("blue_button_id", bbID)	
+		db.Model(&cclfBeneficiary).Update("blue_button_id", bbID)
 	}
 
 	return bbID, nil
