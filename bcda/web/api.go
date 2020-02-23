@@ -17,6 +17,7 @@ import (
 
 	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
+	fhirutils "github.com/eug48/fhir/utils"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -56,7 +57,8 @@ const (
 		500: errorResponse
 */
 func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := validateRequest(r); if err != nil {
+	resourceTypes, err := validateRequest(r)
+	if err != nil {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
@@ -86,7 +88,8 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	groupID := chi.URLParam(r, "groupId")
 	if groupID == groupAll {
-		resourceTypes, err := validateRequest(r); if err != nil {
+		resourceTypes, err := validateRequest(r)
+		if err != nil {
 			responseutils.WriteError(err, w, http.StatusBadRequest)
 			return
 		}
@@ -164,12 +167,12 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-        if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
-                log.Error(err)
-                oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-                responseutils.WriteError(oo, w, http.StatusInternalServerError)
-                return
-        }
+	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
 
 	for _, j := range enqueueJobs {
 		if err = qc.Enqueue(j); err != nil {
@@ -221,7 +224,9 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 	}
 }
 
-func validateRequest (r *http.Request) ([]string, *fhirmodels.OperationOutcome)  {
+func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
+
+	// validate optional "_type" parameter
 	var resourceTypes []string
 	params, ok := r.URL.Query()["_type"]
 	if ok {
@@ -245,6 +250,17 @@ func validateRequest (r *http.Request) ([]string, *fhirmodels.OperationOutcome) 
 		// resource types not supplied in request; default to applying all resource types.
 		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 	}
+
+	// validate optional "_since" parameter
+	params, ok = r.URL.Query()["_since"]
+	if ok {
+		_, err := fhirutils.ParseDate(params[0])
+		if err != nil {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid date format supplied in _since parameter", responseutils.RequestErr)
+			return nil, oo
+		}
+	}
+
 	return resourceTypes, nil
 }
 
@@ -326,8 +342,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 			// data files
 			fi := fileItem{
-				Type:         jobKey.ResourceType,
-				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				Type: jobKey.ResourceType,
+				URL:  fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
 			rb.Files = append(rb.Files, fi)
 
@@ -540,7 +556,7 @@ type bulkResponseBody struct {
 	// Information about generated data files, including URLs for downloading
 	Files []fileItem `json:"output"`
 	// Information about error files, including URLs for downloading
-	Errors []fileItem        `json:"error"`
+	Errors []fileItem `json:"error"`
 	JobID  uint
 }
 

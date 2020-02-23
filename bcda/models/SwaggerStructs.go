@@ -146,7 +146,7 @@ type SinceParam struct {
         // (Optional) Only include resource versions that were created at or after the given instant in time
         // in: query
         // required: false
-        FixedInstant string `json:"_since"`
+        DateTime string `json:"_since"`
 }
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest
