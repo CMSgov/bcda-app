@@ -38,6 +38,7 @@ type jobEnqueueArgs struct {
 	ACOID          string
 	BeneficiaryIDs []string
 	ResourceType   string
+	Since 	       string
 }
 
 func init() {

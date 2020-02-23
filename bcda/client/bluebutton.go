@@ -95,7 +95,7 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	return &BlueButtonClient{*client}, nil
 }
 
-type BeneDataFunc func(string, string, string) (string, error)
+type BeneDataFunc func(string, string, string, string) (string, error)
 
 func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string) (string, error) {
 	params := GetDefaultParams()
