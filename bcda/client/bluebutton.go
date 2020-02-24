@@ -100,9 +100,7 @@ type BeneDataFunc func(string, string, string, string) (string, error)
 func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
-	if len(since) > 0 {
-		params.Set("_lastUpdated", since)
-	}
+	UpdateParamWithLastUpdated(&params, since)
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
@@ -122,9 +120,7 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patien
 func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-	if len(since) > 0 {
-		params.Set("_lastUpdated", since)
-	}
+        UpdateParamWithLastUpdated(&params, since)
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
 }
 
@@ -132,9 +128,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
-	if len(since) > 0 {
-		params.Set("_lastUpdated", since)
-	}
+        UpdateParamWithLastUpdated(&params, since)
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID, cmsID)
 }
 
@@ -264,4 +258,11 @@ func HashIdentifier(toHash string) (hashedValue string) {
 		return ""
 	}
 	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, blueButtonIter, 32, sha256.New))
+}
+
+func UpdateParamWithLastUpdated(params *url.Values, since string) {
+	// only set the parameter if it exists and begins with "gt" (to align with what is expected in _lastUpdated)	
+	if len(since) > 0 && strings.HasPrefix(since, "gt") {
+		params.Set("_lastUpdated", since)
+	}
 }
