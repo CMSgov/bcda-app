@@ -414,16 +414,7 @@ func setupQueue() *pgx.ConnPool {
 		"ProcessJob": processJob,
 	}
 
-	var workerPoolSize int
-	if len(os.Getenv("WORKER_POOL_SIZE")) == 0 {
-		workerPoolSize = 2
-	} else {
-		workerPoolSize, err = strconv.Atoi(os.Getenv("WORKER_POOL_SIZE"))
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
+	workerPoolSize := utils.GetEnvInt("WORKER_POOL_SIZE", 2)
 	workers := que.NewWorkerPool(qc, wm, workerPoolSize)
 	go workers.Start()
 
