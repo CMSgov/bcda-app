@@ -50,8 +50,8 @@
 					"script": {
 						"id": "00a9ceb7-a32e-4a21-a689-201af70162bf",
 						"exec": [
-							"pm.test(\"Response time is less than 200 ms\", function() {",
-							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"pm.test(\"Response time is less than 100 ms\", function() {",
+							"    pm.expect(pm.response.responseTime).to.be.below(100);",
 							"});",
 							"",
 							"pm.test(\"Status code is 200\", function() {",
@@ -639,82 +639,6 @@
 			"response": []
 		},
 		{
-			"name": "Start Patient export Invalid Since",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
-						"exec": [
-							"pm.test(\"Status code is 202\", function() {",
-							"    pm.response.to.have.status(202);",
-							"});",
-							"",
-							"pm.test(\"Has Content-Location header\", function() {",
-							"    pm.response.to.have.header(\"Content-Location\");",
-							"});",
-							"",
-							"pm.environment.set(\"patientInvalidSinceJobUrl\", pm.response.headers.get(\"Content-Location\"));"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json"
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&since=123456789",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Patient",
-						"$export"
-					],
-					"query": [
-						{
-							"key": "_type",
-							"value": "Patient"
-						},
-						{
-							"key": "since",
-							"value": "123456789"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "Start Patient export Valid Since",
 			"event": [
 				{
@@ -776,7 +700,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&since={{now}}",
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&_since={{now}}",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -793,7 +717,7 @@
 							"value": "Patient"
 						},
 						{
-							"key": "since",
+							"key": "_since",
 							"value": "{{now}}"
 						}
 					]
@@ -1119,185 +1043,6 @@
 					"raw": "{{patientDataUrl}}",
 					"host": [
 						"{{patientDataUrl}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get Patient export Invalid Since job status",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
-						"exec": [
-							"pm.test(\"Status code is 202 or 200\", function() {",
-							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
-							"});",
-							"",
-							"if (pm.response.code === 202) {",
-							"    pm.test(\"X-Progress header is In Progress\", function() {",
-							"        pm.expect(/^In Progress \\(\\d{1,3}%\\)$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
-							"    });",
-							"} else if (pm.response.code === 200) {",
-							"    const schema = {",
-							"        \"properties\": {",
-							"            \"transactionTime\": {",
-							"                \"type\": \"string\"",
-							"            },",
-							"            \"request\": {",
-							"                \"type\": \"string\"",
-							"            },",
-							"            \"requiresAccessToken\": {",
-							"                \"type\": \"boolean\"",
-							"            },",
-							"            \"output\": {",
-							"                \"type\": \"array\"",
-							"            },",
-							"            \"error\": {",
-							"                \"type\": \"array\"",
-							"            }",
-							"        }",
-							"    };",
-							"    ",
-							"    var respJson = pm.response.json();",
-							"    ",
-							"    pm.test(\"Schema is valid\", function() {",
-							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-							"    });",
-							"    ",
-							"    pm.environment.set(\"patientInvalidSinceDataUrl\", respJson.output[0].url);",
-							"}"
-						],
-						"type": "text/javascript"
-					}
-				},
-				{
-					"listen": "prerequest",
-					"script": {
-						"id": "ebe6d81b-ef2b-48c6-88c1-bbaffdc28c4b",
-						"exec": [
-							"const retryDelay = 5000;",
-							"const maxRetries = 10;",
-							"",
-							"var eobJobReq = {",
-							"  url: pm.environment.get(\"patientInvalidSinceJobUrl\"),",
-							"  method: \"GET\",",
-							"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
-							"};",
-							"",
-							"function awaitExportJob(retryCount) {",
-							"    pm.sendRequest(eobJobReq, function (err, response) {",
-							"        if (err) {",
-							"            console.error(err);",
-							"        } else if (response.code == 202) {",
-							"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
-							"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
-							"            });",
-							"            if (retryCount < maxRetries) {",
-							"                console.log(\"Patient export still in progress. Retrying...\");",
-							"                setTimeout(function() {",
-							"                    awaitExportJob(++retryCount);",
-							"                }, retryDelay);",
-							"            } else {",
-							"                console.log(\"Retry limit reached for Patient job status.\");",
-							"                postman.setNextRequest(null);",
-							"            }",
-							"        } else if (response.code == 200) {",
-							"            console.log(\"Patient export job complete.\");",
-							"        } else {",
-							"            console.error(\"Unexpected response from Patient export job: \" + response.status);",
-							"        }",
-							"    });",
-							"}",
-							"",
-							"awaitExportJob(1);"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json",
-						"disabled": true
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async",
-						"disabled": true
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{patientInvalidSinceJobUrl}}",
-					"host": [
-						"{{patientInvalidSinceJobUrl}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get Patient export data Invalid Since",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
-						"exec": [
-							"pm.test(\"Status code is 200\", function() {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Body contains data\", function() {",
-							"    pm.expect(pm.response.length > 0)",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{patientInvalidSinceDataUrl}}",
-					"host": [
-						"{{patientInvalidSinceDataUrl}}"
 					]
 				}
 			},
@@ -1910,6 +1655,167 @@
 						{
 							"key": "_type",
 							"value": "ExplanationOfBenefit,ExplanationOfBenefit"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Patient export Invalid Since",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&_since=123invalid",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						},
+						{
+							"key": "_since",
+							"value": "123invalid"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group export Invalid Since",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient&_since=123invalid",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group",
+						"all",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						},
+						{
+							"key": "_since",
+							"value": "123invalid"
 						}
 					]
 				}
