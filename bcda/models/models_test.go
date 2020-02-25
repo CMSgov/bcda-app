@@ -441,7 +441,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 
 }
 
-func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
+func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 	assert := s.Assert()
 
 	j := Job{
@@ -452,7 +452,8 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"})
+	since := "2020-02-14T08:00:00-05:00"
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(3, len(enqueueJobs))
@@ -467,10 +468,13 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes() {
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
 		if count == 0 {
 			assert.Equal("Patient", jobArgs.ResourceType)
+			assert.Equal(since, jobArgs.Since)
 		} else if count == 1 {
 			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
+                        assert.Equal(since, jobArgs.Since)
 		} else {
 			assert.Equal("Coverage", jobArgs.ResourceType)
+                        assert.Equal(since, jobArgs.Since)
 		}
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 		count++
@@ -488,7 +492,8 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"})
+	since := ""
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(1, len(enqueueJobs))
@@ -502,6 +507,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 		assert.Equal(int(j.ID), jobArgs.ID)
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
 		assert.Equal("Patient", jobArgs.ResourceType)
+		assert.Equal(since, jobArgs.Since)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
 }
@@ -517,11 +523,12 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
+        since := ""
 	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
 	if err != nil {
 		s.T().Error(err)
 	}
-	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"})
+	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"}, since)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(4, len(enqueueJobs))
@@ -535,6 +542,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 		}
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 15)
+		assert.Equal(since, jobArgs.Since)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
@@ -550,13 +558,14 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 	}
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
+	since := ""
 
 	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "5")
 	if err != nil {
 		s.T().Error(err)
 	}
 
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"})
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"}, since)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(10, len(enqueueJobs))
@@ -570,6 +579,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		}
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 5)
+		assert.Equal(since, jobArgs.Since)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")

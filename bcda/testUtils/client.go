@@ -16,7 +16,7 @@ type BlueButtonClient struct {
 	MBI *string
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string) (string, error) {
 	args := bbc.Called(patientID)
 	return args.String(0), args.Error(1)
 }
@@ -26,12 +26,12 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patien
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string) (string, error) {
 	args := bbc.Called(patientID, jobID, cmsID)
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string) (string, error) {
 	args := bbc.Called(beneficiaryID, jobID, cmsID)
 	return args.String(0), args.Error(1)
 }
