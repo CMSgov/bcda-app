@@ -120,7 +120,7 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patien
 func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-        UpdateParamWithLastUpdated(&params, since)
+	UpdateParamWithLastUpdated(&params, since)
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
 }
 
@@ -128,7 +128,7 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
-        UpdateParamWithLastUpdated(&params, since)
+	UpdateParamWithLastUpdated(&params, since)
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID, cmsID)
 }
 
@@ -261,7 +261,7 @@ func HashIdentifier(toHash string) (hashedValue string) {
 }
 
 func UpdateParamWithLastUpdated(params *url.Values, since string) {
-	// only set the parameter if it exists and begins with "gt" (to align with what is expected in _lastUpdated)	
+	// only set the parameter if it exists and begins with "gt" (to align with what is expected in _lastUpdated)
 	if len(since) > 0 && strings.HasPrefix(since, "gt") {
 		params.Set("_lastUpdated", since)
 	}
