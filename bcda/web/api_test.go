@@ -82,12 +82,20 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 	bulkEOBRequestHelper("Group", since, s)
 }
 
-func (s *APITestSuite) TestBulkEOBRequestInvalidSince() {
+func (s *APITestSuite) TestBulkEOBRequestInvalidSinceFormat() {
 	since := "invalidDate"
-	bulkEOBRequestInvalidSinceHelper("Patient", since, s)
+	bulkEOBRequestInvalidSinceFormatHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestInvalidSinceHelper("Group", since, s)
+	bulkEOBRequestInvalidSinceFormatHelper("Group", since, s)
+}
+
+func (s *APITestSuite) TestBulkEOBRequestInvalidSinceDate() {
+        since := "2020-02-12T08:00:00.000-05:00"
+        bulkEOBRequestInvalidSinceDateHelper("Patient", since, s)
+        s.TearDownTest()
+        s.SetupTest()
+        bulkEOBRequestInvalidSinceDateHelper("Group", since, s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
@@ -125,12 +133,20 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	bulkPatientRequestHelper("Group", since, s)
 }
 
-func (s *APITestSuite) TestBulkPatientRequestInvalidSince() {
+func (s *APITestSuite) TestBulkPatientRequestInvalidSinceFormat() {
 	since := "invalidDate"
-	bulkPatientRequestInvalidSinceHelper("Patient", since, s)
+	bulkPatientRequestInvalidSinceFormatHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkPatientRequestInvalidSinceHelper("Group", since, s)
+	bulkPatientRequestInvalidSinceFormatHelper("Group", since, s)
+}
+
+func (s *APITestSuite) TestBulkPatientRequestInvalidSinceDate() {
+        since := "2020-02-12T08:00:00.000-05:00"
+        bulkPatientRequestInvalidSinceDateHelper("Patient", since, s)
+        s.TearDownTest()
+        s.SetupTest()
+        bulkPatientRequestInvalidSinceDateHelper("Group", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequest() {
@@ -147,12 +163,20 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 	bulkCoverageRequestHelper("Group", since, s)
 }
 
-func (s *APITestSuite) TestBulkCoverageRequestInvalidSince() {
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
 	since := "invalidDate"
-	bulkCoverageRequestInvalidSinceHelper("Patient", since, s)
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestInvalidSinceHelper("Group", since, s)
+	bulkCoverageRequestInvalidSinceFormatHelper("Group", since, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceDate() {
+        since := "2020-02-12T08:00:00.000-05:00"
+        bulkCoverageRequestInvalidSinceDateHelper("Patient", since, s)
+        s.TearDownTest()
+        s.SetupTest()
+        bulkCoverageRequestInvalidSinceDateHelper("Group", since, s)
 }
 
 func (s *APITestSuite) TestBulkRequestInvalidType() {
@@ -220,7 +244,7 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 	s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
 }
 
-func bulkEOBRequestInvalidSinceHelper(endpoint, since string, s *APITestSuite) {
+func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -251,7 +275,59 @@ func bulkEOBRequestInvalidSinceHelper(endpoint, since string, s *APITestSuite) {
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+        var respOO fhirmodels.OperationOutcome
+        err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+        if err != nil {
+                s.T().Error(err)
+        }
+
+        assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+        assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+        assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.", respOO.Issue[0].Details.Coding[0].Display)
+        assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func bulkEOBRequestInvalidSinceDateHelper(endpoint, since string, s *APITestSuite) {
+        err := cclfUtils.ImportCCLFPackage("dev", "test")
+        assert.Nil(s.T(), err)
+        acoID := constants.DevACOUUID
+        err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+        assert.Nil(s.T(), err)
+
+        _, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit", since)
+        ad := makeContextValues(acoID)
+        req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+
+        queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+        pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+        if err != nil {
+                s.T().Error(err)
+        }
+
+        pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+                ConnConfig:   pgxcfg,
+                AfterConnect: que.PrepareStatements,
+        })
+        if err != nil {
+                s.T().Error(err)
+        }
+        defer pgxpool.Close()
+
+        qc = que.NewClient(pgxpool)
+
+        handler := http.HandlerFunc(handlerFunc)
+        handler.ServeHTTP(s.rr, req)
+
+        var respOO fhirmodels.OperationOutcome
+        err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+        if err != nil {
+                s.T().Error(err)
+        }
+
+        assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+        assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+        assert.Equal(s.T(), "Invalid date supplied in _since parameter.  Date must be on or after 2020-02-13T00:00:00.000-05:00.", respOO.Issue[0].Details.Coding[0].Display)
+        assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
 func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) {
@@ -367,7 +443,7 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
-func bulkPatientRequestInvalidSinceHelper(endpoint, since string, s *APITestSuite) {
+func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -398,8 +474,61 @@ func bulkPatientRequestInvalidSinceHelper(endpoint, since string, s *APITestSuit
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
+        var respOO fhirmodels.OperationOutcome
+        err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+        if err != nil {
+                s.T().Error(err)
+        }
+
+        assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+        assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+        assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.", respOO.Issue[0].Details.Coding[0].Display)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
+
+func bulkPatientRequestInvalidSinceDateHelper(endpoint, since string, s *APITestSuite) {
+        err := cclfUtils.ImportCCLFPackage("dev", "test")
+        assert.Nil(s.T(), err)
+        acoID := constants.DevACOUUID
+        err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+        assert.Nil(s.T(), err) 
+        
+        _, handlerFunc, req := bulkRequestHelper(endpoint, "Patient", since)
+        ad := makeContextValues(acoID)
+        req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+        
+        queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+        pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+        if err != nil {
+                s.T().Error(err)
+        }
+                
+        pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+                ConnConfig:   pgxcfg,
+                AfterConnect: que.PrepareStatements,
+        })      
+        if err != nil {
+                s.T().Error(err)
+        }
+        defer pgxpool.Close()
+        
+        qc = que.NewClient(pgxpool)
+        
+        handler := http.HandlerFunc(handlerFunc)
+        handler.ServeHTTP(s.rr, req)
+        
+        var respOO fhirmodels.OperationOutcome
+        err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+        if err != nil {
+                s.T().Error(err)
+        }
+
+        assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+        assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+        assert.Equal(s.T(), "Invalid date supplied in _since parameter.  Date must be on or after 2020-02-13T00:00:00.000-05:00.", respOO.Issue[0].Details.Coding[0].Display)
+        assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
 
 func bulkCoverageRequestHelper(endpoint, since string, s *APITestSuite) {
 	acoID := constants.DevACOUUID
@@ -437,7 +566,7 @@ func bulkCoverageRequestHelper(endpoint, since string, s *APITestSuite) {
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
-func bulkCoverageRequestInvalidSinceHelper(endpoint, since string, s *APITestSuite) {
+func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
@@ -468,7 +597,59 @@ func bulkCoverageRequestInvalidSinceHelper(endpoint, since string, s *APITestSui
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+        var respOO fhirmodels.OperationOutcome
+        err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+        if err != nil {
+                s.T().Error(err)
+        }
+
+        assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+        assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+        assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.", respOO.Issue[0].Details.Coding[0].Display)
+        assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func bulkCoverageRequestInvalidSinceDateHelper(endpoint, since string, s *APITestSuite) {
+        err := cclfUtils.ImportCCLFPackage("dev", "test")
+        assert.Nil(s.T(), err)
+        acoID := constants.DevACOUUID
+        err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+        assert.Nil(s.T(), err) 
+        
+        _, handlerFunc, req := bulkRequestHelper(endpoint, "Coverage", since)
+        ad := makeContextValues(acoID)
+        req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+        
+        queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+        pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+        if err != nil {
+                s.T().Error(err)
+        }
+                
+        pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+                ConnConfig:   pgxcfg,
+                AfterConnect: que.PrepareStatements,
+        })      
+        if err != nil {
+                s.T().Error(err)
+        }
+        defer pgxpool.Close()
+        
+        qc = que.NewClient(pgxpool)
+        
+        handler := http.HandlerFunc(handlerFunc)
+        handler.ServeHTTP(s.rr, req)
+        
+        var respOO fhirmodels.OperationOutcome
+        err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+        if err != nil {
+                s.T().Error(err)
+        }
+
+        assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+        assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+        assert.Equal(s.T(), "Invalid date supplied in _since parameter.  Date must be on or after 2020-02-13T00:00:00.000-05:00.", respOO.Issue[0].Details.Coding[0].Display)
+        assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
 func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {

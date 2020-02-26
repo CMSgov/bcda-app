@@ -261,12 +261,18 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 	}
 
 	// validate optional "_since" parameter
+	// must be in correct format and must not be earlier than 2020-02-13 (hardcoded since this date is baked into the BFD data load)
 	params, ok = r.URL.Query()["_since"]
 	if ok {
-		_, err := fhirutils.ParseDate(params[0])
+		sinceDate, err := fhirutils.ParseDate(params[0])
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid date format supplied in _since parameter", responseutils.RequestErr)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.")
 			return nil, oo
+		}
+		bfdDataLoadTime, _ := time.Parse(time.RFC3339, "2020-02-13T00:00:00.000-05:00")
+		if sinceDate.Value.Before(bfdDataLoadTime) {
+                        oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Invalid date supplied in _since parameter.  Date must be on or after 2020-02-13T00:00:00.000-05:00.")
+                        return nil, oo
 		}
 	}
 
