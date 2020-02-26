@@ -452,7 +452,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-	since := "2020-02-14T08:00:00-05:00"
+	since := "2020-02-13T08:00:00.000-05:00"
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
