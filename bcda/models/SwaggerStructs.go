@@ -143,7 +143,7 @@ type ResourceTypeParam struct {
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest
 type SinceParam struct {
-        // (Optional) Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR dateTime datatype.  Example: `2020-02-13T08:00:00.000-05:00`
+        // (Optional) Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR dateTime datatype.  Dates prior to 2020-02-13 are not supported and will result in a failure response.  Example: `2020-02-13T08:00:00.000-05:00`
         // in: query
         // required: false
         DateTime string `json:"_since"`
