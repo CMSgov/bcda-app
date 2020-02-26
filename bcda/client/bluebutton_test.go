@@ -200,7 +200,7 @@ func (s *BBRequestTestSuite) TestGetPatientWithInvalidSince_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetPatientWithSince() {
-        since := "gt2020-02-14"
+        since := "ge2020-02-14"
         p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since)
         assert.Nil(s.T(), err)
         assert.Contains(s.T(), p, `{ "test": "ok"`)
@@ -232,7 +232,7 @@ func (s *BBRequestTestSuite) TestGetCoverageWithInvalidSince_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetCoverageWithSince() {
-        since := "gt2020-02-14"
+        since := "ge2020-02-14"
         c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since)
         assert.Nil(s.T(), err)
         assert.Contains(s.T(), c, `{ "test": "ok"`)
@@ -265,7 +265,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithInvalidSince_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithSince() {
-        since := "gt2020-02-14"
+        since := "ge2020-02-14"
         e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since)
         assert.Nil(s.T(), err)
         assert.Contains(s.T(), e, `{ "test": "ok"`)

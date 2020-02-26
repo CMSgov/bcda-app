@@ -261,8 +261,8 @@ func HashIdentifier(toHash string) (hashedValue string) {
 }
 
 func UpdateParamWithLastUpdated(params *url.Values, since string) {
-	// only set the parameter if it exists and begins with "gt" (to align with what is expected in _lastUpdated)
-	if len(since) > 0 && strings.HasPrefix(since, "gt") {
+	// only set the parameter if it exists and begins with "ge" (to align with what is expected in _lastUpdated)
+	if len(since) > 0 && strings.HasPrefix(since, "ge") {
 		params.Set("_lastUpdated", since)
 	}
 }
