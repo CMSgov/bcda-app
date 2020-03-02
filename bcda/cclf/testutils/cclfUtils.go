@@ -75,7 +75,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer newZipFile.Close()
+	defer newZipFile.Close() // #nosec G307
 	zipWriter := zip.NewWriter(newZipFile)
 
 	// Add all 3 files to the same zip
@@ -110,7 +110,7 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer fileToZip.Close()
+	defer fileToZip.Close() // #nosec G307
 
 	// Get the file information
 	info, err := fileToZip.Stat()
