@@ -137,6 +137,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string) (enqueJobs []
 					BeneficiaryIDs: jobIDs,
 					ResourceType:   rt,
 					Since:          since,
+					JobCreation:    job.CreatedAt,
 				})
 				if err != nil {
 					return nil, err
@@ -597,4 +598,5 @@ type jobEnqueueArgs struct {
 	BeneficiaryIDs []string
 	ResourceType   string
 	Since          string
+	JobCreation    time.Time
 }

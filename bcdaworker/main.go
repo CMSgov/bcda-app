@@ -38,7 +38,8 @@ type jobEnqueueArgs struct {
 	ACOID          string
 	BeneficiaryIDs []string
 	ResourceType   string
-	Since 	       string
+	Since          string
+	JobCreation    time.Time
 }
 
 func init() {
@@ -121,7 +122,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	fileUUID, err := writeBBDataToFile(bb, db, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType, jobArgs.Since)
+	fileUUID, err := writeBBDataToFile(bb, db, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType, jobArgs.Since, jobArgs.JobCreation)
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
@@ -160,7 +161,7 @@ func createDir(path string) error {
 	return nil
 }
 
-func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t, since string) (fileUUID string, error error) {
+func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t, since string, jobCreation time.Time) (fileUUID string, error error) {
 	segment := newrelic.StartSegment(txn, "writeBBDataToFile")
 
 	if bb == nil {
@@ -216,7 +217,7 @@ func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID 
 		if err != nil {
 			handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
-			pData, err := bbFunc(blueButtonID, jobID, acoCMSID, since)
+			pData, err := bbFunc(blueButtonID, jobID, acoCMSID, since, jobCreation)
 			if err != nil {
 				handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
 			} else {

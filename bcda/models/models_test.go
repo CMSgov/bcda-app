@@ -469,12 +469,15 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 		if count == 0 {
 			assert.Equal("Patient", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
+			assert.NotNil(jobArgs.JobCreation)
 		} else if count == 1 {
 			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-                        assert.Equal(since, jobArgs.Since)
+			assert.Equal(since, jobArgs.Since)
+			assert.NotNil(jobArgs.JobCreation)
 		} else {
 			assert.Equal("Coverage", jobArgs.ResourceType)
-                        assert.Equal(since, jobArgs.Since)
+			assert.Equal(since, jobArgs.Since)
+			assert.NotNil(jobArgs.JobCreation)
 		}
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 		count++
@@ -508,6 +511,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
 		assert.Equal("Patient", jobArgs.ResourceType)
 		assert.Equal(since, jobArgs.Since)
+		assert.NotNil(jobArgs.JobCreation)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
 }
@@ -523,7 +527,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
-        since := ""
+	since := ""
 	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
 	if err != nil {
 		s.T().Error(err)
@@ -543,6 +547,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 15)
 		assert.Equal(since, jobArgs.Since)
+		assert.NotNil(jobArgs.JobCreation)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
@@ -580,6 +585,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 5)
 		assert.Equal(since, jobArgs.Since)
+		assert.NotNil(jobArgs.JobCreation)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
@@ -697,7 +703,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	}
 	defer s.db.Unscoped().Delete(&aco)
 
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now().Add(-24 * time.Hour), ImportStatus:constants.ImportComplete}
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now().Add(-24 * time.Hour), ImportStatus: constants.ImportComplete}
 	err = s.db.Save(&cclfFile).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
@@ -712,7 +718,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	defer s.db.Unscoped().Delete(&bene1)
 
 	// same aco newer file - in progress status
-	cclfFileInProgress := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now(), ImportStatus:constants.ImportInprog}
+	cclfFileInProgress := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now(), ImportStatus: constants.ImportInprog}
 	err = s.db.Save(&cclfFileInProgress).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
@@ -727,7 +733,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	defer s.db.Unscoped().Delete(&bene2)
 
 	// same aco newer file - failed status
-	cclfFileFailed := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp:time.Now(), ImportStatus:constants.ImportFail}
+	cclfFileFailed := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now(), ImportStatus: constants.ImportFail}
 	err = s.db.Save(&cclfFileFailed).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
@@ -744,7 +750,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
 	result, err := aco.GetBeneficiaries(false)
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), result, 1)
-	assert.Equal(s.T(),cclfFile.ID,result[0].FileID)
+	assert.Equal(s.T(), cclfFile.ID, result[0].FileID)
 }
 
 func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
@@ -756,7 +762,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	}
 	defer s.db.Unscoped().Delete(&aco)
 
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus:constants.ImportComplete}
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
 	err = s.db.Save(&cclfFile).Error
 	if err != nil {
 		s.FailNow("Failed to save CCLF file", err.Error())
@@ -932,7 +938,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
 	assert.Nil(err)
 	patientIdMode := "HICN_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.HICN),patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.HICN), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 
@@ -954,7 +960,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	err = os.Setenv("PATIENT_IDENTIFIER_MODE", "MBI_MODE")
 	assert.Nil(err)
 	patientIdMode = "MBI_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI),patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
 
 	cclfBeneficiary.BlueButtonID = ""
 	// New never seen before mbi, asks the mock blue button client for the value
@@ -984,7 +990,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_Suppression() {
 	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
 	assert.Nil(err)
 	patientIdMode := "HICN_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(suppressBene.HICN),patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(suppressBene.HICN), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 

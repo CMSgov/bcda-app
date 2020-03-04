@@ -31,9 +31,9 @@ var logger *logrus.Logger
 const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
-	GetExplanationOfBenefit(patientID, jobID, cmsID, since string) (string, error)
-	GetPatient(patientID, jobID, cmsID, since string) (string, error)
-	GetCoverage(beneficiaryID, jobID, cmsID, since string) (string, error)
+	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, jobCreation time.Time) (string, error)
+	GetPatient(patientID, jobID, cmsID, since string, jobCreation time.Time) (string, error)
+	GetCoverage(beneficiaryID, jobID, cmsID, since string, jobCreation time.Time) (string, error)
 	GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error)
 }
 
@@ -95,12 +95,12 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	return &BlueButtonClient{*client}, nil
 }
 
-type BeneDataFunc func(string, string, string, string) (string, error)
+type BeneDataFunc func(string, string, string, string, time.Time) (string, error)
 
-func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string) (string, error) {
+func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, jobCreation time.Time) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
-	UpdateParamWithLastUpdated(&params, since)
+	UpdateParamWithLastUpdated(&params, since, jobCreation)
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
@@ -117,18 +117,18 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patien
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "", "")
 }
 
-func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string, jobCreation time.Time) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
-	UpdateParamWithLastUpdated(&params, since)
+	UpdateParamWithLastUpdated(&params, since, jobCreation)
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, jobCreation time.Time) (string, error) {
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
-	UpdateParamWithLastUpdated(&params, since)
+	UpdateParamWithLastUpdated(&params, since, jobCreation)
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID, cmsID)
 }
 
@@ -260,9 +260,12 @@ func HashIdentifier(toHash string) (hashedValue string) {
 	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, blueButtonIter, 32, sha256.New))
 }
 
-func UpdateParamWithLastUpdated(params *url.Values, since string) {
-	// only set the parameter if it exists and begins with "ge" (to align with what is expected in _lastUpdated)
+func UpdateParamWithLastUpdated(params *url.Values, since string, jobCreation time.Time) {
+	// only set the lower bound parameter if it exists and begins with "ge" (to align with what is expected in _lastUpdated)
 	if len(since) > 0 && strings.HasPrefix(since, "ge") {
 		params.Set("_lastUpdated", since)
+
+		// now add the upper bound based on job creation
+		params.Add("_lastUpdated", "lt"+jobCreation.Format(time.RFC3339))
 	}
 }
