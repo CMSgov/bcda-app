@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "6513c063-ce42-4169-b8a5-aa38e71e3ed9",
+		"_postman_id": "76eb20da-4538-4a88-b7ff-957b594da09f",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1742,86 +1742,6 @@
 			"response": []
 		},
 		{
-			"name": "Start Patient export Invalid Since Date",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
-						"exec": [
-							"pm.test(\"Status code is 400\", function() {",
-							"    pm.response.to.have.status(400);",
-							"});",
-							"",
-							"var respJson = pm.response.json();",
-							"",
-							"pm.test(\"Resource type is OperationOutcome\", function() {",
-							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-							"});",
-							"",
-							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date supplied in _since parameter.  Date must be on or after 2020-02-13T00:00:00.000-05:00.\")",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json"
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&_since=2020-02-12",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Patient",
-						"$export"
-					],
-					"query": [
-						{
-							"key": "_type",
-							"value": "Patient"
-						},
-						{
-							"key": "_since",
-							"value": "2020-02-12"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "Start Group export Invalid Since Format",
 			"event": [
 				{
@@ -1896,87 +1816,6 @@
 						{
 							"key": "_since",
 							"value": "123invalid"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Start Group export Invalid Since Date",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
-						"exec": [
-							"pm.test(\"Status code is 400\", function() {",
-							"    pm.response.to.have.status(400);",
-							"});",
-							"",
-							"var respJson = pm.response.json();",
-							"",
-							"pm.test(\"Resource type is OperationOutcome\", function() {",
-							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-							"});",
-							"",
-							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date supplied in _since parameter.  Date must be on or after 2020-02-13T00:00:00.000-05:00.\")",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json"
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient&_since=2020-02-12",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Group",
-						"all",
-						"$export"
-					],
-					"query": [
-						{
-							"key": "_type",
-							"value": "Patient"
-						},
-						{
-							"key": "_since",
-							"value": "2020-02-12"
 						}
 					]
 				}
