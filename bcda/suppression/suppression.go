@@ -162,7 +162,7 @@ func validate(metadata *suppressionFileMetadata) error {
 		log.Error(err)
 		return err
 	}
-	defer f.Close()
+	defer f.Close() // #nosec G307
 
 	var (
 		headTrailStart, headTrailEnd = 0, 15
@@ -318,7 +318,7 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 		log.Error(err)
 		return err
 	}
-	defer f.Close()
+	defer f.Close() // #nosec G307
 
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
