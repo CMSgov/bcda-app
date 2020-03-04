@@ -28,7 +28,7 @@ type BBRequestTestSuite struct {
 
 var ts200, ts500 *httptest.Server
 var now = time.Now()
-var nowFormatted = url.QueryEscape(now.Format(time.RFC3339))
+var nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 
 func (s *BBTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")

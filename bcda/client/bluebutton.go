@@ -266,6 +266,6 @@ func UpdateParamWithLastUpdated(params *url.Values, since string, jobCreation ti
 		params.Set("_lastUpdated", since)
 
 		// now add the upper bound based on job creation
-		params.Add("_lastUpdated", "lt"+jobCreation.Format(time.RFC3339))
+		params.Add("_lastUpdated", "lt"+jobCreation.Format(time.RFC3339Nano))
 	}
 }
