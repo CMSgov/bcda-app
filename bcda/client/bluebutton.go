@@ -261,11 +261,11 @@ func HashIdentifier(toHash string) (hashedValue string) {
 }
 
 func UpdateParamWithLastUpdated(params *url.Values, since string, jobCreation time.Time) {
-	// only set the lower bound parameter if it exists and begins with "ge" (to align with what is expected in _lastUpdated)
-	if len(since) > 0 && strings.HasPrefix(since, "ge") {
+	// only set the lower bound parameter if it exists and begins with "gt" (to align with what is expected in _lastUpdated)
+	if len(since) > 0 && strings.HasPrefix(since, "gt") {
 		params.Set("_lastUpdated", since)
 
 		// now add the upper bound based on job creation
-		params.Add("_lastUpdated", "lt"+jobCreation.Format(time.RFC3339Nano))
+		params.Add("_lastUpdated", "le"+jobCreation.Format(time.RFC3339Nano))
 	}
 }

@@ -159,12 +159,12 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	}
 
 	// Decode the _since parameter (if it exists) so it can be persisted in job args
-	// (it will be persisted in format ready for usage with _lastUpdated -- i.e., appended with 'ge')
+	// (it will be persisted in format ready for usage with _lastUpdated -- i.e., appended with 'gt')
 	var decodedSince string
 	params, ok := r.URL.Query()["_since"]
 	if ok {
 		decodedSince, _ = url.QueryUnescape(params[0])
-		decodedSince = "ge" + decodedSince
+		decodedSince = "gt" + decodedSince
 	}
 
 	var enqueueJobs []*que.Job
