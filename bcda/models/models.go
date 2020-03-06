@@ -545,7 +545,7 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 	return blueButtonID, nil
 }
 
-// StoreSuppressionBBID returns the suppression beneficiary's Blue Button ID. If not already in the BCDA database,
+// StoreSuppressionBBID stores the suppression beneficiary's Blue Button ID
 // the ID value is retrieved from BB and saved.
 func StoreSuppressionBBID() (success, failure int, err error) {
 	db := database.GetGORMDbConnection()
@@ -565,7 +565,7 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 	}
 
 	var suppressList []Suppression
-	db.Find(&suppressList, "blue_button_id = '' OR blue_button_id is NULL")
+	db.Find(&suppressList)
 	for _, suppressBene := range suppressList {
 		bbID, err := suppressBene.GetBlueButtonID(bb)
 		if err != nil {
