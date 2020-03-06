@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -70,14 +71,16 @@ func TestWriteEOBDataToFile(t *testing.T) {
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	beneficiaryIDs := []string{"1000003701", "1000050699"}
+	beneficiaryIDs := []string{"a1000003701", "a1000050699"}
 	var cclfBeneficiaryIDs []string
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		beneficiaryID := beneficiaryIDs[i]
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: beneficiaryID, MBI: "whatever", BlueButtonID: beneficiaryID}
+		bbc.MBI = &beneficiaryID
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
 		db.Create(&cclfBeneficiary)
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryID))
 		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryID))
 	}
 
@@ -141,12 +144,12 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefit", "10000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "11000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "12000").Return(bbc.GetData("ExplanationOfBenefit", "12000"))
+	bbc.On("GetExplanationOfBenefit", "abcdef10000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef11000").Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef12000").Return(bbc.GetData("ExplanationOfBenefit", "abcdef12000"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	cmsID := "A00234"
-	beneficiaryIDs := []string{"10000", "11000", "12000"}
+	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
 	var cclfBeneficiaryIDs []string
 
 	db := database.GetGORMDbConnection()
@@ -157,10 +160,13 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		beneficiaryID := beneficiaryIDs[i]
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: beneficiaryID, MBI: "whatever", BlueButtonID: beneficiaryID}
+		bbc.MBI = &beneficiaryID
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
 		db.Create(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryID))
 		defer db.Delete(&cclfBeneficiary)
+
 	}
 	jobID := "1"
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
@@ -178,8 +184,8 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 		t.Fail()
 	}
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 
@@ -194,11 +200,15 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefit", "1000089833").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "1000065301").Return("", errors.New("error"))
+	beneficiaryIDs := []string{"a1000089833", "a1000065301", "a1000012463"}
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0]).Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1]).Return("", errors.New("error"))
+	bbc.MBI = &beneficiaryIDs[0]
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0]), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryIDs[0]))
+	bbc.MBI = &beneficiaryIDs[1]
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[1]), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryIDs[1]))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	cmsID := "A00234"
-	beneficiaryIDs := []string{"1000089833", "1000065301", "1000012463"}
 	var cclfBeneficiaryIDs []string
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -208,7 +218,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		beneficiaryID := beneficiaryIDs[i]
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: beneficiaryID, MBI: "whatever", BlueButtonID: beneficiaryID}
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
 		db.Create(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		defer db.Delete(&cclfBeneficiary)
@@ -231,12 +241,12 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 		t.Fail()
 	}
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary 1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary 1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(t, "GetExplanationOfBenefit", "1000012463")
+	bbc.AssertNotCalled(t, "GetExplanationOfBenefit", beneficiaryIDs[2])
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(errorFilePath)
@@ -263,11 +273,11 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	// clean out the data dir before beginning this test
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
-	badHICNs := []string{"000000001", "000000002"}
+	badMBIs := []string{"ab000000001", "ab000000002"}
 	var cclfBeneficiaryIDs []string
-	for i := 0; i < len(badHICNs); i++ {
-		hicn := badHICNs[i]
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: hicn, MBI: "", BlueButtonID: ""}
+	for i := 0; i < len(badMBIs); i++ {
+		mbi := badMBIs[i]
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "", MBI: mbi, BlueButtonID: ""}
 		db.Create(&cclfBeneficiary)
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))

@@ -254,7 +254,7 @@ func bbFuncByType(bb client.APIClient, t string) client.BeneDataFunc {
 	}[t]
 }
 
-// beneBBID returns the beneficiary's Blue Button ID. If not already in the BCDA database, the ID value is retrieved from BB and saved.
+// beneBBID returns the beneficiary's Blue Button ID. The ID value is retrieved from BB and saved.
 func beneBBID(cclfBeneID string, bb client.APIClient, db *gorm.DB) (string, error) {
 
 	var cclfBeneficiary models.CCLFBeneficiary

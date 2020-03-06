@@ -454,10 +454,6 @@ type Suppression struct {
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-	// If this is set already, just give it back.
-	if cclfBeneficiary.BlueButtonID != "" {
-		return cclfBeneficiary.BlueButtonID, nil
-	}
 
 	modelIdentifier := cclfBeneficiary.HICN
 	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
@@ -475,10 +471,6 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use suppressionBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-	// If this is set already, just give it back.
-	if suppressionBeneficiary.BlueButtonID != "" {
-		return suppressionBeneficiary.BlueButtonID, nil
-	}
 
 	modelIdentifier := suppressionBeneficiary.HICN
 	patientIdMode := "HICN_MODE"
@@ -498,7 +490,6 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 }
 
 func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
-	// didn't find a local value, need to ask BlueButton
 	hashedIdentifier := client.HashIdentifier(modelIdentifier)
 
 	// until NGD supports MBI, pass in the patientIdMode
