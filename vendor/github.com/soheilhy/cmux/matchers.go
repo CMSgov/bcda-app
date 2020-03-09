@@ -44,13 +44,13 @@ func prefixByteMatcher(list ...[]byte) Matcher {
 }
 
 var defaultHTTPMethods = []string{
-	"OPTIONS",
+	// "OPTIONS",
 	"GET",
 	"HEAD",
 	"POST",
 	"PUT",
 	"DELETE",
-	"TRACE",
+	// "TRACE",
 	"CONNECT",
 }
 
