@@ -177,7 +177,7 @@ func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Cache-Control", "no-cache,must-revalidate")
+	req.Header.Add("Cache-Control", "no-cache")
 
 	params := url.Values{}
 	params.Set("client_id", creds.ClientID)
@@ -410,6 +410,7 @@ func addRequestHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", oktaAuthString)
+	req.Header.Set("Cache-Control", "must-revalidate")
 }
 
 func logRequest(requestID uuid.UUID) *logrus.Entry {
