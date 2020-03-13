@@ -39,7 +39,7 @@ func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
 	router := chi.NewRouter()
 	router.Use(auth.ParseToken)
 	router.With(auth.RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		ad := r.Context().Value("ad").(auth.AuthData)
+		ad := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 		render.JSON(w, r, ad)
 	})
 

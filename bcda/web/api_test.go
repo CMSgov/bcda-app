@@ -146,7 +146,7 @@ func bulkEOBRequestHelper(endpoint string, s *APITestSuite) {
 
 	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -179,7 +179,7 @@ func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) 
 
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -231,7 +231,7 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit")
 
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -261,7 +261,7 @@ func bulkPatientRequestHelper(endpoint string, s *APITestSuite) {
 	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "Patient")
 
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -297,7 +297,7 @@ func bulkCoverageRequestHelper(endpoint string, s *APITestSuite) {
 	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "Coverage")
 
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -347,7 +347,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	s.db.Save(&j)
 
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	pool := makeConnPool(s)
 	defer pool.Close()
 
@@ -428,7 +428,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 
 	_, handlerFunc, req = bulkRequestHelper(endpoint, "Patient")
 	ad = makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	handler = http.HandlerFunc(handlerFunc)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
@@ -464,7 +464,7 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	s.db.Save(&j)
 
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	pool := makeConnPool(s)
 	defer pool.Close()
 
@@ -590,7 +590,7 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	rctx.URLParams.Add("jobID", "test")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -615,7 +615,7 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 	rctx.URLParams.Add("jobID", jobID)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -648,7 +648,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -675,7 +675,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -703,7 +703,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -743,7 +743,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -801,7 +801,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
 	if _, err := os.Stat(f); os.IsNotExist(err) {
@@ -860,7 +860,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -890,7 +890,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -917,7 +917,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 
@@ -1036,7 +1036,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	ad := makeContextValues(constants.SmallACOUUID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	handler.ServeHTTP(s.rr, req)
 

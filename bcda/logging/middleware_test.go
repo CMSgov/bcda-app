@@ -43,7 +43,7 @@ func contextToken(next http.Handler) http.Handler {
 			TokenID: "665341c9-7d0c-4844-b66f-5910d9d0822f",
 		}
 
-		ctx := context.WithValue(req.Context(), "ad", ad)
+		ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
