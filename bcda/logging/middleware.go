@@ -62,7 +62,7 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 
 	logFields["uri"] = fmt.Sprintf("%s://%s%s", scheme, r.Host, Redact(r.RequestURI))
 
-	if ad, ok := r.Context().Value("ad").(auth.AuthData); ok {
+	if ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData); ok {
 		logFields["aco_id"] = ad.ACOID
 		logFields["token_id"] = ad.TokenID
 		logFields["cms_id"] = ad.CMSID
