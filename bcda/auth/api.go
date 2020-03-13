@@ -43,7 +43,7 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	// not included: recommended field expires_in
 	body := []byte(fmt.Sprintf(`{"access_token": "%s","token_type":"bearer"}`, token))
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store,must-revalidate")
+	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
 	_, err = w.Write(body)
 	if err != nil {
@@ -72,5 +72,6 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 */
 func Welcome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "must-revalidate")
 	_, _ = w.Write([]byte(`{"success":"Welcome to the Beneficiary Claims Data API!"}`))
 }
