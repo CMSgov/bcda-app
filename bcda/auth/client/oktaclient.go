@@ -410,7 +410,6 @@ func addRequestHeaders(req *http.Request) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", oktaAuthString)
-	req.Header.Set("Cache-Control", "must-revalidate")
 }
 
 func logRequest(requestID uuid.UUID) *logrus.Entry {
