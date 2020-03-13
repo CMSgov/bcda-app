@@ -546,7 +546,7 @@ type bulkResponseBody struct {
 
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 	var ok bool
-	data, ok = r.Context().Value("ad").(auth.AuthData)
+	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 	if !ok {
 		err = errors.New("no auth data in context")
 	}
