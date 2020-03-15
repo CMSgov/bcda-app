@@ -105,8 +105,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	}
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", token)
-	ctx = context.WithValue(ctx, "ad", ad)
+	ctx = context.WithValue(ctx, auth.TokenContextKey, token)
+	ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 401, s.rr.Code)
@@ -180,7 +180,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 	assert.NotNil(s.T(), token)
 
 	ctx := req.Context()
-	// ctx = context.WithValue(ctx, "token", token)
+	// ctx = context.WithValue(ctx, auth.TokenContextKey, token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
@@ -216,12 +216,12 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), token)
 
-	ctx := context.WithValue(req.Context(), "token", token)
+	ctx := context.WithValue(req.Context(), auth.TokenContextKey, token)
 	ad := auth.AuthData{
 		ACOID:   acoID,
 		TokenID: tokenID,
 	}
-	ctx = context.WithValue(ctx, "ad", ad)
+	ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
 
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
@@ -262,7 +262,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	token.Claims = nil
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, "token", token)
+	ctx = context.WithValue(ctx, auth.TokenContextKey, token)
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)

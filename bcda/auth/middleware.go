@@ -15,6 +15,16 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 )
 
+// Use context keys for storing/retrieving data in the http Context
+type contextKey struct {
+	name string
+}
+
+var (
+	TokenContextKey    = &contextKey{"token"}
+	AuthDataContextKey = &contextKey{"ad"}
+)
+
 // ParseToken puts the decoded token and AuthData value into the request context. Decoded values come from
 // tokens verified by our provider as correct and unexpired. Tokens may be presented in requests to
 // unauthenticated endpoints (mostly swagger?). We still want to extract the token data for logging purposes,
@@ -78,15 +88,15 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.CMSID = *aco.CMSID
 			}
 		}
-		ctx := context.WithValue(r.Context(), "token", token)
-		ctx = context.WithValue(ctx, "ad", ad)
+		ctx := context.WithValue(r.Context(), TokenContextKey, token)
+		ctx = context.WithValue(ctx, AuthDataContextKey, ad)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Context().Value("token")
+		token := r.Context().Value(TokenContextKey)
 		if token == nil {
 			log.Error("No token found")
 			respond(w, http.StatusUnauthorized)
@@ -108,7 +118,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ad, ok := r.Context().Value("ad").(AuthData)
+		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Error()
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Not_found)
