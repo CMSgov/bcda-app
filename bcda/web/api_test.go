@@ -229,7 +229,7 @@ func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSu
 
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit", since)
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -385,7 +385,7 @@ func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITe
 
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "Patient", since)
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -464,7 +464,7 @@ func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APIT
 
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "Coverage", since)
 	ad := makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), "ad", ad))
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
