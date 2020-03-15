@@ -61,6 +61,7 @@ type Job struct {
 	ACOID             uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
 	RequestURL        string    `json:"request_url"` // request_url
 	Status            string    `json:"status"`      // status
+	TransactionTime   time.Time // most recent data load transaction time from BFD
 	JobCount          int
 	CompletedJobCount int
 	JobKeys           []JobKey
