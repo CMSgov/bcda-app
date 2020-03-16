@@ -183,6 +183,13 @@ func (s *APITestSuite) TestValidateRequest() {
 	validateRequestHelper("Group", s)
 }
 
+func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
+	bulkPatientRequestBBClientFailureHelper("Patient", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkPatientRequestBBClientFailureHelper("Group", s)
+}
+
 func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
@@ -496,6 +503,26 @@ func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APIT
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
 	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.", respOO.Issue[0].Details.Coding[0].Display)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
+	orig := os.Getenv("BB_CLIENT_CERT_FILE")
+	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
+	assert.Nil(s.T(), err)
+
+	err = cclfUtils.ImportCCLFPackage("dev", "test")
+	assert.Nil(s.T(), err)
+	acoID := constants.DevACOUUID
+	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	assert.Nil(s.T(), err)
+
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "Patient", "")
+	ad := makeContextValues(acoID)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	handlerFunc(s.rr, req)
+
+	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
+	os.Setenv("BB_CLIENT_CERT_FILE", orig)
 }
 
 func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {
