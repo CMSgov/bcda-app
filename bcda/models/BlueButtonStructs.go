@@ -5,9 +5,16 @@
 
 package models
 
+import (
+	"time"
+)
+
 type Patient struct {
 	// uuid identifier of this request
-	ID    string `json:"id"`
+	ID   string `json:"id"`
+	Meta struct {
+		LastUpdated time.Time
+	}
 	Entry []struct {
 		Resource struct {
 			Identifier []struct {

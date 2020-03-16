@@ -193,7 +193,7 @@ func (s *BBRequestTestSuite) TestGetPatientWithoutSince() {
 	assert.Contains(s.T(), p, `{ "test": "ok"`)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 	assert.NotContains(s.T(), p, "_lastUpdated=gt")
-	assert.NotContains(s.T(), p, "_lastUpdated=le")
+	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetPatientWithInvalidSince_500() {
@@ -227,7 +227,7 @@ func (s *BBRequestTestSuite) TestGetCoverageWithoutSince() {
 	assert.Contains(s.T(), c, `{ "test": "ok"`)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 	assert.NotContains(s.T(), c, "_lastUpdated=gt")
-	assert.NotContains(s.T(), c, "_lastUpdated=le")
+	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetCoverageWithInvalidSince_500() {
@@ -261,7 +261,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithoutSince() {
 	assert.Contains(s.T(), e, `{ "test": "ok"`)
 	assert.Contains(s.T(), e, "excludeSAMHSA=true")
 	assert.NotContains(s.T(), e, "_lastUpdated=gt")
-	assert.NotContains(s.T(), e, "_lastUpdated=le")
+	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithInvalidSince_500() {
@@ -270,7 +270,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithInvalidSince_500() {
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", e)
 	assert.NotContains(s.T(), e, "_lastUpdated=gt")
-	assert.NotContains(s.T(), e, "_lastUpdated=le")
+	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithSince() {
@@ -289,7 +289,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 	assert.NotContains(s.T(), p, "_lastUpdated=gt")
-	assert.NotContains(s.T(), p, "_lastUpdtaed=le")
+	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetMetadata() {

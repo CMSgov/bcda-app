@@ -133,12 +133,12 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string) (enqueJobs []
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 
 				args, err := json.Marshal(jobEnqueueArgs{
-					ID:             int(job.ID),
-					ACOID:          job.ACOID.String(),
-					BeneficiaryIDs: jobIDs,
-					ResourceType:   rt,
-					Since:          since,
-					JobCreation:    job.CreatedAt,
+					ID:              int(job.ID),
+					ACOID:           job.ACOID.String(),
+					BeneficiaryIDs:  jobIDs,
+					ResourceType:    rt,
+					Since:           since,
+					TransactionTime: job.TransactionTime,
 				})
 				if err != nil {
 					return nil, err
@@ -585,10 +585,10 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
 // swagger:ignore
 type jobEnqueueArgs struct {
-	ID             int
-	ACOID          string
-	BeneficiaryIDs []string
-	ResourceType   string
-	Since          string
-	JobCreation    time.Time
+	ID              int
+	ACOID           string
+	BeneficiaryIDs  []string
+	ResourceType    string
+	Since           string
+	TransactionTime time.Time
 }

@@ -469,15 +469,15 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 		if count == 0 {
 			assert.Equal("Patient", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
-			assert.NotNil(jobArgs.JobCreation)
+			assert.NotNil(jobArgs.TransactionTime)
 		} else if count == 1 {
 			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
-			assert.NotNil(jobArgs.JobCreation)
+			assert.NotNil(jobArgs.TransactionTime)
 		} else {
 			assert.Equal("Coverage", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
-			assert.NotNil(jobArgs.JobCreation)
+			assert.NotNil(jobArgs.TransactionTime)
 		}
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 		count++
@@ -511,7 +511,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
 		assert.Equal("Patient", jobArgs.ResourceType)
 		assert.Equal(since, jobArgs.Since)
-		assert.NotNil(jobArgs.JobCreation)
+		assert.NotNil(jobArgs.TransactionTime)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 	}
 }
@@ -547,7 +547,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 15)
 		assert.Equal(since, jobArgs.Since)
-		assert.NotNil(jobArgs.JobCreation)
+		assert.NotNil(jobArgs.TransactionTime)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
@@ -585,7 +585,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 5)
 		assert.Equal(since, jobArgs.Since)
-		assert.NotNil(jobArgs.JobCreation)
+		assert.NotNil(jobArgs.TransactionTime)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
