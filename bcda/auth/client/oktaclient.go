@@ -177,7 +177,7 @@ func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Cache-Control", "no-cache")
+	req.Header.Add("Cache-Control", "no-cache,must-revalidate")
 
 	params := url.Values{}
 	params.Set("client_id", creds.ClientID)

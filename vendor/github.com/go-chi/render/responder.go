@@ -145,7 +145,7 @@ func channelEventStream(w http.ResponseWriter, r *http.Request, v interface{}) {
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "no-cache,must-revalidate")
 
 	if r.ProtoMajor == 1 {
 		// An endpoint MUST NOT generate an HTTP/2 message containing connection-specific header fields.
