@@ -23,7 +23,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-        "github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -152,36 +152,36 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-        bb, err := client.NewBlueButtonClient()
-        if err != nil {
-                log.Error(err)
-                oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
-                responseutils.WriteError(oo, w, http.StatusInternalServerError)
-                return
-        }
-        // request a fake patient in order to acquire the bundle's lastUpdated metadata
-        jsonData, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
-        if err != nil {
-                log.Error(err)
-                oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to retrieve transactionTime metadata from FHIR Data Server.")
-                responseutils.WriteError(oo, w, http.StatusInternalServerError)
-                return
-        }
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+	// request a fake patient in order to acquire the bundle's lastUpdated metadata
+	jsonData, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to retrieve transactionTime metadata from FHIR Data Server.")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
 	var patient models.Patient
-        err = json.Unmarshal([]byte(jsonData), &patient)
-        if err != nil {
-                log.Error(err)
-                oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to parse transactionTime metadata from FHIR Data Server.")
-                responseutils.WriteError(oo, w, http.StatusInternalServerError)
-                return
-        }
+	err = json.Unmarshal([]byte(jsonData), &patient)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to parse transactionTime metadata from FHIR Data Server.")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
 	transactionTime := patient.Meta.LastUpdated
-        if db.Model(&newJob).Update("transaction_time", transactionTime).Error != nil {
-                log.Error(err)
-                oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-                responseutils.WriteError(oo, w, http.StatusInternalServerError)
-                return
-        }
+	if db.Model(&newJob).Update("transaction_time", transactionTime).Error != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
 
 	if qc == nil {
 		log.Error(err)
