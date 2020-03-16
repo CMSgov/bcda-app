@@ -55,6 +55,7 @@ func SecurityHeader(next http.Handler) http.Handler {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 			w.Header().Set("Cache-Control", "no-cache; no-store; must-revalidate; max-age=0")
 			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
 		}
 		next.ServeHTTP(w, r)
 	})
