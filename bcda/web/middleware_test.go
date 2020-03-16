@@ -128,9 +128,9 @@ func (s *MiddlewareTestSuite) TestConnectionCloseHeader() {
 	assert.Equal(s.T(), "close", result.Header.Get("Connection"), "sets 'Connection: close' header")
 }
 
-func (s *MiddlewareTestSuite) TestHSTSHeader() {
+func (s *MiddlewareTestSuite) TestSecurityHeader() {
 	router := chi.NewRouter()
-	router.Use(HSTSHeader)
+	router.Use(SecurityHeader)
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Test router"))
 		if err != nil {
