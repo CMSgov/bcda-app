@@ -1,10 +1,9 @@
 package web
 
 import (
-	"net/http"
-
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+	"net/http"
 )
 
 func ValidateBulkRequestHeaders(next http.Handler) http.Handler {
@@ -49,12 +48,11 @@ func ConnectionClose(next http.Handler) http.Handler {
 	})
 }
 
-func SecurityHeader(next http.Handler) http.Handler {
+func HSTSHeader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if servicemux.IsHTTPS(r) {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 			w.Header().Set("Cache-Control", "must-revalidate")
-			w.Header().Set("Pragma", "no-cache")
 		}
 		next.ServeHTTP(w, r)
 	})
