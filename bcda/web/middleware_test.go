@@ -128,9 +128,9 @@ func (s *MiddlewareTestSuite) TestConnectionCloseHeader() {
 	assert.Equal(s.T(), "close", result.Header.Get("Connection"), "sets 'Connection: close' header")
 }
 
-func (s *MiddlewareTestSuite) TestHSTSHeader() {
+func (s *MiddlewareTestSuite) TestSecurityHeader() {
 	router := chi.NewRouter()
-	router.Use(HSTSHeader)
+	router.Use(SecurityHeader)
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Test router"))
 		if err != nil {
@@ -151,7 +151,14 @@ func (s *MiddlewareTestSuite) TestHSTSHeader() {
 	router.ServeHTTP(w, req)
 	result := w.Result()
 
-	assert.NotEmpty(s.T(), result.Header.Get("Strict-Transport-Security"), "sets HSTS header")
+	assert.NotEmpty(s.T(), result.Header.Get("Strict-Transport-Security"), "sets STS header")
+	assert.NotEmpty(s.T(), result.Header.Get("Cache-Control"), "sets cache control settings")
+	assert.Equal(s.T(), result.Header.Get("Pragma"), "no-cache", "pragma header should be no-cache")
+	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "must-revalidate", "ensures must-revalidate control added")
+	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "no-cache", "ensures no-cache control added")
+	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "no-store", "ensures no-store control added")
+	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "max-age=0", "ensures max-age=0 control added")
+
 }
 
 func (s *MiddlewareTestSuite) TearDownTest() {
