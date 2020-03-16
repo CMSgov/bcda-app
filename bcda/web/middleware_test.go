@@ -155,7 +155,7 @@ func (s *MiddlewareTestSuite) TestSecurityHeader() {
 	assert.NotEmpty(s.T(), result.Header.Get("Cache-Control"), "sets cache control settings")
 	assert.NotEmpty(s.T(), result.Header.Get("X-Content-Type-Options"), "sets x-content-type-options")
 	assert.Equal(s.T(), result.Header.Get("Pragma"), "no-cache", "pragma header should be no-cache")
-	assert.Equal(s.T(), result.Header.Get("X-Content-Type-Options"), "no-sniff", "x-content-type header should be no-sniff")
+	assert.Equal(s.T(), result.Header.Get("X-Content-Type-Options"), "nosniff", "x-content-type header should be no-sniff")
 	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "must-revalidate", "ensures must-revalidate control added")
 	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "no-cache", "ensures no-cache control added")
 	assert.Contains(s.T(), result.Header.Get("Cache-Control"), "no-store", "ensures no-store control added")
