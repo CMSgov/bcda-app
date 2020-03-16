@@ -269,8 +269,6 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithInvalidSince_500() {
 	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", e)
-	assert.NotContains(s.T(), e, "_lastUpdated=gt")
-	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithSince() {
@@ -288,8 +286,6 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 	p, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
-	assert.NotContains(s.T(), p, "_lastUpdated=gt")
-	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetMetadata() {
