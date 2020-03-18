@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "8e253ad9-925a-416d-831d-21af355e088d",
+		"_postman_id": "76eb20da-4538-4a88-b7ff-957b594da09f",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -25,6 +25,10 @@
 			"request": {
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/_version",
 					"protocol": "{{scheme}}",
@@ -124,6 +128,10 @@
 				},
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/metadata",
 					"protocol": "{{scheme}}",
@@ -158,6 +166,10 @@
 			"request": {
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/_health",
 					"protocol": "{{scheme}}",
@@ -209,6 +221,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -219,7 +235,13 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export?_type=ExplanationOfBenefit"
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "ExplanationOfBenefit"
+						}
 					]
 				}
 			},
@@ -268,6 +290,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
 					"protocol": "{{scheme}}",
@@ -278,7 +304,13 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export?_type=Patient"
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						}
 					]
 				}
 			},
@@ -327,6 +359,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
 					"protocol": "{{scheme}}",
@@ -337,7 +373,13 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export?_type=Coverage"
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Coverage"
+						}
 					]
 				}
 			},
@@ -383,6 +425,10 @@
 						"disabled": true
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/jobs/{{jobId}}",
 					"protocol": "{{scheme}}",
@@ -426,6 +472,10 @@
 				},
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson",
 					"protocol": "{{scheme}}",
@@ -517,239 +567,6 @@
 			"response": []
 		},
 		{
-			"name": "Start EOB export",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
-						"exec": [
-							"pm.test(\"Status code is 202\", function() {",
-							"    pm.response.to.have.status(202);",
-							"});",
-							"",
-							"pm.test(\"Has Content-Location header\", function() {",
-							"    pm.response.to.have.header(\"Content-Location\");",
-							"});",
-							"",
-							"pm.environment.set(\"eobJobUrl\", pm.response.headers.get(\"Content-Location\"));"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"value": "application/fhir+json",
-						"type": "text"
-					},
-					{
-						"key": "Prefer",
-						"value": "respond-async",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Patient",
-						"$export?_type=ExplanationOfBenefit"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get EOB export job status",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
-						"exec": [
-							"pm.test(\"Status code is 202 or 200\", function() {",
-							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
-							"});",
-							"",
-							"if (pm.response.code === 202) {",
-							"    pm.test(\"X-Progress header is In Progress\", function() {",
-							"        pm.expect(/^In Progress \\(\\d{1,3}%\\)$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
-							"    });",
-							"} else if (pm.response.code === 200) {",
-							"    const schema = {",
-							"        \"properties\": {",
-							"            \"transactionTime\": {",
-							"                \"type\": \"string\"",
-							"            },",
-							"            \"request\": {",
-							"                \"type\": \"string\"",
-							"            },",
-							"            \"requiresAccessToken\": {",
-							"                \"type\": \"boolean\"",
-							"            },",
-							"            \"output\": {",
-							"                \"type\": \"array\"",
-							"            },",
-							"            \"error\": {",
-							"                \"type\": \"array\"",
-							"            }",
-							"        }",
-							"    };",
-							"    ",
-							"    var respJson = pm.response.json();",
-							"    ",
-							"    pm.test(\"Schema is valid\", function() {",
-							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
-							"    });",
-							"    ",
-							"    pm.environment.set(\"eobDataUrl\", respJson.output[0].url);",
-							"}"
-						],
-						"type": "text/javascript"
-					}
-				},
-				{
-					"listen": "prerequest",
-					"script": {
-						"id": "70646143-9885-45c1-94e4-061c2f40295a",
-						"exec": [
-							"const retryDelay = 5000;",
-							"const maxRetries = 10;",
-							"",
-							"var eobJobReq = {",
-							"  url: pm.environment.get(\"eobJobUrl\"),",
-							"  method: \"GET\",",
-							"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
-							"};",
-							"",
-							"function awaitExportJob(retryCount) {",
-							"    pm.sendRequest(eobJobReq, function (err, response) {",
-							"        if (err) {",
-							"            console.error(err);",
-							"        } else if (response.code == 202) {",
-							"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
-							"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
-							"            });",
-							"            if (retryCount < maxRetries) {",
-							"                console.log(\"ExplanationOfBenefit export still in progress. Retrying...\");",
-							"                setTimeout(function() {",
-							"                    awaitExportJob(++retryCount);",
-							"                }, retryDelay);",
-							"            } else {",
-							"                console.log(\"Retry limit reached for ExplanationOfBenefit job status.\");",
-							"                postman.setNextRequest(null);",
-							"            }",
-							"        } else if (response.code == 200) {",
-							"            console.log(\"EOB export job complete.\");",
-							"        } else {",
-							"            console.error(\"Unexpected response from EOB export job: \" + response.status);",
-							"        }",
-							"    });",
-							"}",
-							"",
-							"awaitExportJob(1);"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json",
-						"disabled": true
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async",
-						"disabled": true
-					}
-				],
-				"url": {
-					"raw": "{{eobJobUrl}}",
-					"host": [
-						"{{eobJobUrl}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get EOB export data",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
-						"exec": [
-							"pm.test(\"Status code is 200\", function() {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Body contains data\", function() {",
-							"    pm.expect(pm.response.length > 0)",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{eobDataUrl}}",
-					"host": [
-						"{{eobDataUrl}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "Start Patient export",
 			"event": [
 				{
@@ -795,6 +612,10 @@
 						"value": "respond-async"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
 					"protocol": "{{scheme}}",
@@ -805,7 +626,100 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export?_type=Patient"
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Patient export Valid Since",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"patientValidSinceJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "b822f300-2ead-4f25-b623-22c68df6b017",
+						"exec": [
+							"let timestamp = new Date().toJSON();",
+							"pm.environment.set('now', timestamp);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&_since={{now}}",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						},
+						{
+							"key": "_since",
+							"value": "{{now}}"
+						}
 					]
 				}
 			},
@@ -857,6 +771,10 @@
 						"value": "respond-async"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
 					"protocol": "{{scheme}}",
@@ -867,7 +785,85 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export?_type=Coverage"
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Coverage"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start EOB export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"exec": [
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"eobJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "ExplanationOfBenefit"
+						}
 					]
 				}
 			},
@@ -993,10 +989,239 @@
 						"disabled": true
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{patientJobUrl}}",
 					"host": [
 						"{{patientJobUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Patient export data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"exec": [
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Body contains data\", function() {",
+							"    pm.expect(pm.response.length > 0)",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{patientDataUrl}}",
+					"host": [
+						"{{patientDataUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Patient export Valid Since job status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"exec": [
+							"pm.test(\"Status code is 202 or 200\", function() {",
+							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+							"});",
+							"",
+							"if (pm.response.code === 202) {",
+							"    pm.test(\"X-Progress header is In Progress\", function() {",
+							"        pm.expect(/^In Progress \\(\\d{1,3}%\\)$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
+							"    });",
+							"} else if (pm.response.code === 200) {",
+							"    const schema = {",
+							"        \"properties\": {",
+							"            \"transactionTime\": {",
+							"                \"type\": \"string\"",
+							"            },",
+							"            \"request\": {",
+							"                \"type\": \"string\"",
+							"            },",
+							"            \"requiresAccessToken\": {",
+							"                \"type\": \"boolean\"",
+							"            },",
+							"            \"output\": {",
+							"                \"type\": \"array\"",
+							"            },",
+							"            \"error\": {",
+							"                \"type\": \"array\"",
+							"            }",
+							"        }",
+							"    };",
+							"    ",
+							"    var respJson = pm.response.json();",
+							"    ",
+							"    pm.test(\"Schema is valid\", function() {",
+							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"    });",
+							"    ",
+							"    pm.environment.set(\"patientValidSinceDataUrl\", respJson.output[0].url);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "ebe6d81b-ef2b-48c6-88c1-bbaffdc28c4b",
+						"exec": [
+							"const retryDelay = 5000;",
+							"const maxRetries = 10;",
+							"",
+							"var eobJobReq = {",
+							"  url: pm.environment.get(\"patientValidSinceJobUrl\"),",
+							"  method: \"GET\",",
+							"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+							"};",
+							"",
+							"function awaitExportJob(retryCount) {",
+							"    pm.sendRequest(eobJobReq, function (err, response) {",
+							"        if (err) {",
+							"            console.error(err);",
+							"        } else if (response.code == 202) {",
+							"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+							"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+							"            });",
+							"            if (retryCount < maxRetries) {",
+							"                console.log(\"Patient export still in progress. Retrying...\");",
+							"                setTimeout(function() {",
+							"                    awaitExportJob(++retryCount);",
+							"                }, retryDelay);",
+							"            } else {",
+							"                console.log(\"Retry limit reached for Patient job status.\");",
+							"                postman.setNextRequest(null);",
+							"            }",
+							"        } else if (response.code == 200) {",
+							"            console.log(\"Patient export job complete.\");",
+							"        } else {",
+							"            console.error(\"Unexpected response from Patient export job: \" + response.status);",
+							"        }",
+							"    });",
+							"}",
+							"",
+							"awaitExportJob(1);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json",
+						"disabled": true
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{patientValidSinceJobUrl}}",
+					"host": [
+						"{{patientValidSinceJobUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Patient export data Valid Since",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"exec": [
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Body does not contain data\", function() {",
+							"    pm.expect(pm.response.length === 0)",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{patientValidSinceDataUrl}}",
+					"host": [
+						"{{patientValidSinceDataUrl}}"
 					]
 				}
 			},
@@ -1122,52 +1347,14 @@
 						"disabled": true
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{coverageJobUrl}}",
 					"host": [
 						"{{coverageJobUrl}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get Patient export data",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
-						"exec": [
-							"pm.test(\"Status code is 200\", function() {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Body contains data\", function() {",
-							"    pm.expect(pm.response.length > 0)",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{patientDataUrl}}",
-					"host": [
-						"{{patientDataUrl}}"
 					]
 				}
 			},
@@ -1206,10 +1393,193 @@
 				},
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{coverageDataUrl}}",
 					"host": [
 						"{{coverageDataUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get EOB export job status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"exec": [
+							"pm.test(\"Status code is 202 or 200\", function() {",
+							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
+							"});",
+							"",
+							"if (pm.response.code === 202) {",
+							"    pm.test(\"X-Progress header is In Progress\", function() {",
+							"        pm.expect(/^In Progress \\(\\d{1,3}%\\)$/.test(pm.response.headers.get(\"X-Progress\"))).to.be.true;",
+							"    });",
+							"} else if (pm.response.code === 200) {",
+							"    const schema = {",
+							"        \"properties\": {",
+							"            \"transactionTime\": {",
+							"                \"type\": \"string\"",
+							"            },",
+							"            \"request\": {",
+							"                \"type\": \"string\"",
+							"            },",
+							"            \"requiresAccessToken\": {",
+							"                \"type\": \"boolean\"",
+							"            },",
+							"            \"output\": {",
+							"                \"type\": \"array\"",
+							"            },",
+							"            \"error\": {",
+							"                \"type\": \"array\"",
+							"            }",
+							"        }",
+							"    };",
+							"    ",
+							"    var respJson = pm.response.json();",
+							"    ",
+							"    pm.test(\"Schema is valid\", function() {",
+							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"    });",
+							"    ",
+							"    pm.environment.set(\"eobDataUrl\", respJson.output[0].url);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "70646143-9885-45c1-94e4-061c2f40295a",
+						"exec": [
+							"const retryDelay = 5000;",
+							"const maxRetries = 10;",
+							"",
+							"var eobJobReq = {",
+							"  url: pm.environment.get(\"eobJobUrl\"),",
+							"  method: \"GET\",",
+							"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
+							"};",
+							"",
+							"function awaitExportJob(retryCount) {",
+							"    pm.sendRequest(eobJobReq, function (err, response) {",
+							"        if (err) {",
+							"            console.error(err);",
+							"        } else if (response.code == 202) {",
+							"            pm.test(\"X-Progress header is Pending or In Progress\", function() {",
+							"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
+							"            });",
+							"            if (retryCount < maxRetries) {",
+							"                console.log(\"ExplanationOfBenefit export still in progress. Retrying...\");",
+							"                setTimeout(function() {",
+							"                    awaitExportJob(++retryCount);",
+							"                }, retryDelay);",
+							"            } else {",
+							"                console.log(\"Retry limit reached for ExplanationOfBenefit job status.\");",
+							"                postman.setNextRequest(null);",
+							"            }",
+							"        } else if (response.code == 200) {",
+							"            console.log(\"EOB export job complete.\");",
+							"        } else {",
+							"            console.error(\"Unexpected response from EOB export job: \" + response.status);",
+							"        }",
+							"    });",
+							"}",
+							"",
+							"awaitExportJob(1);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json",
+						"disabled": true
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{eobJobUrl}}",
+					"host": [
+						"{{eobJobUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get EOB export data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"exec": [
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Body contains data\", function() {",
+							"    pm.expect(pm.response.length > 0)",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{eobDataUrl}}",
+					"host": [
+						"{{eobDataUrl}}"
 					]
 				}
 			},
@@ -1265,6 +1635,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit,ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -1275,7 +1649,174 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export?_type=ExplanationOfBenefit,ExplanationOfBenefit"
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "ExplanationOfBenefit,ExplanationOfBenefit"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Patient export Invalid Since Format",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&_since=123invalid",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						},
+						{
+							"key": "_since",
+							"value": "123invalid"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group export Invalid Since Format",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient&_since=123invalid",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group",
+						"all",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						},
+						{
+							"key": "_since",
+							"value": "123invalid"
+						}
 					]
 				}
 			},
@@ -1331,6 +1872,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Practitioner",
 					"protocol": "{{scheme}}",
@@ -1341,7 +1886,13 @@
 						"api",
 						"v1",
 						"Patient",
-						"$export?_type=Practitioner"
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Practitioner"
+						}
 					]
 				}
 			},
@@ -1397,6 +1948,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=ExplanationOfBenefit,ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -1406,8 +1961,15 @@
 					"path": [
 						"api",
 						"v1",
-						"Group/all",
-						"$export?_type=ExplanationOfBenefit,ExplanationOfBenefit"
+						"Group",
+						"all",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "ExplanationOfBenefit,ExplanationOfBenefit"
+						}
 					]
 				}
 			},
@@ -1463,6 +2025,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Practitioner",
 					"protocol": "{{scheme}}",
@@ -1472,8 +2038,15 @@
 					"path": [
 						"api",
 						"v1",
-						"Group/all",
-						"$export?_type=Practitioner"
+						"Group",
+						"all",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Practitioner"
+						}
 					]
 				}
 			},
@@ -1529,6 +2102,10 @@
 						"type": "text"
 					}
 				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/sub/$export?_type=ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -1538,8 +2115,15 @@
 					"path": [
 						"api",
 						"v1",
-						"Group/sub",
-						"$export?_type=ExplanationOfBenefit"
+						"Group",
+						"sub",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "ExplanationOfBenefit"
+						}
 					]
 				}
 			},

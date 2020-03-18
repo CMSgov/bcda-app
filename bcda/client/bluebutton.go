@@ -31,10 +31,10 @@ var logger *logrus.Logger
 const blueButtonBasePath = "/v1/fhir"
 
 type APIClient interface {
-	GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error)
-	GetPatient(patientID, jobID, cmsID string) (string, error)
-	GetCoverage(beneficiaryID, jobID, cmsID string) (string, error)
-	GetPatientByIdentifierHash(hashedIdentifier, patientIdMode  string) (string, error)
+	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (string, error)
+	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (string, error)
+	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (string, error)
+	GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -95,11 +95,12 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	return &BlueButtonClient{*client}, nil
 }
 
-type BeneDataFunc func(string, string, string) (string, error)
+type BeneDataFunc func(string, string, string, string, time.Time) (string, error)
 
-func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (string, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
+	UpdateParamWithLastUpdated(&params, since, transactionTime)
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
@@ -116,16 +117,18 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patien
 	return bbc.getData(blueButtonBasePath+"/Patient/", params, "", "")
 }
 
-func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (string, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
+	UpdateParamWithLastUpdated(&params, since, transactionTime)
 	return bbc.getData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (string, error) {
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
+	UpdateParamWithLastUpdated(&params, since, transactionTime)
 	return bbc.getData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID, cmsID)
 }
 
@@ -185,13 +188,13 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
-	req.Header.Add("IncludeIdentifiers","mbi")
+	req.Header.Add("IncludeIdentifiers", "mbi")
 
-        // Do not set BB-specific headers with blank values
-        // Leaving them here, commented out, in case we want to set them to real values in future
-        //req.Header.Add("BlueButton-BeneficiaryId", "")
-        //req.Header.Add("BlueButton-OriginatingIpAddress", "")
-        //req.Header.Add("BlueButton-BackendCall", "")
+	// Do not set BB-specific headers with blank values
+	// Leaving them here, commented out, in case we want to set them to real values in future
+	//req.Header.Add("BlueButton-BeneficiaryId", "")
+	//req.Header.Add("BlueButton-OriginatingIpAddress", "")
+	//req.Header.Add("BlueButton-BackendCall", "")
 
 }
 
@@ -255,4 +258,14 @@ func HashIdentifier(toHash string) (hashedValue string) {
 		return ""
 	}
 	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, blueButtonIter, 32, sha256.New))
+}
+
+func UpdateParamWithLastUpdated(params *url.Values, since string, transactionTime time.Time) {
+	// upper bound will always be set
+	params.Set("_lastUpdated", "le"+transactionTime.Format(time.RFC3339Nano))
+
+	// only set the lower bound parameter if it exists and begins with "gt" (to align with what is expected in _lastUpdated)
+	if len(since) > 0 && strings.HasPrefix(since, "gt") {
+		params.Add("_lastUpdated", since)
+	}
 }

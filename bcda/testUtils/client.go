@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/stretchr/testify/mock"
@@ -13,10 +14,10 @@ type BlueButtonClient struct {
 	mock.Mock
 	client.BlueButtonClient
 	HICN *string
-	MBI *string
+	MBI  *string
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (string, error) {
 	args := bbc.Called(patientID)
 	return args.String(0), args.Error(1)
 }
@@ -26,12 +27,12 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patien
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (string, error) {
 	args := bbc.Called(patientID, jobID, cmsID)
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (string, error) {
 	args := bbc.Called(beneficiaryID, jobID, cmsID)
 	return args.String(0), args.Error(1)
 }

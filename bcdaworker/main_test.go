@@ -84,7 +84,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryID))
 	}
 
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	if err != nil {
 		t.Fail()
 	}
@@ -121,7 +121,7 @@ func TestWriteEOBDataToFile(t *testing.T) {
 }
 
 func TestWriteEOBDataToFileNoClient(t *testing.T) {
-	_, err := writeBBDataToFile(nil, nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", "A00234", []string{"20000", "21000"}, "1", "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(nil, nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", "A00234", []string{"20000", "21000"}, "1", "ExplanationOfBenefit", "", time.Now())
 	assert.NotNil(t, err)
 }
 
@@ -133,7 +133,7 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit", "", time.Now())
 	assert.NotNil(t, err)
 }
 
@@ -173,7 +173,7 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	fileUUID, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	fileUUID, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	if err != nil {
 		t.Fail()
 	}
@@ -227,7 +227,7 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.Equal(t, "number of failed requests has exceeded threshold", err.Error())
 
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
@@ -268,7 +268,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	defer db.Delete(&cclfFile)
 
 	bbc := testUtils.BlueButtonClient{}
-	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string"),mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
+	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
 
 	// clean out the data dir before beginning this test
 	os.RemoveAll(stagingDir)
@@ -283,7 +283,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit")
+	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.EqualError(t, err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(stagingDir)

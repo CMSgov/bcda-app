@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/pborman/uuid"
@@ -26,6 +27,8 @@ type BBRequestTestSuite struct {
 }
 
 var ts200, ts500 *httptest.Server
+var now = time.Now()
+var nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 
 func (s *BBTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
@@ -183,41 +186,104 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 }
 
 /* Tests that make requests, using clients configured with the 200 response and 500 response httptest.Servers initialized in SetupSuite() */
-func (s *BBRequestTestSuite) TestGetPatient() {
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetPatientWithoutSince() {
+	since := ""
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `{ "test": "ok"`)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
+	assert.NotContains(s.T(), p, "_lastUpdated=gt")
+	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+}
+
+func (s *BBRequestTestSuite) TestGetPatientWithInvalidSince_500() {
+	since := "invalid"
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Equal(s.T(), "", p)
+}
+
+func (s *BBRequestTestSuite) TestGetPatientWithSince() {
+	since := "gt2020-02-14"
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+	assert.Nil(s.T(), err)
+	assert.Contains(s.T(), p, `{ "test": "ok"`)
+	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
+	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=%s", since))
+	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetPatient_500() {
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000")
+	since := ""
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBRequestTestSuite) TestGetCoverage() {
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetCoverageWithoutSince() {
+	since := ""
+	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), c, `{ "test": "ok"`)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
+	assert.NotContains(s.T(), c, "_lastUpdated=gt")
+	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+}
+
+func (s *BBRequestTestSuite) TestGetCoverageWithInvalidSince_500() {
+	since := "invalid"
+	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Equal(s.T(), "", c)
+}
+
+func (s *BBRequestTestSuite) TestGetCoverageWithSince() {
+	since := "gt2020-02-14"
+	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	assert.Nil(s.T(), err)
+	assert.Contains(s.T(), c, `{ "test": "ok"`)
+	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
+	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=%s", since))
+	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetCoverage_500() {
-	p, err := s.bbClient.GetCoverage("012345", "543210", "A0000")
+	since := ""
+	p, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
-func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000")
+func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithoutSince() {
+	since := ""
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), e, `{ "test": "ok"`)
 	assert.Contains(s.T(), e, "excludeSAMHSA=true")
+	assert.NotContains(s.T(), e, "_lastUpdated=gt")
+	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+}
+
+func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithInvalidSince_500() {
+	since := "invalid"
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Equal(s.T(), "", e)
+}
+
+func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithSince() {
+	since := "gt2020-02-14"
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+	assert.Nil(s.T(), err)
+	assert.Contains(s.T(), e, `{ "test": "ok"`)
+	assert.Contains(s.T(), e, "excludeSAMHSA=true")
+	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=%s", since))
+	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	p, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000")
+	since := ""
+	p, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }

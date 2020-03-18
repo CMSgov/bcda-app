@@ -134,11 +134,19 @@ type FileParam struct {
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest
 type ResourceTypeParam struct {
-	// Resource types requested
+	// (Optional) Resource types requested
 	// in: query
 	// style: form
 	// explode: false
 	ResourceType []string `json:"_type"`
+}
+
+// swagger:parameters bulkPatientRequest bulkGroupRequest
+type SinceParam struct {
+        // (Optional) Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR dateTime datatype (i.e., `2020-02-13T08:00:00.000-05:00`)
+        // in: query
+        // required: false
+        DateTime string `json:"_since"`
 }
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest

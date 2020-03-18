@@ -61,6 +61,7 @@ type Job struct {
 	ACOID             uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
 	RequestURL        string    `json:"request_url"` // request_url
 	Status            string    `json:"status"`      // status
+	TransactionTime   time.Time // most recent data load transaction time from BFD
 	JobCount          int
 	CompletedJobCount int
 	JobKeys           []JobKey
@@ -104,7 +105,7 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 	return false, nil
 }
 
-func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err error) {
+func (job *Job) GetEnqueJobs(resourceTypes []string, since string) (enqueJobs []*que.Job, err error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 	var aco ACO
@@ -132,10 +133,12 @@ func (job *Job) GetEnqueJobs(resourceTypes []string) (enqueJobs []*que.Job, err 
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 
 				args, err := json.Marshal(jobEnqueueArgs{
-					ID:             int(job.ID),
-					ACOID:          job.ACOID.String(),
-					BeneficiaryIDs: jobIDs,
-					ResourceType:   rt,
+					ID:              int(job.ID),
+					ACOID:           job.ACOID.String(),
+					BeneficiaryIDs:  jobIDs,
+					ResourceType:    rt,
+					Since:           since,
+					TransactionTime: job.TransactionTime,
 				})
 				if err != nil {
 					return nil, err
@@ -189,8 +192,8 @@ func GetMaxBeneCount(requestType string) (int, error) {
 
 type JobKey struct {
 	gorm.Model
-	Job          Job  `gorm:"foreignkey:jobID"`
-	JobID        uint `gorm:"primary_key" json:"job_id"`
+	Job          Job    `gorm:"foreignkey:jobID"`
+	JobID        uint   `gorm:"primary_key" json:"job_id"`
 	FileName     string `gorm:"type:char(127)"`
 	ResourceType string
 }
@@ -456,12 +459,12 @@ type Suppression struct {
 func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
 
 	modelIdentifier := cclfBeneficiary.HICN
-	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
 	if patientIdMode == "MBI_MODE" {
 		modelIdentifier = cclfBeneficiary.MBI
 	}
 
-	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode,"beneficiary", cclfBeneficiary.ID,)
+	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "beneficiary", cclfBeneficiary.ID)
 	if err != nil {
 		return "", err
 	}
@@ -477,10 +480,10 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 
 	// uncomment when NGD supports MBI
 	/*
-	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
-	if patientIdMode == "MBI_MODE" {
-		modelIdentifier = suppressionBeneficiary.MBI
-	}
+		patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
+		if patientIdMode == "MBI_MODE" {
+			modelIdentifier = suppressionBeneficiary.MBI
+		}
 	*/
 	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "suppression", suppressionBeneficiary.ID)
 	if err != nil {
@@ -531,7 +534,7 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 		}
 	}
 	if !foundIdentifier {
-		patientIdMode = strings.Split(patientIdMode,"_")[0]
+		patientIdMode = strings.Split(patientIdMode, "_")[0]
 		err = fmt.Errorf("%v not found in the identifiers", patientIdMode)
 		log.Error(err)
 		return "", err
@@ -582,8 +585,10 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
 // swagger:ignore
 type jobEnqueueArgs struct {
-	ID             int
-	ACOID          string
-	BeneficiaryIDs []string
-	ResourceType   string
+	ID              int
+	ACOID           string
+	BeneficiaryIDs  []string
+	ResourceType    string
+	Since           string
+	TransactionTime time.Time
 }

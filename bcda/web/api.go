@@ -17,11 +17,13 @@ import (
 
 	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
+	fhirutils "github.com/eug48/fhir/utils"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -56,7 +58,8 @@ const (
 		500: errorResponse
 */
 func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := validateRequest(r); if err != nil {
+	resourceTypes, err := validateRequest(r)
+	if err != nil {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
@@ -86,7 +89,8 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	groupID := chi.URLParam(r, "groupId")
 	if groupID == groupAll {
-		resourceTypes, err := validateRequest(r); if err != nil {
+		resourceTypes, err := validateRequest(r)
+		if err != nil {
 			responseutils.WriteError(err, w, http.StatusBadRequest)
 			return
 		}
@@ -148,6 +152,37 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+	// request a fake patient in order to acquire the bundle's lastUpdated metadata
+	jsonData, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to retrieve transactionTime metadata from FHIR Data Server.")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+	var patient models.Patient
+	err = json.Unmarshal([]byte(jsonData), &patient)
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to parse transactionTime metadata from FHIR Data Server.")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+	transactionTime := patient.Meta.LastUpdated
+	if db.Model(&newJob).Update("transaction_time", transactionTime).Error != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
 	if qc == nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -155,8 +190,17 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Decode the _since parameter (if it exists) so it can be persisted in job args
+	// (it will be persisted in format ready for usage with _lastUpdated -- i.e., appended with 'gt')
+	var decodedSince string
+	params, ok := r.URL.Query()["_since"]
+	if ok {
+		decodedSince, _ = url.QueryUnescape(params[0])
+		decodedSince = "gt" + decodedSince
+	}
+
 	var enqueueJobs []*que.Job
-	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes)
+	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
@@ -164,12 +208,12 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-        if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
-                log.Error(err)
-                oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
-                responseutils.WriteError(oo, w, http.StatusInternalServerError)
-                return
-        }
+	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
 
 	for _, j := range enqueueJobs {
 		if err = qc.Enqueue(j); err != nil {
@@ -221,7 +265,9 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 	}
 }
 
-func validateRequest (r *http.Request) ([]string, *fhirmodels.OperationOutcome)  {
+func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
+
+	// validate optional "_type" parameter
 	var resourceTypes []string
 	params, ok := r.URL.Query()["_type"]
 	if ok {
@@ -245,6 +291,17 @@ func validateRequest (r *http.Request) ([]string, *fhirmodels.OperationOutcome) 
 		// resource types not supplied in request; default to applying all resource types.
 		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 	}
+
+	// validate optional "_since" parameter
+	params, ok = r.URL.Query()["_since"]
+	if ok {
+		_, err := fhirutils.ParseDate(params[0])
+		if err != nil {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.")
+			return nil, oo
+		}
+	}
+
 	return resourceTypes, nil
 }
 
@@ -312,7 +369,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		rb := bulkResponseBody{
-			TransactionTime:     job.CreatedAt,
+			TransactionTime:     job.TransactionTime,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
 			Files:               []fileItem{},
@@ -326,8 +383,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 			// data files
 			fi := fileItem{
-				Type:         jobKey.ResourceType,
-				URL:          fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				Type: jobKey.ResourceType,
+				URL:  fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
 			rb.Files = append(rb.Files, fi)
 
@@ -540,7 +597,7 @@ type bulkResponseBody struct {
 	// Information about generated data files, including URLs for downloading
 	Files []fileItem `json:"output"`
 	// Information about error files, including URLs for downloading
-	Errors []fileItem        `json:"error"`
+	Errors []fileItem `json:"error"`
 	JobID  uint
 }
 
