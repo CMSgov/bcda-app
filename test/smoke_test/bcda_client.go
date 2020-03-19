@@ -99,7 +99,6 @@ func startJob(endpoint, resourceType string) *http.Response {
 
 	req.Header.Add("Prefer", "respond-async")
 	req.Header.Add("Accept", "application/fhir+json")
-	req.Header.Add("Accept-Encoding", "gzip")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := client.Do(req)
@@ -119,6 +118,7 @@ func get(location string) *http.Response {
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	req.Header.Add("Accept-Encoding", "gzip")
 
 	resp, err := client.Do(req)
 	if err != nil {
