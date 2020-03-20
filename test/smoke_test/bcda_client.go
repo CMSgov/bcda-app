@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -136,7 +137,21 @@ func writeFile(resp *http.Response, filename string) {
 		panic(err)
 	}
 	defer out.Close() // #nosec G307
-	num, err := io.Copy(out, resp.Body)
+
+	// verify if server sent gzip and choose proper reader
+	var reader io.ReadCloser
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		defer reader.Close()
+	default:
+		reader = resp.Body
+	}
+
+	num, err := io.Copy(out, reader)
 	if err != nil && num <= 0 {
 		panic(err)
 	}
@@ -187,7 +202,6 @@ func main() {
 				fmt.Println("file is ready for download...")
 
 				defer status.Body.Close()
-
 				var objmap map[string]*json.RawMessage
 				err := json.NewDecoder(status.Body).Decode(&objmap)
 				if err != nil {
