@@ -110,7 +110,7 @@ func startJob(endpoint, resourceType string) *http.Response {
 	return resp
 }
 
-func get(location string) *http.Response {
+func get(location string, gzipEnabled bool) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"GET", location, nil)
@@ -119,7 +119,10 @@ func get(location string) *http.Response {
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-	req.Header.Add("Accept-Encoding", "gzip")
+
+	if gzipEnabled {
+		req.Header.Add("Accept-Encoding", "gzip")
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -192,7 +195,7 @@ func main() {
 			}
 
 			fmt.Println("checking job status...")
-			status := get(result.Header["Content-Location"][0])
+			status := get(result.Header["Content-Location"][0], false)
 
 			// Acquire new token if the current token has expired
 			if status.StatusCode == 401 {
@@ -219,7 +222,7 @@ func main() {
 					accessToken = getAccessToken()
 
 					fmt.Printf("fetching: %s\n", fileItem.Url)
-					download := get(fileItem.Url)
+					download := get(fileItem.Url, true)
 					if download.StatusCode == 200 {
 						filename := "/tmp/" + path.Base(fileItem.Url)
 						fmt.Printf("writing download to disk: %s\n", filename)
