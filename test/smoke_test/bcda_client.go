@@ -154,7 +154,7 @@ func writeFile(resp *http.Response, filename string) {
 		reader = resp.Body
 	}
 
-	num, err := io.Copy(out, reader)
+	num, err := io.CopyN(out, reader, 64)
 	if err != nil && num <= 0 {
 		panic(err)
 	}
