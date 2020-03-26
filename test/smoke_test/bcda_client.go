@@ -145,16 +145,16 @@ func writeFile(resp *http.Response, filename string) {
 	var reader io.ReadCloser
 	switch resp.Header.Get("Content-Encoding") {
 	case "gzip":
-		reader, err = gzip.NewReader(resp.Body)
+		reader, err := gzip.NewReader(resp.Body)
 		if err != nil {
 			panic(err)
 		}
-		defer reader.Close()
+		defer reader.Close() // #nosec G307
 	default:
 		reader = resp.Body
 	}
 
-	num, err := io.CopyN(out, reader, 64)
+	num, err := io.Copy(out, reader)
 	if err != nil && num <= 0 {
 		panic(err)
 	}
