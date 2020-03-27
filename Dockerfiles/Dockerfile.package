@@ -1,4 +1,4 @@
-FROM golang:1.14.1-alpine3.11
+FROM golang:1.14.1
 
 ARG GPG_PUB_KEY_FILE
 ARG GPG_SEC_KEY_FILE
