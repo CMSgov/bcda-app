@@ -134,7 +134,12 @@ func writeFile(resp *http.Response, filename string) {
 	if err != nil {
 		panic(err)
 	}
-	defer out.Close() // #nosec G307
+	defer func() {
+		if ferr := out.Close(); ferr != nil {
+			panic(ferr)
+		}
+	}()
+
 	num, err := io.Copy(out, resp.Body)
 	if err != nil && num <= 0 {
 		panic(err)

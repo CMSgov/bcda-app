@@ -191,7 +191,11 @@ func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID 
 		return "", err
 	}
 
-	defer f.Close() // #nosec G307
+	defer func() {
+		if ferr := f.Close(); ferr != nil {
+			error = ferr
+		}
+	}()
 
 	w := bufio.NewWriter(f)
 	errorCount := 0
@@ -306,7 +310,11 @@ func appendErrorToFile(fileUUID, code, detailsCode, detailsDisplay string, jobID
 		log.Error(err)
 	}
 
-	defer f.Close() // #nosec G307
+	defer func() {
+		if ferr := f.Close(); ferr != nil {
+			log.Error(ferr)
+		}
+	}()
 
 	ooBytes, err := json.Marshal(oo)
 	if err != nil {

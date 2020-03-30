@@ -67,7 +67,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		//timeStr := time.Now().Add(time.Minute * time.Duration(i-1)).Format("1504059")
 		archiveName = fmt.Sprintf("T.BCD.A%s.ZCY%s.T%s", acoIDNum, dateStr, "0000000")
 		filename := fmt.Sprintf("T.BCD.A%s.%sY%s.T%s", acoIDNum, file.Name(), dateStr, "0000000")
-		sourceFile_fileName := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(),filename)
+		sourceFile_fileName := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(), filename)
 		fileList = append(fileList, sourceFile_fileName)
 	}
 
@@ -75,7 +75,12 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer newZipFile.Close() // #nosec G307
+	defer func() {
+		if ferr := newZipFile.Close(); ferr != nil {
+			err = ferr
+		}
+	}()
+
 	zipWriter := zip.NewWriter(newZipFile)
 
 	// Add all 3 files to the same zip
@@ -102,7 +107,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 }
 
 func AddFileToZip(zipWriter *zip.Writer, filename string) error {
-	sourceData := strings.Split(filename,"__")
+	sourceData := strings.Split(filename, "__")
 	src := sourceData[0]
 	filename = sourceData[1]
 
@@ -110,7 +115,11 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer fileToZip.Close() // #nosec G307
+	defer func() {
+		if ferr := fileToZip.Close(); ferr != nil {
+			err = ferr
+		}
+	}()
 
 	// Get the file information
 	info, err := fileToZip.Stat()
