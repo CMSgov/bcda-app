@@ -31,22 +31,18 @@ done
 # the following is based on: 
 # https://github.com/golang/go/blob/release-branch.go1.1/misc/git/pre-commit
 
-# if there aren't any added, copied, or modified .go files that are staged for 
-# commit, then exit ok.
+# Are there any added, copied, or modified .go files that are staged for commit?
 gofiles=$(grep '.go$' < "$tmpfile")
 [ -z "$gofiles" ] && exit 0
 
-# If there aren't any files that are unformatted
+# Check if they need to be formatted
 unformatted=$(gofmt -l "$gofiles")
-if [[ -z "$unformatted" ]]
-then
-    exit 0
-else
-    # Some files are not gofmt'd. Print message and fail.
-    echo >&2 "Go files must be formatted with gofmt. Please run:"
-    for fn in $unformatted; do
-    	echo >&2 "  gofmt -w $PWD/$fn"
-    done
+[ -z "$unformatted" ] && exit 0
 
-    exit 1
-fi
+# Some files are not gofmt'd. Print message and fail.
+echo >&2 "Go files must be formatted with gofmt. Please run:"
+for fn in $unformatted; do
+    echo >&2 "  gofmt -w $PWD/$fn"
+done
+
+exit 1
