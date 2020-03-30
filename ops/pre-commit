@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# A pre-commit hook which checks for secret files being committed
-# as plaintext.
+# A pre-commit hook which:
+# 1. checks for secret files being committed as plaintext
+# 2. checks if any files need to be gofmt'd
 
 # read list of files containing secrets
 IFS=$'\n' read -d '' -r -a secrets < .secrets
@@ -26,3 +27,26 @@ for commitFile in ${commits[@]}; do
         fi
     done
 done
+
+# the following is based on: 
+# https://github.com/golang/go/blob/release-branch.go1.1/misc/git/pre-commit
+
+# if there aren't any added, copied, or modified .go files that are staged for 
+# commit, then exit ok.
+gofiles=$(grep '.go$' < "$tmpfile")
+[ -z "$gofiles" ] && exit 0
+
+# If there aren't any files that are unformatted
+unformatted=$(gofmt -l "$gofiles")
+if [[ -z "$unformatted" ]]
+then
+    exit 0
+else
+    # Some files are not gofmt'd. Print message and fail.
+    echo >&2 "Go files must be formatted with gofmt. Please run:"
+    for fn in $unformatted; do
+    	echo >&2 "  gofmt -w $PWD/$fn"
+    done
+
+    exit 1
+fi
