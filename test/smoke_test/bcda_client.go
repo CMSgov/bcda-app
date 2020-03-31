@@ -11,6 +11,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var (
@@ -134,11 +136,7 @@ func writeFile(resp *http.Response, filename string) {
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		if ferr := out.Close(); ferr != nil {
-			panic(ferr)
-		}
-	}()
+	defer utils.CloseSafely(out)
 
 	num, err := io.Copy(out, resp.Body)
 	if err != nil && num <= 0 {

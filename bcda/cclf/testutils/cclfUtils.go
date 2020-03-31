@@ -75,7 +75,8 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		return err
 	}
 	defer func() {
-		if ferr := newZipFile.Close(); ferr != nil {
+		ferr := utils.CloseSafelyAndReturnError(newZipFile)
+		if ferr != nil && err == nil {
 			err = ferr
 		}
 	}()
@@ -116,7 +117,8 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) (err error) {
 		return
 	}
 	defer func() {
-		if ferr := fileToZip.Close(); err == nil {
+		ferr := utils.CloseSafelyAndReturnError(fileToZip)
+		if ferr != nil && err == nil {
 			err = ferr
 		}
 	}()
