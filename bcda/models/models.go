@@ -443,7 +443,8 @@ type Suppression struct {
 	SuppressionFile     SuppressionFile
 	FileID              uint      `gorm:"not null"`
 	BlueButtonID        string    `gorm:"type: text;index:idx_suppression_bb_id"`
-	HICN                string    `gorm:"type:varchar(11);not null"`
+	MBI		    string    `gorm:"type:varchar(11)"` 
+	HICN                string    `gorm:"type:varchar(11)"`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
 	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`
@@ -475,16 +476,16 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 // If you use suppressionBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
 
+	// support legacy data (before March 2020) when NGD only supported HICN
 	modelIdentifier := suppressionBeneficiary.HICN
 	patientIdMode := "HICN_MODE"
 
-	// uncomment when NGD supports MBI
-	/*
-		patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE","HICN_MODE")
-		if patientIdMode == "MBI_MODE" {
-			modelIdentifier = suppressionBeneficiary.MBI
-		}
-	*/
+	// NGD added support for MBI in March 2020
+	if modelIdentifier == ""  {
+		modelIdentifier = suppressionBeneficiary.MBI
+		patientIdMode = "MBI_MODE"
+	}
+
 	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "suppression", suppressionBeneficiary.ID)
 	if err != nil {
 		return "", err
