@@ -106,6 +106,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	}
 }
 
+// AddFileToZip adds the file to a zip archive
 func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 	sourceData := strings.Split(filename, "__")
 	src := sourceData[0]
@@ -116,8 +117,8 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 		return err
 	}
 	defer func() {
-		if ferr := fileToZip.Close(); ferr != nil {
-			err = ferr
+		if err := fileToZip.Close(); err != nil {
+			return err
 		}
 	}()
 
