@@ -106,30 +106,31 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 }
 
 // AddFileToZip adds the file to a zip archive
-func AddFileToZip(zipWriter *zip.Writer, filename string) error {
+func AddFileToZip(zipWriter *zip.Writer, filename string) (err error) {
 	sourceData := strings.Split(filename, "__")
 	src := sourceData[0]
 	filename = sourceData[1]
 
 	fileToZip, err := os.Open(filepath.Clean(src))
 	if err != nil {
-		return err
+		return
 	}
 	defer func() {
-		if err := fileToZip.Close(); err != nil {
-			return err
+		ferr := fileToZip.Close()
+		if err == nil {
+			err = ferr
 		}
 	}()
 
 	// Get the file information
 	info, err := fileToZip.Stat()
 	if err != nil {
-		return err
+		return
 	}
 
 	header, err := zip.FileInfoHeader(info)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Using FileInfoHeader() above only uses the basename of the file. If we want
@@ -142,8 +143,8 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) error {
 
 	writer, err := zipWriter.CreateHeader(header)
 	if err != nil {
-		return err
+		return
 	}
 	_, err = io.Copy(writer, fileToZip)
-	return err
+	return
 }
