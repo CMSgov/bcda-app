@@ -193,7 +193,8 @@ func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID 
 
 	defer func() {
 		if ferr := f.Close(); ferr != nil {
-			error = ferr
+			log.Error(ferr)
+			return "", ferr
 		}
 	}()
 
