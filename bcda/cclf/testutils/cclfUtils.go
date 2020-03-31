@@ -116,8 +116,7 @@ func AddFileToZip(zipWriter *zip.Writer, filename string) (err error) {
 		return
 	}
 	defer func() {
-		ferr := fileToZip.Close()
-		if err == nil {
+		if ferr := fileToZip.Close(); err == nil {
 			err = ferr
 		}
 	}()
