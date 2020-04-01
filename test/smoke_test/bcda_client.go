@@ -137,7 +137,6 @@ func writeFile(resp *http.Response, filename string) {
 		panic(err)
 	}
 	defer utils.CloseFileAndLogError(out)
-
 	num, err := io.Copy(out, resp.Body)
 	if err != nil && num <= 0 {
 		panic(err)
