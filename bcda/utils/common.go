@@ -73,18 +73,9 @@ func IsUUID(s string) bool {
 	return re.MatchString(s)
 }
 
-// CloseSafely will close a file and log any errors
-func CloseSafely(f *os.File) {
+// CloseFileAndLogError closes a file and logs any errors
+func CloseFileAndLogError(f *os.File) {
 	if ferr := f.Close(); ferr != nil {
 		logrus.Error(ferr)
 	}
-}
-
-// CloseSafelyAndReturnError will close a file, log, and return any errors
-func CloseSafelyAndReturnError(f *os.File) (err error) {
-	if ferr := f.Close(); ferr != nil {
-		logrus.Error(ferr)
-		err = ferr
-	}
-	return
 }
