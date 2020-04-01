@@ -440,7 +440,7 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "retrieve-suppression-hicn-to-bbid",
+			Name:     "retrieve-suppression-bbids",
 			Category: "Data import",
 			Usage:    "Populate suppression model with BlueButton IDs",
 

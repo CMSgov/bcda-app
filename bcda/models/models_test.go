@@ -983,7 +983,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	os.Unsetenv("PATIENT_IDENTIFIER_MODE")
 }
 
-func (s *ModelsTestSuite) TestGetBlueButtonID_Suppression() {
+func (s *ModelsTestSuite) TestGetBlueButtonID_SuppressionHICN() {
 	assert := s.Assert()
 	suppressBene := Suppression{HICN: "HASH_ME"}
 	bbc := testUtils.BlueButtonClient{}
@@ -1011,4 +1011,34 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_Suppression() {
 
 	// Should be making two calls to BB for all attempts, due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
+}
+
+func (s *ModelsTestSuite) TestGetBlueButtonID_SuppressionMBI() {
+        assert := s.Assert()
+        suppressBene := Suppression{MBI: "MBI_HASH"}
+        bbc := testUtils.BlueButtonClient{}
+        bbc.MBI = &suppressBene.MBI
+
+        // set to mbi mode
+        err := os.Setenv("PATIENT_IDENTIFIER_MODE", "MBI_MODE")
+        assert.Nil(err)
+        patientIdMode := "MBI_MODE"
+        bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(suppressBene.MBI), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
+        db := database.GetGORMDbConnection()
+        defer db.Close()
+
+        // New never seen before mbi, asks the mock blue button client for the value
+        blueButtonID, err := suppressBene.GetBlueButtonID(&bbc)
+        assert.Nil(err)
+        assert.Equal("BB_VALUE", blueButtonID)
+
+        // The object has a BB ID set on it already, but we still ask mock blue button client for the value
+        // We should receive the BB_VALUE since we are ignoring cached values
+        suppressBene.BlueButtonID = "LOCAL_VAL"
+        blueButtonID, err = suppressBene.GetBlueButtonID(&bbc)
+        assert.Nil(err)
+        assert.Equal("BB_VALUE", blueButtonID)
+
+        // Should be making two calls to BB for all attempts, due to the fact that we are not relying on cached identifiers
+        bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 }

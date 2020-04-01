@@ -27,6 +27,7 @@ To avoid committing and pushing unencrypted secret files, use the included `scri
 ```
 cp ops/pre-commit .git/hooks
 ```
+The pre-commit hook will also ensure that any added, copied, or modified go files are formatted properly.
 
 ### Managing encrypted files
 * Temporarily decrypt files by running the following command from the repository root directory: 
