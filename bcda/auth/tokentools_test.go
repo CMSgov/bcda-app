@@ -16,14 +16,14 @@ import (
 type TokenToolsTestSuite struct {
 	suite.Suite
 	originalEnvValue string
-	abe *auth.AlphaBackend
-	reset func()
+	abe              *auth.AlphaBackend
+	reset            func()
 }
 
 func (s *TokenToolsTestSuite) SetupSuite() {
 	s.originalEnvValue = os.Getenv("JWT_EXPIRATION_DELTA")
 	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
-	public  := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
+	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
 	s.reset = func() {
 		private()
 		public()

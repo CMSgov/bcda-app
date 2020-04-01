@@ -447,7 +447,8 @@ func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *
 		_ = zipReader.Close()
 
 		// validate the top level zipped folder
-		err = validateCCLFFolderName(info.Name()); if err != nil {
+		err = validateCCLFFolderName(info.Name())
+		if err != nil {
 			*skipped = *skipped + 1
 			msg := fmt.Sprintf("Skipping CCLF archive: %s.", info.Name())
 			fmt.Println(msg)

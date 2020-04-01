@@ -29,7 +29,6 @@ func (s *CCLFUtilTestSuite) TearDownSuite() {
 	os.Setenv("CCLF_REF_DATE", origDate)
 }
 
-
 func TestCCLFTestSuite(t *testing.T) {
 	suite.Run(t, new(CCLFUtilTestSuite))
 }

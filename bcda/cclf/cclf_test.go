@@ -21,6 +21,7 @@ import (
 )
 
 const BASE_FILE_PATH = "../../shared_files/"
+
 var origDate string
 
 type CCLFTestSuite struct {
@@ -102,7 +103,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 
 	// missing cclf8 from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000"
-	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name:"T.BCD.A0001.ZC0Y18.D181120.T1000011"}
+	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011"}
 	_, err = importCCLF0(cclf0metadata)
 	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file T.BCD.A0001.ZC0Y18.D181120.T1000011")
 
@@ -117,7 +118,7 @@ func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 	assert := assert.New(s.T())
 
 	cclf0filePath := BASE_FILE_PATH + "cclf/archives/split/T.BCD.A0001.ZCY18.D181120.T1000000"
-	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name:"T.BCD.A0001.ZC0Y18.D181120.T1000011-1"}
+	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011-1"}
 
 	validator, err := importCCLF0(cclf0metadata)
 	assert.Nil(err)
@@ -128,7 +129,7 @@ func (s *CCLFTestSuite) TestValidate() {
 	assert := assert.New(s.T())
 
 	cclf8filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"
-	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name:"T.BCD.A0001.ZC8Y18.D181120.T1000009"}
+	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "T.BCD.A0001.ZC8Y18.D181120.T1000009"}
 
 	// positive
 	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 6, maxRecordLength: 549}}
