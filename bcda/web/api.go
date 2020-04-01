@@ -96,7 +96,7 @@ func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		bulkRequest(resourceTypes, w, r)
 	} else {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid groupID", responseutils.RequestErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
@@ -109,7 +109,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	)
 
 	if ad, err = readAuthData(r); err != nil {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.TokenErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.TokenErr, "")
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
 	}
@@ -147,7 +147,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	}
 	if result := db.Save(&newJob); result.Error != nil {
 		log.Error(result.Error.Error())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -155,7 +155,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	bb, err := client.NewBlueButtonClient()
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -163,7 +163,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	jsonData, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to retrieve transactionTime metadata from FHIR Data Server.")
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -171,21 +171,21 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	err = json.Unmarshal([]byte(jsonData), &patient)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Failure to parse transactionTime metadata from FHIR Data Server.")
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Failure to parse transactionTime metadata from FHIR Data Server.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 	transactionTime := patient.Meta.LastUpdated
 	if db.Model(&newJob).Update("transaction_time", transactionTime).Error != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
 	if qc == nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -203,14 +203,14 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
 	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -218,7 +218,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	for _, j := range enqueueJobs {
 		if err = qc.Enqueue(j); err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
@@ -237,7 +237,7 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 			req, err := url.Parse(job.RequestURL)
 			if err != nil {
 				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 				responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			}
 
@@ -275,14 +275,14 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 		params = strings.Split(params[0], ",")
 		for _, p := range params {
 			if p != "ExplanationOfBenefit" && p != "Patient" && p != "Coverage" {
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Invalid resource type", responseutils.RequestErr)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid resource type")
 				return nil, oo
 			} else {
 				if !resourceMap[p] {
 					resourceMap[p] = true
 					resourceTypes = append(resourceTypes, p)
 				} else {
-					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "Repeated resource type", responseutils.RequestErr)
+					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
 					return nil, oo
 				}
 			}
@@ -297,7 +297,7 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 	if ok {
 		_, err := fhirutils.ParseDate(params[0])
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.")
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.")
 			return nil, oo
 		}
 	}
@@ -338,7 +338,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	err := db.Find(&job, "id = ?", jobID).Error
 	if err != nil {
 		log.Print(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.DbErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusNotFound)
 		return
 	}
@@ -357,7 +357,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Deleted)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		}
@@ -402,14 +402,14 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Processing)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
@@ -419,7 +419,7 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	case "Expired":
 		w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.Deleted)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
 		responseutils.WriteError(oo, w, http.StatusGone)
 	}
 }
@@ -501,7 +501,7 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -510,7 +510,7 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(respBytes)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, "", responseutils.InternalErr)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}

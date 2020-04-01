@@ -11,7 +11,7 @@ import (
 
 func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
 	fhirmodels.DisableOperationOutcomeDiagnosticsFileLine()
-	oo := fhirmodels.CreateOpOutcome(severity, code, "", detailsDisplay)
+	oo := fhirmodels.CreateOpOutcome(severity, code, detailsCode, detailsDisplay)
 	return oo
 }
 
