@@ -19,9 +19,9 @@ import (
 
 var (
 	alphaBackend *AlphaBackend
-	hashIter int
-	hashKeyLen int
-	saltSize int
+	hashIter     int
+	hashKeyLen   int
+	saltSize     int
 )
 
 // Hash is a cryptographically hashed string
@@ -35,7 +35,7 @@ func init() {
 	saltSize = utils.GetEnvInt("AUTH_HASH_SALT_SIZE", 0)
 
 	if hashIter == 0 || hashKeyLen == 0 || saltSize == 0 {
-		serviceHalted(event{help:"HASH_ITERATIONS, HASH_KEY_LENGTH and HASH_SALT_SIZE environment values must be set"})
+		serviceHalted(event{help: "HASH_ITERATIONS, HASH_KEY_LENGTH and HASH_SALT_SIZE environment values must be set"})
 		panic("HASH_ITERATIONS, HASH_KEY_LENGTH and HASH_SALT_SIZE environment values must be set")
 	}
 }
@@ -123,7 +123,7 @@ func getPrivateKey() *rsa.PrivateKey {
 
 	fileName, ok := os.LookupEnv("JWT_PRIVATE_KEY_FILE")
 	if !ok {
-		serviceHalted(event{help:"no value in JWT_PRIVATE_KEY_FILE"})
+		serviceHalted(event{help: "no value in JWT_PRIVATE_KEY_FILE"})
 		panic(errors.New("no value in JWT_PRIVATE_KEY_FILE"))
 	}
 	logger.Infof("opening %s", fileName)
@@ -131,7 +131,7 @@ func getPrivateKey() *rsa.PrivateKey {
 	privateKeyFile, err := os.Open(fileName)
 	if err != nil {
 		msg := fmt.Sprintf("can't open private key file %s because %v", fileName, err)
-		serviceHalted(event{help:msg})
+		serviceHalted(event{help: msg})
 		panic(errors.New(msg))
 	}
 
@@ -142,7 +142,7 @@ func getPrivateKey() *rsa.PrivateKey {
 func getPublicKey() *rsa.PublicKey {
 	publicKeyFile, err := os.Open(os.Getenv("JWT_PUBLIC_KEY_FILE"))
 	if err != nil {
-		serviceHalted(event{help:err.Error()})
+		serviceHalted(event{help: err.Error()})
 		panic(err)
 	}
 	return utils.OpenPublicKeyFile(publicKeyFile)

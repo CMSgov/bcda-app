@@ -53,7 +53,7 @@ func (s *MiddlewareTestSuite) SetupTest() {
 	s.token, _ = auth.TokenStringWithIDs(tokenID, acoID)
 	s.ad = auth.AuthData{
 		TokenID: tokenID,
-		CMSID:  cmsID,
+		CMSID:   cmsID,
 		ACOID:   acoID,
 	}
 	s.server = httptest.NewServer(s.CreateRouter())
