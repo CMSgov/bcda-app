@@ -15,25 +15,21 @@ func ValidateBulkRequestHeaders(next http.Handler) http.Handler {
 		preferHeader := h.Get("Prefer")
 
 		if acceptHeader == "" {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
-			oo.Issue[0].Diagnostics = "Accept header is required"
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, responseutils.FormatErr, "Accept header is required")
 			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		} else if acceptHeader != "application/fhir+json" {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
-			oo.Issue[0].Diagnostics = "application/fhir+json is the only supported response format"
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, responseutils.FormatErr, "application/fhir+json is the only supported response format")
 			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		}
 
 		if preferHeader == "" {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
-			oo.Issue[0].Diagnostics = "Prefer header is required"
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, responseutils.FormatErr, "Prefer header is required")
 			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		} else if preferHeader != "respond-async" {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, "", responseutils.FormatErr)
-			oo.Issue[0].Diagnostics = "Only asynchronous responses are supported"
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Structure, responseutils.FormatErr, "Only asynchronous responses are supported")
 			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		}

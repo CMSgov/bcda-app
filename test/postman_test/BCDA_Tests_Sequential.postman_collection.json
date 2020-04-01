@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "8746ef2b-bd2a-4de5-b37b-aac54ea34056",
+		"_postman_id": "005ac677-4efe-428a-b89f-e5ba2ae30abf",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -195,9 +195,15 @@
 							"    pm.response.to.have.status(401);",
 							"});",
 							"",
+							"var respJson = pm.response.json();",
+							"",
 							"pm.test(\"Resource type is OperationOutcome\", function() {",
 							"    var respJson = pm.response.json();",
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details code is Invalid Token\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -265,8 +271,8 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Invalid Token\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid Token\")",
+							"pm.test(\"Issue details code is Invalid Token\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -334,8 +340,8 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Invalid Token\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid Token\")",
+							"pm.test(\"Issue details code is Invalid Token\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Invalid Token\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -1337,8 +1343,12 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Repeated Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -1574,8 +1584,13 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"",
+							"pm.test(\"Issue details text is Invalid Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid resource type\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -1649,9 +1664,12 @@
 							"pm.test(\"Resource type is OperationOutcome\", function() {",
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
 							"",
-							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details text is Repeated Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -1727,8 +1745,12 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Invalid Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid resource type\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -1804,8 +1826,12 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Invalid group ID\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid group ID\")",
 							"});"
 						],
 						"type": "text/javascript"

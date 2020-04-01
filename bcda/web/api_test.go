@@ -316,7 +316,7 @@ func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Code)
 }
 
 func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
@@ -342,7 +342,7 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Code)
 }
 
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
@@ -742,14 +742,16 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 	assert.Nil(s.T(), resourceTypes)
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Code)
+	assert.Equal(s.T(), "Invalid resource type", err.Issue[0].Details.Coding[0].Display)
 
 	_, _, req = bulkRequestHelper(endpoint, "Patient,Patient", "")
 	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), resourceTypes)
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Code)
+        assert.Equal(s.T(), "Repeated resource type", err.Issue[0].Details.Coding[0].Display)
 }
 
 func bulkRequestHelper(endpoint, resourceType, since string) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
@@ -801,7 +803,7 @@ func (s *APITestSuite) TestJobStatusInvalidJobID() {
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
 }
 
 func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
@@ -826,7 +828,7 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
 }
 
 func (s *APITestSuite) TestJobStatusPending() {
