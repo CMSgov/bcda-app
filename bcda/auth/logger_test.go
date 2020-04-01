@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOperationLogging(t*testing.T){
+func TestOperationLogging(t *testing.T) {
 	testLogger := test.NewLocal(logger)
 	operationStarted(event{op: "TestOperation", help: "A little more to the right"})
 

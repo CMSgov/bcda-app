@@ -443,7 +443,7 @@ type Suppression struct {
 	SuppressionFile     SuppressionFile
 	FileID              uint      `gorm:"not null"`
 	BlueButtonID        string    `gorm:"type: text;index:idx_suppression_bb_id"`
-	MBI		    string    `gorm:"type:varchar(11)"` 
+	MBI                 string    `gorm:"type:varchar(11)"`
 	HICN                string    `gorm:"type:varchar(11)"`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
@@ -481,7 +481,7 @@ func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) 
 	patientIdMode := "HICN_MODE"
 
 	// NGD added support for MBI in March 2020
-	if modelIdentifier == ""  {
+	if modelIdentifier == "" {
 		modelIdentifier = suppressionBeneficiary.MBI
 		patientIdMode = "MBI_MODE"
 	}

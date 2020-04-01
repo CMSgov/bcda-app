@@ -31,8 +31,8 @@ type suppressionFileMetadata struct {
 }
 
 const (
-	headerCode        = "HDR_BENEDATASHR"
-	trailerCode       = "TRL_BENEDATASHR"
+	headerCode  = "HDR_BENEDATASHR"
+	trailerCode = "TRL_BENEDATASHR"
 )
 
 func ImportSuppressionDirectory(filePath string) (success, failure, skipped int, err error) {
@@ -215,7 +215,7 @@ func validate(metadata *suppressionFileMetadata) error {
 func importSuppressionData(metadata *suppressionFileMetadata) error {
 	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, db *gorm.DB) error {
 		var (
-			mbiStart, mbiEnd			     = 0, 11
+			mbiStart, mbiEnd                             = 0, 11
 			lKeyStart, lKeyEnd                           = 11, 21
 			effectiveDtStart, effectiveDtEnd             = 354, 362
 			sourceCdeStart, sourceCdeEnd                 = 362, 367

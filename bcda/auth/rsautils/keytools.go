@@ -14,7 +14,7 @@ import (
 
 const RSAKEYMINBITS = 2048
 
-func ReadPublicKey (publicKey string) (*rsa.PublicKey, error) {
+func ReadPublicKey(publicKey string) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode([]byte(publicKey))
 	if block == nil {
 		return nil, fmt.Errorf("not able to decode PEM-formatted public key")
@@ -30,7 +30,7 @@ func ReadPublicKey (publicKey string) (*rsa.PublicKey, error) {
 		return nil, fmt.Errorf("not able to cast key as *rsa.PublicKey")
 	}
 
-	if rsaPub.Size() < RSAKEYMINBITS / 8 {
+	if rsaPub.Size() < RSAKEYMINBITS/8 {
 		return nil, fmt.Errorf("insecure key length (%d bytes)", rsaPub.Size())
 	}
 
