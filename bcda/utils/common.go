@@ -72,3 +72,10 @@ func IsUUID(s string) bool {
 	re := regexp.MustCompile("^[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$")
 	return re.MatchString(s)
 }
+
+// CloseFileAndLogError closes a file and logs any errors
+func CloseFileAndLogError(f *os.File) {
+	if ferr := f.Close(); ferr != nil {
+		logrus.Error(ferr)
+	}
+}
