@@ -45,7 +45,6 @@ type APITestSuite struct {
 }
 
 var origDate string
-const sourceDir = "shared_files/cclf/files/synthetic"
 
 func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
@@ -192,7 +191,7 @@ func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
 }
 
 func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage(sourceDir, "dev", "test")
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -229,7 +228,7 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage(sourceDir, "dev", "test")
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -347,7 +346,7 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage(sourceDir, "dev", "test")
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 
@@ -385,7 +384,7 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage(sourceDir, "dev", "test")
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -464,7 +463,7 @@ func bulkCoverageRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage(sourceDir, "dev", "test")
+	err := cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -511,7 +510,7 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
 	assert.Nil(s.T(), err)
 
-	err = cclfUtils.ImportCCLFPackage(sourceDir, "dev", "test")
+	err = cclfUtils.ImportCCLFPackage("dev", "test")
 	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error

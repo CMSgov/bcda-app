@@ -74,12 +74,12 @@ load-fixtures:
 load-synthetic-cclf-data:
 	docker-compose up -d api
 	docker-compose up -d db
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize=dev --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize=dev-auth --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize=small --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize=medium --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize=large --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize=extra-large --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev-auth --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=small --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=medium --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=large --environment=test'
+	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=extra-large --environment=test'
 
 load-synthetic-suppression-data:
 	docker-compose up -d api

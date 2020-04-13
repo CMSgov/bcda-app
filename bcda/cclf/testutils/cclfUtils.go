@@ -18,7 +18,7 @@ const DestDir = "tempCCLFDir/"
 
 // ImportCCLFPackage will copy the appropriate synthetic CCLF files, rename them,
 // begin the import of those files and delete them from the place they were copied to after successful import.
-func ImportCCLFPackage(sourceDir, acoSize, environment string) (err error) {
+func ImportCCLFPackage(acoSize, environment string) (err error) {
 	acoSize = strings.ToLower(acoSize)
 	acoIDNum := map[string]string{
 		"dev":         "9994",
@@ -40,8 +40,8 @@ func ImportCCLFPackage(sourceDir, acoSize, environment string) (err error) {
 		return errors.New("invalid argument for environment")
 	}
 
-	dataDir := filepath.Join(sourceDir, environment, acoSize)
-	dataDir, err = utils.GetDirPath(dataDir)
+	sourcedir := filepath.Join("shared_files/cclf/files/synthetic", environment, acoSize)
+	sourcedir, err = utils.GetDirPath(sourcedir)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func ImportCCLFPackage(sourceDir, acoSize, environment string) (err error) {
 		}
 	}
 
-	files, err := ioutil.ReadDir(dataDir)
+	files, err := ioutil.ReadDir(sourcedir)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func ImportCCLFPackage(sourceDir, acoSize, environment string) (err error) {
 		//timeStr := time.Now().Add(time.Minute * time.Duration(i-1)).Format("1504059")
 		archiveName = fmt.Sprintf("T.BCD.A%s.ZCY%s.T%s", acoIDNum, dateStr, "0000000")
 		filename := fmt.Sprintf("T.BCD.A%s.%sY%s.T%s", acoIDNum, file.Name(), dateStr, "0000000")
-		sourceFilename := fmt.Sprintf("%s/%s__%s", dataDir, file.Name(), filename)
+		sourceFilename := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(), filename)
 		fileList = append(fileList, sourceFilename)
 	}
 
