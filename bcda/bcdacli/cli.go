@@ -44,7 +44,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
+	var acoName, acoCMSID, acoID, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment, sourceDir, groupID, groupName string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -423,6 +423,11 @@ func setUpApp() *cli.App {
 			Category: "Data import",
 			Usage:    "Import a package of synthetic CCLF files",
 			Flags: []cli.Flag{
+                                cli.StringFlag{      
+                                        Name:        "sourceDir",
+                                        Usage:       "The source directory from which to import files",
+                                        Destination: &sourceDir,
+                                },
 				cli.StringFlag{
 					Name:        "acoSize",
 					Usage:       "Set the size of the ACO.  Must be one of 'dev', 'dev-auth', 'small', 'medium', 'large', or 'extra-large'",
@@ -435,7 +440,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				err := cclfUtils.ImportCCLFPackage(acoSize, environment)
+				err := cclfUtils.ImportCCLFPackage(sourceDir, acoSize, environment)
 				return err
 			},
 		},

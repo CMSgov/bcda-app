@@ -15,6 +15,8 @@ type CCLFUtilTestSuite struct {
 }
 
 var origDate string
+const sourceDir = "shared_files/cclf/files/synthetic"
+
 
 func (s *CCLFUtilTestSuite) SetupSuite() {
 	origDate = os.Getenv("CCLF_REF_DATE")
@@ -36,19 +38,19 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
 	os.Setenv("CCLF_REF_DATE", "D190617")
-	err := ImportCCLFPackage("NOTREAL", "test")
+	err := ImportCCLFPackage(sourceDir, "NOTREAL", "test")
 	assert.EqualError(err, "invalid argument for ACO size")
 }
 
 func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage("dev", "environment")
+	err := ImportCCLFPackage(sourceDir, "dev", "environment")
 	assert.EqualError(err, "invalid argument for environment")
 }
 
 func (s *CCLFUtilTestSuite) TestImport() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage("dev", "unit-test")
+	err := ImportCCLFPackage(sourceDir, "dev", "unit-test")
 	assert.Nil(err)
 }
 

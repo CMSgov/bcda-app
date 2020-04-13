@@ -29,10 +29,10 @@ echo "ACO API Database migration complete"
 
 echo "Importing CCLF Files to seed data"
 
-DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize dev --environment unit-test
-DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize small --environment unit-test
-DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize medium --environment unit-test
-DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize large --environment unit-test
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize dev --environment unit-test
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize small --environment unit-test
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize medium --environment unit-test
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --sourceDir=shared_files/cclf/files/synthetic --acoSize large --environment unit-test
 
 echo "Successfully imported all CCLF Files"
 
