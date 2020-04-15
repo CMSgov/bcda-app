@@ -35,6 +35,7 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	switch environment {
 	case
 		"test",
+		"test-new-beneficiaries",
 		"unit-test":
 	default:
 		return errors.New("invalid argument for environment")
@@ -61,11 +62,11 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	var fileList []string
 	var archiveName string
 
-	dateStr := fmt.Sprintf("%s.D%s", time.Now().Format("06"), time.Now().Format("060102"))
+	now := time.Now()
+	dateStr := fmt.Sprintf("Y%s.D%s.T%s0", now.Format("06"), now.Format("060102"), now.Format("150405"))
 	for _, file := range files {
-		//timeStr := time.Now().Add(time.Minute * time.Duration(i-1)).Format("1504059")
-		archiveName = fmt.Sprintf("T.BCD.A%s.ZCY%s.T%s", acoIDNum, dateStr, "0000000")
-		filename := fmt.Sprintf("T.BCD.A%s.%sY%s.T%s", acoIDNum, file.Name(), dateStr, "0000000")
+		archiveName = fmt.Sprintf("T.BCD.A%s.ZC%s", acoIDNum, dateStr)
+		filename := fmt.Sprintf("T.BCD.A%s.%s%s", acoIDNum, file.Name(), dateStr)
 		sourceFilename := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(), filename)
 		fileList = append(fileList, sourceFilename)
 	}

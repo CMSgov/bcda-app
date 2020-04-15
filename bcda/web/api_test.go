@@ -49,7 +49,7 @@ var origDate string
 func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
 	origDate = os.Getenv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102"))
+	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
 }
 
 func (s *APITestSuite) TearDownSuite() {
@@ -751,7 +751,7 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Code)
-        assert.Equal(s.T(), "Repeated resource type", err.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), "Repeated resource type", err.Issue[0].Details.Coding[0].Display)
 }
 
 func bulkRequestHelper(endpoint, resourceType, since string) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
