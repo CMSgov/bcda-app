@@ -50,6 +50,10 @@ terms of security concerns? -->
 and would like to solicit the team's feedback. Optionally, provide background
 information regarding your questions and concerns. -->
 
+- [ ] no PHI/PII is affected by this change
+
+<!-- If yes, provide what PHI/PII is affected by this change -->
+
 ### Acceptance Validation
 <!-- Were you able to fully test the acceptance criteria on the related ticket? if not, why not? -->
 
