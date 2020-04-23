@@ -1,7 +1,10 @@
 FROM golang:1.14.1-buster
 
 RUN go get -u github.com/golang/dep/cmd/dep
-RUN go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+RUN go get -d github.com/golangci/golangci-lint/cmd/golangci-lint; \
+ cd $GOPATH/src/github.com/golangci/golangci-lint/cmd/golangci-lint; \
+ git checkout v1.24.0; \
+ go get -u
 RUN go get -u github.com/xo/usql
 RUN go get -u github.com/securego/gosec/cmd/gosec
 RUN go get -u gotest.tools/gotestsum
