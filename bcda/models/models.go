@@ -117,7 +117,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 
 	// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
 	// only retrieve new beneficiaries (comparison off current CCLF vs previous CCLF)
-	if newBeneficiariesOnly == true {
+	if newBeneficiariesOnly {
 		beneficiaries, err = aco.GetNewBeneficiaries(false)
 		if err != nil {
 			return nil, err
@@ -627,7 +627,7 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 			continue
 		}
 		suppressBene.BlueButtonID = bbID
-		db.Save(&suppressBene)
+		db.Save(&suppressBene) /* #nosec G601 */
 		success++
 	}
 	return success, failure, nil
