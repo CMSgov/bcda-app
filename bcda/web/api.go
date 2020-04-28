@@ -27,14 +27,14 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-        "github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var qc *que.Client
 
 const (
 	groupAll = "all"
-        groupNew = "new"
+	groupNew = "new"
 )
 
 /*

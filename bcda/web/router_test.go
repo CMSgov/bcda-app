@@ -104,6 +104,15 @@ func (s *RouterTestSuite) TestVersionRoute() {
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestGroupEndpointDisabled() {
+        err := os.Unsetenv("BCDA_ENABLE_NEW_GROUP")
+        assert.Nil(s.T(), err)
+        res := s.getAPIRoute("/api/v1/Groups/new/$export?_type=ExplanationOfBenefit")
+        assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+        err = os.Setenv("BCDA_ENABLE_GROUP", "true")
+        assert.Nil(s.T(), err)
+}
+
 func (s *RouterTestSuite) TestEOBExportRoute() {
 	res := s.getAPIRoute("/api/v1/Patient/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -116,6 +125,13 @@ func (s *RouterTestSuite) TestEOBExportRoute() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// group new
+	res = s.getAPIRoute("/api/v1/Group/new/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/Groups/new/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 }
@@ -134,6 +150,12 @@ func (s *RouterTestSuite) TestPatientExportRoute() {
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
+	// group new
+	res = s.getAPIRoute("/api/v1/Group/new/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/Groups/new/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestCoverageExportRoute() {
@@ -148,6 +170,13 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// group all
+	res = s.getAPIRoute("/api/v1/Group/new/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/Groups/new/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 }
