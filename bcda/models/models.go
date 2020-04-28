@@ -115,14 +115,15 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 		return nil, err
 	}
 
-	// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
 	// only retrieve new beneficiaries (comparison of current CCLF vs previous CCLF)
 	if newBeneficiariesOnly {
+		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
 		beneficiaries, err = aco.GetNewBeneficiaries(false)
 		if err != nil {
 			return nil, err
 		}
 	} else {
+		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
 		beneficiaries, err = aco.GetBeneficiaries(false)
 		if err != nil {
 			return nil, err
