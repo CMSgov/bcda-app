@@ -41,7 +41,7 @@ func init() {
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&resourceType, "resourceType", "", "resourceType to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
-	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint")
+	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint in the format of Patient or Group/all or Group/new")
 	flag.Parse()
 
 	if accessToken == "" {
@@ -81,12 +81,6 @@ func getAccessToken() string {
 func startJob(endpoint, resourceType string) *http.Response {
 	client := &http.Client{}
 	var url string
-
-	// currently hard-coding groupId as this is the only value at the moment
-	if endpoint == "Group" {
-		groupId := "all"
-		endpoint = fmt.Sprintf("%s/%s", endpoint, groupId)
-	}
 
 	if resourceType != "" {
 		url = fmt.Sprintf("%s://%s/api/v1/%s/$export?_type=%s", proto, apiHost, endpoint, resourceType)

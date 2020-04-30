@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -73,13 +72,19 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 	bulkEOBRequestHelper("Patient", "", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestHelper("Group", "", s)
+	bulkEOBRequestHelper("Group/all", "", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestHelper("Group/new", "", s)
 	s.TearDownTest()
 	s.SetupTest()
 	bulkEOBRequestHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestHelper("Group", since, s)
+	bulkEOBRequestHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestInvalidSinceFormat() {
@@ -87,28 +92,40 @@ func (s *APITestSuite) TestBulkEOBRequestInvalidSinceFormat() {
 	bulkEOBRequestInvalidSinceFormatHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestInvalidSinceFormatHelper("Group", since, s)
+	bulkEOBRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 	bulkEOBRequestNoBeneficiariesInACOHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestNoBeneficiariesInACOHelper("Group", s)
+	bulkEOBRequestNoBeneficiariesInACOHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestNoBeneficiariesInACOHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 	bulkEOBRequestMissingTokenHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestMissingTokenHelper("Group", s)
+	bulkEOBRequestMissingTokenHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestMissingTokenHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	bulkEOBRequestNoQueueHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestNoQueueHelper("Group", s)
+	bulkEOBRequestNoQueueHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkEOBRequestNoQueueHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkPatientRequest() {
@@ -116,13 +133,19 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	bulkPatientRequestHelper("Patient", "", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkPatientRequestHelper("Group", "", s)
+	bulkPatientRequestHelper("Group/all", "", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkPatientRequestHelper("Group/new", "", s)
 	s.TearDownTest()
 	s.SetupTest()
 	bulkPatientRequestHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkPatientRequestHelper("Group", since, s)
+	bulkPatientRequestHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkPatientRequestHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkPatientRequestInvalidSinceFormat() {
@@ -130,7 +153,10 @@ func (s *APITestSuite) TestBulkPatientRequestInvalidSinceFormat() {
 	bulkPatientRequestInvalidSinceFormatHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkPatientRequestInvalidSinceFormatHelper("Group", since, s)
+	bulkPatientRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkPatientRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequest() {
@@ -138,13 +164,19 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 	bulkCoverageRequestHelper("Patient", "", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestHelper("Group", "", s)
+	bulkCoverageRequestHelper("Group/all", "", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestHelper("Group/new", "", s)
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestHelper("Group", since, s)
+	bulkCoverageRequestHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
@@ -152,49 +184,65 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
 	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group", since, s)
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkRequestInvalidType() {
 	bulkRequestInvalidTypeHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkRequestInvalidTypeHelper("Group", s)
+	bulkRequestInvalidTypeHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkRequestInvalidTypeHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkConcurrentRequest() {
 	bulkConcurrentRequestHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkConcurrentRequestHelper("Group", s)
+	bulkConcurrentRequestHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkConcurrentRequestHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkConcurrentRequestTime() {
 	bulkConcurrentRequestTimeHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkConcurrentRequestTimeHelper("Group", s)
+	bulkConcurrentRequestTimeHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkConcurrentRequestTimeHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestValidateRequest() {
 	validateRequestHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	validateRequestHelper("Group", s)
+	validateRequestHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	validateRequestHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
 	bulkPatientRequestBBClientFailureHelper("Patient", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkPatientRequestBBClientFailureHelper("Group", s)
+	bulkPatientRequestBBClientFailureHelper("Group/all", s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkPatientRequestBBClientFailureHelper("Group/new", s)
 }
 
 func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage("dev", "test")
-	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
-	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
 	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit", since)
@@ -228,10 +276,8 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage("dev", "test")
-	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
-	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "ExplanationOfBenefit", since)
@@ -346,8 +392,6 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage("dev", "test")
-	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 
 	defer func() {
@@ -384,10 +428,8 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage("dev", "test")
-	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
-	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "Patient", since)
@@ -463,10 +505,8 @@ func bulkCoverageRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	err := cclfUtils.ImportCCLFPackage("dev", "test")
-	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
-	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
 	_, handlerFunc, req := bulkRequestHelper(endpoint, "Coverage", since)
@@ -510,8 +550,6 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
 	assert.Nil(s.T(), err)
 
-	err = cclfUtils.ImportCCLFPackage("dev", "test")
-	assert.Nil(s.T(), err)
 	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
@@ -757,12 +795,17 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 func bulkRequestHelper(endpoint, resourceType, since string) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
 	var handlerFunc http.HandlerFunc
 	var req *http.Request
+	var group string
 
 	if endpoint == "Patient" {
 		handlerFunc = bulkPatientRequest
-	} else {
-		endpoint = "Group/all"
+	} else if endpoint == "Group/all" {
 		handlerFunc = bulkGroupRequest
+		group = groupAll
+	} else {
+		endpoint = "Group/new"
+		handlerFunc = bulkGroupRequest
+		group = groupNew
 	}
 
 	requestUrl, _ := url.Parse(fmt.Sprintf("/api/v1/%s/$export", endpoint))
@@ -777,7 +820,7 @@ func bulkRequestHelper(endpoint, resourceType, since string) (string, func(http.
 	requestUrl.RawQuery = q.Encode()
 	req = httptest.NewRequest("GET", requestUrl.String(), nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("groupId", groupAll)
+	rctx.URLParams.Add("groupId", group)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	return requestUrl.Path, handlerFunc, req
 }

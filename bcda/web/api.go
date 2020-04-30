@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/utils"
-
 	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	fhirutils "github.com/eug48/fhir/utils"
@@ -29,12 +27,14 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var qc *que.Client
 
 const (
 	groupAll = "all"
+	groupNew = "new"
 )
 
 /*
@@ -63,7 +63,8 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
-	bulkRequest(resourceTypes, w, r)
+	// false correlates to newBeneficiariesOnly, meany we want to receive data for all patients with this request
+	bulkRequest(resourceTypes, w, r, false)
 }
 
 /*
@@ -71,7 +72,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 
     Start data export (for the specified group identifier) for all supported resource types
 
-	Initiates a job to collect data from the Blue Button API for your ACO. At this time, the only Group identifier supported by the system is `all`, which returns the same data as the Patient endpoint. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+	Initiates a job to collect data from the Blue Button API for your ACO. At this time, the only Group identifiers supported by the system are `all` (in `sandbox` and `prod`) and `new` (in `sandbox` only).  The `all` identifier returns data for the group of all patients attributed to the requesting ACO, and the `new` identifier only returns data for the group of new patients attributed to the requesting ACO (new patients are determined by comparing the CCLF attribution for the current month with the CCLF attribution for the previous month). Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
 	Produces:
 	- application/fhir+json
@@ -88,13 +89,17 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 */
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	groupID := chi.URLParam(r, "groupId")
-	if groupID == groupAll {
+	newBeneficiariesOnly := false
+	if groupID == groupAll || (groupID == groupNew && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false)) {
 		resourceTypes, err := validateRequest(r)
 		if err != nil {
 			responseutils.WriteError(err, w, http.StatusBadRequest)
 			return
 		}
-		bulkRequest(resourceTypes, w, r)
+		if groupID == groupNew {
+			newBeneficiariesOnly = true
+		}
+		bulkRequest(resourceTypes, w, r, newBeneficiariesOnly)
 	} else {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
@@ -102,7 +107,7 @@ func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request) {
+func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, newBeneficiariesOnly bool) {
 	var (
 		ad  auth.AuthData
 		err error
@@ -200,7 +205,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request)
 	}
 
 	var enqueueJobs []*que.Job
-	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince)
+	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince, newBeneficiariesOnly)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")

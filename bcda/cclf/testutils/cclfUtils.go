@@ -36,7 +36,8 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	case
 		"test",
 		"test-new-beneficiaries",
-		"unit-test":
+		"unit-test",
+		"unit-test-new-beneficiaries":
 	default:
 		return errors.New("invalid argument for environment")
 	}

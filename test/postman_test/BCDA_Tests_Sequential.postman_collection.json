@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "005ac677-4efe-428a-b89f-e5ba2ae30abf",
+		"_postman_id": "8854e5e3-118f-4158-b8a3-ebc8da2af924",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1883,6 +1883,150 @@
 						{
 							"key": "_type",
 							"value": "ExplanationOfBenefit"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group/all export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group/new export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
 						}
 					]
 				}

@@ -453,7 +453,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 	defer s.db.Delete(&j)
 
 	since := "2020-02-13T08:00:00.000-05:00"
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since)
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(3, len(enqueueJobs))
@@ -496,7 +496,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 	defer s.db.Delete(&j)
 
 	since := ""
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since)
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(1, len(enqueueJobs))
@@ -532,7 +532,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	if err != nil {
 		s.T().Error(err)
 	}
-	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"}, since)
+	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(4, len(enqueueJobs))
@@ -570,7 +570,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		s.T().Error(err)
 	}
 
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"}, since)
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
 	assert.Equal(10, len(enqueueJobs))
