@@ -95,38 +95,9 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 	defer rc.Close()
 	sc := bufio.NewScanner(rc)
 	for sc.Scan() {
-		b := sc.Bytes()
-		if len(bytes.TrimSpace(b)) > 0 {
-			filetype := string(bytes.TrimSpace(b[fileNumStart:fileNumEnd]))
-
-			if filetype == "CCLF8" {
-				if validator == nil {
-					validator = make(map[string]cclfFileValidator)
-				}
-
-				if _, ok := validator[filetype]; ok {
-					fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
-					err := fmt.Errorf("duplicate %v file type found from CCLF0 file", filetype)
-					log.Error(err)
-					return nil, err
-				}
-
-				count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
-				if err != nil {
-					fmt.Printf("Failed to parse %s record count from CCLF0 file.\n", filetype)
-					err = errors.Wrapf(err, "failed to parse %s record count from CCLF0 file", filetype)
-					log.Error(err)
-					return nil, err
-				}
-				length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
-				if err != nil {
-					fmt.Printf("Failed to parse %s record length from CCLF0 file.\n", filetype)
-					err = errors.Wrapf(err, "failed to parse %s record length from CCLF0 file", filetype)
-					log.Error(err)
-					return nil, err
-				}
-				validator[filetype] = cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
-			}
+		err := validationScan(sc.Bytes(), &validator)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -140,6 +111,49 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 	log.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
 
 	return validator, nil
+}
+
+func validationScan(b []byte, validatorPoniter *map[string]cclfFileValidator) error {
+	validator := *validatorPoniter
+	const (
+		fileNumStart, fileNumEnd           = 0, 7
+		totalRecordStart, totalRecordEnd   = 52, 63
+		recordLengthStart, recordLengthEnd = 64, 69
+	)
+	if len(bytes.TrimSpace(b)) > 0 {
+		filetype := string(bytes.TrimSpace(b[fileNumStart:fileNumEnd]))
+
+		if filetype == "CCLF8" {
+			if validator == nil {
+				validator = make(map[string]cclfFileValidator)
+			}
+
+			if _, ok := validator[filetype]; ok {
+				fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
+				err := fmt.Errorf("duplicate %v file type found from CCLF0 file", filetype)
+				log.Error(err)
+				return err
+			}
+
+			count, err := strconv.Atoi(string(bytes.TrimSpace(b[totalRecordStart:totalRecordEnd])))
+			if err != nil {
+				fmt.Printf("Failed to parse %s record count from CCLF0 file.\n", filetype)
+				err = errors.Wrapf(err, "failed to parse %s record count from CCLF0 file", filetype)
+				log.Error(err)
+				return err
+			}
+			length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
+			if err != nil {
+				fmt.Printf("Failed to parse %s record length from CCLF0 file.\n", filetype)
+				err = errors.Wrapf(err, "failed to parse %s record length from CCLF0 file", filetype)
+				log.Error(err)
+				return err
+			}
+			validator[filetype] = cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
+			*validatorPoniter = validator
+		}
+	}
+	return nil
 }
 
 func importCCLF8(fileMetadata *cclfFileMetadata) error {

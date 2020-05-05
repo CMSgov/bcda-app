@@ -94,6 +94,42 @@ func ParseToken(next http.Handler) http.Handler {
 	})
 }
 
+// func ClaimsData(token *jwt.Token, w *http.ResponseWriter, r *http.Request) AuthData {
+// 	var ad AuthData
+// 	if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
+// 		// okta token
+// 		switch claims.Issuer {
+// 		case "ssas":
+// 			ad, _ = adFromClaims(claims)
+// 		case "okta":
+// 			var aco, err = GetACOByClientID(claims.ClientID)
+// 			if err != nil {
+// 				log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
+// 				next.ServeHTTP(w, r)
+// 				return ad
+// 			}
+
+// 			db := database.GetGORMDbConnection()
+// 			defer database.Close(db)
+
+// 			ad.TokenID = claims.Id
+// 			ad.ACOID = aco.UUID.String()
+// 			ad.CMSID = *aco.CMSID
+// 		default:
+// 			var aco, err = GetACOByUUID(claims.ACOID)
+// 			if err != nil {
+// 				log.Errorf("no aco for ACO ID %s because %v", claims.ACOID, err)
+// 				next.ServeHTTP(w, r)
+// 				return ad
+// 			}
+// 			ad.TokenID = claims.UUID
+// 			ad.ACOID = claims.ACOID
+// 			ad.CMSID = *aco.CMSID
+// 		}
+// 	}
+// 	return ad
+// }
+
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Context().Value(TokenContextKey)

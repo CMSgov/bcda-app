@@ -61,7 +61,7 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
+	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID) //NOSONAR
 	c, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
@@ -69,9 +69,9 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	assert.Equal(s.T(), acoUUID.String(), c.ClientID)
 	var aco models.ACO
 	aco.UUID = acoUUID
-	connections["TestRegisterSystem"].Find(&aco, "UUID = ?", acoUUID)
+	connections["TestRegisterSystem"].Find(&aco, "UUID = ?", acoUUID) //NOSONAR
 	assert.True(s.T(), auth.Hash(aco.AlphaSecret).IsHashOf(c.ClientSecret))
-	defer connections["TestRegisterSystem"].Delete(&aco)
+	defer connections["TestRegisterSystem"].Delete(&aco) //NOSONAR
 
 	c, err = s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.NotNil(s.T(), err)
@@ -148,17 +148,17 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	ts, err = s.p.MakeAccessToken(auth.Credentials{})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials")
+	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials") //NOSONAR
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: uuid.NewRandom().String()})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials")
+	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials") //NOSONAR
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials")
+	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials") //NOSONAR
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
@@ -174,9 +174,10 @@ func (s *AlphaAuthPluginTestSuite) TestRevokeAccessToken() {
 
 func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	id := "d63205a8-d923-456b-a01b-0992fcb40968"
 	validClaims := jwt.MapClaims{
 		"aco": acoID,
-		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+		"id":  id,
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
@@ -190,7 +191,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	unknownAco := jwt.New(jwt.SigningMethodRS512)
 	unknownAco.Claims = jwt.MapClaims{
 		"aco": uuid.NewRandom().String(),
-		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+		"id":  id,
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(time.Duration(999999999)).Unix(),
 	}
@@ -212,7 +213,7 @@ func (s *AlphaAuthPluginTestSuite) TestValidateAccessToken() {
 	missingClaims := jwt.New(jwt.SigningMethodRS512)
 	missingClaims.Claims = jwt.MapClaims{
 		"aco": acoID,
-		"id":  "d63205a8-d923-456b-a01b-0992fcb40968",
+		"id":  id,
 	}
 	missingClaimsString, _ := s.backend.SignJwtToken(missingClaims)
 	err = s.p.AuthorizeAccess(missingClaimsString)

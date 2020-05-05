@@ -14,12 +14,14 @@ import (
 
 type AlphaAuthPlugin struct{}
 
+const NonEmptyString = "provide a non-empty string"
+
 func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
 	regEvent := event{op: "RegisterSystem", trackingID: localID}
 	operationStarted(regEvent)
 	if localID == "" {
 		// do we want to report on usage errors?
-		regEvent.help = "provide a non-empty string"
+		regEvent.help = NonEmptyString
 		operationFailed(regEvent)
 		return Credentials{}, errors.New(regEvent.help)
 	}
@@ -113,9 +115,9 @@ func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
 	operationStarted(genEvent)
 
 	if clientID == "" {
-		genEvent.help = "provide a non-empty string"
+		genEvent.help = NonEmptyString
 		operationFailed(genEvent)
-		return Credentials{}, errors.New("provide a non-empty string")
+		return Credentials{}, errors.New(NonEmptyString)
 	}
 
 	// Although this should be GetACOByClientID, fixing it impacts tests that were built with the assumption is that client ID = UUID.
@@ -160,15 +162,16 @@ func (p AlphaAuthPlugin) RevokeSystemCredentials(clientID string) error {
 
 // MakeAccessToken manufactures an access token for the given credentials
 func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error) {
+	const MissingCredentials = "missing or incomplete credentials"
 	tknEvent := event{op: "MakeAccessToken", trackingID: credentials.ClientID}
 	if credentials.ClientSecret == "" || credentials.ClientID == "" {
-		tknEvent.help = "missing or incomplete credentials"
+		tknEvent.help = MissingCredentials
 		operationFailed(tknEvent)
-		return "", fmt.Errorf("missing or incomplete credentials")
+		return "", fmt.Errorf(MissingCredentials)
 	}
 
 	if uuid.Parse(credentials.ClientID) == nil {
-		tknEvent.help = "missing or incomplete credentials"
+		tknEvent.help = MissingCredentials
 		operationFailed(tknEvent)
 		return "", fmt.Errorf("ClientID must be a valid UUID")
 	}

@@ -20,6 +20,9 @@ import (
 
 var ssasLogger *logrus.Logger
 
+const DeleteHeader string = "DELETE"
+const BadStructureMessage string = "bad request structure"
+
 // SSASClient is a client for interacting with the System-to-System Authentication Service.
 type SSASClient struct {
 	http.Client
@@ -125,25 +128,26 @@ func (c *SSASClient) CreateGroup(id, name, acoCMSID string) ([]byte, error) {
 
 // DeleteGroup DELETEs to the SSAS /group/{id} endpoint to delete a group.
 func (c *SSASClient) DeleteGroup(id int) error {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/group/%d", c.baseURL, id), nil)
+	const CouldNotDeleteMessage = "could not delete group"
+	req, err := http.NewRequest(DeleteHeader, fmt.Sprintf("%s/group/%d", c.baseURL, id), nil)
 	if err != nil {
-		return errors.Wrap(err, "could not delete group")
+		return errors.Wrap(err, CouldNotDeleteMessage)
 	}
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "could not delete group")
+		return errors.Wrap(err, CouldNotDeleteMessage)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		rb, err := ioutil.ReadAll(resp.Body)
 		defer resp.Body.Close()
 		if err != nil {
-			return errors.Wrap(err, "could not delete group")
+			return errors.Wrap(err, CouldNotDeleteMessage)
 		}
-		return errors.Errorf("could not delete group: %s", rb)
+		return errors.Errorf(CouldNotDeleteMessage+": %s", rb)
 	}
 
 	return nil
@@ -151,6 +155,7 @@ func (c *SSASClient) DeleteGroup(id int) error {
 
 // CreateSystem POSTs to the SSAS /system endpoint to create a system.
 func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackingID string) ([]byte, error) {
+	const FailedCreateSystemMessage string = "failed to create system"
 	type system struct {
 		ClientName string `json:"client_name"`
 		GroupID    string `json:"group_id"`
@@ -169,25 +174,25 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 
 	bb, err := json.Marshal(sys)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create system")
+		return nil, errors.Wrap(err, FailedCreateSystemMessage)
 	}
 	br := bytes.NewReader(bb)
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/system", c.baseURL), br)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create system")
+		return nil, errors.Wrap(err, FailedCreateSystemMessage)
 	}
 	if err := c.setAuthHeader(req); err != nil {
 		return nil, err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create system")
+		return nil, errors.Wrap(err, FailedCreateSystemMessage)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, errors.New(fmt.Sprintf("failed to create system. status code: %v", resp.StatusCode))
+		return nil, errors.New(fmt.Sprintf(FailedCreateSystemMessage+". status code: %v", resp.StatusCode))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -200,9 +205,10 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 
 // GetPublicKey GETs the SSAS /system/{systemID}/key endpoint to retrieve a system's public key.
 func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
+	const FailedPublicKeyMessage string = "could not get public key"
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/system/%v/key", c.baseURL, systemID), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get public key")
+		return nil, errors.Wrap(err, FailedPublicKeyMessage)
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
@@ -210,13 +216,13 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get public key")
+		return nil, errors.Wrap(err, FailedPublicKeyMessage)
 	}
 	defer resp.Body.Close()
 
 	var respMap map[string]string
 	if err = json.NewDecoder(resp.Body).Decode(&respMap); err != nil {
-		return nil, errors.Wrap(err, "could not get public key")
+		return nil, errors.Wrap(err, FailedPublicKeyMessage)
 	}
 
 	return []byte(respMap["public_key"]), nil
@@ -224,9 +230,10 @@ func (c *SSASClient) GetPublicKey(systemID int) ([]byte, error) {
 
 // ResetCredentials PUTs to the SSAS /system/{systemID}/credentials endpoint to reset the system's secret.
 func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
+	const FailedCredentialResetMessage string = "failed to reset credentials"
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to reset credentials")
+		return nil, errors.Wrap(err, FailedCredentialResetMessage)
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
@@ -234,17 +241,17 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to reset credentials")
+		return nil, errors.Wrap(err, FailedCredentialResetMessage)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, errors.New(fmt.Sprintf("failed to reset credentials. status code: %v", resp.StatusCode))
+		return nil, errors.New(fmt.Sprintf(FailedCredentialResetMessage+". status code: %v", resp.StatusCode))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to reset credentials")
+		return nil, errors.Wrap(err, FailedCredentialResetMessage)
 	}
 
 	return body, nil
@@ -253,21 +260,22 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 
 // DeleteCredentials DELETEs from the SSAS /system/{systemID}/credentials endpoint to deactivate credentials associated with the system.
 func (c *SSASClient) DeleteCredentials(systemID string) error {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
+	const FailedDeleteCredentialMessage string = "failed to delete credentials"
+	req, err := http.NewRequest(DeleteHeader, fmt.Sprintf("%s/system/%s/credentials", c.baseURL, systemID), nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to delete credentials")
+		return errors.Wrap(err, FailedDeleteCredentialMessage)
 	}
 	if err := c.setAuthHeader(req); err != nil {
 		return err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "failed to delete credentials")
+		return errors.Wrap(err, FailedDeleteCredentialMessage)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.Wrap(err, "failed to delete credentials")
+		return errors.Wrap(err, FailedDeleteCredentialMessage)
 	}
 
 	return nil
@@ -275,9 +283,9 @@ func (c *SSASClient) DeleteCredentials(systemID string) error {
 
 // RevokeAccessToken DELETEs to the public SSAS /token endpoint to revoke the token
 func (c *SSASClient) RevokeAccessToken(tokenID string) error {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
+	req, err := http.NewRequest(DeleteHeader, fmt.Sprintf("%s/token/%s", c.baseURL, tokenID), nil)
 	if err != nil {
-		return errors.Wrap(err, "bad request structure")
+		return errors.Wrap(err, BadStructureMessage)
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
@@ -303,7 +311,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	url := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "bad request structure")
+		return nil, errors.Wrap(err, BadStructureMessage)
 	}
 	req.SetBasicAuth(credentials.ClientID, credentials.ClientSecret)
 
@@ -335,11 +343,11 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 		Token string `json:"token"`
 	}{Token: tokenString})
 	if err != nil {
-		return nil, errors.Wrap(err, "bad request structure")
+		return nil, errors.Wrap(err, BadStructureMessage)
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		return nil, errors.Wrap(err, "bad request structure")
+		return nil, errors.Wrap(err, BadStructureMessage)
 	}
 
 	clientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
