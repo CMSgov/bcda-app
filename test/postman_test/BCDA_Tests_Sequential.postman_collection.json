@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "8854e5e3-118f-4158-b8a3-ebc8da2af924",
+		"_postman_id": "83ed5dd4-1c56-48db-97fb-663b30400202",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1940,7 +1940,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -1948,7 +1948,8 @@
 					"path": [
 						"api",
 						"v1",
-						"Patient",
+						"Group",
+						"all",
 						"$export"
 					],
 					"query": [
@@ -1969,15 +1970,39 @@
 					"script": {
 						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
 						"exec": [
-							"pm.test(\"Status code is 202\", function() {",
-							"    pm.response.to.have.status(202);",
-							"});",
+							"env = pm.environment.get(\"env\");",
 							"",
-							"pm.test(\"Has Content-Location header\", function() {",
-							"    pm.response.to.have.header(\"Content-Location\");",
-							"});",
+							"if (env != \"prod\") {",
+							"    pm.test(\"Status code is 202\", function() {",
+							"       pm.response.to.have.status(202);",
+							"    });",
 							"",
-							"pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+							"    pm.test(\"Has Content-Location header\", function() {",
+							"      pm.response.to.have.header(\"Content-Location\");",
+							"    });",
+							"",
+							"    pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));",
+							"}",
+							"else {",
+							"    pm.test(\"Status code is 400\", function() {",
+							"       pm.response.to.have.status(400);",
+							"    });",
+							"    ",
+							"    var respJson = pm.response.json();",
+							"",
+							"    pm.test(\"Resource type is OperationOutcome\", function() {",
+							"     pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"    });",
+							"",
+							"    pm.test(\"Issue details code is Request Error\", function() {",
+							"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"    });",
+							"",
+							"    pm.test(\"Issue details text is Invalid Group ID\", function() {",
+							"        pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid group ID\")",
+							"    });",
+							"}",
+							"    "
 						],
 						"type": "text/javascript"
 					}
@@ -2012,7 +2037,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/new/$export?_type=Patient",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -2020,7 +2045,8 @@
 					"path": [
 						"api",
 						"v1",
-						"Patient",
+						"Group",
+						"new",
 						"$export"
 					],
 					"query": [
