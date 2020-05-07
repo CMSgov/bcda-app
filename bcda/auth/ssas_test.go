@@ -41,15 +41,27 @@ type SSASPluginTestSuite struct {
 	p SSASPlugin
 }
 
+const (
+	ssasUseTLSKey          = "SSAS_USE_TLS"
+	ssasURLKey             = "SSAS_URL"
+	ssasPublicURLKey       = "SSAS_PUBLIC_URL"
+	bcdaSsasClientIDKey    = "BCDA_SSAS_CLIENT_ID"
+	bcdaSsasSecretKey      = "BCDA_SSAS_SECRET"
+	noSsasErrorMessage     = "no client for SSAS; %s"
+	fakeClientID           = "fake-client-id"
+	mockClient             = "mock-client"
+	unexpectedErrorMessage = "unexpected error; "
+)
+
 func (s *SSASPluginTestSuite) SetupSuite() {
 	// original values must be saved before we run any tests that might change them
-	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
-	origSSASURL = os.Getenv("SSAS_URL")
-	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
+	origSSASUseTLS = os.Getenv(ssasUseTLSKey)
+	origSSASURL = os.Getenv(ssasURLKey)
+	origPublicURL = os.Getenv(ssasPublicURLKey)
 	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
 	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
-	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
-	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
+	origSSASClientID = os.Getenv(bcdaSsasClientIDKey)
+	origSSASSecret = os.Getenv(bcdaSsasSecretKey)
 }
 
 func (s *SSASPluginTestSuite) SetupTest() {
@@ -64,13 +76,13 @@ func (s *SSASPluginTestSuite) SetupTest() {
 }
 
 func (s *SSASPluginTestSuite) TearDownTest() {
-	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
-	os.Setenv("SSAS_URL", origSSASURL)
-	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
+	os.Setenv(ssasUseTLSKey, origSSASUseTLS)
+	os.Setenv(ssasURLKey, origSSASURL)
+	os.Setenv(ssasPublicURLKey, origPublicURL)
 	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
 	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
-	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
-	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
+	os.Setenv(bcdaSsasClientIDKey, origSSASClientID)
+	os.Setenv(bcdaSsasSecretKey, origSSASSecret)
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -83,24 +95,24 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
-		fmt.Fprintf(w, `{ "system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name" }`)
+		fmt.Fprintf(w, `{ "system_id": "1", "client_id": fakeClientID, "client_secret": "fake-secret", "client_name": "fake-name" }`)
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	os.Setenv(ssasURLKey, server.URL)
+	os.Setenv(ssasPublicURLKey, server.URL)
+	os.Setenv(ssasUseTLSKey, "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(noSsasErrorMessage, err.Error())
 	}
 	s.p = SSASPlugin{client: c}
 
 	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "1", creds.SystemID)
-	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), fakeClientID, creds.ClientID)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
@@ -111,13 +123,13 @@ func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	os.Setenv(ssasURLKey, server.URL)
+	os.Setenv(ssasPublicURLKey, server.URL)
+	os.Setenv(ssasUseTLSKey, "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(noSsasErrorMessage, err.Error())
 	}
 	s.p = SSASPlugin{client: c}
 
@@ -134,17 +146,17 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	router := chi.NewRouter()
 	router.Put("/system/{systemID}/credentials", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
-		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, "fake-client-id", "fake-secret")
+		fmt.Fprintf(w, `{ "client_id": "%s", "client_secret": "%s" }`, fakeClientID, "fake-secret")
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	os.Setenv(ssasURLKey, server.URL)
+	os.Setenv(ssasPublicURLKey, server.URL)
+	os.Setenv(ssasUseTLSKey, "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(noSsasErrorMessage, err.Error())
 	}
 	s.p = SSASPlugin{client: c}
 
@@ -162,11 +174,11 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(noSsasErrorMessage, err.Error())
 	}
 	s.p = SSASPlugin{client: c}
 
-	ts, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
+	ts, err := s.p.MakeAccessToken(Credentials{ClientID: mockClient, ClientSecret: "mock-secret"})
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), ts)
 	assert.Regexp(s.T(), regexp.MustCompile(`[^.\s]+\.[^.\s]+\.[^.\s]+`), ts)
@@ -204,13 +216,13 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	os.Setenv(ssasURLKey, server.URL)
+	os.Setenv(ssasPublicURLKey, server.URL)
+	os.Setenv(ssasUseTLSKey, "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Fatalf(noSsasErrorMessage, err.Error())
 	}
 	s.p = SSASPlugin{client: c}
 
@@ -221,7 +233,7 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 	_, ts, err := MockSSASToken()
 	require.NotNil(s.T(), ts, "no token for SSAS", err)
-	require.Nil(s.T(), err, "unexpected error; ", err)
+	require.Nil(s.T(), err, unexpectedErrorMessage, err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
@@ -234,12 +246,12 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 func (s *SSASPluginTestSuite) TestVerifyToken() {
 	_, ts, err := MockSSASToken()
 	require.NotNil(s.T(), ts, "no token for SSAS; ", err)
-	require.Nil(s.T(), err, "unexpected error; ", err)
+	require.Nil(s.T(), err, unexpectedErrorMessage, err)
 	MockSSASServer(ts)
 
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, "no client for SSAS; ")
-	require.Nil(s.T(), err, "unexpected error; ", err)
+	require.Nil(s.T(), err, unexpectedErrorMessage, err)
 	s.p = SSASPlugin{client: c}
 
 	t, err := s.p.VerifyToken(ts)
@@ -257,8 +269,8 @@ func TestSSASPluginSuite(t *testing.T) {
 }
 
 func MockSSASServer(tokenString string) {
-	os.Setenv("BCDA_SSAS_CLIENT_ID", "bcda")
-	os.Setenv("BCDA_SSAS_SECRET", "api")
+	os.Setenv(bcdaSsasClientIDKey, "bcda")
+	os.Setenv(bcdaSsasSecretKey, "api")
 	router := chi.NewRouter()
 	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
 		clientId, secret, ok := r.BasicAuth()
@@ -268,7 +280,7 @@ func MockSSASServer(tokenString string) {
 		}
 
 		var answer = make(map[string]bool)
-		if clientId == os.Getenv("BCDA_SSAS_CLIENT_ID") && secret == os.Getenv("BCDA_SSAS_SECRET") {
+		if clientId == os.Getenv(bcdaSsasClientIDKey) && secret == os.Getenv(bcdaSsasSecretKey) {
 			answer["active"] = true
 		} else {
 			answer["active"] = false
@@ -282,7 +294,7 @@ func MockSSASServer(tokenString string) {
 			return
 		}
 
-		if clientId == "mock-client" {
+		if clientId == mockClient {
 			render.JSON(w, r, client.TokenResponse{AccessToken: tokenString, TokenType: "access_token"})
 		}
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -290,9 +302,9 @@ func MockSSASServer(tokenString string) {
 
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	os.Setenv(ssasURLKey, server.URL)
+	os.Setenv(ssasPublicURLKey, server.URL)
+	os.Setenv(ssasUseTLSKey, "false")
 }
 
 func MockSSASToken() (*jwt.Token, string, error) {
@@ -300,7 +312,7 @@ func MockSSASToken() (*jwt.Token, string, error) {
 	claims := CommonClaims{
 		SystemID: "mock-system",
 		Data:     `{"cms_ids":["A9995"]}`,
-		ClientID: "mock-client",
+		ClientID: mockClient,
 		StandardClaims: jwt.StandardClaims{
 			Issuer:    "ssas",
 			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),

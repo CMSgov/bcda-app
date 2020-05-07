@@ -21,6 +21,10 @@ type Mokta struct {
 	serverID    string
 }
 
+const (
+	bcdaAPI = "bcda_api"
+)
+
 func NewMokta() *Mokta {
 	reader := rand.Reader
 	bitSize := 1024
@@ -84,7 +88,7 @@ func (m *Mokta) RequestAccessToken(creds client.Credentials) (client.OktaToken, 
 		AccessToken: mt,
 		TokenType:   "mokta_token",
 		ExpiresIn:   300,
-		Scope:       "bcda_api",
+		Scope:       bcdaAPI,
 	}, nil
 }
 
@@ -125,7 +129,7 @@ func (m *Mokta) NewToken(clientID string) (string, error) {
 		m.serverID,
 		500,
 		clientID,
-		[]string{"bcda_api"},
+		[]string{bcdaAPI},
 		clientID,
 	})
 }
@@ -168,7 +172,7 @@ func (m *Mokta) valuesWithOverrides(or OktaToken) OktaToken {
 		m.serverID,
 		500,
 		cid,
-		[]string{"bcda_api"},
+		[]string{bcdaAPI},
 		cid,
 	}
 

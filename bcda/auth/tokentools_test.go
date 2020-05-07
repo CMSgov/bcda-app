@@ -20,8 +20,10 @@ type TokenToolsTestSuite struct {
 	reset            func()
 }
 
+const jwtExpirationDeltaKey = "JWT_EXPIRATION_DELTA"
+
 func (s *TokenToolsTestSuite) SetupSuite() {
-	s.originalEnvValue = os.Getenv("JWT_EXPIRATION_DELTA")
+	s.originalEnvValue = os.Getenv(jwtExpirationDeltaKey)
 	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
 	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
 	s.reset = func() {
@@ -32,12 +34,12 @@ func (s *TokenToolsTestSuite) SetupSuite() {
 }
 
 func (s *TokenToolsTestSuite) TearDownSuite() {
-	os.Setenv("JWT_EXPIRATION_DELTA", s.originalEnvValue)
+	os.Setenv(jwtExpirationDeltaKey, s.originalEnvValue)
 	s.reset()
 }
 
 func (s *TokenToolsTestSuite) AfterTest() {
-	os.Setenv("JWT_EXPIRATION_DELTA", "60")
+	os.Setenv(jwtExpirationDeltaKey, "60")
 }
 
 func (s *TokenToolsTestSuite) TestTokenDurationDefault() {
@@ -48,7 +50,7 @@ func (s *TokenToolsTestSuite) TestTokenDurationDefault() {
 func (s *TokenToolsTestSuite) TestTokenDurationOverride() {
 	assert.NotEmpty(s.T(), auth.TokenTTL)
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
-	os.Setenv("JWT_EXPIRATION_DELTA", "5")
+	os.Setenv(jwtExpirationDeltaKey, "5")
 	auth.SetTokenDuration()
 	assert.Equal(s.T(), 5*time.Minute, auth.TokenTTL)
 }
@@ -56,7 +58,7 @@ func (s *TokenToolsTestSuite) TestTokenDurationOverride() {
 func (s *TokenToolsTestSuite) TestTokenDurationEmptyOverride() {
 	assert.NotEmpty(s.T(), auth.TokenTTL)
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
-	os.Setenv("JWT_EXPIRATION_DELTA", "")
+	os.Setenv(jwtExpirationDeltaKey, "")
 	auth.SetTokenDuration()
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
 }

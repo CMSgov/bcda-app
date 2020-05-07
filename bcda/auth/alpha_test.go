@@ -61,7 +61,8 @@ func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID) //NOSONAR
+	testSystem := "TestRegisterSystem"
+	acoUUID, _ := models.CreateACO(testSystem, &cmsID)
 	c, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
@@ -69,9 +70,9 @@ func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	assert.Equal(s.T(), acoUUID.String(), c.ClientID)
 	var aco models.ACO
 	aco.UUID = acoUUID
-	connections["TestRegisterSystem"].Find(&aco, "UUID = ?", acoUUID) //NOSONAR
+	connections[testSystem].Find(&aco, "UUID = ?", acoUUID)
 	assert.True(s.T(), auth.Hash(aco.AlphaSecret).IsHashOf(c.ClientSecret))
-	defer connections["TestRegisterSystem"].Delete(&aco) //NOSONAR
+	defer connections[testSystem].Delete(&aco)
 
 	c, err = s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.NotNil(s.T(), err)
@@ -127,6 +128,7 @@ func (s *AlphaAuthPluginTestSuite) TestResetSecret() {
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	cmsID := testUtils.RandomHexID()[0:4]
+	missingCredentialsMessage := "missing or incomplete credentials"
 	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
 	cc, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
@@ -148,17 +150,17 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	ts, err = s.p.MakeAccessToken(auth.Credentials{})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials") //NOSONAR
+	assert.Contains(s.T(), err.Error(), missingCredentialsMessage)
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: uuid.NewRandom().String()})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials") //NOSONAR
+	assert.Contains(s.T(), err.Error(), missingCredentialsMessage)
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
-	assert.Contains(s.T(), err.Error(), "missing or incomplete credentials") //NOSONAR
+	assert.Contains(s.T(), err.Error(), missingCredentialsMessage)
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{ClientID: uuid.NewRandom().String(), ClientSecret: testUtils.RandomBase64(20)})
 	assert.NotNil(s.T(), err)

@@ -39,6 +39,15 @@ type Credentials struct {
 	ClientName   string
 }
 
+const (
+	clientIDKey           = "client_id"
+	clientSecretKey       = "client_secret"
+	jsonHeader            = "application/json"
+	httpStatusKey         = "http_status"
+	clientIDKeyForLogging = "clientID"
+	requestIDKey          = "request_id"
+)
+
 func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
@@ -153,8 +162,8 @@ func (oc *OktaClient) AddClientApplication(localID string) (clientID string, cli
 		return
 	}
 
-	clientID = result["client_id"].(string)         //NOSONAR
-	clientSecret = result["client_secret"].(string) //NOSONAR
+	clientID = result[clientIDKey].(string)
+	clientSecret = result[clientSecretKey].(string)
 
 	err = addClientToPolicy(clientID, requestID)
 	if err != nil {
@@ -175,13 +184,13 @@ func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 		return OktaToken{}, err
 	}
 
-	req.Header.Add("Accept", "application/json") //NOSONAR
+	req.Header.Add("Accept", jsonHeader)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Cache-Control", "no-cache")
 
 	params := url.Values{}
-	params.Set("client_id", creds.ClientID)         //NOSONAR
-	params.Set("client_secret", creds.ClientSecret) //NOSONAR
+	params.Set(clientIDKey, creds.ClientID)
+	params.Set(clientSecretKey, creds.ClientSecret)
 	params.Set("grant_type", "client_credentials")
 	params.Set("scope", "bcda_api")
 	req.URL.RawQuery = params.Encode()
@@ -197,7 +206,7 @@ func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 
 	if resp.StatusCode >= 400 {
 		err = errors.New(resp.Status)
-		logError(err, requestID).WithField("client_id", creds.ClientID).Info("unable to get access token") //NOSONAR
+		logError(err, requestID).WithField(clientIDKey, creds.ClientID).Info("unable to get access token")
 		return OktaToken{}, err
 	}
 
@@ -205,7 +214,7 @@ func (oc *OktaClient) RequestAccessToken(creds Credentials) (OktaToken, error) {
 
 	if err = json.NewDecoder(resp.Body).Decode(&ot); err != nil {
 		message := "unexpected token response format from Okta"
-		logError(err, requestID).WithField("client_id", creds.ClientID).Info(message) //NOSONAR
+		logError(err, requestID).WithField(clientIDKey, creds.ClientID).Info(message)
 		return OktaToken{}, errors.New(message)
 	}
 
@@ -296,11 +305,11 @@ func addClientToPolicy(clientID string, requestID uuid.UUID) error {
 	if resp.StatusCode != 200 {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			logError(err, requestID).WithFields(logrus.Fields{"client_id": clientID, "http_status": resp.StatusCode}).Info("failed to update policy") //NOSONAR
+			logError(err, requestID).WithFields(logrus.Fields{clientIDKey: clientID, httpStatusKey: resp.StatusCode}).Info("failed to update policy")
 			return err
 		}
 		err = fmt.Errorf("unexpected result: %s", body)
-		logError(err, requestID).WithFields(logrus.Fields{"client_id": clientID, "http_status": resp.StatusCode}).Print() //NOSONAR
+		logError(err, requestID).WithFields(logrus.Fields{clientIDKey: clientID, httpStatusKey: resp.StatusCode}).Print()
 		return err
 	}
 
@@ -318,7 +327,7 @@ func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
 	url := oktaBaseUrl + "/oauth2/v1/clients/" + clientID + "/lifecycle/newSecret"
 
 	reqID := uuid.NewRandom()
-	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print() //NOSONAR
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, clientIDKeyForLogging: clientID}).Print()
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		logError(err, reqID)
@@ -343,7 +352,7 @@ func (oc *OktaClient) GenerateNewClientSecret(clientID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cs := result["client_secret"].(string) //NOSONAR
+	cs := result[clientSecretKey].(string)
 
 	return cs, nil
 }
@@ -352,7 +361,7 @@ func (oc *OktaClient) DeactivateApplication(clientID string) error {
 	url := oktaBaseUrl + "/api/v1/apps/" + clientID + "/lifecycle/deactivate"
 
 	reqID := uuid.NewRandom()
-	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print() //NOSONAR
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, clientIDKeyForLogging: clientID}).Print()
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		logError(err, reqID)
@@ -379,7 +388,7 @@ func (oc *OktaClient) RemoveClientApplication(clientID string) error {
 	url := oktaBaseUrl + "/oauth2/v1/clients/" + clientID
 
 	reqID := uuid.NewRandom()
-	logRequest(reqID).WithFields(logrus.Fields{"url": url, "clientID": clientID}).Print() //NOSONAR
+	logRequest(reqID).WithFields(logrus.Fields{"url": url, clientIDKeyForLogging: clientID}).Print()
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		logError(err, reqID)
@@ -407,21 +416,21 @@ func client() *http.Client {
 }
 
 func addRequestHeaders(req *http.Request) {
-	req.Header.Set("Accept", "application/json")       //NOSONAR
-	req.Header.Set("Content-Type", "application/json") //NOSONAR
+	req.Header.Set("Accept", jsonHeader)
+	req.Header.Set("Content-Type", jsonHeader)
 	req.Header.Set("Authorization", oktaAuthString)
 }
 
 func logRequest(requestID uuid.UUID) *logrus.Entry {
-	return logger.WithField("request_id", requestID) //NOSONAR
+	return logger.WithField(requestIDKey, requestID)
 }
 
 func logResponse(httpStatus int, requestID uuid.UUID) *logrus.Entry {
-	return logger.WithFields(logrus.Fields{"http_status": httpStatus, "request_id": requestID}) //NOSONAR
+	return logger.WithFields(logrus.Fields{httpStatusKey: httpStatus, requestIDKey: requestID})
 }
 
 func logError(err error, requestID uuid.UUID) *logrus.Entry {
-	return logger.WithFields(logrus.Fields{"error": err, "request_id": requestID}) //NOSONAR
+	return logger.WithFields(logrus.Fields{"error": err, requestIDKey: requestID})
 }
 
 func logEmergency(err error) *logrus.Entry {

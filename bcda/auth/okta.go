@@ -33,6 +33,10 @@ type OktaAuthPlugin struct {
 	backend OktaBackend // interface, not a concrete type, so no *
 }
 
+const (
+	notYetImplementedMessage = "not yet implemented"
+)
+
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
 func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
 	return OktaAuthPlugin{backend}
@@ -53,11 +57,11 @@ func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Cred
 }
 
 func (o OktaAuthPlugin) UpdateSystem(params []byte) ([]byte, error) {
-	return nil, errors.New("not yet implemented")
+	return nil, errors.New(notYetImplementedMessage)
 }
 
 func (o OktaAuthPlugin) DeleteSystem(clientID string) error {
-	return errors.New("not yet implemented")
+	return errors.New(notYetImplementedMessage)
 }
 
 func (o OktaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
@@ -106,7 +110,7 @@ func (o OktaAuthPlugin) MakeAccessToken(creds Credentials) (string, error) {
 }
 
 func (o OktaAuthPlugin) RevokeAccessToken(tokenString string) error {
-	return errors.New("not yet implemented")
+	return errors.New(notYetImplementedMessage)
 }
 
 func (o OktaAuthPlugin) AuthorizeAccess(tokenString string) error {

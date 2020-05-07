@@ -29,6 +29,13 @@ type MiddlewareTestSuite struct {
 	ad     auth.AuthData
 }
 
+const (
+	testACOID           = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	authorizationHeader = "Authorization"
+	testRequestURL      = "/api/v1/ExplanationOfBenefit/$export"
+	failedStatus        = "Failed"
+)
+
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	router := chi.NewRouter()
 	router.Use(auth.ParseToken)
@@ -48,7 +55,7 @@ func (s *MiddlewareTestSuite) SetupSuite() {
 
 func (s *MiddlewareTestSuite) SetupTest() {
 	cmsID := "A9995"
-	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
+	acoID := testACOID
 	tokenID := "d63205a8-d923-456b-a01b-0992fcb40968"
 	s.token, _ = auth.TokenStringWithIDs(tokenID, acoID)
 	s.ad = auth.AuthData{
@@ -73,7 +80,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidSignature() {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
+	req.Header.Add(authorizationHeader, fmt.Sprintf("Bearer %s", badToken))
 	resp, err := client.Do(req)
 
 	assert.NotNil(s.T(), resp)
@@ -121,7 +128,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", s.token))
+	req.Header.Add(authorizationHeader, fmt.Sprintf("Bearer %s", s.token))
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -139,7 +146,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", "")
+	req.Header.Add(authorizationHeader, "")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -153,9 +160,9 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 	defer database.Close(db)
 
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Failed",
+		ACOID:      uuid.Parse(testACOID),
+		RequestURL: testRequestURL,
+		Status:     failedStatus,
 	}
 
 	db.Save(&j)
@@ -191,9 +198,9 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	defer database.Close(db)
 
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Failed",
+		ACOID:      uuid.Parse(testACOID),
+		RequestURL: testRequestURL,
+		Status:     failedStatus,
 	}
 
 	db.Save(&j)
@@ -208,7 +215,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	acoID, tokenID := "DBBD1CE1-AE24-435C-807D-ED45953077D3", uuid.NewRandom().String()
+	acoID, tokenID := testACOID, uuid.NewRandom().String()
 	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
 	assert.Nil(s.T(), err)
 
@@ -234,9 +241,9 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	defer database.Close(db)
 
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Failed",
+		ACOID:      uuid.Parse(testACOID),
+		RequestURL: testRequestURL,
+		Status:     failedStatus,
 	}
 
 	db.Save(&j)

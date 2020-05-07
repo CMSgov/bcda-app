@@ -35,6 +35,13 @@ type AuthAPITestSuite struct {
 	reset   func()
 }
 
+const (
+	tokenEndpoint = "/auth/token"
+	authorization = "Authorization"
+	acceptHeader  = "Accept"
+	jsonHeader    = "application/json"
+)
+
 func (s *AuthAPITestSuite) SetupSuite() {
 	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
 	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
@@ -68,25 +75,25 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	s.db.Save(&aco)
 
 	// Missing authorization header
-	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req := httptest.NewRequest("POST", tokenEndpoint, nil)
 	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
 	// Malformed authorization header
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/auth/token", nil)
-	req.Header.Add("Authorization", "Basic not_an_encoded_client_and_secret")
-	req.Header.Add("Accept", "application/json")
+	req = httptest.NewRequest("POST", tokenEndpoint, nil)
+	req.Header.Add(authorization, "Basic not_an_encoded_client_and_secret")
+	req.Header.Add(acceptHeader, jsonHeader)
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 
 	// Invalid credentials
 	s.rr = httptest.NewRecorder()
-	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req = httptest.NewRequest("POST", tokenEndpoint, nil)
 	req.SetBasicAuth("not_a_client", "not_a_secret")
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add(acceptHeader, jsonHeader)
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
@@ -99,9 +106,9 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)
 
-	req = httptest.NewRequest("POST", "/auth/token", nil)
+	req = httptest.NewRequest("POST", tokenEndpoint, nil)
 	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add(acceptHeader, jsonHeader)
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -125,9 +132,9 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.NotEmpty(s.T(), creds.ClientSecret)
 
 	// Get token
-	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req := httptest.NewRequest("POST", tokenEndpoint, nil)
 	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add(acceptHeader, jsonHeader)
 	handler := http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -146,8 +153,8 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	if err != nil {
 		assert.FailNow(s.T(), err.Error())
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add(authorization, fmt.Sprintf("Bearer %s", badToken))
+	req.Header.Add(acceptHeader, jsonHeader)
 	resp, err := client.Do(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
@@ -157,8 +164,8 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	if err != nil {
 		assert.FailNow(s.T(), err.Error())
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.AccessToken))
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add(authorization, fmt.Sprintf("Bearer %s", t.AccessToken))
+	req.Header.Add(acceptHeader, jsonHeader)
 	resp, err = client.Do(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
