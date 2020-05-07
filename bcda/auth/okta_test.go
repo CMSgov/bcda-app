@@ -16,7 +16,7 @@ import (
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 const KnownClientID = "0oajfkq1mc7O1fdrk0h7" // not a valid Okta ID
-const notYetImplementedMessage = "not yet implemented"
+var notYetImplementedMessage = "not yet implemented"
 
 type OktaAuthPluginTestSuite struct {
 	suite.Suite

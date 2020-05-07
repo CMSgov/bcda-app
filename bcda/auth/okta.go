@@ -33,9 +33,8 @@ type OktaAuthPlugin struct {
 	backend OktaBackend // interface, not a concrete type, so no *
 }
 
-const (
-	notYetImplementedMessage = "not yet implemented"
-)
+// const notYetImplementedMessage = "not yet implemented"
+var notYetImplementedMessage = "not yet implemented"
 
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
 func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
