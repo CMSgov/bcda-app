@@ -95,24 +95,24 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
-		fmt.Fprintf(w, `{ "system_id": "1", "client_id": fakeClientID, "client_secret": "fake-secret", "client_name": "fake-name" }`)
+		fmt.Fprintf(w, `{ "system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name" }`)
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv(ssasURLKey, server.URL)
-	os.Setenv(ssasPublicURLKey, server.URL)
-	os.Setenv(ssasUseTLSKey, "false")
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf(noSsasErrorMessage, err.Error())
+		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
 	s.p = SSASPlugin{client: c}
 
 	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "1", creds.SystemID)
-	assert.Equal(s.T(), fakeClientID, creds.ClientID)
+	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
