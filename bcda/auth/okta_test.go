@@ -16,7 +16,6 @@ import (
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
 const KnownClientID = "0oajfkq1mc7O1fdrk0h7" // not a valid Okta ID
-var notYetImplementedMessage = "not yet implemented"
 
 type OktaAuthPluginTestSuite struct {
 	suite.Suite
@@ -61,12 +60,12 @@ func (s *OktaAuthPluginTestSuite) TestOktaRegisterSystem() {
 func (s *OktaAuthPluginTestSuite) TestOktaUpdateSystem() {
 	c, err := s.o.UpdateSystem([]byte("{}"))
 	assert.Nil(s.T(), c)
-	assert.Equal(s.T(), notYetImplementedMessage, err.Error())
+	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
 func (s *OktaAuthPluginTestSuite) TestOktaDeleteSystem() {
 	err := s.o.DeleteSystem("")
-	assert.Equal(s.T(), notYetImplementedMessage, err.Error())
+	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
 func (s *OktaAuthPluginTestSuite) TestResetSecret() {
@@ -99,7 +98,7 @@ func (s *OktaAuthPluginTestSuite) TestMakeAccessToken() {
 
 func (s *OktaAuthPluginTestSuite) TestOktaRevokeAccessToken() {
 	err := s.o.RevokeAccessToken("")
-	assert.Equal(s.T(), notYetImplementedMessage, err.Error())
+	assert.Equal(s.T(), "not yet implemented", err.Error())
 }
 
 func (s *OktaAuthPluginTestSuite) TestAuthorizeAccess() {
