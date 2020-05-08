@@ -45,6 +45,13 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	var acoName, acoCMSID, acoID, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
+	const (
+		authenticationToolsCategory string = "Authentication tools"
+		cmsIDFlag                   string = "cms-id"
+		cmsIDofACOFlag              string = "CMS ID of ACO"
+		cleanupCategory             string = "Cleanup"
+		dataImportCategory          string = "Data Import"
+	)
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -116,7 +123,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "create-group",
-			Category: "Authentication tools",
+			Category: authenticationToolsCategory,
 			Usage:    "Create a group (SSAS)",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -146,7 +153,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "create-aco",
-			Category: "Authentication tools",
+			Category: authenticationToolsCategory,
 			Usage:    "Create an ACO",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -155,8 +162,8 @@ func setUpApp() *cli.App {
 					Destination: &acoName,
 				},
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        cmsIDFlag,
+					Usage:       cmsIDofACOFlag,
 					Destination: &acoCMSID,
 				},
 			},
@@ -171,12 +178,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "save-public-key",
-			Category: "Authentication tools",
+			Category: authenticationToolsCategory,
 			Usage:    "Upload an ACO's public key to the database",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        cmsIDFlag,
+					Usage:       cmsIDofACOFlag,
 					Destination: &acoCMSID,
 				},
 				cli.StringFlag{
@@ -221,7 +228,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "revoke-token",
-			Category: "Authentication tools",
+			Category: authenticationToolsCategory,
 			Usage:    "Revoke an access token",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -250,8 +257,8 @@ func setUpApp() *cli.App {
 					Destination: &ttl,
 				},
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        cmsIDFlag,
+					Usage:       cmsIDofACOFlag,
 					Destination: &acoCMSID,
 				},
 			},
@@ -276,12 +283,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "generate-client-credentials",
-			Category: "Authentication tools",
+			Category: authenticationToolsCategory,
 			Usage:    "Register a system and generate credentials for client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        cmsIDFlag,
+					Usage:       cmsIDofACOFlag,
 					Destination: &acoCMSID,
 				},
 			},
@@ -296,12 +303,12 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "reset-client-credentials",
-			Category: "Authentication tools",
+			Category: authenticationToolsCategory,
 			Usage:    "Generate a new secret for a client specified by ACO CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
+					Name:        cmsIDFlag,
+					Usage:       cmsIDofACOFlag,
 					Destination: &acoCMSID,
 				},
 			},
@@ -332,7 +339,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "archive-job-files",
-			Category: "Cleanup",
+			Category: cleanupCategory,
 			Usage:    "Update job statuses and move files to an inaccessible location",
 			Action: func(c *cli.Context) error {
 				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
@@ -341,7 +348,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "cleanup-archive",
-			Category: "Cleanup",
+			Category: cleanupCategory,
 			Usage:    "Remove job directory and files from archive and update job status to Expired",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -360,7 +367,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "import-cclf-directory",
-			Category: "Data import",
+			Category: dataImportCategory,
 			Usage:    "Import all CCLF files from the specified directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -377,7 +384,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "import-suppression-directory",
-			Category: "Data import",
+			Category: dataImportCategory,
 			Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -394,7 +401,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "delete-dir-contents",
-			Category: "Cleanup",
+			Category: cleanupCategory,
 			Usage:    "Delete all of the files in a directory",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -420,7 +427,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "import-synthetic-cclf-package",
-			Category: "Data import",
+			Category: dataImportCategory,
 			Usage:    "Import a package of synthetic CCLF files",
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -441,7 +448,7 @@ func setUpApp() *cli.App {
 		},
 		{
 			Name:     "retrieve-suppression-bbids",
-			Category: "Data import",
+			Category: dataImportCategory,
 			Usage:    "Populate suppression model with BlueButton IDs",
 
 			Action: func(c *cli.Context) error {

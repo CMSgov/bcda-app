@@ -18,6 +18,7 @@ type ConnectionTestSuite struct {
 }
 
 func (suite *ConnectionTestSuite) TestDbConnections() {
+	databaseURLKey := "DATABASE_URL"
 
 	// after this test, replace the original log.Fatal() function
 	origLogFatal := LogFatal
@@ -29,10 +30,10 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	}
 
 	// get the real database URL
-	actualDatabaseURL := os.Getenv("DATABASE_URL")
+	actualDatabaseURL := os.Getenv(databaseURLKey)
 
 	// set the database URL to a bogus value to test negative scenarios
-	os.Setenv("DATABASE_URL", "fake_db_url")
+	os.Setenv(databaseURLKey, "fake_db_url")
 
 	// attempt to open DB connection swith the bogus DB string
 	suite.db = GetDbConnection()
@@ -47,7 +48,7 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	suite.gormdb.Close()
 
 	// set the database URL back to the real value to test the positive scenarios
-	os.Setenv("DATABASE_URL", actualDatabaseURL)
+	os.Setenv(databaseURLKey, actualDatabaseURL)
 
 	suite.db = GetDbConnection()
 	defer suite.db.Close()

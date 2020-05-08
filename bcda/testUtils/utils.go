@@ -107,11 +107,12 @@ func MakeDirToDelete(s suite.Suite, filePath string) {
 }
 
 func SetPendingDeletionDir(s suite.Suite) {
-	err := os.Setenv("PENDING_DELETION_DIR", "/go/src/github.com/CMSgov/bcda-app/bcda/pending_delete_dir")
+	pendingDeletionDirKey := "PENDING_DELETION_DIR"
+	err := os.Setenv(pendingDeletionDirKey, "/go/src/github.com/CMSgov/bcda-app/bcda/pending_delete_dir")
 	if err != nil {
 		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
 	}
-	cclfDeletion := os.Getenv("PENDING_DELETION_DIR")
+	cclfDeletion := os.Getenv(pendingDeletionDirKey)
 	err = os.MkdirAll(cclfDeletion, 0744)
 	if err != nil {
 		s.FailNow("failed to create the pending deletion directory,", err)

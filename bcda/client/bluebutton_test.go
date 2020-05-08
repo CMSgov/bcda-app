@@ -30,15 +30,28 @@ var ts200, ts500 *httptest.Server
 var now = time.Now()
 var nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 
+const (
+	bbClientCertFileKey  = "BB_CLIENT_CERT_FILE"
+	bbClientKeyFileKey   = "BB_CLIENT_KEY_FILE"
+	bbClientCAFileKey    = "BB_CLIENT_CA_FILE"
+	formatQueryParameter = "_format"
+	fooPemFile           = "foo.pem"
+	emptyFilePemFile     = "../static/emptyFile.pem"
+	badPublicPemFile     = "../static/badPublic.pem"
+	testPatientID        = "012345"
+	testJobID            = "543210"
+	assertOkResponse     = `{ "test": "ok"`
+)
+
 func (s *BBTestSuite) SetupSuite() {
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
-	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
+	os.Setenv(bbClientCertFileKey, "../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	os.Setenv(bbClientKeyFileKey, "../../shared_files/decrypted/bfd-dev-test-key.pem")
+	os.Setenv(bbClientCAFileKey, "../../shared_files/localhost.crt")
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
 	ts200 = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", r.URL.Query().Get("_format"))
+		w.Header().Set("Content-Type", r.URL.Query().Get(formatQueryParameter))
 		response := fmt.Sprintf("{ \"test\": \"ok\"; \"url\": %v}", r.URL.String())
 		fmt.Fprint(w, response)
 	}))
@@ -66,112 +79,114 @@ func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
 
 /* Tests for creating client and other functions that don't make requests */
 func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
-	origCertFile := os.Getenv("BB_CLIENT_CERT_FILE")
-	defer os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
+	origCertFile := os.Getenv(bbClientCertFileKey)
+	defer os.Setenv(bbClientCertFileKey, origCertFile)
 
 	assert := assert.New(s.T())
 
-	os.Unsetenv("BB_CLIENT_CERT_FILE")
+	os.Unsetenv(bbClientCertFileKey)
 	bbc, err := client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	os.Setenv("BB_CLIENT_CERT_FILE", "foo.pem")
+	os.Setenv(bbClientCertFileKey, fooPemFile)
 	bbc, err = client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
-	origCertFile := os.Getenv("BB_CLIENT_CERT_FILE")
-	defer os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
+	origCertFile := os.Getenv(bbClientCertFileKey)
+	defer os.Setenv(bbClientCertFileKey, origCertFile)
 
 	assert := assert.New(s.T())
 
-	os.Setenv("BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
+	os.Setenv(bbClientCertFileKey, emptyFilePemFile)
 	bbc, err := client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
-	os.Setenv("BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
+	os.Setenv(bbClientCertFileKey, badPublicPemFile)
 	bbc, err = client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
-	origKeyFile := os.Getenv("BB_CLIENT_KEY_FILE")
-	defer os.Setenv("BB_CLIENT_KEY_FILE", origKeyFile)
+	origKeyFile := os.Getenv(bbClientKeyFileKey)
+	defer os.Setenv(bbClientKeyFileKey, origKeyFile)
 
 	assert := assert.New(s.T())
 
-	os.Unsetenv("BB_CLIENT_KEY_FILE")
+	os.Unsetenv(bbClientKeyFileKey)
 	bbc, err := client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	os.Setenv("BB_CLIENT_KEY_FILE", "foo.pem")
+	os.Setenv(bbClientKeyFileKey, fooPemFile)
 	bbc, err = client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
-	origKeyFile := os.Getenv("BB_CLIENT_KEY_FILE")
-	defer os.Setenv("BB_CLIENT_KEY_FILE", origKeyFile)
+	origKeyFile := os.Getenv(bbClientKeyFileKey)
+	defer os.Setenv(bbClientKeyFileKey, origKeyFile)
 
 	assert := assert.New(s.T())
 
-	os.Setenv("BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
+	os.Setenv(bbClientKeyFileKey, emptyFilePemFile)
 	bbc, err := client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
-	os.Setenv("BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
+	os.Setenv(bbClientKeyFileKey, badPublicPemFile)
 	bbc, err = client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
-	origCAFile := os.Getenv("BB_CLIENT_CA_FILE")
-	origCheckCert := os.Getenv("BB_CHECK_CERT")
+	origCAFile := os.Getenv(bbClientCAFileKey)
+	bbCheckCertKey := "BB_CHECK_CERT"
+	origCheckCert := os.Getenv(bbCheckCertKey)
 	defer func() {
-		os.Setenv("BB_CLIENT_CA_FILE", origCAFile)
-		os.Setenv("BB_CHECK_CERT", origCheckCert)
+		os.Setenv(bbClientCAFileKey, origCAFile)
+		os.Setenv(bbCheckCertKey, origCheckCert)
 	}()
 
 	assert := assert.New(s.T())
 
-	os.Unsetenv("BB_CLIENT_CA_FILE")
-	os.Unsetenv("BB_CHECK_CERT")
+	os.Unsetenv(bbClientCAFileKey)
+	os.Unsetenv(bbCheckCertKey)
 	bbc, err := client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
-	os.Setenv("BB_CLIENT_CA_FILE", "foo.pem")
+	os.Setenv(bbClientCAFileKey, fooPemFile)
 	bbc, err = client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
-	origCAFile := os.Getenv("BB_CLIENT_CA_FILE")
-	origCheckCert := os.Getenv("BB_CHECK_CERT")
+	origCAFile := os.Getenv(bbClientCAFileKey)
+	bbCheckCertKey := "BB_CHECK_CERT"
+	origCheckCert := os.Getenv(bbCheckCertKey)
 	defer func() {
-		os.Setenv("BB_CLIENT_CA_FILE", origCAFile)
-		os.Setenv("BB_CHECK_CERT", origCheckCert)
+		os.Setenv(bbClientCAFileKey, origCAFile)
+		os.Setenv(bbCheckCertKey, origCheckCert)
 	}()
 
 	assert := assert.New(s.T())
 
-	os.Setenv("BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
-	os.Unsetenv("BB_CHECK_CERT")
+	os.Setenv(bbClientCAFileKey, emptyFilePemFile)
+	os.Unsetenv(bbCheckCertKey)
 	bbc, err := client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
-	os.Setenv("BB_CLIENT_CA_FILE", "../static/badPublic.pem")
+	os.Setenv(bbClientCAFileKey, badPublicPemFile)
 	bbc, err = client.NewBlueButtonClient()
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
@@ -179,7 +194,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 
 func (s *BBTestSuite) TestGetDefaultParams() {
 	params := client.GetDefaultParams()
-	assert.Equal(s.T(), "application/fhir+json", params.Get("_format"))
+	assert.Equal(s.T(), "application/fhir+json", params.Get(formatQueryParameter))
 	assert.Equal(s.T(), "", params.Get("patient"))
 	assert.Equal(s.T(), "", params.Get("beneficiary"))
 
@@ -188,9 +203,9 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 /* Tests that make requests, using clients configured with the 200 response and 500 response httptest.Servers initialized in SetupSuite() */
 func (s *BBRequestTestSuite) TestGetPatientWithoutSince() {
 	since := ""
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+	p, err := s.bbClient.GetPatient(testPatientID, testJobID, "A0000", since, now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), p, `{ "test": "ok"`)
+	assert.Contains(s.T(), p, assertOkResponse)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 	assert.NotContains(s.T(), p, "_lastUpdated=gt")
 	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
@@ -198,16 +213,16 @@ func (s *BBRequestTestSuite) TestGetPatientWithoutSince() {
 
 func (s *BBRequestTestSuite) TestGetPatientWithInvalidSince_500() {
 	since := "invalid"
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+	p, err := s.bbClient.GetPatient(testPatientID, testJobID, "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
 func (s *BBRequestTestSuite) TestGetPatientWithSince() {
 	since := "gt2020-02-14"
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+	p, err := s.bbClient.GetPatient(testPatientID, testJobID, "A0000", since, now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), p, `{ "test": "ok"`)
+	assert.Contains(s.T(), p, assertOkResponse)
 	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
 	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=%s", since))
 	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
@@ -215,16 +230,16 @@ func (s *BBRequestTestSuite) TestGetPatientWithSince() {
 
 func (s *BBRequestTestSuite) TestGetPatient_500() {
 	since := ""
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+	p, err := s.bbClient.GetPatient(testPatientID, testJobID, "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
 func (s *BBRequestTestSuite) TestGetCoverageWithoutSince() {
 	since := ""
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	c, err := s.bbClient.GetCoverage(testPatientID, testJobID, "A0000", since, now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), c, `{ "test": "ok"`)
+	assert.Contains(s.T(), c, assertOkResponse)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 	assert.NotContains(s.T(), c, "_lastUpdated=gt")
 	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
@@ -232,16 +247,16 @@ func (s *BBRequestTestSuite) TestGetCoverageWithoutSince() {
 
 func (s *BBRequestTestSuite) TestGetCoverageWithInvalidSince_500() {
 	since := "invalid"
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	c, err := s.bbClient.GetCoverage(testPatientID, testJobID, "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", c)
 }
 
 func (s *BBRequestTestSuite) TestGetCoverageWithSince() {
 	since := "gt2020-02-14"
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	c, err := s.bbClient.GetCoverage(testPatientID, testJobID, "A0000", since, now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), c, `{ "test": "ok"`)
+	assert.Contains(s.T(), c, assertOkResponse)
 	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
 	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=%s", since))
 	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
@@ -249,16 +264,16 @@ func (s *BBRequestTestSuite) TestGetCoverageWithSince() {
 
 func (s *BBRequestTestSuite) TestGetCoverage_500() {
 	since := ""
-	p, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	p, err := s.bbClient.GetCoverage(testPatientID, testJobID, "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithoutSince() {
 	since := ""
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+	e, err := s.bbClient.GetExplanationOfBenefit(testPatientID, testJobID, "A0000", since, now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), e, `{ "test": "ok"`)
+	assert.Contains(s.T(), e, assertOkResponse)
 	assert.Contains(s.T(), e, "excludeSAMHSA=true")
 	assert.NotContains(s.T(), e, "_lastUpdated=gt")
 	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
@@ -266,16 +281,16 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithoutSince() {
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithInvalidSince_500() {
 	since := "invalid"
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+	e, err := s.bbClient.GetExplanationOfBenefit(testPatientID, testJobID, "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", e)
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithSince() {
 	since := "gt2020-02-14"
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+	e, err := s.bbClient.GetExplanationOfBenefit(testPatientID, testJobID, "A0000", since, now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), e, `{ "test": "ok"`)
+	assert.Contains(s.T(), e, assertOkResponse)
 	assert.Contains(s.T(), e, "excludeSAMHSA=true")
 	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=%s", since))
 	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
@@ -283,7 +298,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithSince() {
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 	since := ""
-	p, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+	p, err := s.bbClient.GetExplanationOfBenefit(testPatientID, testJobID, "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
@@ -291,7 +306,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 func (s *BBRequestTestSuite) TestGetMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), m, `{ "test": "ok"`)
+	assert.Contains(s.T(), m, assertOkResponse)
 	assert.NotContains(s.T(), m, "excludeSAMHSA=true")
 }
 
@@ -338,10 +353,10 @@ func (s *BBTestSuite) TestAddRequestHeaders() {
 	assert.Nil(s.T(), err)
 
 	params := url.Values{}
-	params.Set("_format", "application/fhir+json")
+	params.Set(formatQueryParameter, "application/fhir+json")
 
 	req.URL.RawQuery = params.Encode()
-	client.AddRequestHeaders(req, reqID, "543210", "A00234")
+	client.AddRequestHeaders(req, reqID, testJobID, "A00234")
 
 	assert.Equal(s.T(), reqID.String(), req.Header.Get("BlueButton-OriginalQueryId"))
 	assert.Equal(s.T(), "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
@@ -353,7 +368,7 @@ func (s *BBTestSuite) TestAddRequestHeaders() {
 	assert.Equal(s.T(), req.URL.String(), req.Header.Get("BlueButton-OriginalUrl"))
 	assert.Equal(s.T(), req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
 
-	assert.Equal(s.T(), "543210", req.Header.Get("BCDA-JOBID"))
+	assert.Equal(s.T(), testJobID, req.Header.Get("BCDA-JOBID"))
 	assert.Equal(s.T(), "A00234", req.Header.Get("BCDA-CMSID"))
 	assert.Equal(s.T(), "mbi", req.Header.Get("IncludeIdentifiers"))
 

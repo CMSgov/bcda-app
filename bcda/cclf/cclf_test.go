@@ -28,17 +28,24 @@ type CCLFTestSuite struct {
 	suite.Suite
 }
 
+const (
+	cclfREfDateKey      string = "CCLF_REF_DATE"
+	validArchivePath    string = "cclf/archives/valid/"
+	testArchiveFile     string = "T.BCD.A0001.ZC8Y18.D181120.T1000009"
+	testArchiveFilePath string = "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"
+)
+
 func (s *CCLFTestSuite) SetupTest() {
 	models.InitializeGormModels()
-	os.Setenv("CCLF_REF_DATE", "181201")
+	os.Setenv(cclfREfDateKey, "181201")
 }
 
 func (s *CCLFTestSuite) SetupSuite() {
-	origDate = os.Getenv("CCLF_REF_DATE")
+	origDate = os.Getenv(cclfREfDateKey)
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", origDate)
+	os.Setenv(cclfREfDateKey, origDate)
 }
 
 func TestCCLFTestSuite(t *testing.T) {
@@ -48,11 +55,12 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 	// The order they should be ingested in. 1 and 2 are prioritized; 3 is the other ACO in the directory.
 	var aco1, aco2, aco3 = "A9989", "A9988", "A0001"
-	origACOs := os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS")
-	os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", fmt.Sprintf("%s,%s", aco1, aco2))
-	defer os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", origACOs)
+	const cclfPriorityACOFlag string = "CCLF_PRIORITY_ACO_CMS_IDS"
+	origACOs := os.Getenv(cclfPriorityACOFlag)
+	os.Setenv(cclfPriorityACOFlag, fmt.Sprintf("%s,%s", aco1, aco2))
+	defer os.Setenv(cclfPriorityACOFlag, origACOs)
 
-	os.Setenv("CCLF_REF_DATE", "181201")
+	os.Setenv(cclfREfDateKey, "181201")
 
 	assert := assert.New(s.T())
 
@@ -68,21 +76,22 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 
 	testUtils.SetPendingDeletionDir(s.Suite)
 
-	sc, f, sk, err := ImportCCLFDirectory(BASE_FILE_PATH + "cclf/archives/valid/")
+	sc, f, sk, err := ImportCCLFDirectory(BASE_FILE_PATH + validArchivePath)
 	assert.Nil(err)
 	assert.Equal(6, sc)
 	assert.Equal(0, f)
 	assert.Equal(1, sk)
 
 	var aco1fs, aco2fs, aco3fs []models.CCLFFile
-	db.Where("aco_cms_id = ?", aco1).Find(&aco1fs)
-	db.Where("aco_cms_id = ?", aco2).Find(&aco2fs)
-	db.Where("aco_cms_id = ?", aco3).Find(&aco3fs)
+	const acoQuery string = "aco_cms_id = ?"
+	db.Where(acoQuery, aco1).Find(&aco1fs)
+	db.Where(acoQuery, aco2).Find(&aco2fs)
+	db.Where(acoQuery, aco3).Find(&aco3fs)
 
 	assert.True(aco1fs[0].CreatedAt.Before(aco2fs[0].CreatedAt))
 	assert.True(aco2fs[0].CreatedAt.Before(aco3fs[0].CreatedAt))
 
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/archives/valid/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+validArchivePath)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
@@ -128,8 +137,8 @@ func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 func (s *CCLFTestSuite) TestValidate() {
 	assert := assert.New(s.T())
 
-	cclf8filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"
-	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "T.BCD.A0001.ZC8Y18.D181120.T1000009"}
+	cclf8filePath := BASE_FILE_PATH + testArchiveFilePath
+	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: testArchiveFile}
 
 	// positive
 	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 6, maxRecordLength: 549}}
@@ -161,7 +170,7 @@ func (s *CCLFTestSuite) TestValidate_FolderName() {
 func (s *CCLFTestSuite) TestParseTimestamp() {
 	assert := assert.New(s.T())
 
-	cclfMetadata, err := getCCLFFileMetadata("T.BCD.A0001.ZC8Y18.D181120.T1000009")
+	cclfMetadata, err := getCCLFFileMetadata(testArchiveFile)
 	assert.Nil(err)
 	assert.Equal(10, cclfMetadata.timestamp.Hour())
 	assert.Equal(00, cclfMetadata.timestamp.Minute())
@@ -182,13 +191,13 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := &cclfFileMetadata{
-		name:      "T.BCD.A0001.ZC8Y18.D181120.T1000009",
+		name:      testArchiveFile,
 		env:       "test",
 		acoID:     acoID,
 		cclfNum:   8,
 		perfYear:  18,
 		timestamp: fileTime,
-		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000",
+		filePath:  BASE_FILE_PATH + testArchiveFilePath,
 	}
 
 	err = importCCLF8(metadata)
@@ -199,7 +208,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	file := models.CCLFFile{}
 	db.First(&file, "name = ?", metadata.name)
 	assert.NotNil(file)
-	assert.Equal("T.BCD.A0001.ZC8Y18.D181120.T1000009", file.Name)
+	assert.Equal(testArchiveFile, file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
 	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
@@ -235,9 +244,10 @@ func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 
 func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert := assert.New(s.T())
-
-	expDate, _ := time.Parse("2006-01-02", "2019-01-19")
-	os.Setenv("CCLF_REF_DATE", "190120")
+	timeLayout := "2006-01-02"
+	cclfREfDateValue := "190120"
+	expDate, _ := time.Parse(timeLayout, "2019-01-19")
+	os.Setenv(cclfREfDateKey, cclfREfDateValue)
 	metadata, err := getCCLFFileMetadata("T.BCD.A0002.ZC0Y18.D190119.T1000009")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0002", metadata.acoID)
@@ -248,7 +258,7 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
-	expDate, _ = time.Parse("2006-01-02", "2019-01-17")
+	expDate, _ = time.Parse(timeLayout, "2019-01-17")
 	metadata, err = getCCLFFileMetadata("T.BCD.A0000.ZC8Y18.D190117.T0000000")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0000", metadata.acoID)
@@ -259,13 +269,13 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
-	expDate, _ = time.Parse("2006-01-02", "2019-01-08")
+	expDate, _ = time.Parse(timeLayout, "2019-01-08")
 	metadata, err = getCCLFFileMetadata("/path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
 	assert.EqualError(err, "invalid filename for file: /path/P.A0001.ACO.ZC9Y18.D190108.T2355000")
 
 	// CMS EFT file format with BCD identifier
-	expDate, _ = time.Parse("2006-01-02", "2018-11-20")
-	os.Setenv("CCLF_REF_DATE", "181124")
+	expDate, _ = time.Parse(timeLayout, "2018-11-20")
+	os.Setenv(cclfREfDateKey, "181124")
 	metadata, err = getCCLFFileMetadata("T.BCD.A0001.ZC0Y18.D181120.T0001000")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0001", metadata.acoID)
@@ -277,12 +287,12 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Nil(err)
 
 	//CMS EFT file format with ACOB identifier
-	expDate, _ = time.Parse("2006-01-02", "2018-11-20")
+	expDate, _ = time.Parse(timeLayout, "2018-11-20")
 	metadata, err = getCCLFFileMetadata("/BCD/T.BCD.ACOB.ZC0Y18.D181120.T0001000")
 	assert.EqualError(err, "invalid filename for file: /BCD/T.BCD.ACOB.ZC0Y18.D181120.T0001000")
 
-	expDate, _ = time.Parse("2006-01-02", "2019-01-12")
-	os.Setenv("CCLF_REF_DATE", "190120")
+	expDate, _ = time.Parse(timeLayout, "2019-01-12")
+	os.Setenv(cclfREfDateKey, cclfREfDateValue)
 	metadata, err = getCCLFFileMetadata("T.BCD.A0012.ZC8Y18.D190112.T1000009")
 	assert.Equal("test", metadata.env)
 	assert.Equal("A0012", metadata.acoID)
@@ -293,30 +303,31 @@ func (s *CCLFTestSuite) TestGetCCLFFileMetadata() {
 	assert.Equal(18, metadata.perfYear)
 	assert.Nil(err)
 
-	os.Setenv("CCLF_REF_DATE", "180612")
+	os.Setenv(cclfREfDateKey, "180612")
 	metadata, err = getCCLFFileMetadata("/BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
 	assert.EqualError(err, "invalid filename for file: /BCD/P.BCD.ACO.ZC9Y19.D180610.T0002000")
 
-	os.Unsetenv("CCLF_REF_DATE")
+	os.Unsetenv(cclfREfDateKey)
 }
 
 func (s *CCLFTestSuite) TestGetCCLFFileMetadata_DateOutOfRange() {
 	assert := assert.New(s.T())
+	invalidFile := "T.BCD.A0001.ZC0Y18.D181120.T0001000"
 
 	// File is postdated
-	os.Setenv("CCLF_REF_DATE", "181119")
-	_, err := getCCLFFileMetadata("T.BCD.A0001.ZC0Y18.D181120.T0001000")
+	os.Setenv(cclfREfDateKey, "181119")
+	_, err := getCCLFFileMetadata(invalidFile)
 	assert.EqualError(err, "date 'D181120.T000100' from file T.BCD.A0001.ZC0Y18.D181120.T0001000 out of range; comparison date 181119")
 
 	// File is older than 45 days
-	os.Setenv("CCLF_REF_DATE", "190120")
-	_, err = getCCLFFileMetadata("T.BCD.A0001.ZC0Y18.D181120.T0001000")
+	os.Setenv(cclfREfDateKey, "190120")
+	_, err = getCCLFFileMetadata(invalidFile)
 	assert.EqualError(err, "date 'D181120.T000100' from file T.BCD.A0001.ZC0Y18.D181120.T0001000 out of range; comparison date 190120")
 }
 
 func (s *CCLFTestSuite) TestGetCCLFFileMetadata_InvalidFilename() {
 	assert := assert.New(s.T())
-	os.Setenv("CCLF_REF_DATE", "190615")
+	os.Setenv(cclfREfDateKey, "190615")
 
 	_, err := getCCLFFileMetadata("/path/to/file")
 	assert.EqualError(err, "invalid filename for file: /path/to/file")
@@ -336,7 +347,7 @@ func (s *CCLFTestSuite) TestSortCCLFArchives() {
 	cclfmap := make(map[string]map[int][]*cclfFileMetadata)
 	var skipped int
 
-	filePath := BASE_FILE_PATH + "cclf/archives/valid/"
+	filePath := BASE_FILE_PATH + validArchivePath
 	err := filepath.Walk(filePath, sortCCLFArchives(&cclfmap, &skipped))
 	assert.Nil(err)
 	assert.Equal(2, len(cclfmap["A0001"][18]))
@@ -425,7 +436,8 @@ func (s *CCLFTestSuite) TestSortCCLFArchives_TimeChange() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string]map[int][]*cclfFileMetadata)
 	var skipped int
-	folderPath := BASE_FILE_PATH + "cclf/mixed/with_invalid_filenames/"
+	invalidFileDirectory := "cclf/mixed/with_invalid_filenames/"
+	folderPath := BASE_FILE_PATH + invalidFileDirectory
 	filePath := folderPath + "T.BCDE.ACO.ZC0Y18.D181120.T0001000"
 
 	origTime := time.Now().Truncate(time.Second)
@@ -444,7 +456,7 @@ func (s *CCLFTestSuite) TestSortCCLFArchives_TimeChange() {
 	_, err = os.Open(filePath)
 	assert.Nil(err)
 
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+invalidFileDirectory)
 
 	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
@@ -464,7 +476,7 @@ func (s *CCLFTestSuite) TestSortCCLFArchives_TimeChange() {
 	_, err = os.Open(filePath)
 	assert.EqualError(err, "open ../../shared_files/cclf/mixed/with_invalid_filenames/T.BCDE.ACO.ZC0Y18.D181120.T0001000: no such file or directory")
 
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+invalidFileDirectory)
 }
 
 func (s *CCLFTestSuite) TestSortCCLFArchives_InvalidPath() {
@@ -475,9 +487,10 @@ func (s *CCLFTestSuite) TestSortCCLFArchives_InvalidPath() {
 }
 
 func (s *CCLFTestSuite) TestOrderACOs() {
-	origACOs := os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS")
-	os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", "A3456, A8765, A4321")
-	defer os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", origACOs)
+	const cclfPriorityACOFlag string = "CCLF_PRIORITY_ACO_CMS_IDS"
+	origACOs := os.Getenv(cclfPriorityACOFlag)
+	os.Setenv(cclfPriorityACOFlag, "A3456, A8765, A4321")
+	defer os.Setenv(cclfPriorityACOFlag, origACOs)
 
 	var cclfMap = map[string]map[int][]*cclfFileMetadata{
 		"A1111": map[int][]*cclfFileMetadata{},
@@ -502,7 +515,8 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 
 	// failed import: file that's within the threshold - stay put
 	acoID := "A0001"
-	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	testDateTime := "2018-11-20T10:00:00Z"
+	fileTime, _ := time.Parse(time.RFC3339, testDateTime)
 	cclf0metadata := &cclfFileMetadata{
 		name:         "T.BCD.ACO.ZC0Y18.D181120.T0001000",
 		env:          "test",
@@ -516,21 +530,21 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	}
 
 	// failed import: file that's over the threshold - should move
-	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	fileTime, _ = time.Parse(time.RFC3339, testDateTime)
 	cclf8metadata := &cclfFileMetadata{
-		name:         "T.BCD.A0001.ZC8Y18.D181120.T1000009",
+		name:         testArchiveFile,
 		env:          "test",
 		acoID:        acoID,
 		cclfNum:      8,
 		perfYear:     18,
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000",
+		filePath:     BASE_FILE_PATH + testArchiveFilePath,
 		imported:     false,
 		deliveryDate: fileTime,
 	}
 
 	// successfully imported file - should move
-	fileTime, _ = time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
+	fileTime, _ = time.Parse(time.RFC3339, testDateTime)
 	cclf9metadata := &cclfFileMetadata{
 		name:      "T.BCD.A0001.ZC9Y18.D181120.T1000010",
 		env:       "test",
@@ -552,7 +566,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	for _, file := range files {
 		assert.NotEqual("T.BCD.ACO.ZC0Y18.D181120.T0001000", file.Name())
 	}
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/archives/valid/")
+	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+validArchivePath)
 }
 
 func deleteFilesByACO(acoID string, db *gorm.DB) error {

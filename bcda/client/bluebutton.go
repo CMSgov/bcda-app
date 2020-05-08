@@ -28,7 +28,14 @@ import (
 
 var logger *logrus.Logger
 
-const blueButtonBasePath = "/v1/fhir"
+const (
+	blueButtonBasePath       = "/v1/fhir"
+	blueButtonQueryTimestamp = "BlueButton-OriginalQueryTimestamp"
+	blueButtonQueryID        = "BlueButton-OriginalQueryId"
+	blueButtonUrl            = "BlueButton-OriginalUrl"
+	bcdaJobID                = "BCDA-JOBID"
+	bcdaCMSID                = "BCDA-CMSID"
+)
 
 type APIClient interface {
 	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (string, error)
@@ -178,16 +185,16 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 
 func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
-	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
-	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
+	req.Header.Add(blueButtonQueryTimestamp, time.Now().String())
+	req.Header.Add(blueButtonQueryID, reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
 	req.Header.Add("keep-alive", "")
 	req.Header.Add("X-Forwarded-Proto", "https")
 	req.Header.Add("X-Forwarded-Host", "")
-	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
+	req.Header.Add(blueButtonUrl, req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
-	req.Header.Add("BCDA-JOBID", jobID)
-	req.Header.Add("BCDA-CMSID", cmsID)
+	req.Header.Add(bcdaJobID, jobID)
+	req.Header.Add(bcdaCMSID, cmsID)
 	req.Header.Add("IncludeIdentifiers", "mbi")
 
 	// Do not set BB-specific headers with blank values
@@ -206,16 +213,16 @@ func (bbc *BlueButtonClient) tryRequest(req *http.Request) (string, error) {
 		logResponse(req, resp)
 	}
 	if err != nil {
-		return "", errors.Wrapf(err, "error from request %s", req.Header.Get("BlueButton-OriginalQueryId"))
+		return "", errors.Wrapf(err, "error from request %s", req.Header.Get(blueButtonQueryID))
 	}
 
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("error from request %s: %s", req.Header.Get("BlueButton-OriginalQueryId"), resp.Status)
+		return "", fmt.Errorf("error from request %s: %s", req.Header.Get(blueButtonQueryID), resp.Status)
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrapf(err, "error reading response from request %s", req.Header.Get("BlueButton-OriginalQueryId"))
+		return "", errors.Wrapf(err, "error reading response from request %s", req.Header.Get(blueButtonQueryID))
 	}
 
 	return string(data), nil
@@ -223,22 +230,22 @@ func (bbc *BlueButtonClient) tryRequest(req *http.Request) (string, error) {
 
 func logRequest(req *http.Request) {
 	logger.WithFields(logrus.Fields{
-		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
-		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
-		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
-		"job_id":      req.Header.Get("BCDA-JOBID"),
-		"cms_id":      req.Header.Get("BCDA-CMSID"),
+		"bb_query_id": req.Header.Get(blueButtonQueryID),
+		"bb_query_ts": req.Header.Get(blueButtonQueryTimestamp),
+		"bb_uri":      req.Header.Get(blueButtonUrl),
+		"job_id":      req.Header.Get(bcdaJobID),
+		"cms_id":      req.Header.Get(bcdaCMSID),
 	}).Infoln("request")
 }
 
 func logResponse(req *http.Request, resp *http.Response) {
 	logger.WithFields(logrus.Fields{
 		"resp_code":   resp.StatusCode,
-		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
-		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
-		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
-		"job_id":      req.Header.Get("BCDA-JOBID"),
-		"cms_id":      req.Header.Get("BCDA-CMSID"),
+		"bb_query_id": req.Header.Get(blueButtonQueryID),
+		"bb_query_ts": req.Header.Get(blueButtonQueryTimestamp),
+		"bb_uri":      req.Header.Get(blueButtonUrl),
+		"job_id":      req.Header.Get(bcdaJobID),
+		"cms_id":      req.Header.Get(bcdaCMSID),
 	}).Infoln("response")
 }
 
