@@ -95,7 +95,7 @@ make performance-test
 
 ## Use the application
 
-See: [API documentation](https://github.com/CMSgov/bcda-app/blob/master/API.md)
+See: [API documentation](https://bcda.cms.gov/sandbox/user-guide/)
 
 ## Handling secrets
 
