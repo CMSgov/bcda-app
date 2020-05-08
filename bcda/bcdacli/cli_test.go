@@ -30,6 +30,21 @@ import (
 
 var origDate string
 
+const (
+	invlaidFlag                    = "--abcd"
+	invalidFlagErrorMessage        = "flag provided but not defined: -abcd"
+	incorrectFlagErrorMessage      = "Incorrect Usage: flag provided but not defined"
+	cmsIDFlag                      = "--cms-id"
+	eobURL                         = "/api/v1/ExplanationOfBenefit/$export"
+	fhirArchiveDirKey              = "FHIR_ARCHIVE_DIR"
+	bcdaWorkerTestArchiveDir       = "../bcdaworker/data/test/archive"
+	idQuery                        = "id = ?"
+	archivedStatus                 = "Archived"
+	nameFlag                       = "--name"
+	importSuppressionDirectoryArg  = "import-suppression-directory"
+	completedMedicareImportMessage = "Completed 1-800-MEDICARE suppression data import."
+)
+
 type CLITestSuite struct {
 	suite.Suite
 	testApp       *cli.App
@@ -45,8 +60,9 @@ func (s *CLITestSuite) SetupSuite() {
 	}
 	testUtils.SetUnitTestKeysForAuth()
 	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
-	origDate = os.Getenv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", "181125")
+	cclfRefDateKey := "CCLF_REF_DATE"
+	origDate = os.Getenv(cclfRefDateKey)
+	os.Setenv(cclfRefDateKey, "181125")
 }
 
 func (s *CLITestSuite) SetupTest() {
@@ -101,6 +117,8 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	defer database.Close(db)
 
 	cmsID := "A9901"
+	savePublicKeyArg := "save-public-key"
+	keyFileFlag := "--key-file"
 	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
 	assert.Nil(err)
 	aco, err := auth.GetACOByCMSID(cmsID)
@@ -108,44 +126,45 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	defer db.Delete(&aco)
 
 	// Unexpected flag
-	args := []string{"bcda", "save-public-key", "--abcd", "efg"}
+	args := []string{"bcda", savePublicKeyArg, invlaidFlag, "efg"}
 	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	assert.Equal(invalidFlagErrorMessage, err.Error())
+	assert.Contains(buf.String(), incorrectFlagErrorMessage)
 	buf.Reset()
 
 	// Unspecified ACO
-	args = []string{"bcda", "save-public-key", "--key-file", "../../shared_files/ATO_public.pem"}
+	publicKeyFile := "../../shared_files/ATO_public.pem"
+	args = []string{"bcda", savePublicKeyArg, keyFileFlag, publicKeyFile}
 	err = s.testApp.Run(args)
 	assert.Equal("cms-id is required", err.Error())
 	assert.Contains(buf.String(), "")
 
 	// Unspecified File
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901"}
+	args = []string{"bcda", savePublicKeyArg, cmsIDFlag, "A9901"}
 	err = s.testApp.Run(args)
 	assert.Equal("key-file is required", err.Error())
 	assert.Contains(buf.String(), "")
 
 	// Non-existent ACO
-	args = []string{"bcda", "save-public-key", "--cms-id", "ABCDE", "--key-file", "../../shared_files/ATO_public.pem"}
+	args = []string{"bcda", savePublicKeyArg, cmsIDFlag, "ABCDE", keyFileFlag, publicKeyFile}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "no ACO record found for ABCDE")
 	assert.Contains(buf.String(), "Unable to find ACO")
 
 	// Missing file
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "FILE_DOES_NOT_EXIST"}
+	args = []string{"bcda", savePublicKeyArg, cmsIDFlag, "A9901", keyFileFlag, "FILE_DOES_NOT_EXIST"}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "open FILE_DOES_NOT_EXIST: no such file or directory")
 	assert.Contains(buf.String(), "Unable to open file")
 
 	// Invalid key
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_private.pem"}
+	args = []string{"bcda", savePublicKeyArg, cmsIDFlag, "A9901", keyFileFlag, "../../shared_files/ATO_private.pem"}
 	err = s.testApp.Run(args)
 	assert.Contains(err.Error(), fmt.Sprintf("invalid public key for ACO %s: unable to parse public key: asn1: structure error: tags don't match", aco.UUID))
 	assert.Contains(buf.String(), "Unable to save public key for ACO")
 
 	// Success
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_public.pem"}
+	args = []string{"bcda", savePublicKeyArg, cmsIDFlag, "A9901", keyFileFlag, publicKeyFile}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Public key saved for ACO")
@@ -156,7 +175,7 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 	s.testApp.Writer = buf
 	assert := assert.New(s.T())
 
-	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A9994"}
+	args := []string{"bcda", "generate-client-credentials", cmsIDFlag, "A9994"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
@@ -165,15 +184,16 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
+	generateClientCredentialsArg := "generate-client-credentials"
 	assert := assert.New(s.T())
 
-	args := []string{"bcda", "generate-client-credentials", "--cms-id", "9994"}
+	args := []string{"bcda", generateClientCredentialsArg, cmsIDFlag, "9994"}
 	err := s.testApp.Run(args)
 	assert.EqualError(err, "no ACO record found for 9994")
 	assert.Empty(buf)
 	buf.Reset()
 
-	args = []string{"bcda", "generate-client-credentials", "--cms-id", "A6543"}
+	args = []string{"bcda", generateClientCredentialsArg, cmsIDFlag, "A6543"}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "no ACO record found for A6543")
 	assert.Empty(buf)
@@ -187,26 +207,27 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 	assert := assert.New(s.T())
 
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
+	resetClientCredentialsArg := "reset-client-credentials"
 
 	// execute positive scenarios via CLI
-	args := []string{"bcda", "reset-client-credentials", "--cms-id", "A9994"}
+	args := []string{"bcda", resetClientCredentialsArg, cmsIDFlag, "A9994"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
 
 	// Execute CLI with invalid ACO CMS ID
-	args = []string{"bcda", "reset-client-credentials", "--cms-id", "BLAH"}
+	args = []string{"bcda", resetClientCredentialsArg, cmsIDFlag, "BLAH"}
 	err = s.testApp.Run(args)
 	assert.Equal("no ACO record found for BLAH", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Execute CLI with invalid inputs
-	args = []string{"bcda", "reset-client-credentials", "--abcd", "efg"}
+	args = []string{"bcda", resetClientCredentialsArg, invlaidFlag, "efg"}
 	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	assert.Equal(invalidFlagErrorMessage, err.Error())
+	assert.Contains(buf.String(), incorrectFlagErrorMessage)
 
 }
 
@@ -220,9 +241,10 @@ func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	assert := assert.New(s.T())
 
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
+	createAlphaTokenArg := "create-alpha-token"
 
 	// execute positive scenarios via CLI
-	args := []string{"bcda", "create-alpha-token", "--ttl", "720", "--cms-id", "T0001"}
+	args := []string{"bcda", createAlphaTokenArg, "--ttl", "720", cmsIDFlag, "T0001"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
@@ -230,7 +252,7 @@ func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	buf.Reset()
 
 	// ttl is optional when using the CLI
-	args = []string{"bcda", "create-alpha-token", "--cms-id", "T0002"}
+	args = []string{"bcda", createAlphaTokenArg, cmsIDFlag, "T0002"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
@@ -242,35 +264,35 @@ func (s *CLITestSuite) TestCreateAlphaTokenCLI() {
 	assert.NotEmpty(aco.AlphaSecret)
 	buf.Reset()
 
-	args = []string{"bcda", "create-alpha-token", "--cms-id", "T0003"}
+	args = []string{"bcda", createAlphaTokenArg, cmsIDFlag, "T0003"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
 
 	// Execute CLI with invalid inputs
-	args = []string{"bcda", "create-alpha-token"}
+	args = []string{"bcda", createAlphaTokenArg}
 	err = s.testApp.Run(args)
 	assert.Equal("expected CMS ACO ID format for alpha ACOs is 'T' followed by four digits (e.g., 'T1234')", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	args = []string{"bcda", "create-alpha-token", "--ttl", "ABCD", "--cms-id", "T0001"}
+	args = []string{"bcda", createAlphaTokenArg, "--ttl", "ABCD", cmsIDFlag, "T0001"}
 	err = s.testApp.Run(args)
 	assert.Equal("invalid argument 'ABCD' for --ttl; should be an integer > 0", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	args = []string{"bcda", "create-alpha-token", "--ttl", "720", "--cms-id", "ABCD"}
+	args = []string{"bcda", createAlphaTokenArg, "--ttl", "720", cmsIDFlag, "ABCD"}
 	err = s.testApp.Run(args)
 	assert.Equal("expected CMS ACO ID format for alpha ACOs is 'T' followed by four digits (e.g., 'T1234')", err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
-	args = []string{"bcda", "create-alpha-token", "--abcd", "efg"}
+	args = []string{"bcda", createAlphaTokenArg, invlaidFlag, "efg"}
 	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	assert.Equal(invalidFlagErrorMessage, err.Error())
+	assert.Contains(buf.String(), incorrectFlagErrorMessage)
 }
 
 func (s *CLITestSuite) TestArchiveExpiring() {
@@ -289,19 +311,20 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	// save a job to our db
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		RequestURL: eobURL,
 		Status:     "Completed",
 	}
 	db.Save(&j)
 	assert.NotNil(j.ID)
 
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	fhirPayloadDirKey := "FHIR_PAYLOAD_DIR"
+	os.Setenv(fhirPayloadDirKey, "../bcdaworker/data/test")
+	os.Setenv(fhirArchiveDirKey, bcdaWorkerTestArchiveDir)
 	id := int(j.ID)
 	assert.NotNil(id)
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-	newpath := os.Getenv("FHIR_ARCHIVE_DIR")
+	path := fmt.Sprintf("%s/%d/", os.Getenv(fhirPayloadDirKey), id)
+	newpath := os.Getenv(fhirArchiveDirKey)
 
 	if _, err = os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
@@ -330,7 +353,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.Nil(err)
 
 	// check that the file has moved to the archive location
-	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv(fhirArchiveDirKey), id)
 	_, err = ioutil.ReadFile(expPath)
 	if err != nil {
 		s.T().Error(err)
@@ -338,13 +361,13 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.FileExists(expPath, "File not Found")
 
 	var testjob models.Job
-	db.First(&testjob, "id = ?", j.ID)
+	db.First(&testjob, idQuery, j.ID)
 
 	// check the status of the job
-	assert.Equal("Archived", testjob.Status)
+	assert.Equal(archivedStatus, testjob.Status)
 
 	// clean up
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(os.Getenv(fhirArchiveDirKey))
 }
 
 func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
@@ -353,21 +376,24 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
+	completedStatus := "Completed"
+	fhirPayloadDirKey := "FHIR_PAYLOAD_DIR"
+
 	// save a job to our db
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Completed",
+		RequestURL: eobURL,
+		Status:     completedStatus,
 	}
 	db.Save(&j)
 	assert.NotNil(s.T(), j.ID)
 
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	os.Setenv(fhirPayloadDirKey, "../bcdaworker/data/test")
+	os.Setenv(fhirArchiveDirKey, bcdaWorkerTestArchiveDir)
 	id := int(j.ID)
 	assert.NotNil(s.T(), id)
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+	path := fmt.Sprintf("%s/%d/", os.Getenv(fhirPayloadDirKey), id)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
@@ -388,7 +414,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	}
 
 	// check that the file has not moved to the archive location
-	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv(fhirPayloadDirKey), id)
 	_, err = ioutil.ReadFile(dataPath)
 	if err != nil {
 		s.T().Error(err)
@@ -396,10 +422,10 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	assert.FileExists(s.T(), dataPath, "File not Found")
 
 	var testjob models.Job
-	db.First(&testjob, "id = ?", j.ID)
+	db.First(&testjob, idQuery, j.ID)
 
 	// check the status of the job
-	assert.Equal(s.T(), "Completed", testjob.Status)
+	assert.Equal(s.T(), completedStatus, testjob.Status)
 
 	// clean up
 	os.Remove(dataPath)
@@ -409,22 +435,23 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
+	dateFormat := "2006-01-02 15:04:05"
 	acoUUID, err := createACO("ACO "+email, "")
 	assert.Nil(s.T(), err)
 
 	// save a job to our db
 	j := models.Job{
 		ACOID:      uuid.Parse(acoUUID),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Archived",
+		RequestURL: eobURL,
+		Status:     archivedStatus,
 	}
 	db.Save(&j)
-	db.Exec("UPDATE jobs SET updated_at=? WHERE id = ?", modified.Format("2006-01-02 15:04:05"), j.ID)
-	db.First(&j, "id = ?", j.ID)
+	db.Exec("UPDATE jobs SET updated_at=? WHERE id = ?", modified.Format(dateFormat), j.ID)
+	db.First(&j, idQuery, j.ID)
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), j.ID)
 	// compare times using formatted strings to avoid differences (like nano seconds) that we don't care about
-	assert.Equal(s.T(), modified.Format("2006-01-02 15:04:05"), j.UpdatedAt.Format("2006-01-02 15:04:05"), "UpdatedAt should match %v", modified)
+	assert.Equal(s.T(), modified.Format(dateFormat), j.UpdatedAt.Format(dateFormat), "UpdatedAt should match %v", modified)
 
 	return int(j.ID)
 }
@@ -433,7 +460,7 @@ func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, acce
 	// directory structure is FHIR_ARCHIVE_DIR/<JobId>/<datafile>.ndjson
 	// for reference, see main.archiveExpiring() and its companion tests above
 	jobId := setupArchivedJob(s, email, modified)
-	path := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), jobId)
+	path := fmt.Sprintf("%s/%d", os.Getenv(fhirArchiveDirKey), jobId)
 
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		s.T().Error(err)
@@ -453,19 +480,21 @@ func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, acce
 func (s *CLITestSuite) TestCleanArchive() {
 	// init
 	const Threshold = 30
+	thresholdArg := "--threshold"
+	cleanupArchiveArg := "cleanup-archive"
 	now := time.Now()
 
 	assert := assert.New(s.T())
 
 	// condition: FHIR_ARCHIVE_DIR doesn't exist
-	os.Unsetenv("FHIR_ARCHIVE_DIR")
-	args := []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
+	os.Unsetenv(fhirArchiveDirKey)
+	args := []string{"bcda", cleanupArchiveArg, thresholdArg, strconv.Itoa(Threshold)}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	os.Setenv(fhirArchiveDirKey, bcdaWorkerTestArchiveDir)
 
 	// condition: no jobs exist
-	args = []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
+	args = []string{"bcda", cleanupArchiveArg, thresholdArg, strconv.Itoa(Threshold)}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 
@@ -480,14 +509,14 @@ func (s *CLITestSuite) TestCleanArchive() {
 	defer after.Close()
 
 	// condition: bad threshold value
-	args = []string{"bcda", "cleanup-archive", "--threshold", "abcde"}
+	args = []string{"bcda", cleanupArchiveArg, thresholdArg, "abcde"}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "strconv.Atoi: parsing \"abcde\": invalid syntax")
 
 	// condition: before < Threshold < after <= now
 	// a file created before the Threshold should be deleted; one created after should not
 	// we use last modified as a proxy for created, because these files should not be changed after creation
-	args = []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
+	args = []string{"bcda", cleanupArchiveArg, thresholdArg, strconv.Itoa(Threshold)}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 
@@ -503,17 +532,17 @@ func (s *CLITestSuite) TestCleanArchive() {
 	defer database.Close(db)
 
 	var beforeJob models.Job
-	db.First(&beforeJob, "id = ?", beforeJobID)
+	db.First(&beforeJob, idQuery, beforeJobID)
 	assert.Equal("Expired", beforeJob.Status)
 
 	assert.FileExists(after.Name(), "%s not found; it should have been", after.Name())
 
 	var afterJob models.Job
-	db.First(&afterJob, "id = ?", afterJobID)
-	assert.Equal("Archived", afterJob.Status)
+	db.First(&afterJob, idQuery, afterJobID)
+	assert.Equal(archivedStatus, afterJob.Status)
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(os.Getenv(fhirArchiveDirKey))
 }
 
 func (s *CLITestSuite) TestRevokeToken() {
@@ -544,17 +573,21 @@ func (s *CLITestSuite) TestRevokeToken() {
 
 func (s *CLITestSuite) TestStartAPI() {
 	// Negative case
-	originalQueueDBURL := os.Getenv("QUEUE_DATABASE_URL")
-	os.Setenv("QUEUE_DATABASE_URL", "http://bad url.com/")
+	queueDatabaseURLKey := "QUEUE_DATABASE_URL"
+	originalQueueDBURL := os.Getenv(queueDatabaseURLKey)
+	os.Setenv(queueDatabaseURLKey, "http://bad url.com/")
 	args := []string{"bcda", "start-api"}
 	err := s.testApp.Run(args)
 	assert.NotNil(s.T(), err)
-	os.Setenv("QUEUE_DATABASE_URL", originalQueueDBURL)
+	os.Setenv(queueDatabaseURLKey, originalQueueDBURL)
 
 	// We cannot test the positive case because we don't want to start the HTTP Server in unit test environment
 }
 
 func (s *CLITestSuite) TestCreateGroup() {
+	ssasURLKey := "SSAS_URL"
+	ssasUseTLSKey := "SSAS_USE_TLS"
+
 	router := chi.NewRouter()
 	router.Post("/group", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
@@ -565,13 +598,13 @@ func (s *CLITestSuite) TestCreateGroup() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	os.Setenv("SSAS_URL", server.URL)
-	defer os.Setenv("SSAS_URL", origSSASURL)
+	origSSASURL := os.Getenv(ssasURLKey)
+	os.Setenv(ssasURLKey, server.URL)
+	defer os.Setenv(ssasURLKey, origSSASURL)
 
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	os.Setenv("SSAS_USE_TLS", "false")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	origSSASUseTLS := os.Getenv(ssasUseTLSKey)
+	os.Setenv(ssasUseTLSKey, "false")
+	defer os.Setenv(ssasUseTLSKey, origSSASUseTLS)
 
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -581,18 +614,21 @@ func (s *CLITestSuite) TestCreateGroup() {
 	id := "unit-test-group-1"
 	name := "Unit Test Group 1"
 	acoID := "A9995"
-	args := []string{"bcda", "create-group", "--id", id, "--name", name, "--aco-id", acoID}
+	args := []string{"bcda", "create-group", "--id", id, nameFlag, name, "--aco-id", acoID}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Equal("test-create-group-id", buf.String())
 }
 
 func (s *CLITestSuite) TestCreateGroup_InvalidACOID() {
+	createGroupArg := "create-group"
+	acoIDFlag := "--aco-id"
+
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
 	// Invalid format
-	args := []string{"bcda", "create-group", "--id", "invalid-aco-id-group", "--name", "Invalid ACO ID Group", "--aco-id", "1234"}
+	args := []string{"bcda", createGroupArg, "--id", "invalid-aco-id-group", nameFlag, "Invalid ACO ID Group", acoIDFlag, "1234"}
 	err := s.testApp.Run(args)
 	assert.EqualError(s.T(), err, "ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
 	assert.Empty(s.T(), buf.String())
@@ -600,13 +636,14 @@ func (s *CLITestSuite) TestCreateGroup_InvalidACOID() {
 
 	// Valid format, but no matching ACO
 	aUUID := "4e5519cb-428d-4934-a3f8-6d3efb1277b7"
-	args = []string{"bcda", "create-group", "--id", "invalid-aco-id-group", "--name", "Invalid ACO ID Group", "--aco-id", aUUID}
+	args = []string{"bcda", createGroupArg, "--id", "invalid-aco-id-group", nameFlag, "Invalid ACO ID Group", acoIDFlag, aUUID}
 	err = s.testApp.Run(args)
 	assert.EqualError(s.T(), err, "no ACO record found for "+aUUID)
 	assert.Empty(s.T(), buf.String())
 }
 
 func (s *CLITestSuite) TestCreateACO() {
+	createACOArg := "create-aco"
 	// init
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
@@ -619,7 +656,7 @@ func (s *CLITestSuite) TestCreateACO() {
 
 	// Successful ACO creation
 	ACOName := "Unit Test ACO 1"
-	args := []string{"bcda", "create-aco", "--name", ACOName}
+	args := []string{"bcda", createACOArg, nameFlag, ACOName}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
@@ -631,7 +668,7 @@ func (s *CLITestSuite) TestCreateACO() {
 
 	ACO2Name := "Unit Test ACO 2"
 	aco2ID := "A9999"
-	args = []string{"bcda", "create-aco", "--name", ACO2Name, "--cms-id", aco2ID}
+	args = []string{"bcda", createACOArg, nameFlag, ACO2Name, cmsIDFlag, aco2ID}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
@@ -644,37 +681,39 @@ func (s *CLITestSuite) TestCreateACO() {
 
 	// Negative tests
 
+	acoNameMissingErrorMessage := "ACO name (--name) must be provided"
+
 	// No parameters
-	args = []string{"bcda", "create-aco"}
+	args = []string{"bcda", createACOArg}
 	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(acoNameMissingErrorMessage, err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// No ACO Name
 	badACO := ""
-	args = []string{"bcda", "create-aco", "--name", badACO}
+	args = []string{"bcda", createACOArg, nameFlag, badACO}
 	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(acoNameMissingErrorMessage, err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// ACO name without flag
-	args = []string{"bcda", "create-aco", ACOName}
+	args = []string{"bcda", createACOArg, ACOName}
 	err = s.testApp.Run(args)
-	assert.Equal("ACO name (--name) must be provided", err.Error())
+	assert.Equal(acoNameMissingErrorMessage, err.Error())
 	assert.Equal(0, buf.Len())
 	buf.Reset()
 
 	// Unexpected flag
-	args = []string{"bcda", "create-aco", "--abcd", "efg"}
+	args = []string{"bcda", createACOArg, invlaidFlag, "efg"}
 	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+	assert.Equal(invalidFlagErrorMessage, err.Error())
+	assert.Contains(buf.String(), incorrectFlagErrorMessage)
 	buf.Reset()
 
 	// Invalid CMS ID
-	args = []string{"bcda", "create-aco", "--name", ACOName, "--cms-id", "ABCDE"}
+	args = []string{"bcda", createACOArg, nameFlag, ACOName, cmsIDFlag, "ABCDE"}
 	err = s.testApp.Run(args)
 	assert.Equal("ACO CMS ID (--cms-id) is invalid", err.Error())
 	assert.Equal(0, buf.Len())
@@ -682,6 +721,8 @@ func (s *CLITestSuite) TestCreateACO() {
 }
 
 func (s *CLITestSuite) TestImportCCLFDirectory() {
+	directoryFlag := "--directory"
+
 	assert := assert.New(s.T())
 
 	db := database.GetGORMDbConnection()
@@ -700,7 +741,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	testUtils.SetPendingDeletionDir(s.Suite)
 
-	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/archives/valid/"}
+	args := []string{"bcda", "import-cclf-directory", directoryFlag, "../../shared_files/cclf/archives/valid/"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
@@ -719,7 +760,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/archives/valid/")
 
 	// dir has 4 files, but 2 will be ignored because of bad file names.
-	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/mixed/with_invalid_filenames/"}
+	args = []string{"bcda", "import-cclf-directory", directoryFlag, "../../shared_files/cclf/mixed/with_invalid_filenames/"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
@@ -731,6 +772,8 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
+	deleteDirContentsArg := "delete-dir-contents"
+
 	assert := assert.New(s.T())
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -739,21 +782,21 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
 	defer os.Remove(dirToDelete)
 
-	args := []string{"bcda", "delete-dir-contents", "--dirToDelete", dirToDelete}
+	args := []string{"bcda", deleteDirContentsArg, "--dirToDelete", dirToDelete}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
 	buf.Reset()
 
 	// File, not a directory
-	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"}
+	args = []string{"bcda", deleteDirContentsArg, "--dirToDelete", "../../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "unable to delete Directory Contents because ../../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000 does not reference a directory")
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
 	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
-	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
+	args = []string{"bcda", deleteDirContentsArg, "--envvar", "TESTDELETEDIRECTORY"}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "flag provided but not defined: -envvar")
 	assert.NotContains(buf.String(), "Successfully Deleted")
@@ -762,6 +805,7 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 }
 
 func (s *CLITestSuite) TestImportSuppressionDirectory() {
+
 	assert := assert.New(s.T())
 
 	db := database.GetGORMDbConnection()
@@ -772,10 +816,10 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 
 	path := "../../shared_files/synthetic1800MedicareFiles/test/"
 
-	args := []string{"bcda", "import-suppression-directory", "--directory", path}
+	args := []string{"bcda", importSuppressionDirectoryArg, "--directory", path}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed 1-800-MEDICARE suppression data import.")
+	assert.Contains(buf.String(), completedMedicareImportMessage)
 	assert.Contains(buf.String(), "Files imported: 2")
 	assert.Contains(buf.String(), "Files failed: 0")
 	assert.Contains(buf.String(), "Files skipped: 0")
@@ -802,10 +846,10 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Skipped() {
 
 	path := "../../shared_files/suppressionfile_BadFileNames/"
 
-	args := []string{"bcda", "import-suppression-directory", "--directory", path}
+	args := []string{"bcda", importSuppressionDirectoryArg, "--directory", path}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed 1-800-MEDICARE suppression data import.")
+	assert.Contains(buf.String(), completedMedicareImportMessage)
 	assert.Contains(buf.String(), "Files imported: 0")
 	assert.Contains(buf.String(), "Files failed: 0")
 	assert.Contains(buf.String(), "Files skipped: 2")
@@ -824,10 +868,10 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 
 	path := "../../shared_files/suppressionfile_BadHeader/"
 
-	args := []string{"bcda", "import-suppression-directory", "--directory", path}
+	args := []string{"bcda", importSuppressionDirectoryArg, "--directory", path}
 	err := s.testApp.Run(args)
 	assert.EqualError(err, "one or more suppression files failed to import correctly")
-	assert.Contains(buf.String(), "Completed 1-800-MEDICARE suppression data import.")
+	assert.Contains(buf.String(), completedMedicareImportMessage)
 	assert.Contains(buf.String(), "Files imported: 0")
 	assert.Contains(buf.String(), "Files failed: 1")
 	assert.Contains(buf.String(), "Files skipped: 0")

@@ -112,7 +112,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), "1", creds.SystemID)
-	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
+	assert.Equal(s.T(), fakeClientID, creds.ClientID)
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
