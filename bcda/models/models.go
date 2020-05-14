@@ -621,14 +621,15 @@ func StoreSuppressionBBID() (success, failure int, err error) {
 
 	var suppressList []Suppression
 	db.Find(&suppressList)
-	for _, suppressBene := range suppressList {
+	for _, bene := range suppressList {
+		suppressBene := bene
 		bbID, err := suppressBene.GetBlueButtonID(bb)
 		if err != nil {
 			failure++
 			continue
 		}
 		suppressBene.BlueButtonID = bbID
-		db.Save(&suppressBene) /* #nosec G601 */
+		db.Save(&suppressBene)
 		success++
 	}
 	return success, failure, nil
