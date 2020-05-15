@@ -1648,86 +1648,6 @@
 			"response": []
 		},
 		{
-			"name": "Start repeated type for /Group EOB export",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
-						"exec": [
-							"pm.test(\"Status code is 400\", function() {",
-							"    pm.response.to.have.status(400);",
-							"});",
-							"",
-							"var respJson = pm.response.json();",
-							"",
-							"pm.test(\"Resource type is OperationOutcome\", function() {",
-							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-							"});",
-							"pm.test(\"Issue details code is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
-							"});",
-							"",
-							"pm.test(\"Issue details text is Repeated Resource Type\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type\")",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"value": "application/fhir+json",
-						"type": "text"
-					},
-					{
-						"key": "Prefer",
-						"value": "respond-async",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=ExplanationOfBenefit,ExplanationOfBenefit",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Group",
-						"all",
-						"$export"
-					],
-					"query": [
-						{
-							"key": "_type",
-							"value": "ExplanationOfBenefit,ExplanationOfBenefit"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "Start /Group non-existing resource type export",
 			"event": [
 				{
@@ -1809,7 +1729,7 @@
 			"response": []
 		},
 		{
-			"name": "Start Group export, invalid group id",
+			"name": "Start repeated type for /Group EOB export",
 			"event": [
 				{
 					"listen": "test",
@@ -1825,13 +1745,12 @@
 							"pm.test(\"Resource type is OperationOutcome\", function() {",
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
-							"",
 							"pm.test(\"Issue details code is Request Error\", function() {",
 							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Invalid group ID\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid group ID\")",
+							"pm.test(\"Issue details text is Repeated Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -1867,80 +1786,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Group/sub/$export?_type=ExplanationOfBenefit",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Group",
-						"sub",
-						"$export"
-					],
-					"query": [
-						{
-							"key": "_type",
-							"value": "ExplanationOfBenefit"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Start Group/all export",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
-						"exec": [
-							"pm.test(\"Status code is 202\", function() {",
-							"    pm.response.to.have.status(202);",
-							"});",
-							"",
-							"pm.test(\"Has Content-Location header\", function() {",
-							"    pm.response.to.have.header(\"Content-Location\");",
-							"});",
-							"",
-							"pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json"
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient",
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=ExplanationOfBenefit,ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -1955,104 +1801,7 @@
 					"query": [
 						{
 							"key": "_type",
-							"value": "Patient"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Start Group/new export",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
-						"exec": [
-							"env = pm.environment.get(\"env\");",
-							"",
-							"if (env != \"prod\") {",
-							"    pm.test(\"Status code is 202\", function() {",
-							"       pm.response.to.have.status(202);",
-							"    });",
-							"",
-							"    pm.test(\"Has Content-Location header\", function() {",
-							"      pm.response.to.have.header(\"Content-Location\");",
-							"    });",
-							"",
-							"    pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));",
-							"}",
-							"else {",
-							"    pm.test(\"Status code is 400\", function() {",
-							"       pm.response.to.have.status(400);",
-							"    });",
-							"    ",
-							"    var respJson = pm.response.json();",
-							"",
-							"    pm.test(\"Resource type is OperationOutcome\", function() {",
-							"     pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
-							"    });",
-							"",
-							"    pm.test(\"Issue details code is Request Error\", function() {",
-							"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
-							"    });",
-							"",
-							"    pm.test(\"Issue details text is Invalid Group ID\", function() {",
-							"        pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid group ID\")",
-							"    });",
-							"}",
-							"    "
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json"
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Group/new/$export?_type=Patient",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Group",
-						"new",
-						"$export"
-					],
-					"query": [
-						{
-							"key": "_type",
-							"value": "Patient"
+							"value": "ExplanationOfBenefit,ExplanationOfBenefit"
 						}
 					]
 				}
@@ -2320,6 +2069,257 @@
 					"raw": "{{patientValidSinceDataUrl}}",
 					"host": [
 						"{{patientValidSinceDataUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group export, invalid group id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Invalid group ID\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid group ID\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/fhir+json",
+						"type": "text"
+					},
+					{
+						"key": "Prefer",
+						"value": "respond-async",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/sub/$export?_type=ExplanationOfBenefit",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group",
+						"sub",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "ExplanationOfBenefit"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group/all export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group",
+						"all",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Group/new export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"exec": [
+							"env = pm.environment.get(\"env\");",
+							"",
+							"if (env != \"prod\") {",
+							"    pm.test(\"Status code is 202\", function() {",
+							"       pm.response.to.have.status(202);",
+							"    });",
+							"",
+							"    pm.test(\"Has Content-Location header\", function() {",
+							"      pm.response.to.have.header(\"Content-Location\");",
+							"    });",
+							"",
+							"    pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));",
+							"}",
+							"else {",
+							"    pm.test(\"Status code is 400\", function() {",
+							"       pm.response.to.have.status(400);",
+							"    });",
+							"    ",
+							"    var respJson = pm.response.json();",
+							"",
+							"    pm.test(\"Resource type is OperationOutcome\", function() {",
+							"     pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"    });",
+							"",
+							"    pm.test(\"Issue details code is Request Error\", function() {",
+							"        pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"    });",
+							"",
+							"    pm.test(\"Issue details text is Invalid Group ID\", function() {",
+							"        pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid group ID\")",
+							"    });",
+							"}",
+							"    "
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/new/$export?_type=Patient",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Group",
+						"new",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						}
 					]
 				}
 			},
