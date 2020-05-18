@@ -129,7 +129,8 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 }
 
 func (s *APITestSuite) TestBulkPatientRequest() {
-	since := "2020-02-13T08:00:00.000-05:00"
+	// since := "2020-02-13T08:00:00.000-05:00"
+	since := "invalidDate"
 	bulkPatientRequestHelper("Patient", "", s)
 	s.TearDownTest()
 	s.SetupTest()
@@ -181,6 +182,17 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
 	since := "invalidDate"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyDate() {
+	since := "2020-03-01"
 	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
