@@ -191,6 +191,50 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatWierdFormat() {
+	since := "2020-03-01T00%3A%2000%3A00.000-00%3A00"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatMissingTimeZone() {
+	since := "2020-02-13T08:00:00.000"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatInvalidTime() {
+	since := "2020-02-13T33:00:00.000-05:00"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatInvalidDate() {
+	since := "2020-20-13T08:00:00.000-05:00"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
+}
+
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyDate() {
 	since := "2020-03-01"
 	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
