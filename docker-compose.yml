@@ -104,6 +104,22 @@ services:
       dockerfile: Dockerfiles/Dockerfile.documentation
     volumes:
     - .:/go/src/github.com/CMSgov/bcda-app
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.jupyter
+    environment: 
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=toor
+      - POSTGRES_DBNAME=bcda
+      - POSTGRES_ADDRESS=db
+      - POSTGRES_PORT=5432
+    ports:
+      - "8888:8888"
+    links:
+      - "db"
+    depends_on:
+      - db
   ssas:
     build:
       context: .

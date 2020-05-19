@@ -1,0 +1,8 @@
+FROM jupyter/scipy-notebook:3b1f4f5e6cc1
+
+RUN conda install -y sqlalchemy psycopg2 ipywidgets>=7.2 notebook>=5.3
+RUN conda install -y -c plotly plotly=4.7.1
+COPY notebooks/* /home/jovyan/notebooks/
+USER root
+RUN chown -R jovyan:users /home/jovyan/notebooks
+USER jovyan
