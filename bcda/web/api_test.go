@@ -378,7 +378,7 @@ func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSu
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.", respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.", respOO.Issue[0].Details.Coding[0].Display)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
@@ -530,7 +530,7 @@ func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITe
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.", respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.", respOO.Issue[0].Details.Coding[0].Display)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
@@ -607,7 +607,7 @@ func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APIT
 
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.", respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.", respOO.Issue[0].Details.Coding[0].Display)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 

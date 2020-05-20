@@ -18,7 +18,6 @@ import (
 	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 
-	// fhirutils "github.com/eug48/fhir/utils"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -303,10 +302,11 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 	// validate optional "_since" parameter
 	params, ok = r.URL.Query()["_since"]
 	if ok {
+		// Regex pattern for FHIR Instant format found at https://www.hl7.org/fhir/datatypes.html#primitive
 		instantRegex := `([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))`
 		validSince, err := regexp.MatchString(instantRegex, params[0])
 		if err != nil || !validSince {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.")
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
 			return nil, oo
 		}
 	}
