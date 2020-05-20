@@ -245,6 +245,17 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyDate() {
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyInvalidDate() {
+	since := "2020-04-0"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
+}
+
 func (s *APITestSuite) TestBulkRequestInvalidType() {
 	bulkRequestInvalidTypeHelper("Patient", s)
 	s.TearDownTest()
