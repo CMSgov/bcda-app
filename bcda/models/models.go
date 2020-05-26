@@ -323,11 +323,19 @@ func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
 
 	var suppressedBBIDs []string
 
+	var suppressionLookback string
+	if os.Getenv("BCDA_SUPPRESSION_LOOKBACK") == "" {
+		suppressionLookback = "60"
+	} else {
+		suppressionLookback = os.Getenv("BCDA_SUPPRESSION_LOOKBACK")
+	}
+
 	db.Raw(`SELECT DISTINCT s.blue_button_id
 			FROM (
 				SELECT blue_button_id, MAX(effective_date) max_date
 				FROM suppressions
-				WHERE effective_date <= NOW() AND preference_indicator != '' AND blue_button_id != '' AND blue_button_id IS NOT NULL
+				WHERE (NOW() - interval '`+suppressionLookback+` days') < effective_date AND effective_date <= NOW()
+							AND preference_indicator != '' AND blue_button_id != '' AND blue_button_id IS NOT NULL
 				GROUP BY blue_button_id
 			) h
 			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
