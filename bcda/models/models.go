@@ -331,6 +331,7 @@ func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
 		suppressionLookback = os.Getenv("BCDA_SUPPRESSION_LOOKBACK")
 	}
 
+	// #nosec G202
 	suppressionQuery := `SELECT DISTINCT s.blue_button_id
 	FROM (
 		SELECT blue_button_id, MAX(effective_date) max_date
@@ -341,7 +342,6 @@ func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
 	) h
 	JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
 	WHERE preference_indicator = 'N'`
-
 	db.Raw(suppressionQuery).Pluck("blue_button_id", &suppressedBBIDs)
 
 	return suppressedBBIDs
