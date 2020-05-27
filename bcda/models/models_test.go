@@ -1185,6 +1185,7 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	result1 := GetSuppressedBlueButtonIDs(db)
 	assert.Len(s.T(), result1, 1)
 	assert.Equal(s.T(), bene1.BlueButtonID, result1[0])
+	assert.NotEqual(s.T(), bene2.BlueButtonID, result1[0])
 
 	// Set BCDA_SUPPRESSION_LOOKBACK to a different value getting different results. Reset value after this test runs
 	suppressionLookbackDefault := os.Getenv("BCDA_SUPPRESSION_LOOKBACK_DAYS")
@@ -1193,6 +1194,7 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	result2 := GetSuppressedBlueButtonIDs(db)
 	assert.Len(s.T(), result2, 1)
 	assert.Equal(s.T(), bene1.BlueButtonID, result2[0])
+	assert.NotEqual(s.T(), bene2.BlueButtonID, result1[0])
 
 	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "100")
 	defer os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", suppressionLookbackDefault)
