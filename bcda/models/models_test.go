@@ -1110,7 +1110,7 @@ func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
 	}
 	defer s.db.Unscoped().Delete(&bene2Suppression)
 
-	// Suppressed bene from 60 days ago. Will be included in GetSuppressedBlueButtonIDs result
+	// Suppressed bene from 60 days ago. Will no be included in GetSuppressedBlueButtonIDs result
 	bene3Suppression := Suppression{BlueButtonID: "bene3_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 60) * time.Hour)}
 	err = s.db.Save(&bene3Suppression).Error
 	if err != nil {
@@ -1118,7 +1118,7 @@ func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
 	}
 	defer s.db.Unscoped().Delete(&bene3Suppression)
 
-	// Suppressed bene from 59 days ago. Will be included in GetSuppressedBlueButtonIDs result
+	// Suppressed bene from 61 days ago. Will no be included in GetSuppressedBlueButtonIDs result
 	bene4Suppression := Suppression{BlueButtonID: "bene4_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 61) * time.Hour)}
 	err = s.db.Save(&bene4Suppression).Error
 	if err != nil {
@@ -1167,7 +1167,7 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	}
 	defer s.db.Unscoped().Delete(&bene2)
 
-	// Suppressed bene from 59 days ago
+	// Suppressed bene from 50 days ago
 	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 50) * time.Hour)}
 	err = s.db.Save(&bene1Suppression).Error
 	if err != nil {
@@ -1187,15 +1187,15 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	assert.Equal(s.T(), bene1.BlueButtonID, result1[0])
 
 	// Set BCDA_SUPPRESSION_LOOKBACK to a different value getting different results. Reset value after this test runs
-	suppressionLookbackDefault := os.Getenv("BCDA_SUPPRESSION_LOOKBACK")
-	os.Setenv("BCDA_SUPPRESSION_LOOKBACK", "")
+	suppressionLookbackDefault := os.Getenv("BCDA_SUPPRESSION_LOOKBACK_DAYS")
+	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "")
 
 	result2 := GetSuppressedBlueButtonIDs(db)
 	assert.Len(s.T(), result2, 1)
 	assert.Equal(s.T(), bene1.BlueButtonID, result2[0])
 
-	os.Setenv("BCDA_SUPPRESSION_LOOKBACK", "100")
-	defer os.Setenv("BCDA_SUPPRESSION_LOOKBACK", suppressionLookbackDefault)
+	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "100")
+	defer os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", suppressionLookbackDefault)
 
 	result3 := GetSuppressedBlueButtonIDs(db)
 	assert.Len(s.T(), result3, 2)
