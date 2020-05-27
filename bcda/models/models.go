@@ -323,6 +323,7 @@ func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
 
 	var suppressedBBIDs []string
 
+	// Set the window that the suppression query should examine. Will default to 60 if no value is provided
 	var suppressionLookback string
 	if os.Getenv("BCDA_SUPPRESSION_LOOKBACK") == "" {
 		suppressionLookback = "60"
