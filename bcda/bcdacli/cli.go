@@ -44,7 +44,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, accessToken, ttl, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
+	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -236,41 +236,6 @@ func setUpApp() *cli.App {
 					return err
 				}
 				fmt.Fprintf(app.Writer, "%s\n", "Access token has been deactivated")
-				return nil
-			},
-		},
-		{
-			Name:     "create-alpha-token",
-			Category: "Alpha tools",
-			Usage:    "Create a disposable alpha participant token",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "ttl",
-					Usage:       "Set custom Time To Live in hours",
-					Destination: &ttl,
-				},
-				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
-					Destination: &acoCMSID,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				if ttl == "" {
-					ttl = os.Getenv("JWT_EXPIRATION_DELTA")
-					if ttl == "" {
-						ttl = "72"
-					}
-				}
-				ttlInt, err := validateAlphaTokenInputs(ttl, acoCMSID)
-				if err != nil {
-					return err
-				}
-				accessToken, err := auth.CreateAlphaToken(ttlInt, acoCMSID)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(app.Writer, "%s\n", accessToken)
 				return nil
 			},
 		},
@@ -563,20 +528,6 @@ func revokeAccessToken(accessToken string) error {
 	}
 
 	return auth.GetProvider().RevokeAccessToken(accessToken)
-}
-
-func validateAlphaTokenInputs(ttl, acoID string) (int, error) {
-	i, err := strconv.Atoi(ttl)
-	if err != nil || i <= 0 {
-		return i, fmt.Errorf("invalid argument '%v' for --ttl; should be an integer > 0", ttl)
-	}
-
-	acoIDFmt := regexp.MustCompile(`T\d{4}`)
-	if !acoIDFmt.MatchString(acoID) {
-		return i, errors.New("expected CMS ACO ID format for alpha ACOs is 'T' followed by four digits (e.g., 'T1234')")
-	}
-
-	return i, nil
 }
 
 func archiveExpiring(hrThreshold int) error {

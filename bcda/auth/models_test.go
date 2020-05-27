@@ -47,12 +47,6 @@ func (s *ModelsTestSuite) TestTokenCreation() {
 	assert.NotNil(s.T(), tokenString)
 }
 
-func (s *ModelsTestSuite) TestCreateAlphaToken() {
-	msg, err := auth.CreateAlphaToken(1000, "T0004")
-	assert.NotEmpty(s.T(), msg)
-	assert.Nil(s.T(), err)
-}
-
 func TestModelsTestSuite(t *testing.T) {
 	suite.Run(t, new(ModelsTestSuite))
 }

@@ -431,16 +431,6 @@ func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	return aco.UUID, db.Error
 }
 
-// CLI command only support; note that we are choosing to fail quickly and let the user (one of us) figure it out
-func CreateAlphaACO(acoCMSID string, db *gorm.DB) (ACO, error) {
-	var count int
-	db.Table("acos").Count(&count)
-	aco := ACO{Name: fmt.Sprintf("Alpha ACO %d", count), UUID: uuid.NewRandom(), CMSID: &acoCMSID}
-	db.Create(&aco)
-
-	return aco, db.Error
-}
-
 type CCLFFile struct {
 	gorm.Model
 	CCLFNum         int       `gorm:"not null"`
