@@ -1042,3 +1042,76 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_SuppressionMBI() {
 	// Should be making two calls to BB for all attempts, due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 }
+
+func (s *ModelsTestSuite) TestSuppressionPeriod() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	acoCMSID := "T0000"
+	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
+	err := s.db.Save(&aco).Error
+	if err != nil {
+		s.FailNow("Failed to save ACO", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&aco)
+
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
+	err = s.db.Save(&cclfFile).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFile)
+
+	// Beneficiary 1
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene1_bbID"}
+	err = s.db.Save(&bene1).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1)
+
+	// Beneficiary 2
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene2_bbID"}
+	err = s.db.Save(&bene2).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2)
+
+	// Beneficiary 3
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene3_bbID"}
+	err = s.db.Save(&bene3).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3)
+
+	// bene1Suppression1 := Suppression{BlueButtonID: "bene8_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 62) * time.Hour)}
+	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 59) * time.Hour)}
+	err = s.db.Save(&bene1Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1Suppression)
+
+	bene2Suppression := Suppression{BlueButtonID: "bene2_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24*59 + 23) * time.Hour)}
+	err = s.db.Save(&bene2Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2Suppression)
+
+	bene3Suppression := Suppression{BlueButtonID: "bene3_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 61) * time.Hour)}
+	err = s.db.Save(&bene3Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3Suppression)
+
+	// result, err := aco.GetBeneficiaries(false)
+	result := GetSuppressedBlueButtonIDs(db)
+	// assert.Nil(s.T(), err)
+	// assert.Len(s.T(), result, 5)
+	assert.Len(s.T(), result, 1)
+	assert.Equal(s.T(), bene1.BlueButtonID, result[0])
+}
