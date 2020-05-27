@@ -1193,6 +1193,7 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 
 	result2 := GetSuppressedBlueButtonIDs(db)
 	assert.Len(s.T(), result2, 1)
+	assert.Equal(s.T(), result1, result2)
 	assert.Equal(s.T(), bene1.BlueButtonID, result2[0])
 	assert.NotEqual(s.T(), bene2.BlueButtonID, result1[0])
 
@@ -1201,6 +1202,7 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 
 	result3 := GetSuppressedBlueButtonIDs(db)
 	assert.Len(s.T(), result3, 2)
+	assert.NotEqual(s.T(), result1, result3)
 	assert.Equal(s.T(), bene1.BlueButtonID, result3[0])
 	assert.Equal(s.T(), bene2.BlueButtonID, result3[1])
 }

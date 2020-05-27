@@ -324,7 +324,7 @@ func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
 	var suppressedBBIDs []string
 
 	// Set the window that the suppression query should examine. Will default to 60 if no value is provided
-	suppressionLookback := utils.FromEnv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "60")
+	suppressionLookback := strconv.Itoa(utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
 
 	// #nosec G202
 	suppressionQuery := `SELECT DISTINCT s.blue_button_id
