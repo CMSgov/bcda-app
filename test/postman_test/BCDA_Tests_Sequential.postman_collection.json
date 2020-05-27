@@ -1424,7 +1424,7 @@
 							"});",
 							"",
 							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.\")",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -1504,7 +1504,7 @@
 							"});",
 							"",
 							"pm.test(\"Issue details text is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date format supplied in _since parameter.  Date must be in FHIR DateTime format.\")",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.\")",
 							"});"
 						],
 						"type": "text/javascript"
