@@ -749,7 +749,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	assert.Nil(s.T(), err)
-	acoID := constants.MediumACOUUID
+	acoID := constants.DevACOUUID
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
