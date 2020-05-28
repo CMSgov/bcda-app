@@ -23,9 +23,9 @@ HwIDAQAB
 --   for unit, smoke, and Postman tests
 
 insert into acos(uuid, cms_id, name, client_id)
-     values ('A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', null, 'ACO Sit Amet', 'A40404F7-1EF2-485A-9B71-40FE7ACDCBC2'),
-            ('c14822fa-19ee-402c-9248-32af98419fe3', null, 'ACO Revoked',  'c14822fa-19ee-402c-9248-32af98419fe3'),
-            ('82f55b6a-728e-4c8b-807e-535caad7b139', null, 'ACO Not Revoked', '82f55b6a-728e-4c8b-807e-535caad7b139'),
+     values ('A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', 'A8880', 'ACO Sit Amet', 'A40404F7-1EF2-485A-9B71-40FE7ACDCBC2'),
+            ('c14822fa-19ee-402c-9248-32af98419fe3', 'A8881', 'ACO Revoked',  'c14822fa-19ee-402c-9248-32af98419fe3'),
+            ('82f55b6a-728e-4c8b-807e-535caad7b139', 'T8882', 'ACO Not Revoked', '82f55b6a-728e-4c8b-807e-535caad7b139'),
             ('3461C774-B48F-11E8-96F8-529269fb1459', 'A9990', 'ACO Small', '3461C774-B48F-11E8-96F8-529269fb1459'),
             ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', 'A9991', 'ACO Medium', 'C74C008D-42F8-4ED9-BF88-CEE659C7F692'),
             ('8D80925A-027E-43DD-8AED-9A501CC4CD91', 'A9992', 'ACO Large', '8D80925A-027E-43DD-8AED-9A501CC4CD91'),
