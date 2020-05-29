@@ -1127,9 +1127,13 @@ func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
 	defer s.db.Unscoped().Delete(&bene4Suppression)
 
 	result := GetSuppressedBlueButtonIDs(db)
+	bene3TestArray := [1]string{bene3.BlueButtonID}
+	bene4TestArray := [1]string{bene4.BlueButtonID}
 	assert.Len(s.T(), result, 2)
 	assert.Equal(s.T(), bene1.BlueButtonID, result[0])
 	assert.Equal(s.T(), bene2.BlueButtonID, result[1])
+	assert.NotSubset(s.T(), result, bene3TestArray)
+	assert.NotSubset(s.T(), result, bene4TestArray)
 }
 
 func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
