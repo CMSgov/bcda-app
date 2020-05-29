@@ -323,15 +323,21 @@ func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
 
 	var suppressedBBIDs []string
 
-	db.Raw(`SELECT DISTINCT s.blue_button_id
-			FROM (
-				SELECT blue_button_id, MAX(effective_date) max_date
-				FROM suppressions
-				WHERE effective_date <= NOW() AND preference_indicator != '' AND blue_button_id != '' AND blue_button_id IS NOT NULL
-				GROUP BY blue_button_id
-			) h
-			JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
-			WHERE preference_indicator = 'N'`).Pluck("blue_button_id", &suppressedBBIDs)
+	// Set the window that the suppression query should examine. Will default to 60 if no value is provided
+	suppressionLookback := strconv.Itoa(utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
+
+	// #nosec G202
+	suppressionQuery := `SELECT DISTINCT s.blue_button_id
+	FROM (
+		SELECT blue_button_id, MAX(effective_date) max_date
+		FROM suppressions
+		WHERE (NOW() - interval '` + suppressionLookback + ` days') < effective_date AND effective_date <= NOW()
+					AND preference_indicator != '' AND blue_button_id != '' AND blue_button_id IS NOT NULL
+		GROUP BY blue_button_id
+	) h
+	JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
+	WHERE preference_indicator = 'N'`
+	db.Raw(suppressionQuery).Pluck("blue_button_id", &suppressedBBIDs)
 
 	return suppressedBBIDs
 }
