@@ -1042,3 +1042,171 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_SuppressionMBI() {
 	// Should be making two calls to BB for all attempts, due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 }
+
+func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	acoCMSID := "T0000"
+	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
+	err := s.db.Save(&aco).Error
+	if err != nil {
+		s.FailNow("Failed to save ACO", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&aco)
+
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
+	err = s.db.Save(&cclfFile).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFile)
+
+	// Beneficiary 1
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene1_bbID"}
+	err = s.db.Save(&bene1).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1)
+
+	// Beneficiary 2
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene2_bbID"}
+	err = s.db.Save(&bene2).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2)
+
+	// Beneficiary 3
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene3_bbID"}
+	err = s.db.Save(&bene3).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3)
+
+	// Beneficiary 4
+	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene4_bbID"}
+	err = s.db.Save(&bene4).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene4)
+
+	// Suppressed bene from 59 days ago. Will be included in GetSuppressedBlueButtonIDs result
+	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 59) * time.Hour)}
+	err = s.db.Save(&bene1Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1Suppression)
+
+	// Suppressed bene from 59 days and 23 ago. Will be included in GetSuppressedBlueButtonIDs result
+	bene2Suppression := Suppression{BlueButtonID: "bene2_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24*59 + 23) * time.Hour)}
+	err = s.db.Save(&bene2Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2Suppression)
+
+	// Suppressed bene from 60 days ago. Will no be included in GetSuppressedBlueButtonIDs result
+	bene3Suppression := Suppression{BlueButtonID: "bene3_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 60) * time.Hour)}
+	err = s.db.Save(&bene3Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3Suppression)
+
+	// Suppressed bene from 61 days ago. Will no be included in GetSuppressedBlueButtonIDs result
+	bene4Suppression := Suppression{BlueButtonID: "bene4_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 61) * time.Hour)}
+	err = s.db.Save(&bene4Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene4Suppression)
+
+	result := GetSuppressedBlueButtonIDs(db)
+	bene3TestArray := [1]string{bene3.BlueButtonID}
+	bene4TestArray := [1]string{bene4.BlueButtonID}
+	assert.Len(s.T(), result, 2)
+	assert.Equal(s.T(), bene1.BlueButtonID, result[0])
+	assert.Equal(s.T(), bene2.BlueButtonID, result[1])
+	assert.NotSubset(s.T(), result, bene3TestArray)
+	assert.NotSubset(s.T(), result, bene4TestArray)
+}
+
+func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	acoCMSID := "T0000"
+	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
+	err := s.db.Save(&aco).Error
+	if err != nil {
+		s.FailNow("Failed to save ACO", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&aco)
+
+	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
+	err = s.db.Save(&cclfFile).Error
+	if err != nil {
+		s.FailNow("Failed to save CCLF file", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&cclfFile)
+
+	// Beneficiary 1
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene1_bbID"}
+	err = s.db.Save(&bene1).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1)
+
+	// Beneficiary 2
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene2_bbID"}
+	err = s.db.Save(&bene2).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene2)
+
+	// Suppressed bene from 50 days ago
+	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 50) * time.Hour)}
+	err = s.db.Save(&bene1Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene1Suppression)
+
+	// Suppressed bene from 70 days ago
+	bene2Suppression := Suppression{BlueButtonID: "bene2_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 70) * time.Hour)}
+	err = s.db.Save(&bene2Suppression).Error
+	if err != nil {
+		s.FailNow("Failed to save suppression", err.Error())
+	}
+
+	result1 := GetSuppressedBlueButtonIDs(db)
+	assert.Len(s.T(), result1, 1)
+	assert.Equal(s.T(), bene1.BlueButtonID, result1[0])
+	assert.NotEqual(s.T(), bene2.BlueButtonID, result1[0])
+
+	// Set BCDA_SUPPRESSION_LOOKBACK to a different value getting different results. Reset value after this test runs
+	suppressionLookbackDefault := os.Getenv("BCDA_SUPPRESSION_LOOKBACK_DAYS")
+	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "")
+
+	result2 := GetSuppressedBlueButtonIDs(db)
+	assert.Len(s.T(), result2, 1)
+	assert.Equal(s.T(), result1, result2)
+	assert.Equal(s.T(), bene1.BlueButtonID, result2[0])
+	assert.NotEqual(s.T(), bene2.BlueButtonID, result1[0])
+
+	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "100")
+	defer os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", suppressionLookbackDefault)
+
+	result3 := GetSuppressedBlueButtonIDs(db)
+	assert.Len(s.T(), result3, 2)
+	assert.NotEqual(s.T(), result1, result3)
+	assert.Equal(s.T(), bene1.BlueButtonID, result3[0])
+	assert.Equal(s.T(), bene2.BlueButtonID, result3[1])
+}
