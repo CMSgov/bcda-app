@@ -65,6 +65,7 @@ type Job struct {
 	JobCount          int
 	CompletedJobCount int
 	JobKeys           []JobKey
+	Priority          int // job priority based on request args
 }
 
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
@@ -149,6 +150,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 					ResourceType:    rt,
 					Since:           since,
 					TransactionTime: job.TransactionTime,
+					Priority:        job.Priority,
 				})
 				if err != nil {
 					return nil, err
@@ -640,4 +642,5 @@ type jobEnqueueArgs struct {
 	ResourceType    string
 	Since           string
 	TransactionTime time.Time
+	Priority        int
 }
