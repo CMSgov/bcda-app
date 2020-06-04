@@ -1185,6 +1185,7 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
+	defer s.db.Unscoped().Delete(&bene2Suppression)
 
 	result1 := GetSuppressedBlueButtonIDs(db)
 	assert.Len(s.T(), result1, 1)
