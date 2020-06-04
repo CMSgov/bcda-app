@@ -65,7 +65,7 @@ type Job struct {
 	JobCount          int
 	CompletedJobCount int
 	JobKeys           []JobKey
-	Priority          int // job priority based on request args
+	// Priority          int // job priority based on request args
 }
 
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
@@ -150,7 +150,8 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 					ResourceType:    rt,
 					Since:           since,
 					TransactionTime: job.TransactionTime,
-					Priority:        job.Priority,
+					// Priority:        job.Priority,
+					Priority: setJobPriority(job.ACOID.String(), rt, len(since) != 0),
 				})
 				if err != nil {
 					return nil, err
@@ -168,6 +169,30 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 		}
 	}
 	return enqueJobs, nil
+}
+
+func setJobPriority(acoID string, resourceType string, sinceParam bool) int {
+	var priority int
+	if isSyntheticACO(acoID) {
+		priority = 10 // priority level for jobs for sythetic ACOs that are used for smoke testing
+	} else if resourceType == "Patient" || resourceType == "Coverage" {
+		priority = 20 // priority level for jobs that only request smaller resources
+	} else if sinceParam {
+		priority = 30 // priority level for jobs that only request data for a limited timeframe
+	} else {
+		priority = 100 // default priority level for jobs
+	}
+	return priority
+}
+
+func isSyntheticACO(acoID string) bool {
+	testACOs := []string{"A9990", "A9991", "A9992", "A9993", "A9994"}
+	for _, testACO := range testACOs {
+		if testACO == acoID {
+			return true
+		}
+	}
+	return false
 }
 
 func (j *Job) StatusMessage() string {

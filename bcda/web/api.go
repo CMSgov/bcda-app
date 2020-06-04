@@ -206,7 +206,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		decodedSince, _ = url.QueryUnescape(params[0])
 		decodedSince = "gt" + decodedSince
 	}
-	newJob.Priority = setJobPriority(acoID, resourceTypes, len(decodedSince) != 0)
+	// newJob.Priority = setJobPriority(acoID, resourceTypes, len(decodedSince) != 0)
 
 	var enqueueJobs []*que.Job
 	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince, newBeneficiariesOnly)
@@ -237,53 +237,53 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func setJobPriority(acoID string, resourceTypes []string, sinceParam bool) int {
-	var priority int
-	if isSyntheticACO(acoID) {
-		priority = 10 // priority level for jobs for sythetic ACOs that are used for smoke testing
-	} else if isPriorityResourceRequest(resourceTypes) {
-		priority = 20 // priority level for jobs that only request smaller resources
-	} else if sinceParam {
-		priority = 30 // priority level for jobs that only request data for a limited timeframe
-	} else {
-		priority = 100 // default priority level for jobs
-	}
-	return priority
-}
+// func setJobPriority(acoID string, resourceTypes []string, sinceParam bool) int {
+// 	var priority int
+// 	if isSyntheticACO(acoID) {
+// 		priority = 10 // priority level for jobs for sythetic ACOs that are used for smoke testing
+// 	} else if isPriorityResourceRequest(resourceTypes) {
+// 		priority = 20 // priority level for jobs that only request smaller resources
+// 	} else if sinceParam {
+// 		priority = 30 // priority level for jobs that only request data for a limited timeframe
+// 	} else {
+// 		priority = 100 // default priority level for jobs
+// 	}
+// 	return priority
+// }
 
-func isPriorityResourceRequest(resourceTypes []string) bool {
-	patientResource := false
-	coverageResource := false
-	explainationResource := false
-	for _, resourceType := range resourceTypes {
-		if resourceType == "Patient" {
-			patientResource = true
-		}
-		if resourceType == "Coverage" {
-			coverageResource = true
-		}
-		if resourceType == "Explaination of Benefits" {
-			explainationResource = true
-		}
-	}
-	if explainationResource {
-		return false
-	} else if patientResource || coverageResource {
-		return true
-	} else {
-		return false
-	}
-}
+// func isPriorityResourceRequest(resourceTypes []string) bool {
+// 	patientResource := false
+// 	coverageResource := false
+// 	explainationResource := false
+// 	for _, resourceType := range resourceTypes {
+// 		if resourceType == "Patient" {
+// 			patientResource = true
+// 		}
+// 		if resourceType == "Coverage" {
+// 			coverageResource = true
+// 		}
+// 		if resourceType == "Explaination of Benefits" {
+// 			explainationResource = true
+// 		}
+// 	}
+// 	if explainationResource {
+// 		return false
+// 	} else if patientResource || coverageResource {
+// 		return true
+// 	} else {
+// 		return false
+// 	}
+// }
 
-func isSyntheticACO(acoID string) bool {
-	testACOs := []string{"A9990", "A9991", "A9992", "A9993", "A9994"}
-	for _, testACO := range testACOs {
-		if testACO == acoID {
-			return true
-		}
-	}
-	return false
-}
+// func isSyntheticACO(acoID string) bool {
+// 	testACOs := []string{"A9990", "A9991", "A9992", "A9993", "A9994"}
+// 	for _, testACO := range testACOs {
+// 		if testACO == acoID {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
 	var unworkedTypes []string
