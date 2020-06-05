@@ -160,7 +160,7 @@ func isValidNDJSONText(data string) bool {
 }
 
 func main() {
-	fmt.Printf("making request to start %s %s data aggregation job\n", endpoint, resourceType)
+	fmt.Printf("bulk data request to %s endpoint with %s resource types\n", endpoint, resourceType)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
 	if result := startJob(endpoint, resourceType); result.StatusCode == 202 {
 		for {
