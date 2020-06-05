@@ -452,6 +452,10 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
 	since := "2020-02-13T08:00:00.000-05:00"
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, false)
 	assert.Nil(err)
@@ -498,6 +502,10 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
 
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
 	since := ""
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
 	assert.Nil(err)
@@ -536,6 +544,11 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	if err != nil {
 		s.T().Error(err)
 	}
+
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
 	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -575,6 +588,10 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		s.T().Error(err)
 	}
 
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -601,7 +618,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_WithHighPriorityACOs() {
 	assert := s.Assert()
 
 	j := Job{
-		ACOID:      uuid.Parse(constants.SmallACOUUID),
+		ACOID:      uuid.Parse(constants.DevACOUUID),
 		RequestURL: "/api/v1/Patient/$export?_type=Patient",
 		Status:     "Pending",
 	}

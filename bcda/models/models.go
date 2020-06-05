@@ -173,7 +173,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 // Prioirity is based on the request parameters that the job is executing on.
 func setJobPriority(acoID string, resourceType string, sinceParam bool) int {
 	var priority int
-	if isSyntheticACO(acoID) {
+	if isPriorityACO(acoID) {
 		priority = 10 // priority level for jobs for sythetic ACOs that are used for smoke testing
 	} else if resourceType == "Patient" || resourceType == "Coverage" {
 		priority = 20 // priority level for jobs that only request smaller resources
@@ -185,13 +185,13 @@ func setJobPriority(acoID string, resourceType string, sinceParam bool) int {
 	return priority
 }
 
-// Checks to see if an ACO is synthetic based on a list of sythetic ACOS provided by an
+// Checks to see if an ACO is priority ACO based on a list provided by an
 // environment variable.
-func isSyntheticACO(acoID string) bool {
-	if syntheticACOList := os.Getenv("PRIORITY_ACO_IDS"); syntheticACOList != "" {
-		syntheticACOs := strings.Split(syntheticACOList, ",")
-		for _, syntheticACO := range syntheticACOs {
-			if syntheticACO == acoID {
+func isPriorityACO(acoID string) bool {
+	if priorityACOList := os.Getenv("PRIORITY_ACO_IDS"); priorityACOList != "" {
+		priorityACOs := strings.Split(priorityACOList, ",")
+		for _, priorityACO := range priorityACOs {
+			if priorityACO == acoID {
 				return true
 			}
 		}
