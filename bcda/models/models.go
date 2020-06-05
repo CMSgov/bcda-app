@@ -188,7 +188,7 @@ func setJobPriority(acoID string, resourceType string, sinceParam bool) int {
 // Checks to see if an ACO is synthetic based on a list of sythetic ACOS provided by an
 // environment variable.
 func isSyntheticACO(acoID string) bool {
-	if syntheticACOList := os.Getenv("SYNTHETIC_ACO_IDS"); syntheticACOList != "" {
+	if syntheticACOList := os.Getenv("PRIORITY_ACO_IDS"); syntheticACOList != "" {
 		syntheticACOs := strings.Split(syntheticACOList, ",")
 		for _, syntheticACO := range syntheticACOs {
 			if syntheticACO == acoID {

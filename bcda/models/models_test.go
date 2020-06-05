@@ -597,7 +597,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
 }
 
-func (s *ModelsTestSuite) TestGetEnqueJobs_WithSyntheticACOs() {
+func (s *ModelsTestSuite) TestGetEnqueJobs_WithHighPriorityACOs() {
 	assert := s.Assert()
 
 	j := Job{
@@ -625,7 +625,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_WithSyntheticACOs() {
 		assert.Equal(10, jobArgs.Priority)
 		assert.NotNil(jobArgs.TransactionTime)
 	}
-	// os.Unsetenv("SYNTHETIC_ACO_IDS")
 }
 
 func (s *ModelsTestSuite) TestJobStatusMessage() {
