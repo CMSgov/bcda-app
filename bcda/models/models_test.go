@@ -601,8 +601,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_WithSyntheticACOs() {
 	assert := s.Assert()
 
 	j := Job{
-		// ACOID:      uuid.Parse("ACO9991"),
-		ACOID:      uuid.Parse(constants.DevACOUUID),
+		ACOID:      uuid.Parse(constants.SmallACOUUID),
 		RequestURL: "/api/v1/Patient/$export?_type=Patient",
 		Status:     "Pending",
 	}
@@ -610,10 +609,6 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_WithSyntheticACOs() {
 	defer s.db.Delete(&j)
 
 	since := ""
-	err := os.Setenv("SYNTHETIC_ACO_IDS", constants.DevACOUUID)
-	if err != nil {
-		s.T().Error(err)
-	}
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -630,7 +625,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_WithSyntheticACOs() {
 		assert.Equal(10, jobArgs.Priority)
 		assert.NotNil(jobArgs.TransactionTime)
 	}
-	os.Unsetenv("SYNTHETIC_ACO_IDS")
+	// os.Unsetenv("SYNTHETIC_ACO_IDS")
 }
 
 func (s *ModelsTestSuite) TestJobStatusMessage() {

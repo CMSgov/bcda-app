@@ -43,6 +43,7 @@ services:
       - BCDA_SSAS_SECRET=fake-secret
       - SSAS_URL=http://ssas:3004
       - SSAS_PUBLIC_URL=http://ssas:3003
+      - SYNTHETIC_ACO_IDS=A9990,A9991,A9992,A9993
       - PATIENT_IDENTIFIER_MODE=MBI_MODE
       - BCDA_ENABLE_NEW_GROUP=true
     volumes:

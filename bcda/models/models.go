@@ -149,7 +149,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 					ResourceType:    rt,
 					Since:           since,
 					TransactionTime: job.TransactionTime,
-					Priority:        setJobPriority(job.ACOID.String(), rt, len(since) != 0),
+					Priority:        setJobPriority(*aco.CMSID, rt, len(since) != 0),
 				})
 				if err != nil {
 					return nil, err
