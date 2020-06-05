@@ -597,6 +597,42 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
 }
 
+func (s *ModelsTestSuite) TestGetEnqueJobs_WithSyntheticACOs() {
+	assert := s.Assert()
+
+	j := Job{
+		// ACOID:      uuid.Parse("ACO9991"),
+		ACOID:      uuid.Parse(constants.DevACOUUID),
+		RequestURL: "/api/v1/Patient/$export?_type=Patient",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
+
+	since := ""
+	err := os.Setenv("SYNTHETIC_ACO_IDS", constants.DevACOUUID)
+	if err != nil {
+		s.T().Error(err)
+	}
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	enqueuedBenes := 0
+	for _, queJob := range enqueueJobs {
+
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
+		assert.Equal(since, jobArgs.Since)
+		assert.Equal(10, jobArgs.Priority)
+		assert.NotNil(jobArgs.TransactionTime)
+	}
+	os.Unsetenv("SYNTHETIC_ACO_IDS")
+}
+
 func (s *ModelsTestSuite) TestJobStatusMessage() {
 	j := Job{Status: "In Progress", JobCount: 25, CompletedJobCount: 6}
 	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage())

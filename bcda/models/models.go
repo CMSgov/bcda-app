@@ -169,6 +169,8 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 	return enqueJobs, nil
 }
 
+// Sets the priority for the job where the lower the number the higher the priority in the queue.
+// Prioirity is based on the request parameters that the job is executing on.
 func setJobPriority(acoID string, resourceType string, sinceParam bool) int {
 	var priority int
 	if isSyntheticACO(acoID) {
@@ -183,11 +185,15 @@ func setJobPriority(acoID string, resourceType string, sinceParam bool) int {
 	return priority
 }
 
+// Checks to see if an ACO is synthetic based on a list of sythetic ACOS provided by an
+// environment variable.
 func isSyntheticACO(acoID string) bool {
-	testACOs := []string{"A9990", "A9991", "A9992", "A9993", "A9994"}
-	for _, testACO := range testACOs {
-		if testACO == acoID {
-			return true
+	if syntheticACOList := os.Getenv("SYNTHETIC_ACO_IDS"); syntheticACOList != "" {
+		syntheticACOs := strings.Split(syntheticACOList, ",")
+		for _, syntheticACO := range syntheticACOs {
+			if syntheticACO == acoID {
+				return true
+			}
 		}
 	}
 	return false
