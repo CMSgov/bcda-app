@@ -65,7 +65,6 @@ type Job struct {
 	JobCount          int
 	CompletedJobCount int
 	JobKeys           []JobKey
-	// Priority          int // job priority based on request args
 }
 
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
