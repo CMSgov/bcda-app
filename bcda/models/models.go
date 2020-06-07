@@ -247,10 +247,10 @@ func (aco *ACO) GetNewBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, 
 		return cclfBeneficiaries, fmt.Errorf("unable to find last month's cclfFile")
 	}
 
-	var suppressedBBIDs []string
+	var suppressedMBIs []string
 
 	if !includeSuppressed {
-		suppressedBBIDs = GetSuppressedBlueButtonIDs(db)
+		suppressedMBIs = GetSuppressedMBIs(db)
 	}
 
 	// Get all the beneficiaries from the previous CCLF for this ACO, to use as a basis for comparison
@@ -261,8 +261,8 @@ func (aco *ACO) GetNewBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, 
 		return nil, err
 	}
 
-	if suppressedBBIDs != nil {
-		err = db.Not("blue_button_id", suppressedBBIDs).Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+	if suppressedMBIs != nil {
+		err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 	} else {
 		err = db.Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 	}
@@ -295,15 +295,15 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
 	}
 
-	var suppressedBBIDs []string
+	var suppressedMBIs []string
 
 	if !includeSuppressed {
-		suppressedBBIDs = GetSuppressedBlueButtonIDs(db)
+		suppressedMBIs = GetSuppressedMBIs(db)
 	}
 
 	var err error
-	if suppressedBBIDs != nil {
-		err = db.Not("blue_button_id", suppressedBBIDs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+	if suppressedMBIs != nil {
+		err = db.Not("mbi", suppressedMBIs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	} else {
 		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	}
@@ -319,27 +319,27 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	return cclfBeneficiaries, nil
 }
 
-func GetSuppressedBlueButtonIDs(db *gorm.DB) []string {
+func GetSuppressedMBIs(db *gorm.DB) []string {
 
-	var suppressedBBIDs []string
+	var suppressedMBIs []string
 
 	// Set the window that the suppression query should examine. Will default to 60 if no value is provided
 	suppressionLookback := strconv.Itoa(utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
 
 	// #nosec G202
-	suppressionQuery := `SELECT DISTINCT s.blue_button_id
+	suppressionQuery := `SELECT DISTINCT s.mbi
 	FROM (
-		SELECT blue_button_id, MAX(effective_date) max_date
+		SELECT mbi, MAX(effective_date) max_date
 		FROM suppressions
 		WHERE (NOW() - interval '` + suppressionLookback + ` days') < effective_date AND effective_date <= NOW()
-					AND preference_indicator != '' AND blue_button_id != '' AND blue_button_id IS NOT NULL
-		GROUP BY blue_button_id
+					AND preference_indicator != ''
+		GROUP BY mbi
 	) h
-	JOIN suppressions s ON s.blue_button_id = h.blue_button_id and s.effective_date = h.max_date
+	JOIN suppressions s ON s.mbi = h.mbi and s.effective_date = h.max_date
 	WHERE preference_indicator = 'N'`
-	db.Raw(suppressionQuery).Pluck("blue_button_id", &suppressedBBIDs)
+	db.Raw(suppressionQuery).Pluck("mbi", &suppressedMBIs)
 
-	return suppressedBBIDs
+	return suppressedMBIs
 }
 
 type CCLFBeneficiaryXref struct {
@@ -489,9 +489,7 @@ type Suppression struct {
 	gorm.Model
 	SuppressionFile     SuppressionFile
 	FileID              uint      `gorm:"not null"`
-	BlueButtonID        string    `gorm:"type: text;index:idx_suppression_bb_id"`
-	MBI                 string    `gorm:"type:varchar(11)"`
-	HICN                string    `gorm:"type:varchar(11)"`
+	MBI                 string    `gorm:"type:varchar(11)"index:idx_suppression_mbi`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
 	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`
@@ -519,31 +517,9 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 	return blueButtonID, nil
 }
 
-// This method will ensure that a valid BlueButton ID is returned.
-// If you use suppressionBeneficiary.BlueButtonID you will not be guaranteed a valid value
-func (suppressionBeneficiary *Suppression) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-
-	// support legacy data (before March 2020) when NGD only supported HICN
-	modelIdentifier := suppressionBeneficiary.HICN
-	patientIdMode := "HICN_MODE"
-
-	// NGD added support for MBI in March 2020
-	if modelIdentifier == "" {
-		modelIdentifier = suppressionBeneficiary.MBI
-		patientIdMode = "MBI_MODE"
-	}
-
-	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "suppression", suppressionBeneficiary.ID)
-	if err != nil {
-		return "", err
-	}
-	return blueButtonID, nil
-}
-
 func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
 	hashedIdentifier := client.HashIdentifier(modelIdentifier)
 
-	// until NGD supports MBI, pass in the patientIdMode
 	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier, patientIdMode)
 	if err != nil {
 		return "", err
@@ -572,7 +548,6 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 					foundIdentifier = true
 				}
 			} else if patientIdMode == "HICN_MODE" {
-				// no value to check against, should be removed when NGD supports MBI
 				foundIdentifier = true
 			}
 		} else if strings.Contains(identifier.System, "bene_id") {
@@ -594,41 +569,6 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 	}
 
 	return blueButtonID, nil
-}
-
-// StoreSuppressionBBID stores the suppression beneficiary's Blue Button ID
-// the ID value is retrieved from BB and saved.
-func StoreSuppressionBBID() (success, failure int, err error) {
-	db := database.GetGORMDbConnection()
-	defer func() {
-		err := db.Close()
-		if err != nil {
-			log.Error(err)
-			return
-		}
-	}()
-
-	bb, err := client.NewBlueButtonClient()
-	if err != nil {
-		err = errors.Wrap(err, "could not create Blue Button client")
-		log.Error(err)
-		return 0, 0, err
-	}
-
-	var suppressList []Suppression
-	db.Find(&suppressList)
-	for _, bene := range suppressList {
-		suppressBene := bene
-		bbID, err := suppressBene.GetBlueButtonID(bb)
-		if err != nil {
-			failure++
-			continue
-		}
-		suppressBene.BlueButtonID = bbID
-		db.Save(&suppressBene)
-		success++
-	}
-	return success, failure, nil
 }
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
