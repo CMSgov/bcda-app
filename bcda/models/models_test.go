@@ -1069,8 +1069,8 @@ func (s *ModelsTestSuite) TestSuppressionLookbackPeriod() {
 	result, err := aco.GetBeneficiaries(false)
 	assert.Nil(s.T(), err)
 	assert.Len(s.T(), result, 2)
-	assert.Equal(s.T(), bene3.ID, result[2].ID)
-	assert.Equal(s.T(), bene4.ID, result[3].ID)
+	assert.Equal(s.T(), bene3.ID, result[0].ID)
+	assert.Equal(s.T(), bene4.ID, result[1].ID)
 }
 
 func (s *ModelsTestSuite) TestChangingSuppressionPeriod() {
@@ -1108,6 +1108,14 @@ func (s *ModelsTestSuite) TestChangingSuppressionPeriod() {
 	}
 	defer s.db.Unscoped().Delete(&bene2)
 
+	// Beneficiary 3
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene3_mbi"}
+	err = s.db.Save(&bene3).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3)
+
 	// Suppressed bene from 50 days ago
 	bene1Suppression := Suppression{MBI: "bene1_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 50) * time.Hour)}
 	err = s.db.Save(&bene1Suppression).Error
@@ -1126,8 +1134,9 @@ func (s *ModelsTestSuite) TestChangingSuppressionPeriod() {
 
 	result1, err := aco.GetBeneficiaries(false)
 	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result1, 1)
+	assert.Len(s.T(), result1, 2)
 	assert.Equal(s.T(), bene2.ID, result1[0].ID)
+	assert.Equal(s.T(), bene3.ID, result1[1].ID)
 
 	// Set BCDA_SUPPRESSION_LOOKBACK to a different value getting different results. Reset value after this test runs
 	suppressionLookbackDefault := os.Getenv("BCDA_SUPPRESSION_LOOKBACK_DAYS")
@@ -1135,15 +1144,17 @@ func (s *ModelsTestSuite) TestChangingSuppressionPeriod() {
 
 	result2, err := aco.GetBeneficiaries(false)
 	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result2, 1)
+	assert.Len(s.T(), result2, 2)
 	assert.Equal(s.T(), result1, result2)
 	assert.Equal(s.T(), bene2.ID, result2[0].ID)
+	assert.Equal(s.T(), bene3.ID, result2[1].ID)
 
 	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "100")
 	defer os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", suppressionLookbackDefault)
 
 	result3, err := aco.GetBeneficiaries(false)
 	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result3, 0)
+	assert.Len(s.T(), result3, 1)
 	assert.NotEqual(s.T(), result1, result3)
+	assert.Equal(s.T(), bene3.ID, result3[0].ID)
 }
