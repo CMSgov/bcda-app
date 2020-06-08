@@ -65,6 +65,7 @@ type Job struct {
 	JobCount          int
 	CompletedJobCount int
 	JobKeys           []JobKey
+	Priority          int
 }
 
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
@@ -149,15 +150,15 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 					ResourceType:    rt,
 					Since:           since,
 					TransactionTime: job.TransactionTime,
-					Priority:        setJobPriority(*aco.CMSID, rt, len(since) != 0),
 				})
 				if err != nil {
 					return nil, err
 				}
 
 				j := &que.Job{
-					Type: "ProcessJob",
-					Args: args,
+					Type:     "ProcessJob",
+					Args:     args,
+					Priority: setJobPriority(*aco.CMSID, rt, len(since) != 0),
 				}
 
 				enqueJobs = append(enqueJobs, j)
@@ -171,16 +172,16 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 
 // Sets the priority for the job where the lower the number the higher the priority in the queue.
 // Prioirity is based on the request parameters that the job is executing on.
-func setJobPriority(acoID string, resourceType string, sinceParam bool) int {
-	var priority int
+func setJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
+	var priority int16
 	if isPriorityACO(acoID) {
-		priority = 10 // priority level for jobs for sythetic ACOs that are used for smoke testing
+		priority = int16(10) // priority level for jobs for sythetic ACOs that are used for smoke testing
 	} else if resourceType == "Patient" || resourceType == "Coverage" {
-		priority = 20 // priority level for jobs that only request smaller resources
+		priority = int16(20) // priority level for jobs that only request smaller resources
 	} else if sinceParam {
-		priority = 30 // priority level for jobs that only request data for a limited timeframe
+		priority = int16(30) // priority level for jobs that only request data for a limited timeframe
 	} else {
-		priority = 100 // default priority level for jobs
+		priority = int16(100) // default priority level for jobs
 	}
 	return priority
 }
@@ -671,5 +672,4 @@ type jobEnqueueArgs struct {
 	ResourceType    string
 	Since           string
 	TransactionTime time.Time
-	Priority        int
 }

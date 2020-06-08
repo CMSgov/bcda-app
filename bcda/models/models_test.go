@@ -473,18 +473,18 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 		if count == 0 {
 			assert.Equal("Patient", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
-			assert.Equal(20, jobArgs.Priority)
 			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
 		} else if count == 1 {
 			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
-			assert.Equal(30, jobArgs.Priority)
 			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(30), queJob.Priority)
 		} else {
 			assert.Equal("Coverage", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
-			assert.Equal(20, jobArgs.Priority)
 			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
 		}
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 		count++
@@ -523,8 +523,8 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 		assert.Equal("Patient", jobArgs.ResourceType)
 		assert.Equal(since, jobArgs.Since)
 		assert.NotNil(jobArgs.TransactionTime)
-		assert.Equal(20, jobArgs.Priority)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+		assert.Equal(int16(20), queJob.Priority)
 	}
 }
 
@@ -564,8 +564,8 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 15)
 		assert.Equal(since, jobArgs.Since)
-		assert.Equal(100, jobArgs.Priority)
 		assert.NotNil(jobArgs.TransactionTime)
+		assert.Equal(int16(100), queJob.Priority)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
@@ -607,8 +607,8 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 5)
 		assert.Equal(since, jobArgs.Since)
-		assert.Equal(20, jobArgs.Priority)
 		assert.NotNil(jobArgs.TransactionTime)
+		assert.Equal(int16(20), queJob.Priority)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
@@ -639,8 +639,8 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_WithHighPriorityACOs() {
 		}
 		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
 		assert.Equal(since, jobArgs.Since)
-		assert.Equal(10, jobArgs.Priority)
 		assert.NotNil(jobArgs.TransactionTime)
+		assert.Equal(int16(10), queJob.Priority)
 	}
 }
 
