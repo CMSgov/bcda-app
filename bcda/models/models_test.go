@@ -438,7 +438,6 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
 	s.db.Delete(&j)
-
 }
 
 func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
