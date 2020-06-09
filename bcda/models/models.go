@@ -155,8 +155,9 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 				}
 
 				j := &que.Job{
-					Type: "ProcessJob",
-					Args: args,
+					Type:     "ProcessJob",
+					Args:     args,
+					Priority: setJobPriority(*aco.CMSID, rt, len(since) != 0),
 				}
 
 				enqueJobs = append(enqueJobs, j)
@@ -166,6 +167,36 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 		}
 	}
 	return enqueJobs, nil
+}
+
+// Sets the priority for the job where the lower the number the higher the priority in the queue.
+// Prioirity is based on the request parameters that the job is executing on.
+func setJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
+	var priority int16
+	if isPriorityACO(acoID) {
+		priority = int16(10) // priority level for jobs for sythetic ACOs that are used for smoke testing
+	} else if resourceType == "Patient" || resourceType == "Coverage" {
+		priority = int16(20) // priority level for jobs that only request smaller resources
+	} else if sinceParam {
+		priority = int16(30) // priority level for jobs that only request data for a limited timeframe
+	} else {
+		priority = int16(100) // default priority level for jobs
+	}
+	return priority
+}
+
+// Checks to see if an ACO is priority ACO based on a list provided by an
+// environment variable.
+func isPriorityACO(acoID string) bool {
+	if priorityACOList := os.Getenv("PRIORITY_ACO_IDS"); priorityACOList != "" {
+		priorityACOs := strings.Split(priorityACOList, ",")
+		for _, priorityACO := range priorityACOs {
+			if priorityACO == acoID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (j *Job) StatusMessage() string {
