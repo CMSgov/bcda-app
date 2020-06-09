@@ -438,7 +438,6 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), completed)
 	s.db.Delete(&j)
-
 }
 
 func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
@@ -451,6 +450,10 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 	}
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
+
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
 
 	since := "2020-02-13T08:00:00.000-05:00"
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, false)
@@ -470,14 +473,17 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 			assert.Equal("Patient", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
 			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
 		} else if count == 1 {
 			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
 			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(30), queJob.Priority)
 		} else {
 			assert.Equal("Coverage", jobArgs.ResourceType)
 			assert.Equal(since, jobArgs.Since)
 			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
 		}
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
 		count++
@@ -494,6 +500,10 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 	}
 	s.db.Save(&j)
 	defer s.db.Delete(&j)
+
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
 
 	since := ""
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
@@ -513,6 +523,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
 		assert.Equal(since, jobArgs.Since)
 		assert.NotNil(jobArgs.TransactionTime)
 		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+		assert.Equal(int16(20), queJob.Priority)
 	}
 }
 
@@ -532,6 +543,11 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 	if err != nil {
 		s.T().Error(err)
 	}
+
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
 	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -548,6 +564,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 15)
 		assert.Equal(since, jobArgs.Since)
 		assert.NotNil(jobArgs.TransactionTime)
+		assert.Equal(int16(100), queJob.Priority)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
@@ -570,6 +587,10 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		s.T().Error(err)
 	}
 
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"}, since, false)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -586,9 +607,40 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
 		assert.True(len(jobArgs.BeneficiaryIDs) <= 5)
 		assert.Equal(since, jobArgs.Since)
 		assert.NotNil(jobArgs.TransactionTime)
+		assert.Equal(int16(20), queJob.Priority)
 	}
 	assert.Equal(50, enqueuedBenes)
 	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+}
+
+func (s *ModelsTestSuite) TestGetEnqueJobs_WithHighPriorityACOs() {
+	assert := s.Assert()
+
+	j := Job{
+		ACOID:      uuid.Parse(constants.DevACOUUID),
+		RequestURL: "/api/v1/Patient/$export?_type=Patient",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
+
+	since := ""
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	enqueuedBenes := 0
+	for _, queJob := range enqueueJobs {
+
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
+		assert.Equal(since, jobArgs.Since)
+		assert.NotNil(jobArgs.TransactionTime)
+		assert.Equal(int16(10), queJob.Priority)
+	}
 }
 
 func (s *ModelsTestSuite) TestJobStatusMessage() {
