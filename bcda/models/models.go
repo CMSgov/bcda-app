@@ -521,6 +521,7 @@ type Suppression struct {
 	SuppressionFile     SuppressionFile
 	FileID              uint      `gorm:"not null"`
 	MBI                 string    `gorm:"type:varchar(11);index:idx_suppression_mbi"`
+	HICN                string    `gorm:"type:varchar(11)"`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
 	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`
