@@ -822,14 +822,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&cclfFile)
 
 	// Beneficiary 1: preference indicator = N, effective date = now - 48 hours
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene1_bbID"}
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi1"}
 	err = s.db.Save(&bene1).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene1)
 
-	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
+	bene1Suppression := Suppression{MBI: "mbi1", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
 	err = s.db.Save(&bene1Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -837,14 +837,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene1Suppression)
 
 	// Beneficiary 2: preference indicator = Y, effective date = now - 24 hours
-	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene2_bbID"}
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi2"}
 	err = s.db.Save(&bene2).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene2)
 
-	bene2Suppression := Suppression{BlueButtonID: "bene2_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene2Suppression := Suppression{MBI: "mbi2", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene2Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -852,7 +852,7 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene2Suppression)
 
 	// Beneficiary 3: no suppression record
-	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene3_bbID"}
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi3"}
 	err = s.db.Save(&bene3).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
@@ -860,14 +860,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene3)
 
 	// Beneficiary 4: preference indicator = N, effective date = now + 1 hour
-	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene4_bbID"}
+	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi4"}
 	err = s.db.Save(&bene4).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene4)
 
-	bene4Suppression := Suppression{BlueButtonID: "bene4_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(1 * time.Hour)}
+	bene4Suppression := Suppression{MBI: "mbi4", PrefIndicator: "N", EffectiveDt: time.Now().Add(1 * time.Hour)}
 	err = s.db.Save(&bene4Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -875,21 +875,21 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene4Suppression)
 
 	// Beneficiary 5: two suppression records, preference indicators = Y, N, effective dates = now - 72, 24 hours
-	bene5 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene5_bbID"}
+	bene5 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi5"}
 	err = s.db.Save(&bene5).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene5)
 
-	bene5Suppression1 := Suppression{BlueButtonID: "bene5_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-72 * time.Hour)}
+	bene5Suppression1 := Suppression{MBI: "mbi5", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-72 * time.Hour)}
 	err = s.db.Save(&bene5Suppression1).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene5Suppression1)
 
-	bene5Suppression2 := Suppression{BlueButtonID: "bene5_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene5Suppression2 := Suppression{MBI: "mbi5", PrefIndicator: "N", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene5Suppression2).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -897,14 +897,14 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene5Suppression2)
 
 	// Beneficiary 6: preference indicator = blank, effective date = now - 12 hours
-	bene6 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene6_bbID"}
+	bene6 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi6"}
 	err = s.db.Save(&bene6).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene6)
 
-	bene6Suppression := Suppression{BlueButtonID: "bene6_bbID", PrefIndicator: "", EffectiveDt: time.Now().Add(-12 * time.Hour)}
+	bene6Suppression := Suppression{MBI: "mbi6", PrefIndicator: "", EffectiveDt: time.Now().Add(-12 * time.Hour)}
 	err = s.db.Save(&bene6Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -912,28 +912,28 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene6Suppression)
 
 	// Beneficiary 7: three suppression records: preference indicators = Y, N, Y; effective dates = now - 168, 96, 24 hours
-	bene7 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene7_bbID"}
+	bene7 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi7"}
 	err = s.db.Save(&bene7).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene7)
 
-	bene7Suppression1 := Suppression{BlueButtonID: "bene7_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-168 * time.Hour)}
+	bene7Suppression1 := Suppression{MBI: "mbi7", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-168 * time.Hour)}
 	err = s.db.Save(&bene7Suppression1).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene7Suppression1)
 
-	bene7Suppression2 := Suppression{BlueButtonID: "bene7_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-96 * time.Hour)}
+	bene7Suppression2 := Suppression{MBI: "mbi7", PrefIndicator: "N", EffectiveDt: time.Now().Add(-96 * time.Hour)}
 	err = s.db.Save(&bene7Suppression2).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene7Suppression2)
 
-	bene7Suppression3 := Suppression{BlueButtonID: "bene7_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene7Suppression3 := Suppression{MBI: "mbi7", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene7Suppression3).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -941,28 +941,28 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 	defer s.db.Unscoped().Delete(&bene7Suppression3)
 
 	// Beneficiary 8: three suppression records: preference indicators = Y, N, blank; effective dates = now - 96, 48, 24 hours
-	bene8 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene8_bbID"}
+	bene8 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi8"}
 	err = s.db.Save(&bene8).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene8)
 
-	bene8Suppression1 := Suppression{BlueButtonID: "bene8_bbID", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-96 * time.Hour)}
+	bene8Suppression1 := Suppression{MBI: "mbi8", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-96 * time.Hour)}
 	err = s.db.Save(&bene8Suppression1).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene8Suppression1)
 
-	bene8Suppression2 := Suppression{BlueButtonID: "bene8_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
+	bene8Suppression2 := Suppression{MBI: "mbi8", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
 	err = s.db.Save(&bene8Suppression2).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene8Suppression2)
 
-	bene8Suppression3 := Suppression{BlueButtonID: "bene8_bbID", PrefIndicator: "", EffectiveDt: time.Now().Add(-24 * time.Hour)}
+	bene8Suppression3 := Suppression{MBI: "mbi8", PrefIndicator: "", EffectiveDt: time.Now().Add(-24 * time.Hour)}
 	err = s.db.Save(&bene8Suppression3).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -1035,67 +1035,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	os.Unsetenv("PATIENT_IDENTIFIER_MODE")
 }
 
-func (s *ModelsTestSuite) TestGetBlueButtonID_SuppressionHICN() {
-	assert := s.Assert()
-	suppressBene := Suppression{HICN: "HASH_ME"}
-	bbc := testUtils.BlueButtonClient{}
-	bbc.HICN = &suppressBene.HICN
-
-	// set to hicn mode
-	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
-	assert.Nil(err)
-	patientIdMode := "HICN_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(suppressBene.HICN), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-
-	// New never seen before hicn, asks the mock blue button client for the value
-	blueButtonID, err := suppressBene.GetBlueButtonID(&bbc)
-	assert.Nil(err)
-	assert.Equal("BB_VALUE", blueButtonID)
-
-	// The object has a BB ID set on it already, but we still ask mock blue button client for the value
-	// We should receive the BB_VALUE since we are ignoring cached values
-	suppressBene.BlueButtonID = "LOCAL_VAL"
-	blueButtonID, err = suppressBene.GetBlueButtonID(&bbc)
-	assert.Nil(err)
-	assert.Equal("BB_VALUE", blueButtonID)
-
-	// Should be making two calls to BB for all attempts, due to the fact that we are not relying on cached identifiers
-	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
-}
-
-func (s *ModelsTestSuite) TestGetBlueButtonID_SuppressionMBI() {
-	assert := s.Assert()
-	suppressBene := Suppression{MBI: "MBI_HASH"}
-	bbc := testUtils.BlueButtonClient{}
-	bbc.MBI = &suppressBene.MBI
-
-	// set to mbi mode
-	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "MBI_MODE")
-	assert.Nil(err)
-	patientIdMode := "MBI_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(suppressBene.MBI), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-
-	// New never seen before mbi, asks the mock blue button client for the value
-	blueButtonID, err := suppressBene.GetBlueButtonID(&bbc)
-	assert.Nil(err)
-	assert.Equal("BB_VALUE", blueButtonID)
-
-	// The object has a BB ID set on it already, but we still ask mock blue button client for the value
-	// We should receive the BB_VALUE since we are ignoring cached values
-	suppressBene.BlueButtonID = "LOCAL_VAL"
-	blueButtonID, err = suppressBene.GetBlueButtonID(&bbc)
-	assert.Nil(err)
-	assert.Equal("BB_VALUE", blueButtonID)
-
-	// Should be making two calls to BB for all attempts, due to the fact that we are not relying on cached identifiers
-	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
-}
-
-func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
+func (s *ModelsTestSuite) TestSuppressionLookbackPeriod() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -1115,7 +1055,7 @@ func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
 	defer s.db.Unscoped().Delete(&cclfFile)
 
 	// Beneficiary 1
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene1_bbID"}
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene1_mbi"}
 	err = s.db.Save(&bene1).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
@@ -1123,7 +1063,7 @@ func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
 	defer s.db.Unscoped().Delete(&bene1)
 
 	// Beneficiary 2
-	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene2_bbID"}
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene2_mbi"}
 	err = s.db.Save(&bene2).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
@@ -1131,7 +1071,7 @@ func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
 	defer s.db.Unscoped().Delete(&bene2)
 
 	// Beneficiary 3
-	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene3_bbID"}
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene3_mbi"}
 	err = s.db.Save(&bene3).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
@@ -1139,56 +1079,53 @@ func (s *ModelsTestSuite) TestBCDASuppressionLookbackPeriod() {
 	defer s.db.Unscoped().Delete(&bene3)
 
 	// Beneficiary 4
-	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene4_bbID"}
+	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene4_mbi"}
 	err = s.db.Save(&bene4).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene4)
 
-	// Suppressed bene from 59 days ago. Will be included in GetSuppressedBlueButtonIDs result
-	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 59) * time.Hour)}
+	// Suppressed bene from 59 days ago. Will not be included when GetBeneficiaries is called.
+	bene1Suppression := Suppression{MBI: "bene1_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 59) * time.Hour)}
 	err = s.db.Save(&bene1Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene1Suppression)
 
-	// Suppressed bene from 59 days and 23 ago. Will be included in GetSuppressedBlueButtonIDs result
-	bene2Suppression := Suppression{BlueButtonID: "bene2_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24*59 + 23) * time.Hour)}
+	// Suppressed bene from 59 days and 23 ago. Will not be included when GetBeneficiaries is called.
+	bene2Suppression := Suppression{MBI: "bene2_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24*59 + 23) * time.Hour)}
 	err = s.db.Save(&bene2Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene2Suppression)
 
-	// Suppressed bene from 60 days ago. Will no be included in GetSuppressedBlueButtonIDs result
-	bene3Suppression := Suppression{BlueButtonID: "bene3_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 60) * time.Hour)}
+	// Suppressed bene from 60 days ago. Will be included when GetBeneficiaries is called.
+	bene3Suppression := Suppression{MBI: "bene3_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 60) * time.Hour)}
 	err = s.db.Save(&bene3Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene3Suppression)
 
-	// Suppressed bene from 61 days ago. Will no be included in GetSuppressedBlueButtonIDs result
-	bene4Suppression := Suppression{BlueButtonID: "bene4_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 61) * time.Hour)}
+	// Suppressed bene from 61 days ago. Will be included when GetBeneficiaries is called.
+	bene4Suppression := Suppression{MBI: "bene4_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 61) * time.Hour)}
 	err = s.db.Save(&bene4Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene4Suppression)
 
-	result := GetSuppressedBlueButtonIDs(db)
-	bene3TestArray := [1]string{bene3.BlueButtonID}
-	bene4TestArray := [1]string{bene4.BlueButtonID}
+	result, err := aco.GetBeneficiaries(false)
+	assert.Nil(s.T(), err)
 	assert.Len(s.T(), result, 2)
-	assert.Equal(s.T(), bene1.BlueButtonID, result[0])
-	assert.Equal(s.T(), bene2.BlueButtonID, result[1])
-	assert.NotSubset(s.T(), result, bene3TestArray)
-	assert.NotSubset(s.T(), result, bene4TestArray)
+	assert.Equal(s.T(), bene3.ID, result[0].ID)
+	assert.Equal(s.T(), bene4.ID, result[1].ID)
 }
 
-func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
+func (s *ModelsTestSuite) TestChangingSuppressionPeriod() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
@@ -1208,7 +1145,7 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	defer s.db.Unscoped().Delete(&cclfFile)
 
 	// Beneficiary 1
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene1_bbID"}
+	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene1_mbi"}
 	err = s.db.Save(&bene1).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
@@ -1216,15 +1153,23 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	defer s.db.Unscoped().Delete(&bene1)
 
 	// Beneficiary 2
-	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, BlueButtonID: "bene2_bbID"}
+	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene2_mbi"}
 	err = s.db.Save(&bene2).Error
 	if err != nil {
 		s.FailNow("Failed to save beneficiary", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene2)
 
+	// Beneficiary 3
+	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene3_mbi"}
+	err = s.db.Save(&bene3).Error
+	if err != nil {
+		s.FailNow("Failed to save beneficiary", err.Error())
+	}
+	defer s.db.Unscoped().Delete(&bene3)
+
 	// Suppressed bene from 50 days ago
-	bene1Suppression := Suppression{BlueButtonID: "bene1_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 50) * time.Hour)}
+	bene1Suppression := Suppression{MBI: "bene1_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 50) * time.Hour)}
 	err = s.db.Save(&bene1Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
@@ -1232,34 +1177,36 @@ func (s *ModelsTestSuite) TestChangingBCDASuppressionPeriod() {
 	defer s.db.Unscoped().Delete(&bene1Suppression)
 
 	// Suppressed bene from 70 days ago
-	bene2Suppression := Suppression{BlueButtonID: "bene2_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 70) * time.Hour)}
+	bene2Suppression := Suppression{MBI: "bene2_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 70) * time.Hour)}
 	err = s.db.Save(&bene2Suppression).Error
 	if err != nil {
 		s.FailNow("Failed to save suppression", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&bene2Suppression)
 
-	result1 := GetSuppressedBlueButtonIDs(db)
-	assert.Len(s.T(), result1, 1)
-	assert.Equal(s.T(), bene1.BlueButtonID, result1[0])
-	assert.NotEqual(s.T(), bene2.BlueButtonID, result1[0])
+	result1, err := aco.GetBeneficiaries(false)
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), result1, 2)
+	assert.Equal(s.T(), bene2.ID, result1[0].ID)
+	assert.Equal(s.T(), bene3.ID, result1[1].ID)
 
 	// Set BCDA_SUPPRESSION_LOOKBACK to a different value getting different results. Reset value after this test runs
 	suppressionLookbackDefault := os.Getenv("BCDA_SUPPRESSION_LOOKBACK_DAYS")
 	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "")
 
-	result2 := GetSuppressedBlueButtonIDs(db)
-	assert.Len(s.T(), result2, 1)
+	result2, err := aco.GetBeneficiaries(false)
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), result2, 2)
 	assert.Equal(s.T(), result1, result2)
-	assert.Equal(s.T(), bene1.BlueButtonID, result2[0])
-	assert.NotEqual(s.T(), bene2.BlueButtonID, result1[0])
+	assert.Equal(s.T(), bene2.ID, result2[0].ID)
+	assert.Equal(s.T(), bene3.ID, result2[1].ID)
 
 	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "100")
 	defer os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", suppressionLookbackDefault)
 
-	result3 := GetSuppressedBlueButtonIDs(db)
-	assert.Len(s.T(), result3, 2)
+	result3, err := aco.GetBeneficiaries(false)
+	assert.Nil(s.T(), err)
+	assert.Len(s.T(), result3, 1)
 	assert.NotEqual(s.T(), result1, result3)
-	assert.Equal(s.T(), bene1.BlueButtonID, result3[0])
-	assert.Equal(s.T(), bene2.BlueButtonID, result3[1])
+	assert.Equal(s.T(), bene3.ID, result3[0].ID)
 }

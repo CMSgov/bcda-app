@@ -73,8 +73,7 @@ create table suppression_files (
 create table suppressions (
     id serial primary key,
     file_id integer not null,
-    blue_button_id text,
-    hicn varchar(11) not null,
+    mbi varchar(11) not null,
     source_code varchar(5),
     effective_date timestamp with time zone,
     preference_indicator char(1),
