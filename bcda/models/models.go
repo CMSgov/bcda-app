@@ -606,10 +606,10 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 				// no value to check against, should be removed when NGD supports MBI
 				foundIdentifier = true
 			}
-		} else if strings.Contains(identifier.System, "bene_id") {
-			if identifier.Value == blueButtonID {
-				foundBlueButtonID = true
-			}
+		} else if strings.Contains(identifier.System, "bene_id") && identifier.Value == blueButtonID {
+			// if identifier.Value == blueButtonID {
+			foundBlueButtonID = true
+			// }
 		}
 	}
 	if !foundIdentifier {
