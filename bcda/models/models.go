@@ -582,10 +582,8 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 			} else if patientIdMode == "HICN_MODE" {
 				foundIdentifier = true
 			}
-		} else if strings.Contains(identifier.System, "bene_id") {
-			if identifier.Value == blueButtonID {
-				foundBlueButtonID = true
-			}
+		} else if strings.Contains(identifier.System, "bene_id") && identifier.Value == blueButtonID {
+			foundBlueButtonID = true
 		}
 	}
 	if !foundIdentifier {
