@@ -64,8 +64,8 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
-	// false correlates to newBeneficiariesOnly, meany we want to receive data for all patients with this request
-	bulkRequest(resourceTypes, w, r, false)
+	retrieveNewBeneHistData := false // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	bulkRequest(resourceTypes, w, r, retrieveNewBeneHistData)
 }
 
 /*
@@ -73,8 +73,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 
     Start data export (for the specified group identifier) for all supported resource types
 
-	TODO: Update commentary to remove reference to Group/new and instead mention how _since works with Group
-	Initiates a job to collect data from the Blue Button API for your ACO. At this time, the only Group identifiers supported by the system are `all` (in `sandbox` and `prod`) and `new` (in `sandbox` only).  The `all` identifier returns data for the group of all patients attributed to the requesting ACO, and the `new` identifier only returns data for the group of new patients attributed to the requesting ACO (new patients are determined by comparing the CCLF attribution for the current month with the CCLF attribution for the previous month). Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+	Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system is `all`.  The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since` (in sandbox only, but will soon be available in production): all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
 
 	Produces:
 	- application/fhir+json
@@ -90,21 +89,27 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	retrieveNewBeneHistData := false
+	
+	// TODO: need to flip BCDA_ENABLE_NEW_GROUP to false in opensbx
+	// TODO: need to update postman test to ensure testing is done differently in opensbx and prod
 	groupID := chi.URLParam(r, "groupId")
-	newBeneficiariesOnly := false
-	// TODO: cleanup a  lot of this
-	if groupID == groupAll || (groupID == groupNew && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false)) {
-		// TODO: validate optional params _elements and patient (POST)
-		// Servers unable to support patient SHOULD return an error and OperationOutcome resource so clients can re-submit a request omitting the patient parameter.
-		resourceTypes, err := validateRequest(r)
-		if err != nil {
-			responseutils.WriteError(err, w, http.StatusBadRequest)
-			return
+	if groupID == groupAll {
+                // TODO: validate optional params _elements and patient (POST)
+                // TODO: Servers unable to support patient SHOULD return an error and OperationOutcome resource so clients can re-submit a request omitting the patient parameter.
+                resourceTypes, err := validateRequest(r)
+                if err != nil {
+                        responseutils.WriteError(err, w, http.StatusBadRequest)
+                        return
+                }
+
+		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
+		_, ok := r.URL.Query()["_since"]
+		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
+			retrieveNewBeneHistData = true
 		}
-		if groupID == groupNew {
-			newBeneficiariesOnly = true
-		}
-		bulkRequest(resourceTypes, w, r, newBeneficiariesOnly)
+
+		bulkRequest(resourceTypes, w, r, retrieveNewBeneHistData)
 	} else {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
@@ -112,7 +117,7 @@ func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, newBeneficiariesOnly bool) {
+func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, retrieveNewBeneHistData bool) {
 	var (
 		ad  auth.AuthData
 		err error
@@ -206,11 +211,12 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	params, ok := r.URL.Query()["_since"]
 	if ok {
 		decodedSince, _ = url.QueryUnescape(params[0])
+		// TODO: consider adding the "gt" inside GetEnqueJobs function so we can make use of the raw date in that function
 		decodedSince = "gt" + decodedSince
 	}
 
 	var enqueueJobs []*que.Job
-	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince, newBeneficiariesOnly)
+	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince, retrieveNewBeneHistData)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
