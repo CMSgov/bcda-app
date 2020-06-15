@@ -36,7 +36,6 @@ var qc *que.Client
 
 const (
 	groupAll = "all"
-	groupNew = "new"
 )
 
 /*
@@ -74,6 +73,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 
     Start data export (for the specified group identifier) for all supported resource types
 
+	TODO: Update commentary to remove reference to Group/new and instead mention how _since works with Group
 	Initiates a job to collect data from the Blue Button API for your ACO. At this time, the only Group identifiers supported by the system are `all` (in `sandbox` and `prod`) and `new` (in `sandbox` only).  The `all` identifier returns data for the group of all patients attributed to the requesting ACO, and the `new` identifier only returns data for the group of new patients attributed to the requesting ACO (new patients are determined by comparing the CCLF attribution for the current month with the CCLF attribution for the previous month). Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
 	Produces:
@@ -92,7 +92,10 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	groupID := chi.URLParam(r, "groupId")
 	newBeneficiariesOnly := false
+	// TODO: cleanup a  lot of this
 	if groupID == groupAll || (groupID == groupNew && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false)) {
+		// TODO: validate optional params _elements and patient (POST)
+		// Servers unable to support patient SHOULD return an error and OperationOutcome resource so clients can re-submit a request omitting the patient parameter.
 		resourceTypes, err := validateRequest(r)
 		if err != nil {
 			responseutils.WriteError(err, w, http.StatusBadRequest)
