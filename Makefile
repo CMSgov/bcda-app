@@ -1,11 +1,3 @@
-bdt:
-	# Please set env vars BDT_CLIENT_ID and BDT_CLIENT_SECRET before running
-	docker build -t bdt -f Dockerfiles/Dockerfile.bdt .
-	docker run --rm \
-	-e CLIENT_ID='${BDT_CLIENT_ID}' \
-	-e SECRET='${BDT_CLIENT_SECRET}' \
-	bdt
-
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
@@ -133,5 +125,15 @@ debug-worker:
 	@echo "Starting debugger. This may take a while..."
 	@-bash -c "trap 'docker-compose stop' EXIT; \
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
+
+bdt:
+	# supply this target with the necessary environment vars, e.g.:
+	# make bdt BDT_BASE_URL=<origin of API> BDT_CLIENT_ID=<client id> BDT_CLIENT_SECRET=<client secret>
+	docker build -t bdt -f Dockerfiles/Dockerfile.bdt .
+	docker run --rm \
+	-e BASE_URL='${BDT_BASE_URL}' \
+	-e CLIENT_ID='${BDT_CLIENT_ID}' \
+	-e SECRET='${BDT_CLIENT_SECRET}' \
+	bdt
 
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell
