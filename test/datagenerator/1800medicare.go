@@ -1,3 +1,4 @@
+/* #nosec G404 */
 package main
 
 import (
