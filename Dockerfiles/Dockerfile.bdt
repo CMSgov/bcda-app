@@ -1,0 +1,16 @@
+FROM node:current-slim
+
+WORKDIR '/'
+
+RUN apt update -y && apt install curl jq git -y
+
+RUN git clone https://github.com/smart-on-fhir/bdt.git
+RUN git clone https://github.com/orenfromberg/bdt-bcda.git
+WORKDIR '/bdt-bcda'
+RUN git format-patch -k --stdout 82b855a545211a2f4881f1560e05e29e20c084d6..HEAD > patch.file
+WORKDIR '/bdt'
+RUN git apply ../bdt-bcda/patch.file
+
+RUN npm install
+
+CMD ["./run-bdt.sh"]
