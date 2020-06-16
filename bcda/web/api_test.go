@@ -555,7 +555,7 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {
-	_, handlerFunc, req := bulkRequestHelper(endpoint+"/test/Foo/", "Foo", "")
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "Foo", "")
 	handlerFunc(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
