@@ -1,3 +1,11 @@
+bdt:
+	# Please set env vars BDT_CLIENT_ID and BDT_CLIENT_SECRET before running
+	docker build -t bdt -f Dockerfiles/Dockerfile.bdt .
+	docker run --rm \
+	-e CLIENT_ID='${BDT_CLIENT_ID}'
+	-e SECRET='${BDT_CLIENT_SECRET}'
+	bdt
+
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
