@@ -471,17 +471,17 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince() {
 		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
 		if count == 0 {
 			assert.Equal("Patient", jobArgs.ResourceType)
-			assert.Equal(since, jobArgs.Since)
+			assert.Equal("gt"+since, jobArgs.Since)
 			assert.NotNil(jobArgs.TransactionTime)
 			assert.Equal(int16(20), queJob.Priority)
 		} else if count == 1 {
 			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-			assert.Equal(since, jobArgs.Since)
+			assert.Equal("gt"+since, jobArgs.Since)
 			assert.NotNil(jobArgs.TransactionTime)
 			assert.Equal(int16(30), queJob.Priority)
 		} else {
 			assert.Equal("Coverage", jobArgs.ResourceType)
-			assert.Equal(since, jobArgs.Since)
+			assert.Equal("gt"+since, jobArgs.Since)
 			assert.NotNil(jobArgs.TransactionTime)
 			assert.Equal(int16(20), queJob.Priority)
 		}
