@@ -2,8 +2,8 @@ bdt:
 	# Please set env vars BDT_CLIENT_ID and BDT_CLIENT_SECRET before running
 	docker build -t bdt -f Dockerfiles/Dockerfile.bdt .
 	docker run --rm \
-	-e CLIENT_ID='${BDT_CLIENT_ID}'
-	-e SECRET='${BDT_CLIENT_SECRET}'
+	-e CLIENT_ID='${BDT_CLIENT_ID}' \
+	-e SECRET='${BDT_CLIENT_SECRET}' \
 	bdt
 
 package:
