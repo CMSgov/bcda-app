@@ -129,7 +129,7 @@ debug-worker:
 bdt:
 	# supply this target with the necessary environment vars, e.g.:
 	# make bdt BDT_BASE_URL=<origin of API> BDT_CLIENT_ID=<client id> BDT_CLIENT_SECRET=<client secret>
-	docker build -t bdt -f Dockerfiles/Dockerfile.bdt .
+	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt .
 	docker run --rm \
 	-e BASE_URL='${BDT_BASE_URL}' \
 	-e CLIENT_ID='${BDT_CLIENT_ID}' \
