@@ -69,16 +69,10 @@ func (s *APITestSuite) TestBulkEOBRequest() {
 	bulkEOBRequestHelper("Group/all", "", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkEOBRequestHelper("Group/new", "", s)
-	s.TearDownTest()
-	s.SetupTest()
 	bulkEOBRequestHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
 	bulkEOBRequestHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestInvalidSinceFormat() {
@@ -87,9 +81,6 @@ func (s *APITestSuite) TestBulkEOBRequestInvalidSinceFormat() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkEOBRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
@@ -97,9 +88,6 @@ func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkEOBRequestNoBeneficiariesInACOHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestNoBeneficiariesInACOHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
@@ -107,9 +95,6 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkEOBRequestMissingTokenHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestMissingTokenHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
@@ -117,9 +102,6 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkEOBRequestNoQueueHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestNoQueueHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkPatientRequest() {
@@ -130,16 +112,10 @@ func (s *APITestSuite) TestBulkPatientRequest() {
 	bulkPatientRequestHelper("Group/all", "", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkPatientRequestHelper("Group/new", "", s)
-	s.TearDownTest()
-	s.SetupTest()
 	bulkPatientRequestHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
 	bulkPatientRequestHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkPatientRequestInvalidSinceFormat() {
@@ -148,9 +124,6 @@ func (s *APITestSuite) TestBulkPatientRequestInvalidSinceFormat() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkPatientRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequest() {
@@ -161,16 +134,10 @@ func (s *APITestSuite) TestBulkCoverageRequest() {
 	bulkCoverageRequestHelper("Group/all", "", s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestHelper("Group/new", "", s)
-	s.TearDownTest()
-	s.SetupTest()
 	bulkCoverageRequestHelper("Patient", since, s)
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
@@ -179,9 +146,6 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatEscapeCharacterFormat() {
@@ -190,9 +154,6 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatEscapeCharacterF
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatMissingTimeZone() {
@@ -201,9 +162,6 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatMissingTimeZone(
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatInvalidTime() {
@@ -212,9 +170,6 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatInvalidTime() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatInvalidDate() {
@@ -223,9 +178,6 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatInvalidDate() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyDate() {
@@ -234,9 +186,6 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyDate() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyInvalidDate() {
@@ -245,9 +194,6 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyInvalidDate(
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestInvalidSinceFormatHelper("Group/new", since, s)
 }
 
 func (s *APITestSuite) TestBulkRequestInvalidType() {
@@ -255,9 +201,6 @@ func (s *APITestSuite) TestBulkRequestInvalidType() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkRequestInvalidTypeHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkRequestInvalidTypeHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkConcurrentRequest() {
@@ -265,9 +208,6 @@ func (s *APITestSuite) TestBulkConcurrentRequest() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkConcurrentRequestHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkConcurrentRequestHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkConcurrentRequestTime() {
@@ -275,9 +215,6 @@ func (s *APITestSuite) TestBulkConcurrentRequestTime() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkConcurrentRequestTimeHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkConcurrentRequestTimeHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestValidateRequest() {
@@ -285,9 +222,6 @@ func (s *APITestSuite) TestValidateRequest() {
 	s.TearDownTest()
 	s.SetupTest()
 	validateRequestHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	validateRequestHelper("Group/new", s)
 }
 
 func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
@@ -295,9 +229,6 @@ func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkPatientRequestBBClientFailureHelper("Group/all", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestBBClientFailureHelper("Group/new", s)
 }
 
 func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
@@ -862,10 +793,6 @@ func bulkRequestHelper(endpoint, resourceType, since string) (string, func(http.
 	} else if endpoint == "Group/all" {
 		handlerFunc = bulkGroupRequest
 		group = groupAll
-	} else {
-		endpoint = "Group/new"
-		handlerFunc = bulkGroupRequest
-		group = groupNew
 	}
 
 	requestUrl, _ := url.Parse(fmt.Sprintf("/api/v1/%s/$export", endpoint))
