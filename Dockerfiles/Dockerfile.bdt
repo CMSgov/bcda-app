@@ -13,4 +13,4 @@ RUN git apply ../bdt-bcda/patch.file
 
 RUN npm install
 
-CMD ["./bdt/run-bdt.sh"]
+CMD ["./run-bdt.sh"]
