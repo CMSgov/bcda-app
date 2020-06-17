@@ -301,7 +301,7 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 		log.Errorf("Unable to find new CCLF8 File for ACO: %v", *aco.CMSID)
 		return newBeneficiaries, beneficiaries, fmt.Errorf("unable to find new cclfFile")
 	}
-	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ? and updated_at <= ?", aco.CMSID, constants.ImportComplete, since).Order("timestamp desc").First(&cclfFileOld).RecordNotFound() {
+	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ? and timestamp <= ?", aco.CMSID, constants.ImportComplete, since).Order("timestamp desc").First(&cclfFileOld).RecordNotFound() {
 		log.Infof("Unable to find CCLF8 File for ACO %v prior to date: %v; all beneficiaries will be considered NEW", *aco.CMSID, since)
 	} else {
 		foundCclfFileOld = true
