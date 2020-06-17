@@ -490,77 +490,132 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince_Patient()
 	}
 }
 
+func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithOldSince_Group() {
+	assert := s.Assert()
+
+	j := Job{
+		ACOID:      uuid.Parse(constants.DevACOUUID),
+		RequestURL: "/api/v1/Group/$export",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
+
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
+	// This test validates that we only get historical data for new beneficiaries because since date is very old
+	// This is only valid for /Group endpoint with _since specified
+	// The CCLF historical data timestamp is set in unit_test.sh
+	since := "1900-02-13T08:00:00.000-05:00"
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, true)
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	assert.Equal(3, len(enqueueJobs))
+	var count = 0
+	for _, queJob := range enqueueJobs {
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		assert.Equal(int(j.ID), jobArgs.ID)
+		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
+		if count == 0 {
+			assert.Equal("Patient", jobArgs.ResourceType)
+			assert.Equal("", jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
+			assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+		} else if count == 1 {
+			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
+			assert.Equal("", jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(30), queJob.Priority)
+			assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+		} else {
+			assert.Equal("Coverage", jobArgs.ResourceType)
+			assert.Equal("", jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
+			assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+		}
+		count++
+	}
+}
+
 func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince_Group() {
-        assert := s.Assert()
+	assert := s.Assert()
 
-        j := Job{
-                ACOID:      uuid.Parse(constants.DevACOUUID),
-                RequestURL: "/api/v1/Group/$export",
-                Status:     "Pending",
-        }
-        s.db.Save(&j)
-        defer s.db.Delete(&j)
+	j := Job{
+		ACOID:      uuid.Parse(constants.DevACOUUID),
+		RequestURL: "/api/v1/Group/$export",
+		Status:     "Pending",
+	}
+	s.db.Save(&j)
+	defer s.db.Delete(&j)
 
-        priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
-        os.Setenv("PRIORITY_ACO_IDS", "")
-        defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+	os.Setenv("PRIORITY_ACO_IDS", "")
+	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
 
 	// This test validates that we can get historical data for new beneficiaries added since date specified
 	// This is only valid for /Group endpoint with _since specified
 	// The CCLF historical data timestamp is set in unit_test.sh
-        since := "2020-02-13T08:00:00.000-05:00"
-        enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, true)
-        assert.Nil(err)
-        assert.NotNil(enqueueJobs)
-        assert.Equal(6, len(enqueueJobs))
-        var count = 0
-        for _, queJob := range enqueueJobs {
-                jobArgs := jobEnqueueArgs{}
-                err := json.Unmarshal(queJob.Args, &jobArgs)
-                if err != nil {
-                        s.T().Error(err)
-                }
-                assert.Equal(int(j.ID), jobArgs.ID)
-                assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-                if count == 0 {
-                        assert.Equal("Patient", jobArgs.ResourceType)
-                        assert.Equal("", jobArgs.Since)
-                        assert.NotNil(jobArgs.TransactionTime)
-                        assert.Equal(int16(20), queJob.Priority)
+	since := "2020-02-13T08:00:00.000-05:00"
+	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, true)
+	assert.Nil(err)
+	assert.NotNil(enqueueJobs)
+	assert.Equal(6, len(enqueueJobs))
+	var count = 0
+	for _, queJob := range enqueueJobs {
+		jobArgs := jobEnqueueArgs{}
+		err := json.Unmarshal(queJob.Args, &jobArgs)
+		if err != nil {
+			s.T().Error(err)
+		}
+		assert.Equal(int(j.ID), jobArgs.ID)
+		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
+		if count == 0 {
+			assert.Equal("Patient", jobArgs.ResourceType)
+			assert.Equal("", jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
 			assert.Equal(10, len(jobArgs.BeneficiaryIDs))
-                } else if count == 1 {
-                        assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-                        assert.Equal("", jobArgs.Since)
-                        assert.NotNil(jobArgs.TransactionTime)
-                        assert.Equal(int16(30), queJob.Priority)
-                        assert.Equal(10, len(jobArgs.BeneficiaryIDs))
-                } else if count == 2 {
-                        assert.Equal("Coverage", jobArgs.ResourceType)
-                        assert.Equal("", jobArgs.Since)
-                        assert.NotNil(jobArgs.TransactionTime)
-                        assert.Equal(int16(20), queJob.Priority)
-                        assert.Equal(10, len(jobArgs.BeneficiaryIDs))
-                } else if count == 3 {
-                        assert.Equal("Patient", jobArgs.ResourceType)
-                        assert.Equal("gt"+since, jobArgs.Since)
-                        assert.NotNil(jobArgs.TransactionTime)
-                        assert.Equal(int16(20), queJob.Priority)
+		} else if count == 1 {
+			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
+			assert.Equal("", jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(30), queJob.Priority)
+			assert.Equal(10, len(jobArgs.BeneficiaryIDs))
+		} else if count == 2 {
+			assert.Equal("Coverage", jobArgs.ResourceType)
+			assert.Equal("", jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
+			assert.Equal(10, len(jobArgs.BeneficiaryIDs))
+		} else if count == 3 {
+			assert.Equal("Patient", jobArgs.ResourceType)
+			assert.Equal("gt"+since, jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
 			assert.Equal(40, len(jobArgs.BeneficiaryIDs))
-                } else if count == 4 {
-                        assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-                        assert.Equal("gt"+since, jobArgs.Since)
-                        assert.NotNil(jobArgs.TransactionTime)
-                        assert.Equal(int16(30), queJob.Priority)
+		} else if count == 4 {
+			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
+			assert.Equal("gt"+since, jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(30), queJob.Priority)
 			assert.Equal(40, len(jobArgs.BeneficiaryIDs))
-                } else {
-                        assert.Equal("Coverage", jobArgs.ResourceType)
-                        assert.Equal("gt"+since, jobArgs.Since)
-                        assert.NotNil(jobArgs.TransactionTime)
-                        assert.Equal(int16(20), queJob.Priority)
+		} else {
+			assert.Equal("Coverage", jobArgs.ResourceType)
+			assert.Equal("gt"+since, jobArgs.Since)
+			assert.NotNil(jobArgs.TransactionTime)
+			assert.Equal(int16(20), queJob.Priority)
 			assert.Equal(40, len(jobArgs.BeneficiaryIDs))
-                }
-                count++
-        }
+		}
+		count++
+	}
 }
 
 func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
