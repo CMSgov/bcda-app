@@ -81,7 +81,8 @@ load-synthetic-cclf-data:
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=medium --environment=test'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=large --environment=test'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=extra-large --environment=test'
-	# The "test-new-beneficiaries" environments provides CCLF ingestion that includes new beneficiaries for ACO
+	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
+	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev --environment=test-new-beneficiaries'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev-auth --environment=test-new-beneficiaries'
 	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=small --environment=test-new-beneficiaries'
