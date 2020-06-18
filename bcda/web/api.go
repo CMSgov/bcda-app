@@ -90,18 +90,15 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 */
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	retrieveNewBeneHistData := false
-	
-	// TODO: need to flip BCDA_ENABLE_NEW_GROUP to false in opensbx
+
 	// TODO: need to update postman test to ensure testing is done differently in opensbx and prod
 	groupID := chi.URLParam(r, "groupId")
 	if groupID == groupAll {
-                // TODO: validate optional params _elements and patient (POST)
-                // TODO: Servers unable to support patient SHOULD return an error and OperationOutcome resource so clients can re-submit a request omitting the patient parameter.
-                resourceTypes, err := validateRequest(r)
-                if err != nil {
-                        responseutils.WriteError(err, w, http.StatusBadRequest)
-                        return
-                }
+		resourceTypes, err := validateRequest(r)
+		if err != nil {
+			responseutils.WriteError(err, w, http.StatusBadRequest)
+			return
+		}
 
 		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
 		_, ok := r.URL.Query()["_since"]
@@ -315,6 +312,13 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
 			return nil, oo
 		}
+	}
+
+	// we do not support "_elements" parameter
+	_, ok = r.URL.Query()["_elements"]
+	if ok {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
+		return nil, oo
 	}
 
 	return resourceTypes, nil

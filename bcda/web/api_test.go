@@ -717,9 +717,22 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 }
 
 func validateRequestHelper(endpoint string, s *APITestSuite) {
-	_, _, req := bulkRequestHelper(endpoint, "", "")
-
+	requestUrl, _ := url.Parse("/api/v1/Patient/$export")
+	q := requestUrl.Query()
+	q.Set("_elements", "blah,blah,blah")
+	requestUrl.RawQuery = q.Encode()
+	req := httptest.NewRequest("GET", requestUrl.String(), nil)
+	rctx := chi.NewRouteContext()
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	resourceTypes, err := validateRequest(req)
+	assert.Nil(s.T(), resourceTypes)
+	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Code)
+	assert.Equal(s.T(), "Invalid parameter: this server does not support the _elements parameter.", err.Issue[0].Details.Coding[0].Display)
+
+	_, _, req = bulkRequestHelper(endpoint, "", "")
+	resourceTypes, err = validateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 3, len(resourceTypes))
 	for _, t := range resourceTypes {
