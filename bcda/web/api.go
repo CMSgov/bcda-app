@@ -91,7 +91,6 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	retrieveNewBeneHistData := false
 
-	// TODO: need to update postman test to ensure testing is done differently in opensbx and prod
 	groupID := chi.URLParam(r, "groupId")
 	if groupID == groupAll {
 		resourceTypes, err := validateRequest(r)
