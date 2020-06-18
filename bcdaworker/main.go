@@ -288,7 +288,6 @@ func appendErrorToFile(fileUUID, code, detailsCode, detailsDisplay string, jobID
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
 	fileName := fmt.Sprintf("%s/%s/%s-error.ndjson", dataDir, jobID, fileUUID)
-	/* #nosec -- opening file defined by variable */
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
 	if err != nil {
