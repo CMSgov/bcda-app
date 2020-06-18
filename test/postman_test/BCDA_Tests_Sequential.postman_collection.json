@@ -1905,7 +1905,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient_since=2020-02-13T08:00:00.000-05:00",
+					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient&since=2020-02-13T08:00:00.000-05:00",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -1920,7 +1920,11 @@
 					"query": [
 						{
 							"key": "_type",
-							"value": "Patient_since=2020-02-13T08:00:00.000-05:00"
+							"value": "Patient"
+						},
+						{
+							"key": "since",
+							"value": "2020-02-13T08:00:00.000-05:00"
 						}
 					]
 				}
@@ -1928,7 +1932,7 @@
 			"response": []
 		},
 		{
-			"name": "Get Group/all without Since export job status",
+			"name": "Get Group/all with Since export job status",
 			"event": [
 				{
 					"listen": "test",
@@ -2061,7 +2065,7 @@
 			"response": []
 		},
 		{
-			"name": "Get Group/all without Since export data",
+			"name": "Get Group/all with Since export data",
 			"event": [
 				{
 					"listen": "test",
