@@ -27,12 +27,18 @@ DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSg
 
 echo "ACO API Database migration complete"
 
-echo "Importing CCLF Files to seed data"
+echo "Importing CCLF Files to seed data with historical CCLF data"
 
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize dev --environment unit-test
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize small --environment unit-test
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize medium --environment unit-test
-DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize large --environment unit-test\
+DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize large --environment unit-test
+
+echo "Updating timestamp data on historical CCLF data for testing /Group implementation"
+usql $TEST_DB_URL -c "update cclf_files set timestamp='2020-02-01';"
+
+echo "Importing CCLF Files to seed data with new CCLF data"
+
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize dev --environment unit-test-new-beneficiaries
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize small --environment unit-test-new-beneficiaries
 DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL go run github.com/CMSgov/bcda-app/bcda import-synthetic-cclf-package --acoSize medium --environment unit-test-new-beneficiaries

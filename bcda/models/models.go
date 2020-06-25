@@ -105,31 +105,61 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 	return false, nil
 }
 
-func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiariesOnly bool) (enqueJobs []*que.Job, err error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var aco ACO
-	var beneficiaries []CCLFBeneficiary
-	err = db.Find(&aco, "uuid = ?", job.ACOID).Error
-	if err != nil {
-		return nil, err
-	}
+func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBeneHistData bool) (enqueJobs []*que.Job, err error) {
+        db := database.GetGORMDbConnection()
+        defer database.Close(db)
+        var beneficiaries, newBeneficiaries []CCLFBeneficiary
+	var jobs []*que.Job
+        var aco ACO
+        err = db.Find(&aco, "uuid = ?", job.ACOID).Error
+        if err != nil {
+                return nil, err
+        }
 
-	// only retrieve new beneficiaries (comparison of current CCLF vs previous CCLF)
-	if newBeneficiariesOnly {
+	if retrieveNewBeneHistData {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		beneficiaries, err = aco.GetNewBeneficiaries(false)
+		newBeneficiaries, beneficiaries, err = aco.GetNewAndExistingBeneficiaries(false, since)
 		if err != nil {
 			return nil, err
 		}
+		
+		// add new beneficaries to the job queue
+		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, "", retrieveNewBeneHistData, newBeneficiaries)
+		if err != nil {
+			return nil, err
+		}
+		enqueJobs = append(enqueJobs, jobs...)
+		
+		// add existing beneficaries to the job queue
+		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, since, retrieveNewBeneHistData, beneficiaries)
+                if err != nil {
+                        return nil, err
+                }
+                enqueJobs = append(enqueJobs, jobs...)	
 	} else {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
 		beneficiaries, err = aco.GetBeneficiaries(false)
 		if err != nil {
 			return nil, err
 		}
+	
+		// add beneficaries to the job queue
+		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, since, retrieveNewBeneHistData, beneficiaries)
+		if err != nil {
+			return nil, err
+		}
+		enqueJobs = append(enqueJobs, jobs...)
 	}
+	
+	return enqueJobs, nil
+}
 
+func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string, retrieveNewBeneHistData bool, beneficiaries []CCLFBeneficiary) (jobs []*que.Job, err error) {
+
+        // persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
+	if since != ""  {
+		since = "gt"+since 
+	}
 	for _, rt := range resourceTypes {
 		var rowCount = 0
 		var jobIDs []string
@@ -157,16 +187,16 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, newBeneficiar
 				j := &que.Job{
 					Type:     "ProcessJob",
 					Args:     args,
-					Priority: setJobPriority(*aco.CMSID, rt, len(since) != 0),
+					Priority: setJobPriority(CMSID, rt, (len(since) != 0 || retrieveNewBeneHistData)),
 				}
 
-				enqueJobs = append(enqueJobs, j)
+				jobs = append(jobs, j)
 
 				jobIDs = []string{}
 			}
 		}
 	}
-	return enqueJobs, nil
+	return jobs, nil
 }
 
 // Sets the priority for the job where the lower the number the higher the priority in the queue.
@@ -252,64 +282,83 @@ type ACO struct {
 	PublicKey   string    `json:"public_key"`
 }
 
-// GetNewBeneficiaries retrieves new beneficiaries associated with the ACO
-// "new" is defined as beneficiaries existing in current CCLF that did not exist in previous CCLF
-func (aco *ACO) GetNewBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, error) {
-	var cclfBeneficiaries []CCLFBeneficiary
+// GetNewAndExistingBeneficiaries, when supplied with the "since" parameter, returns two arrays
+// the first array contains all NEW beneficaries that were added to CCLF since the date supplied
+// the second array contains all EXISTING benficiaries that have existed in CCLF since prior to the date supplied
+func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since string) (newBeneficiaries, beneficiaries []CCLFBeneficiary, err error) {
 	var cclfBeneficiariesOld []string
 
 	if aco.CMSID == nil {
 		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
-		return cclfBeneficiaries, fmt.Errorf("no CMS ID set for this ACO")
+		return newBeneficiaries, beneficiaries, fmt.Errorf("no CMS ID set for this ACO")
 	}
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	var cclfFileNew CCLFFile
-	var cclfFileOld CCLFFile
+	var cclfFileNew, cclfFileOld CCLFFile
+	var foundCclfFileOld = false
 	// todo add a filter here to make sure the file is up to date.
 	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID, constants.ImportComplete).Order("timestamp desc").First(&cclfFileNew).RecordNotFound() {
 		log.Errorf("Unable to find new CCLF8 File for ACO: %v", *aco.CMSID)
-		return cclfBeneficiaries, fmt.Errorf("unable to find new cclfFile")
+		return newBeneficiaries, beneficiaries, fmt.Errorf("unable to find new cclfFile")
 	}
-	// Offset(1) is used to get skip the most recent file, and get the one before it
-	// TODO: later, once Group/new is out of test/research phase, we can make this smarter based on feedback
-	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID, constants.ImportComplete).Order("timestamp desc").Offset(1).First(&cclfFileOld).RecordNotFound() {
-		log.Errorf("Unable to find last month's CCLF8 File for ACO: %v", *aco.CMSID)
-		return cclfBeneficiaries, fmt.Errorf("unable to find last month's cclfFile")
-	}
-
-	var suppressedMBIs []string
-
-	if !includeSuppressed {
-		suppressedMBIs = GetSuppressedMBIs(db)
-	}
-
-	// Get all the beneficiaries from the previous CCLF for this ACO, to use as a basis for comparison
-	var err error
-	err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFileOld.ID).Pluck("mbi", &cclfBeneficiariesOld).Error
-	if err != nil {
-		log.Errorf("Error retrieving beneficiaries from previous CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
-		return nil, err
-	}
-
-	if suppressedMBIs != nil {
-		err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ? and timestamp <= ?", aco.CMSID, constants.ImportComplete, since).Order("timestamp desc").First(&cclfFileOld).RecordNotFound() {
+		log.Infof("Unable to find CCLF8 File for ACO %v prior to date: %v; all beneficiaries will be considered NEW", *aco.CMSID, since)
 	} else {
-		err = db.Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+		foundCclfFileOld = true
 	}
 
-	if err != nil {
-		log.Errorf("Error retrieving new beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
-		return nil, err
-	} else if len(cclfBeneficiaries) == 0 {
-		log.Errorf("Found 0 new beneficiaries from CCLF8 file for ACO ID %s", aco.UUID.String())
-		return nil, fmt.Errorf("found 0 new  beneficiaries from CCLF8 for ACO ID %s", aco.UUID.String())
-	}
+	// Get all the beneficiaries from the older CCLF for this ACO, to use as a basis for comparison
+	// If the older CCLF was not found, then all beneficiaries will be considered new
+	if foundCclfFileOld {
+		err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFileOld.ID).Pluck("mbi", &cclfBeneficiariesOld).Error
+		if err != nil {
+			log.Errorf("Error retrieving beneficiaries from previous CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
+			return nil, nil, err
+		}
 
-	return cclfBeneficiaries, nil
+		var suppressedMBIs []string
+
+	        if !includeSuppressed {
+			suppressedMBIs = GetSuppressedMBIs(db)
+		}
+
+		// Populate new beneficiaries collection
+		if suppressedMBIs != nil {
+			err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+		} else {
+			err = db.Not("mbi", cclfBeneficiariesOld).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+		}
+
+		if err != nil {
+			log.Errorf("Error retrieving new beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
+                	return nil, nil, err
+        	}
+
+		// Populate existing beneficaries collection
+		if suppressedMBIs != nil {
+                	err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", cclfBeneficiariesOld).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+        	} else {
+			err = db.Where("mbi IN (?)", cclfBeneficiariesOld).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+        	}
+
+		if err != nil {
+			log.Errorf("Error retrieving existing beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
+			return nil, nil, err
+		}
+
+		if len(beneficiaries) == 0 && len(newBeneficiaries) == 0 {
+			log.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for ACO ID %s", aco.UUID.String())
+			return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 for ACO ID %s", aco.UUID.String())
+		}
+
+		return newBeneficiaries, beneficiaries, nil
+	} else {
+		newBeneficiaries, err = aco.GetBeneficiaries(includeSuppressed)
+		return newBeneficiaries, nil, err
+	}
 }
 
-// GetBeneficiaries retrieves all beneficiaries associated with the ACO.
+// GetBeneficiaries retrieves all beneficiaries associated with the ACO, contained in one array
 func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, error) {
 	var cclfBeneficiaries []CCLFBeneficiary
 
