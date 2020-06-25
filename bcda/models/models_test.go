@@ -820,6 +820,12 @@ func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
 		s.FailNow("Failed to save CCLF file", err.Error())
 	}
 	defer s.db.Unscoped().Delete(&cclfFile)
+	// cclfFile2 := CCLFFile{CCLFNum: 7, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
+	// err = s.db.Save(&cclfFile2).Error
+	// if err != nil {
+	// 	s.FailNow("Failed to save CCLF file", err.Error())
+	// }
+	// defer s.db.Unscoped().Delete(&cclfFile2)
 
 	// Beneficiary 1: preference indicator = N, effective date = now - 48 hours
 	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi1"}

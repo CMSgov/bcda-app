@@ -293,7 +293,7 @@ func (aco *ACO) GetNewBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, 
 	}
 
 	if suppressedMBIs != nil {
-		err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+		err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "distinct file_id = ?", cclfFileNew.ID).Error
 	} else {
 		err = db.Not("mbi", cclfBeneficiariesOld).Find(&cclfBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 	}
@@ -306,7 +306,20 @@ func (aco *ACO) GetNewBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, 
 		return nil, fmt.Errorf("found 0 new  beneficiaries from CCLF8 for ACO ID %s", aco.UUID.String())
 	}
 
-	return cclfBeneficiaries, nil
+	return unique(cclfBeneficiaries), nil
+	// return cclfBeneficiaries, nil
+}
+
+func unique(intSlice []CCLFBeneficiary) []CCLFBeneficiary {
+	keys := make(map[CCLFBeneficiary]bool)
+	list := []CCLFBeneficiary{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
 
 // GetBeneficiaries retrieves all beneficiaries associated with the ACO.
