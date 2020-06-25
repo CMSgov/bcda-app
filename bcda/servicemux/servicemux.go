@@ -117,6 +117,7 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 			tls.CurveP256,
 			tls.X25519,
 		},
+		MinVersion: tls.VersionTLS12,
 	}
 
 	sm.Listener = tls.NewListener(sm.Listener, &sm.TLSConfig)

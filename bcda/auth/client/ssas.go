@@ -89,7 +89,7 @@ func tlsTransport() (*http.Transport, error) {
 	}
 
 	ssasLogger.Println("Using ca cert sourced from ", filepath.Clean(caFile))
-	tlsConfig := &tls.Config{RootCAs: caCertPool}
+	tlsConfig := &tls.Config{RootCAs: caCertPool, MinVersion: tls.VersionTLS12}
 
 	return &http.Transport{TLSClientConfig: tlsConfig}, nil
 }
