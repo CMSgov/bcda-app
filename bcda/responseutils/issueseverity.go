@@ -4,8 +4,8 @@ package responseutils
 // This value set includes codes from the following code systems:
 // Defining URL: http://hl7.org/fhir/issue-severity
 const (
-	Fatal       = "Fatal"
-	Error       = "Error"
-	Warning     = "Warning"
-	Information = "Information"
+	Fatal       = "fatal"
+	Error       = "error"
+	Warning     = "warning"
+	Information = "information"
 )
