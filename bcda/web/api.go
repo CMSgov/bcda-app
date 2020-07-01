@@ -36,7 +36,6 @@ var qc *que.Client
 
 const (
 	groupAll = "all"
-	groupNew = "new"
 )
 
 /*
@@ -65,8 +64,8 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
-	// false correlates to newBeneficiariesOnly, meany we want to receive data for all patients with this request
-	bulkRequest(resourceTypes, w, r, false)
+	retrieveNewBeneHistData := false // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	bulkRequest(resourceTypes, w, r, retrieveNewBeneHistData)
 }
 
 /*
@@ -74,7 +73,7 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 
     Start data export (for the specified group identifier) for all supported resource types
 
-	Initiates a job to collect data from the Blue Button API for your ACO. At this time, the only Group identifiers supported by the system are `all` (in `sandbox` and `prod`) and `new` (in `sandbox` only).  The `all` identifier returns data for the group of all patients attributed to the requesting ACO, and the `new` identifier only returns data for the group of new patients attributed to the requesting ACO (new patients are determined by comparing the CCLF attribution for the current month with the CCLF attribution for the previous month). Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+	Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system is `all`.  The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since` (in sandbox only, but will soon be available in production): all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
 
 	Produces:
 	- application/fhir+json
@@ -90,18 +89,23 @@ func bulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	retrieveNewBeneHistData := false
+
 	groupID := chi.URLParam(r, "groupId")
-	newBeneficiariesOnly := false
-	if groupID == groupAll || (groupID == groupNew && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false)) {
+	if groupID == groupAll {
 		resourceTypes, err := validateRequest(r)
 		if err != nil {
 			responseutils.WriteError(err, w, http.StatusBadRequest)
 			return
 		}
-		if groupID == groupNew {
-			newBeneficiariesOnly = true
+
+		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
+		_, ok := r.URL.Query()["_since"]
+		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
+			retrieveNewBeneHistData = true
 		}
-		bulkRequest(resourceTypes, w, r, newBeneficiariesOnly)
+
+		bulkRequest(resourceTypes, w, r, retrieveNewBeneHistData)
 	} else {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
@@ -109,7 +113,7 @@ func bulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, newBeneficiariesOnly bool) {
+func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, retrieveNewBeneHistData bool) {
 	var (
 		ad  auth.AuthData
 		err error
@@ -198,16 +202,14 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 
 	// Decode the _since parameter (if it exists) so it can be persisted in job args
-	// (it will be persisted in format ready for usage with _lastUpdated -- i.e., appended with 'gt')
 	var decodedSince string
 	params, ok := r.URL.Query()["_since"]
 	if ok {
 		decodedSince, _ = url.QueryUnescape(params[0])
-		decodedSince = "gt" + decodedSince
 	}
 
 	var enqueueJobs []*que.Job
-	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince, newBeneficiariesOnly)
+	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince, retrieveNewBeneHistData)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
@@ -309,6 +311,13 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
 			return nil, oo
 		}
+	}
+
+	// we do not support "_elements" parameter
+	_, ok = r.URL.Query()["_elements"]
+	if ok {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
+		return nil, oo
 	}
 
 	return resourceTypes, nil

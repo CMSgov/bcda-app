@@ -184,8 +184,8 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 		t.Fail()
 	}
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 
@@ -241,8 +241,8 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 		t.Fail()
 	}
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"Error","code":"Exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
 	assert.Equal(t, ooResp+"\n", string(fData))
 	bbc.AssertExpectations(t)
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
@@ -314,7 +314,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 		assert.Equal(t, "OperationOutcome", jsonObj["resourceType"])
 		issues := jsonObj["issue"].([]interface{})
 		issue := issues[0].(map[string]interface{})
-		assert.Equal(t, "Error", issue["severity"])
+		assert.Equal(t, "error", issue["severity"])
 		details := issue["details"].(map[string]interface{})
 		assert.Equal(t, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
 		assert.Nil(t, err)
@@ -358,7 +358,7 @@ func TestAppendErrorToFile(t *testing.T) {
 		t.Fail()
 	}
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"Error"}]}`
+	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error"}]}`
 
 	assert.Equal(t, ooResp+"\n", string(fData))
 
