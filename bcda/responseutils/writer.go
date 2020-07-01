@@ -36,7 +36,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 		Date:         &fhirmodels.FHIRDateTime{Time: reldate, Precision: fhirmodels.Date},
 		Publisher:    "Centers for Medicare & Medicaid Services",
 		Kind:         "capability",
-		Instantiates: []string{bbServer + "/baseDstu3/metadata/"},
+		Instantiates: []string{bbServer + "/baseDstu3/metadata/","http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
 		Software: &fhirmodels.CapabilityStatementSoftwareComponent{
 			Name:        "Beneficiary Claims Data API",
 			Version:     relversion,
@@ -57,16 +57,11 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					Service: []fhirmodels.CodeableConcept{
 						{
 							Coding: []fhirmodels.Coding{
-								{Display: "OAuth", Code: "OAuth", System: "http://hl7.org/fhir/ValueSet/restful-security-service"},
+								{Display: "OAuth", Code: "OAuth", System: "http://terminology.hl7.org/CodeSystem/restful-security-service"},
 							},
 							Text: "OAuth",
 						},
-						{
-							Coding: []fhirmodels.Coding{
-								{Display: "SMART-on-FHIR", Code: "SMART-on-FHIR", System: "http://hl7.org/fhir/ValueSet/restful-security-service"},
-							},
-							Text: "SMART-on-FHIR",
-						},
+
 					},
 				},
 				Interaction: []fhirmodels.CapabilityStatementSystemInteractionComponent{
@@ -79,14 +74,14 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 				},
 				Operation: []fhirmodels.CapabilityStatementRestOperationComponent{
 					{
-						Name: "export",
+						Name: "patient-export",
 						Definition: &fhirmodels.Reference{
 							Reference: baseurl + "/api/v1/Patient/$export",
 							Type:      "Endpoint",
 						},
 					},
 					{
-						Name: "export",
+						Name: "group-export",
 						Definition: &fhirmodels.Reference{
 							Reference: baseurl + "/api/v1/Group/[id]/$export",
 							Type:      "Endpoint",
@@ -124,8 +119,10 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 			},
 		},
 	}
+
 	return statement
 }
+
 
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
 	statementJSON, err := json.Marshal(statement)
