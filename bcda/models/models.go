@@ -323,7 +323,7 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 
 		// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
 		var uniqueIds []int64
-		db.Raw("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries where file_id = ? GROUP BY mbi ) as id", cclfFileNew.ID).Pluck("id", &uniqueIds)
+		db.Raw("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = ? GROUP BY mbi ) as id", cclfFileNew.ID).Pluck("id", &uniqueIds)
 
 		// Populate new beneficiaries collection
 		if suppressedMBIs != nil {
