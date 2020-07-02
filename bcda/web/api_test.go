@@ -196,6 +196,30 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyInvalidDate(
 	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
 }
 
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyJunkDataAfterDate() {
+	since := "2020-02-13T08:00:00.000-05:00dfghj"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyJunkDataBeforeDate() {
+	since := "erty2020-02-13T08:00:00.000-05:00"
+	bulkCoverageRequestInvalidSinceFormatHelper("Patient", since, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceFormatHelper("Group/all", since, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFutureDate() {
+	futureDate := time.Now().AddDate(0, 0, 1).Format("2006-01-02T15:04:05.000-07:00")
+	bulkCoverageRequestInvalidSinceDateHelper("Patient", futureDate, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestInvalidSinceDateHelper("Group/all", futureDate, s)
+}
+
 func (s *APITestSuite) TestBulkRequestInvalidType() {
 	bulkRequestInvalidTypeHelper("Patient", s)
 	s.TearDownTest()
@@ -533,6 +557,47 @@ func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APIT
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
 	assert.Equal(s.T(), "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.", respOO.Issue[0].Details.Coding[0].Display)
+	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
+}
+
+func bulkCoverageRequestInvalidSinceDateHelper(endpoint, since string, s *APITestSuite) {
+	acoID := constants.DevACOUUID
+	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
+	assert.Nil(s.T(), err)
+
+	_, handlerFunc, req := bulkRequestHelper(endpoint, "Coverage", since)
+	ad := makeContextValues(acoID)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		s.T().Error(err)
+	}
+	defer pgxpool.Close()
+
+	qc = que.NewClient(pgxpool)
+
+	handler := http.HandlerFunc(handlerFunc)
+	handler.ServeHTTP(s.rr, req)
+
+	var respOO fhirmodels.OperationOutcome
+	err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+	if err != nil {
+		s.T().Error(err)
+	}
+
+	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+	assert.Equal(s.T(), "Invalid date format supplied in _since parameter. Date must be a date that has already passed", respOO.Issue[0].Details.Coding[0].Display)
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
