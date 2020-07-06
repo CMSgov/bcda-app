@@ -106,15 +106,15 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 }
 
 func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBeneHistData bool) (enqueJobs []*que.Job, err error) {
-        db := database.GetGORMDbConnection()
-        defer database.Close(db)
-        var beneficiaries, newBeneficiaries []CCLFBeneficiary
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+	var beneficiaries, newBeneficiaries []CCLFBeneficiary
 	var jobs []*que.Job
-        var aco ACO
-        err = db.Find(&aco, "uuid = ?", job.ACOID).Error
-        if err != nil {
-                return nil, err
-        }
+	var aco ACO
+	err = db.Find(&aco, "uuid = ?", job.ACOID).Error
+	if err != nil {
+		return nil, err
+	}
 
 	if retrieveNewBeneHistData {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
@@ -122,27 +122,27 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// add new beneficaries to the job queue
 		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, "", retrieveNewBeneHistData, newBeneficiaries)
 		if err != nil {
 			return nil, err
 		}
 		enqueJobs = append(enqueJobs, jobs...)
-		
+
 		// add existing beneficaries to the job queue
 		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, since, retrieveNewBeneHistData, beneficiaries)
-                if err != nil {
-                        return nil, err
-                }
-                enqueJobs = append(enqueJobs, jobs...)	
+		if err != nil {
+			return nil, err
+		}
+		enqueJobs = append(enqueJobs, jobs...)
 	} else {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
 		beneficiaries, err = aco.GetBeneficiaries(false)
 		if err != nil {
 			return nil, err
 		}
-	
+
 		// add beneficaries to the job queue
 		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, since, retrieveNewBeneHistData, beneficiaries)
 		if err != nil {
@@ -150,15 +150,15 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 		}
 		enqueJobs = append(enqueJobs, jobs...)
 	}
-	
+
 	return enqueJobs, nil
 }
 
 func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string, retrieveNewBeneHistData bool, beneficiaries []CCLFBeneficiary) (jobs []*que.Job, err error) {
 
-        // persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
-	if since != ""  {
-		since = "gt"+since 
+	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
+	if since != "" {
+		since = "gt" + since
 	}
 	for _, rt := range resourceTypes {
 		var rowCount = 0
@@ -317,29 +317,31 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 		}
 
 		var suppressedMBIs []string
-
-	        if !includeSuppressed {
+		if !includeSuppressed {
 			suppressedMBIs = GetSuppressedMBIs(db)
 		}
 
+		// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
+		var uniqueIds []int64
+		db.Raw("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = ? GROUP BY mbi ) as id", cclfFileNew.ID).Pluck("id", &uniqueIds)
+
 		// Populate new beneficiaries collection
 		if suppressedMBIs != nil {
-			err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		} else {
-			err = db.Not("mbi", cclfBeneficiariesOld).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		}
-
 		if err != nil {
 			log.Errorf("Error retrieving new beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
-                	return nil, nil, err
-        	}
+			return nil, nil, err
+		}
 
 		// Populate existing beneficaries collection
 		if suppressedMBIs != nil {
-                	err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", cclfBeneficiariesOld).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
-        	} else {
-			err = db.Where("mbi IN (?)", cclfBeneficiariesOld).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
-        	}
+			err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+		} else {
+			err = db.Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+		}
 
 		if err != nil {
 			log.Errorf("Error retrieving existing beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
@@ -381,11 +383,15 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 		suppressedMBIs = GetSuppressedMBIs(db)
 	}
 
+	// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
+	var uniqueIds []int64
+	db.Raw("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries where file_id = ? GROUP BY mbi ) as id", cclfFile.ID).Pluck("id", &uniqueIds)
+
 	var err error
 	if suppressedMBIs != nil {
-		err = db.Not("mbi", suppressedMBIs).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+		err = db.Not("mbi", suppressedMBIs).Where("id IN (?)", uniqueIds).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	} else {
-		err = db.Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+		err = db.Where("id IN (?)", uniqueIds).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	}
 
 	if err != nil {
