@@ -321,11 +321,7 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 	//validate "_outputFormat" parameter
 	params, ok = r.URL.Query()["_outputFormat"]
 	if ok {
-		validOutputFormat := false
-		if params[0] == "ndjson" || params[0] == "application/fhir+ndjson" || params[0] == "application/ndjson" {
-			validOutputFormat = true
-		}
-		if !validOutputFormat {
+		if params[0] != "ndjson" || params[0] != "application/fhir+ndjson" || params[0] != "application/ndjson" {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson")
 			return nil, oo
 		}
