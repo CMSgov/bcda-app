@@ -311,7 +311,7 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
 			return nil, oo
 		}
-		sinceDate, err := time.Parse("2006-01-02T15:04:05.000-07:00", params[0])
+		sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
 		if err != nil || sinceDate.After(time.Now()) {
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
 			return nil, oo
