@@ -1351,7 +1351,9 @@
 					"script": {
 						"id": "b822f300-2ead-4f25-b623-22c68df6b017",
 						"exec": [
-							"let timestamp = new Date().toJSON();",
+							"let date = new Date()",
+							"date.setDate(d.getDate() - 1)",
+							"let timestamp = date.toJSON();",
 							"pm.environment.set('now', timestamp);"
 						],
 						"type": "text/javascript"
