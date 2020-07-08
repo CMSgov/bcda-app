@@ -213,7 +213,7 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormatOnlyJunkDataBefo
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFutureDate() {
-	futureDate := time.Now().AddDate(0, 0, 1).Format("2006-01-02T15:04:05.000-07:00")
+	futureDate := time.Now().Add().Format(time.RFC3339Nano)
 	bulkCoverageRequestInvalidSinceDateHelper("Patient", futureDate, s)
 	s.TearDownTest()
 	s.SetupTest()
