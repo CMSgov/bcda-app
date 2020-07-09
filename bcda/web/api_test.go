@@ -37,6 +37,12 @@ type APITestSuite struct {
 	reset func()
 }
 
+type RequestParams struct {
+	resourceType string
+	since        string
+	outputFormat string
+}
+
 var origDate string
 
 func (s *APITestSuite) SetupSuite() {
@@ -127,17 +133,18 @@ func (s *APITestSuite) TestBulkPatientRequestInvalidSinceFormat() {
 }
 
 func (s *APITestSuite) TestBulkCoverageRequest() {
-	since := "2020-02-13T08:00:00.000-05:00"
-	bulkCoverageRequestHelper("Patient", "", s)
+	requestParams := RequestParams{}
+	bulkCoverageRequestHelper("Patient", requestParams, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", "", s)
+	bulkCoverageRequestHelper("Group/all", requestParams, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestHelper("Patient", since, s)
+	requestParams.since = "2020-02-13T08:00:00.000-05:00"
+	bulkCoverageRequestHelper("Patient", requestParams, s)
 	s.TearDownTest()
 	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", since, s)
+	bulkCoverageRequestHelper("Group/all", requestParams, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFormat() {
@@ -218,6 +225,38 @@ func (s *APITestSuite) TestBulkCoverageRequestInvalidSinceFutureDate() {
 	s.TearDownTest()
 	s.SetupTest()
 	bulkCoverageRequestInvalidSinceDateHelper("Group/all", futureDate, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestValidOutputFormatNDJSON() {
+	requestParams := RequestParams{outputFormat: "ndjson"}
+	bulkCoverageRequestHelper("Patient", requestParams, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestHelper("Group/all", requestParams, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestValidOutputFormatApplicationNDJSON() {
+	requestParams := RequestParams{outputFormat: "application/ndjson"}
+	bulkCoverageRequestHelper("Patient", requestParams, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestHelper("Group/all", requestParams, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestValidOutputFormatApplicationFHIR() {
+	requestParams := RequestParams{outputFormat: "application/fhir+ndjson"}
+	bulkCoverageRequestHelper("Patient", requestParams, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestHelper("Group/all", requestParams, s)
+}
+
+func (s *APITestSuite) TestBulkCoverageRequestValidMultipleParameters() {
+	requestParams := RequestParams{outputFormat: "application/fhir+ndjson", since: "2020-02-13T08:00:00.000-05:00"}
+	bulkCoverageRequestHelper("Patient", requestParams, s)
+	s.TearDownTest()
+	s.SetupTest()
+	bulkCoverageRequestHelper("Group/all", requestParams, s)
 }
 
 func (s *APITestSuite) TestBulkCoverageRequestInvalidOutputFormatTextHTML() {
@@ -511,14 +550,14 @@ func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITe
 	assert.Equal(s.T(), http.StatusBadRequest, s.rr.Code)
 }
 
-func bulkCoverageRequestHelper(endpoint, since string, s *APITestSuite) {
+func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *APITestSuite) {
 	acoID := constants.DevACOUUID
 
 	defer func() {
 		s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
 	}()
 
-	requestParams := RequestParams{resourceType: "Coverage", since: since}
+	requestParams.resourceType = "Coverage"
 	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 
 	ad := makeContextValues(acoID)
@@ -928,27 +967,6 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), 1, len(resourceTypes))
 	assert.Contains(s.T(), resourceTypes, "Coverage")
 
-	// requestParams = RequestParams{resourceType: "Coverage", outputFormat: "ndjson"}
-	// _, _, req = bulkRequestHelper(endpoint, requestParams)
-	// resourceTypes, err = validateRequest(req)
-	// assert.Nil(s.T(), err)
-	// assert.Equal(s.T(), 1, len(resourceTypes))
-	// assert.Contains(s.T(), resourceTypes, "Coverage")
-
-	// requestParams = RequestParams{resourceType: "Coverage", outputFormat: "application/ndjson"}
-	// _, _, req = bulkRequestHelper(endpoint, requestParams)
-	// resourceTypes, err = validateRequest(req)
-	// assert.Nil(s.T(), err)
-	// assert.Equal(s.T(), 1, len(resourceTypes))
-	// assert.Contains(s.T(), resourceTypes, "Coverage")
-
-	// requestParams = RequestParams{resourceType: "Coverage", outputFormat: "application/fhir+ndjson"}
-	// _, _, req = bulkRequestHelper(endpoint, requestParams)
-	// resourceTypes, err = validateRequest(req)
-	// assert.Nil(s.T(), err)
-	// assert.Equal(s.T(), 1, len(resourceTypes))
-	// assert.Contains(s.T(), resourceTypes, "Coverage")
-
 	requestParams = RequestParams{resourceType: "Practitioner"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
 	resourceTypes, err = validateRequest(req)
@@ -966,12 +984,6 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.RequestErr, err.Issue[0].Details.Coding[0].Code)
 	assert.Equal(s.T(), "Repeated resource type", err.Issue[0].Details.Coding[0].Display)
-}
-
-type RequestParams struct {
-	resourceType string
-	since        string
-	outputFormat string
 }
 
 func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
@@ -995,7 +1007,7 @@ func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string
 		q.Set("_since", testRequestParams.since)
 	}
 	if testRequestParams.outputFormat != "" {
-		q.Set("_outputFormat", testRequestParams.since)
+		q.Set("_outputFormat", testRequestParams.outputFormat)
 	}
 
 	requestUrl.RawQuery = q.Encode()
