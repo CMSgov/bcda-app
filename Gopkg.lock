@@ -68,14 +68,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2fc58ca4b2d3cae86a8c2f4f8ce48584f66772748bcba15cded6e12035abe820"
+  digest = "1:a209866f1418e0a29b0943198e305e8faca94e246e0f63be64a12a6b084434f2"
   name = "github.com/eug48/fhir"
   packages = [
     "models",
     "utils",
   ]
   pruneopts = "UT"
-  revision = "838d5f216354b61d5d09b81ac9bd5d02a9022fe6"
+  revision = "80144968c1019660c3756f38ba233c4a31f6c65c"
 
 [[projects]]
   branch = "master"

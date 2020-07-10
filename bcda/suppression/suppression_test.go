@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -23,10 +25,24 @@ const BASE_FILE_PATH = "../../shared_files/"
 
 type SuppressionTestSuite struct {
 	suite.Suite
+	pendingDeletionDir string
+}
+
+func (s *SuppressionTestSuite) SetupSuite() {
+	dir, err := ioutil.TempDir("", "*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	s.pendingDeletionDir = dir
+	testUtils.SetPendingDeletionDir(s.Suite, dir)
 }
 
 func (s *SuppressionTestSuite) SetupTest() {
 	models.InitializeGormModels()
+}
+
+func (s *SuppressionTestSuite) TearDownSuite() {
+	os.RemoveAll(s.pendingDeletionDir)
 }
 
 func TestSuppressionTestSuite(t *testing.T) {
@@ -246,7 +262,6 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	assert := assert.New(s.T())
 	var suppresslist []*suppressionFileMetadata
 	var skipped int
-	testUtils.SetPendingDeletionDir(s.Suite)
 
 	filePath := BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
 	testUtils.ResetFiles(s.Suite, filePath)
@@ -298,7 +313,6 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 	assert := assert.New(s.T())
 	var suppresslist []*suppressionFileMetadata
 	var skipped int
-	testUtils.SetPendingDeletionDir(s.Suite)
 	folderPath := BASE_FILE_PATH + "suppressionfile_BadFileNames/"
 	filePath := folderPath + "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"
 
@@ -342,7 +356,6 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	assert := assert.New(s.T())
 	var suppresslist []*suppressionFileMetadata
-	testUtils.SetPendingDeletionDir(s.Suite)
 
 	// failed import: file that's within the threshold - stay put
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:09Z")
