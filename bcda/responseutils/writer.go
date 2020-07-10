@@ -35,15 +35,15 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 		Status:       "active",
 		Date:         &fhirmodels.FHIRDateTime{Time: reldate, Precision: fhirmodels.Date},
 		Publisher:    "Centers for Medicare & Medicaid Services",
-		Kind:         "capability",
-		Instantiates: []string{bbServer + "/baseDstu3/metadata/","http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
+		Kind:         "instance",
+		Instantiates: []string{bbServer + "/baseDstu3/metadata/", "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
 		Software: &fhirmodels.CapabilityStatementSoftwareComponent{
 			Name:        "Beneficiary Claims Data API",
 			Version:     relversion,
 			ReleaseDate: &fhirmodels.FHIRDateTime{Time: reldate, Precision: fhirmodels.Date},
 		},
 		Implementation: &fhirmodels.CapabilityStatementImplementationComponent{
-			Description: "",
+			Description: "The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their prospectively assigned or assignable beneficiaries.",
 			Url:         baseurl,
 		},
 		FhirVersion:   "3.0.1",
@@ -61,7 +61,6 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 							},
 							Text: "OAuth",
 						},
-
 					},
 				},
 				Interaction: []fhirmodels.CapabilityStatementSystemInteractionComponent{
@@ -119,10 +118,27 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 			},
 		},
 	}
-
+	addOauthEndpointToStatement(statement, baseurl)
 	return statement
 }
+func addOauthEndpointToStatement(statement *fhirmodels.CapabilityStatement, baseurl string) {
+	securityComponent := statement.Rest[0].Security
+	extension := []fhirmodels.Extension{
+		{
+			Url: "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris",
+			Extension: &fhirmodels.Extension{
+					Url:      "token",
+					ValueUri: baseurl + "auth/token",
+			},
+		},
 
+	}
+
+	securityComponent.Extension = extension
+	statement.Rest[0].Security = securityComponent
+
+
+}
 
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
 	statementJSON, err := json.Marshal(statement)
