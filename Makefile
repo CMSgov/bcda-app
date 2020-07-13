@@ -129,12 +129,12 @@ debug-worker:
 
 bdt:
 	# supply this target with the necessary environment vars, e.g.:
-	# make bdt BDT_BASE_URL=<origin of API> BDT_CLIENT_ID=<client id> BDT_CLIENT_SECRET=<client secret>
+	# make bdt BDT_BASE_URL=<origin of API>
 	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt .
 	docker run --rm \
 	-e BASE_URL='${BDT_BASE_URL}' \
-	-e CLIENT_ID='${BDT_CLIENT_ID}' \
-	-e SECRET='${BDT_CLIENT_SECRET}' \
+	-e CLIENT_ID='${CLIENT_ID}' \
+	-e SECRET='${CLIENT_SECRET}' \
 	bdt
 
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt
