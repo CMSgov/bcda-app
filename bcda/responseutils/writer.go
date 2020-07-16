@@ -134,12 +134,9 @@ func addOauthEndpointToStatement(statement *fhirmodels.CapabilityStatement, base
 			},
 		},
 	}
-
-	securityComponent.Extension = extension
+  securityComponent.Extension = extension
 	statement.Rest[0].Security = securityComponent
-
 }
-
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
 	statementJSON, err := json.Marshal(statement)
 	if err != nil {
