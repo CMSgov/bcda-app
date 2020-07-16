@@ -93,6 +93,18 @@ make test
 make performance-test
 ```
 
+### Updating seed data for unit tests
+
+After the user has finished updating the Postgres db used for unit testing with the new data, the user can update
+the seed data by running the following comamnd:
+```sh
+make unit-test-db-snapshot
+```
+
+This script will update `./db/testing/docker-entrypoint-initdb.d/dump.pgdata` file. 
+
+The updated `dump.pgdata` should be committed with the other associated changes.
+
 ## Use the application
 
 See: [API documentation](https://bcda.cms.gov/sandbox/user-guide/)

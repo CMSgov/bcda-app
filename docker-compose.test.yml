@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   tests:
@@ -8,8 +8,7 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      - DB=postgresql://postgres:toor@db:5432
-      - QUEUE_DATABASE_URL=postgresql://postgres:toor@queue:5432/bcda_queue
+      - DB=postgresql://postgres:toor@db-test:5432
       - ATO_PUBLIC_KEY_FILE=../../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../../shared_files/ATO_private.pem
       - BCDA_ERROR_LOG=/var/log/bcda-error.log
@@ -18,10 +17,10 @@ services:
       - BB_CLIENT_CERT_FILE=../../shared_files/decrypted/bfd-dev-test-cert.pem
       - BB_CLIENT_KEY_FILE=../../shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
-# Contained in env_file above
-#     - BB_HASH_ITER
-#     - BB_HASH_PEPPER
-#     - BB_SERVER_LOCATION
+      # Contained in env_file above
+      #     - BB_HASH_ITER
+      #     - BB_HASH_PEPPER
+      #     - BB_SERVER_LOCATION
       - FHIR_PAYLOAD_DIR=../bcdaworker/data
       - FHIR_STAGING_DIR=../bcdaworker/tmpdata
       - FHIR_ARCHIVE_DIR=../bcdaworker/archive
@@ -48,9 +47,18 @@ services:
       - PRIORITY_ACO_IDS=A9990,A9991,A9992,A9993,A9994
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
+  db-test:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=toor
+      - POSTGRES_DB=bcda_test
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./db/testing/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
   postman_test:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.postman_test
     volumes:
-       - .:/go/src/github.com/CMSgov/bcda-app
+      - .:/go/src/github.com/CMSgov/bcda-app

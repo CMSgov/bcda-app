@@ -50,8 +50,17 @@ postman:
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json -e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
 
 unit-test:
-	docker-compose up -d db
+	$(MAKE) unit-test-db
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
+
+unit-test-db:
+	# Target stands up the postgres instance needed for unit testing.
+	docker-compose -f docker-compose.test.yml rm -fsv db-test
+	docker-compose -f docker-compose.test.yml up -d db-test
+
+unit-test-db-snapshot:
+	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
+	docker-compose -f docker-compose.test.yml exec db-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
 
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
@@ -137,4 +146,4 @@ bdt:
 	-e SECRET='${CLIENT_SECRET}' \
 	bdt
 
-.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt
+.PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot
