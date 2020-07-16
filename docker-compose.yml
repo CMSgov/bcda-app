@@ -65,6 +65,7 @@ services:
       - PATIENT_IDENTIFIER_MODE=MBI_MODE
       - BCDA_ENABLE_NEW_GROUP=true
       - PRIORITY_ACO_IDS=A9990,A9991,A9992,A9993,A9994
+      - USER_GUIDE_LOC=https://stage.bcda.cms.gov
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
