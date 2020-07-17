@@ -10,7 +10,6 @@ timestamp=`date +%Y-%m-%d_%H-%M-%S`
 mkdir -p test_results/${timestamp}
 mkdir -p test_results/latest
 
-# echo "Setting up test DB (bcda_test)..."
 DB_HOST_URL=${DB}?sslmode=disable
 TEST_DB_URL=${DB}/bcda_test?sslmode=disable
 echo "Running unit tests and placing results/coverage in test_results/${timestamp} on host..."

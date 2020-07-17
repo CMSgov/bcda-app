@@ -55,6 +55,8 @@ unit-test:
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
+
+	# Clean up any existing data to ensure we spin up container in a known state.
 	docker-compose -f docker-compose.test.yml rm -fsv db-test
 	docker-compose -f docker-compose.test.yml up -d db-test
 
