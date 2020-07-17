@@ -21,7 +21,7 @@ func ETagToVersionId(etag string) (string, error) {
 	} else if strings.HasSuffix(etag, "&quot;") {
 		etag = etag[:len(etag)-6]
 	} else {
-		return "", fmt.Errorf("ETag missing 'W/\"' suffix: %s", etag)
+		return "", fmt.Errorf("ETag missing '\"' suffix: %s", etag)
 	}
 
 	return etag, nil
