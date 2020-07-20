@@ -57,12 +57,12 @@ unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
 
 	# Clean up any existing data to ensure we spin up container in a known state.
-	docker-compose -f docker-compose.test.yml rm -fsv db-test
-	docker-compose -f docker-compose.test.yml up -d db-test
+	docker-compose -f docker-compose.test.yml rm -fsv db-unit-test
+	docker-compose -f docker-compose.test.yml up -d db-unit-test
 
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
-	docker-compose -f docker-compose.test.yml exec db-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
+	docker-compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
 
 performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
