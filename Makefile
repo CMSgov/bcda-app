@@ -11,8 +11,10 @@ package:
 	-e GPG_SEC_KEY_FILE='${GPG_SEC_KEY_FILE}' \
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
+
+LINT_TIMEOUT ?= 3m
 lint:
-	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=3m
+	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
 # The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test
