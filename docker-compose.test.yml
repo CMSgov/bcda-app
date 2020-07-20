@@ -52,5 +52,3 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.postman_test
-    volumes:
-       - .:/go/src/github.com/CMSgov/bcda-app

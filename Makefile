@@ -12,6 +12,7 @@ package:
 	-v ${PWD}:/go/src/github.com/CMSgov/bcda-app packaging $(version)
 
 lint:
+	docker-compose -f docker-compose.test.yml build tests
 	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=3m
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
@@ -47,6 +48,7 @@ postman:
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
+	docker-compose -f docker-compose.test.yml build postman_test
 	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json -e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
 
 unit-test:
@@ -55,6 +57,7 @@ unit-test:
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 performance-test:
+	docker-compose -f docker-compose.test.yml build tests
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
