@@ -51,6 +51,7 @@ postman:
 
 unit-test:
 	docker-compose up -d db
+	docker-compose -f docker-compose.test.yml build tests
 	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 performance-test:
