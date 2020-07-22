@@ -93,6 +93,45 @@ make test
 make performance-test
 ```
 
+### Updating seed data for unit tests
+
+After the user has finished updating the Postgres db used for unit testing with the new data, the user can update
+the seed data by running the following comamnd:
+```sh
+make unit-test-db-snapshot
+```
+
+This script will update `./db/testing/docker-entrypoint-initdb.d/dump.pgdata` file.
+This file is used to initialize the Postgres db with all of the necessary data needed for the various unit tests.
+
+For more information on intialization, please see `db/testing/docker-entrypoint-initdb.d/01-restore.sh`.
+This script is executed when the Postgres container is launched.
+
+The updated `dump.pgdata` should be committed with the other associated changes.
+
+### Running unit tests locally
+
+1. Spin up the Postgres unit test container
+    ```sh
+    $ make unit-test-db
+    ```
+2. Source the required environment variables from the `./docker-compose.test.yml` and `./shared_files/decrypted/local.env`.
+
+   **NOTE:** Since we're connecting to Postgres externally, we need to use the local host/port instead.
+   
+   For VSCode users, you can add these variables into your `settings.json` file as `go.testEnvVars` field.
+   
+   Example:
+   ```json
+    "go.testEnvVars": {
+        "DB": "postgresql://postgres:toor@localhost:15432",
+        "DB_HOST_URL": "postgresql://postgres:toor@localhost:15432?sslmode=disable",
+        "TEST_DB_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
+        "DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
+        "QUEUE_DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
+        ...
+    }
+   ``` 
 ## Use the application
 
 See: [API documentation](https://bcda.cms.gov/sandbox/user-guide/)

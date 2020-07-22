@@ -30,6 +30,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
+const (
+	expiryHeaderFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
+)
+
 type APITestSuite struct {
 	suite.Suite
 	rr    *httptest.ResponseRecorder
@@ -1186,8 +1190,9 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
-	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
+	str := s.rr.Header().Get("Expires")
+	fmt.Println(str)
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
 
 	var rb bulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
@@ -1302,8 +1307,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -1332,8 +1336,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.UpdatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
+	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -1359,8 +1362,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	// There seems to be some slight difference in precision here.  Match on first 20 chars sb fine.
-	assert.Equal(s.T(), j.CreatedAt.Add(GetJobTimeout()).String()[:20], s.rr.Header().Get("Expires")[:20])
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -1549,4 +1551,16 @@ func makeConnPool(s *APITestSuite) *pgx.ConnPool {
 	qc = que.NewClient(pgxpool)
 
 	return pgxpool
+}
+
+// Compare expiry header against the expected time value.
+// There seems to be some slight difference in precision here,
+// so we'll compare up to seconds
+func assertExpiryEquals(s suite.Suite, expectedTime time.Time, expiry string) {
+	expiryTime, err := time.Parse(expiryHeaderFormat, expiry)
+	if err != nil {
+		s.FailNow("Failed to parse %s to time.Time %s", expiry, err)
+	}
+
+	assert.Equal(s.T(), time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
 }
