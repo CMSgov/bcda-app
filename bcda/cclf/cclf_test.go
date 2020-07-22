@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -26,6 +28,7 @@ var origDate string
 
 type CCLFTestSuite struct {
 	suite.Suite
+	pendingDeletionDir string
 }
 
 func (s *CCLFTestSuite) SetupTest() {
@@ -35,10 +38,18 @@ func (s *CCLFTestSuite) SetupTest() {
 
 func (s *CCLFTestSuite) SetupSuite() {
 	origDate = os.Getenv("CCLF_REF_DATE")
+
+	dir, err := ioutil.TempDir("", "*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	s.pendingDeletionDir = dir
+	testUtils.SetPendingDeletionDir(s.Suite, dir)
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
 	os.Setenv("CCLF_REF_DATE", origDate)
+	os.RemoveAll(s.pendingDeletionDir)
 }
 
 func TestCCLFTestSuite(t *testing.T) {
@@ -65,8 +76,6 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 		err := f.Delete()
 		assert.Nil(err)
 	}
-
-	testUtils.SetPendingDeletionDir(s.Suite)
 
 	sc, f, sk, err := ImportCCLFDirectory(BASE_FILE_PATH + "cclf/archives/valid/")
 	assert.Nil(err)
@@ -498,7 +507,6 @@ func (s *CCLFTestSuite) TestOrderACOs() {
 func (s *CCLFTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
 	cclfmap := make(map[string]map[int][]*cclfFileMetadata)
-	testUtils.SetPendingDeletionDir(s.Suite)
 
 	// failed import: file that's within the threshold - stay put
 	acoID := "A0001"

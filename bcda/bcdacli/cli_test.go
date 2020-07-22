@@ -32,8 +32,9 @@ var origDate string
 
 type CLITestSuite struct {
 	suite.Suite
-	testApp       *cli.App
-	expectedSizes map[string]int
+	testApp            *cli.App
+	expectedSizes      map[string]int
+	pendingDeletionDir string
 }
 
 func (s *CLITestSuite) SetupSuite() {
@@ -47,6 +48,13 @@ func (s *CLITestSuite) SetupSuite() {
 	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
 	origDate = os.Getenv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", "181125")
+
+	dir, err := ioutil.TempDir("", "*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	s.pendingDeletionDir = dir
+	testUtils.SetPendingDeletionDir(s.Suite, dir)
 }
 
 func (s *CLITestSuite) SetupTest() {
@@ -60,6 +68,7 @@ func (s *CLITestSuite) TearDownTest() {
 
 func (s *CLITestSuite) TearDownSuite() {
 	os.Setenv("CCLF_REF_DATE", origDate)
+	os.RemoveAll(s.pendingDeletionDir)
 }
 
 func TestCLITestSuite(t *testing.T) {
@@ -634,8 +643,6 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
-
-	testUtils.SetPendingDeletionDir(s.Suite)
 
 	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/archives/valid/"}
 	err := s.testApp.Run(args)
