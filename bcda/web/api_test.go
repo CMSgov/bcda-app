@@ -1376,6 +1376,7 @@ func (s *APITestSuite) TestServeData() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+	assert.Equal(s.T(), "application/fhir+ndjson", s.rr.Result().Header.Get("Content-Type"))
 	assert.Contains(s.T(), s.rr.Body.String(), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
 }
 
