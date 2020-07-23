@@ -84,7 +84,13 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	}
 
 	tlsConfig.BuildNameToCertificate()
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		// Ensure that we have compression enabled. This allows the transport to request for gzip content
+		// and handle the decompression transparently.
+		// See: https://golang.org/src/net/http/transport.go?s=3396:10950#L182 for more information
+		DisableCompression: false,
+	}
 	var timeout int
 	if timeout, err = strconv.Atoi(os.Getenv("BB_TIMEOUT_MS")); err != nil {
 		logger.Info("Could not get Blue Button timeout from environment variable; using default value of 500.")
@@ -189,7 +195,12 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
 	req.Header.Add("IncludeIdentifiers", "mbi")
-	req.Header.Add("Accept-Encoding", "gzip")
+
+	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
+	// If we specify this header at the client level, then we must be responsible for decompressing the response.
+	// This header should be automatically set by the underlying http.Transport which will handle the decompression transparently
+	// Details: https://golang.org/src/net/http/transport.go#L2432
+	// req.Header.Add("Accept-Encoding", "gzip")
 
 	// Do not set BB-specific headers with blank values
 	// Leaving them here, commented out, in case we want to set them to real values in future

@@ -1,6 +1,8 @@
 package client_test
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -388,18 +390,21 @@ func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
 				assert.Equal(t, jobID, req.Header.Get("BCDA-JOBID"))
 				assert.Equal(t, cmsID, req.Header.Get("BCDA-CMSID"))
 				assert.Equal(t, "mbi", req.Header.Get("IncludeIdentifiers"))
+
+				// Verify that we have compression enabled on these HTTP requests.
+				// NOTE: This header should not be explicitly set on the client. It should be added by the http.Transport.
+				// Details: https://golang.org/src/net/http/transport.go#L2432
 				assert.Equal(t, "gzip", req.Header.Get("Accept-Encoding"))
 
-				for name, values := range req.Header {
-					// Loop over all values for the name.
-					for _, value := range values {
-						fmt.Println(name, value)
-					}
-				}
-
 				w.Header().Set("Content-Type", req.URL.Query().Get("_format"))
-				response := fmt.Sprintf("{ \"test\": \"ok\"; \"url\": %v}", req.URL.String())
-				fmt.Fprint(w, response)
+				w.Header().Set("Content-Encoding", "gzip")
+
+				// Write out gzip encoded content. This will allow us to verify that the response coming
+				// from the client is transparently decompressed.
+				gz := gzip.NewWriter(w)
+				defer gz.Close()
+				response := fmt.Sprintf("{ \"test\": \"ok\", \"url\": \"%v\"}", req.URL.String())
+				fmt.Fprint(gz, response)
 			}))
 			defer tsValidation.Close()
 
@@ -411,7 +416,17 @@ func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
 				assert.FailNow(t, err.Error())
 			}
 
-			tt.funcUnderTest(bbClient, jobID, cmsID)
+			data, err := tt.funcUnderTest(bbClient, jobID, cmsID)
+			assert.NoError(t, err)
+			fmt.Println(data)
+
+			// Since the transport should've taken care of the decompressing the data
+			// we should be able to serialize into a JSON object.
+			// If something was misconfigured and we were given the raw binary data, this check will fail.
+			var jsonObj map[string]string
+			err = json.Unmarshal([]byte(data), &jsonObj)
+			assert.NoError(t, err)
+			assert.Equal(t, "ok", jsonObj["test"])
 		})
 	}
 }
