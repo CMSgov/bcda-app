@@ -2,10 +2,12 @@ package client_test
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -328,35 +330,90 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 	s.ts.Close()
 }
 
-func (s *BBTestSuite) TestAddRequestHeaders() {
+func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
+	tests := []struct {
+		name          string
+		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error)
+	}{
+		{
+			"ExplanationOfBenefit",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", time.Now())
+			},
+		},
+		{
+			"GetPatient",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetPatient("patient2", jobID, cmsID, "", time.Now())
+			},
+		},
+		{
+			"GetCoverage",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, "", time.Now())
+			},
+		},
+		{
+			"GetPatientByIdentifierHash",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier", "patientIdMode")
+			},
+		},
+	}
 
-	bbServer := os.Getenv("BB_SERVER_LOCATION")
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			var jobID, cmsID string
 
-	req, err := http.NewRequest("GET", bbServer, nil)
-	assert.Nil(s.T(), err)
-	reqID := uuid.NewRandom()
-	assert.Nil(s.T(), err)
+			// GetPatientByIdentifierHash does not send in jobID and cmsID as arguments
+			// so we DO NOT expected the associated headers to be set.
+			// Only set the fields if we pass those parameters in.
+			if tt.name != "GetPatientByIdentifierHash" {
+				jobID = strconv.FormatUint(rand.Uint64(), 10)
+				cmsID = strconv.FormatUint(rand.Uint64(), 10)
+			}
 
-	params := url.Values{}
-	params.Set("_format", "application/fhir+json")
+			tsValidation := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				assert.NotNil(t, uuid.Parse(req.Header.Get("BlueButton-OriginalQueryId")))
+				assert.Equal(t, "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
 
-	req.URL.RawQuery = params.Encode()
-	client.AddRequestHeaders(req, reqID, "543210", "A00234")
+				assert.Equal(t, "", req.Header.Get("keep-alive"))
+				assert.Equal(t, "https", req.Header.Get("X-Forwarded-Proto"))
+				assert.Equal(t, "", req.Header.Get("X-Forwarded-Host"))
 
-	assert.Equal(s.T(), reqID.String(), req.Header.Get("BlueButton-OriginalQueryId"))
-	assert.Equal(s.T(), "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
+				assert.True(t, strings.HasSuffix(req.Header.Get("BlueButton-OriginalUrl"), req.URL.String()),
+					"%s does not end with %s", req.Header.Get("BlueButton-OriginalUrl"), req.URL.String())
+				assert.Equal(t, req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
 
-	assert.Equal(s.T(), "", req.Header.Get("keep-alive"))
-	assert.Equal(s.T(), "https", req.Header.Get("X-Forwarded-Proto"))
-	assert.Equal(s.T(), "", req.Header.Get("X-Forwarded-Host"))
+				assert.Equal(t, jobID, req.Header.Get("BCDA-JOBID"))
+				assert.Equal(t, cmsID, req.Header.Get("BCDA-CMSID"))
+				assert.Equal(t, "mbi", req.Header.Get("IncludeIdentifiers"))
+				assert.Equal(t, "gzip", req.Header.Get("Accept-Encoding"))
 
-	assert.Equal(s.T(), req.URL.String(), req.Header.Get("BlueButton-OriginalUrl"))
-	assert.Equal(s.T(), req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
+				for name, values := range req.Header {
+					// Loop over all values for the name.
+					for _, value := range values {
+						fmt.Println(name, value)
+					}
+				}
 
-	assert.Equal(s.T(), "543210", req.Header.Get("BCDA-JOBID"))
-	assert.Equal(s.T(), "A00234", req.Header.Get("BCDA-CMSID"))
-	assert.Equal(s.T(), "mbi", req.Header.Get("IncludeIdentifiers"))
+				w.Header().Set("Content-Type", req.URL.Query().Get("_format"))
+				response := fmt.Sprintf("{ \"test\": \"ok\"; \"url\": %v}", req.URL.String())
+				fmt.Fprint(w, response)
+			}))
+			defer tsValidation.Close()
 
+			// It's OK to keep swapping out the server location since every test is re-intialized
+			// with s.ts.URL
+			os.Setenv("BB_SERVER_LOCATION", tsValidation.URL)
+			bbClient, err := client.NewBlueButtonClient()
+			if err != nil {
+				assert.FailNow(t, err.Error())
+			}
+
+			tt.funcUnderTest(bbClient, jobID, cmsID)
+		})
+	}
 }
 
 func TestBBTestSuite(t *testing.T) {

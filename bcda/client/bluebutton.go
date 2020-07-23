@@ -152,7 +152,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 	req.URL.RawQuery = params.Encode()
 
 	queryID := uuid.NewRandom()
-	AddRequestHeaders(req, queryID, jobID, cmsID)
+	addRequestHeaders(req, queryID, jobID, cmsID)
 
 	tryCount := 0
 	maxTries := utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3)
@@ -176,7 +176,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 	return "", fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, tryCount)
 }
 
-func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
+func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
@@ -189,6 +189,7 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
 	req.Header.Add("IncludeIdentifiers", "mbi")
+	req.Header.Add("Accept-Encoding", "gzip")
 
 	// Do not set BB-specific headers with blank values
 	// Leaving them here, commented out, in case we want to set them to real values in future
