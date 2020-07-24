@@ -8,5 +8,5 @@ type CCLFBeneficiaryService interface {
 	GetNewAndExistingBeneficiaries(includeSuppressed bool, since string) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error)
 
 	// GetBeneficiaries retrieves all beneficiaries associated with the ACO, contained in one array
-	GetBeneficiaries(includeSuppressed bool) ([]bcda/models/service.go*CCLFBeneficiary, error)
+	GetBeneficiaries(includeSuppressed bool) ([]*CCLFBeneficiary, error)
 }
