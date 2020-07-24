@@ -84,7 +84,13 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	}
 
 	tlsConfig.BuildNameToCertificate()
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		// Ensure that we have compression enabled. This allows the transport to request for gzip content
+		// and handle the decompression transparently.
+		// See: https://golang.org/src/net/http/transport.go?s=3396:10950#L182 for more information
+		DisableCompression: false,
+	}
 	var timeout int
 	if timeout, err = strconv.Atoi(os.Getenv("BB_TIMEOUT_MS")); err != nil {
 		logger.Info("Could not get Blue Button timeout from environment variable; using default value of 500.")
@@ -152,7 +158,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 	req.URL.RawQuery = params.Encode()
 
 	queryID := uuid.NewRandom()
-	AddRequestHeaders(req, queryID, jobID, cmsID)
+	addRequestHeaders(req, queryID, jobID, cmsID)
 
 	tryCount := 0
 	maxTries := utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3)
@@ -176,7 +182,7 @@ func (bbc *BlueButtonClient) getData(path string, params url.Values, jobID, cmsI
 	return "", fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, tryCount)
 }
 
-func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
+func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
 	// Info for BB backend: https://jira.cms.gov/browse/BLUEBUTTON-483
 	req.Header.Add("BlueButton-OriginalQueryTimestamp", time.Now().String())
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
@@ -189,6 +195,12 @@ func AddRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BCDA-JOBID", jobID)
 	req.Header.Add("BCDA-CMSID", cmsID)
 	req.Header.Add("IncludeIdentifiers", "mbi")
+
+	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
+	// If we specify this header at the client level, then we must be responsible for decompressing the response.
+	// This header should be automatically set by the underlying http.Transport which will handle the decompression transparently
+	// Details: https://golang.org/src/net/http/transport.go#L2432
+	// req.Header.Add("Accept-Encoding", "gzip")
 
 	// Do not set BB-specific headers with blank values
 	// Leaving them here, commented out, in case we want to set them to real values in future
