@@ -338,7 +338,7 @@ func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
 		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error)
 	}{
 		{
-			"ExplanationOfBenefit",
+			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
 				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", time.Now())
 			},
