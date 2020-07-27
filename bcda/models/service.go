@@ -8,6 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Ensure service satisfies the interface
+var _ Service = &service{}
+
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
 	cclfBeneficiaryService

@@ -9,6 +9,9 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// Ensure postgres.Repository satisfies the interface
+var _ models.Repository = &Repository{}
+
 type Repository struct {
 	db *gorm.DB
 }
