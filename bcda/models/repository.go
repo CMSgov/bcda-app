@@ -4,8 +4,14 @@ import (
 	"time"
 )
 
-// CCLFFileRepository contains methods need to interact with CCLF files
-type CCLFFileRepository interface {
+// Repository contains all of the CRUD methods represented in the models package from the storage layer
+type Repository interface {
+	cclfFileRepository
+	cclfBeneficiaryRepository
+	suppressionRepository
+}
+
+type cclfFileRepository interface {
 	// GetLatest returns the latest CCLF File (most recent timestamp)
 	// that matches the search criteria.
 	// The returned CCLF file will fall between the provided time window.
@@ -14,7 +20,7 @@ type CCLFFileRepository interface {
 }
 
 // CCLFBeneficiaryRepository contains methods need to interact with CCLF Beneficiary data.
-type CCLFBeneficiaryRepository interface {
+type cclfBeneficiaryRepository interface {
 	GetCCLFBeneficiaryIds(cclfFileID uint) ([]int64, error)
 
 	GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error)
@@ -22,6 +28,6 @@ type CCLFBeneficiaryRepository interface {
 	GetCCLFBeneficiaries(beneIDs []int64, ignoredMBIs []string) ([]*CCLFBeneficiary, error)
 }
 
-type SuppressionRepository interface {
+type suppressionRepository interface {
 	GetSuppressedMBIs(lookbackDays int) ([]string, error)
 }
