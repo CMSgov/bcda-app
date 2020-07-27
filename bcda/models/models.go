@@ -322,14 +322,13 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 		}
 
 		// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
-		var uniqueIds []int64
-		db.Raw("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = ? GROUP BY mbi ) as id", cclfFileNew.ID).Pluck("id", &uniqueIds)
+		uniqueIdQuery := fmt.Sprintf("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries where file_id = %d GROUP BY mbi ) as id", cclfFileNew.ID)
 
 		// Populate new beneficiaries collection
 		if suppressedMBIs != nil {
-			err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		} else {
-			err = db.Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		}
 		if err != nil {
 			log.Errorf("Error retrieving new beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
@@ -338,9 +337,9 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 
 		// Populate existing beneficaries collection
 		if suppressedMBIs != nil {
-			err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		} else {
-			err = db.Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", uniqueIds).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		}
 
 		if err != nil {
@@ -384,14 +383,13 @@ func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, err
 	}
 
 	// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
-	var uniqueIds []int64
-	db.Raw("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries where file_id = ? GROUP BY mbi ) as id", cclfFile.ID).Pluck("id", &uniqueIds)
+	uniqueIdQuery := fmt.Sprintf("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries where file_id = %d GROUP BY mbi ) as id", cclfFile.ID)
 
 	var err error
 	if suppressedMBIs != nil {
-		err = db.Not("mbi", suppressedMBIs).Where("id IN (?)", uniqueIds).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+		err = db.Not("mbi", suppressedMBIs).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	} else {
-		err = db.Where("id IN (?)", uniqueIds).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
+		err = db.Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
 	}
 
 	if err != nil {
