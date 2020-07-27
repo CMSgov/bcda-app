@@ -29,6 +29,8 @@ const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
 const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 5000
 const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
 
+var s Service
+
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
 	db := database.GetGORMDbConnection()
@@ -108,7 +110,6 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBeneHistData bool) (enqueJobs []*que.Job, err error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	var beneficiaries, newBeneficiaries []CCLFBeneficiary
 	var jobs []*que.Job
 	var aco ACO
 	err = db.Find(&aco, "uuid = ?", job.ACOID).Error
@@ -116,9 +117,18 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 		return nil, err
 	}
 
+	if aco.CMSID == nil {
+		return nil, fmt.Errorf("no CMS ID set for this ACO")
+	}
+
 	if retrieveNewBeneHistData {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		newBeneficiaries, beneficiaries, err = aco.GetNewAndExistingBeneficiaries(false, since)
+		t, err := time.Parse(time.RFC3339Nano, since)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s using format %s", since, time.RFC3339Nano)
+		}
+
+		newBeneficiaries, beneficiaries, err := s.GetNewAndExistingBeneficiaries(*aco.CMSID, t)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +148,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 		enqueJobs = append(enqueJobs, jobs...)
 	} else {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		beneficiaries, err = aco.GetBeneficiaries(false)
+		beneficiaries, err := s.GetBeneficiaries(*aco.CMSID)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +164,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 	return enqueJobs, nil
 }
 
-func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string, retrieveNewBeneHistData bool, beneficiaries []CCLFBeneficiary) (jobs []*que.Job, err error) {
+func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string, retrieveNewBeneHistData bool, beneficiaries []*CCLFBeneficiary) (jobs []*que.Job, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	if since != "" {
