@@ -1,11 +1,15 @@
 package client_test
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -328,35 +332,103 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 	s.ts.Close()
 }
 
-func (s *BBTestSuite) TestAddRequestHeaders() {
+func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
+	tests := []struct {
+		name          string
+		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error)
+	}{
+		{
+			"GetExplanationOfBenefit",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", time.Now())
+			},
+		},
+		{
+			"GetPatient",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetPatient("patient2", jobID, cmsID, "", time.Now())
+			},
+		},
+		{
+			"GetCoverage",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, "", time.Now())
+			},
+		},
+		{
+			"GetPatientByIdentifierHash",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier", "patientIdMode")
+			},
+		},
+	}
 
-	bbServer := os.Getenv("BB_SERVER_LOCATION")
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			var jobID, cmsID string
 
-	req, err := http.NewRequest("GET", bbServer, nil)
-	assert.Nil(s.T(), err)
-	reqID := uuid.NewRandom()
-	assert.Nil(s.T(), err)
+			// GetPatientByIdentifierHash does not send in jobID and cmsID as arguments
+			// so we DO NOT expected the associated headers to be set.
+			// Only set the fields if we pass those parameters in.
+			if tt.name != "GetPatientByIdentifierHash" {
+				jobID = strconv.FormatUint(rand.Uint64(), 10)
+				cmsID = strconv.FormatUint(rand.Uint64(), 10)
+			}
 
-	params := url.Values{}
-	params.Set("_format", "application/fhir+json")
+			tsValidation := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				assert.NotNil(t, uuid.Parse(req.Header.Get("BlueButton-OriginalQueryId")))
+				assert.Equal(t, "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
 
-	req.URL.RawQuery = params.Encode()
-	client.AddRequestHeaders(req, reqID, "543210", "A00234")
+				assert.Equal(t, "", req.Header.Get("keep-alive"))
+				assert.Equal(t, "https", req.Header.Get("X-Forwarded-Proto"))
+				assert.Equal(t, "", req.Header.Get("X-Forwarded-Host"))
 
-	assert.Equal(s.T(), reqID.String(), req.Header.Get("BlueButton-OriginalQueryId"))
-	assert.Equal(s.T(), "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
+				assert.True(t, strings.HasSuffix(req.Header.Get("BlueButton-OriginalUrl"), req.URL.String()),
+					"%s does not end with %s", req.Header.Get("BlueButton-OriginalUrl"), req.URL.String())
+				assert.Equal(t, req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
 
-	assert.Equal(s.T(), "", req.Header.Get("keep-alive"))
-	assert.Equal(s.T(), "https", req.Header.Get("X-Forwarded-Proto"))
-	assert.Equal(s.T(), "", req.Header.Get("X-Forwarded-Host"))
+				assert.Equal(t, jobID, req.Header.Get("BCDA-JOBID"))
+				assert.Equal(t, cmsID, req.Header.Get("BCDA-CMSID"))
+				assert.Equal(t, "mbi", req.Header.Get("IncludeIdentifiers"))
 
-	assert.Equal(s.T(), req.URL.String(), req.Header.Get("BlueButton-OriginalUrl"))
-	assert.Equal(s.T(), req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
+				// Verify that we have compression enabled on these HTTP requests.
+				// NOTE: This header should not be explicitly set on the client. It should be added by the http.Transport.
+				// Details: https://golang.org/src/net/http/transport.go#L2432
+				assert.Equal(t, "gzip", req.Header.Get("Accept-Encoding"))
 
-	assert.Equal(s.T(), "543210", req.Header.Get("BCDA-JOBID"))
-	assert.Equal(s.T(), "A00234", req.Header.Get("BCDA-CMSID"))
-	assert.Equal(s.T(), "mbi", req.Header.Get("IncludeIdentifiers"))
+				w.Header().Set("Content-Type", req.URL.Query().Get("_format"))
+				w.Header().Set("Content-Encoding", "gzip")
 
+				// Write out gzip encoded content. This will allow us to verify that the response coming
+				// from the client is transparently decompressed.
+				gz := gzip.NewWriter(w)
+				defer gz.Close()
+				response := fmt.Sprintf("{ \"test\": \"ok\", \"url\": \"%v\"}", req.URL.String())
+				fmt.Fprint(gz, response)
+			}))
+			defer tsValidation.Close()
+
+			// It's OK to keep swapping out the server location since every test is re-intialized
+			// with s.ts.URL
+			os.Setenv("BB_SERVER_LOCATION", tsValidation.URL)
+			bbClient, err := client.NewBlueButtonClient()
+			if err != nil {
+				assert.FailNow(t, err.Error())
+			}
+
+			data, err := tt.funcUnderTest(bbClient, jobID, cmsID)
+			assert.NoError(t, err)
+			fmt.Println(data)
+
+			// Since the transport should've taken care of the decompressing the data
+			// we should be able to serialize into a JSON object.
+			// If something was misconfigured and we were given the raw binary data, this check will fail.
+			var jsonObj map[string]string
+			err = json.Unmarshal([]byte(data), &jsonObj)
+			assert.NoError(t, err)
+			assert.Equal(t, "ok", jsonObj["test"])
+		})
+	}
 }
 
 func TestBBTestSuite(t *testing.T) {
