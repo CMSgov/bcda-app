@@ -50,7 +50,7 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 	return &cclfFile, result.Error
 }
 
-func (r *Repository) GetCCLFBeneficiaryIds(cclfFileID string) ([]int64, error) {
+func (r *Repository) GetCCLFBeneficiaryIds(cclfFileID uint) ([]int64, error) {
 	var uniqueIds []int64
 	if err := r.db.Raw("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = ? GROUP BY mbi ) as id", cclfFileID).Pluck("id", &uniqueIds).Error; err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (r *Repository) GetCCLFBeneficiaryIds(cclfFileID string) ([]int64, error) {
 	return uniqueIds, nil
 }
 
-func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID string) ([]string, error) {
+func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error) {
 	var mbis []string
 
 	if err := r.db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFileID).Pluck("mbi", &mbis).Error; err != nil {
@@ -69,15 +69,15 @@ func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID string) ([]string, error)
 	return mbis, nil
 }
 
-func (r *Repository) GetCCLFBeneficiaries(cclfFileID string, ignoredMBIs []string, ids []int64) ([]*models.CCLFBeneficiary, error) {
+func (r *Repository) GetCCLFBeneficiaries(beneIDs []int64, ignoredMBIs []string) ([]*models.CCLFBeneficiary, error) {
 
 	var beneficiaries []*models.CCLFBeneficiary
 
 	// NOTE: We changed the query that was being used for "old benes"
 	// By querying by IDs, we really should not need to also query by the corresponding MBIs as well
-	query := r.db.Where("id in (?)", ids).Where("file_id = ?")
+	query := r.db.Where("id in (?)", beneIDs)
 
-	if ignoredMBIs != nil {
+	if len(ignoredMBIs) != 0 {
 		query.Not("mbi", ignoredMBIs)
 	}
 

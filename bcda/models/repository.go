@@ -15,11 +15,11 @@ type CCLFFileRepository interface {
 
 // CCLFBeneficiaryRepository contains methods need to interact with CCLF Beneficiary data.
 type CCLFBeneficiaryRepository interface {
-	GetCCLFBeneficiaryIds(cclfFileID string) ([]int64, error)
+	GetCCLFBeneficiaryIds(cclfFileID uint) ([]int64, error)
 
-	GetCCLFBeneficiaryMBIs(cclfFileID string) ([]string, error)
+	GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error)
 
-	GetCCLFBeneficiaries(cclfFileID string, ignoredMBIs []string, ids []int64) ([]*CCLFBeneficiary, error)
+	GetCCLFBeneficiaries(beneIDs []int64, ignoredMBIs []string) ([]*CCLFBeneficiary, error)
 }
 
 type SuppressionRepository interface {
