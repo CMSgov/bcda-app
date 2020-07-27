@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"github.com/alecthomas/chroma/lexers/d"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -9,11 +10,15 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// Ensure postgres.Repository satisfies the interface
+// Ensure Repository satisfies the interface
 var _ models.Repository = &Repository{}
 
 type Repository struct {
 	db *gorm.DB
+}
+
+func NewRepository(db *gorm.DB) *Repository {
+	return &Repository{db}
 }
 
 func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time) (*models.CCLFFile, error) {

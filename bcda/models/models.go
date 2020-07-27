@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
@@ -27,7 +28,21 @@ const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
 const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 5000
 const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
 
-var s Service
+// NOTE: This should be temporary, we should get to the point where this file only contains data models. Once that happens,
+// we no longer have the need for the data models tor produce other data models and we can remove reference to the service.
+var (
+	s    Service // Singleton service instance
+	once sync.Once
+)
+
+// GetService returns the singleton instance of Service. It creates the service if it has not been created before
+func GetService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
+	once.Do(func() {
+		s = NewService(r, cutoffDuration, lookbackDays)
+	})
+
+	return s
+}
 
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")

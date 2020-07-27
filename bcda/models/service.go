@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // Ensure service satisfies the interface
@@ -30,10 +30,24 @@ const (
 	cclf8FileNum = int(8)
 )
 
+func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
+	s = &service{
+		repository:     r,
+		logger:         log.StandardLogger(),
+		cutoffDuration: cutoffDuration,
+		sp: suppressionParameters{
+			includeSuppressedBeneficiaries: false,
+			lookbackDays:                   lookbackDays,
+		},
+	}
+
+	return s
+}
+
 type service struct {
 	repository Repository
 
-	logger *logrus.Logger
+	logger *log.Logger
 
 	cutoffDuration time.Duration
 	sp             suppressionParameters
