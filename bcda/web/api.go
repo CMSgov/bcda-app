@@ -34,8 +34,7 @@ import (
 )
 
 var (
-	qc      *que.Client
-	service models.Service
+	qc *que.Client
 )
 
 const (
@@ -48,7 +47,7 @@ func init() {
 	// from models.go
 	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
 	repository := postgres.NewRepository(database.GetGORMDbConnection())
-	service = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
+	models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
 }
 
 /*
