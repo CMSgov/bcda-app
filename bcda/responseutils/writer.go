@@ -84,6 +84,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 							Reference: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
 						},
 					},
+				},
 			},
 		},
 	}
