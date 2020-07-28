@@ -23,15 +23,14 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var (
-	qc      *que.Client
-	txn     newrelic.Transaction
+	qc  *que.Client
+	txn newrelic.Transaction
 )
 
 type jobEnqueueArgs struct {
@@ -56,13 +55,6 @@ func init() {
 	} else {
 		log.Info("Failed to open worker error log file; using default stderr")
 	}
-
-	// Ensure that models.go is properly initialized with the service reference.
-	// As we refactor more of the code, we should be able to remove the initialization
-	// from models.go
-	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
-	repository := postgres.NewRepository(database.GetGORMDbConnection())
-	models.GetService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
 }
 
 func createWorkerDirs() {

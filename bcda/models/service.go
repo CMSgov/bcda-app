@@ -30,7 +30,7 @@ const (
 	cclf8FileNum = int(8)
 )
 
-func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
+func newService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
 	serviceInstance = &service{
 		repository:     r,
 		logger:         log.StandardLogger(),

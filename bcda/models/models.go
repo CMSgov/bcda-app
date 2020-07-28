@@ -35,10 +35,12 @@ var (
 	once            sync.Once
 )
 
-// GetService returns the singleton instance of Service. It creates the service if it has not been created before
+// GetService returns the singleton instance of Service. It creates the service if it has not been created before.
+// Once models.go no longer needs access to the service instance, we can get rid of this method
+// and promote newService as a public method.
 func GetService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
 	once.Do(func() {
-		serviceInstance = NewService(r, cutoffDuration, lookbackDays)
+		serviceInstance = newService(r, cutoffDuration, lookbackDays)
 	})
 
 	return serviceInstance

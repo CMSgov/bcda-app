@@ -36,21 +36,22 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 	)
 	if lowerBound.IsZero() && upperBound.IsZero() {
 		result = r.db.Where(queryNoTime,
-			cmsID, cclfNum, constants.ImportComplete).First(&cclfFile)
+			cmsID, cclfNum, constants.ImportComplete)
 	} else if !lowerBound.IsZero() && upperBound.IsZero() {
 		result = r.db.Where(queryLower,
 			cmsID, cclfNum, constants.ImportComplete,
-			lowerBound).First(&cclfFile).First(&cclfFile)
+			lowerBound)
 	} else if lowerBound.IsZero() && !upperBound.IsZero() {
 		result = r.db.Where(queryUpper,
 			cmsID, cclfNum, constants.ImportComplete,
-			upperBound).First(&cclfFile)
+			upperBound)
 	} else {
 		result = r.db.Where(queryLowerUpper,
 			cmsID, cclfNum, constants.ImportComplete,
-			lowerBound, upperBound).First(&cclfFile)
+			lowerBound, upperBound)
 	}
 
+	result = result.Order("timestamp DESC").First(&cclfFile)
 	if result.RecordNotFound() {
 		return nil, nil
 	}
@@ -86,10 +87,10 @@ func (r *Repository) GetCCLFBeneficiaries(beneIDs []int64, ignoredMBIs []string)
 	query := r.db.Where("id in (?)", beneIDs)
 
 	if len(ignoredMBIs) != 0 {
-		query.Not("mbi", ignoredMBIs)
+		query = query.Not("mbi", ignoredMBIs)
 	}
 
-	if err := r.db.Find(&beneficiaries).Error; err != nil {
+	if err := query.Find(&beneficiaries).Error; err != nil {
 		return nil, err
 	}
 
