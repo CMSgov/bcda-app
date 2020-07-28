@@ -286,7 +286,6 @@ type ACO struct {
 // the first array contains all NEW beneficaries that were added to CCLF since the date supplied
 // the second array contains all EXISTING benficiaries that have existed in CCLF since prior to the date supplied
 func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since string) (newBeneficiaries, beneficiaries []CCLFBeneficiary, err error) {
-	var cclfBeneficiariesOld []string
 
 	if aco.CMSID == nil {
 		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
@@ -310,7 +309,8 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 	// Get all the beneficiaries from the older CCLF for this ACO, to use as a basis for comparison
 	// If the older CCLF was not found, then all beneficiaries will be considered new
 	if foundCclfFileOld {
-		err = db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFileOld.ID).Pluck("mbi", &cclfBeneficiariesOld).Error
+		cclfBeneficiariesOldQuery := fmt.Sprintf("SELECT mbi FROM cclf_beneficiaries WHERE file_id = %d", cclfFileOld.ID)
+		err = db.Raw(cclfBeneficiariesOldQuery).Error
 		if err != nil {
 			log.Errorf("Error retrieving beneficiaries from previous CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
 			return nil, nil, err
@@ -326,9 +326,9 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 
 		// Populate new beneficiaries collection
 		if suppressedMBIs != nil {
-			err = db.Not("mbi", suppressedMBIs).Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi", suppressedMBIs).Not("mbi in (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		} else {
-			err = db.Not("mbi", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi in (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		}
 		if err != nil {
 			log.Errorf("Error retrieving new beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
@@ -337,9 +337,9 @@ func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since str
 
 		// Populate existing beneficaries collection
 		if suppressedMBIs != nil {
-			err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		} else {
-			err = db.Where("mbi IN (?)", cclfBeneficiariesOld).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
+			err = db.Where("mbi IN (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
 		}
 
 		if err != nil {
