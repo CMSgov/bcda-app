@@ -464,6 +464,11 @@ func (s *ModelsTestSuite) TestGetEnqueueJobs() {
 		numOldBenes      int
 		numNewBenes      int
 		expectedJobArgs  []expectedJobArgs
+
+		// Optional methods that can be defined to set/unset
+		// extra settings (e.g. environment variables)
+		setup   func(t *testing.T)
+		cleanup func(t *testing.T)
 	}{
 		{
 			"AllResourcesTypes_WithSince_Patient",
@@ -480,13 +485,156 @@ func (s *ModelsTestSuite) TestGetEnqueueJobs() {
 				expectedJobArgs{"ExplanationOfBenefit", "gt2020-02-13T08:00:00.000-05:00", 30, 50},
 				expectedJobArgs{"Coverage", "gt2020-02-13T08:00:00.000-05:00", 20, 50},
 			},
+			nil,
+			nil,
+		},
+		{
+			"AllResourcesTypes_WithOldSince_Group",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Group/$export", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient", "ExplanationOfBenefit", "Coverage"},
+			"1900-02-13T08:00:00.000-05:00",
+			true,
+			0, // No old benes because of the since time causes no CCLFold to be found
+			50,
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 20, 50},
+				expectedJobArgs{"ExplanationOfBenefit", "", 30, 50},
+				expectedJobArgs{"Coverage", "", 20, 50},
+			},
+			nil,
+			nil,
+		},
+		{
+			"AllResourcesTypes_WithSince_Group",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Group/$export", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient", "ExplanationOfBenefit", "Coverage"},
+			"2020-02-13T08:00:00.000-05:00",
+			true,
+			40, // oldBenes
+			10, // newBenes
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 20, 10},
+				expectedJobArgs{"ExplanationOfBenefit", "", 30, 10},
+				expectedJobArgs{"Coverage", "", 20, 10},
+				expectedJobArgs{"Patient", "gt2020-02-13T08:00:00.000-05:00", 20, 40},
+				expectedJobArgs{"ExplanationOfBenefit", "gt2020-02-13T08:00:00.000-05:00", 30, 40},
+				expectedJobArgs{"Coverage", "gt2020-02-13T08:00:00.000-05:00", 20, 40},
+			},
+			nil,
+			nil,
+		},
+		{
+			"Patient",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=Patient", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 20, 50},
+			},
+			nil,
+			nil,
+		},
+		{
+			"ExplanationOfBenefit",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"ExplanationOfBenefit"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			// Distribution based on BCDA_FHIR_MAX_RECORDS_EOB and numBenes
+			[]expectedJobArgs{
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 15},
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 15},
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 15},
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 5},
+			},
+			func(t *testing.T) {
+				err := os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
+				assert.NoError(t, err)
+			},
+			func(t *testing.T) {
+				err := os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
+				assert.NoError(t, err)
+			},
+		},
+		{
+			"Coverage",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=Coverage", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Coverage"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			// Distribution based on BCDA_FHIR_MAX_RECORDS_COVERAGE and numBenes
+			[]expectedJobArgs{
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+			},
+			func(t *testing.T) {
+				err := os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "5")
+				assert.NoError(t, err)
+			},
+			func(t *testing.T) {
+				err := os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+				assert.NoError(t, err)
+			},
+		},
+		{
+			"Patient_WithHighPriorityACOs",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=Patient", Status: "Pending"},
+			"A9994",
+			"A9990,A9991,A9992,A9993,A9994",
+			[]string{"Patient"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 10, 50}, // Lower priority because A9994 is the last entry in the priority list
+			},
+			nil,
+			nil,
 		},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
+			// Need to make sure we start with a fresh mock instance each time.
+			// That way expectations are cleared.
+			s.service = &MockService{}
+			setService(s.service)
+
 			s.db.Save(&tt.j)
 			defer s.db.Delete(&tt.j)
+
+			if tt.setup != nil {
+				tt.setup(t)
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup(t)
+			}
 
 			priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
 			os.Setenv("PRIORITY_ACO_IDS", tt.priorityACOs)
@@ -503,15 +651,20 @@ func (s *ModelsTestSuite) TestGetEnqueueJobs() {
 				newBenes = append(newBenes, &CCLFBeneficiary{Model: gorm.Model{ID: uint(random.Uint64())}})
 			}
 
-			sinceTime, err := time.Parse(time.RFC3339Nano, tt.since)
-			assert.NoError(t, err)
-			s.service.On("GetNewAndExistingBeneficiaries", tt.cmsID, sinceTime).Return(newBenes, oldBenes, nil)
+			if tt.retrieveNewBenes {
+				sinceTime, err := time.Parse(time.RFC3339Nano, tt.since)
+				assert.NoError(t, err)
+				s.service.On("GetNewAndExistingBeneficiaries", tt.cmsID, sinceTime).Return(newBenes, oldBenes, nil)
+			} else {
+				s.service.On("GetBeneficiaries", tt.cmsID).Return(oldBenes, nil)
+			}
 
 			enqueueJobs, err := tt.j.GetEnqueJobs(tt.resourceTypes, tt.since, tt.retrieveNewBenes)
 			assert.Nil(t, err)
 			assert.Equal(t, len(tt.expectedJobArgs), len(enqueueJobs))
 
 			for i, expected := range tt.expectedJobArgs {
+				t.Logf("Testing index %d", i)
 				jobArgs := jobEnqueueArgs{}
 				err := json.Unmarshal(enqueueJobs[i].Args, &jobArgs)
 				if err != nil {
