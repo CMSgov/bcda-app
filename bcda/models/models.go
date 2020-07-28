@@ -31,24 +31,17 @@ const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
 // NOTE: This should be temporary, we should get to the point where this file only contains data models. Once that happens,
 // we no longer have the need for the data models tor produce other data models and we can remove reference to the service.
 var (
-	s    Service // Singleton service instance
-	once sync.Once
+	serviceInstance Service // Singleton service instance
+	once            sync.Once
 )
 
 // GetService returns the singleton instance of Service. It creates the service if it has not been created before
 func GetService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
 	once.Do(func() {
-		s = NewService(r, cutoffDuration, lookbackDays)
+		serviceInstance = NewService(r, cutoffDuration, lookbackDays)
 	})
 
-	return s
-}
-
-// setService is an unfortunate consequence of the singleton service.
-// We need to instantiate a fresh service instance between different tests in models_test.go
-// This SHOULD NOT be called in the main code path.
-func setService(service Service) {
-	s = service
+	return serviceInstance
 }
 
 func InitializeGormModels() *gorm.DB {
@@ -148,7 +141,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 			return nil, fmt.Errorf("failed to parse %s using format %s", since, time.RFC3339Nano)
 		}
 
-		newBeneficiaries, beneficiaries, err := s.GetNewAndExistingBeneficiaries(*aco.CMSID, t)
+		newBeneficiaries, beneficiaries, err := serviceInstance.GetNewAndExistingBeneficiaries(*aco.CMSID, t)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +161,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 		enqueJobs = append(enqueJobs, jobs...)
 	} else {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		beneficiaries, err := s.GetBeneficiaries(*aco.CMSID)
+		beneficiaries, err := serviceInstance.GetBeneficiaries(*aco.CMSID)
 		if err != nil {
 			return nil, err
 		}

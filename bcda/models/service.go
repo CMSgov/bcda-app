@@ -31,7 +31,7 @@ const (
 )
 
 func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
-	s = &service{
+	serviceInstance = &service{
 		repository:     r,
 		logger:         log.StandardLogger(),
 		cutoffDuration: cutoffDuration,
@@ -41,7 +41,7 @@ func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Se
 		},
 	}
 
-	return s
+	return serviceInstance
 }
 
 type service struct {
@@ -96,7 +96,6 @@ func (s *service) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 	}
 
 	// Retrieve all of the benes associated with this CCLF file.
-	// NOTE: Since we're now supplying a white list of MBIs, we won't be able to split between new/old here.
 	benes, err := s.getBenes(cclfFileNew.ID)
 	if err != nil {
 		return nil, nil, err

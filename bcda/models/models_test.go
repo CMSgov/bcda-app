@@ -39,7 +39,8 @@ func (s *ModelsTestSuite) SetupTest() {
 	InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.service = &MockService{}
-	setService(s.service)
+
+	serviceInstance = s.service
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
@@ -624,7 +625,7 @@ func (s *ModelsTestSuite) TestGetEnqueueJobs() {
 			// Need to make sure we start with a fresh mock instance each time.
 			// That way expectations are cleared.
 			s.service = &MockService{}
-			setService(s.service)
+			serviceInstance = s.service
 
 			s.db.Save(&tt.j)
 			defer s.db.Delete(&tt.j)
