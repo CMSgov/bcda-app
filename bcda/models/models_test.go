@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"log"
+	random "math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,12 +29,17 @@ import (
 
 type ModelsTestSuite struct {
 	suite.Suite
-	db *gorm.DB
+
+	// Re-initialized for every test
+	db      *gorm.DB
+	service *MockService
 }
 
 func (s *ModelsTestSuite) SetupTest() {
 	InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
+	s.service = &MockService{}
+	setService(s.service)
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
@@ -440,6 +446,86 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 	s.db.Delete(&j)
 }
 
+func (s *ModelsTestSuite) TestGetEnqueueJobs() {
+	type expectedJobArgs struct {
+		resourceType string
+		since        string
+		priority     int16
+		numBenes     int
+	}
+	tests := []struct {
+		name             string
+		j                Job
+		cmsID            string
+		priorityACOs     string
+		resourceTypes    []string
+		since            string
+		retrieveNewBenes bool
+		numOldBenes      int
+		numNewBenes      int
+		expectedJobArgs  []expectedJobArgs
+	}{
+		{
+			"AllResourcesTypes_WithSince_Patient",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient", "ExplanationOfBenefit", "Coverage"},
+			"2020-02-13T08:00:00.000-05:00",
+			true,
+			50,
+			0, // No new benes because of the since time. CCLFnew == CCLFold
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "gt2020-02-13T08:00:00.000-05:00", 20, 50},
+				expectedJobArgs{"ExplanationOfBenefit", "gt2020-02-13T08:00:00.000-05:00", 30, 50},
+				expectedJobArgs{"Coverage", "gt2020-02-13T08:00:00.000-05:00", 20, 50},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			s.db.Save(&tt.j)
+			defer s.db.Delete(&tt.j)
+
+			priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+			os.Setenv("PRIORITY_ACO_IDS", tt.priorityACOs)
+			defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+
+			// NOTE: We can have some ID collisions but that's fine
+			oldBenes := make([]*CCLFBeneficiary, 0, tt.numOldBenes)
+			for i := 0; i < tt.numOldBenes; i++ {
+				oldBenes = append(oldBenes, &CCLFBeneficiary{Model: gorm.Model{ID: uint(random.Uint64())}})
+			}
+
+			newBenes := make([]*CCLFBeneficiary, 0, tt.numNewBenes)
+			for i := 0; i < tt.numNewBenes; i++ {
+				newBenes = append(newBenes, &CCLFBeneficiary{Model: gorm.Model{ID: uint(random.Uint64())}})
+			}
+
+			sinceTime, err := time.Parse(time.RFC3339Nano, tt.since)
+			assert.NoError(t, err)
+			s.service.On("GetNewAndExistingBeneficiaries", tt.cmsID, sinceTime).Return(newBenes, oldBenes, nil)
+
+			enqueueJobs, err := tt.j.GetEnqueJobs(tt.resourceTypes, tt.since, tt.retrieveNewBenes)
+			assert.Nil(t, err)
+			assert.Equal(t, len(tt.expectedJobArgs), len(enqueueJobs))
+
+			for i, expected := range tt.expectedJobArgs {
+				jobArgs := jobEnqueueArgs{}
+				err := json.Unmarshal(enqueueJobs[i].Args, &jobArgs)
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				assert.Equal(t, expected.resourceType, jobArgs.ResourceType)
+				assert.Equal(t, expected.since, jobArgs.Since)
+				assert.Equal(t, expected.priority, enqueueJobs[i].Priority)
+				assert.Equal(t, expected.numBenes, len(jobArgs.BeneficiaryIDs))
+			}
+		})
+	}
+}
+
 func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince_Patient() {
 	assert := s.Assert()
 
@@ -507,8 +593,22 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithOldSince_Group(
 
 	// This test validates that we only get historical data for new beneficiaries because since date is very old
 	// This is only valid for /Group endpoint with _since specified
-	// The CCLF historical data timestamp is set in unit_test.sh
+
+	// Since we only expect new benes, we'll mock the response to return an empty "old benes" response.
+	// We're only going to validate counts, so we can be a bit simplier on what we return back beneIDs
 	since := "1900-02-13T08:00:00.000-05:00"
+	cmsID := "A9994" // ID associated with constants.DevACOUUID
+	expectedBeneCount := 50
+
+	benes := make([]*CCLFBeneficiary, 0, expectedBeneCount)
+	for i := 0; i < expectedBeneCount; i++ {
+		// Only ID seems to be important
+		benes = append(benes, &CCLFBeneficiary{Model: gorm.Model{ID: uint(random.Uint64())}})
+	}
+	t, err := time.Parse(time.RFC3339Nano, since)
+	assert.NoError(err)
+	s.service.On("GetNewAndExistingBeneficiaries", cmsID, t).Return(benes, nil, nil)
+
 	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, true)
 	assert.Nil(err)
 	assert.NotNil(enqueueJobs)
@@ -533,7 +633,7 @@ func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithOldSince_Group(
 			assert.Equal("", jobArgs.Since)
 			assert.NotNil(jobArgs.TransactionTime)
 			assert.Equal(int16(30), queJob.Priority)
-			assert.Equal(50, len(jobArgs.BeneficiaryIDs))
+			assert.Equal(int(50), len(jobArgs.BeneficiaryIDs))
 		} else {
 			assert.Equal("Coverage", jobArgs.ResourceType)
 			assert.Equal("", jobArgs.Since)

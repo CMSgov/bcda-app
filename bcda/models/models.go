@@ -44,6 +44,13 @@ func GetService(r Repository, cutoffDuration time.Duration, lookbackDays int) Se
 	return s
 }
 
+// setService is an unfortunate consequence of the singleton service.
+// We need to instantiate a fresh service instance between different tests in models_test.go
+// This SHOULD NOT be called in the main code path.
+func setService(service Service) {
+	s = service
+}
+
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
 	db := database.GetGORMDbConnection()
