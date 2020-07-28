@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"net/http"
@@ -31,11 +33,23 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
-var qc *que.Client
+var (
+	qc      *que.Client
+	service models.Service
+)
 
 const (
 	groupAll = "all"
 )
+
+func init() {
+	// Ensure that models.go is properly initialized with the service reference.
+	// As we refactor more of the code, we should be able to remove the initialization
+	// from models.go
+	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
+	repository := postgres.NewRepository(database.GetGORMDbConnection())
+	service = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
+}
 
 /*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest

@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"github.com/alecthomas/chroma/lexers/d"
+	"strconv"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -104,12 +104,12 @@ func (r *Repository) GetSuppressedMBIs(lookbackDays int) ([]string, error) {
 	FROM (
 		SELECT mbi, MAX(effective_date) max_date
 		FROM suppressions
-		WHERE (NOW() - interval '? days') < effective_date AND effective_date <= NOW()
+		WHERE (NOW() - interval '`+strconv.Itoa(lookbackDays)+` days') < effective_date AND effective_date <= NOW()
 					AND preference_indicator != ''
 		GROUP BY mbi
 	) h
 	JOIN suppressions s ON s.mbi = h.mbi and s.effective_date = h.max_date
-	WHERE preference_indicator = 'N'`, lookbackDays).Pluck("mbi", &suppressedMBIs).Error; err != nil {
+	WHERE preference_indicator = 'N'`).Pluck("mbi", &suppressedMBIs).Error; err != nil {
 		return nil, err
 	}
 
