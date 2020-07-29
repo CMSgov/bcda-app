@@ -313,5 +313,5 @@ func timeIsSetMatcher(t time.Time) bool {
 }
 
 func timeIsCloseMatcher(t time.Time) bool {
-	return time.Now().Sub(t) < 1*time.Second
+	return time.Since(t) < time.Second
 }
