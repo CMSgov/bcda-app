@@ -87,6 +87,9 @@ func (s *service) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		if err != nil {
 			return nil, nil, err
 		}
+		if len(newBeneficiaries) == 0 {
+			return nil, nil, fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", cmsID, cclfFileNew.ID)
+		}
 		return newBeneficiaries, nil, nil
 	}
 
