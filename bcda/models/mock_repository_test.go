@@ -17,13 +17,13 @@ type MockRepository struct {
 	mock.Mock
 }
 
-// GetCCLFBeneficiaries provides a mock function with given fields: beneIDs, ignoredMBIs
-func (_m *MockRepository) GetCCLFBeneficiaries(beneIDs []int64, ignoredMBIs []string) ([]*CCLFBeneficiary, error) {
-	ret := _m.Called(beneIDs, ignoredMBIs)
+// GetCCLFBeneficiaries provides a mock function with given fields: cclfFileID, ignoredMBIs
+func (_m *MockRepository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string) ([]*CCLFBeneficiary, error) {
+	ret := _m.Called(cclfFileID, ignoredMBIs)
 
 	var r0 []*CCLFBeneficiary
-	if rf, ok := ret.Get(0).(func([]int64, []string) []*CCLFBeneficiary); ok {
-		r0 = rf(beneIDs, ignoredMBIs)
+	if rf, ok := ret.Get(0).(func(uint, []string) []*CCLFBeneficiary); ok {
+		r0 = rf(cclfFileID, ignoredMBIs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*CCLFBeneficiary)
@@ -31,31 +31,8 @@ func (_m *MockRepository) GetCCLFBeneficiaries(beneIDs []int64, ignoredMBIs []st
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]int64, []string) error); ok {
-		r1 = rf(beneIDs, ignoredMBIs)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetCCLFBeneficiaryIds provides a mock function with given fields: cclfFileID
-func (_m *MockRepository) GetCCLFBeneficiaryIds(cclfFileID uint) ([]int64, error) {
-	ret := _m.Called(cclfFileID)
-
-	var r0 []int64
-	if rf, ok := ret.Get(0).(func(uint) []int64); ok {
-		r0 = rf(cclfFileID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]int64)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(uint) error); ok {
-		r1 = rf(cclfFileID)
+	if rf, ok := ret.Get(1).(func(uint, []string) error); ok {
+		r1 = rf(cclfFileID, ignoredMBIs)
 	} else {
 		r1 = ret.Error(1)
 	}

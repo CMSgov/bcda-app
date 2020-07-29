@@ -55,7 +55,6 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(8)
-			beneIDs := []int64{1, 2, 3, 4}
 			sp := suppressionParameters{true, lookbackDays}
 			repository := &MockRepository{}
 			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}).Return(tt.cclfFileNew, nil)
@@ -63,10 +62,9 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return([]string{"1", "2", "3"}, nil)
 			}
-			repository.On("GetCCLFBeneficiaryIds", mock.Anything).Return(beneIDs, nil)
 
 			var suppressedMBIs []string
-			repository.On("GetCCLFBeneficiaries", beneIDs, suppressedMBIs).Return([]*CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
+			repository.On("GetCCLFBeneficiaries", tt.cclfFileNew.ID, suppressedMBIs).Return([]*CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
 			serviceInstance := &service{repository: repository, sp: sp, cutoffDuration: 1 * time.Hour}
 
 			err := tt.funcUnderTest(serviceInstance)
@@ -161,12 +159,6 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 				}
 			}
 
-			var beneIDs []int64
-			for _, bene := range benes {
-				beneIDs = append(beneIDs, int64(bene.ID))
-
-			}
-
 			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete,
 				// Verify our cutoffTime is bsed on our provided duration
 				mock.MatchedBy(func(t time.Time) bool {
@@ -180,13 +172,11 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
 			}
-			if tt.cclfFileNew != nil {
-				repository.On("GetCCLFBeneficiaryIds", tt.cclfFileNew.ID).Return(beneIDs, nil)
-			}
-
 			suppressedMBI := "suppressedMBI"
+			if tt.cclfFileNew != nil {
+				repository.On("GetCCLFBeneficiaries", tt.cclfFileNew.ID, []string{suppressedMBI}).Return(benes, nil)
+			}
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
-			repository.On("GetCCLFBeneficiaries", beneIDs, []string{suppressedMBI}).Return(benes, nil)
 
 			serviceInstance := newService(repository, 1*time.Hour, lookbackDays)
 			newBenes, oldBenes, err := serviceInstance.GetNewAndExistingBeneficiaries("cmsID", since)
@@ -194,7 +184,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
 				assert.True(t, strings.Contains(err.Error(), tt.expectedErr.Error()),
-					"Error %s does not contain subtring %s", err.Error(), tt.expectedErr.Error())
+					"Error %s does not contain substring %s", err.Error(), tt.expectedErr.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -255,27 +245,20 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 					beneID++
 				}
 			}
-			var beneIDs []int64
-			for _, bene := range benes {
-				beneIDs = append(beneIDs, int64(bene.ID))
-
-			}
-
 			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete,
-				// Verify our cutoffTime is bsed on our provided duration
+				// Verify our cutoffTime is based on our provided duration
 				mock.MatchedBy(func(t time.Time) bool {
 					// Since we're using time.Now() within the service call, we can't compare directly.
 					// Make sure we're close enough.
 					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
 				}),
 				time.Time{}).Return(tt.cclfFile, nil)
-			if tt.cclfFile != nil {
-				repository.On("GetCCLFBeneficiaryIds", tt.cclfFile.ID).Return(beneIDs, nil)
-			}
 
 			suppressedMBI := "suppressedMBI"
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
-			repository.On("GetCCLFBeneficiaries", beneIDs, []string{suppressedMBI}).Return(benes, nil)
+			if tt.cclfFile != nil {
+				repository.On("GetCCLFBeneficiaries", tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
+			}
 
 			serviceInstance := newService(repository, 1*time.Hour, lookbackDays)
 			benes, err := serviceInstance.GetBeneficiaries("cmsID")
@@ -283,7 +266,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
 				assert.True(t, strings.Contains(err.Error(), tt.expectedErr.Error()),
-					"Error %s does not contain subtring %s", err.Error(), tt.expectedErr.Error())
+					"Error %s does not contain substring %s", err.Error(), tt.expectedErr.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -310,8 +293,4 @@ func getCCLFBeneficiary(id uint, mbi string) *CCLFBeneficiary {
 
 func timeIsSetMatcher(t time.Time) bool {
 	return !t.IsZero()
-}
-
-func timeIsCloseMatcher(t time.Time) bool {
-	return time.Since(t) < time.Second
 }

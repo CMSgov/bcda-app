@@ -163,12 +163,7 @@ func (s *service) getBenes(cclfFileID uint) ([]*CCLFBeneficiary, error) {
 		}
 	}
 
-	ids, err := s.repository.GetCCLFBeneficiaryIds(cclfFileID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get beneficiary ids %s", err.Error())
-	}
-
-	benes, err := s.repository.GetCCLFBeneficiaries(ids, ignoredMBIs)
+	benes, err := s.repository.GetCCLFBeneficiaries(cclfFileID, ignoredMBIs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get beneficiaries %s", err.Error())
 	}
