@@ -75,43 +75,13 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 					{
 						Name: "patient-export",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/Patient/$export",
-							Type:      "Endpoint",
+							Reference: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
 						},
 					},
 					{
 						Name: "group-export",
 						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/Group/[id]/$export",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "jobs",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/jobs/[jobId]",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "metadata",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/api/v1/metadata",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "version",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/_version",
-							Type:      "Endpoint",
-						},
-					},
-					{
-						Name: "data",
-						Definition: &fhirmodels.Reference{
-							Reference: baseurl + "/data/[jobID]/[random_UUID].ndjson",
-							Type:      "Endpoint",
+							Reference: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
 						},
 					},
 				},
