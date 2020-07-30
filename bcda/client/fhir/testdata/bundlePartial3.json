@@ -1,0 +1,23 @@
+{
+    "resourceType": "Bundle",
+    "id": "0880e9d9-8f91-485f-87ac-3eb2a7c45298",
+    "meta": {
+        "lastUpdated": "2020-07-07T20:41:21.348+00:00"
+    },
+    "type": "searchset",
+    "total": 6,
+    "link": [
+        {
+            "relation": "self",
+            "url": "http://localhost:8080/bundlePartial3.json"
+        }
+    ],
+    "entry": [
+        {
+            "fileName": "bundlePartial3.json"
+        },
+        {
+            "fileName": "bundlePartial3-a.json"
+        }
+    ]
+}

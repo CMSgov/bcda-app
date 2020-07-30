@@ -1,0 +1,62 @@
+{
+  "resourceType": "Bundle",
+  "id": "800c9d4c-99cd-4672-b064-34cc7a02f954",
+  "meta": {
+    "lastUpdated": "2019-05-22T10:09:59.065-04:00"
+  },
+  "type": "searchset",
+  "total": 1,
+  "link": [
+    {
+      "relation": "self",
+      "url": "https://internal-dpcwelb01-2074070868.us-east-1.elb.amazonaws.com/v1/fhir/Patient/?_format=application%2Ffhir%2Bjson&identifier=http%3A%2F%2Fbluebutton.cms.hhs.gov%2Fidentifier%23mbiHash%7Cc945694486322cfcf792a4d1c69ea88bf0c134edaf9f1d68a18466f9dc6ec2fe"
+    }
+  ],
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "20000000000001",
+        "extension": [
+          {
+            "url": "https://bluebutton.cms.gov/resources/variables/race",
+            "valueCoding": {
+              "system": "https://bluebutton.cms.gov/resources/variables/race",
+              "code": "1",
+              "display": "White"
+            }
+          }
+        ],
+        "identifier": [
+          {
+            "system": "https://bluebutton.cms.gov/resources/variables/bene_id",
+            "value": "20000000000001"
+          },
+          {
+            "system": "http://hl7.org/fhir/sid/us-mbi",
+            "value": "-1Q03Z002871"
+          }
+        ],
+        "name": [
+          {
+            "use": "usual",
+            "family": "Doe",
+            "given": [
+              "Jane",
+              "X"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1999-06-01",
+        "address": [
+          {
+            "district": "999",
+            "state": "10",
+            "postalCode": "99999"
+          }
+        ]
+      }
+    }
+  ]
+}
