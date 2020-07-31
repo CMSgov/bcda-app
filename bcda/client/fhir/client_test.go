@@ -92,7 +92,7 @@ func TestMultipleRequestBundle(t *testing.T) {
 func TestRawRequest(t *testing.T) {
 	msg := "Hello world!"
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, msg)
+		fmt.Fprint(w, msg)
 	}))
 	defer s.Close()
 

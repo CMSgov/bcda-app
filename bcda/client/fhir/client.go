@@ -131,10 +131,11 @@ func getBundleResponse(c *http.Client, logger *logrus.Logger, req *http.Request)
 	return &b, nil
 }
 
-func getResponse(c *http.Client, logger *logrus.Logger, req *http.Request) ([]byte, error) {
+func getResponse(c *http.Client, logger *logrus.Logger, req *http.Request) (body []byte, err error) {
 	go logRequest(logger, req)
 	resp, err := c.Do(req)
 	if resp != nil {
+		/* #nosec -- it's OK for us to ignore errors when attempt to cleanup response body */
 		defer func() {
 			_, _ = io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
@@ -151,7 +152,7 @@ func getResponse(c *http.Client, logger *logrus.Logger, req *http.Request) ([]by
 		return nil, fmt.Errorf("received incorrect status code %d body %s",
 			resp.StatusCode, string(body))
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

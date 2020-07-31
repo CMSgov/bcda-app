@@ -480,9 +480,13 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 		w.Header().Set("Content-Encoding", "gzip")
 		gz := gzip.NewWriter(w)
 		defer gz.Close()
-		io.Copy(gz, file)
+		if _, err := io.Copy(gz, file); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	} else {
-		io.Copy(w, file)
+		if _, err := io.Copy(w, file); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
