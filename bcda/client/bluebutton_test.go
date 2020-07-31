@@ -276,7 +276,7 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 	s.ts.Close()
 }
 
-func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
+func (s *BBRequestTestSuite) TestValidateRequest() {
 	tests := []struct {
 		name          string
 		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error)
