@@ -46,7 +46,11 @@ func init() {
 	// As we refactor more of the code, we should be able to remove the initialization
 	// from models.go
 	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
-	repository := postgres.NewRepository(database.GetGORMDbConnection())
+	db := database.GetGORMDbConnection()
+	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
+	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
+	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
+	repository := postgres.NewRepository(db)
 	models.GetService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
 }
 
