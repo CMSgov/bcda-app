@@ -196,7 +196,6 @@ func (s *BBRequestTestSuite) TestGetPatient() {
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(p.Entries))
 	assert.Equal(s.T(), "20000000000001", p.Entries[0]["resource"].(map[string]interface{})["id"])
-
 }
 
 func (s *BBRequestTestSuite) TestGetPatient_500() {
@@ -460,13 +459,13 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 		err  error
 	)
 	if strings.Contains(path, "Coverage") {
-		file, err = os.Open("./testdata/Coverage.json")
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Coverage")
 	} else if strings.Contains(path, "ExplanationOfBenefit") {
-		file, err = os.Open("./testdata/ExplanationOfBenefit.json")
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/ExplanationOfBenefit")
 	} else if strings.Contains(path, "metadata") {
 		file, err = os.Open("./testdata/Metadata.json")
 	} else if strings.Contains(path, "Patient") {
-		file, err = os.Open("./testdata/Patient.json")
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Patient")
 	}
 
 	if err != nil {
