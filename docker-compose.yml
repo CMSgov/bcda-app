@@ -66,6 +66,7 @@ services:
       - BCDA_ENABLE_NEW_GROUP=true
       - PRIORITY_ACO_IDS=A9990,A9991,A9992,A9993,A9994
       - USER_GUIDE_LOC=https://stage.bcda.cms.gov
+      - CCLF_CUTOFF_DATE_DAYS=0 # Set to 0 so we allow all CCLF files to be considered.
     volumes:
      - .:/go/src/github.com/CMSgov/bcda-app
     ports:

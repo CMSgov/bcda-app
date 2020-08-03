@@ -9,9 +9,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
-
-	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
@@ -28,6 +27,24 @@ import (
 const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
 const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 5000
 const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
+
+// NOTE: This should be temporary, we should get to the point where this file only contains data models. Once that happens,
+// we no longer have the need for the data models tor produce other data models and we can remove reference to the service.
+var (
+	serviceInstance Service // Singleton service instance
+	once            sync.Once
+)
+
+// GetService returns the singleton instance of Service. It creates the service if it has not been created before.
+// Once models.go no longer needs access to the service instance, we can get rid of this method
+// and promote newService as a public method.
+func GetService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
+	once.Do(func() {
+		serviceInstance = newService(r, cutoffDuration, lookbackDays)
+	})
+
+	return serviceInstance
+}
 
 func InitializeGormModels() *gorm.DB {
 	log.Println("Initialize bcda models")
@@ -108,7 +125,6 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBeneHistData bool) (enqueJobs []*que.Job, err error) {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	var beneficiaries, newBeneficiaries []CCLFBeneficiary
 	var jobs []*que.Job
 	var aco ACO
 	err = db.Find(&aco, "uuid = ?", job.ACOID).Error
@@ -116,9 +132,18 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 		return nil, err
 	}
 
+	if aco.CMSID == nil {
+		return nil, fmt.Errorf("no CMS ID set for this ACO")
+	}
+
 	if retrieveNewBeneHistData {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		newBeneficiaries, beneficiaries, err = aco.GetNewAndExistingBeneficiaries(false, since)
+		t, err := time.Parse(time.RFC3339Nano, since)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s using format %s", since, time.RFC3339Nano)
+		}
+
+		newBeneficiaries, beneficiaries, err := serviceInstance.GetNewAndExistingBeneficiaries(*aco.CMSID, t)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +163,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 		enqueJobs = append(enqueJobs, jobs...)
 	} else {
 		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		beneficiaries, err = aco.GetBeneficiaries(false)
+		beneficiaries, err := serviceInstance.GetBeneficiaries(*aco.CMSID)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +179,7 @@ func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBe
 	return enqueJobs, nil
 }
 
-func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string, retrieveNewBeneHistData bool, beneficiaries []CCLFBeneficiary) (jobs []*que.Job, err error) {
+func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string, retrieveNewBeneHistData bool, beneficiaries []*CCLFBeneficiary) (jobs []*que.Job, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	if since != "" {
@@ -280,150 +305,6 @@ type ACO struct {
 	SystemID    string    `json:"system_id"`
 	AlphaSecret string    `json:"alpha_secret"`
 	PublicKey   string    `json:"public_key"`
-}
-
-// GetNewAndExistingBeneficiaries, when supplied with the "since" parameter, returns two arrays
-// the first array contains all NEW beneficaries that were added to CCLF since the date supplied
-// the second array contains all EXISTING benficiaries that have existed in CCLF since prior to the date supplied
-func (aco *ACO) GetNewAndExistingBeneficiaries(includeSuppressed bool, since string) (newBeneficiaries, beneficiaries []CCLFBeneficiary, err error) {
-
-	if aco.CMSID == nil {
-		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
-		return newBeneficiaries, beneficiaries, fmt.Errorf("no CMS ID set for this ACO")
-	}
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var cclfFileNew, cclfFileOld CCLFFile
-	var foundCclfFileOld = false
-	// todo add a filter here to make sure the file is up to date.
-	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID, constants.ImportComplete).Order("timestamp desc").First(&cclfFileNew).RecordNotFound() {
-		log.Errorf("Unable to find new CCLF8 File for ACO: %v", *aco.CMSID)
-		return newBeneficiaries, beneficiaries, fmt.Errorf("unable to find new cclfFile")
-	}
-	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ? and timestamp <= ?", aco.CMSID, constants.ImportComplete, since).Order("timestamp desc").First(&cclfFileOld).RecordNotFound() {
-		log.Infof("Unable to find CCLF8 File for ACO %v prior to date: %v; all beneficiaries will be considered NEW", *aco.CMSID, since)
-	} else {
-		foundCclfFileOld = true
-	}
-
-	// Get all the beneficiaries from the older CCLF for this ACO, to use as a basis for comparison
-	// If the older CCLF was not found, then all beneficiaries will be considered new
-	if foundCclfFileOld {
-		cclfBeneficiariesOldQuery := fmt.Sprintf("SELECT mbi FROM cclf_beneficiaries WHERE file_id = %d", cclfFileOld.ID)
-		err = db.Raw(cclfBeneficiariesOldQuery).Error
-		if err != nil {
-			log.Errorf("Error retrieving beneficiaries from previous CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
-			return nil, nil, err
-		}
-
-		var suppressedMBIs []string
-		if !includeSuppressed {
-			suppressedMBIs = GetSuppressedMBIs(db)
-		}
-
-		// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
-		uniqueIdQuery := fmt.Sprintf("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries where file_id = %d GROUP BY mbi ) as id", cclfFileNew.ID)
-
-		// Populate new beneficiaries collection
-		if suppressedMBIs != nil {
-			err = db.Not("mbi", suppressedMBIs).Not("mbi in (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
-		} else {
-			err = db.Not("mbi in (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&newBeneficiaries, "file_id = ?", cclfFileNew.ID).Error
-		}
-		if err != nil {
-			log.Errorf("Error retrieving new beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
-			return nil, nil, err
-		}
-
-		// Populate existing beneficaries collection
-		if suppressedMBIs != nil {
-			err = db.Not("mbi", suppressedMBIs).Where("mbi IN (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
-		} else {
-			err = db.Where("mbi IN (?)", db.Raw(cclfBeneficiariesOldQuery).SubQuery()).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&beneficiaries, "file_id = ?", cclfFileNew.ID).Error
-		}
-
-		if err != nil {
-			log.Errorf("Error retrieving existing beneficiaries from CCLF8 for ACO ID %s: %s", aco.UUID.String(), err.Error())
-			return nil, nil, err
-		}
-
-		if len(beneficiaries) == 0 && len(newBeneficiaries) == 0 {
-			log.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for ACO ID %s", aco.UUID.String())
-			return nil, nil, fmt.Errorf("found 0 new or existing beneficiaries from CCLF8 for ACO ID %s", aco.UUID.String())
-		}
-
-		return newBeneficiaries, beneficiaries, nil
-	} else {
-		newBeneficiaries, err = aco.GetBeneficiaries(includeSuppressed)
-		return newBeneficiaries, nil, err
-	}
-}
-
-// GetBeneficiaries retrieves all beneficiaries associated with the ACO, contained in one array
-func (aco *ACO) GetBeneficiaries(includeSuppressed bool) ([]CCLFBeneficiary, error) {
-	var cclfBeneficiaries []CCLFBeneficiary
-
-	if aco.CMSID == nil {
-		log.Errorf("No CMSID set for ACO: %s", aco.UUID)
-		return cclfBeneficiaries, fmt.Errorf("no CMS ID set for this ACO")
-	}
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var cclfFile CCLFFile
-	// todo add a filter here to make sure the file is up to date.
-	if db.Where("aco_cms_id = ? and cclf_num = 8 and import_status= ?", aco.CMSID, constants.ImportComplete).Order("timestamp desc").First(&cclfFile).RecordNotFound() {
-		log.Errorf("Unable to find CCLF8 File for ACO: %v", *aco.CMSID)
-		return cclfBeneficiaries, fmt.Errorf("unable to find cclfFile")
-	}
-
-	var suppressedMBIs []string
-
-	if !includeSuppressed {
-		suppressedMBIs = GetSuppressedMBIs(db)
-	}
-
-	// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
-	uniqueIdQuery := fmt.Sprintf("SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries where file_id = %d GROUP BY mbi ) as id", cclfFile.ID)
-
-	var err error
-	if suppressedMBIs != nil {
-		err = db.Not("mbi", suppressedMBIs).Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
-	} else {
-		err = db.Where("id IN (?)", db.Raw(uniqueIdQuery).SubQuery()).Find(&cclfBeneficiaries, "file_id = ?", cclfFile.ID).Error
-	}
-
-	if err != nil {
-		log.Errorf("Error retrieving beneficiaries from latest CCLF8 file for ACO ID %s: %s", aco.UUID.String(), err.Error())
-		return nil, err
-	} else if len(cclfBeneficiaries) == 0 {
-		log.Errorf("Found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
-		return nil, fmt.Errorf("found 0 beneficiaries from latest CCLF8 file for ACO ID %s", aco.UUID.String())
-	}
-
-	return cclfBeneficiaries, nil
-}
-
-func GetSuppressedMBIs(db *gorm.DB) []string {
-
-	var suppressedMBIs []string
-
-	// Set the window that the suppression query should examine. Will default to 60 if no value is provided
-	suppressionLookback := strconv.Itoa(utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
-
-	// #nosec G202
-	suppressionQuery := `SELECT DISTINCT s.mbi
-	FROM (
-		SELECT mbi, MAX(effective_date) max_date
-		FROM suppressions
-		WHERE (NOW() - interval '` + suppressionLookback + ` days') < effective_date AND effective_date <= NOW()
-					AND preference_indicator != ''
-		GROUP BY mbi
-	) h
-	JOIN suppressions s ON s.mbi = h.mbi and s.effective_date = h.max_date
-	WHERE preference_indicator = 'N'`
-	db.Raw(suppressionQuery).Pluck("mbi", &suppressedMBIs)
-
-	return suppressedMBIs
 }
 
 type CCLFBeneficiaryXref struct {

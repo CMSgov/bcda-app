@@ -132,6 +132,18 @@ The updated `dump.pgdata` should be committed with the other associated changes.
         ...
     }
    ``` 
+
+### Auto-generating mock implementations
+
+Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md).
+
+Example:
+```sh
+mockery --name Repository --testonly --inpackage --case snake
+```
+
+Will generate a mock implementation for the Repository interface.
+
 ## Use the application
 
 See: [API documentation](https://bcda.cms.gov/sandbox/user-guide/)
