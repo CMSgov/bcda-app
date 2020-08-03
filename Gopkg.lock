@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:63365cc19727fc5f786d5d95079016b3601120c9699543abae2d5d0bff139109"
+  name = "github.com/DATA-DOG/go-sqlmock"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7d7fc89ac4d6e7994c74cf16a6cb774b0374f2f9"
+  version = "v1.4.1"
+
+[[projects]]
   digest = "1:88dd2931d62c5e8e674a0edcfc571b9aa49caadba8c8f4dec43e0322c856d65e"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -374,6 +382,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/DATA-DOG/go-sqlmock",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/cloudwatch",

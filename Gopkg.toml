@@ -56,3 +56,7 @@
 [[constraint]]
   name = "github.com/cenkalti/backoff"
   version = "v4.0.2"
+  
+[[constraint]]
+  name = "github.com/DATA-DOG/go-sqlmock"
+  version = "1.4.1"
