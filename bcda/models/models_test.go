@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"log"
+	random "math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,12 +29,18 @@ import (
 
 type ModelsTestSuite struct {
 	suite.Suite
-	db *gorm.DB
+
+	// Re-initialized for every test
+	db      *gorm.DB
+	service *MockService
 }
 
 func (s *ModelsTestSuite) SetupTest() {
 	InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
+	s.service = &MockService{}
+
+	serviceInstance = s.service
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
@@ -440,337 +447,239 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 	s.db.Delete(&j)
 }
 
-func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince_Patient() {
-	assert := s.Assert()
-
-	j := Job{
-		ACOID:      uuid.Parse(constants.DevACOUUID),
-		RequestURL: "/api/v1/Patient/$export",
-		Status:     "Pending",
+func (s *ModelsTestSuite) TestGetEnqueueJobs() {
+	type expectedJobArgs struct {
+		resourceType string
+		since        string
+		priority     int16
+		numBenes     int
 	}
-	s.db.Save(&j)
-	defer s.db.Delete(&j)
+	tests := []struct {
+		name             string
+		j                Job
+		cmsID            string
+		priorityACOs     string
+		resourceTypes    []string
+		since            string
+		retrieveNewBenes bool
+		numOldBenes      int
+		numNewBenes      int
+		expectedJobArgs  []expectedJobArgs
 
-	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
-	os.Setenv("PRIORITY_ACO_IDS", "")
-	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
-
-	since := "2020-02-13T08:00:00.000-05:00"
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, false)
-	assert.Nil(err)
-	assert.NotNil(enqueueJobs)
-	assert.Equal(3, len(enqueueJobs))
-	var count = 0
-	for _, queJob := range enqueueJobs {
-		jobArgs := jobEnqueueArgs{}
-		err := json.Unmarshal(queJob.Args, &jobArgs)
-		if err != nil {
-			s.T().Error(err)
-		}
-		assert.Equal(int(j.ID), jobArgs.ID)
-		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		if count == 0 {
-			assert.Equal("Patient", jobArgs.ResourceType)
-			assert.Equal("gt"+since, jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-		} else if count == 1 {
-			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-			assert.Equal("gt"+since, jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(30), queJob.Priority)
-		} else {
-			assert.Equal("Coverage", jobArgs.ResourceType)
-			assert.Equal("gt"+since, jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-		}
-		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
-		count++
-	}
-}
-
-func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithOldSince_Group() {
-	assert := s.Assert()
-
-	j := Job{
-		ACOID:      uuid.Parse(constants.DevACOUUID),
-		RequestURL: "/api/v1/Group/$export",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-	defer s.db.Delete(&j)
-
-	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
-	os.Setenv("PRIORITY_ACO_IDS", "")
-	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
-
-	// This test validates that we only get historical data for new beneficiaries because since date is very old
-	// This is only valid for /Group endpoint with _since specified
-	// The CCLF historical data timestamp is set in unit_test.sh
-	since := "1900-02-13T08:00:00.000-05:00"
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, true)
-	assert.Nil(err)
-	assert.NotNil(enqueueJobs)
-	assert.Equal(3, len(enqueueJobs))
-	var count = 0
-	for _, queJob := range enqueueJobs {
-		jobArgs := jobEnqueueArgs{}
-		err := json.Unmarshal(queJob.Args, &jobArgs)
-		if err != nil {
-			s.T().Error(err)
-		}
-		assert.Equal(int(j.ID), jobArgs.ID)
-		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		if count == 0 {
-			assert.Equal("Patient", jobArgs.ResourceType)
-			assert.Equal("", jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-			assert.Equal(50, len(jobArgs.BeneficiaryIDs))
-		} else if count == 1 {
-			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-			assert.Equal("", jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(30), queJob.Priority)
-			assert.Equal(50, len(jobArgs.BeneficiaryIDs))
-		} else {
-			assert.Equal("Coverage", jobArgs.ResourceType)
-			assert.Equal("", jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-			assert.Equal(50, len(jobArgs.BeneficiaryIDs))
-		}
-		count++
-	}
-}
-
-func (s *ModelsTestSuite) TestGetEnqueJobs_AllResourcesTypes_WithSince_Group() {
-	assert := s.Assert()
-
-	j := Job{
-		ACOID:      uuid.Parse(constants.DevACOUUID),
-		RequestURL: "/api/v1/Group/$export",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-	defer s.db.Delete(&j)
-
-	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
-	os.Setenv("PRIORITY_ACO_IDS", "")
-	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
-
-	// This test validates that we can get historical data for new beneficiaries added since date specified
-	// This is only valid for /Group endpoint with _since specified
-	// The CCLF historical data timestamp is set in unit_test.sh
-	since := "2020-02-13T08:00:00.000-05:00"
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient", "ExplanationOfBenefit", "Coverage"}, since, true)
-	assert.Nil(err)
-	assert.NotNil(enqueueJobs)
-	assert.Equal(6, len(enqueueJobs))
-	var count = 0
-	for _, queJob := range enqueueJobs {
-		jobArgs := jobEnqueueArgs{}
-		err := json.Unmarshal(queJob.Args, &jobArgs)
-		if err != nil {
-			s.T().Error(err)
-		}
-		assert.Equal(int(j.ID), jobArgs.ID)
-		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		if count == 0 {
-			assert.Equal("Patient", jobArgs.ResourceType)
-			assert.Equal("", jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-			assert.Equal(10, len(jobArgs.BeneficiaryIDs))
-		} else if count == 1 {
-			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-			assert.Equal("", jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(30), queJob.Priority)
-			assert.Equal(10, len(jobArgs.BeneficiaryIDs))
-		} else if count == 2 {
-			assert.Equal("Coverage", jobArgs.ResourceType)
-			assert.Equal("", jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-			assert.Equal(10, len(jobArgs.BeneficiaryIDs))
-		} else if count == 3 {
-			assert.Equal("Patient", jobArgs.ResourceType)
-			assert.Equal("gt"+since, jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-			assert.Equal(40, len(jobArgs.BeneficiaryIDs))
-		} else if count == 4 {
-			assert.Equal("ExplanationOfBenefit", jobArgs.ResourceType)
-			assert.Equal("gt"+since, jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(30), queJob.Priority)
-			assert.Equal(40, len(jobArgs.BeneficiaryIDs))
-		} else {
-			assert.Equal("Coverage", jobArgs.ResourceType)
-			assert.Equal("gt"+since, jobArgs.Since)
-			assert.NotNil(jobArgs.TransactionTime)
-			assert.Equal(int16(20), queJob.Priority)
-			assert.Equal(40, len(jobArgs.BeneficiaryIDs))
-		}
-		count++
-	}
-}
-
-func (s *ModelsTestSuite) TestGetEnqueJobs_Patient() {
-	assert := s.Assert()
-
-	j := Job{
-		ACOID:      uuid.Parse(constants.DevACOUUID),
-		RequestURL: "/api/v1/Patient/$export?_type=Patient",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-	defer s.db.Delete(&j)
-
-	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
-	os.Setenv("PRIORITY_ACO_IDS", "")
-	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
-
-	since := ""
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
-	assert.Nil(err)
-	assert.NotNil(enqueueJobs)
-	assert.Equal(1, len(enqueueJobs))
-	for _, queJob := range enqueueJobs {
-
-		jobArgs := jobEnqueueArgs{}
-		err := json.Unmarshal(queJob.Args, &jobArgs)
-		if err != nil {
-			s.T().Error(err)
-		}
-		assert.Equal(int(j.ID), jobArgs.ID)
-		assert.Equal(constants.DevACOUUID, jobArgs.ACOID)
-		assert.Equal("Patient", jobArgs.ResourceType)
-		assert.Equal(since, jobArgs.Since)
-		assert.NotNil(jobArgs.TransactionTime)
-		assert.Equal(50, len(jobArgs.BeneficiaryIDs))
-		assert.Equal(int16(20), queJob.Priority)
-	}
-}
-
-func (s *ModelsTestSuite) TestGetEnqueJobs_EOB() {
-	assert := s.Assert()
-
-	j := Job{
-		ACOID:      uuid.Parse(constants.DevACOUUID),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-	defer s.db.Delete(&j)
-
-	since := ""
-	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
-	if err != nil {
-		s.T().Error(err)
+		// Optional methods that can be defined to set/unset
+		// extra settings (e.g. environment variables)
+		setup   func(t *testing.T)
+		cleanup func(t *testing.T)
+	}{
+		{
+			"AllResourcesTypes_WithSince_Patient",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient", "ExplanationOfBenefit", "Coverage"},
+			"2020-02-13T08:00:00.000-05:00",
+			true,
+			50,
+			0, // No new benes because of the since time. CCLFnew == CCLFold
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "gt2020-02-13T08:00:00.000-05:00", 20, 50},
+				expectedJobArgs{"ExplanationOfBenefit", "gt2020-02-13T08:00:00.000-05:00", 30, 50},
+				expectedJobArgs{"Coverage", "gt2020-02-13T08:00:00.000-05:00", 20, 50},
+			},
+			nil,
+			nil,
+		},
+		{
+			"AllResourcesTypes_WithOldSince_Group",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Group/$export", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient", "ExplanationOfBenefit", "Coverage"},
+			"1900-02-13T08:00:00.000-05:00",
+			true,
+			0, // No old benes because of the since time causes no CCLFold to be found
+			50,
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 20, 50},
+				expectedJobArgs{"ExplanationOfBenefit", "", 30, 50},
+				expectedJobArgs{"Coverage", "", 20, 50},
+			},
+			nil,
+			nil,
+		},
+		{
+			"AllResourcesTypes_WithSince_Group",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Group/$export", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient", "ExplanationOfBenefit", "Coverage"},
+			"2020-02-13T08:00:00.000-05:00",
+			true,
+			40, // oldBenes
+			10, // newBenes
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 20, 10},
+				expectedJobArgs{"ExplanationOfBenefit", "", 30, 10},
+				expectedJobArgs{"Coverage", "", 20, 10},
+				expectedJobArgs{"Patient", "gt2020-02-13T08:00:00.000-05:00", 20, 40},
+				expectedJobArgs{"ExplanationOfBenefit", "gt2020-02-13T08:00:00.000-05:00", 30, 40},
+				expectedJobArgs{"Coverage", "gt2020-02-13T08:00:00.000-05:00", 20, 40},
+			},
+			nil,
+			nil,
+		},
+		{
+			"Patient",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=Patient", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Patient"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 20, 50},
+			},
+			nil,
+			nil,
+		},
+		{
+			"ExplanationOfBenefit",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"ExplanationOfBenefit"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			// Distribution based on BCDA_FHIR_MAX_RECORDS_EOB and numBenes
+			[]expectedJobArgs{
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 15},
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 15},
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 15},
+				expectedJobArgs{"ExplanationOfBenefit", "", 100, 5},
+			},
+			func(t *testing.T) {
+				err := os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "15")
+				assert.NoError(t, err)
+			},
+			func(t *testing.T) {
+				err := os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
+				assert.NoError(t, err)
+			},
+		},
+		{
+			"Coverage",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=Coverage", Status: "Pending"},
+			"A9994",
+			"",
+			[]string{"Coverage"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			// Distribution based on BCDA_FHIR_MAX_RECORDS_COVERAGE and numBenes
+			[]expectedJobArgs{
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+				expectedJobArgs{"Coverage", "", 20, 5},
+			},
+			func(t *testing.T) {
+				err := os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "5")
+				assert.NoError(t, err)
+			},
+			func(t *testing.T) {
+				err := os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+				assert.NoError(t, err)
+			},
+		},
+		{
+			"Patient_WithHighPriorityACOs",
+			Job{ACOID: uuid.Parse(constants.DevACOUUID), RequestURL: "/api/v1/Patient/$export?_type=Patient", Status: "Pending"},
+			"A9994",
+			"A9990,A9991,A9992,A9993,A9994",
+			[]string{"Patient"},
+			"",
+			false,
+			50,
+			0, // no new benes because we're retrieveNewBenes == false
+			[]expectedJobArgs{
+				expectedJobArgs{"Patient", "", 10, 50}, // Lower priority because A9994 is the last entry in the priority list
+			},
+			nil,
+			nil,
+		},
 	}
 
-	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
-	os.Setenv("PRIORITY_ACO_IDS", "")
-	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			// Need to make sure we start with a fresh mock instance each time.
+			// That way expectations are cleared.
+			s.service = &MockService{}
+			serviceInstance = s.service
 
-	enqueueJobs, err := j.GetEnqueJobs([]string{"ExplanationOfBenefit"}, since, false)
-	assert.Nil(err)
-	assert.NotNil(enqueueJobs)
-	assert.Equal(4, len(enqueueJobs))
-	enqueuedBenes := 0
-	for _, queJob := range enqueueJobs {
+			s.db.Save(&tt.j)
+			defer s.db.Delete(&tt.j)
 
-		jobArgs := jobEnqueueArgs{}
-		err := json.Unmarshal(queJob.Args, &jobArgs)
-		if err != nil {
-			s.T().Error(err)
-		}
-		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
-		assert.True(len(jobArgs.BeneficiaryIDs) <= 15)
-		assert.Equal(since, jobArgs.Since)
-		assert.NotNil(jobArgs.TransactionTime)
-		assert.Equal(int16(100), queJob.Priority)
-	}
-	assert.Equal(50, enqueuedBenes)
-	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
-}
+			if tt.setup != nil {
+				tt.setup(t)
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup(t)
+			}
 
-func (s *ModelsTestSuite) TestGetEnqueJobs_Coverage() {
-	assert := s.Assert()
+			priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
+			os.Setenv("PRIORITY_ACO_IDS", tt.priorityACOs)
+			defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
 
-	j := Job{
-		ACOID:      uuid.Parse(constants.DevACOUUID),
-		RequestURL: "/api/v1/Patient/$export?_type=Coverage",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-	defer s.db.Delete(&j)
-	since := ""
+			// NOTE: We can have some ID collisions but that's fine
+			oldBenes := make([]*CCLFBeneficiary, 0, tt.numOldBenes)
+			for i := 0; i < tt.numOldBenes; i++ {
+				oldBenes = append(oldBenes, &CCLFBeneficiary{Model: gorm.Model{ID: uint(random.Uint64())}})
+			}
 
-	err := os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "5")
-	if err != nil {
-		s.T().Error(err)
-	}
+			newBenes := make([]*CCLFBeneficiary, 0, tt.numNewBenes)
+			for i := 0; i < tt.numNewBenes; i++ {
+				newBenes = append(newBenes, &CCLFBeneficiary{Model: gorm.Model{ID: uint(random.Uint64())}})
+			}
 
-	priorityACOsDefault := os.Getenv("PRIORITY_ACO_IDS")
-	os.Setenv("PRIORITY_ACO_IDS", "")
-	defer os.Setenv("PRIORITY_ACO_IDS", priorityACOsDefault)
+			if tt.retrieveNewBenes {
+				sinceTime, err := time.Parse(time.RFC3339Nano, tt.since)
+				assert.NoError(t, err)
+				s.service.On("GetNewAndExistingBeneficiaries", tt.cmsID, sinceTime).Return(newBenes, oldBenes, nil)
+			} else {
+				s.service.On("GetBeneficiaries", tt.cmsID).Return(oldBenes, nil)
+			}
 
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Coverage"}, since, false)
-	assert.Nil(err)
-	assert.NotNil(enqueueJobs)
-	assert.Equal(10, len(enqueueJobs))
-	enqueuedBenes := 0
-	for _, queJob := range enqueueJobs {
+			enqueueJobs, err := tt.j.GetEnqueJobs(tt.resourceTypes, tt.since, tt.retrieveNewBenes)
+			assert.Nil(t, err)
+			assert.Equal(t, len(tt.expectedJobArgs), len(enqueueJobs))
 
-		jobArgs := jobEnqueueArgs{}
-		err := json.Unmarshal(queJob.Args, &jobArgs)
-		if err != nil {
-			s.T().Error(err)
-		}
-		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
-		assert.True(len(jobArgs.BeneficiaryIDs) <= 5)
-		assert.Equal(since, jobArgs.Since)
-		assert.NotNil(jobArgs.TransactionTime)
-		assert.Equal(int16(20), queJob.Priority)
-	}
-	assert.Equal(50, enqueuedBenes)
-	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
-}
+			for i, expected := range tt.expectedJobArgs {
+				jobArgs := jobEnqueueArgs{}
+				err := json.Unmarshal(enqueueJobs[i].Args, &jobArgs)
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				assert.Equal(t, expected.resourceType, jobArgs.ResourceType)
+				assert.Equal(t, expected.since, jobArgs.Since)
+				assert.Equal(t, expected.priority, enqueueJobs[i].Priority)
+				assert.Equal(t, expected.numBenes, len(jobArgs.BeneficiaryIDs))
+			}
 
-func (s *ModelsTestSuite) TestGetEnqueJobs_WithHighPriorityACOs() {
-	assert := s.Assert()
-
-	j := Job{
-		ACOID:      uuid.Parse(constants.DevACOUUID),
-		RequestURL: "/api/v1/Patient/$export?_type=Patient",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-	defer s.db.Delete(&j)
-
-	since := ""
-	enqueueJobs, err := j.GetEnqueJobs([]string{"Patient"}, since, false)
-	assert.Nil(err)
-	assert.NotNil(enqueueJobs)
-	enqueuedBenes := 0
-	for _, queJob := range enqueueJobs {
-
-		jobArgs := jobEnqueueArgs{}
-		err := json.Unmarshal(queJob.Args, &jobArgs)
-		if err != nil {
-			s.T().Error(err)
-		}
-		enqueuedBenes += len(jobArgs.BeneficiaryIDs)
-		assert.Equal(since, jobArgs.Since)
-		assert.NotNil(jobArgs.TransactionTime)
-		assert.Equal(int16(10), queJob.Priority)
+			s.service.AssertExpectations(t)
+		})
 	}
 }
-
 func (s *ModelsTestSuite) TestJobStatusMessage() {
 	j := Job{Status: "In Progress", JobCount: 25, CompletedJobCount: 6}
 	assert.Equal(s.T(), "In Progress (24%)", j.StatusMessage())
@@ -833,280 +742,6 @@ func (s *ModelsTestSuite) TestGetMaxBeneCount() {
 	assert.EqualError(err, "invalid request type")
 }
 
-func (s *ModelsTestSuite) TestGetBeneficiaries() {
-	assert := s.Assert()
-	var aco, smallACO, mediumACO, largeACO ACO
-	acoUUID := uuid.Parse(constants.DevACOUUID)
-
-	err := s.db.Find(&aco, "UUID = ?", acoUUID).Error
-	assert.Nil(err)
-	beneficiaries, err := aco.GetBeneficiaries(true)
-	assert.Nil(err)
-	assert.NotNil(beneficiaries)
-	assert.Equal(50, len(beneficiaries))
-
-	// small ACO has 10 benes
-	acoUUID = uuid.Parse(constants.SmallACOUUID)
-	err = s.db.Debug().Find(&smallACO, "UUID = ?", acoUUID).Error
-	assert.Nil(err)
-	beneficiaries, err = smallACO.GetBeneficiaries(true)
-	assert.Nil(err)
-	assert.NotNil(beneficiaries)
-	assert.Equal(10, len(beneficiaries))
-
-	// Medium ACO has 25 benes
-	acoUUID = uuid.Parse(constants.MediumACOUUID)
-	err = s.db.Find(&mediumACO, "UUID = ?", acoUUID).Error
-	assert.Nil(err)
-	beneficiaries, err = mediumACO.GetBeneficiaries(true)
-	assert.Nil(err)
-	assert.NotNil(beneficiaries)
-	assert.Equal(25, len(beneficiaries))
-
-	// Large ACO has 100 benes
-	acoUUID = uuid.Parse(constants.LargeACOUUID)
-	err = s.db.Find(&largeACO, "UUID = ?", acoUUID).Error
-	assert.Nil(err)
-	beneficiaries, err = largeACO.GetBeneficiaries(true)
-	assert.Nil(err)
-	assert.NotNil(beneficiaries)
-	assert.Equal(100, len(beneficiaries))
-
-}
-
-func (s *ModelsTestSuite) TestGetBeneficiaries_DuringETL() {
-	acoCMSID := "T0000"
-	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
-	err := s.db.Save(&aco).Error
-	if err != nil {
-		s.FailNow("Failed to save ACO", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&aco)
-
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now().Add(-24 * time.Hour), ImportStatus: constants.ImportComplete}
-	err = s.db.Save(&cclfFile).Error
-	if err != nil {
-		s.FailNow("Failed to save CCLF file", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&cclfFile)
-
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, HICN: "bene1hicn"}
-	err = s.db.Save(&bene1).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene1)
-
-	// same aco newer file - in progress status
-	cclfFileInProgress := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now(), ImportStatus: constants.ImportInprog}
-	err = s.db.Save(&cclfFileInProgress).Error
-	if err != nil {
-		s.FailNow("Failed to save CCLF file", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&cclfFileInProgress)
-
-	bene2 := CCLFBeneficiary{FileID: cclfFileInProgress.ID, HICN: "bene2hicn"}
-	err = s.db.Save(&bene2).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene2)
-
-	// same aco newer file - failed status
-	cclfFileFailed := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, Timestamp: time.Now(), ImportStatus: constants.ImportFail}
-	err = s.db.Save(&cclfFileFailed).Error
-	if err != nil {
-		s.FailNow("Failed to save CCLF file", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&cclfFileFailed)
-
-	bene3 := CCLFBeneficiary{FileID: cclfFileFailed.ID, HICN: "bene2hicn"}
-	err = s.db.Save(&bene3).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene3)
-
-	result, err := aco.GetBeneficiaries(false)
-	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result, 1)
-	assert.Equal(s.T(), cclfFile.ID, result[0].FileID)
-}
-
-func (s *ModelsTestSuite) TestGetBeneficiaries_Unsuppressed() {
-	acoCMSID := "T0000"
-	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
-	err := s.db.Save(&aco).Error
-	if err != nil {
-		s.FailNow("Failed to save ACO", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&aco)
-
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
-	err = s.db.Save(&cclfFile).Error
-	if err != nil {
-		s.FailNow("Failed to save CCLF file", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&cclfFile)
-
-	// Beneficiary 1: preference indicator = N, effective date = now - 48 hours
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi1"}
-	err = s.db.Save(&bene1).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene1)
-
-	bene1Suppression := Suppression{MBI: "mbi1", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
-	err = s.db.Save(&bene1Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene1Suppression)
-
-	// Beneficiary 2: preference indicator = Y, effective date = now - 24 hours
-	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi2"}
-	err = s.db.Save(&bene2).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene2)
-
-	bene2Suppression := Suppression{MBI: "mbi2", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
-	err = s.db.Save(&bene2Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene2Suppression)
-
-	// Beneficiary 3: no suppression record
-	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi3"}
-	err = s.db.Save(&bene3).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene3)
-
-	// Beneficiary 4: preference indicator = N, effective date = now + 1 hour
-	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi4"}
-	err = s.db.Save(&bene4).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene4)
-
-	bene4Suppression := Suppression{MBI: "mbi4", PrefIndicator: "N", EffectiveDt: time.Now().Add(1 * time.Hour)}
-	err = s.db.Save(&bene4Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene4Suppression)
-
-	// Beneficiary 5: two suppression records, preference indicators = Y, N, effective dates = now - 72, 24 hours
-	bene5 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi5"}
-	err = s.db.Save(&bene5).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene5)
-
-	bene5Suppression1 := Suppression{MBI: "mbi5", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-72 * time.Hour)}
-	err = s.db.Save(&bene5Suppression1).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene5Suppression1)
-
-	bene5Suppression2 := Suppression{MBI: "mbi5", PrefIndicator: "N", EffectiveDt: time.Now().Add(-24 * time.Hour)}
-	err = s.db.Save(&bene5Suppression2).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene5Suppression2)
-
-	// Beneficiary 6: preference indicator = blank, effective date = now - 12 hours
-	bene6 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi6"}
-	err = s.db.Save(&bene6).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene6)
-
-	bene6Suppression := Suppression{MBI: "mbi6", PrefIndicator: "", EffectiveDt: time.Now().Add(-12 * time.Hour)}
-	err = s.db.Save(&bene6Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene6Suppression)
-
-	// Beneficiary 7: three suppression records: preference indicators = Y, N, Y; effective dates = now - 168, 96, 24 hours
-	bene7 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi7"}
-	err = s.db.Save(&bene7).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene7)
-
-	bene7Suppression1 := Suppression{MBI: "mbi7", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-168 * time.Hour)}
-	err = s.db.Save(&bene7Suppression1).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene7Suppression1)
-
-	bene7Suppression2 := Suppression{MBI: "mbi7", PrefIndicator: "N", EffectiveDt: time.Now().Add(-96 * time.Hour)}
-	err = s.db.Save(&bene7Suppression2).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene7Suppression2)
-
-	bene7Suppression3 := Suppression{MBI: "mbi7", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-24 * time.Hour)}
-	err = s.db.Save(&bene7Suppression3).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene7Suppression3)
-
-	// Beneficiary 8: three suppression records: preference indicators = Y, N, blank; effective dates = now - 96, 48, 24 hours
-	bene8 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "mbi8"}
-	err = s.db.Save(&bene8).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene8)
-
-	bene8Suppression1 := Suppression{MBI: "mbi8", PrefIndicator: "Y", EffectiveDt: time.Now().Add(-96 * time.Hour)}
-	err = s.db.Save(&bene8Suppression1).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene8Suppression1)
-
-	bene8Suppression2 := Suppression{MBI: "mbi8", PrefIndicator: "N", EffectiveDt: time.Now().Add(-48 * time.Hour)}
-	err = s.db.Save(&bene8Suppression2).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene8Suppression2)
-
-	bene8Suppression3 := Suppression{MBI: "mbi8", PrefIndicator: "", EffectiveDt: time.Now().Add(-24 * time.Hour)}
-	err = s.db.Save(&bene8Suppression3).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene8Suppression3)
-
-	result, err := aco.GetBeneficiaries(false)
-	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result, 5)
-	assert.Equal(s.T(), bene2.ID, result[0].ID)
-	assert.Equal(s.T(), bene3.ID, result[1].ID)
-	assert.Equal(s.T(), bene4.ID, result[2].ID)
-	assert.Equal(s.T(), bene6.ID, result[3].ID)
-	assert.Equal(s.T(), bene7.ID, result[4].ID)
-}
-
 func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	assert := s.Assert()
 	cclfBeneficiary := CCLFBeneficiary{MBI: "MBI"}
@@ -1137,180 +772,4 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 
 	os.Unsetenv("PATIENT_IDENTIFIER_MODE")
-}
-
-func (s *ModelsTestSuite) TestSuppressionLookbackPeriod() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	acoCMSID := "T0000"
-	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
-	err := s.db.Save(&aco).Error
-	if err != nil {
-		s.FailNow("Failed to save ACO", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&aco)
-
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
-	err = s.db.Save(&cclfFile).Error
-	if err != nil {
-		s.FailNow("Failed to save CCLF file", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&cclfFile)
-
-	// Beneficiary 1
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene1_mbi"}
-	err = s.db.Save(&bene1).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene1)
-
-	// Beneficiary 2
-	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene2_mbi"}
-	err = s.db.Save(&bene2).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene2)
-
-	// Beneficiary 3
-	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene3_mbi"}
-	err = s.db.Save(&bene3).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene3)
-
-	// Beneficiary 4
-	bene4 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene4_mbi"}
-	err = s.db.Save(&bene4).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene4)
-
-	// Suppressed bene from 59 days ago. Will not be included when GetBeneficiaries is called.
-	bene1Suppression := Suppression{MBI: "bene1_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 59) * time.Hour)}
-	err = s.db.Save(&bene1Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene1Suppression)
-
-	// Suppressed bene from 59 days and 23 ago. Will not be included when GetBeneficiaries is called.
-	bene2Suppression := Suppression{MBI: "bene2_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24*59 + 23) * time.Hour)}
-	err = s.db.Save(&bene2Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene2Suppression)
-
-	// Suppressed bene from 60 days ago. Will be included when GetBeneficiaries is called.
-	bene3Suppression := Suppression{MBI: "bene3_bbID", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 60) * time.Hour)}
-	err = s.db.Save(&bene3Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene3Suppression)
-
-	// Suppressed bene from 61 days ago. Will be included when GetBeneficiaries is called.
-	bene4Suppression := Suppression{MBI: "bene4_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 61) * time.Hour)}
-	err = s.db.Save(&bene4Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene4Suppression)
-
-	result, err := aco.GetBeneficiaries(false)
-	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result, 2)
-	assert.Equal(s.T(), bene3.ID, result[0].ID)
-	assert.Equal(s.T(), bene4.ID, result[1].ID)
-}
-
-func (s *ModelsTestSuite) TestChangingSuppressionPeriod() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	acoCMSID := "T0000"
-	aco := ACO{UUID: uuid.NewRandom(), CMSID: &acoCMSID}
-	err := s.db.Save(&aco).Error
-	if err != nil {
-		s.FailNow("Failed to save ACO", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&aco)
-
-	cclfFile := CCLFFile{CCLFNum: 8, ACOCMSID: acoCMSID, ImportStatus: constants.ImportComplete}
-	err = s.db.Save(&cclfFile).Error
-	if err != nil {
-		s.FailNow("Failed to save CCLF file", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&cclfFile)
-
-	// Beneficiary 1
-	bene1 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene1_mbi"}
-	err = s.db.Save(&bene1).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene1)
-
-	// Beneficiary 2
-	bene2 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene2_mbi"}
-	err = s.db.Save(&bene2).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene2)
-
-	// Beneficiary 3
-	bene3 := CCLFBeneficiary{FileID: cclfFile.ID, MBI: "bene3_mbi"}
-	err = s.db.Save(&bene3).Error
-	if err != nil {
-		s.FailNow("Failed to save beneficiary", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene3)
-
-	// Suppressed bene from 50 days ago
-	bene1Suppression := Suppression{MBI: "bene1_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 50) * time.Hour)}
-	err = s.db.Save(&bene1Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene1Suppression)
-
-	// Suppressed bene from 70 days ago
-	bene2Suppression := Suppression{MBI: "bene2_mbi", PrefIndicator: "N", EffectiveDt: time.Now().Add(-(24 * 70) * time.Hour)}
-	err = s.db.Save(&bene2Suppression).Error
-	if err != nil {
-		s.FailNow("Failed to save suppression", err.Error())
-	}
-	defer s.db.Unscoped().Delete(&bene2Suppression)
-
-	result1, err := aco.GetBeneficiaries(false)
-	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result1, 2)
-	assert.Equal(s.T(), bene2.ID, result1[0].ID)
-	assert.Equal(s.T(), bene3.ID, result1[1].ID)
-
-	// Set BCDA_SUPPRESSION_LOOKBACK to a different value getting different results. Reset value after this test runs
-	suppressionLookbackDefault := os.Getenv("BCDA_SUPPRESSION_LOOKBACK_DAYS")
-	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "")
-
-	result2, err := aco.GetBeneficiaries(false)
-	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result2, 2)
-	assert.Equal(s.T(), result1, result2)
-	assert.Equal(s.T(), bene2.ID, result2[0].ID)
-	assert.Equal(s.T(), bene3.ID, result2[1].ID)
-
-	os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", "100")
-	defer os.Setenv("BCDA_SUPPRESSION_LOOKBACK_DAYS", suppressionLookbackDefault)
-
-	result3, err := aco.GetBeneficiaries(false)
-	assert.Nil(s.T(), err)
-	assert.Len(s.T(), result3, 1)
-	assert.NotEqual(s.T(), result1, result3)
-	assert.Equal(s.T(), bene3.ID, result3[0].ID)
 }
