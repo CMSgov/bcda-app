@@ -10,8 +10,6 @@ services:
       - "5433:5432"
     volumes:
       - ./db/worker.sql:/docker-entrypoint-initdb.d/schema.sql
-    depends_on:
-      - documentation
   db:
     image: postgres
     environment:
