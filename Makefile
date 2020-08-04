@@ -15,7 +15,7 @@ package:
 LINT_TIMEOUT ?= 3m
 lint:
 	docker-compose -f docker-compose.test.yml build tests
-	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=$(LINT_TIMEOUT) --verbose --concurrency=1
+	docker-compose -f docker-compose.test.yml run --rm tests golangci-lint run --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
 # The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test
