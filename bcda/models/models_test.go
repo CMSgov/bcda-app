@@ -748,8 +748,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	bbc := testUtils.BlueButtonClient{}
 	bbc.MBI = &cclfBeneficiary.MBI
 
-	patientIdMode := "MBI_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", "BB_VALUE"))
 
 	cclfBeneficiary.BlueButtonID = ""
 	// New never seen before mbi, asks the mock blue button client for the value
@@ -767,6 +766,4 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	// Should be making two calls to BB for the MBI_MODE attemptsm, but this number will be four with the earlier test in this method.
 	// This is due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
-
-	// os.Unsetenv("PATIENT_IDENTIFIER_MODE")
 }

@@ -482,7 +482,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
 	hashedIdentifier := client.HashIdentifier(modelIdentifier)
 
-	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier, patientIdMode)
+	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier)
 	if err != nil {
 		return "", err
 	}

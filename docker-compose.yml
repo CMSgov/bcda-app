@@ -62,7 +62,6 @@ services:
       - SSAS_USE_TLS=false
       - SSAS_URL=${SSAS_URL}
       - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
-      - PATIENT_IDENTIFIER_MODE=MBI_MODE
       - BCDA_ENABLE_NEW_GROUP=true
       - PRIORITY_ACO_IDS=A9990,A9991,A9992,A9993,A9994
       - USER_GUIDE_LOC=https://stage.bcda.cms.gov
@@ -90,7 +89,6 @@ services:
       - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-cert.pem
       - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
-      - PATIENT_IDENTIFIER_MODE=MBI_MODE
 # Contained in env_file above
 #     - BB_HASH_ITER
 #     - BB_HASH_PEPPER

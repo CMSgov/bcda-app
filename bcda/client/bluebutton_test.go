@@ -358,7 +358,7 @@ func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
 		{
 			"GetPatientByIdentifierHash",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
-				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier", "patientIdMode")
+				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
 			},
 		},
 	}
