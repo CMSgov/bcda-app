@@ -112,11 +112,7 @@ func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, t
 
 func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error) {
 	params := GetDefaultParams()
-
-	identifier := "hicn-hash"
-	if patientIdMode == "MBI_MODE" {
-		identifier = "mbi-hash"
-	}
+	identifier := "mbi-hash"
 
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
 	params.Set("identifier", fmt.Sprintf("https://bluebutton.cms.gov/resources/identifier/%s|%v", identifier, hashedIdentifier))
