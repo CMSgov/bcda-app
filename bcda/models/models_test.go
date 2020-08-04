@@ -748,9 +748,6 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	bbc := testUtils.BlueButtonClient{}
 	bbc.MBI = &cclfBeneficiary.MBI
 
-	// set to mbi mode
-	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "MBI_MODE")
-	assert.Nil(err)
 	patientIdMode := "MBI_MODE"
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
 
@@ -771,5 +768,5 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	// This is due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 
-	os.Unsetenv("PATIENT_IDENTIFIER_MODE")
+	// os.Unsetenv("PATIENT_IDENTIFIER_MODE")
 }
