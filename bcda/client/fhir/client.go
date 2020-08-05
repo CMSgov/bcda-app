@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
-	"github.com/sirupsen/logrus"
 )
 
 type Client interface {
@@ -22,18 +21,17 @@ type Client interface {
 
 type BundleEntry map[string]interface{}
 
-func NewClient(httpClient *http.Client, logger *logrus.Logger, pageSize int) Client {
+func NewClient(httpClient *http.Client, pageSize int) Client {
 	if pageSize == 0 {
-		return &singleClient{httpClient, logger}
+		return &singleClient{httpClient}
 	} else {
-		return &client{httpClient, logger, strconv.Itoa(pageSize)}
+		return &client{httpClient, strconv.Itoa(pageSize)}
 	}
 }
 
 // singleClient ensures that entire bundle response is read in a single response (i.e. no paging)
 type singleClient struct {
 	httpClient *http.Client
-	logger     *logrus.Logger
 }
 
 // Ensure singleClient satisfies the interface
@@ -46,7 +44,7 @@ func (c *singleClient) DoBundleRequest(req *http.Request) (bundle *models.Bundle
 	vals.Del("_count")
 	req.URL.RawQuery = vals.Encode()
 
-	b, err := getBundleResponse(c.httpClient, c.logger, req)
+	b, err := getBundleResponse(c.httpClient, req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get bundle response: %w", err)
 	}
@@ -54,7 +52,7 @@ func (c *singleClient) DoBundleRequest(req *http.Request) (bundle *models.Bundle
 }
 
 func (c *singleClient) DoRaw(req *http.Request) (string, error) {
-	resp, err := getResponse(c.httpClient, c.logger, req)
+	resp, err := getResponse(c.httpClient, req)
 	if err != nil {
 		return "", fmt.Errorf("failed to get response: %w", err)
 	}
@@ -64,7 +62,6 @@ func (c *singleClient) DoRaw(req *http.Request) (string, error) {
 // client uses paging (controlled by pageSize) to generate the entire bundle response.
 type client struct {
 	httpClient *http.Client
-	logger     *logrus.Logger
 	pageSize   string
 }
 
@@ -80,7 +77,7 @@ func (c *client) DoBundleRequest(req *http.Request) (bundle *models.Bundle, next
 	vals.Set("_count", c.pageSize)
 	req.URL.RawQuery = vals.Encode()
 
-	b, err := getBundleResponse(c.httpClient, c.logger, req)
+	b, err := getBundleResponse(c.httpClient, req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get bundle response: %w", err)
 	}
@@ -110,15 +107,15 @@ func (c *client) DoBundleRequest(req *http.Request) (bundle *models.Bundle, next
 }
 
 func (c *client) DoRaw(req *http.Request) (string, error) {
-	resp, err := getResponse(c.httpClient, c.logger, req)
+	resp, err := getResponse(c.httpClient, req)
 	if err != nil {
 		return "", fmt.Errorf("failed to get response: %w", err)
 	}
 	return string(resp), nil
 }
 
-func getBundleResponse(c *http.Client, logger *logrus.Logger, req *http.Request) (*models.Bundle, error) {
-	body, err := getResponse(c, logger, req)
+func getBundleResponse(c *http.Client, req *http.Request) (*models.Bundle, error) {
+	body, err := getResponse(c, req)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +128,7 @@ func getBundleResponse(c *http.Client, logger *logrus.Logger, req *http.Request)
 	return &b, nil
 }
 
-func getResponse(c *http.Client, logger *logrus.Logger, req *http.Request) (body []byte, err error) {
-	go logRequest(logger, req)
+func getResponse(c *http.Client, req *http.Request) (body []byte, err error) {
 	resp, err := c.Do(req)
 	if resp != nil {
 		/* #nosec -- it's OK for us to ignore errors when attempt to cleanup response body */
@@ -140,7 +136,6 @@ func getResponse(c *http.Client, logger *logrus.Logger, req *http.Request) (body
 			_, _ = io.Copy(ioutil.Discard, resp.Body)
 			resp.Body.Close()
 		}()
-		logResponse(logger, req, resp)
 	}
 	if err != nil {
 		return nil, err
@@ -158,25 +153,4 @@ func getResponse(c *http.Client, logger *logrus.Logger, req *http.Request) (body
 	}
 
 	return body, nil
-}
-
-func logRequest(logger *logrus.Logger, req *http.Request) {
-	logger.WithFields(logrus.Fields{
-		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
-		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
-		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
-		"job_id":      req.Header.Get("BCDA-JOBID"),
-		"cms_id":      req.Header.Get("BCDA-CMSID"),
-	}).Infoln("request")
-}
-
-func logResponse(logger *logrus.Logger, req *http.Request, resp *http.Response) {
-	logger.WithFields(logrus.Fields{
-		"resp_code":   resp.StatusCode,
-		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
-		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
-		"bb_uri":      req.Header.Get("BlueButton-OriginalUrl"),
-		"job_id":      req.Header.Get("BCDA-JOBID"),
-		"cms_id":      req.Header.Get("BCDA-CMSID"),
-	}).Infoln("response")
 }

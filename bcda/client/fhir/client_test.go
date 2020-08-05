@@ -14,11 +14,8 @@ import (
 	"testing"
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
-
-var logger = logrus.New()
 
 func TestSingleRequestBundle(t *testing.T) {
 	r := &requestHandler{
@@ -29,7 +26,7 @@ func TestSingleRequestBundle(t *testing.T) {
 	s := httptest.NewServer(r)
 	defer s.Close()
 
-	client := NewClient(http.DefaultClient, logger, 0)
+	client := NewClient(http.DefaultClient, 0)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/bundleFull.json", s.URL), nil)
 	assert.NoError(t, err)
@@ -57,7 +54,7 @@ func TestMultipleRequestBundle(t *testing.T) {
 	assert.NoError(t, err)
 	testHost := u.Host
 
-	client := NewClient(http.DefaultClient, logger, count)
+	client := NewClient(http.DefaultClient, count)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/bundlePartial1.json", s.URL), nil)
 	assert.NoError(t, err)
@@ -96,7 +93,7 @@ func TestRawRequest(t *testing.T) {
 	}))
 	defer s.Close()
 
-	client := NewClient(http.DefaultClient, logger, 0)
+	client := NewClient(http.DefaultClient,  0)
 
 	req, err := http.NewRequest("GET", s.URL, nil)
 	assert.NoError(t, err)

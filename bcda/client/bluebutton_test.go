@@ -412,8 +412,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.Equal(t, "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
 
 				assert.Equal(t, "", req.Header.Get("keep-alive"))
-				assert.Equal(t, "https", req.Header.Get("X-Forwarded-Proto"))
-				assert.Equal(t, "", req.Header.Get("X-Forwarded-Host"))
+				assert.Nil(t, req.Header.Values("X-Forwarded-Proto"))
+				assert.Nil(t, req.Header.Values("X-Forwarded-Host"))
 
 				assert.True(t, strings.HasSuffix(req.Header.Get("BlueButton-OriginalUrl"), req.URL.String()),
 					"%s does not end with %s", req.Header.Get("BlueButton-OriginalUrl"), req.URL.String())

@@ -108,8 +108,9 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 		timeout = 500
 	}
 
-	httpClient := &http.Client{Transport: transport, Timeout: time.Duration(timeout) * time.Millisecond}
-	client := fhir.NewClient(httpClient, logger, pageSize)
+	hl := &httpLogger{transport, logger}
+	httpClient := &http.Client{Transport: hl, Timeout: time.Duration(timeout) * time.Millisecond}
+	client := fhir.NewClient(httpClient, pageSize)
 	maxTries := uint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
 	retryInterval := time.Duration(utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)) * time.Millisecond
 	return &BlueButtonClient{client, maxTries, retryInterval}, nil
@@ -278,8 +279,6 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("BlueButton-OriginalQueryId", reqID.String())
 	req.Header.Add("BlueButton-OriginalQueryCounter", "1")
 	req.Header.Add("keep-alive", "")
-	req.Header.Add("X-Forwarded-Proto", "https")
-	req.Header.Add("X-Forwarded-Host", "")
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
 	req.Header.Add("BCDA-JOBID", jobID)
@@ -326,4 +325,39 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 	if len(since) > 0 && strings.HasPrefix(since, "gt") {
 		params.Add("_lastUpdated", since)
 	}
+}
+
+type httpLogger struct {
+	t *http.Transport
+	l *logrus.Logger
+}
+
+func (h *httpLogger) RoundTrip(req *http.Request) (*http.Response, error) {
+	go h.logRequest(req)
+	resp, err := h.t.RoundTrip(req)
+	if resp != nil {
+		h.logResponse(req, resp)
+	}
+	return resp, err
+}
+
+func (h *httpLogger) logRequest(req *http.Request) {
+	h.l.WithFields(logrus.Fields{
+		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
+		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+		"bb_uri":      req.URL.String(),
+		"job_id":      req.Header.Get("BCDA-JOBID"),
+		"cms_id":      req.Header.Get("BCDA-CMSID"),
+	}).Infoln("request")
+}
+
+func (h *httpLogger) logResponse(req *http.Request, resp *http.Response) {
+	h.l.WithFields(logrus.Fields{
+		"resp_code":   resp.StatusCode,
+		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
+		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
+		"bb_uri":      req.URL.String(),
+		"job_id":      req.Header.Get("BCDA-JOBID"),
+		"cms_id":      req.Header.Get("BCDA-CMSID"),
+	}).Infoln("response")
 }

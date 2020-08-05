@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   queue:
@@ -44,10 +44,10 @@ services:
       - BB_CLIENT_CERT_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-cert.pem
       - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
-# Contained in env_file above
-#     - BB_HASH_ITER
-#     - BB_HASH_PEPPER
-#     - BB_SERVER_LOCATION
+      # Contained in env_file above
+      #     - BB_HASH_ITER
+      #     - BB_HASH_PEPPER
+      #     - BB_SERVER_LOCATION
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
       - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
@@ -68,7 +68,7 @@ services:
       - USER_GUIDE_LOC=https://stage.bcda.cms.gov
       - CCLF_CUTOFF_DATE_DAYS=0 # Set to 0 so we allow all CCLF files to be considered.
     volumes:
-     - .:/go/src/github.com/CMSgov/bcda-app
+      - .:/go/src/github.com/CMSgov/bcda-app
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -91,12 +91,13 @@ services:
       - BB_CLIENT_KEY_FILE=/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted/bfd-dev-test-key.pem
       - BB_CHECK_CERT=false
       - PATIENT_IDENTIFIER_MODE=MBI_MODE
-# Contained in env_file above
-#     - BB_HASH_ITER
-#     - BB_HASH_PEPPER
-#     - BB_SERVER_LOCATION
+      # Contained in env_file above
+      #     - BB_HASH_ITER
+      #     - BB_HASH_PEPPER
+      #     - BB_SERVER_LOCATION
       - BB_TIMEOUT_MS=10000
       - WORKER_POOL_SIZE=3
+      - BB_CLIENT_PAGE_SIZE=50
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
     depends_on:
@@ -106,7 +107,7 @@ services:
       context: .
       dockerfile: Dockerfiles/Dockerfile.documentation
     volumes:
-    - .:/go/src/github.com/CMSgov/bcda-app
+      - .:/go/src/github.com/CMSgov/bcda-app
   ssas:
     build:
       context: .
