@@ -243,7 +243,7 @@ func (s *BBRequestTestSuite) TestGetMetadata_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash() {
-	p, err := s.bbClient.GetPatientByIdentifierHash("hashedIdentifier", "patientIdMode")
+	p, err := s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
 	assert.Nil(s.T(), err)
 	assert.Contains(s.T(), p, `"id": "20000000000001"`)
 }
