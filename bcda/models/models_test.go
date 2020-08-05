@@ -744,43 +744,15 @@ func (s *ModelsTestSuite) TestGetMaxBeneCount() {
 
 func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	assert := s.Assert()
-	cclfBeneficiary := CCLFBeneficiary{HICN: "HICN", MBI: "MBI"}
+	cclfBeneficiary := CCLFBeneficiary{MBI: "MBI"}
 	bbc := testUtils.BlueButtonClient{}
-	bbc.HICN = &cclfBeneficiary.HICN
 	bbc.MBI = &cclfBeneficiary.MBI
 
-	// set to hicn mode
-	err := os.Setenv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
-	assert.Nil(err)
-	patientIdMode := "HICN_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.HICN), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-
-	// New never seen before hicn, asks the mock blue button client for the value
-	blueButtonID, err := cclfBeneficiary.GetBlueButtonID(&bbc)
-	assert.Nil(err)
-	assert.Equal("BB_VALUE", blueButtonID)
-
-	// The object has a BB ID set on it already, but we still ask mock blue button client for the value
-	// We should receive the BB_VALUE since we are ignoring cached values
-	cclfBeneficiary.BlueButtonID = "LOCAL_VAL"
-	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
-	assert.Nil(err)
-	assert.Equal("BB_VALUE", blueButtonID)
-
-	// Should be making two calls to BB for all attempts, due to the fact that we are not relying on cached identifiers
-	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
-
-	// set to mbi mode
-	err = os.Setenv("PATIENT_IDENTIFIER_MODE", "MBI_MODE")
-	assert.Nil(err)
-	patientIdMode = "MBI_MODE"
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), patientIdMode).Return(bbc.GetData("Patient", "BB_VALUE"))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", "BB_VALUE"))
 
 	cclfBeneficiary.BlueButtonID = ""
 	// New never seen before mbi, asks the mock blue button client for the value
-	blueButtonID, err = cclfBeneficiary.GetBlueButtonID(&bbc)
+	blueButtonID, err := cclfBeneficiary.GetBlueButtonID(&bbc)
 	assert.Nil(err)
 	assert.Equal("BB_VALUE", blueButtonID)
 
@@ -793,7 +765,5 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 
 	// Should be making two calls to BB for the MBI_MODE attemptsm, but this number will be four with the earlier test in this method.
 	// This is due to the fact that we are not relying on cached identifiers
-	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 4)
-
-	os.Unsetenv("PATIENT_IDENTIFIER_MODE")
+	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 }
