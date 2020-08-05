@@ -22,8 +22,8 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	return args.String(0), args.Error(1)
 }
 
-func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error) {
-	args := bbc.Called(hashedIdentifier, patientIdMode)
+func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
+	args := bbc.Called(hashedIdentifier)
 	return args.String(0), args.Error(1)
 }
 
