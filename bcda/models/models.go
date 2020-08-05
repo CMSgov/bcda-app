@@ -469,12 +469,8 @@ type Suppression struct {
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-
-	modelIdentifier := cclfBeneficiary.HICN
-	patientIdMode := utils.FromEnv("PATIENT_IDENTIFIER_MODE", "HICN_MODE")
-	if patientIdMode == "MBI_MODE" {
-		modelIdentifier = cclfBeneficiary.MBI
-	}
+	patientIdMode := "MBI_MODE"
+	modelIdentifier := cclfBeneficiary.MBI
 
 	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "beneficiary", cclfBeneficiary.ID)
 	if err != nil {
@@ -486,7 +482,7 @@ func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (bl
 func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
 	hashedIdentifier := client.HashIdentifier(modelIdentifier)
 
-	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier, patientIdMode)
+	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier)
 	if err != nil {
 		return "", err
 	}

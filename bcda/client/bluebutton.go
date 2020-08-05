@@ -38,7 +38,7 @@ type APIClient interface {
 	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
-	GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error)
+	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
 }
 
 type BlueButtonClient struct {
@@ -125,16 +125,11 @@ func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, t
 	return bbc.getBundleData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier, patientIdMode string) (string, error) {
+func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
 	params := GetDefaultParams()
 
-	identifier := "hicn-hash"
-	if patientIdMode == "MBI_MODE" {
-		identifier = "mbi-hash"
-	}
-
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
-	params.Set("identifier", fmt.Sprintf("https://bluebutton.cms.gov/resources/identifier/%s|%v", identifier, hashedIdentifier))
+	params.Set("identifier", fmt.Sprintf("https://bluebutton.cms.gov/resources/identifier/%s|%v", "mbi-hash", hashedIdentifier))
 	return bbc.getRawData(blueButtonBasePath+"/Patient/", params, "", "")
 }
 

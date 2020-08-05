@@ -80,7 +80,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 		db.Create(&cclfBeneficiary)
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryID))
+		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
 		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetBundleData("ExplanationOfBenefit", beneficiaryID))
 	}
 
@@ -162,7 +162,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
 		db.Create(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryID))
+		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
 		defer db.Delete(&cclfBeneficiary)
 
 	}
@@ -198,9 +198,9 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0]).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1]).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0]), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryIDs[0]))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0])).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 	bbc.MBI = &beneficiaryIDs[1]
-	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[1]), "MBI_MODE").Return(bbc.GetData("Patient", beneficiaryIDs[1]))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[1])).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	cmsID := "A00234"
 	var cclfBeneficiaryIDs []string
@@ -260,7 +260,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	defer db.Delete(&cclfFile)
 
 	bbc := testUtils.BlueButtonClient{}
-	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for HICN"))
+	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for MBI"))
 
 	// clean out the data dir before beginning this test
 	os.RemoveAll(stagingDir)

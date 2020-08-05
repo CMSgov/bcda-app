@@ -382,7 +382,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatientByIdentifierHash",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier", "patientIdMode")
+				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(string)
