@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -205,11 +206,11 @@ func writeBBDataToFile(bb client.APIClient, db *gorm.DB, acoID string, acoCMSID 
 		if err != nil {
 			handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
 		} else {
-			pData, err := bbFunc(blueButtonID, jobID, acoCMSID, since, transactionTime)
+			b, err := bbFunc(blueButtonID, jobID, acoCMSID, since, transactionTime)
 			if err != nil {
 				handleBBError(err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
 			} else {
-				fhirBundleToResourceNDJSON(w, pData, t, cclfBeneficiaryID, acoCMSID, jobID, fileUUID)
+				fhirBundleToResourceNDJSON(w, b, t, cclfBeneficiaryID, acoCMSID, jobID, fileUUID)
 			}
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
@@ -312,40 +313,29 @@ func appendErrorToFile(fileUUID, code, detailsCode, detailsDisplay string, jobID
 	}
 }
 
-func fhirBundleToResourceNDJSON(w *bufio.Writer, jsonData, jsonType, beneficiaryID, acoID, jobID, fileUUID string) {
+func fhirBundleToResourceNDJSON(w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, jobID, fileUUID string) {
 	segment := newrelic.StartSegment(txn, "fhirBundleToResourceNDJSON")
 
-	var jsonOBJ map[string]interface{}
-	err := json.Unmarshal([]byte(jsonData), &jsonOBJ)
-	if err != nil {
-		log.Error(err)
-		appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error unmarshaling %s resources from data for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
-		return
-	}
-	entries := jsonOBJ["entry"]
+	for _, entry := range b.Entries {
+		if entry["resource"] == nil {
+			continue
+		}
 
-	// There might be no entries.  If this happens we can't iterate over them.
-	if entries != nil {
-		for _, entry := range entries.([]interface{}) {
-			entrymap := entry.(map[string]interface{})
-			if len(entrymap) != 0 {
-				entryJSON, err := json.Marshal(entrymap["resource"])
-				// This is unlikely to happen because we just unmarshalled this data a few lines above.
-				if err != nil {
-					log.Error(err)
-					appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
-					continue
-				}
-				_, err = w.WriteString(string(entryJSON) + "\n")
-				if err != nil {
-					log.Error(err)
-					appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
-				}
-			}
+		entryJSON, err := json.Marshal(entry["resource"])
+		// This is unlikely to happen because we just unmarshalled this data a few lines above.
+		if err != nil {
+			log.Error(err)
+			appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+			continue
+		}
+		_, err = w.WriteString(string(entryJSON) + "\n")
+		if err != nil {
+			log.Error(err)
+			appendErrorToFile(fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		}
 	}
 
-	err = segment.End()
+	err := segment.End()
 	if err != nil {
 		log.Error(err)
 	}

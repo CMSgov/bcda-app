@@ -53,6 +53,7 @@ func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
 	origDate = os.Getenv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
+	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
 }
 
 func (s *APITestSuite) TearDownSuite() {

@@ -57,7 +57,7 @@ func TestMainTestSuite(t *testing.T) {
 	suite.Run(t, new(MainTestSuite))
 }
 
-func TestWriteEOBDataToFile(t *testing.T) {
+func (s *MainTestSuite) TestWriteEOBDataToFile() {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 	bbc := testUtils.BlueButtonClient{}
@@ -81,17 +81,15 @@ func TestWriteEOBDataToFile(t *testing.T) {
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
-		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetData("ExplanationOfBenefit", beneficiaryID))
+		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetBundleData("ExplanationOfBenefit", beneficiaryID))
 	}
 
 	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
-	if err != nil {
-		t.Fail()
-	}
+	assert.NoError(s.T(), err)
 
 	files, err := ioutil.ReadDir(stagingDir)
-	assert.Nil(t, err)
-	assert.Len(t, files, 1)
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), files, 1)
 
 	for _, f := range files {
 		filePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
@@ -104,28 +102,28 @@ func TestWriteEOBDataToFile(t *testing.T) {
 
 		// 33 entries in test EOB data returned by bbc.getData, times two beneficiaries
 		for i := 0; i < 66; i++ {
-			assert.True(t, scanner.Scan())
+			assert.True(s.T(), scanner.Scan())
 			var jsonOBJ map[string]interface{}
 			err := json.Unmarshal(scanner.Bytes(), &jsonOBJ)
-			assert.Nil(t, err)
-			assert.NotNil(t, jsonOBJ["status"], "JSON should contain a value for `status`.")
-			assert.NotNil(t, jsonOBJ["type"], "JSON should contain a value for `type`.")
+			assert.Nil(s.T(), err)
+			assert.NotNil(s.T(), jsonOBJ["status"], "JSON should contain a value for `status`.")
+			assert.NotNil(s.T(), jsonOBJ["type"], "JSON should contain a value for `type`.")
 		}
-		assert.False(t, scanner.Scan(), "There should be only 66 entries in the file.")
+		assert.False(s.T(), scanner.Scan(), "There should be only 66 entries in the file.")
 
-		bbc.AssertExpectations(t)
+		bbc.AssertExpectations(s.T())
 
 		file.Close()
 		os.Remove(filePath)
 	}
 }
 
-func TestWriteEOBDataToFileNoClient(t *testing.T) {
+func (s *MainTestSuite) TestWriteEOBDataToFileNoClient() {
 	_, err := writeBBDataToFile(nil, nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", "A00234", []string{"20000", "21000"}, "1", "ExplanationOfBenefit", "", time.Now())
-	assert.NotNil(t, err)
+	assert.NotNil(s.T(), err)
 }
 
-func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
+func (s *MainTestSuite) TestWriteEOBDataToFileInvalidACO() {
 	bbc := testUtils.BlueButtonClient{}
 	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
 	cmsID := "A00234"
@@ -134,19 +132,19 @@ func TestWriteEOBDataToFileInvalidACO(t *testing.T) {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit", "", time.Now())
-	assert.NotNil(t, err)
+	assert.NotNil(s.T(), err)
 }
 
-func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
+func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "70")
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefit", "abcdef10000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "abcdef11000").Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "abcdef12000").Return(bbc.GetData("ExplanationOfBenefit", "abcdef12000"))
+	bbc.On("GetExplanationOfBenefit", "abcdef10000").Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef11000").Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef12000").Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
 	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
 	cmsID := "A00234"
 	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
@@ -174,26 +172,22 @@ func TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(t *testing.T) {
 	testUtils.CreateStaging(jobID)
 
 	fileUUID, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
-	if err != nil {
-		t.Fail()
-	}
+	assert.NoError(s.T(), err)
 
 	errorFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID)
 	fData, err := ioutil.ReadFile(errorFilePath)
-	if err != nil {
-		t.Fail()
-	}
+	assert.NoError(s.T(), err)
 
 	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
 {"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
-	assert.Equal(t, ooResp+"\n", string(fData))
-	bbc.AssertExpectations(t)
+	assert.Equal(s.T(), ooResp+"\n", string(fData))
+	bbc.AssertExpectations(s.T())
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID))
 	os.Remove(errorFilePath)
 }
 
-func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
+func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "60")
@@ -201,8 +195,8 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
 	beneficiaryIDs := []string{"a1000089833", "a1000065301", "a1000012463"}
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0]).Return("", errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1]).Return("", errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0]).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1]).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0])).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 	bbc.MBI = &beneficiaryIDs[1]
@@ -228,31 +222,29 @@ func TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(t *testing.T) {
 	testUtils.CreateStaging(jobID)
 
 	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
-	assert.Equal(t, "number of failed requests has exceeded threshold", err.Error())
+	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
 
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	files, err := ioutil.ReadDir(stagingDir)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(files))
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 2, len(files))
 
 	errorFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
 	fData, err := ioutil.ReadFile(errorFilePath)
-	if err != nil {
-		t.Fail()
-	}
+	assert.NoError(s.T(), err)
 
 	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
 {"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
-	assert.Equal(t, ooResp+"\n", string(fData))
-	bbc.AssertExpectations(t)
+	assert.Equal(s.T(), ooResp+"\n", string(fData))
+	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(t, "GetExplanationOfBenefit", beneficiaryIDs[2])
+	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2])
 
 	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(errorFilePath)
 }
 
-func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
+func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "51")
@@ -284,11 +276,11 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	}
 
 	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
-	assert.EqualError(t, err, "number of failed requests has exceeded threshold")
+	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(stagingDir)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(files))
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 2, len(files))
 
 	dataFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[1].Name())
 	dataFile, err := os.Open(dataFilePath)
@@ -297,7 +289,7 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	}
 	dataFileScanner := bufio.NewScanner(dataFile)
 	// Should be empty
-	assert.False(t, dataFileScanner.Scan())
+	assert.False(s.T(), dataFileScanner.Scan())
 	dataFile.Close()
 
 	errorFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
@@ -307,45 +299,44 @@ func TestWriteEOBDataToFile_BlueButtonIDNotFound(t *testing.T) {
 	}
 	errorFileScanner := bufio.NewScanner(errorFile)
 	for _, cclfBeneID := range cclfBeneficiaryIDs {
-		assert.True(t, errorFileScanner.Scan())
+		assert.True(s.T(), errorFileScanner.Scan())
 		var jsonObj map[string]interface{}
 		err := json.Unmarshal(errorFileScanner.Bytes(), &jsonObj)
-		assert.Nil(t, err)
-		assert.Equal(t, "OperationOutcome", jsonObj["resourceType"])
+		assert.NoError(s.T(), err)
+		assert.Equal(s.T(), "OperationOutcome", jsonObj["resourceType"])
 		issues := jsonObj["issue"].([]interface{})
 		issue := issues[0].(map[string]interface{})
-		assert.Equal(t, "error", issue["severity"])
+		assert.Equal(s.T(), "error", issue["severity"])
 		details := issue["details"].(map[string]interface{})
-		assert.Equal(t, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
-		assert.Nil(t, err)
+		assert.Equal(s.T(), fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
 	}
-	assert.False(t, errorFileScanner.Scan(), "There should be only 2 entries in the file.")
+	assert.False(s.T(), errorFileScanner.Scan(), "There should be only 2 entries in the file.")
 	errorFile.Close()
 
-	bbc.AssertExpectations(t)
+	bbc.AssertExpectations(s.T())
 
 	os.Remove(dataFilePath)
 	os.Remove(errorFilePath)
 }
 
-func TestGetFailureThreshold(t *testing.T) {
+func (s *MainTestSuite) TestGetFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 
 	os.Setenv("EXPORT_FAIL_PCT", "60")
-	assert.Equal(t, 60.0, getFailureThreshold())
+	assert.Equal(s.T(), 60.0, getFailureThreshold())
 
 	os.Setenv("EXPORT_FAIL_PCT", "-1")
-	assert.Equal(t, 0.0, getFailureThreshold())
+	assert.Equal(s.T(), 0.0, getFailureThreshold())
 
 	os.Setenv("EXPORT_FAIL_PCT", "500")
-	assert.Equal(t, 100.0, getFailureThreshold())
+	assert.Equal(s.T(), 100.0, getFailureThreshold())
 
 	os.Setenv("EXPORT_FAIL_PCT", "zero")
-	assert.Equal(t, 50.0, getFailureThreshold())
+	assert.Equal(s.T(), 50.0, getFailureThreshold())
 }
 
-func TestAppendErrorToFile(t *testing.T) {
+func (s *MainTestSuite) TestAppendErrorToFile() {
 
 	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
 	jobID := "1"
@@ -354,13 +345,11 @@ func TestAppendErrorToFile(t *testing.T) {
 
 	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
 	fData, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		t.Fail()
-	}
+	assert.NoError(s.T(), err)
 
 	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error"}]}`
 
-	assert.Equal(t, ooResp+"\n", string(fData))
+	assert.Equal(s.T(), ooResp+"\n", string(fData))
 
 	os.Remove(filePath)
 }

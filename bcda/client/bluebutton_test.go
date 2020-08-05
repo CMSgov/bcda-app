@@ -2,8 +2,8 @@ package client_test
 
 import (
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/pborman/uuid"
@@ -33,23 +35,22 @@ type BBRequestTestSuite struct {
 var ts200, ts500 *httptest.Server
 var now = time.Now()
 var nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
+var since = "gt2020-02-14"
 
 func (s *BBTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
+	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
 	ts200 = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", r.URL.Query().Get("_format"))
-		response := fmt.Sprintf("{ \"test\": \"ok\"; \"url\": %v}", r.URL.String())
-		fmt.Fprint(w, response)
+		handlerFunc(w, r, false)
 	}))
 
 	ts500 = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(500)
-		fmt.Print("")
+		http.Error(w, "Some server error", http.StatusInternalServerError)
 	}))
 
 	if bbClient, err := client.NewBlueButtonClient(); err != nil {
@@ -190,112 +191,48 @@ func (s *BBTestSuite) TestGetDefaultParams() {
 }
 
 /* Tests that make requests, using clients configured with the 200 response and 500 response httptest.Servers initialized in SetupSuite() */
-func (s *BBRequestTestSuite) TestGetPatientWithoutSince() {
-	since := ""
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+func (s *BBRequestTestSuite) TestGetPatient() {
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", "", now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), p, `{ "test": "ok"`)
-	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
-	assert.NotContains(s.T(), p, "_lastUpdated=gt")
-	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
-}
-
-func (s *BBRequestTestSuite) TestGetPatientWithInvalidSince_500() {
-	since := "invalid"
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
-	assert.Equal(s.T(), "", p)
-}
-
-func (s *BBRequestTestSuite) TestGetPatientWithSince() {
-	since := "gt2020-02-14"
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
-	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), p, `{ "test": "ok"`)
-	assert.NotContains(s.T(), p, "excludeSAMHSA=true")
-	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=%s", since))
-	assert.Contains(s.T(), p, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+	assert.Equal(s.T(), 1, len(p.Entries))
+	assert.Equal(s.T(), "20000000000001", p.Entries[0]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetPatient_500() {
-	since := ""
-	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", since, now)
+	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", "", now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
-	assert.Equal(s.T(), "", p)
+	assert.Nil(s.T(), p)
 }
-
-func (s *BBRequestTestSuite) TestGetCoverageWithoutSince() {
-	since := ""
+func (s *BBRequestTestSuite) TestGetCoverage() {
 	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), c, `{ "test": "ok"`)
-	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
-	assert.NotContains(s.T(), c, "_lastUpdated=gt")
-	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
-}
-
-func (s *BBRequestTestSuite) TestGetCoverageWithInvalidSince_500() {
-	since := "invalid"
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
-	assert.Equal(s.T(), "", c)
-}
-
-func (s *BBRequestTestSuite) TestGetCoverageWithSince() {
-	since := "gt2020-02-14"
-	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
-	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), c, `{ "test": "ok"`)
-	assert.NotContains(s.T(), c, "excludeSAMHSA=true")
-	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=%s", since))
-	assert.Contains(s.T(), c, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+	assert.Equal(s.T(), 3, len(c.Entries))
+	assert.Equal(s.T(), "part-b-20000000000001", c.Entries[1]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetCoverage_500() {
-	since := ""
-	p, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
+	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
-	assert.Equal(s.T(), "", p)
+	assert.Nil(s.T(), c)
 }
 
-func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithoutSince() {
-	since := ""
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), e, `{ "test": "ok"`)
-	assert.Contains(s.T(), e, "excludeSAMHSA=true")
-	assert.NotContains(s.T(), e, "_lastUpdated=gt")
-	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
-}
-
-func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithInvalidSince_500() {
-	since := "invalid"
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
-	assert.Equal(s.T(), "", e)
-}
-
-func (s *BBRequestTestSuite) TestGetExplanationOfBenefitWithSince() {
-	since := "gt2020-02-14"
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
-	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), e, `{ "test": "ok"`)
-	assert.Contains(s.T(), e, "excludeSAMHSA=true")
-	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=%s", since))
-	assert.Contains(s.T(), e, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+	assert.Equal(s.T(), 33, len(e.Entries))
+	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	since := ""
-	p, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", since, now)
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
-	assert.Equal(s.T(), "", p)
+	assert.Nil(s.T(), e)
 }
 
 func (s *BBRequestTestSuite) TestGetMetadata() {
 	m, err := s.bbClient.GetMetadata()
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), m, `{ "test": "ok"`)
+	assert.Contains(s.T(), m, `"resourceType": "CapabilityStatement"`)
 	assert.NotContains(s.T(), m, "excludeSAMHSA=true")
 }
 
@@ -303,6 +240,12 @@ func (s *BBRequestTestSuite) TestGetMetadata_500() {
 	p, err := s.bbClient.GetMetadata()
 	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
+}
+
+func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash() {
+	p, err := s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
+	assert.Nil(s.T(), err)
+	assert.Contains(s.T(), p, `"id": "20000000000001"`)
 }
 
 // Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
@@ -332,33 +275,122 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 	s.ts.Close()
 }
 
-func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
+func (s *BBRequestTestSuite) TestValidateRequest() {
 	tests := []struct {
 		name          string
-		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error)
+		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error)
+		// Lighter validation checks since we've already thoroughly tested the methods in other tests
+		payloadChecker func(t *testing.T, payload interface{})
+		pathCheckers   []func(t *testing.T, url string)
 	}{
 		{
 			"GetExplanationOfBenefit",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
-				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", time.Now())
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, string){
+				sinceChecker,
+				nowChecker,
+				excludeSAMHSAChecker,
+			},
+		},
+		{
+			"GetExplanationOfBenefitNoSince",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, string){
+				noSinceChecker,
+				nowChecker,
+				excludeSAMHSAChecker,
 			},
 		},
 		{
 			"GetPatient",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
-				return s.bbClient.GetPatient("patient2", jobID, cmsID, "", time.Now())
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return s.bbClient.GetPatient("patient2", jobID, cmsID, since, now)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, string){
+				sinceChecker,
+				nowChecker,
+				noExcludeSAMHSAChecker,
+			},
+		},
+		{
+			"GetPatientNoSince",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return s.bbClient.GetPatient("patient2", jobID, cmsID, "", now)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, string){
+				noSinceChecker,
+				nowChecker,
+				noExcludeSAMHSAChecker,
 			},
 		},
 		{
 			"GetCoverage",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
-				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, "", time.Now())
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, since, now)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, string){
+				sinceChecker,
+				nowChecker,
+				noExcludeSAMHSAChecker,
+			},
+		},
+		{
+			"GetCoverageNoSince",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, "", now)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, string){
+				noSinceChecker,
+				nowChecker,
+				noExcludeSAMHSAChecker,
 			},
 		},
 		{
 			"GetPatientByIdentifierHash",
-			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (string, error) {
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
 				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(string)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result)
+			},
+			[]func(*testing.T, string){
+				noExcludeSAMHSAChecker,
 			},
 		},
 	}
@@ -380,8 +412,8 @@ func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
 				assert.Equal(t, "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
 
 				assert.Equal(t, "", req.Header.Get("keep-alive"))
-				assert.Equal(t, "https", req.Header.Get("X-Forwarded-Proto"))
-				assert.Equal(t, "", req.Header.Get("X-Forwarded-Host"))
+				assert.Nil(t, req.Header.Values("X-Forwarded-Proto"))
+				assert.Nil(t, req.Header.Values("X-Forwarded-Host"))
 
 				assert.True(t, strings.HasSuffix(req.Header.Get("BlueButton-OriginalUrl"), req.URL.String()),
 					"%s does not end with %s", req.Header.Get("BlueButton-OriginalUrl"), req.URL.String())
@@ -396,15 +428,11 @@ func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
 				// Details: https://golang.org/src/net/http/transport.go#L2432
 				assert.Equal(t, "gzip", req.Header.Get("Accept-Encoding"))
 
-				w.Header().Set("Content-Type", req.URL.Query().Get("_format"))
-				w.Header().Set("Content-Encoding", "gzip")
+				for _, checker := range tt.pathCheckers {
+					checker(t, req.URL.String())
+				}
 
-				// Write out gzip encoded content. This will allow us to verify that the response coming
-				// from the client is transparently decompressed.
-				gz := gzip.NewWriter(w)
-				defer gz.Close()
-				response := fmt.Sprintf("{ \"test\": \"ok\", \"url\": \"%v\"}", req.URL.String())
-				fmt.Fprint(gz, response)
+				handlerFunc(w, req, true)
 			}))
 			defer tsValidation.Close()
 
@@ -418,17 +446,63 @@ func (s *BBRequestTestSuite) TestValidateRequestHeaders() {
 
 			data, err := tt.funcUnderTest(bbClient, jobID, cmsID)
 			assert.NoError(t, err)
-			fmt.Println(data)
 
-			// Since the transport should've taken care of the decompressing the data
-			// we should be able to serialize into a JSON object.
-			// If something was misconfigured and we were given the raw binary data, this check will fail.
-			var jsonObj map[string]string
-			err = json.Unmarshal([]byte(data), &jsonObj)
-			assert.NoError(t, err)
-			assert.Equal(t, "ok", jsonObj["test"])
+			tt.payloadChecker(t, data)
 		})
 	}
+}
+
+func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
+	path := r.URL.Path
+	var (
+		file *os.File
+		err  error
+	)
+	if strings.Contains(path, "Coverage") {
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Coverage")
+	} else if strings.Contains(path, "ExplanationOfBenefit") {
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/ExplanationOfBenefit")
+	} else if strings.Contains(path, "metadata") {
+		file, err = os.Open("./testdata/Metadata.json")
+	} else if strings.Contains(path, "Patient") {
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Patient")
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", r.URL.Query().Get("_format"))
+
+	if useGZIP {
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		if _, err := io.Copy(gz, file); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		if _, err := io.Copy(w, file); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
+
+func noSinceChecker(t *testing.T, url string) {
+	assert.NotContains(t, url, "_lastUpdated=gt")
+}
+func sinceChecker(t *testing.T, url string) {
+	assert.Contains(t, url, fmt.Sprintf("_lastUpdated=%s", since))
+}
+func noExcludeSAMHSAChecker(t *testing.T, url string) {
+	assert.NotContains(t, url, "excludeSAMHSA=true")
+}
+func excludeSAMHSAChecker(t *testing.T, url string) {
+	assert.Contains(t, url, "excludeSAMHSA=true")
+}
+func nowChecker(t *testing.T, url string) {
+	assert.Contains(t, url, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 
 func TestBBTestSuite(t *testing.T) {

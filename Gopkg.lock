@@ -59,6 +59,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:fe9b15f080d19c215514056bae7589d6958821766fb5f5fceb9402ec9df2f736"
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "18fe4ce5a8550e0d0919b680ad3c080a5455bddf"
+  version = "v4.0.2"
+
+[[projects]]
   digest = "1:a2c1d0e43bd3baaa071d1b9ed72c27d78169b2b269f71c105ac4ba34b1be4a39"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -379,6 +387,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/cloudwatch",
     "github.com/bgentry/que-go",
+    "github.com/cenkalti/backoff",
     "github.com/dgrijalva/jwt-go",
     "github.com/eug48/fhir/models",
     "github.com/go-chi/chi",

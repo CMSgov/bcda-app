@@ -187,22 +187,14 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		return
 	}
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
-	jsonData, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
+	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	var patient models.Patient
-	err = json.Unmarshal([]byte(jsonData), &patient)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Failure to parse transactionTime metadata from FHIR Data Server.")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-	transactionTime := patient.Meta.LastUpdated
+	transactionTime := b.Meta.LastUpdated
 	if db.Model(&newJob).Update("transaction_time", transactionTime).Error != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")

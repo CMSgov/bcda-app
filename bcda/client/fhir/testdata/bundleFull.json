@@ -1,0 +1,20 @@
+{
+    "resourceType": "Bundle",
+    "id": "0880e9d9-8f91-485f-87ac-3eb2a7c45295",
+    "meta": {
+        "lastUpdated": "2020-07-07T20:40:21.347+00:00"
+    },
+    "type": "searchset",
+    "total": 1,
+    "link": [
+        {
+            "relation": "self",
+            "url": "http://localhost:8080"
+        }
+    ],
+    "entry": [
+        {
+            "fileName": "bundleFull.json"
+        }
+    ]
+}
