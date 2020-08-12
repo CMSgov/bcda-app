@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -40,7 +42,15 @@ type cclfFileValidator struct {
 	maxRecordLength  int
 }
 
-func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
+// TODO: Once we start using persistent DB connections, we should move this timer
+// as a field of that holding struct.
+var timer metrics.Timer
+
+func init() {
+	timer = metrics.GetTimer()
+}
+
+func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
 	if fileMetadata == nil {
 		fmt.Println("File CCLF0 not found.")
 		err := errors.New("file CCLF0 not found")
@@ -65,6 +75,8 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 		totalRecordStart, totalRecordEnd   = 52, 63
 		recordLengthStart, recordLengthEnd = 64, 69
 	)
+
+	defer timer.NewChild(ctx, "importCCLF0")
 
 	var validator map[string]cclfFileValidator
 	var rawFile *zip.File
@@ -142,8 +154,8 @@ func importCCLF0(fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, 
 	return validator, nil
 }
 
-func importCCLF8(fileMetadata *cclfFileMetadata) error {
-	err := importCCLF(fileMetadata, func(fileID uint, b []byte, db *gorm.DB) error {
+func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) error {
+	err := importCCLF(ctx, fileMetadata, func(fileID uint, b []byte, db *gorm.DB) error {
 		const (
 			mbiStart, mbiEnd   = 0, 11
 			hicnStart, hicnEnd = 11, 22
@@ -171,7 +183,7 @@ func importCCLF8(fileMetadata *cclfFileMetadata) error {
 	return nil
 }
 
-func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *gorm.DB) error) error {
+func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *gorm.DB) error) error {
 	if fileMetadata == nil {
 		fmt.Println("CCLF file not found.")
 		err := errors.New("CCLF file not found")
@@ -197,6 +209,8 @@ func importCCLF(fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *g
 		log.Error(err)
 		return err
 	}
+
+	defer timer.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
 
 	cclfFile := models.CCLFFile{
 		CCLFNum:         fileMetadata.cclfNum,
@@ -351,7 +365,13 @@ func getCCLFFileMetadata(fileName string) (cclfFileMetadata, error) {
 func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	var cclfMap = make(map[string]map[int][]*cclfFileMetadata)
 
+	ctx, c := timer.New("ImportCCLFDirectory")
+	defer c()
+
+	c1 := timer.NewChild(ctx, "sortCCLFArchives")
+
 	err = filepath.Walk(filePath, sortCCLFArchives(&cclfMap, &skipped))
+	c1()
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -373,7 +393,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 					cclf8 = cclf
 				}
 			}
-			cclfvalidator, err := importCCLF0(cclf0)
+			cclfvalidator, err := importCCLF0(ctx, cclf0)
 			if err != nil {
 				fmt.Printf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s.\n ", cclf0, cclf8)
 				log.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
@@ -383,13 +403,13 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 			} else {
 				success++
 			}
-			err = validate(cclf8, cclfvalidator)
+			err = validate(ctx, cclf8, cclfvalidator)
 			if err != nil {
 				fmt.Printf("Failed to validate CCLF8 file: %s.\n", cclf8)
 				log.Errorf("Failed to validate CCLF8 file: %s", cclf8)
 				failure++
 			} else {
-				if err = importCCLF8(cclf8); err != nil {
+				if err = importCCLF8(ctx, cclf8); err != nil {
 					fmt.Printf("Failed to import CCLF8 file: %s.\n", cclf8)
 					log.Errorf("Failed to import CCLF8 file: %s ", cclf8)
 					failure++
@@ -402,7 +422,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}
 	}
 
-	err = cleanUpCCLF(cclfMap)
+	err = cleanUpCCLF(ctx, cclfMap)
 	if err != nil {
 		log.Error(err)
 	}
@@ -524,7 +544,7 @@ func orderACOs(cclfMap *map[string]map[int][]*cclfFileMetadata) []string {
 	return acoOrder
 }
 
-func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
+func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
 	if fileMetadata == nil {
 		fmt.Printf("File not found.\n")
 		err := errors.New("file not found")
@@ -553,6 +573,8 @@ func validate(fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfF
 		return err
 	}
 	defer r.Close()
+
+	defer timer.NewChild(ctx, "validate")
 
 	count := 0
 	validator := cclfFileValidator[key]
@@ -620,24 +642,44 @@ func validateCCLFFolderName(folderName string) error {
 	return nil
 }
 
-func cleanUpCCLF(cclfMap map[string]map[int][]*cclfFileMetadata) error {
+func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[int][]*cclfFileMetadata) error {
 	errCount := 0
+	defer timer.NewChild(ctx, "cleanUpAllCCLF")
+
 	for _, perfYearCCLFFileList := range cclfMap {
 		for _, cclfFileList := range perfYearCCLFFileList {
 			for _, cclf := range cclfFileList {
-				fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
-				log.Infof("Cleaning up file %s", cclf.filePath)
-				folderName := filepath.Base(cclf.filePath)
-				newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), folderName)
-				if !cclf.imported {
-					// check the timestamp on the failed files
-					elapsed := time.Since(cclf.deliveryDate).Hours()
-					deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
-					if int(elapsed) > deleteThreshold {
-						if _, err := os.Stat(newpath); err == nil {
-							break
+				func() {
+					defer timer.NewChild(ctx, "cleanUpIndividualCCLF")
+					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
+					log.Infof("Cleaning up file %s", cclf.filePath)
+					folderName := filepath.Base(cclf.filePath)
+					newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), folderName)
+					if !cclf.imported {
+						// check the timestamp on the failed files
+						elapsed := time.Since(cclf.deliveryDate).Hours()
+						deleteThreshold := utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72)
+						if int(elapsed) > deleteThreshold {
+							if _, err := os.Stat(newpath); err == nil {
+								return
+							}
+							// move the (un)successful files to the deletion dir
+							err := os.Rename(cclf.filePath, newpath)
+							if err != nil {
+								errCount++
+								errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
+								fmt.Println(errMsg)
+								log.Error(errMsg)
+							} else {
+								fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf.filePath)
+								log.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
+							}
 						}
-						// move the (un)successful files to the deletion dir
+					} else {
+						if _, err := os.Stat(newpath); err == nil {
+							return
+						}
+						// move the successful files to the deletion dir
 						err := os.Rename(cclf.filePath, newpath)
 						if err != nil {
 							errCount++
@@ -645,26 +687,11 @@ func cleanUpCCLF(cclfMap map[string]map[int][]*cclfFileMetadata) error {
 							fmt.Println(errMsg)
 							log.Error(errMsg)
 						} else {
-							fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf.filePath)
-							log.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
+							fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf.filePath)
+							log.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
 						}
 					}
-				} else {
-					if _, err := os.Stat(newpath); err == nil {
-						break
-					}
-					// move the successful files to the deletion dir
-					err := os.Rename(cclf.filePath, newpath)
-					if err != nil {
-						errCount++
-						errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
-						fmt.Println(errMsg)
-						log.Error(errMsg)
-					} else {
-						fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf.filePath)
-						log.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
-					}
-				}
+				}()
 			}
 		}
 	}
