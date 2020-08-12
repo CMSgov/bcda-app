@@ -11,14 +11,14 @@ import (
 
 // Timer provides methods for timing methods.
 // Typical Usage scenario:
-// ctx, close := Timer.New("Data Ingest")
-// defer close()
-// close1 := Timer.NewChild(ctx, "Ingest #1")
-// // Perform Ingest #1 call
-// close1()
-// close2 := Timer.NewChild(ctx, "Ingest #2")
-// // Perform Ingest #2 call
-// close2()
+// 		ctx, close := Timer.New("Data Ingest")
+// 		defer close()
+// 		close1 := Timer.NewChild(ctx, "Ingest #1")
+// 		// Perform Ingest #1 call
+// 		close1()
+// 		close2 := Timer.NewChild(ctx, "Ingest #2")
+// 		// Perform Ingest #2 call
+// 		close2()
 type Timer interface {
 	// New creates a new timer and embeds it into the returned context.
 	// To start timing methods, caller should start with this call
@@ -40,6 +40,7 @@ func GetTimer() Timer {
 	app, err := newrelic.NewApplication(config)
 
 	if err != nil {
+		log.Warnf("Failed to instantiate NeRelic application. Default to no-op timer. %s", err.Error())
 		return &noopTimer{}
 	}
 
@@ -59,8 +60,9 @@ func (t *timer) New(name string) (ctx context.Context, close func()) {
 	ctx = newrelic.NewContext(context.Background(), txn)
 
 	f := func() {
-		err := txn.End()
-		log.Warnf("Error occurred when ending transaction %s", err.Error())
+		if err := txn.End(); err != nil {
+			log.Warnf("Error occurred when ending transaction %s", err.Error())
+		}
 	}
 	return ctx, f
 }
@@ -68,13 +70,15 @@ func (t *timer) New(name string) (ctx context.Context, close func()) {
 func (t *timer) NewChild(parentCtx context.Context, name string) (close func()) {
 	txn := newrelic.FromContext(parentCtx)
 	if txn == nil {
+		log.Warn("No transaction found. Cannot create child.")
 		return noop
 	}
 	segment := newrelic.StartSegment(txn, name)
 
 	return func() {
-		err := segment.End()
-		log.Warnf("Error occurred when ending segment %s", err.Error())
+		if err := segment.End(); err != nil {
+			log.Warnf("Error occurred when ending segment %s", err.Error())
+		}
 	}
 }
 
