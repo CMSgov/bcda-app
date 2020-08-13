@@ -42,14 +42,6 @@ type cclfFileValidator struct {
 	maxRecordLength  int
 }
 
-// TODO: Once we start using persistent DB connections, we should move this timer
-// as a field of that holding struct.
-var timer metrics.Timer
-
-func init() {
-	timer = metrics.GetTimer()
-}
-
 func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[string]cclfFileValidator, error) {
 	if fileMetadata == nil {
 		fmt.Println("File CCLF0 not found.")
@@ -76,7 +68,8 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 		recordLengthStart, recordLengthEnd = 64, 69
 	)
 
-	defer timer.NewChild(ctx, "importCCLF0")
+	close := metrics.NewChild(ctx, "importCCLF0")
+	defer close()
 
 	var validator map[string]cclfFileValidator
 	var rawFile *zip.File
@@ -210,7 +203,8 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importFunc 
 		return err
 	}
 
-	defer timer.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
+	close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d", fileMetadata.cclfNum))
+	defer close()
 
 	cclfFile := models.CCLFFile{
 		CCLFNum:         fileMetadata.cclfNum,
@@ -365,10 +359,14 @@ func getCCLFFileMetadata(fileName string) (cclfFileMetadata, error) {
 func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
 	var cclfMap = make(map[string]map[int][]*cclfFileMetadata)
 
-	ctx, c := timer.New("ImportCCLFDirectory")
+	t := metrics.GetTimer()
+	defer t.Close()
+	ctx := metrics.NewContext(context.Background(), t)
+
+	ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory")
 	defer c()
 
-	c1 := timer.NewChild(ctx, "sortCCLFArchives")
+	c1 := metrics.NewChild(ctx, "sortCCLFArchives")
 
 	err = filepath.Walk(filePath, sortCCLFArchives(&cclfMap, &skipped))
 	c1()
@@ -433,6 +431,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	} else {
 		err = nil
 	}
+
 	return success, failure, skipped, err
 }
 
@@ -574,7 +573,8 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	}
 	defer r.Close()
 
-	defer timer.NewChild(ctx, "validate")
+	close := metrics.NewChild(ctx, "validate")
+	defer close()
 
 	count := 0
 	validator := cclfFileValidator[key]
@@ -644,13 +644,16 @@ func validateCCLFFolderName(folderName string) error {
 
 func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[int][]*cclfFileMetadata) error {
 	errCount := 0
-	defer timer.NewChild(ctx, "cleanUpAllCCLF")
+	close := metrics.NewChild(ctx, "cleanUpAllCCLF")
+	defer close()
 
 	for _, perfYearCCLFFileList := range cclfMap {
 		for _, cclfFileList := range perfYearCCLFFileList {
 			for _, cclf := range cclfFileList {
 				func() {
-					defer timer.NewChild(ctx, "cleanUpIndividualCCLF")
+					close := metrics.NewChild(ctx, "cleanUpIndividualCCLF")
+					defer close()
+
 					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
 					log.Infof("Cleaning up file %s", cclf.filePath)
 					folderName := filepath.Base(cclf.filePath)

@@ -43,6 +43,20 @@ func TestMetricTestSuite(t *testing.T) {
 	suite.Run(t, new(MetricTestSuite))
 }
 
+func (s *MetricTestSuite) TestContext() {
+	timer := &noopTimer{}
+	ctx := NewContext(context.Background(), timer)
+	assert.Equal(s.T(), timer, fromContext(ctx))
+
+	ctx1, c1 := NewParent(context.Background(), "SomeName")
+	assert.NotNil(s.T(), ctx1)
+	assert.NotNil(s.T(), c1)
+	assert.Equal(s.T(), defaultTimer, fromContext(ctx1))
+
+	c2 := NewChild(context.Background(), "SomeName")
+	assert.NotNil(s.T(), c2)
+}
+
 // TestTimer validates that we're reporting the correct timing metrics
 // by validating the log messages emitted by NewRelic
 func (s *MetricTestSuite) TestTimer() {
@@ -50,12 +64,12 @@ func (s *MetricTestSuite) TestTimer() {
 	txnName := "Txn"
 	// Wrap into a function so we can leverage defer
 	func() {
-		ctx, closeTxn := s.timer.New(txnName)
+		ctx, closeTxn := s.timer.new(context.Background(), txnName)
 		assert.NotNil(s.T(), ctx)
 		assert.NotNil(s.T(), closeTxn)
 		defer closeTxn()
 
-		close1 := s.timer.NewChild(ctx, "child")
+		close1 := s.timer.newChild(ctx, "child")
 		assert.NotNil(s.T(), close1)
 		defer close1()
 
@@ -69,7 +83,7 @@ func (s *MetricTestSuite) TestTimer() {
 }
 
 func (s *MetricTestSuite) TestTimerNoParent() {
-	close := s.timer.NewChild(context.Background(), "someChild")
+	close := s.timer.newChild(context.Background(), "someChild")
 	assert.NotNil(s.T(), close)
 	close()
 
@@ -80,12 +94,12 @@ func (s *MetricTestSuite) TestTimerNoParent() {
 
 func (s *MetricTestSuite) TestNoOpTimer() {
 	timer := &noopTimer{}
-	ctx, closeTxn := timer.New("someTxnName")
+	ctx, closeTxn := timer.new(context.Background(), "someTxnName")
 	assert.NotNil(s.T(), ctx)
 	assert.NotNil(s.T(), closeTxn)
 	assert.Equal(s.T(), context.Background(), ctx)
 
-	closeChild := timer.NewChild(ctx, "someChildName")
+	closeChild := timer.newChild(ctx, "someChildName")
 	assert.NotNil(s.T(), closeChild)
 }
 

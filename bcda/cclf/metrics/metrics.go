@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	newrelic "github.com/newrelic/go-agent"
 	log "github.com/sirupsen/logrus"
@@ -11,25 +14,68 @@ import (
 
 // Timer provides methods for timing methods.
 // Typical Usage scenario:
-// 		ctx, close := Timer.New("Data Ingest")
+//		timer := metrics.GetTimer()
+//		defer timer.Close()
+//		ctx := metrics.NewContext(ctx, timer)
+// 		ctx, close := metrics.NewParent(ctx)
 // 		defer close()
-// 		close1 := Timer.NewChild(ctx, "Ingest #1")
+// 		close1 := metrics.NewChild(ctx, "Ingest #1")
 // 		// Perform Ingest #1 call
 // 		close1()
-// 		close2 := Timer.NewChild(ctx, "Ingest #2")
+// 		close2 := metrics.NewChild(ctx, "Ingest #2")
 // 		// Perform Ingest #2 call
 // 		close2()
 type Timer interface {
-	// New creates a new timer and embeds it into the returned context.
+	// new creates a new timer and embeds it into the returned context.
 	// To start timing methods, caller should start with this call
-	// and provide the returned context to NewChild().
-	New(name string) (ctx context.Context, close func())
+	// and provide the returned context to newChild().
+	new(parentCtx context.Context, name string) (ctx context.Context, close func())
 
-	// NewChild creates a timer (child) from the parent via the supplied context.
-	NewChild(parentCtx context.Context, name string) (close func())
+	// newChild creates a timer (child) from the parent via the supplied context.
+	newChild(parentCtx context.Context, name string) (close func())
+
+	// Close cleans up all resources associated with the Timer. If any pending metrics
+	// have not been reported, close will flush the result out.
+	Close()
+}
+
+// To avoid collisions with other keys from other packages, we'll use a custom
+// un-exported type for our context key.
+type key int
+
+const timerKey key = 0
+
+// NewContext returns a new Context that carries the provided Timer
+func NewContext(ctx context.Context, t Timer) context.Context {
+	return context.WithValue(ctx, timerKey, t)
+}
+
+// NewParent creates a parent timer and embeds it into the returned context.
+func NewParent(ctx context.Context, name string) (context.Context, func()) {
+	t := fromContext(ctx)
+	return t.new(ctx, name)
+}
+
+// NewChild creates a child timer from the parent found within the supplied context
+func NewChild(ctx context.Context, name string) func() {
+	t := fromContext(ctx)
+	return t.newChild(ctx, name)
+}
+
+var defaultTimer = &noopTimer{}
+
+// fromContext returns the Timer associated with the context.
+// If no Timer is found on the context, a default no-op timer is returned.
+func fromContext(ctx context.Context) Timer {
+	t, ok := ctx.Value(timerKey).(Timer)
+	if !ok {
+		return defaultTimer
+	}
+	return t
 }
 
 func GetTimer() Timer {
+
 	target := os.Getenv("DEPLOYMENT_TARGET")
 	if target == "" {
 		target = "local"
@@ -44,6 +90,12 @@ func GetTimer() Timer {
 		return &noopTimer{}
 	}
 
+	timeout := time.Duration(utils.GetEnvInt("NEW_RELIC_CONNECTION_TIMEOUT_SECONDS", 30)) * time.Second
+	if err = app.WaitForConnection(timeout); err != nil {
+		log.Warnf("Failed to establish connection to New Relic server in %s. Default to no-op timer.", timeout)
+		return &noopTimer{}
+	}
+
 	return &timer{app}
 }
 
@@ -54,10 +106,10 @@ type timer struct {
 	nr newrelic.Application
 }
 
-func (t *timer) New(name string) (ctx context.Context, close func()) {
+func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context, close func()) {
 	// Passing in nil http artifacts will allow us to time non-HTTP request
 	txn := t.nr.StartTransaction(name, nil, nil)
-	ctx = newrelic.NewContext(context.Background(), txn)
+	ctx = newrelic.NewContext(parentCtx, txn)
 
 	f := func() {
 		if err := txn.End(); err != nil {
@@ -67,7 +119,7 @@ func (t *timer) New(name string) (ctx context.Context, close func()) {
 	return ctx, f
 }
 
-func (t *timer) NewChild(parentCtx context.Context, name string) (close func()) {
+func (t *timer) newChild(parentCtx context.Context, name string) (close func()) {
 	txn := newrelic.FromContext(parentCtx)
 	if txn == nil {
 		log.Warn("No transaction found. Cannot create child.")
@@ -82,18 +134,26 @@ func (t *timer) NewChild(parentCtx context.Context, name string) (close func()) 
 	}
 }
 
+func (t *timer) Close() {
+	const SHUTDOWN_TIMEOUT = 30 * time.Second
+	t.nr.Shutdown(SHUTDOWN_TIMEOUT)
+}
+
 // validates that noopTimer implements the interface
 var _ Timer = &noopTimer{}
 
 type noopTimer struct {
 }
 
-func (t *noopTimer) New(name string) (ctx context.Context, close func()) {
+func (t *noopTimer) new(parentCtx context.Context, name string) (ctx context.Context, close func()) {
 	return context.Background(), noop
 }
 
-func (t *noopTimer) NewChild(parentCtx context.Context, name string) (close func()) {
+func (t *noopTimer) newChild(parentCtx context.Context, name string) (close func()) {
 	return noop
+}
+
+func (t *noopTimer) Close() {
 }
 
 func noop() {
