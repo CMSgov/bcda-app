@@ -104,6 +104,14 @@ services:
       dockerfile: Dockerfiles/Dockerfile.documentation
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
+  openapi:
+    build:
+      context: .
+      dockerfile: Dockerfiles/Dockerfile.openapi
+    volumes:
+      - ./bcda/swaggerui:/swagger-converter/swaggerui
+    depends_on:
+      - documentation
   ssas:
     build:
       context: .
