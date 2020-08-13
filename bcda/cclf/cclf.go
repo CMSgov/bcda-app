@@ -149,6 +149,8 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) error {
 	err := importCCLF(ctx, fileMetadata, func(fileID uint, b []byte, db *gorm.DB) error {
+		close := metrics.NewChild(ctx, "importCCLF8-benecreate")
+		defer close()
 		const (
 			mbiStart, mbiEnd   = 0, 11
 			hicnStart, hicnEnd = 11, 22
@@ -257,6 +259,8 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importFunc 
 	defer rc.Close()
 	sc := bufio.NewScanner(rc)
 	for sc.Scan() {
+		close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d-readlines", cclfFile.CCLFNum))
+		defer close()
 		b := sc.Bytes()
 		if len(bytes.TrimSpace(b)) > 0 {
 			err = importFunc(cclfFile.ID, b, db)

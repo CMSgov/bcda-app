@@ -96,6 +96,7 @@ func GetTimer() Timer {
 		return &noopTimer{}
 	}
 
+	log.Info("Using New Relic backed timer.")
 	return &timer{app}
 }
 
