@@ -260,8 +260,8 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importFunc 
 	sc := bufio.NewScanner(rc)
 	for sc.Scan() {
 		close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d-readlines", cclfFile.CCLFNum))
-		defer close()
 		b := sc.Bytes()
+		close()
 		if len(bytes.TrimSpace(b)) > 0 {
 			err = importFunc(cclfFile.ID, b, db)
 			if err != nil {
