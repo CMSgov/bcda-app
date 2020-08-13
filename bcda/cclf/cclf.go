@@ -367,13 +367,12 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	defer t.Close()
 	ctx := metrics.NewContext(context.Background(), t)
 
-	ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory")
-	defer c()
-
-	c1 := metrics.NewChild(ctx, "sortCCLFArchives")
-
+	// We are not going to create any children from this parent so we can
+	// safely ignored the returned context.
+	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
 	err = filepath.Walk(filePath, sortCCLFArchives(&cclfMap, &skipped))
-	c1()
+	c()
+
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -386,42 +385,46 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	acoOrder := orderACOs(&cclfMap)
 
 	for _, acoID := range acoOrder {
-		for _, cclfFiles := range cclfMap[acoID] {
-			var cclf0, cclf8 *cclfFileMetadata
-			for _, cclf := range cclfFiles {
-				if cclf.cclfNum == 0 {
-					cclf0 = cclf
-				} else if cclf.cclfNum == 8 {
-					cclf8 = cclf
+		func() {
+			ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#processACOs")
+			defer c()
+			for _, cclfFiles := range cclfMap[acoID] {
+				var cclf0, cclf8 *cclfFileMetadata
+				for _, cclf := range cclfFiles {
+					if cclf.cclfNum == 0 {
+						cclf0 = cclf
+					} else if cclf.cclfNum == 8 {
+						cclf8 = cclf
+					}
 				}
-			}
-			cclfvalidator, err := importCCLF0(ctx, cclf0)
-			if err != nil {
-				fmt.Printf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s.\n ", cclf0, cclf8)
-				log.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
-				failure++
-				skipped += 2
-				continue
-			} else {
-				success++
-			}
-			err = validate(ctx, cclf8, cclfvalidator)
-			if err != nil {
-				fmt.Printf("Failed to validate CCLF8 file: %s.\n", cclf8)
-				log.Errorf("Failed to validate CCLF8 file: %s", cclf8)
-				failure++
-			} else {
-				if err = importCCLF8(ctx, cclf8); err != nil {
-					fmt.Printf("Failed to import CCLF8 file: %s.\n", cclf8)
-					log.Errorf("Failed to import CCLF8 file: %s ", cclf8)
+				cclfvalidator, err := importCCLF0(ctx, cclf0)
+				if err != nil {
+					fmt.Printf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s.\n ", cclf0, cclf8)
+					log.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
 					failure++
+					skipped += 2
+					continue
 				} else {
-					cclf8.imported = true
 					success++
 				}
+				err = validate(ctx, cclf8, cclfvalidator)
+				if err != nil {
+					fmt.Printf("Failed to validate CCLF8 file: %s.\n", cclf8)
+					log.Errorf("Failed to validate CCLF8 file: %s", cclf8)
+					failure++
+				} else {
+					if err = importCCLF8(ctx, cclf8); err != nil {
+						fmt.Printf("Failed to import CCLF8 file: %s.\n", cclf8)
+						log.Errorf("Failed to import CCLF8 file: %s ", cclf8)
+						failure++
+					} else {
+						cclf8.imported = true
+						success++
+					}
+				}
+				cclf0.imported = cclf8 != nil && cclf8.imported
 			}
-			cclf0.imported = cclf8 != nil && cclf8.imported
-		}
+		}()
 	}
 
 	err = cleanUpCCLF(ctx, cclfMap)
