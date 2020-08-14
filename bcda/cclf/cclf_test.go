@@ -1,6 +1,7 @@
 package cclf
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -95,31 +96,32 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
+	ctx := context.Background()
 	assert := assert.New(s.T())
 
 	cclf0filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181120.T1000000"
 	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011"}
 
 	// positive
-	validator, err := importCCLF0(cclf0metadata)
+	validator, err := importCCLF0(ctx, cclf0metadata)
 	assert.Nil(err)
 	assert.Equal(cclfFileValidator{totalRecordCount: 6, maxRecordLength: 549}, validator["CCLF8"])
 
 	// negative
 	cclf0metadata = &cclfFileMetadata{}
-	_, err = importCCLF0(cclf0metadata)
+	_, err = importCCLF0(ctx, cclf0metadata)
 	assert.EqualError(err, "could not read CCLF0 archive : read .: is a directory")
 
 	// missing cclf8 from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181120.T1000000"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011"}
-	_, err = importCCLF0(cclf0metadata)
+	_, err = importCCLF0(ctx, cclf0metadata)
 	assert.EqualError(err, "failed to parse CCLF8 from CCLF0 file T.BCD.A0001.ZC0Y18.D181120.T1000011")
 
 	// duplicate file types from cclf0
 	cclf0filePath = BASE_FILE_PATH + "cclf/archives/0/missing_data/T.BCD.A0001.ZCY18.D181122.T1000000"
 	cclf0metadata = &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000013"}
-	_, err = importCCLF0(cclf0metadata)
+	_, err = importCCLF0(ctx, cclf0metadata)
 	assert.EqualError(err, "duplicate CCLF8 file type found from CCLF0 file")
 }
 
@@ -129,12 +131,13 @@ func (s *CCLFTestSuite) TestImportCCLF0_SplitFiles() {
 	cclf0filePath := BASE_FILE_PATH + "cclf/archives/split/T.BCD.A0001.ZCY18.D181120.T1000000"
 	cclf0metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 0, timestamp: time.Now(), filePath: cclf0filePath, perfYear: 18, name: "T.BCD.A0001.ZC0Y18.D181120.T1000011-1"}
 
-	validator, err := importCCLF0(cclf0metadata)
+	validator, err := importCCLF0(context.Background(), cclf0metadata)
 	assert.Nil(err)
 	assert.Equal(cclfFileValidator{totalRecordCount: 6, maxRecordLength: 549}, validator["CCLF8"])
 }
 
 func (s *CCLFTestSuite) TestValidate() {
+	ctx := context.Background()
 	assert := assert.New(s.T())
 
 	cclf8filePath := BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"
@@ -142,12 +145,12 @@ func (s *CCLFTestSuite) TestValidate() {
 
 	// positive
 	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 6, maxRecordLength: 549}}
-	err := validate(cclf8metadata, cclfvalidator)
+	err := validate(ctx, cclf8metadata, cclfvalidator)
 	assert.Nil(err)
 
 	// negative
 	cclfvalidator = map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 2, maxRecordLength: 549}}
-	err = validate(cclf8metadata, cclfvalidator)
+	err = validate(ctx, cclf8metadata, cclfvalidator)
 	assert.EqualError(err, "maximum record count reached for file CCLF8 (expected: 2, actual: 3)")
 }
 
@@ -200,7 +203,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 		filePath:  BASE_FILE_PATH + "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000",
 	}
 
-	err = importCCLF8(metadata)
+	err = importCCLF8(context.Background(), metadata)
 	if err != nil {
 		s.FailNow("importCCLF8() error: %s", err.Error())
 	}
@@ -238,7 +241,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 	assert := assert.New(s.T())
 
 	var metadata *cclfFileMetadata
-	err := importCCLF8(metadata)
+	err := importCCLF8(context.Background(), metadata)
 	assert.EqualError(err, "CCLF file not found")
 }
 
@@ -550,7 +553,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		imported:  true,
 	}
 	cclfmap["A0001"] = map[int][]*cclfFileMetadata{18: []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata}}
-	err := cleanUpCCLF(cclfmap)
+	err := cleanUpCCLF(context.Background(), cclfmap)
 	assert.Nil(err)
 
 	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
