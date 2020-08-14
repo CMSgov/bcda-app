@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -43,6 +46,20 @@ func SetProvider(name string) {
 
 func GetProviderName() string {
 	return providerName
+}
+
+func GetVersion() string {
+	versionURL := fmt.Sprintf("%s%s", os.Getenv(`SSAS_PUBLIC_URL`), "/_version")
+	res, err := http.Get(versionURL)
+	if err != nil {
+		return "Error retriving SSAS version"
+	}
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "Error retriving SSAS version"
+	}
+	return string(body)
 }
 
 func GetProvider() Provider {
