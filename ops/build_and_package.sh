@@ -29,6 +29,12 @@ then
   exit 1
 fi
 
+if [ ! -f ../bcda/swaggerui/openapi.json ]
+then
+  echo "OpenAPI doc generation must be completed prior to creating package."
+  exit 1
+fi
+
 cd ../bcda
 go clean
 echo "Building bcda binary..." 
