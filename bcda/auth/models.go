@@ -21,15 +21,6 @@ func InitializeGormModels() *gorm.DB {
 	return db
 }
 
-type Token struct {
-	UUID        uuid.UUID `json:"uuid"`   // uuid (primary key)
-	Active      bool      `json:"active"` // active
-	ACOID       uuid.UUID `json:"aco_id"`
-	IssuedAt    int64     `json:"issued_at"`  // standard token claim; unix date
-	ExpiresOn   int64     `json:"expires_on"` // standard token claim; unix date
-	TokenString string    `json:"token_string"`
-}
-
 func GetACO(col, val string) (models.ACO, error) {
 	var (
 		db  = database.GetGORMDbConnection()

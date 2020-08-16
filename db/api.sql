@@ -17,12 +17,6 @@ create table jobs (
   created_at timestamp with time zone not null default now()
 );
 
-create table tokens (
-  uuid uuid not null primary key,
-  value text not null,
-  active boolean not null default false
-);
-
 create table cclf_files (
     id serial primary key,
     cclf_num integer not null,
