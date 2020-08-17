@@ -595,6 +595,7 @@ func getAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["auth_provider"] = auth.GetProviderName()
 	if auth.GetProviderName() == "ssas" {
+		respMap["ssas_address"] = os.Getenv(`SSAS_PUBLIC_URL`)
 		respMap["version"] = auth.GetVersion()
 	}
 	respBytes, err := json.Marshal(respMap)
