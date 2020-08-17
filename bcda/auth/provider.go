@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/tls"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -48,8 +49,12 @@ func GetProviderName() string {
 }
 
 func GetVersion() string {
-	// res, err := http.Get(fmt.Sprintf("%s/_version", os.Getenv(`SSAS_PUBLIC_URL`)))
-	res, err := http.Get(os.Getenv(`SSAS_PUBLIC_URL`) + "/_version")
+	// nosec G402
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	res, err := client.Get(os.Getenv(`SSAS_PUBLIC_URL`) + "/_version")
 	if err != nil {
 		return err.Error()
 	}
