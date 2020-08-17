@@ -192,10 +192,11 @@
   revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
 
 [[projects]]
-  digest = "1:01f60ec456e70c9be269902c08fa189a9d47056a419c4a91a02f19df5e36ab59"
+  digest = "1:a4ae6efef4eb40a1bf75134dd7c3fca69d2cc928ea67cc8fcb75367fd717b0a9"
   name = "github.com/newrelic/go-agent"
   packages = [
     ".",
+    "_integrations/nrlogrus",
     "internal",
     "internal/cat",
     "internal/jsonx",
@@ -398,6 +399,7 @@
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
+    "github.com/newrelic/go-agent/_integrations/nrlogrus",
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/sirupsen/logrus",

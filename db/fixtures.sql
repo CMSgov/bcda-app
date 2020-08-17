@@ -31,6 +31,3 @@ insert into acos(uuid, cms_id, name, client_id)
             ('8D80925A-027E-43DD-8AED-9A501CC4CD91', 'A9992', 'ACO Large', '8D80925A-027E-43DD-8AED-9A501CC4CD91'),
             ('55954dba-d4d9-438d-bd03-453da4993fe9', 'A9993', 'ACO Extra Large', '55954dba-d4d9-438d-bd03-453da4993fe9');
 
-insert into tokens values ('d63205a8-d923-456b-a01b-0992fcb40968', 'fake.token.value', 'true');
-insert into tokens values ('f5bd210a-5f95-4ba6-a167-2e9c95b5fbc1', 'fake.token.value', 'false');
-
