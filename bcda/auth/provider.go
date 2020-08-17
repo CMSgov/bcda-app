@@ -49,8 +49,7 @@ func GetProviderName() string {
 }
 
 func GetVersion() string {
-	versionURL := fmt.Sprintf("%s%s", os.Getenv(`SSAS_PUBLIC_URL`), "/_version")
-	res, err := http.Get(versionURL)
+	res, err := http.Get(fmt.Sprintf("%s/_version", os.Getenv(`SSAS_PUBLIC_URL`)))
 	if err != nil {
 		return "Error retriving SSAS version"
 	}
