@@ -427,8 +427,11 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		}()
 	}
 
-	err = cleanUpCCLF(ctx, cclfMap)
-	if err != nil {
+	if err = func() error {
+		ctx, c := metrics.NewParent(ctx, "ImportCCLFDirectory#cleanupCCLF")
+		defer c()
+		return cleanUpCCLF(ctx, cclfMap)
+	}(); err != nil {
 		log.Error(err)
 	}
 
@@ -651,14 +654,11 @@ func validateCCLFFolderName(folderName string) error {
 
 func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[int][]*cclfFileMetadata) error {
 	errCount := 0
-	close := metrics.NewChild(ctx, "cleanUpAllCCLF")
-	defer close()
-
 	for _, perfYearCCLFFileList := range cclfMap {
 		for _, cclfFileList := range perfYearCCLFFileList {
 			for _, cclf := range cclfFileList {
 				func() {
-					close := metrics.NewChild(ctx, "cleanUpIndividualCCLF")
+					close := metrics.NewChild(ctx, fmt.Sprintf("cleanUpCCLF%d", cclf.cclfNum))
 					defer close()
 
 					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
