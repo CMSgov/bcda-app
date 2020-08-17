@@ -51,12 +51,12 @@ func GetVersion() string {
 	// res, err := http.Get(fmt.Sprintf("%s/_version", os.Getenv(`SSAS_PUBLIC_URL`)))
 	res, err := http.Get(os.Getenv(`SSAS_PUBLIC_URL`) + "/_version")
 	if err != nil {
-		return "Error retriving SSAS version"
+		return err.Error()
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return "Error reading SSAS version"
+		return err.Error()
 	}
 	return string(body)
 }
