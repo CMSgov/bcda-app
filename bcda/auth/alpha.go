@@ -158,8 +158,8 @@ func (p AlphaAuthPlugin) RevokeSystemCredentials(clientID string) error {
 	return fmt.Errorf("RevokeSystemCredentials is not implemented for alpha auth")
 }
 
-func (p AlphaAuthPlugin) GetVersion() string {
-	return "not yet implemented"
+func (p AlphaAuthPlugin) GetVersion() (string, error) {
+	return "", errors.New("not yet implemented")
 }
 
 // MakeAccessToken manufactures an access token for the given credentials

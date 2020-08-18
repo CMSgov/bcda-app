@@ -68,7 +68,7 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 }
 
 // GetVersion gets the version of the SSAS client
-func (s SSASPlugin) GetVersion() string {
+func (s SSASPlugin) GetVersion() (string, error) {
 	return s.client.GetVersion()
 }
 

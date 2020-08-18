@@ -379,32 +379,21 @@ func (c *SSASClient) setAuthHeader(req *http.Request) error {
 	return nil
 }
 
-// Gets the version of the SSAS client
-func (c *SSASClient) GetVersion() string {
-
+// GetVersion Gets the version of the SSAS client
+func (c *SSASClient) GetVersion() (string, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/_version", c.baseURL), nil)
 	if err != nil {
-		// return version, errors.Wrap(err, "could not get ssas version")
-		return "could not get ssas version"
+		return "", err
 	}
 
 	if err := c.setAuthHeader(req); err != nil {
-		return "could not get ssas version"
+		return "", err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return "could not get ssas version"
+		return "", err
 	}
 	defer resp.Body.Close()
-
-	// body, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return "could not get ssas version"
-	// }
-	// else {
-	// 	version = string(body)
-	// 	return version, nil
-	// }
 
 	ssasLogger.Info(resp.Body)
 	type SSASVersion struct {
@@ -412,9 +401,10 @@ func (c *SSASClient) GetVersion() string {
 	}
 	var ssasVersion = SSASVersion{}
 	if err = json.NewDecoder(resp.Body).Decode(&ssasVersion); err != nil {
-		ssasLogger.Info("json error " + err.Error())
-		return "unable to decode json " + err.Error()
+		return "", err
 	}
-	ssasLogger.Info(fmt.Sprintf("%+v", ssasVersion))
-	return string(ssasVersion.Version)
+	if ssasVersion.Version == "" {
+		return "", errors.New("Unable to parse version from response")
+	}
+	return ssasVersion.Version, nil
 }

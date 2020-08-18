@@ -594,10 +594,9 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 func getAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["auth_provider"] = auth.GetProviderName()
-	if auth.GetProviderName() == "ssas" {
-		respMap["ssas_address"] = os.Getenv(`SSAS_PUBLIC_URL`)
-		// respMap["version"] = auth.GetVersion()
-		respMap["version"] = auth.GetProvider().GetVersion()
+	version, err := auth.GetProvider().GetVersion()
+	if err != nil {
+		respMap["version"] = version
 	}
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {

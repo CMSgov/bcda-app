@@ -60,8 +60,8 @@ func (o OktaAuthPlugin) DeleteSystem(clientID string) error {
 	return errors.New("not yet implemented")
 }
 
-func (o OktaAuthPlugin) GetVersion() string {
-	return "not yet implemented"
+func (o OktaAuthPlugin) GetVersion() (string, error) {
+	return "", errors.New("not yet implemented")
 }
 
 func (o OktaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
