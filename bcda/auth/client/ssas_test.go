@@ -282,7 +282,10 @@ func (s *SSASClientTestSuite) TestGetVersion() {
 	router := chi.NewRouter()
 	router.Get("/_version", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, "{\"version\":\"foo\"}\n")
+		_, err := io.WriteString(w, "{\"version\":\"foo\"}\n")
+		if err != nil {
+			s.FailNow("Failed to create SSAS server", err.Error())
+		}
 	})
 	server := httptest.NewServer(router)
 
