@@ -595,7 +595,7 @@ func getAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["auth_provider"] = auth.GetProviderName()
 	version, err := auth.GetProvider().GetVersion()
-	if err != nil {
+	if err == nil {
 		respMap["version"] = version
 	}
 	respBytes, err := json.Marshal(respMap)

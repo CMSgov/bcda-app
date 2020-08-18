@@ -393,18 +393,20 @@ func (c *SSASClient) GetVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != 200 {
+		return "", errors.New("SSAS server failed to return version ")
+	}
 	defer resp.Body.Close()
 
-	ssasLogger.Info(resp.Body)
-	type SSASVersion struct {
+	type ssasVersion struct {
 		Version string `json:"version"`
 	}
-	var ssasVersion = SSASVersion{}
-	if err = json.NewDecoder(resp.Body).Decode(&ssasVersion); err != nil {
+	var versionInfo = ssasVersion{}
+	if err = json.NewDecoder(resp.Body).Decode(&versionInfo); err != nil {
 		return "", err
 	}
-	if ssasVersion.Version == "" {
+	if versionInfo.Version == "" {
 		return "", errors.New("Unable to parse version from response")
 	}
-	return ssasVersion.Version, nil
+	return versionInfo.Version, nil
 }
