@@ -3,6 +3,7 @@ package client_test
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -277,25 +278,25 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	assert.Equal(s.T(), tokenString, string(respKey))
 }
 
-// func (s *SSASClientTestSuite) TestGetVersion() {
-// 	router := chi.NewRouter()
-// 	router.Get("/_version", func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header().Set("Content-Type", "application/json")
-// 		io.WriteString(w, "{\"version\":\"foo\"}\n")
-// 	})
-// 	server := httptest.NewServer(router)
+func (s *SSASClientTestSuite) TestGetVersion() {
+	router := chi.NewRouter()
+	router.Get("/_version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, "{\"version\":\"foo\"}\n")
+	})
+	server := httptest.NewServer(router)
 
-// 	os.Setenv("SSAS_URL", server.URL)
-// 	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-// 	os.Setenv("SSAS_USE_TLS", "false")
+	os.Setenv("SSAS_URL", server.URL)
+	os.Setenv("SSAS_PUBLIC_URL", server.URL)
+	os.Setenv("SSAS_USE_TLS", "false")
 
-// 	client, err := authclient.NewSSASClient()
-// 	if err != nil {
-// 		s.FailNow("Failed to create SSAS client", err.Error())
-// 	}
-// 	// response := client.GetVersion()
-// 	assert.Equal(s.T(), "foo", client.GetVersion())
-// }
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+	// response := client.GetVersion()
+	assert.Equal(s.T(), "foo", client.GetVersion())
+}
 
 func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 	const tokenString = "totallyfake.tokenstringfor.testing"

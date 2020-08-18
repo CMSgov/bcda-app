@@ -408,7 +408,7 @@ func (c *SSASClient) GetVersion() string {
 
 	ssasLogger.Info(resp.Body)
 	type SSASVersion struct {
-		version string `json:"version"`
+		Version string `json:"version"`
 	}
 	var ssasVersion = SSASVersion{}
 	if err = json.NewDecoder(resp.Body).Decode(&ssasVersion); err != nil {
@@ -416,5 +416,5 @@ func (c *SSASClient) GetVersion() string {
 		return "unable to decode json " + err.Error()
 	}
 	ssasLogger.Info(fmt.Sprintf("%+v", ssasVersion))
-	return string(ssasVersion.version)
+	return string(ssasVersion.Version)
 }
