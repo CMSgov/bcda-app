@@ -397,13 +397,24 @@ func (c *SSASClient) GetVersion() string {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "could not get ssas version"
-	}
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return "could not get ssas version"
+	// }
 	// else {
 	// 	version = string(body)
 	// 	return version, nil
 	// }
-	return string(body)
+
+	ssasLogger.Info(resp.Body)
+	type SSASVersion struct {
+		version string `json:"version"`
+	}
+	var ssasVersion = SSASVersion{}
+	if err = json.NewDecoder(resp.Body).Decode(&ssasVersion); err != nil {
+		ssasLogger.Info("json error " + err.Error())
+		return "unable to decode json " + err.Error()
+	}
+	ssasLogger.Info(fmt.Sprintf("%+v", ssasVersion))
+	return string(ssasVersion.version)
 }
