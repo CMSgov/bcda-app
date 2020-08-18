@@ -1,9 +1,6 @@
 package auth
 
 import (
-	"crypto/tls"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -48,23 +45,23 @@ func GetProviderName() string {
 	return providerName
 }
 
-func GetVersion() string {
-	// nosec G402
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-	res, err := client.Get(os.Getenv(`SSAS_PUBLIC_URL`) + "/_version")
-	if err != nil {
-		return err.Error()
-	}
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err.Error()
-	}
-	return string(body)
-}
+// func GetVersion() string {
+// 	// nosec G402
+// 	tr := &http.Transport{
+// 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+// 	}
+// 	client := &http.Client{Transport: tr}
+// 	res, err := client.Get(os.Getenv(`SSAS_PUBLIC_URL`) + "/_version")
+// 	if err != nil {
+// 		return err.Error()
+// 	}
+// 	defer res.Body.Close()
+// 	body, err := ioutil.ReadAll(res.Body)
+// 	if err != nil {
+// 		return err.Error()
+// 	}
+// 	return string(body)
+// }
 
 func GetProvider() Provider {
 	switch providerName {
@@ -129,4 +126,7 @@ type Provider interface {
 
 	// VerifyToken decodes a base64 encoded token string into a structured token
 	VerifyToken(tokenString string) (*jwt.Token, error)
+
+	// GetVersion gets the version of the provider
+	GetVersion() string
 }
