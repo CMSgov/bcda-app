@@ -393,10 +393,10 @@ func (c *SSASClient) GetVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		return "", errors.New("SSAS server failed to return version ")
 	}
-	defer resp.Body.Close()
 
 	type ssasVersion struct {
 		Version string `json:"version"`
