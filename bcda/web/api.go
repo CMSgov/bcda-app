@@ -594,6 +594,12 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 func getAuthInfo(w http.ResponseWriter, r *http.Request) {
 	respMap := make(map[string]string)
 	respMap["auth_provider"] = auth.GetProviderName()
+	version, err := auth.GetProvider().GetVersion()
+	if err == nil {
+		respMap["version"] = version
+	} else {
+		respMap["error message"] = err.Error()
+	}
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

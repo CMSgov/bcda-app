@@ -378,3 +378,35 @@ func (c *SSASClient) setAuthHeader(req *http.Request) error {
 	req.Header.Add("Accept", "application/json")
 	return nil
 }
+
+// GetVersion Gets the version of the SSAS client
+func (c *SSASClient) GetVersion() (string, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/_version", c.baseURL), nil)
+	if err != nil {
+		return "", err
+	}
+
+	if err := c.setAuthHeader(req); err != nil {
+		return "", err
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", errors.New("SSAS server failed to return version ")
+	}
+
+	type ssasVersion struct {
+		Version string `json:"version"`
+	}
+	var versionInfo = ssasVersion{}
+	if err = json.NewDecoder(resp.Body).Decode(&versionInfo); err != nil {
+		return "", err
+	}
+	if versionInfo.Version == "" {
+		return "", errors.New("Unable to parse version from response")
+	}
+	return versionInfo.Version, nil
+}

@@ -108,4 +108,7 @@ type Provider interface {
 
 	// VerifyToken decodes a base64 encoded token string into a structured token
 	VerifyToken(tokenString string) (*jwt.Token, error)
+
+	// GetVersion gets the version of the provider
+	GetVersion() (string, error)
 }

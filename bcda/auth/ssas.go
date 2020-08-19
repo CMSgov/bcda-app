@@ -67,6 +67,11 @@ func (s SSASPlugin) DeleteSystem(clientID string) error {
 	return errors.New("Not supported")
 }
 
+// GetVersion gets the version of the SSAS client
+func (s SSASPlugin) GetVersion() (string, error) {
+	return s.client.GetVersion()
+}
+
 // ResetSecret creates new or replaces existing credentials for the given ssasID.
 func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
 	creds := Credentials{}
