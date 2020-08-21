@@ -469,17 +469,16 @@ type Suppression struct {
 // This method will ensure that a valid BlueButton ID is returned.
 // If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
 func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-	patientIdMode := "MBI_MODE"
 	modelIdentifier := cclfBeneficiary.MBI
 
-	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, patientIdMode, "beneficiary", cclfBeneficiary.ID)
+	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, "beneficiary", cclfBeneficiary.ID)
 	if err != nil {
 		return "", err
 	}
 	return blueButtonID, nil
 }
 
-func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqType string, modelID uint) (blueButtonID string, err error) {
+func GetBlueButtonID(bb client.APIClient, modelIdentifier, reqType string, modelID uint) (blueButtonID string, err error) {
 	hashedIdentifier := client.HashIdentifier(modelIdentifier)
 
 	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier)
@@ -505,11 +504,7 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 	blueButtonID = patient.Entry[0].Resource.ID
 	for _, identifier := range patient.Entry[0].Resource.Identifier {
 		if strings.Contains(identifier.System, "us-mbi") {
-			if patientIdMode == "MBI_MODE" {
-				if identifier.Value == modelIdentifier {
-					foundIdentifier = true
-				}
-			} else if patientIdMode == "HICN_MODE" {
+			if identifier.Value == modelIdentifier {
 				foundIdentifier = true
 			}
 		} else if strings.Contains(identifier.System, "bene_id") && identifier.Value == blueButtonID {
@@ -517,13 +512,12 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, patientIdMode, reqTyp
 		}
 	}
 	if !foundIdentifier {
-		patientIdMode = strings.Split(patientIdMode, "_")[0]
-		err = fmt.Errorf("%v not found in the identifiers", patientIdMode)
+		err = fmt.Errorf("Identifier not found")
 		log.Error(err)
 		return "", err
 	}
 	if !foundBlueButtonID {
-		err = fmt.Errorf("blue Button identifier not found in the identifiers")
+		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
 		log.Error(err)
 		return "", err
 	}
