@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -148,27 +147,12 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 }
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) error {
-	err := importCCLF(ctx, fileMetadata, func(fileID uint, b []byte, db *gorm.DB) error {
-		close := metrics.NewChild(ctx, "importCCLF8-benecreate")
-		defer close()
-		const (
-			mbiStart, mbiEnd   = 0, 11
-			hicnStart, hicnEnd = 11, 22
-		)
-		cclfBeneficiary := &models.CCLFBeneficiary{
-			FileID: fileID,
-			MBI:    string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
-			HICN:   string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
-		}
-		err := db.Create(cclfBeneficiary).Error
-		if err != nil {
-			fmt.Println("Could not create CCLF8 beneficiary record.")
-			err = errors.Wrap(err, "could not create CCLF8 beneficiary record")
-			log.Error(err)
-			return err
-		}
-		return nil
-	})
+	importer := &cclf8Importer{
+		logger:            log.StandardLogger(),
+		maxPendingQueries: utils.GetEnvInt("STATEMENT_EXEC_COUNT", 200000),
+	}
+
+	err := importCCLF(ctx, fileMetadata, importer)
 
 	if err != nil {
 		updateImportStatus(fileMetadata, constants.ImportFail)
@@ -178,7 +162,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) error {
 	return nil
 }
 
-func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importFunc func(uint, []byte, *gorm.DB) error) error {
+func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer importer) (err error) {
 	if fileMetadata == nil {
 		fmt.Println("CCLF file not found.")
 		err := errors.New("CCLF file not found")
@@ -230,7 +214,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importFunc 
 
 	fileMetadata.fileID = cclfFile.ID
 
-	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
+	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000)
 	importedCount := 0
 	var rawFile *zip.File
 
@@ -258,26 +242,48 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importFunc 
 	}
 	defer rc.Close()
 	sc := bufio.NewScanner(rc)
+
+	// Open transaction to encompass entire CCLF file ingest.
+	txn, err := db.DB().Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == nil {
+			err = importer.flush(ctx)
+		}
+
+		if err != nil {
+			err = txn.Rollback()
+		}
+
+		if err = txn.Commit(); err == nil {
+			successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
+			fmt.Println(successMsg)
+			log.Infof(successMsg)
+		}
+	}()
+
 	for sc.Scan() {
 		close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d-readlines", cclfFile.CCLFNum))
 		b := sc.Bytes()
 		close()
-		if len(bytes.TrimSpace(b)) > 0 {
-			err = importFunc(cclfFile.ID, b, db)
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-			importedCount++
-			if importedCount%importStatusInterval == 0 {
-				fmt.Printf("CCLF%d records imported: %d\n", fileMetadata.cclfNum, importedCount)
-			}
+
+		if len(bytes.TrimSpace(b)) == 0 {
+			continue
+		}
+
+		err = importer.do(ctx, txn, cclfFile.ID, b)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+
+		importedCount++
+		if importedCount%importStatusInterval == 0 {
+			fmt.Printf("CCLF%d records imported: %d\n", fileMetadata.cclfNum, importedCount)
 		}
 	}
-
-	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
-	fmt.Println(successMsg)
-	log.Infof(successMsg)
 
 	return nil
 }
