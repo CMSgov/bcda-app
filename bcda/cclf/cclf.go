@@ -203,7 +203,6 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-	db.LogMode(true)
 
 	err = db.Create(&cclfFile).Error
 	if err != nil {
