@@ -202,7 +202,7 @@ func (s *ImporterTestSuite) TestFlushOnNoExistingStatement() {
 func getBeneficiary(fileID uint) *models.CCLFBeneficiary {
 	return &models.CCLFBeneficiary{
 		FileID: fileID,
-		// We expect 11 byte sfor HICN and MBI - we'll ensure that each of the values are AT LEAST 11 bytes
+		// We expect 11 bytes for HICN and MBI - we'll ensure that each of the values are AT LEAST 11 bytes
 		HICN: fmt.Sprintf("HICN%07d", rand.Uint64()),
 		MBI:  fmt.Sprintf("MBI%08d", rand.Uint64()),
 	}
