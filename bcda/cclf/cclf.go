@@ -214,7 +214,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 
 	fileMetadata.fileID = cclfFile.ID
 
-	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 1000)
+	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000)
 	importedCount := 0
 	var rawFile *zip.File
 
