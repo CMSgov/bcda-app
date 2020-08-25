@@ -427,6 +427,11 @@ func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) 
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
+
+	// NOTE: This relies on the fact that this caller was the last
+	// one to submit a job for the given acoID. Otherwise, the result
+	// of the last job is not guaranteed to be "Failed"
+	s.verifyJobStatus(acoID, "Failed")
 }
 
 func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
@@ -474,6 +479,11 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Code)
+
+	// NOTE: This relies on the fact that this caller was the last
+	// one to submit a job for the given acoID. Otherwise, the result
+	// of the last job is not guaranteed to be "Failed"
+	s.verifyJobStatus(acoID, "Failed")
 }
 
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
@@ -720,6 +730,8 @@ func bulkCoverageRequestInvalidOutputHelper(endpoint, outputFormat string, s *AP
 
 func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	orig := os.Getenv("BB_CLIENT_CERT_FILE")
+	defer os.Setenv("BB_CLIENT_CERT_FILE", orig)
+
 	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
 	assert.Nil(s.T(), err)
 
@@ -734,7 +746,11 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	handlerFunc(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-	os.Setenv("BB_CLIENT_CERT_FILE", orig)
+
+	// NOTE: This relies on the fact that this caller was the last
+	// one to submit a job for the given acoID. Otherwise, the result
+	// of the last job is not guaranteed to be "Failed"
+	s.verifyJobStatus(acoID, "Failed")
 }
 
 func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {
@@ -1527,6 +1543,12 @@ func (s *APITestSuite) TestAuthInfoOkta() {
 	auth.SetProvider(originalProvider)
 }
 
+func (s *APITestSuite) verifyJobStatus(acoID string, expectedJobStatus string) {
+	var job models.Job
+	err := s.db.Last(&job, "aco_id = ?", acoID).Error
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), expectedJobStatus, job.Status)
+}
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
 }

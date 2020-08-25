@@ -2,12 +2,12 @@ package web
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
@@ -179,6 +179,17 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	// After successfully creating the job, we need to mark the job as FAILED if we had any other issues
+	// with populating data associated with the job.
+	defer func() {
+		if err != nil {
+			if err1 := db.Model(&newJob).Update("status", "Failed").Error; err1 != nil {
+				err1 = errors.Wrap(err1, "Failed to update job status to Failed")
+				log.Error(err1)
+			}
+		}
+	}()
+
 	bb, err := client.NewBlueButtonClient()
 	if err != nil {
 		log.Error(err)
@@ -195,7 +206,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		return
 	}
 	transactionTime := b.Meta.LastUpdated
-	if db.Model(&newJob).Update("transaction_time", transactionTime).Error != nil {
+	if err = db.Model(&newJob).Update("transaction_time", transactionTime).Error; err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -203,6 +214,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 
 	if qc == nil {
+		err = errors.New("queue client not initialized")
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -225,7 +237,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
+	if err = db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error; err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
