@@ -184,7 +184,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	defer func() {
 		if err != nil {
 			if err1 := db.Model(&newJob).Update("status", "Failed").Error; err1 != nil {
-				err1 = errors.Wrap(err1, "Failed to update job status to Failed")
+				err1 = errors.Wrap(err1, "error when updating job status to \"Failed\"")
 				log.Error(err1)
 			}
 		}
