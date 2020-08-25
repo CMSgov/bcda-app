@@ -149,7 +149,7 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) error {
 	importer := &cclf8Importer{
 		logger:            log.StandardLogger(),
-		maxPendingQueries: utils.GetEnvInt("STATEMENT_EXEC_COUNT", 100000),
+		maxPendingQueries: utils.GetEnvInt("STATEMENT_EXEC_COUNT", 200000),
 	}
 
 	err := importCCLF(ctx, fileMetadata, importer)
