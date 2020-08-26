@@ -159,7 +159,6 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
 	acoID := ad.ACOID
 
 	var jobs []models.Job
@@ -183,10 +182,39 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		scheme = "https"
 	}
 
+	// Need to create job in transaction instead of the very end of the process because we need
+	// the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
+	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
+	tx := db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+
+		// We create the job after populating all of the data needed for the job (including inserting all of the queue jobs) to
+		// ensure that the job will be able to be processed and it WILL NOT BE stuck in the Pending state.
+		// For example, we write that the job has 10 queuejobs. We fail after inserting 9 queuejobs. The job will
+		// never move out of the IN_PROGRESS (or PENDING) state since we'll never be able to add the last queuejob.
+		//
+		// Since the queue jobs may (and do) exist in a different database, we cannot use a single transaction to encompass
+		// both adding queuejobs and adding the parent job.
+		//
+		// This does introduce an error scenario where we have queuejobs but no parent job.
+		// We've added logic into the worker to handle this situation.
+		tx.Commit()
+	}()
+
 	newJob := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
+	}
+	if err = tx.Save(&newJob).Error; err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
@@ -228,18 +256,8 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	// We create the job after populating all of the data needed for the job (including inserting all of the queue jobs) to
-	// ensure that the job will be able to be processed and it WILL NOT BE stuck in the Pending state.
-	// For example, we write that the job has 10 queuejobs. We fail after inserting 9 queuejobs. The job will
-	// never move out of the IN_PROGRESS (or PENDING) state since we'll never be able to add the last queuejob.
-	//
-	// Since the queue jobs may (and do) exist in a different database, we cannot use a single transaction to encompass
-	// both adding queuejobs and adding the parent job.
-	//
-	// This does introduce an error scenario where we have queuejobs but no parent job.
-	// We've added logic into the worker to handle this situation.
-	if result := db.Save(&newJob); result.Error != nil {
-		log.Error(result.Error.Error())
+	if err = tx.Save(&newJob).Error; err != nil {
+		log.Error(err.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
