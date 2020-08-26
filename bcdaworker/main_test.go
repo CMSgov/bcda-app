@@ -470,3 +470,41 @@ func (s *MainTestSuite) TestUpdateJobStats() {
 	db.First(&j, j.ID)
 	assert.Equal(s.T(), 2, j.CompletedJobCount)
 }
+
+func (s *MainTestSuite) TestQueueJobWithNoParent() {
+	retryCount := 10
+	os.Setenv("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", strconv.Itoa(retryCount))
+	tests := []struct {
+		name        string
+		errorCount  int32
+		expectedErr error
+	}{
+		{"RetriesRemaining", int32(retryCount) - 1, errors.New("could not retrieve job from database: record not found")},
+		{"RetriesExhausted", int32(retryCount), nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			qjArgs, _ := json.Marshal(jobEnqueueArgs{
+				ID:             99999999, // JobID is not found in the db
+				ACOID:          "00000000-0000-0000-0000-000000000000",
+				BeneficiaryIDs: []string{},
+				ResourceType:   "Patient",
+			})
+
+			qj := &que.Job{
+				Type:       "ProcessJob",
+				Args:       qjArgs,
+				Priority:   1,
+				ErrorCount: tt.errorCount,
+			}
+
+			err := processJob(qj)
+			if tt.expectedErr != nil {
+				assert.Equal(t, err.Error(), tt.expectedErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
