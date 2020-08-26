@@ -2,13 +2,17 @@ package cclf
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -564,6 +568,62 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		assert.NotEqual("T.BCD.ACO.ZC0Y18.D181120.T0001000", file.Name())
 	}
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/archives/valid/")
+}
+
+func (s *CCLFTestSuite) TestGetPriorityACOs() {
+	query := regexp.QuoteMeta(`
+	SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
+	FROM systems s JOIN groups g ON s.group_id=g.group_id 
+	WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
+	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
+	`)
+	defaultPriority := strings.Split(os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS"), ",")
+	tests := []struct {
+		name        string
+		idsToReturn []string
+		errToReturn error
+	}{
+		{"ErrorOnQuery", nil, errors.New("Some query error")},
+		{"NoActiveACOs", nil, nil},
+		{"ActiveACOs", []string{"A", "B", "C", "123"}, nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+			}
+			gdb, err := gorm.Open("postgres", db)
+			if err != nil {
+				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
+			}
+			gdb.LogMode(true)
+			defer func() {
+				assert.NoError(t, mock.ExpectationsWereMet())
+				gdb.Close()
+				db.Close()
+			}()
+
+			expected := mock.ExpectQuery(query)
+			if tt.errToReturn != nil {
+				expected.WillReturnError(tt.errToReturn)
+			} else {
+				rows := sqlmock.NewRows([]string{"cms_id"})
+				for _, id := range tt.idsToReturn {
+					rows.AddRow(id)
+				}
+				expected.WillReturnRows(rows)
+			}
+
+			result := getPriorityACOs(gdb)
+			if len(tt.idsToReturn) == 0 || tt.errToReturn != nil {
+				assert.Equal(t, defaultPriority, result)
+			} else {
+				assert.Equal(t, tt.idsToReturn, result)
+			}
+		})
+	}
 }
 
 func deleteFilesByACO(acoID string, db *gorm.DB) error {

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -540,13 +541,14 @@ func checkDeliveryDate(folderPath string, deliveryDate time.Time) error {
 func orderACOs(cclfMap *map[string]map[int][]*cclfFileMetadata) []string {
 	var acoOrder []string
 
-	if priorityACOList := os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS"); priorityACOList != "" {
-		priorityACOs := strings.Split(priorityACOList, ",")
-		for _, acoID := range priorityACOs {
-			acoID = strings.TrimSpace(acoID)
-			if (*cclfMap)[acoID] != nil {
-				acoOrder = append(acoOrder, acoID)
-			}
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	priorityACOs := getPriorityACOs(db)
+	for _, acoID := range priorityACOs {
+		acoID = strings.TrimSpace(acoID)
+		if (*cclfMap)[acoID] != nil {
+			acoOrder = append(acoOrder, acoID)
 		}
 	}
 
@@ -557,6 +559,30 @@ func orderACOs(cclfMap *map[string]map[int][]*cclfFileMetadata) []string {
 	}
 
 	return acoOrder
+}
+
+func getPriorityACOs(db *gorm.DB) []string {
+	const query = `
+	SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
+	FROM systems s JOIN groups g ON s.group_id=g.group_id 
+	WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
+	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
+	`
+	
+	defaultPriority := strings.Split(os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS"), ",")
+	
+	var acoIDs []string
+	if err := db.Raw(query).Pluck("aco_id", &acoIDs).Error; err != nil {
+		log.Warnf("Failed to query for active ACOs %s. Default to CCLF_PRIORITY_ACO_CMS_IDS.", err.Error())
+		return defaultPriority
+	}
+
+	if len(acoIDs) == 0 {
+		log.Warn("No active ACOs found. Default to CCLF_PRIORITY_ACO_CMS_IDS.")
+		return defaultPriority
+	}
+
+	return acoIDs
 }
 
 func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValidator map[string]cclfFileValidator) error {
