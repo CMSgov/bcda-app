@@ -93,11 +93,11 @@ func processJob(j *que.Job) error {
 		// us plenty of headroom to ensure that the parent job will never be found.
 		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
 		if j.ErrorCount >= maxNotFoundRetries {
-			log.Errorf("No job found for ID %d. Retries exhausted. Removing job from queue.", jobArgs.ID)
+			log.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID, jobArgs.ACOID)
 			return nil
 		}
 
-		log.Warnf("No job found for ID %d. Will retry.", jobArgs.ID)
+		log.Warnf("No job found for ID %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
 		return errors.Wrap(gorm.ErrRecordNotFound, "could not retrieve job from database")
 	}
 
