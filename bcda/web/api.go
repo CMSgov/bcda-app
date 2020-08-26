@@ -182,6 +182,12 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		scheme = "https"
 	}
 
+	newJob := models.Job{
+		ACOID:      uuid.Parse(acoID),
+		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
+		Status:     "Pending",
+	}
+
 	// Need to create job in transaction instead of the very end of the process because we need
 	// the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
 	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
@@ -189,6 +195,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	defer func() {
 		if err != nil {
 			tx.Rollback()
+			// We've already written out the HTTP response so we can return after we've rolled back the transaction
 			return
 		}
 
@@ -202,14 +209,18 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		//
 		// This does introduce an error scenario where we have queuejobs but no parent job.
 		// We've added logic into the worker to handle this situation.
-		tx.Commit()
+		if err = tx.Commit().Error; err != nil {
+			log.Error(err.Error())
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+
+		// We've successfully create the job
+		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
+		w.WriteHeader(http.StatusAccepted)
 	}()
 
-	newJob := models.Job{
-		ACOID:      uuid.Parse(acoID),
-		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
-		Status:     "Pending",
-	}
 	if err = tx.Save(&newJob).Error; err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
@@ -244,6 +255,14 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 	newJob.JobCount = len(enqueueJobs)
 
+	// We've now computed all of the fields necessary to populate a fully defined job
+	if err = tx.Save(&newJob).Error; err != nil {
+		log.Error(err.Error())
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
 	// Since we're enqueuing these queuejobs BEFORE we've created the actual job, we may encounter a transient
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
@@ -255,16 +274,6 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 			return
 		}
 	}
-
-	if err = tx.Save(&newJob).Error; err != nil {
-		log.Error(err.Error())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
-	w.WriteHeader(http.StatusAccepted)
 }
 
 func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {

@@ -93,7 +93,9 @@ func processJob(j *que.Job) error {
 		// us plenty of headroom to ensure that the parent job will never be found.
 		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
 		if j.ErrorCount >= maxNotFoundRetries {
-			log.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID, jobArgs.ACOID)
+			log.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID, 
+			jobArgs.ACOID)
+			// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
 			return nil
 		}
 
