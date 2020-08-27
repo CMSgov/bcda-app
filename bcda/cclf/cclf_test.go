@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -63,10 +62,8 @@ func TestCCLFTestSuite(t *testing.T) {
 
 func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 	// The order they should be ingested in. 1 and 2 are prioritized; 3 is the other ACO in the directory.
+	// This order is computed from values inserted in the database
 	var aco1, aco2, aco3 = "A9989", "A9988", "A0001"
-	origACOs := os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS")
-	os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", fmt.Sprintf("%s,%s", aco1, aco2))
-	defer os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", origACOs)
 
 	os.Setenv("CCLF_REF_DATE", "181201")
 
@@ -491,10 +488,6 @@ func (s *CCLFTestSuite) TestSortCCLFArchives_InvalidPath() {
 }
 
 func (s *CCLFTestSuite) TestOrderACOs() {
-	origACOs := os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS")
-	os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", "A3456, A8765, A4321")
-	defer os.Setenv("CCLF_PRIORITY_ACO_CMS_IDS", origACOs)
-
 	var cclfMap = map[string]map[int][]*cclfFileMetadata{
 		"A1111": map[int][]*cclfFileMetadata{},
 		"A8765": map[int][]*cclfFileMetadata{},
@@ -504,6 +497,7 @@ func (s *CCLFTestSuite) TestOrderACOs() {
 
 	acoOrder := orderACOs(&cclfMap)
 
+	// A3456 and A8765 have been added to the database == prioritized over the other two
 	assert.Len(s.T(), acoOrder, 4)
 	assert.Equal(s.T(), "A3456", acoOrder[0])
 	assert.Equal(s.T(), "A8765", acoOrder[1])
@@ -577,7 +571,6 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 	WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
 	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
 	`)
-	defaultPriority := strings.Split(os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS"), ",")
 	tests := []struct {
 		name        string
 		idsToReturn []string
@@ -617,8 +610,8 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 			}
 
 			result := getPriorityACOs(gdb)
-			if len(tt.idsToReturn) == 0 || tt.errToReturn != nil {
-				assert.Equal(t, defaultPriority, result)
+			if tt.errToReturn != nil {
+				assert.Nil(t, result)
 			} else {
 				assert.Equal(t, tt.idsToReturn, result)
 			}

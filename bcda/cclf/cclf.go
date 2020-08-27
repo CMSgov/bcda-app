@@ -569,17 +569,10 @@ func getPriorityACOs(db *gorm.DB) []string {
 	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
 	`
 	
-	defaultPriority := strings.Split(os.Getenv("CCLF_PRIORITY_ACO_CMS_IDS"), ",")
-	
 	var acoIDs []string
 	if err := db.Raw(query).Pluck("aco_id", &acoIDs).Error; err != nil {
-		log.Warnf("Failed to query for active ACOs %s. Default to CCLF_PRIORITY_ACO_CMS_IDS.", err.Error())
-		return defaultPriority
-	}
-
-	if len(acoIDs) == 0 {
-		log.Warn("No active ACOs found. Default to CCLF_PRIORITY_ACO_CMS_IDS.")
-		return defaultPriority
+		log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
+		return nil
 	}
 
 	return acoIDs
