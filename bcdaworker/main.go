@@ -86,9 +86,25 @@ func processJob(j *que.Job) error {
 	}
 
 	var exportJob models.Job
-	err = db.First(&exportJob, "ID = ?", jobArgs.ID).Error
-	if err != nil {
-		return errors.Wrap(err, "could not retrieve job from database")
+	result := db.First(&exportJob, "ID = ?", jobArgs.ID)
+
+	if result.RecordNotFound() {
+		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
+		// us plenty of headroom to ensure that the parent job will never be found.
+		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
+		if j.ErrorCount >= maxNotFoundRetries {
+			log.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID, 
+			jobArgs.ACOID)
+			// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
+			return nil
+		}
+
+		log.Warnf("No job found for ID %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
+		return errors.Wrap(gorm.ErrRecordNotFound, "could not retrieve job from database")
+	}
+
+	if result.Error != nil {
+		return errors.Wrap(result.Error, "could not retrieve job from database")
 	}
 
 	var aco models.ACO

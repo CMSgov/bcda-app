@@ -400,6 +400,12 @@ func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSu
 
 func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) {
 	acoID := "A40404F7-1EF2-485A-9B71-40FE7ACDCBC2"
+	jobCount, err := s.getJobCount(acoID)
+	assert.NoError(s.T(), err)
+
+	// Since we should've failed somewhere in the bulk request, we should not have
+	// have a job count change.
+	defer s.verifyJobCount(acoID, jobCount)
 
 	requestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
@@ -453,6 +459,12 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	qc = nil
 
 	acoID := constants.SmallACOUUID
+	jobCount, err := s.getJobCount(acoID)
+	assert.NoError(s.T(), err)
+
+	// Since we should've failed somewhere in the bulk request, we should not have
+	// have a job count change.
+	defer s.verifyJobCount(acoID, jobCount)
 
 	requestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
@@ -466,7 +478,7 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 
 	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+	err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -474,6 +486,8 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Code)
+
+	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 }
 
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
@@ -720,10 +734,20 @@ func bulkCoverageRequestInvalidOutputHelper(endpoint, outputFormat string, s *AP
 
 func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	orig := os.Getenv("BB_CLIENT_CERT_FILE")
+	defer os.Setenv("BB_CLIENT_CERT_FILE", orig)
+
 	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
 	assert.Nil(s.T(), err)
 
 	acoID := constants.DevACOUUID
+
+	jobCount, err := s.getJobCount(acoID)
+	assert.NoError(s.T(), err)
+
+	// Since we should've failed somewhere in the bulk request, we should not have
+	// have a job count change.
+	defer s.verifyJobCount(acoID, jobCount)
+
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -731,10 +755,12 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 	ad := makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+
 	handlerFunc(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-	os.Setenv("BB_CLIENT_CERT_FILE", orig)
+
+	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 }
 
 func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {
@@ -1525,6 +1551,18 @@ func (s *APITestSuite) TestAuthInfoOkta() {
 
 	// set provider back to original value
 	auth.SetProvider(originalProvider)
+}
+
+func (s *APITestSuite) verifyJobCount(acoID string, expectedJobCount int) {
+	count, err := s.getJobCount(acoID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), expectedJobCount, count)
+}
+
+func (s *APITestSuite) getJobCount(acoID string) (int, error) {
+	var count int
+	err := s.db.Model(&models.Job{}).Where("aco_id = ?", acoID).Count(&count).Error
+	return count, err
 }
 
 func TestAPITestSuite(t *testing.T) {
