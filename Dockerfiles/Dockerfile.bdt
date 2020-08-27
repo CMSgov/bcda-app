@@ -7,6 +7,9 @@ RUN apt update -y && apt install git -y
 RUN git clone https://github.com/smart-on-fhir/bdt.git
 WORKDIR '/bdt'
 
+# Pinning bdt version that is compatible with FHIR R3
+RUN git checkout bc64ac546d309969034fca3c9f9a5a01d4d7563f
+
 COPY bdt/config.js .
 COPY bdt/run-bdt.sh .
 
