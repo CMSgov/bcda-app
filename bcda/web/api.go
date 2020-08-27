@@ -2,12 +2,12 @@ package web
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
@@ -141,9 +141,24 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	if qc == nil {
+		err = errors.New("queue client not initialized")
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	bb, err := client.NewBlueButtonClient()
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
-
 	acoID := ad.ACOID
 
 	var jobs []models.Job
@@ -172,20 +187,47 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
 		Status:     "Pending",
 	}
-	if result := db.Save(&newJob); result.Error != nil {
-		log.Error(result.Error.Error())
+
+	// Need to create job in transaction instead of the very end of the process because we need
+	// the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
+	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
+	tx := db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			// We've already written out the HTTP response so we can return after we've rolled back the transaction
+			return
+		}
+
+		// We create the job after populating all of the data needed for the job (including inserting all of the queue jobs) to
+		// ensure that the job will be able to be processed and it WILL NOT BE stuck in the Pending state.
+		// For example, we write that the job has 10 queuejobs. We fail after inserting 9 queuejobs. The job will
+		// never move out of the IN_PROGRESS (or PENDING) state since we'll never be able to add the last queuejob.
+		//
+		// Since the queue jobs may (and do) exist in a different database, we cannot use a single transaction to encompass
+		// both adding queuejobs and adding the parent job.
+		//
+		// This does introduce an error scenario where we have queuejobs but no parent job.
+		// We've added logic into the worker to handle this situation.
+		if err = tx.Commit().Error; err != nil {
+			log.Error(err.Error())
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+
+		// We've successfully create the job
+		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
+		w.WriteHeader(http.StatusAccepted)
+	}()
+
+	if err = tx.Save(&newJob).Error; err != nil {
+		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
-	bb, err := client.NewBlueButtonClient()
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
 	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
 	if err != nil {
@@ -194,20 +236,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	transactionTime := b.Meta.LastUpdated
-	if db.Model(&newJob).Update("transaction_time", transactionTime).Error != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	if qc == nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
+	newJob.TransactionTime = b.Meta.LastUpdated
 
 	// Decode the _since parameter (if it exists) so it can be persisted in job args
 	var decodedSince string
@@ -224,14 +253,19 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
+	newJob.JobCount = len(enqueueJobs)
 
-	if db.Model(&newJob).Update("job_count", len(enqueueJobs)).Error != nil {
-		log.Error(err)
+	// We've now computed all of the fields necessary to populate a fully defined job
+	if err = tx.Save(&newJob).Error; err != nil {
+		log.Error(err.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
+	// Since we're enqueuing these queuejobs BEFORE we've created the actual job, we may encounter a transient
+	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
+	// once we finish inserting the job.
 	for _, j := range enqueueJobs {
 		if err = qc.Enqueue(j); err != nil {
 			log.Error(err)
@@ -240,9 +274,6 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 			return
 		}
 	}
-
-	w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
-	w.WriteHeader(http.StatusAccepted)
 }
 
 func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
