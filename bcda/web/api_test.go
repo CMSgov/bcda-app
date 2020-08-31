@@ -32,6 +32,7 @@ import (
 
 const (
 	expiryHeaderFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
+	acoUnderTest       = constants.SmallACOUUID
 )
 
 type APITestSuite struct {
@@ -321,7 +322,7 @@ func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
 }
 
 func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -357,7 +358,7 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -458,7 +459,7 @@ func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
 func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 	qc = nil
 
-	acoID := constants.SmallACOUUID
+	acoID := acoUnderTest
 	jobCount, err := s.getJobCount(acoID)
 	assert.NoError(s.T(), err)
 
@@ -491,7 +492,7 @@ func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 
 	defer func() {
 		s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
@@ -528,7 +529,7 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 }
 
 func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -570,7 +571,7 @@ func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITe
 }
 
 func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 
 	defer func() {
 		s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
@@ -607,7 +608,7 @@ func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *
 }
 
 func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -649,7 +650,7 @@ func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APIT
 }
 
 func bulkCoverageRequestInvalidSinceDateHelper(endpoint, since string, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -691,7 +692,7 @@ func bulkCoverageRequestInvalidSinceDateHelper(endpoint, since string, s *APITes
 }
 
 func bulkCoverageRequestInvalidOutputHelper(endpoint, outputFormat string, s *APITestSuite) {
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -739,7 +740,7 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
 	assert.Nil(s.T(), err)
 
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 
 	jobCount, err := s.getJobCount(acoID)
 	assert.NoError(s.T(), err)
@@ -773,7 +774,7 @@ func bulkRequestInvalidTypeHelper(endpoint string, s *APITestSuite) {
 func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	assert.Nil(s.T(), err)
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
@@ -815,7 +816,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	var lastRequestJob models.Job
-	s.db.Last(&lastRequestJob)
+	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	// change status to Failed and serve job
@@ -826,7 +827,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	lastRequestJob = models.Job{}
-	s.db.Last(&lastRequestJob)
+	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	// change status to Archived
@@ -837,7 +838,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	lastRequestJob = models.Job{}
-	s.db.Last(&lastRequestJob)
+	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	// change status to Expired
@@ -848,7 +849,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	lastRequestJob = models.Job{}
-	s.db.Last(&lastRequestJob)
+	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	// different aco same endpoint
@@ -859,7 +860,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	lastRequestJob = models.Job{}
-	s.db.Last(&lastRequestJob)
+	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	// same aco different endpoint
@@ -883,7 +884,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
 
 	lastRequestJob = models.Job{}
-	s.db.Last(&lastRequestJob)
+	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
 
 	os.Unsetenv("DEPLOYMENT_TARGET")
@@ -892,7 +893,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	assert.Nil(s.T(), err)
-	acoID := constants.DevACOUUID
+	acoID := acoUnderTest
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
 	assert.Nil(s.T(), err)
 
