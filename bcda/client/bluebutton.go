@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -328,7 +329,7 @@ type httpLogger struct {
 }
 
 func (h *httpLogger) RoundTrip(req *http.Request) (*http.Response, error) {
-	go h.logRequest(req)
+	go h.logRequest(req.Clone(context.Background()))
 	resp, err := h.t.RoundTrip(req)
 	if resp != nil {
 		h.logResponse(req, resp)
