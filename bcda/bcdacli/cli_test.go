@@ -714,7 +714,7 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	path := "../../shared_files/synthetic1800MedicareFiles/test/"
+	path := "../../shared_files/synthetic1800MedicareFiles/test2/"
 
 	args := []string{"bcda", "import-suppression-directory", "--directory", path}
 	err := s.testApp.Run(args)
@@ -727,7 +727,7 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	testUtils.ResetFiles(s.Suite, path)
 
 	fs := []models.SuppressionFile{}
-	db.Where("name in (?)", []string{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"}).Find(&fs)
+	db.Where("name in (?)", []string{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010", "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391"}).Find(&fs)
 	assert.Len(fs, 2)
 	for _, f := range fs {
 		err := f.Delete()
