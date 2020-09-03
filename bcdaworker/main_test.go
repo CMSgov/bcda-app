@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -84,7 +85,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetBundleData("ExplanationOfBenefit", beneficiaryID))
 	}
 
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.NoError(s.T(), err)
 
 	files, err := ioutil.ReadDir(stagingDir)
@@ -119,7 +120,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 }
 
 func (s *MainTestSuite) TestWriteEOBDataToFileNoClient() {
-	_, err := writeBBDataToFile(nil, nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", "A00234", []string{"20000", "21000"}, "1", "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), nil, nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", "A00234", []string{"20000", "21000"}, "1", "ExplanationOfBenefit", "", time.Now())
 	assert.NotNil(s.T(), err)
 }
 
@@ -131,7 +132,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileInvalidACO() {
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit", "", time.Now())
 	assert.NotNil(s.T(), err)
 }
 
@@ -171,7 +172,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	fileUUID, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.NoError(s.T(), err)
 
 	errorFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID)
@@ -221,7 +222,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
 
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
 
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
@@ -275,7 +276,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	_, err := writeBBDataToFile(&bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(stagingDir)
@@ -341,7 +342,7 @@ func (s *MainTestSuite) TestAppendErrorToFile() {
 	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
 	jobID := "1"
 	testUtils.CreateStaging(jobID)
-	appendErrorToFile(acoID, "", "", "", jobID)
+	appendErrorToFile(context.Background(), acoID, "", "", "", jobID)
 
 	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
 	fData, err := ioutil.ReadFile(filePath)
