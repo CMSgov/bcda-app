@@ -34,15 +34,6 @@ var (
 	qc *que.Client
 )
 
-type jobEnqueueArgs struct {
-	ID              int
-	ACOID           string
-	BeneficiaryIDs  []string
-	ResourceType    string
-	Since           string
-	TransactionTime time.Time
-}
-
 func init() {
 	createWorkerDirs()
 	log.SetFormatter(&log.JSONFormatter{})
@@ -80,7 +71,7 @@ func processJob(j *que.Job) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	jobArgs := jobEnqueueArgs{}
+	jobArgs := models.JobEnqueueArgs{}
 	err := json.Unmarshal(j.Args, &jobArgs)
 	if err != nil {
 		return err

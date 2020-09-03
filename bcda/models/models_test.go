@@ -665,7 +665,7 @@ func (s *ModelsTestSuite) TestGetEnqueueJobs() {
 			assert.Equal(t, len(tt.expectedJobArgs), len(enqueueJobs))
 
 			for i, expected := range tt.expectedJobArgs {
-				jobArgs := jobEnqueueArgs{}
+				jobArgs := JobEnqueueArgs{}
 				err := json.Unmarshal(enqueueJobs[i].Args, &jobArgs)
 				if err != nil {
 					assert.NoError(t, err)

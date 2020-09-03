@@ -197,7 +197,7 @@ func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 
-				args, err := json.Marshal(jobEnqueueArgs{
+				args, err := json.Marshal(JobEnqueueArgs{
 					ID:              int(job.ID),
 					ACOID:           job.ACOID.String(),
 					BeneficiaryIDs:  jobIDs,
@@ -527,7 +527,7 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, reqType string, model
 
 // This is not a persistent model so it is not necessary to include in GORM auto migrate.
 // swagger:ignore
-type jobEnqueueArgs struct {
+type JobEnqueueArgs struct {
 	ID              int
 	ACOID           string
 	BeneficiaryIDs  []string

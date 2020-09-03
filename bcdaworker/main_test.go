@@ -371,7 +371,7 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
-	jobArgs := jobEnqueueArgs{
+	jobArgs := models.JobEnqueueArgs{
 		ID:             int(j.ID),
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{"10000", "11000"},
@@ -401,7 +401,7 @@ func (s *MainTestSuite) TestProcessJob_InvalidArgs() {
 }
 
 func (s *MainTestSuite) TestProcessJob_InvalidJobID() {
-	qjArgs, _ := json.Marshal(jobEnqueueArgs{
+	qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
 		ID:             99999999,
 		ACOID:          "00000000-0000-0000-0000-000000000000",
 		BeneficiaryIDs: []string{},
@@ -428,7 +428,7 @@ func (s *MainTestSuite) TestProcessJob_NoBBClient() {
 	}
 	db.Save(&j)
 
-	qjArgs, _ := json.Marshal(jobEnqueueArgs{
+	qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
 		ID:             int(j.ID),
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
@@ -486,7 +486,7 @@ func (s *MainTestSuite) TestQueueJobWithNoParent() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			qjArgs, _ := json.Marshal(jobEnqueueArgs{
+			qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
 				ID:             99999999, // JobID is not found in the db
 				ACOID:          "00000000-0000-0000-0000-000000000000",
 				BeneficiaryIDs: []string{},
