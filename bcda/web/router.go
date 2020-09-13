@@ -34,6 +34,13 @@ func NewAPIRouter() http.Handler {
 		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
 		r.Get(m.WrapHandler("/metadata", metadata))
 	})
+
+	r.Route("/api/v2", func(r chi.Router) {
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequestV2))
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", bulkGroupRequestV2))
+		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatusV2))
+	})
+
 	r.Get(m.WrapHandler("/_version", getVersion))
 	r.Get(m.WrapHandler("/_health", healthCheck))
 	r.Get(m.WrapHandler("/_auth", getAuthInfo))
