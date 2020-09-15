@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"time"
 
@@ -14,13 +16,15 @@ import (
 
 // might add a with metrics bool option
 var (
-	appTestToken, workerTestToken, apiHost, proto, resourceType, reportFilePath, endpoint string
-	freq, duration                                                                        int
+	appClientID, appClientSecret, workerClientID, workerClientSecret, apiHost, proto, resourceType, reportFilePath, endpoint string
+	freq, duration                                                                                                           int
 )
 
 func init() {
-	flag.StringVar(&appTestToken, "api_test_token", "", "access token used for api performance testing")
-	flag.StringVar(&workerTestToken, "worker_test_token", "", "access token used for worker performance testing")
+	flag.StringVar(&appClientID, "appClientID", "", "client id for retrieving an access token for api performance testing")
+	flag.StringVar(&appClientSecret, "appClientSecret", "", "client secret for retrieving an access token for api performance testing")
+	flag.StringVar(&workerClientID, "appClientID", "", "client id for retrieving an access token for worker performance testing")
+	flag.StringVar(&workerClientSecret, "appClientSecret", "", "client secret for retrieving an access token for worker performance testing")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.IntVar(&duration, "duration", 60, "seconds: the total time to run the test")
 	flag.IntVar(&freq, "freq", 10, "the number of requests per second")
@@ -40,7 +44,8 @@ func init() {
 }
 
 func main() {
-	if appTestToken != "" {
+	if appClientID != "" && appClientSecret != "" {
+		appTestToken := getAccessToken(appClientID, appClientSecret)
 		targeter := makeTarget(appTestToken)
 		apiResults := runAPITest(targeter)
 		var buf bytes.Buffer
@@ -51,7 +56,8 @@ func main() {
 		writeResults(fmt.Sprintf("%s_%s_api_plot", endpoint, resourceType), buf)
 	}
 
-	if workerTestToken != "" {
+	if workerClientID != "" && workerClientSecret != "" {
+		workerTestToken := getAccessToken(workerClientID, workerClientSecret)
 		targeter := makeTarget(workerTestToken)
 		workerResults := runWorkerTest(targeter)
 		var buf bytes.Buffer
@@ -66,7 +72,7 @@ func main() {
 func makeTarget(accessToken string) vegeta.Targeter {
 	if endpoint == "Group" {
 		groupId := "all"
-		endpoint = fmt.Sprintf("%s/%s",endpoint, groupId)
+		endpoint = fmt.Sprintf("%s/%s", endpoint, groupId)
 	}
 
 	var url string
@@ -139,4 +145,28 @@ func writeResults(filename string, buf bytes.Buffer) {
 			panic(err)
 		}
 	}
+}
+
+func getAccessToken(clientID, clientSecret string) string {
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s://%s/auth/token", proto, apiHost), nil)
+	if err != nil {
+		panic(err)
+	}
+
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	defer resp.Body.Close()
+
+	var t map[string]interface{}
+	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
+		panic(fmt.Sprintf("unexpected token response format: %s", err.Error()))
+	}
+
+	return t["access_token"].(string)
 }
