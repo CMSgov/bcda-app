@@ -23,8 +23,8 @@ var (
 func init() {
 	flag.StringVar(&appClientID, "appClientID", "", "client id for retrieving an access token for api performance testing")
 	flag.StringVar(&appClientSecret, "appClientSecret", "", "client secret for retrieving an access token for api performance testing")
-	flag.StringVar(&workerClientID, "appClientID", "", "client id for retrieving an access token for worker performance testing")
-	flag.StringVar(&workerClientSecret, "appClientSecret", "", "client secret for retrieving an access token for worker performance testing")
+	flag.StringVar(&workerClientID, "workerClientID", "", "client id for retrieving an access token for worker performance testing")
+	flag.StringVar(&workerClientSecret, "workerClientSecret", "", "client secret for retrieving an access token for worker performance testing")
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.IntVar(&duration, "duration", 60, "seconds: the total time to run the test")
 	flag.IntVar(&freq, "freq", 10, "the number of requests per second")
