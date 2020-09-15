@@ -17,8 +17,11 @@ import (
 
 // might add a with metrics bool option
 var (
-	appClientID, appClientSecret, workerClientID, workerClientSecret, apiHost, proto, resourceType, reportFilePath, endpoint string
-	freq, duration                                                                                                           int
+	appClientID, appClientSecret, workerClientID,
+	workerClientSecret, apiHost, proto,
+	resourceType, reportFilePath, endpoint string
+
+	freq, duration int
 )
 
 func init() {
