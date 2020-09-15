@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -110,8 +111,20 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 	// 10 request every second for 60 seconds = 600 total calls
 	d := time.Second * time.Duration(duration)
 	rate := vegeta.Rate{Freq: freq, Per: time.Second}
-	plotAttack(p, target, rate, d)
+	var metrics vegeta.Metrics
+	plotAttack(p, metrics, target, rate, d)
 
+	// Needed to compute all of the summary metrics
+	metrics.Close()
+
+	if len(metrics.Errors) > 0 {
+		log.Fatalf("Encountered %v errors", metrics.Errors)
+	}
+
+	if metrics.Success < 1.0 {
+		log.Fatalf("Expected success rate of 1.0, received %f",
+			metrics.Success)
+	}
 	return p
 }
 
@@ -130,13 +143,13 @@ func runWorkerTest(target vegeta.Targeter) *plot.Plot {
 }
 
 // need to make rate into some sort of pretty string format
-func plotAttack(p *plot.Plot, t vegeta.Targeter, r vegeta.Rate, du time.Duration) {
+func plotAttack(p *plot.Plot, m vegeta.Metrics, t vegeta.Targeter, r vegeta.Rate, du time.Duration) {
 	attacker := vegeta.NewAttacker()
 	for results := range attacker.Attack(t, r, du, fmt.Sprintf("%dps:", r.Freq)) {
-		err := p.Add(results)
-		if err != nil {
+		if err := p.Add(results); err != nil {
 			panic(err)
 		}
+		m.Add(results)
 	}
 }
 
