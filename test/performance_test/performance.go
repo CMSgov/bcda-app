@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 
 	vegeta "github.com/tsenart/vegeta/lib"
@@ -136,9 +137,11 @@ func plotAttack(p *plot.Plot, t vegeta.Targeter, r vegeta.Rate, du time.Duration
 }
 
 func writeResults(filename string, buf bytes.Buffer) {
+	re := regexp.MustCompile("[^a-zA-Z0-9\\.\\-]")
+	clean := re.ReplaceAllString(filename, "-")
 	data := buf.Bytes()
 	if len(data) > 0 {
-		fn := fmt.Sprintf("%s/%s.html", reportFilePath, filename)
+		fn := fmt.Sprintf("%s/%s.html", reportFilePath, clean)
 		fmt.Printf("Writing results: %s\n", fn)
 		err := ioutil.WriteFile(fn, data, 0600)
 		if err != nil {
