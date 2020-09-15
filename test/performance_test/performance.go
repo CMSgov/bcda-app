@@ -87,6 +87,7 @@ func makeTarget(accessToken string) vegeta.Targeter {
 		"Prefer":        {"respond-async"},
 		"Accept":        {"application/fhir+json"},
 		"Authorization": {fmt.Sprintf("Bearer %s", accessToken)},
+		"User-Agent":    {"bcda-performance-test"},
 	}
 
 	targeter := vegeta.NewStaticTargeter(vegeta.Target{
