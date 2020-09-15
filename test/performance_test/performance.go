@@ -112,19 +112,15 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 	d := time.Second * time.Duration(duration)
 	rate := vegeta.Rate{Freq: freq, Per: time.Second}
 	var metrics vegeta.Metrics
+	defer func() {
+		// Needed to compute all of the summary metrics
+		metrics.Close()
+		if err := validateMetrics(metrics); err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
 	plotAttack(p, metrics, target, rate, d)
 
-	// Needed to compute all of the summary metrics
-	metrics.Close()
-
-	if len(metrics.Errors) > 0 {
-		log.Fatalf("Encountered %v errors", metrics.Errors)
-	}
-
-	if metrics.Success < 1.0 {
-		log.Fatalf("Expected success rate of 1.0, received %f",
-			metrics.Success)
-	}
 	return p
 }
 
@@ -137,7 +133,15 @@ func runWorkerTest(target vegeta.Targeter) *plot.Plot {
 	// 1 request for 300,000 beneficiaries
 	d := time.Minute
 	rate := vegeta.Rate{Freq: 1, Per: time.Minute}
-	plotAttack(p, target, rate, d)
+	var metrics vegeta.Metrics
+	defer func() {
+		// Needed to compute all of the summary metrics
+		metrics.Close()
+		if err := validateMetrics(metrics); err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
+	plotAttack(p, metrics, target, rate, d)
 
 	return p
 }
@@ -189,4 +193,21 @@ func getAccessToken(clientID, clientSecret string) string {
 	}
 
 	return t["access_token"].(string)
+}
+
+func validateMetrics(metrics vegeta.Metrics) error {
+	if metrics.Requests == 0 {
+		return nil
+	}
+
+	if len(metrics.Errors) > 0 {
+		return fmt.Errorf("Encountered %v errors", metrics.Errors)
+	}
+
+	if metrics.Success < 1.0 {
+		fmt.Errorf("Expected success rate of 1.0, received %f",
+			metrics.Success)
+	}
+
+	return nil
 }
