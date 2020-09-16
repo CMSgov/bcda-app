@@ -413,7 +413,8 @@ func jobStatus(w http.ResponseWriter, r *http.Request) {
 	switch job.Status {
 
 	case "Failed":
-		responseutils.WriteError(&fhirmodels.OperationOutcome{}, w, http.StatusInternalServerError)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 	case "Pending":
 		fallthrough
 	case "In Progress":
