@@ -35,11 +35,12 @@ func NewAPIRouter() http.Handler {
 		r.Get(m.WrapHandler("/metadata", metadata))
 	})
 
-	r.Route("/api/v2", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequestV2))
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", bulkGroupRequestV2))
-		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatusV2))
-	})
+	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", false) {
+		r.Route("/api/v2", func(r chi.Router) {
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequestV2))
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", bulkGroupRequestV2))
+		})
+	}
 
 	r.Get(m.WrapHandler("/_version", getVersion))
 	r.Get(m.WrapHandler("/_health", healthCheck))
