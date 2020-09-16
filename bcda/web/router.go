@@ -36,7 +36,7 @@ func NewAPIRouter() http.Handler {
 		r.Get(m.WrapHandler("/metadata", metadata))
 	})
 
-	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", false) {
+	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", true) {
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
 			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))

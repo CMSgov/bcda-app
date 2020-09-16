@@ -1,15 +1,12 @@
 package v2
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/pkg/errors"
-
-	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"net/http"
 	"os"
@@ -26,7 +23,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
@@ -55,7 +51,7 @@ func init() {
 }
 
 /*
-	swagger:route GET /api/v1/Patient/$export bulkData BulkPatientRequest
+	swagger:route GET /api/v2/Patient/$export bulkData BulkPatientRequest
 
 	Start data export for all supported resource types
 
@@ -85,7 +81,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/Group/{groupId}/$export bulkData bulkGroupRequest
+	swagger:route GET /api/v2/Group/{groupId}/$export bulkData bulkGroupRequest
 
     Start data export (for the specified group identifier) for all supported resource types
 
@@ -370,278 +366,6 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 	}
 
 	return resourceTypes, nil
-}
-
-/*
-	swagger:route GET /api/v1/jobs/{jobId} bulkData jobStatus
-
-	Get job status
-
-	Returns the current status of an export job.
-
-	Produces:
-	- application/fhir+json
-
-	Schemes: http, https
-
-	Security:
-		bearer_token:
-
-	Responses:
-		202: jobStatusResponse
-		200: completedJobResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		404: notFoundResponse
-		410: goneResponse
-		500: errorResponse
-*/
-func JobStatus(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobID")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var job models.Job
-	err := db.Find(&job, "id = ?", jobID).Error
-	if err != nil {
-		log.Print(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
-		responseutils.WriteError(oo, w, http.StatusNotFound)
-		return
-	}
-
-	switch job.Status {
-
-	case "Failed":
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-	case "Pending":
-		fallthrough
-	case "In Progress":
-		w.Header().Set("X-Progress", job.StatusMessage())
-		w.WriteHeader(http.StatusAccepted)
-		return
-	case "Completed":
-		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
-		if job.UpdatedAt.Add(GetJobTimeout()).Before(time.Now()) {
-			w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
-			responseutils.WriteError(oo, w, http.StatusGone)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
-		scheme := "http"
-		if servicemux.IsHTTPS(r) {
-			scheme = "https"
-		}
-
-		rb := bulkResponseBody{
-			TransactionTime:     job.TransactionTime,
-			RequestURL:          job.RequestURL,
-			RequiresAccessToken: true,
-			Files:               []fileItem{},
-			Errors:              []fileItem{},
-			JobID:               job.ID,
-		}
-
-		var jobKeysObj []models.JobKey
-		db.Find(&jobKeysObj, "job_id = ?", job.ID)
-		for _, jobKey := range jobKeysObj {
-
-			// data files
-			fi := fileItem{
-				Type: jobKey.ResourceType,
-				URL:  fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
-			}
-			rb.Files = append(rb.Files, fi)
-
-			// error files
-			errFileName := strings.Split(jobKey.FileName, ".")[0]
-			errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
-			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
-				errFI := fileItem{
-					Type: "OperationOutcome",
-					URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
-				}
-				rb.Errors = append(rb.Errors, errFI)
-			}
-		}
-
-		jsonData, err := json.Marshal(rb)
-		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-
-		_, err = w.Write([]byte(jsonData))
-		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-	case "Archived":
-		fallthrough
-	case "Expired":
-		w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
-		responseutils.WriteError(oo, w, http.StatusGone)
-	}
-}
-
-/*
-	swagger:route GET /data/{jobId}/{filename} bulkData serveData
-
-	Get data file
-
-	Returns the NDJSON file of data generated by an export job.  Will be in the format <UUID>.ndjson.  Get the full value from the job status response
-
-	Produces:
-	- application/fhir+json
-
-	Schemes: http, https
-
-	Security:
-		bearer_token:
-
-	Responses:
-		200: FileNDJSON
-		400: badRequestResponse
-		401: invalidCredentials
-        404: notFoundResponse
-		500: errorResponse
-*/
-func serveData(w http.ResponseWriter, r *http.Request) {
-	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
-	fileName := chi.URLParam(r, "fileName")
-	jobID := chi.URLParam(r, "jobID")
-	w.Header().Set("Content-Type", "application/fhir+ndjson")
-	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
-}
-
-/*
-	swagger:route GET /api/v1/metadata metadata metadata
-
-	Get metadata
-
-	Returns metadata about the API.
-
-	Produces:
-	- application/fhir+json
-
-	Schemes: http, https
-
-	Responses:
-		200: MetadataResponse
-*/
-func metadata(w http.ResponseWriter, r *http.Request) {
-	dt := time.Now()
-
-	scheme := "http"
-	if servicemux.IsHTTPS(r) {
-		scheme = "https"
-	}
-	host := fmt.Sprintf("%s://%s", scheme, r.Host)
-	statement := responseutils.CreateCapabilityStatement(dt, constants.Version, host)
-	responseutils.WriteCapabilityStatement(statement, w)
-}
-
-/*
-	swagger:route GET /_version metadata getVersion
-
-	Get API version
-
-	Returns the version of the API that is currently running. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
-
-	Produces:
-	- application/json
-
-	Schemes: http, https
-
-	Responses:
-		200: VersionResponse
-*/
-func getVersion(w http.ResponseWriter, r *http.Request) {
-	respMap := make(map[string]string)
-	respMap["version"] = constants.Version
-	respBytes, err := json.Marshal(respMap)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(respBytes)
-	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-}
-
-func healthCheck(w http.ResponseWriter, r *http.Request) {
-	m := make(map[string]string)
-
-	if health.IsDatabaseOK() {
-		m["database"] = "ok"
-		w.WriteHeader(http.StatusOK)
-	} else {
-		m["database"] = "error"
-		w.WriteHeader(http.StatusBadGateway)
-	}
-
-	respJSON, err := json.Marshal(m)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(respJSON)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-
-/*
-   swagger:route GET /_auth metadata getAuthInfo
-
-   Get details about auth
-
-   Returns the auth provider that is currently being used. Note that this endpoint is **not** prefixed with the base path (e.g. /api/v1).
-
-   Produces:
-   - application/json
-
-   Schemes: http, https
-
-   Responses:
-           200: AuthResponse
-*/
-func getAuthInfo(w http.ResponseWriter, r *http.Request) {
-	respMap := make(map[string]string)
-	respMap["auth_provider"] = auth.GetProviderName()
-	version, err := auth.GetProvider().GetVersion()
-	if err == nil {
-		respMap["version"] = version
-	} else {
-		respMap["error message"] = err.Error()
-	}
-	respBytes, err := json.Marshal(respMap)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(respBytes)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
 }
 
 // swagger:model fileItem

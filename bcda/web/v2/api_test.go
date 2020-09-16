@@ -1,15 +1,13 @@
-package web
+package v2
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -31,8 +29,8 @@ import (
 )
 
 const (
-	expiryHeaderFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
-	acoUnderTest       = constants.SmallACOUUID
+	// expiryHeaderFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
+	acoUnderTest = constants.SmallACOUUID
 )
 
 type APITestSuite struct {
@@ -49,16 +47,29 @@ type RequestParams struct {
 }
 
 var origDate string
+var origV2Active string
+var origCertFile string
+var origKeyFile string
 
 func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
 	origDate = os.Getenv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
 	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	origV2Active = os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "TRUE")
+	origCertFile = os.Getenv("BB_CLIENT_CERT_FILE")
+	// This is a temp fix for an issue with defining how these certs should be found in tests
+	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	origKeyFile = os.Getenv("BB_CLIENT_KEY_FILE")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 }
 
 func (s *APITestSuite) TearDownSuite() {
 	os.Setenv("CCLF_REF_DATE", origDate)
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", origV2Active)
+	os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
+	os.Setenv("BB_CLIENT_KEY_FILE", origKeyFile)
 	s.reset()
 }
 
@@ -931,7 +942,7 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 }
 
 func validateRequestHelper(endpoint string, s *APITestSuite) {
-	requestUrl, _ := url.Parse("/api/v1/Patient/$export")
+	requestUrl, _ := url.Parse("/api/v2/Patient/$export")
 	q := requestUrl.Query()
 	q.Set("_elements", "blah,blah,blah")
 	requestUrl.RawQuery = q.Encode()
@@ -1024,13 +1035,13 @@ func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string
 	var group string
 
 	if endpoint == "Patient" {
-		handlerFunc = bulkPatientRequest
+		handlerFunc = BulkPatientRequest
 	} else if endpoint == "Group/all" {
-		handlerFunc = bulkGroupRequest
+		handlerFunc = BulkGroupRequest
 		group = groupAll
 	}
 
-	requestUrl, _ := url.Parse(fmt.Sprintf("/api/v1/%s/$export", endpoint))
+	requestUrl, _ := url.Parse(fmt.Sprintf("/api/v2/%s/$export", endpoint))
 	q := requestUrl.Query()
 	if testRequestParams.resourceType != "" {
 		q.Set("_type", testRequestParams.resourceType)
@@ -1050,509 +1061,426 @@ func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string
 	return requestUrl.Path, handlerFunc, req
 }
 
-func (s *APITestSuite) TestJobStatusInvalidJobID() {
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", "test"), nil)
+// func (s *APITestSuite) TestJobStatusInvalidJobID() {
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", "test"), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", "test")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", "test")
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
+// 	var respOO fhirmodels.OperationOutcome
+// 	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+// 	if err != nil {
+// 		s.T().Error(err)
+// 	}
 
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
-}
+// 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+// 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+// 	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
+// }
 
-func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
-	jobID := "1234"
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", jobID), nil)
+// func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
+// 	jobID := "1234"
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", jobID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", jobID)
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", jobID)
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
+// 	var respOO fhirmodels.OperationOutcome
+// 	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
+// 	if err != nil {
+// 		s.T().Error(err)
+// 	}
 
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
-}
+// 	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
+// 	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+// 	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
+// }
 
-func (s *APITestSuite) TestJobStatusPending() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Pending",
-		JobCount:   1,
-	}
-	s.db.Save(&j)
+// func (s *APITestSuite) TestJobStatusPending() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Pending",
+// 		JobCount:   1,
+// 	}
+// 	s.db.Save(&j)
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	assert.Nil(s.T(), err)
+// 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	assert.Nil(s.T(), err)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), "Pending", s.rr.Header().Get("X-Progress"))
-	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
-}
+// 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+// 	assert.Equal(s.T(), "Pending", s.rr.Header().Get("X-Progress"))
+// 	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
+// 	s.db.Unscoped().Delete(&j)
+// }
 
-func (s *APITestSuite) TestJobStatusInProgress() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "In Progress",
-		JobCount:   1,
-	}
-	s.db.Save(&j)
+// func (s *APITestSuite) TestJobStatusInProgress() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "In Progress",
+// 		JobCount:   1,
+// 	}
+// 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), "In Progress (0%)", s.rr.Header().Get("X-Progress"))
-	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
+// 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+// 	assert.Equal(s.T(), "In Progress (0%)", s.rr.Header().Get("X-Progress"))
+// 	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
 
-	s.db.Unscoped().Delete(&j)
-}
+// 	s.db.Unscoped().Delete(&j)
+// }
 
-func (s *APITestSuite) TestJobStatusFailed() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Failed",
-	}
+// func (s *APITestSuite) TestJobStatusFailed() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Failed",
+// 	}
 
-	s.db.Save(&j)
+// 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
+// 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 
-	s.db.Unscoped().Delete(&j)
-}
+// 	var oo fhirmodels.OperationOutcome
+// 	err := json.Unmarshal(s.rr.Body.Bytes(), &oo)
+// 	if err != nil {
+// 		s.T().Error(err)
+// 	}
+// 	assert.Equal(s.T(), responseutils.Error, oo.Issue[0].Severity)
+// 	assert.Equal(s.T(), responseutils.Exception, oo.Issue[0].Code)
+// 	assert.Equal(s.T(), responseutils.InternalErr, oo.Issue[0].Details.Coding[0].Code)
+// 	assert.Equal(s.T(), "Service encountered numerous errors.  Unable to complete the request.", oo.Issue[0].Details.Coding[0].Display)
+
+// 	s.db.Unscoped().Delete(&j)
+// }
 
 // https://stackoverflow.com/questions/34585957/postgresql-9-3-how-to-insert-upper-case-uuid-into-table
-func (s *APITestSuite) TestJobStatusCompleted() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Completed",
-	}
-	s.db.Save(&j)
+// func (s *APITestSuite) TestJobStatusCompleted() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Completed",
+// 	}
+// 	s.db.Save(&j)
 
-	var expectedUrls []string
+// 	var expectedUrls []string
 
-	for i := 1; i <= 10; i++ {
-		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
-		expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
-		expectedUrls = append(expectedUrls, expectedurl)
-		jobKey := models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"}
-		err := s.db.Save(&jobKey).Error
-		assert.Nil(s.T(), err)
+// 	for i := 1; i <= 10; i++ {
+// 		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+// 		expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
+// 		expectedUrls = append(expectedUrls, expectedurl)
+// 		jobKey := models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"}
+// 		err := s.db.Save(&jobKey).Error
+// 		assert.Nil(s.T(), err)
 
-	}
-	assert.Equal(s.T(), 10, len(expectedUrls))
+// 	}
+// 	assert.Equal(s.T(), 10, len(expectedUrls))
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	req.TLS = &tls.ConnectionState{}
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	req.TLS = &tls.ConnectionState{}
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
-	str := s.rr.Header().Get("Expires")
-	fmt.Println(str)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+// 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+// 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
+// 	str := s.rr.Header().Get("Expires")
+// 	fmt.Println(str)
+// 	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
 
-	var rb bulkResponseBody
-	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
-	if err != nil {
-		s.T().Error(err)
-	}
+// 	var rb bulkResponseBody
+// 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
+// 	if err != nil {
+// 		s.T().Error(err)
+// 	}
 
-	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
-	assert.Equal(s.T(), true, rb.RequiresAccessToken)
-	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), len(expectedUrls), len(rb.Files))
-	// Order of these values is impossible to know so this is the only way
-	for _, fileItem := range rb.Files {
-		inOutput := false
-		for _, expectedUrl := range expectedUrls {
-			if fileItem.URL == expectedUrl {
-				inOutput = true
-				break
-			}
-		}
-		assert.True(s.T(), inOutput)
+// 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
+// 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
+// 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
+// 	assert.Equal(s.T(), len(expectedUrls), len(rb.Files))
+// 	// Order of these values is impossible to know so this is the only way
+// 	for _, fileItem := range rb.Files {
+// 		inOutput := false
+// 		for _, expectedUrl := range expectedUrls {
+// 			if fileItem.URL == expectedUrl {
+// 				inOutput = true
+// 				break
+// 			}
+// 		}
+// 		assert.True(s.T(), inOutput)
 
-	}
-	assert.Empty(s.T(), rb.Errors)
-	s.db.Unscoped().Delete(&j)
-}
+// 	}
+// 	assert.Empty(s.T(), rb.Errors)
+// 	s.db.Unscoped().Delete(&j)
+// }
 
-func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Completed",
-	}
-	s.db.Save(&j)
-	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
-	jobKey := models.JobKey{
-		JobID:        j.ID,
-		FileName:     fileName,
-		ResourceType: "ExplanationOfBenefit",
-	}
-	s.db.Save(&jobKey)
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	req.TLS = &tls.ConnectionState{}
+// func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Completed",
+// 	}
+// 	s.db.Save(&j)
+// 	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
+// 	jobKey := models.JobKey{
+// 		JobID:        j.ID,
+// 		FileName:     fileName,
+// 		ResourceType: "ExplanationOfBenefit",
+// 	}
+// 	s.db.Save(&jobKey)
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	req.TLS = &tls.ConnectionState{}
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
-	if _, err := os.Stat(f); os.IsNotExist(err) {
-		err = os.MkdirAll(f, os.ModePerm)
-		if err != nil {
-			s.T().Error(err)
-		}
-	}
+// 	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
+// 	if _, err := os.Stat(f); os.IsNotExist(err) {
+// 		err = os.MkdirAll(f, os.ModePerm)
+// 		if err != nil {
+// 			s.T().Error(err)
+// 		}
+// 	}
 
-	errFileName := strings.Split(jobKey.FileName, ".")[0]
-	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
-	_, err := os.Create(errFilePath)
-	if err != nil {
-		s.T().Error(err)
-	}
+// 	errFileName := strings.Split(jobKey.FileName, ".")[0]
+// 	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
+// 	_, err := os.Create(errFilePath)
+// 	if err != nil {
+// 		s.T().Error(err)
+// 	}
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
+// 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+// 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 
-	var rb bulkResponseBody
-	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
-	if err != nil {
-		s.T().Error(err)
-	}
+// 	var rb bulkResponseBody
+// 	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
+// 	if err != nil {
+// 		s.T().Error(err)
+// 	}
 
-	dataurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
-	errorurl := fmt.Sprintf("%s/%s/%s-error.ndjson", "http://example.com/data", fmt.Sprint(j.ID), errFileName)
+// 	dataurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
+// 	errorurl := fmt.Sprintf("%s/%s/%s-error.ndjson", "http://example.com/data", fmt.Sprint(j.ID), errFileName)
 
-	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
-	assert.Equal(s.T(), true, rb.RequiresAccessToken)
-	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
-	assert.Equal(s.T(), dataurl, rb.Files[0].URL)
-	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
-	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
+// 	assert.Equal(s.T(), j.RequestURL, rb.RequestURL)
+// 	assert.Equal(s.T(), true, rb.RequiresAccessToken)
+// 	assert.Equal(s.T(), "ExplanationOfBenefit", rb.Files[0].Type)
+// 	assert.Equal(s.T(), dataurl, rb.Files[0].URL)
+// 	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
+// 	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
 
-	s.db.Unscoped().Delete(&j)
-	os.Remove(errFilePath)
-}
+// 	s.db.Unscoped().Delete(&j)
+// 	os.Remove(errFilePath)
+// }
 
-func (s *APITestSuite) TestJobStatusExpired() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Expired",
-	}
+// func (s *APITestSuite) TestJobStatusExpired() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Expired",
+// 	}
 
-	s.db.Save(&j)
+// 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
-}
+// 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
+// 	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+// 	s.db.Unscoped().Delete(&j)
+// }
 
 // THis job is old, but has not yet been marked as expired.
-func (s *APITestSuite) TestJobStatusNotExpired() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Completed",
-	}
+// func (s *APITestSuite) TestJobStatusNotExpired() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Completed",
+// 	}
 
-	// s.db.Save(&j)
-	j.UpdatedAt = time.Now().Add(-GetJobTimeout()).Add(-GetJobTimeout())
-	s.db.Save(&j)
+// 	// s.db.Save(&j)
+// 	j.UpdatedAt = time.Now().Add(-GetJobTimeout()).Add(-GetJobTimeout())
+// 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
-}
+// 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
+// 	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+// 	s.db.Unscoped().Delete(&j)
+// }
 
-func (s *APITestSuite) TestJobStatusArchived() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Archived",
-	}
+// func (s *APITestSuite) TestJobStatusArchived() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Archived",
+// 	}
 
-	s.db.Save(&j)
+// 	s.db.Save(&j)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+// 	handler := http.HandlerFunc(jobStatus)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
-}
+// 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
+// 	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+// 	s.db.Unscoped().Delete(&j)
+// }
 
-func (s *APITestSuite) TestServeData() {
-	os.Setenv("FHIR_PAYLOAD_DIR", "../../bcdaworker/data/test")
-	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
+// func (s *APITestSuite) TestServeData() {
+// 	os.Setenv("FHIR_PAYLOAD_DIR", "../../bcdaworker/data/test")
+// 	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("fileName", "test.ndjson")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("fileName", "test.ndjson")
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-	handler := http.HandlerFunc(serveData)
-	handler.ServeHTTP(s.rr, req)
+// 	handler := http.HandlerFunc(serveData)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), "application/fhir+ndjson", s.rr.Result().Header.Get("Content-Type"))
-	assert.Contains(s.T(), s.rr.Body.String(), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
-}
+// 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+// 	assert.Equal(s.T(), "application/fhir+ndjson", s.rr.Result().Header.Get("Content-Type"))
+// 	assert.Contains(s.T(), s.rr.Body.String(), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
+// }
 
-func (s *APITestSuite) TestMetadata() {
-	req := httptest.NewRequest("GET", "/api/v1/metadata", nil)
-	req.TLS = &tls.ConnectionState{}
+// func (s *APITestSuite) TestJobStatusWithWrongACO() {
+// 	j := models.Job{
+// 		ACOID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
+// 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+// 		Status:     "Pending",
+// 	}
+// 	s.db.Save(&j)
 
-	handler := http.HandlerFunc(metadata)
-	handler.ServeHTTP(s.rr, req)
+// 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
+// 	assert.Nil(s.T(), err)
 
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-}
+// 	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
 
-func (s *APITestSuite) TestGetVersion() {
-	req := httptest.NewRequest("GET", "/_version", nil)
+// 	rctx := chi.NewRouteContext()
+// 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
+// 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+// 	ad := makeContextValues(constants.SmallACOUUID)
+// 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	handler := http.HandlerFunc(getVersion)
-	handler.ServeHTTP(s.rr, req)
+// 	handler.ServeHTTP(s.rr, req)
 
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+// 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 
-	respMap := make(map[string]string)
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
-	if err != nil {
-		s.T().Error(err.Error())
-	}
+// 	s.db.Unscoped().Delete(&j)
+// }
 
-	assert.Equal(s.T(), "latest", respMap["version"])
-}
+// func (s *APITestSuite) TestHealthCheck() {
+// 	req, err := http.NewRequest("GET", "/_health", nil)
+// 	assert.Nil(s.T(), err)
+// 	handler := http.HandlerFunc(healthCheck)
+// 	handler.ServeHTTP(s.rr, req)
+// 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+// }
 
-func (s *APITestSuite) TestJobStatusWithWrongACO() {
-	j := models.Job{
-		ACOID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Pending",
-	}
-	s.db.Save(&j)
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	assert.Nil(s.T(), err)
-
-	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := makeContextValues(constants.SmallACOUUID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
-
-	s.db.Unscoped().Delete(&j)
-}
-
-func (s *APITestSuite) TestHealthCheck() {
-	req, err := http.NewRequest("GET", "/_health", nil)
-	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(healthCheck)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-}
-
-func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
-	// Mock database.LogFatal() to allow execution to continue despite bad URL
-	origLogFatal := database.LogFatal
-	defer func() { database.LogFatal = origLogFatal }()
-	database.LogFatal = func(args ...interface{}) {
-		fmt.Println("FATAL (NO-OP)")
-	}
-	dbURL := os.Getenv("DATABASE_URL")
-	defer os.Setenv("DATABASE_URL", dbURL)
-	os.Setenv("DATABASE_URL", "not-a-database")
-	req, err := http.NewRequest("GET", "/_health", nil)
-	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(healthCheck)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusBadGateway, s.rr.Code)
-}
-
-func (s *APITestSuite) TestAuthInfoDefault() {
-
-	// get original provider so we can reset at the end of the test
-	originalProvider := auth.GetProviderName()
-
-	// set provider to bogus value and make sure default (alpha) is retrieved
-	auth.SetProvider("bogus")
-	req := httptest.NewRequest("GET", "/_auth", nil)
-	handler := http.HandlerFunc(getAuthInfo)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	respMap := make(map[string]string)
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
-	if err != nil {
-		s.T().Error(err.Error())
-	}
-	assert.Equal(s.T(), "alpha", respMap["auth_provider"])
-
-	// set provider back to original value
-	auth.SetProvider(originalProvider)
-}
-
-func (s *APITestSuite) TestAuthInfoAlpha() {
-
-	// get original provider so we can reset at the end of the test
-	originalProvider := auth.GetProviderName()
-
-	// set provider to alpha and make sure alpha is retrieved
-	auth.SetProvider("alpha")
-	req := httptest.NewRequest("GET", "/_auth", nil)
-	handler := http.HandlerFunc(getAuthInfo)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	respMap := make(map[string]string)
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
-	if err != nil {
-		s.T().Error(err.Error())
-	}
-	assert.Equal(s.T(), "alpha", respMap["auth_provider"])
-
-	// set provider back to original value
-	auth.SetProvider(originalProvider)
-}
-
-func (s *APITestSuite) TestAuthInfoOkta() {
-
-	// get original provider so we can reset at the end of the test
-	originalProvider := auth.GetProviderName()
-
-	// set provider to okta and make sure okta is retrieved
-	auth.SetProvider("okta")
-	req := httptest.NewRequest("GET", "/_auth", nil)
-	handler := http.HandlerFunc(getAuthInfo)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	respMap := make(map[string]string)
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respMap)
-	if err != nil {
-		s.T().Error(err.Error())
-	}
-	assert.Equal(s.T(), "okta", respMap["auth_provider"])
-
-	// set provider back to original value
-	auth.SetProvider(originalProvider)
-}
+// func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
+// 	// Mock database.LogFatal() to allow execution to continue despite bad URL
+// 	origLogFatal := database.LogFatal
+// 	defer func() { database.LogFatal = origLogFatal }()
+// 	database.LogFatal = func(args ...interface{}) {
+// 		fmt.Println("FATAL (NO-OP)")
+// 	}
+// 	dbURL := os.Getenv("DATABASE_URL")
+// 	defer os.Setenv("DATABASE_URL", dbURL)
+// 	os.Setenv("DATABASE_URL", "not-a-database")
+// 	req, err := http.NewRequest("GET", "/_health", nil)
+// 	assert.Nil(s.T(), err)
+// 	handler := http.HandlerFunc(healthCheck)
+// 	handler.ServeHTTP(s.rr, req)
+// 	assert.Equal(s.T(), http.StatusBadGateway, s.rr.Code)
+// }
 
 func (s *APITestSuite) verifyJobCount(acoID string, expectedJobCount int) {
 	count, err := s.getJobCount(acoID)
@@ -1596,11 +1524,11 @@ func makeConnPool(s *APITestSuite) *pgx.ConnPool {
 // Compare expiry header against the expected time value.
 // There seems to be some slight difference in precision here,
 // so we'll compare up to seconds
-func assertExpiryEquals(s suite.Suite, expectedTime time.Time, expiry string) {
-	expiryTime, err := time.Parse(expiryHeaderFormat, expiry)
-	if err != nil {
-		s.FailNow("Failed to parse %s to time.Time %s", expiry, err)
-	}
+// func assertExpiryEquals(s suite.Suite, expectedTime time.Time, expiry string) {
+// 	expiryTime, err := time.Parse(expiryHeaderFormat, expiry)
+// 	if err != nil {
+// 		s.FailNow("Failed to parse %s to time.Time %s", expiry, err)
+// 	}
 
-	assert.Equal(s.T(), time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
-}
+// 	assert.Equal(s.T(), time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
+// }
