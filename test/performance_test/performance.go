@@ -119,7 +119,7 @@ func runAPITest(target vegeta.Targeter) *plot.Plot {
 			log.Fatal(err.Error())
 		}
 	}()
-	plotAttack(p, metrics, target, rate, d)
+	plotAttack(p, &metrics, target, rate, d)
 
 	return p
 }
@@ -141,13 +141,13 @@ func runWorkerTest(target vegeta.Targeter) *plot.Plot {
 			log.Fatal(err.Error())
 		}
 	}()
-	plotAttack(p, metrics, target, rate, d)
+	plotAttack(p, &metrics, target, rate, d)
 
 	return p
 }
 
 // need to make rate into some sort of pretty string format
-func plotAttack(p *plot.Plot, m vegeta.Metrics, t vegeta.Targeter, r vegeta.Rate, du time.Duration) {
+func plotAttack(p *plot.Plot, m *vegeta.Metrics, t vegeta.Targeter, r vegeta.Rate, du time.Duration) {
 	attacker := vegeta.NewAttacker()
 	for results := range attacker.Attack(t, r, du, fmt.Sprintf("%dps:", r.Freq)) {
 		if err := p.Add(results); err != nil {
