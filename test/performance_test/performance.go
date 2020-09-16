@@ -196,7 +196,6 @@ func getAccessToken(clientID, clientSecret string) string {
 }
 
 func validateMetrics(metrics vegeta.Metrics) error {
-	fmt.Printf("%+v\n", metrics)
 	if metrics.Requests == 0 {
 		return nil
 	}
