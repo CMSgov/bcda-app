@@ -1178,6 +1178,16 @@ func (s *APITestSuite) TestJobStatusFailed() {
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
 
+	var oo fhirmodels.OperationOutcome
+	err := json.Unmarshal(s.rr.Body.Bytes(), &oo)
+	if err != nil {
+		s.T().Error(err)
+	}
+	assert.Equal(s.T(), responseutils.Error, oo.Issue[0].Severity)
+	assert.Equal(s.T(), responseutils.Exception, oo.Issue[0].Code)
+	assert.Equal(s.T(), responseutils.InternalErr, oo.Issue[0].Details.Coding[0].Code)
+	assert.Equal(s.T(), "Service encountered numerous errors.  Unable to complete the request.", oo.Issue[0].Details.Coding[0].Display)
+
 	s.db.Unscoped().Delete(&j)
 }
 
