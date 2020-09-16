@@ -158,7 +158,7 @@ func plotAttack(p *plot.Plot, m *vegeta.Metrics, t vegeta.Targeter, r vegeta.Rat
 }
 
 func writeResults(filename string, buf bytes.Buffer) {
-	re := regexp.MustCompile("[^a-zA-Z0-9\\.\\-]")
+	re := regexp.MustCompile(`[^a-zA-Z0-9\\.\\-]`)
 	clean := re.ReplaceAllString(filename, "-")
 	data := buf.Bytes()
 	if len(data) > 0 {
@@ -205,7 +205,7 @@ func validateMetrics(metrics vegeta.Metrics) error {
 	}
 
 	if metrics.Success < 1.0 {
-		fmt.Errorf("Expected success rate of 1.0, received %f",
+		return fmt.Errorf("Expected success rate of 1.0, received %f",
 			metrics.Success)
 	}
 
