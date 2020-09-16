@@ -5,11 +5,11 @@ import (
 	"os"
 	"strings"
 
-	// apiV2 "github.com/CMSgov/bcda-app/bcda/api/v2/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	v2 "github.com/CMSgov/bcda-app/bcda/web/v2"
 	"github.com/go-chi/chi"
 )
 
@@ -38,8 +38,8 @@ func NewAPIRouter() http.Handler {
 
 	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", false) {
 		r.Route("/api/v2", func(r chi.Router) {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", apiV2.BulkPatientRequest))
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", apiV2.bulkGroupRequest))
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
+			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 		})
 	}
 

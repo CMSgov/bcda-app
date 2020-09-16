@@ -1,4 +1,4 @@
-package api
+package v2
 
 import (
 	"encoding/json"
@@ -55,7 +55,7 @@ func init() {
 }
 
 /*
-	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
+	swagger:route GET /api/v1/Patient/$export bulkData BulkPatientRequest
 
 	Start data export for all supported resource types
 
@@ -396,7 +396,7 @@ func validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 		410: goneResponse
 		500: errorResponse
 */
-func jobStatus(w http.ResponseWriter, r *http.Request) {
+func JobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobID")
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
