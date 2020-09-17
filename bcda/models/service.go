@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -169,4 +170,17 @@ func (s *service) getBenes(cclfFileID uint) ([]*CCLFBeneficiary, error) {
 	}
 
 	return benes, nil
+}
+
+// IsSupportedACO determines if the particular ACO is supported by checking
+// its CMS_ID against the supported formats.
+func IsSupportedACO(cmsID string) (bool, error) {
+	const (
+		ssp     = `^A\d{4}$`
+		ngaco   = `^V\d{3}$`
+		cec     = `^E\d{4}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)`
+	)
+
+	return regexp.MatchString(pattern, cmsID)
 }
