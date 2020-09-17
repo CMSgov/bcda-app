@@ -18,7 +18,7 @@ const (
 )
 
 /*
-	swagger:route GET /api/v1/metadata metadata metadata
+	swagger:route GET /api/v2/metadata metadata metadata
 
 	Get metadata
 
@@ -47,7 +47,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 		Date:      dt.Format(dateFormat),
 		Publisher: getStringPtr("Centers for Medicare & Medicaid Services"),
 		Kind:      fhir.CapabilityStatementKindInstance,
-		// TODO: Update to r4 once endpoint is available
+		// TODO (BCDA-3732): Update to r4 once endpoint is available
 		Instantiates: []string{bbServer + "/baseDstu3/metadata/", "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
 		Software: &fhir.CapabilityStatementSoftware{
 			Name:        "Beneficiary Claims Data API",
