@@ -422,7 +422,7 @@ func createGroup(id, name, acoID string) (string, error) {
 
 	var aco models.ACO
 
-	if match, err := regexp.MatchString("A\\d{4}", acoID); err == nil && match {
+	if match, err := models.IsSupportedACO(acoID); err == nil && match {
 		aco, err = auth.GetACOByCMSID(acoID)
 		if err != nil {
 			return "", err
@@ -433,7 +433,7 @@ func createGroup(id, name, acoID string) (string, error) {
 			return "", err
 		}
 	} else {
-		return "", errors.New("ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
+		return "", errors.New("ACO ID (--aco-id) must be a supported CMS ID or UUID")
 	}
 
 	ssas, err := authclient.NewSSASClient()
@@ -475,8 +475,11 @@ func createACO(name, cmsID string) (string, error) {
 
 	var cmsIDPt *string
 	if cmsID != "" {
-		acoIDFmt := regexp.MustCompile(`^A\d{4}$`)
-		if !acoIDFmt.MatchString(cmsID) {
+		match, err := models.IsSupportedACO(cmsID)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to check if ACO is supported")
+		}
+		if !match {
 			return "", errors.New("ACO CMS ID (--cms-id) is invalid")
 		}
 		cmsIDPt = &cmsID
