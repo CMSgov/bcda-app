@@ -120,7 +120,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
 }
 
-func (s *FileProcessorTestSuite) TestSortCCLFArchives_InvalidPath() {
+func (s *FileProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
 	cclfMap, skipped, err := processCCLFArchives("./foo")
 	assert.EqualError(s.T(), err, "error in sorting cclf file: nil,: lstat ./foo: no such file or directory")
 	assert.Equal(s.T(), 0, skipped)
