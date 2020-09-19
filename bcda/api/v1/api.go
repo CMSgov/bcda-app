@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
@@ -417,14 +416,14 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	case "Completed":
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
-		if job.UpdatedAt.Add(GetJobTimeout()).Before(time.Now()) {
-			w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
+		if job.UpdatedAt.Add(api.GetJobTimeout()).Before(time.Now()) {
+			w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
+		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
 			scheme = "https"
@@ -480,7 +479,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	case "Archived":
 		fallthrough
 	case "Expired":
-		w.Header().Set("Expires", job.UpdatedAt.Add(GetJobTimeout()).String())
+		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
 		responseutils.WriteError(oo, w, http.StatusGone)
 	}
@@ -670,18 +669,18 @@ type bulkResponseBody struct {
 	JobID  uint
 }
 
-func readAuthData(r *http.Request) (data auth.AuthData, err error) {
-	var ok bool
-	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
-	if !ok {
-		err = errors.New("no auth data in context")
-	}
-	return
-}
+// func readAuthData(r *http.Request) (data auth.AuthData, err error) {
+// 	var ok bool
+// 	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+// 	if !ok {
+// 		err = errors.New("no auth data in context")
+// 	}
+// 	return
+// }
 
-func GetJobTimeout() time.Duration {
-	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
-}
+// func GetJobTimeout() time.Duration {
+// 	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+// }
 
 // func SetQC(client *que.Client) {
 // 	qc = client

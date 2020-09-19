@@ -942,7 +942,7 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	var job models.Job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("created_at", job.CreatedAt.Add(-GetJobTimeout())).Error)
+	assert.Nil(s.T(), s.db.Model(&job).Update("created_at", job.CreatedAt.Add(-api.GetJobTimeout())).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -1239,7 +1239,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 
 	var rb bulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
@@ -1354,7 +1354,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -1367,7 +1367,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	}
 
 	// s.db.Save(&j)
-	j.UpdatedAt = time.Now().Add(-GetJobTimeout()).Add(-GetJobTimeout())
+	j.UpdatedAt = time.Now().Add(-api.GetJobTimeout()).Add(-api.GetJobTimeout())
 	s.db.Save(&j)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
@@ -1383,7 +1383,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -1409,12 +1409,12 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestServeData() {
-	os.Setenv("FHIR_PAYLOAD_DIR", "../../bcdaworker/data/test")
+	os.Setenv("FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
 	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
 	rctx := chi.NewRouteContext()
