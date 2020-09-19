@@ -16,6 +16,39 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestSupportedACOs(t *testing.T) {
+	tests := []struct {
+		name        string
+		cmsID       string
+		isSupported bool
+	}{
+		{"SSP too short", "A999", false},
+		{"SSP too long", "A99999", false},
+		{"SSP invalid characters", "A999A", false},
+		{"valid SSP", "A9999", true},
+
+		{"NGACO too short", "V99", false},
+		{"NGACO too long", "V9999", false},
+		{"NGACO invalid characters", "V99V", false},
+		{"valid NGACO", "V999", true},
+
+		{"CEC too short", "E999", false},
+		{"CEC too long", "E99999", false},
+		{"CEC invalid characters", "E999E", false},
+		{"valid CEC", "E9999", true},
+
+		{"Unregisted ACO", "Z1234", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(sub *testing.T) {
+			match, err := IsSupportedACO(tt.cmsID)
+			assert.NoError(sub, err)
+			assert.Equal(sub, tt.isSupported, match)
+		})
+	}
+}
+
 type ServiceTestSuite struct {
 	suite.Suite
 }

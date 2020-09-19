@@ -540,7 +540,7 @@ func (s *CLITestSuite) TestCreateGroup_InvalidACOID() {
 	// Invalid format
 	args := []string{"bcda", "create-group", "--id", "invalid-aco-id-group", "--name", "Invalid ACO ID Group", "--aco-id", "1234"}
 	err := s.testApp.Run(args)
-	assert.EqualError(s.T(), err, "ACO ID (--aco-id) must be a CMS ID (A####) or UUID")
+	assert.EqualError(s.T(), err, "ACO ID (--aco-id) must be a supported CMS ID or UUID")
 	assert.Empty(s.T(), buf.String())
 	buf.Reset()
 
