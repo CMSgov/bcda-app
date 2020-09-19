@@ -5,11 +5,12 @@ import (
 	"os"
 	"strings"
 
+	v1 "github.com/CMSgov/bcda-app/bcda/api/v1"
+	v2 "github.com/CMSgov/bcda-app/bcda/api/v2"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	v2 "github.com/CMSgov/bcda-app/bcda/web/v2"
 	"github.com/go-chi/chi"
 )
 
@@ -30,10 +31,10 @@ func NewAPIRouter() http.Handler {
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", bulkPatientRequest))
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", bulkGroupRequest))
-		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", jobStatus))
-		r.Get(m.WrapHandler("/metadata", metadata))
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
+		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
+		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
+		r.Get(m.WrapHandler("/metadata", v1.Metadata))
 	})
 
 	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", true) {
@@ -43,9 +44,9 @@ func NewAPIRouter() http.Handler {
 		})
 	}
 
-	r.Get(m.WrapHandler("/_version", getVersion))
-	r.Get(m.WrapHandler("/_health", healthCheck))
-	r.Get(m.WrapHandler("/_auth", getAuthInfo))
+	r.Get(m.WrapHandler("/_version", v1.GetVersion))
+	r.Get(m.WrapHandler("/_health", v1.HealthCheck))
+	r.Get(m.WrapHandler("/_auth", v1.GetAuthInfo))
 	return r
 }
 
@@ -58,7 +59,7 @@ func NewDataRouter() http.Handler {
 	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), SecurityHeader, ConnectionClose)
 	r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).
-		Get(m.WrapHandler("/data/{jobID}/{fileName}", serveData))
+		Get(m.WrapHandler("/data/{jobID}/{fileName}", v1.ServeData))
 	return r
 }
 
