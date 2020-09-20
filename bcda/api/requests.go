@@ -70,7 +70,7 @@ func BulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") && (!db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound()) {
-		if types, ok := Check429(jobs, resourceTypes, w); !ok {
+		if types, ok := check429(jobs, resourceTypes, w); !ok {
 			w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
 			w.WriteHeader(http.StatusTooManyRequests)
 			return
@@ -178,7 +178,7 @@ func BulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 }
 
-func Check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
+func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
 	var unworkedTypes []string
 
 	for _, t := range types {
