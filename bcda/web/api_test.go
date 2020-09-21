@@ -1411,10 +1411,11 @@ func (s *APITestSuite) TestServeData() {
 
 	tests := []struct {
 		name    string
-		useGZIP bool
+		headers []string
 	}{
-		{"gzip", true},
-		{"non-gzip", false},
+		{"gzip-only", []string{"gzip"}},
+		{"gzip", []string{"deflate", "br", "gzip"}},
+		{"non-gzip", nil},
 	}
 
 	for _, tt := range tests {
@@ -1426,8 +1427,12 @@ func (s *APITestSuite) TestServeData() {
 			rctx.URLParams.Add("fileName", "test.ndjson")
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-			if tt.useGZIP {
-				req.Header.Add("Accept-Encoding", "gzip")
+			var useGZIP bool
+			for _, h := range tt.headers {
+				req.Header.Add("Accept-Encoding", h)
+				if h == "gzip" {
+					useGZIP = true
+				}
 			}
 
 			handler := http.HandlerFunc(serveData)
@@ -1438,7 +1443,7 @@ func (s *APITestSuite) TestServeData() {
 
 			var b []byte
 
-			if tt.useGZIP {
+			if useGZIP {
 				assert.Equal(t, "gzip", s.rr.Header().Get("Content-Encoding"))
 				reader, err := gzip.NewReader(s.rr.Body)
 				assert.NoError(t, err)

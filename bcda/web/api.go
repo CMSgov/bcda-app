@@ -520,7 +520,16 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
 	w.Header().Set("Content-Type", "application/fhir+ndjson")
-	if r.Header.Get("Accept-Encoding") == "gzip" {
+
+	var useGZIP bool
+	for _, header := range r.Header.Values("Accept-Encoding") {
+		if header == "gzip" {
+			useGZIP = true
+			break
+		}
+	}
+
+	if useGZIP {
 		w.Header().Set("Content-Encoding", "gzip")
 		gz := gzip.NewWriter(w)
 		defer gz.Close()
