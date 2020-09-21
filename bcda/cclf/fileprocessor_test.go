@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -155,52 +154,100 @@ func TestGetCMSID(t *testing.T) {
 }
 
 func TestGetCCLFMetadata(t *testing.T) {
-	cmsID := "A9999"
+	const (
+		sspID, cecID, ngacoID = "A9999", "E9999", "V999"
+		sspProd, sspTest      = "P.BCD." + sspID, "T.BCD." + sspID
+		cecProd, cecTest      = "P.CEC", "T.CEC"
+		ngacoProd, ngacoTest  = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+	)
+
 	start := time.Now()
 	// Need to use UTC zone information to make the time comparison easier
 	// CCLF file format does not contain any tz information, so we assume UTC time
 	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
 		time.UTC)
 
-	gen := func(t time.Time) string {
+	gen := func(prefix string, t time.Time) string {
 		const (
 			format         = "D060102.T1504050"
 			perfYearFormat = "06"
 		)
-		return fmt.Sprintf("T.BCD.A9999.ZC8Y%s.%s", t.Format(perfYearFormat), t.Format(format))
+		return fmt.Sprintf("%s.ZC8Y%s.%s", prefix, t.Format(perfYearFormat), t.Format(format))
 	}
 
 	// Timestamp that'll satisfy the time window requirement
 	validTime := startUTC.Add(-24 * time.Hour)
-	validFile := gen(validTime)
-	validProdFile := strings.Replace(validFile, "T", "P", 1)
+	sspProdFile, sspTestFile := gen(sspProd, validTime), gen(sspTest, validTime)
+	cecProdFile, cecTestFile := gen(cecProd, validTime), gen(cecTest, validTime)
+	ngacoProdFile, ngacoTestFile := gen(ngacoProd, validTime), gen(ngacoTest, validTime)
 
 	tests := []struct {
 		name     string
+		cmsID    string
 		fileName string
 		errMsg   string
 		metadata cclfFileMetadata
 	}{
-		{"Non CCLF0 or CCLF8 file", "P.A0001.ACO.ZC9Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
-		{"Invalid date (no 13th month)", "T.BCD.A0001.ZC0Y18.D181320.T0001000", "failed to parse date", cclfFileMetadata{}},
-		{"CCLF file too old", gen(startUTC.Add(-365 * 24 * time.Hour)), "out of range", cclfFileMetadata{}},
-		{"CCLF file too new", gen(startUTC.Add(365 * 24 * time.Hour)), "out of range", cclfFileMetadata{}},
-		{"Production file", validProdFile, "",
+		{"Non CCLF0 or CCLF8 file", sspID, "P.A0001.ACO.ZC9Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"Invalid date (no 13th month)", sspID, "T.BCD.A0001.ZC0Y18.D181320.T0001000", "failed to parse date", cclfFileMetadata{}},
+		{"CCLF file too old", sspID, gen(sspProd, startUTC.Add(-365*24*time.Hour)), "out of range", cclfFileMetadata{}},
+		{"CCLF file too new", sspID, gen(sspProd, startUTC.Add(365*24*time.Hour)), "out of range", cclfFileMetadata{}},
+		{"Production SSP file", sspID, sspProdFile, "",
 			cclfFileMetadata{
 				env:       "production",
-				name:      validProdFile,
+				name:      sspProdFile,
 				cclfNum:   8,
-				acoID:     cmsID,
+				acoID:     sspID,
 				timestamp: validTime,
 				perfYear:  20,
 			},
 		},
-		{"Test file", validFile, "",
+		{"Test SSP file", sspID, sspTestFile, "",
 			cclfFileMetadata{
 				env:       "test",
-				name:      validFile,
+				name:      sspTestFile,
 				cclfNum:   8,
-				acoID:     cmsID,
+				acoID:     sspID,
+				timestamp: validTime,
+				perfYear:  20,
+			},
+		},
+		{"Production CEC file", cecID, cecProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      cecProdFile,
+				cclfNum:   8,
+				acoID:     cecID,
+				timestamp: validTime,
+				perfYear:  20,
+			},
+		},
+		{"Test CEC file", cecID, cecTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      cecTestFile,
+				cclfNum:   8,
+				acoID:     cecID,
+				timestamp: validTime,
+				perfYear:  20,
+			},
+		},
+		{"Production NGACO file", ngacoID, ngacoProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      ngacoProdFile,
+				cclfNum:   8,
+				acoID:     ngacoID,
+				timestamp: validTime,
+				perfYear:  20,
+			},
+		},
+		{"Test NGACO file", ngacoID, ngacoTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      ngacoTestFile,
+				cclfNum:   8,
+				acoID:     ngacoID,
 				timestamp: validTime,
 				perfYear:  20,
 			},
@@ -209,7 +256,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(sub *testing.T) {
-			metadata, err := getCCLFFileMetadata(cmsID, tt.fileName)
+			metadata, err := getCCLFFileMetadata(tt.cmsID, tt.fileName)
 			if tt.errMsg == "" {
 				assert.NoError(sub, err)
 			} else {

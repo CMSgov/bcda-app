@@ -17,7 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// processCCLFArchives walks through all of the CCLF flies captured in the root path and generates
+// processCCLFArchives walks through all of the CCLF files captured in the root path and generates
 // a mapping between CMS_ID + perf year and associated CCLF Metadata
 func processCCLFArchives(rootPath string) (map[string]map[int][]*cclfFileMetadata, int, error) {
 	p := &processor{0, make(map[string]map[int][]*cclfFileMetadata)}
