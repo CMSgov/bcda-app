@@ -1,6 +1,7 @@
 package web
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -519,7 +520,16 @@ func serveData(w http.ResponseWriter, r *http.Request) {
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
 	w.Header().Set("Content-Type", "application/fhir+ndjson")
-	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+	if r.Header.Get("Accept-Encoding") == "gzip" {
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+
+		gzw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+		http.ServeFile(gzw, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+	} else {
+		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+	}
 }
 
 /*
