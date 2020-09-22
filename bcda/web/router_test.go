@@ -105,12 +105,12 @@ func (s *RouterTestSuite) TestVersionRoute() {
 }
 
 func (s *RouterTestSuite) TestGroupEndpointDisabled() {
-        err := os.Unsetenv("BCDA_ENABLE_NEW_GROUP")
-        assert.Nil(s.T(), err)
-        res := s.getAPIRoute("/api/v1/Groups/new/$export?_type=ExplanationOfBenefit")
-        assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-        err = os.Setenv("BCDA_ENABLE_GROUP", "true")
-        assert.Nil(s.T(), err)
+	err := os.Unsetenv("BCDA_ENABLE_NEW_GROUP")
+	assert.Nil(s.T(), err)
+	res := s.getAPIRoute("/api/v1/Groups/new/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	err = os.Setenv("BCDA_ENABLE_GROUP", "true")
+	assert.Nil(s.T(), err)
 }
 
 func (s *RouterTestSuite) TestEOBExportRoute() {
@@ -133,7 +133,6 @@ func (s *RouterTestSuite) TestEOBExportRoute() {
 
 	res = s.getAPIRoute("/api/v1/Groups/new/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
 }
 
 func (s *RouterTestSuite) TestPatientExportRoute() {
@@ -178,7 +177,32 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 
 	res = s.getAPIRoute("/api/v1/Groups/new/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
 
+func (s *RouterTestSuite) TestV2EndpointsDisabled() {
+	// Set the V2 endpoints to be off and restart the router so the test router has the correct configuation
+	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "false")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute("/api/v2/Patient/$export")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/Group/all/$export")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestV2EndpointsEnabled() {
+	// Set the V2 endpoints to be on and restart the router so the test router has the correct configuation
+	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
+	s.apiRouter = NewAPIRouter()
+
+	res := s.getAPIRoute("/api/v2/Patient/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/Group/all/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestJobStatusRoute() {
