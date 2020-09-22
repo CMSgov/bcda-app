@@ -1,4 +1,4 @@
-package v2
+package v2_test
 
 import (
 	"io/ioutil"
@@ -6,13 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
+	v2 "github.com/CMSgov/bcda-app/bcda/api/v2"
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMetadataResponse(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(Metadata))
+	ts := httptest.NewServer(http.HandlerFunc(v2.Metadata))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
