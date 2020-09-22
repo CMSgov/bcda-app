@@ -421,9 +421,12 @@ func createGroup(id, name, acoID string) (string, error) {
 		return "", errors.New("ID (--id), name (--name), and ACO ID (--aco-id) are required")
 	}
 
-	var aco models.ACO
+	var (
+		aco models.ACO
+		err error
+	)
 
-	if match, err := models.IsSupportedACO(acoID); err == nil && match {
+	if match := models.IsSupportedACO(acoID); match {
 		aco, err = auth.GetACOByCMSID(acoID)
 		if err != nil {
 			return "", err
@@ -476,10 +479,7 @@ func createACO(name, cmsID string) (string, error) {
 
 	var cmsIDPt *string
 	if cmsID != "" {
-		match, err := models.IsSupportedACO(cmsID)
-		if err != nil {
-			return "", errors.Wrap(err, "failed to check if ACO is supported")
-		}
+		match := models.IsSupportedACO(cmsID)
 		if !match {
 			return "", errors.New("ACO CMS ID (--cms-id) is invalid")
 		}

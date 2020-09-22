@@ -174,7 +174,7 @@ func (s *service) getBenes(cclfFileID uint) ([]*CCLFBeneficiary, error) {
 
 // IsSupportedACO determines if the particular ACO is supported by checking
 // its CMS_ID against the supported formats.
-func IsSupportedACO(cmsID string) (bool, error) {
+func IsSupportedACO(cmsID string) bool {
 	const (
 		ssp     = `^A\d{4}$`
 		ngaco   = `^V\d{3}$`
@@ -182,5 +182,5 @@ func IsSupportedACO(cmsID string) (bool, error) {
 		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)`
 	)
 
-	return regexp.MatchString(pattern, cmsID)
+	return regexp.MustCompile(pattern).MatchString(cmsID)
 }
