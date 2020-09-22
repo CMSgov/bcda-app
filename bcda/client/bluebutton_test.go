@@ -438,6 +438,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 
 			// It's OK to keep swapping out the server location since every test is re-intialized
 			// with s.ts.URL
+			fmt.Println("<<<<<<<<<< " + tsValidation.URL)
 			os.Setenv("BB_SERVER_LOCATION", tsValidation.URL)
 			bbClient, err := client.NewBlueButtonClient()
 			if err != nil {
