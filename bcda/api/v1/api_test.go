@@ -1,4 +1,4 @@
-package web
+package v1
 
 import (
 	"compress/gzip"
@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -51,16 +52,24 @@ type RequestParams struct {
 }
 
 var origDate string
+var origBBCert string
+var origBBKey string
 
 func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
 	origDate = os.Getenv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
 	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	origBBCert = os.Getenv("BB_CLIENT_CERT_FILE")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	origBBKey = os.Getenv("BB_CLIENT_KEY_FILE")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 }
 
 func (s *APITestSuite) TearDownSuite() {
 	os.Setenv("CCLF_REF_DATE", origDate)
+	os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
+	os.Setenv("BB_CLIENT_KEY_FILE", origBBKey)
 	s.reset()
 }
 
@@ -348,7 +357,8 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -384,7 +394,8 @@ func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSu
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -430,7 +441,8 @@ func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) 
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -459,7 +471,8 @@ func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
-	qc = nil
+	// qc := nil
+	api.SetQC(nil)
 
 	acoID := acoUnderTest
 	jobCount, err := s.getJobCount(acoID)
@@ -521,7 +534,8 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -555,7 +569,8 @@ func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITe
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -600,7 +615,8 @@ func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -634,7 +650,8 @@ func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APIT
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -676,7 +693,8 @@ func bulkCoverageRequestInvalidSinceDateHelper(endpoint, since string, s *APITes
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -718,7 +736,8 @@ func bulkCoverageRequestInvalidOutputHelper(endpoint, outputFormat string, s *AP
 	}
 	defer pgxpool.Close()
 
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -925,7 +944,7 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	var job models.Job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("created_at", job.CreatedAt.Add(-GetJobTimeout())).Error)
+	assert.Nil(s.T(), s.db.Model(&job).Update("created_at", job.CreatedAt.Add(-api.GetJobTimeout())).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -940,7 +959,7 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 	req := httptest.NewRequest("GET", requestUrl.String(), nil)
 	rctx := chi.NewRouteContext()
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	resourceTypes, err := validateRequest(req)
+	resourceTypes, err := api.ValidateRequest(req)
 	assert.Nil(s.T(), resourceTypes)
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
@@ -949,7 +968,7 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 
 	requestParams := RequestParams{}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 3, len(resourceTypes))
 	for _, t := range resourceTypes {
@@ -960,7 +979,7 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 
 	requestParams = RequestParams{resourceType: "ExplanationOfBenefit,Patient"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 2, len(resourceTypes))
 	for _, t := range resourceTypes {
@@ -971,7 +990,7 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 
 	requestParams = RequestParams{resourceType: "Coverage,Patient"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 2, len(resourceTypes))
 	for _, t := range resourceTypes {
@@ -982,28 +1001,28 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 
 	requestParams = RequestParams{resourceType: "ExplanationOfBenefit"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(resourceTypes))
 	assert.Contains(s.T(), resourceTypes, "ExplanationOfBenefit")
 
 	requestParams = RequestParams{resourceType: "Patient"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(resourceTypes))
 	assert.Contains(s.T(), resourceTypes, "Patient")
 
 	requestParams = RequestParams{resourceType: "Coverage"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(resourceTypes))
 	assert.Contains(s.T(), resourceTypes, "Coverage")
 
 	requestParams = RequestParams{resourceType: "Practitioner"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), resourceTypes)
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
@@ -1012,7 +1031,7 @@ func validateRequestHelper(endpoint string, s *APITestSuite) {
 
 	requestParams = RequestParams{resourceType: "Patient,Patient"}
 	_, _, req = bulkRequestHelper(endpoint, requestParams)
-	resourceTypes, err = validateRequest(req)
+	resourceTypes, err = api.ValidateRequest(req)
 	assert.Nil(s.T(), resourceTypes)
 	assert.Equal(s.T(), responseutils.Error, err.Issue[0].Severity)
 	assert.Equal(s.T(), responseutils.Exception, err.Issue[0].Code)
@@ -1026,9 +1045,9 @@ func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string
 	var group string
 
 	if endpoint == "Patient" {
-		handlerFunc = bulkPatientRequest
+		handlerFunc = BulkPatientRequest
 	} else if endpoint == "Group/all" {
-		handlerFunc = bulkGroupRequest
+		handlerFunc = BulkGroupRequest
 		group = groupAll
 	}
 
@@ -1055,7 +1074,7 @@ func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string
 func (s *APITestSuite) TestJobStatusInvalidJobID() {
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", "test"), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", "test")
@@ -1080,7 +1099,7 @@ func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
 	jobID := "1234"
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", jobID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
@@ -1113,7 +1132,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1140,7 +1159,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1168,7 +1187,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1179,16 +1198,6 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	var oo fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &oo)
-	if err != nil {
-		s.T().Error(err)
-	}
-	assert.Equal(s.T(), responseutils.Error, oo.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, oo.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.InternalErr, oo.Issue[0].Details.Coding[0].Code)
-	assert.Equal(s.T(), "Service encountered numerous errors.  Unable to complete the request.", oo.Issue[0].Details.Coding[0].Display)
 
 	s.db.Unscoped().Delete(&j)
 }
@@ -1218,7 +1227,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	req.TLS = &tls.ConnectionState{}
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1232,9 +1241,9 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 
-	var rb bulkResponseBody
+	var rb api.BulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
@@ -1277,7 +1286,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	req.TLS = &tls.ConnectionState{}
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1305,7 +1314,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 
-	var rb bulkResponseBody
+	var rb api.BulkResponseBody
 	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
@@ -1336,7 +1345,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1347,7 +1356,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -1360,12 +1369,12 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	}
 
 	// s.db.Save(&j)
-	j.UpdatedAt = time.Now().Add(-GetJobTimeout()).Add(-GetJobTimeout())
+	j.UpdatedAt = time.Now().Add(-api.GetJobTimeout()).Add(-api.GetJobTimeout())
 	s.db.Save(&j)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1376,7 +1385,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
@@ -1391,7 +1400,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 
-	handler := http.HandlerFunc(jobStatus)
+	handler := http.HandlerFunc(JobStatus)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1402,12 +1411,12 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestServeData() {
-	os.Setenv("FHIR_PAYLOAD_DIR", "../../bcdaworker/data/test")
+	os.Setenv("FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
 
 	tests := []struct {
 		name    string
@@ -1435,7 +1444,7 @@ func (s *APITestSuite) TestServeData() {
 				}
 			}
 
-			handler := http.HandlerFunc(serveData)
+			handler := http.HandlerFunc(ServeData)
 			handler.ServeHTTP(s.rr, req)
 
 			assert.Equal(t, http.StatusOK, s.rr.Code)
@@ -1465,7 +1474,7 @@ func (s *APITestSuite) TestMetadata() {
 	req := httptest.NewRequest("GET", "/api/v1/metadata", nil)
 	req.TLS = &tls.ConnectionState{}
 
-	handler := http.HandlerFunc(metadata)
+	handler := http.HandlerFunc(Metadata)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -1474,7 +1483,7 @@ func (s *APITestSuite) TestMetadata() {
 func (s *APITestSuite) TestGetVersion() {
 	req := httptest.NewRequest("GET", "/_version", nil)
 
-	handler := http.HandlerFunc(getVersion)
+	handler := http.HandlerFunc(GetVersion)
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
@@ -1499,7 +1508,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
 	assert.Nil(s.T(), err)
 
-	handler := auth.RequireTokenJobMatch(http.HandlerFunc(jobStatus))
+	handler := auth.RequireTokenJobMatch(http.HandlerFunc(JobStatus))
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
@@ -1517,7 +1526,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 func (s *APITestSuite) TestHealthCheck() {
 	req, err := http.NewRequest("GET", "/_health", nil)
 	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(healthCheck)
+	handler := http.HandlerFunc(HealthCheck)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 }
@@ -1534,7 +1543,7 @@ func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
 	os.Setenv("DATABASE_URL", "not-a-database")
 	req, err := http.NewRequest("GET", "/_health", nil)
 	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(healthCheck)
+	handler := http.HandlerFunc(HealthCheck)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusBadGateway, s.rr.Code)
 }
@@ -1547,7 +1556,7 @@ func (s *APITestSuite) TestAuthInfoDefault() {
 	// set provider to bogus value and make sure default (alpha) is retrieved
 	auth.SetProvider("bogus")
 	req := httptest.NewRequest("GET", "/_auth", nil)
-	handler := http.HandlerFunc(getAuthInfo)
+	handler := http.HandlerFunc(GetAuthInfo)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	respMap := make(map[string]string)
@@ -1569,7 +1578,7 @@ func (s *APITestSuite) TestAuthInfoAlpha() {
 	// set provider to alpha and make sure alpha is retrieved
 	auth.SetProvider("alpha")
 	req := httptest.NewRequest("GET", "/_auth", nil)
-	handler := http.HandlerFunc(getAuthInfo)
+	handler := http.HandlerFunc(GetAuthInfo)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	respMap := make(map[string]string)
@@ -1591,7 +1600,7 @@ func (s *APITestSuite) TestAuthInfoOkta() {
 	// set provider to okta and make sure okta is retrieved
 	auth.SetProvider("okta")
 	req := httptest.NewRequest("GET", "/_auth", nil)
-	handler := http.HandlerFunc(getAuthInfo)
+	handler := http.HandlerFunc(GetAuthInfo)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	respMap := make(map[string]string)
@@ -1639,7 +1648,8 @@ func makeConnPool(s *APITestSuite) *pgx.ConnPool {
 	if err != nil {
 		s.T().Error(err)
 	}
-	qc = que.NewClient(pgxpool)
+	qc := que.NewClient(pgxpool)
+	api.SetQC(qc)
 
 	return pgxpool
 }
