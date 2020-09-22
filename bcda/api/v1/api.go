@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"net/http"
@@ -29,19 +27,6 @@ import (
 const (
 	groupAll = "all"
 )
-
-func init() {
-	// Ensure that models.go is properly initialized with the service reference.
-	// As we refactor more of the code, we should be able to remove the initialization
-	// from models.go
-	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
-	db := database.GetGORMDbConnection()
-	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
-	repository := postgres.NewRepository(db)
-	models.GetService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
-}
 
 /*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
@@ -182,12 +167,12 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 			scheme = "https"
 		}
 
-		rb := bulkResponseBody{
+		rb := api.BulkResponseBody{
 			TransactionTime:     job.TransactionTime,
 			RequestURL:          job.RequestURL,
 			RequiresAccessToken: true,
-			Files:               []fileItem{},
-			Errors:              []fileItem{},
+			Files:               []api.FileItem{},
+			Errors:              []api.FileItem{},
 			JobID:               job.ID,
 		}
 
@@ -196,7 +181,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		for _, jobKey := range jobKeysObj {
 
 			// data files
-			fi := fileItem{
+			fi := api.FileItem{
 				Type: jobKey.ResourceType,
 				URL:  fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
@@ -206,7 +191,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 			errFileName := strings.Split(jobKey.FileName, ".")[0]
 			errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
 			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
-				errFI := fileItem{
+				errFI := api.FileItem{
 					Type: "OperationOutcome",
 					URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
 				}
@@ -388,36 +373,4 @@ func GetAuthInfo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
-}
-
-// swagger:model fileItem
-type fileItem struct {
-	// FHIR resource type of file contents
-	Type string `json:"type"`
-	// URL of the file
-	URL string `json:"url"`
-}
-
-/*
-Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
-swagger:response completedJobResponse
-*/
-// nolint
-type CompletedJobResponse struct {
-	// in: body
-	Body bulkResponseBody
-}
-
-type bulkResponseBody struct {
-	// Server time when the query was run
-	TransactionTime time.Time `json:"transactionTime"`
-	// URL of the bulk data export request
-	RequestURL string `json:"request"`
-	// Indicates whether an access token is required to download generated data files
-	RequiresAccessToken bool `json:"requiresAccessToken"`
-	// Information about generated data files, including URLs for downloading
-	Files []fileItem `json:"output"`
-	// Information about error files, including URLs for downloading
-	Errors []fileItem `json:"error"`
-	JobID  uint
 }

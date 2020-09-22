@@ -1241,7 +1241,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	fmt.Println(str)
 	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 
-	var rb bulkResponseBody
+	var rb api.BulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
@@ -1312,7 +1312,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 
-	var rb bulkResponseBody
+	var rb api.BulkResponseBody
 	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
