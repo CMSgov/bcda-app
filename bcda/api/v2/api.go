@@ -200,6 +200,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 
 	// Need this logic since extensions currently do not support polymorphic data types
 	// See: https://github.com/samply/golang-fhir-models/issues/1
+	// TODO (BCDA-3757): Once a fix has been implemented, remove this manual injection.
 	extension := []map[string]interface{}{
 		{"url": "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris",
 			"extension": []map[string]interface{}{
