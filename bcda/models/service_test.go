@@ -42,8 +42,7 @@ func TestSupportedACOs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(sub *testing.T) {
-			match, err := IsSupportedACO(tt.cmsID)
-			assert.NoError(sub, err)
+			match := IsSupportedACO(tt.cmsID)
 			assert.Equal(sub, tt.isSupported, match)
 		})
 	}
