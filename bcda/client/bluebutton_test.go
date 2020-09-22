@@ -52,12 +52,6 @@ func (s *BBRequestTestSuite) SetupSuite() {
 	ts500 = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Some server error", http.StatusInternalServerError)
 	}))
-
-	if bbClient, err := client.NewBlueButtonClient(); err != nil {
-		s.Fail("Failed to create Blue Button client", err)
-	} else {
-		s.bbClient = bbClient
-	}
 }
 
 func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
@@ -66,7 +60,15 @@ func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
 	} else {
 		s.ts = ts200
 	}
-	os.Setenv("BB_SERVER_LOCATION", s.ts.URL)
+
+	config := client.BlueButtonConfig{
+		BBServer: s.ts.URL,
+	}
+	if bbClient, err := client.NewBlueButtonClient(config); err != nil {
+		s.Fail("Failed to create Blue Button client", err)
+	} else {
+		s.bbClient = bbClient
+	}
 }
 
 /* Tests for creating client and other functions that don't make requests */
@@ -77,12 +79,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_CERT_FILE")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -94,12 +96,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 }
@@ -111,12 +113,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_KEY_FILE")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -128,12 +130,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 }
@@ -150,12 +152,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 
 	os.Unsetenv("BB_CLIENT_CA_FILE")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
 }
@@ -172,12 +174,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 }
@@ -286,7 +288,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -302,7 +304,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -318,7 +320,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatient",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetPatient("patient2", jobID, cmsID, since, now)
+				return bbClient.GetPatient("patient2", jobID, cmsID, since, now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -334,7 +336,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatientNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetPatient("patient2", jobID, cmsID, "", now)
+				return bbClient.GetPatient("patient2", jobID, cmsID, "", now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -350,7 +352,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetCoverage",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, since, now)
+				return bbClient.GetCoverage("beneID1", jobID, cmsID, since, now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -366,7 +368,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetCoverageNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, "", now)
+				return bbClient.GetCoverage("beneID1", jobID, cmsID, "", now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -382,7 +384,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatientByIdentifierHash",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
+				return bbClient.GetPatientByIdentifierHash("hashedIdentifier")
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(string)
@@ -436,10 +438,10 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			}))
 			defer tsValidation.Close()
 
-			// It's OK to keep swapping out the server location since every test is re-intialized
-			// with s.ts.URL
-			os.Setenv("BB_SERVER_LOCATION", tsValidation.URL)
-			bbClient, err := client.NewBlueButtonClient()
+			config := client.BlueButtonConfig{
+				BBServer: tsValidation.URL,
+			}
+			bbClient, err := client.NewBlueButtonClient(config)
 			if err != nil {
 				assert.FailNow(t, err.Error())
 			}
