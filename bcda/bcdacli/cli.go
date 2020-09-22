@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
@@ -68,7 +69,7 @@ func setUpApp() *cli.App {
 
 				qc = que.NewClient(pgxpool)
 
-				web.SetQC(qc)
+				api.SetQC(qc)
 
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
 				if os.Getenv("DEBUG") == "true" {
