@@ -8,13 +8,13 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
-	"gotest.tools/gotestsum/log"
 
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
