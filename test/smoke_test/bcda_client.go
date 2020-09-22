@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -105,7 +106,7 @@ func startJob(endpoint, resourceType string) *http.Response {
 	return resp
 }
 
-func get(location string) *http.Response {
+func get(location string, compressed bool) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"GET", location, nil)
@@ -114,6 +115,9 @@ func get(location string) *http.Response {
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	if compressed {
+		req.Header.Add("Accept-Encoding", "gzip")
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -125,13 +129,33 @@ func get(location string) *http.Response {
 
 func writeFile(resp *http.Response, filename string) {
 	defer resp.Body.Close()
+
+	var isGZIP bool
+	for _, h := range resp.Header.Values("Content-Encoding") {
+		if h == "gzip" {
+			isGZIP = true
+			break
+		}
+	}
+
+	if !isGZIP {
+		panic("Data responses should be gzip-encoded.")
+	}
+
+	reader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	defer reader.Close()
+
 	/* #nosec */
 	out, err := os.Create(filename)
 	if err != nil {
 		panic(err)
 	}
 	defer utils.CloseFileAndLogError(out)
-	num, err := io.Copy(out, resp.Body)
+
+	num, err := io.Copy(out, reader)
 	if err != nil && num <= 0 {
 		panic(err)
 	}
@@ -172,7 +196,7 @@ func main() {
 			}
 
 			fmt.Println("checking job status...")
-			status := get(result.Header["Content-Location"][0])
+			status := get(result.Header["Content-Location"][0], false)
 
 			// Acquire new token if the current token has expired
 			if status.StatusCode == 401 {
@@ -200,7 +224,7 @@ func main() {
 					accessToken = getAccessToken()
 
 					fmt.Printf("fetching: %s\n", fileItem.Url)
-					download := get(fileItem.Url)
+					download := get(fileItem.Url, true)
 					if download.StatusCode == 200 {
 						filename := "/tmp/" + path.Base(fileItem.Url)
 						fmt.Printf("writing download to disk: %s\n", filename)

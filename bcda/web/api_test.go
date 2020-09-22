@@ -1447,6 +1447,7 @@ func (s *APITestSuite) TestServeData() {
 				assert.Equal(t, "gzip", s.rr.Header().Get("Content-Encoding"))
 				reader, err := gzip.NewReader(s.rr.Body)
 				assert.NoError(t, err)
+				defer reader.Close()
 				b, err = ioutil.ReadAll(reader)
 				assert.NoError(t, err)
 			} else {
