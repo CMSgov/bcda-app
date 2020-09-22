@@ -155,7 +155,7 @@ func writeFile(resp *http.Response, filename string) {
 	}
 	defer utils.CloseFileAndLogError(out)
 
-	/* #nosec - not concerned with OOM since we're using this in a controlled setting */
+	/* #nosec G110 - not concerned with OOM since we're using this in a controlled setting */
 	num, err := io.Copy(out, reader)
 	if err != nil && num <= 0 {
 		panic(err)

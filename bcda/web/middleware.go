@@ -1,7 +1,6 @@
 package web
 
 import (
-	"io"
 	"net/http"
 
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -56,13 +55,4 @@ func SecurityHeader(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-type gzipResponseWriter struct {
-	io.Writer
-	http.ResponseWriter
-}
-
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
 }
