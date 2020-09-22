@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -122,7 +123,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 	if servicemux.IsHTTPS(r) {
 		scheme = "https"
 	}
-	host := fmt.Sprintf("%s://%s", scheme, r.Host)
+	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
 	statement := fhir.CapabilityStatement{
 		Status:    fhir.PublicationStatusActive,
 		Date:      dt.Format(dateFormat),
@@ -137,7 +138,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 		},
 		Implementation: &fhir.CapabilityStatementImplementation{
 			Description: "The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their prospectively assigned or assignable beneficiaries.",
-			Url:         &host,
+			Url:         &baseURL,
 		},
 		FhirVersion: fhir.FHIRVersion4_0_1,
 		Format:      []string{"application/json", "application/fhir+json"},
@@ -193,6 +194,28 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 
 	b, err := statement.MarshalJSON()
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Need this logic since extensions currently do not support polymorphic data types
+	// See: https://github.com/samply/golang-fhir-models/issues/1
+	extension := []map[string]interface{}{
+		{"url": "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris",
+			"extension": []map[string]interface{}{
+				{"url": "token", "valueUri": baseURL},
+			},
+		},
+	}
+	var obj map[string]interface{}
+	if err = json.Unmarshal(b, &obj); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// The field we're trying to update will always be found at rest[0].security.extension
+	obj["rest"].([]interface{})[0].(map[string]interface{})["security"].(map[string]interface{})["extension"] = extension
+	if b, err = json.Marshal(obj); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

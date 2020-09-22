@@ -1,6 +1,7 @@
 package v2_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -53,4 +54,19 @@ func TestMetadataResponse(t *testing.T) {
 		assert.Equal(t, rd.opName, rr.Operation[0].Name)
 		assert.Equal(t, rd.opDefinition, rr.Operation[0].Definition)
 	}
+
+	// Need to validate our security.extensions manually since the extension
+	// field does not have support for polymorphic types
+	// See: https://github.com/samply/golang-fhir-models/issues/1
+	var obj map[string]interface{}
+	err = json.Unmarshal(resp, &obj)
+	assert.NoError(t, err)
+
+	targetExtension := obj["rest"].([]interface{})[0].(map[string]interface{})["security"].(map[string]interface{})["extension"].([]interface{})[0].(map[string]interface{})
+	subExtension := targetExtension["extension"].([]interface{})[0].(map[string]interface{})
+
+	assert.Equal(t, "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris", targetExtension["url"])
+	assert.Equal(t, "token", subExtension["url"])
+	assert.Equal(t, ts.URL, subExtension["valueUri"])
+
 }
