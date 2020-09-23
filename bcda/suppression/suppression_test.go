@@ -21,8 +21,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-const BASE_FILE_PATH = "../../shared_files/"
-
 type SuppressionTestSuite struct {
 	suite.Suite
 	pendingDeletionDir string
