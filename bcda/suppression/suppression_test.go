@@ -26,6 +26,9 @@ const BASE_FILE_PATH = "../../shared_files/"
 type SuppressionTestSuite struct {
 	suite.Suite
 	pendingDeletionDir string
+
+	basePath string
+	cleanup  func()
 }
 
 func (s *SuppressionTestSuite) SetupSuite() {
@@ -39,12 +42,16 @@ func (s *SuppressionTestSuite) SetupSuite() {
 
 func (s *SuppressionTestSuite) SetupTest() {
 	models.InitializeGormModels()
+	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
 func (s *SuppressionTestSuite) TearDownSuite() {
 	os.RemoveAll(s.pendingDeletionDir)
 }
 
+func (s *SuppressionTestSuite) TearDownTest() {
+	s.cleanup()
+}
 func TestSuppressionTestSuite(t *testing.T) {
 	suite.Run(t, new(SuppressionTestSuite))
 }
@@ -58,7 +65,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
 	metadata := &suppressionFileMetadata{
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
+		filePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
 		deliveryDate: time.Now(),
 	}
@@ -91,7 +98,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
 	metadata = &suppressionFileMetadata{
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
+		filePath:     filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"),
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390",
 		deliveryDate: time.Now(),
 	}
@@ -139,16 +146,16 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	err = deleteFilesByFileID(suppressionFile.ID, db)
 	assert.Nil(err)
 
-	filepath := BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011"
+	fp := filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011")
 	metadata = &suppressionFileMetadata{
 		timestamp:    time.Now(),
-		filePath:     filepath,
+		filePath:     fp,
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011",
 		deliveryDate: time.Now(),
 	}
 	err = importSuppressionData(metadata)
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse the effective date '20191301' from file: "+filepath)
+	assert.Contains(err.Error(), "failed to parse the effective date '20191301' from file: "+fp)
 
 	suppressionFile = models.SuppressionFile{}
 	db.First(&suppressionFile, "name = ?", metadata.name)
@@ -157,16 +164,16 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	err = deleteFilesByFileID(suppressionFile.ID, db)
 	assert.Nil(err)
 
-	filepath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012"
+	fp = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012")
 	metadata = &suppressionFileMetadata{
 		timestamp:    time.Now(),
-		filePath:     filepath,
+		filePath:     fp,
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012",
 		deliveryDate: time.Now(),
 	}
 	err = importSuppressionData(metadata)
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse the samhsa effective date '20191301' from file: "+filepath)
+	assert.Contains(err.Error(), "failed to parse the samhsa effective date '20191301' from file: "+fp)
 
 	suppressionFile = models.SuppressionFile{}
 	db.First(&suppressionFile, "name = ?", metadata.name)
@@ -175,16 +182,16 @@ func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	err = deleteFilesByFileID(suppressionFile.ID, db)
 	assert.Nil(err)
 
-	filepath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013"
+	fp = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013")
 	metadata = &suppressionFileMetadata{
 		timestamp:    time.Now(),
-		filePath:     filepath,
+		filePath:     fp,
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013",
 		deliveryDate: time.Now(),
 	}
 	err = importSuppressionData(metadata)
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse beneficiary link key from file: "+filepath)
+	assert.Contains(err.Error(), "failed to parse beneficiary link key from file: "+fp)
 
 	suppressionFile = models.SuppressionFile{}
 	db.First(&suppressionFile, "name = ?", metadata.name)
@@ -198,7 +205,7 @@ func (s *SuppressionTestSuite) TestValidate() {
 	assert := assert.New(s.T())
 
 	// positive
-	suppressionfilePath := BASE_FILE_PATH + "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
+	suppressionfilePath := filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	metadata := &suppressionFileMetadata{timestamp: time.Now(), filePath: suppressionfilePath}
 	err := validate(metadata)
 	assert.Nil(err)
@@ -210,17 +217,17 @@ func (s *SuppressionTestSuite) TestValidate() {
 	assert.Contains(err.Error(), "could not read file "+metadata.filePath)
 
 	// invalid file header
-	metadata.filePath = BASE_FILE_PATH + "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
+	metadata.filePath = filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	err = validate(metadata)
 	assert.EqualError(err, "invalid file header for file: "+metadata.filePath)
 
 	// missing record count
-	metadata.filePath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"
+	metadata.filePath = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009")
 	err = validate(metadata)
 	assert.EqualError(err, "failed to parse record count from file: "+metadata.filePath)
 
 	// incorrect record count
-	metadata.filePath = BASE_FILE_PATH + "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010"
+	metadata.filePath = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010")
 	err = validate(metadata)
 	assert.EqualError(err, "incorrect number of records found from file: '"+metadata.filePath+"'. Expected record count: 5, Actual record count: 4")
 }
@@ -263,8 +270,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	var suppresslist []*suppressionFileMetadata
 	var skipped int
 
-	filePath := BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
-	testUtils.ResetFiles(s.Suite, filePath)
+	filePath := filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/")
 	err := filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	assert.Equal(2, len(suppresslist))
@@ -272,18 +278,15 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 
 	suppresslist = []*suppressionFileMetadata{}
 	skipped = 0
-	filePath = BASE_FILE_PATH + "suppressionfile_BadFileNames/"
-	testUtils.ResetFiles(s.Suite, filePath)
+	filePath = filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	assert.Equal(0, len(suppresslist))
 	assert.Equal(2, skipped)
-	testUtils.ResetFiles(s.Suite, filePath)
 
 	suppresslist = []*suppressionFileMetadata{}
 	skipped = 0
-	filePath = BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
-	testUtils.ResetFiles(s.Suite, filePath)
+	filePath = filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/")
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	modtimeAfter := time.Now().Truncate(time.Second)
@@ -299,22 +302,20 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata() {
 	}
 
 	suppresslist = []*suppressionFileMetadata{}
-	filePath = BASE_FILE_PATH + "synthetic1800MedicareFiles/test/"
+	filePath = filepath.Join(s.basePath, "synthetic1800MedicareFiles/test/")
 	err = filepath.Walk(filePath, getSuppressionFileMetadata(&suppresslist, &skipped))
 	assert.Nil(err)
 	for _, f := range suppresslist {
 		assert.Equal(modtimeAfter.Format("010203040506"), f.deliveryDate.Format("010203040506"))
 	}
-
-	testUtils.ResetFiles(s.Suite, filePath)
 }
 
 func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 	assert := assert.New(s.T())
 	var suppresslist []*suppressionFileMetadata
 	var skipped int
-	folderPath := BASE_FILE_PATH + "suppressionfile_BadFileNames/"
-	filePath := folderPath + "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"
+	folderPath := filepath.Join(s.basePath, "suppressionfile_BadFileNames/")
+	filePath := filepath.Join(folderPath, "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009")
 
 	origTime := time.Now().Truncate(time.Second)
 	err := os.Chtimes(filePath, origTime, origTime)
@@ -331,7 +332,6 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 	// assert that this file is still here.
 	_, err = os.Open(filePath)
 	assert.Nil(err)
-	testUtils.ResetFiles(s.Suite, folderPath)
 
 	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
@@ -348,9 +348,7 @@ func (s *SuppressionTestSuite) TestGetSuppressionFileMetadata_TimeChange() {
 
 	// assert that this file is not still here.
 	_, err = os.Open(filePath)
-	assert.EqualError(err, "open ../../shared_files/suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009: no such file or directory")
-
-	testUtils.ResetFiles(s.Suite, folderPath)
+	assert.EqualError(err, fmt.Sprintf("open %s: no such file or directory", filePath))
 }
 
 func (s *SuppressionTestSuite) TestCleanupSuppression() {
@@ -362,7 +360,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	metadata := &suppressionFileMetadata{
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009",
+		filePath:     filepath.Join(s.basePath, "suppressionfile_BadHeader/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009"),
 		imported:     false,
 		deliveryDate: time.Now(),
 	}
@@ -372,7 +370,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	metadata2 := &suppressionFileMetadata{
 		name:         "T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009",
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009",
+		filePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.FRPD.D191220.T1000009"),
 		imported:     false,
 		deliveryDate: fileTime,
 	}
@@ -381,7 +379,7 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	metadata3 := &suppressionFileMetadata{
 		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
 		timestamp:    fileTime,
-		filePath:     BASE_FILE_PATH + "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420",
+		filePath:     filepath.Join(s.basePath, "suppressionfile_BadFileNames/T#EFT.ON.ACO.NGD1800.DPRF.D190117.T9909420"),
 		imported:     true,
 		deliveryDate: time.Now(),
 	}
@@ -403,8 +401,6 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 			s.FailNow("test files did not correctly cleanup", err)
 		}
 	}
-
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"suppressionfile_BadFileNames/")
 }
 
 func deleteFilesByFileID(fileID uint, db *gorm.DB) error {

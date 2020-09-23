@@ -64,3 +64,7 @@
 [[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "v1.6.0"
+
+[[constraint]]
+  name = "github.com/otiai10/copy"
+  version = "1.2.0"

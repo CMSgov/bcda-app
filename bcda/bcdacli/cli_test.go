@@ -644,7 +644,10 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	args := []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/archives/valid/"}
+	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/archives/valid/")
+	defer cleanup()
+
+	args := []string{"bcda", "import-cclf-directory", "--directory", path}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
@@ -660,18 +663,17 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 		assert.Nil(err)
 	}
 
-	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/archives/valid/")
-
 	// dir has 4 files, but 2 will be ignored because of bad file names.
-	args = []string{"bcda", "import-cclf-directory", "--directory", "../../shared_files/cclf/mixed/with_invalid_filenames/"}
+	path, cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/mixed/with_invalid_filenames/")
+	defer cleanup()
+
+	args = []string{"bcda", "import-cclf-directory", "--directory", path}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF import.")
 	assert.Contains(buf.String(), "Successfully imported 2 files.")
 	assert.Contains(buf.String(), "Skipped 5 files.")
 	buf.Reset()
-
-	testUtils.ResetFiles(s.Suite, "../../shared_files/cclf/mixed/with_invalid_filenames/")
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
@@ -679,20 +681,24 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	dirToDelete := "../../shared_files/doomedDirectory"
+	dirToDelete, err := ioutil.TempDir("", "*")
+	assert.NoError(err)
 	testUtils.MakeDirToDelete(s.Suite, dirToDelete)
-	defer os.Remove(dirToDelete)
+	defer os.RemoveAll(dirToDelete)
 
 	args := []string{"bcda", "delete-dir-contents", "--dirToDelete", dirToDelete}
-	err := s.testApp.Run(args)
+	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Contains(buf.String(), fmt.Sprintf("Successfully Deleted 4 files from %v", dirToDelete))
 	buf.Reset()
 
 	// File, not a directory
-	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", "../../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"}
+	file, err := ioutil.TempFile("", "*")
+	assert.NoError(err)
+	defer os.Remove(file.Name())
+	args = []string{"bcda", "delete-dir-contents", "--dirToDelete", file.Name()}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "unable to delete Directory Contents because ../../shared_files/cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000 does not reference a directory")
+	assert.EqualError(err, fmt.Sprintf("unable to delete Directory Contents because %s does not reference a directory", file.Name()))
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
@@ -714,7 +720,8 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	path := "../../shared_files/synthetic1800MedicareFiles/test2/"
+	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/synthetic1800MedicareFiles/test/")
+	defer cleanup()
 
 	args := []string{"bcda", "import-suppression-directory", "--directory", path}
 	err := s.testApp.Run(args)
@@ -724,10 +731,8 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	assert.Contains(buf.String(), "Files failed: 0")
 	assert.Contains(buf.String(), "Files skipped: 0")
 
-	testUtils.ResetFiles(s.Suite, path)
-
 	fs := []models.SuppressionFile{}
-	db.Where("name in (?)", []string{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010", "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391"}).Find(&fs)
+	db.Where("name in (?)", []string{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390"}).Find(&fs)
 	assert.Len(fs, 2)
 	for _, f := range fs {
 		err := f.Delete()
@@ -744,7 +749,8 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Skipped() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	path := "../../shared_files/suppressionfile_BadFileNames/"
+	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/suppressionfile_BadFileNames/")
+	defer cleanup()
 
 	args := []string{"bcda", "import-suppression-directory", "--directory", path}
 	err := s.testApp.Run(args)
@@ -753,8 +759,6 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Skipped() {
 	assert.Contains(buf.String(), "Files imported: 0")
 	assert.Contains(buf.String(), "Files failed: 0")
 	assert.Contains(buf.String(), "Files skipped: 2")
-
-	testUtils.ResetFiles(s.Suite, path)
 }
 
 func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
@@ -766,7 +770,8 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	path := "../../shared_files/suppressionfile_BadHeader/"
+	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/suppressionfile_BadHeader/")
+	defer cleanup()
 
 	args := []string{"bcda", "import-suppression-directory", "--directory", path}
 	err := s.testApp.Run(args)
@@ -775,6 +780,4 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 	assert.Contains(buf.String(), "Files imported: 0")
 	assert.Contains(buf.String(), "Files failed: 1")
 	assert.Contains(buf.String(), "Files skipped: 0")
-
-	testUtils.ResetFiles(s.Suite, path)
 }
