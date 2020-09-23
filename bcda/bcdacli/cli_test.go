@@ -628,13 +628,14 @@ func (s *CLITestSuite) TestCreateACO() {
 }
 
 func (s *CLITestSuite) TestImportCCLFDirectory() {
+	targetACO := "A0002"
 	assert := assert.New(s.T())
 
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", targetACO).Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(err)
@@ -644,7 +645,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
-	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/archives/valid/")
+	path, cleanup := testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/archives/valid2/")
 	defer cleanup()
 
 	args := []string{"bcda", "import-cclf-directory", "--directory", path}
@@ -657,7 +658,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	buf.Reset()
 
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id = ?", targetACO).Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(err)
