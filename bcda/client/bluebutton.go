@@ -221,12 +221,12 @@ func (bbc *BlueButtonClient) tryBundleRequest(req *http.Request, jobID, cmsID st
 	},
 		b,
 		func(err error, d time.Duration) {
-			logger.Infof("Blue Button request %s retry in %s ms...", queryID, d.String())
+			logger.Infof("Blue Button request %s failed %s. Retry in %s ms...", queryID, err.Error(), d.String())
 		},
 	)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, bbc.maxTries)
+		return nil, nil, fmt.Errorf("blue button request %s failed %d time(s) %s", queryID, bbc.maxTries, err.Error())
 	}
 
 	return result, nextReq, nil
