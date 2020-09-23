@@ -470,6 +470,10 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 		file, err = os.Open("./testdata/Metadata.json")
 	} else if strings.Contains(path, "Patient") {
 		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Patient")
+	} else {
+		err = fmt.Errorf("Unrecognized path supplid %s", path)
+		fmt.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
 	if err != nil {
@@ -477,6 +481,8 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	defer file.Close()
 
 	w.Header().Set("Content-Type", r.URL.Query().Get("_format"))
 
