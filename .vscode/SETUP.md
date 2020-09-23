@@ -4,9 +4,13 @@
 ```
 > echo $GOPATH
 /Users/bcda-developer/go
+```
 
+*NOTE:* You may have to manually set the $GOPATH
+
+```
 > mkdir -p $GOPATH/src/github.com/CMSgov
-> gtit clone git@github.com:CMSgov/bcda-app.git $GOPATH/src/github.com/CMSgov/bcda-app
+> git clone git@github.com:CMSgov/bcda-app.git $GOPATH/src/github.com/CMSgov/bcda-app
 ```
 
 This allows bcda-app to be built/tested locally.
