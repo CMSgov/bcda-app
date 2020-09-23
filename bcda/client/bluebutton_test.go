@@ -471,6 +471,7 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 	}
 
 	if err != nil {
+		fmt.Printf("Failed to open file for path %s %s\n", path, err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -482,10 +483,12 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 		gz := gzip.NewWriter(w)
 		defer gz.Close()
 		if _, err := io.Copy(gz, file); err != nil {
+			fmt.Printf("Failed copy file for gzip writer for path %s %s\n", path, err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	} else {
 		if _, err := io.Copy(w, file); err != nil {
+			fmt.Printf("Failed copy file for path %s %s\n", path, err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
