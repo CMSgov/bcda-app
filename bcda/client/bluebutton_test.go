@@ -447,7 +447,9 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			}
 
 			data, err := tt.funcUnderTest(bbClient, jobID, cmsID)
-			assert.NoError(t, err)
+			if err != nil {
+				assert.FailNow(t, err.Error())
+			}
 
 			tt.payloadChecker(t, data)
 		})
