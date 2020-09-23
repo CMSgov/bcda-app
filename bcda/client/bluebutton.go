@@ -265,7 +265,7 @@ func (bbc *BlueButtonClient) getRawData(path string, params url.Values, jobID, c
 	)
 
 	if err != nil {
-		return "", fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, bbc.maxTries)
+		return "", fmt.Errorf("blue button request %s failed %d time(s)", queryID, bbc.maxTries)
 	}
 
 	return result, nil

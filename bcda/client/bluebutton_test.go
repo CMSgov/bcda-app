@@ -42,6 +42,7 @@ func (s *BBTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	os.Setenv("BB_TIMEOUT_MS", "2000")
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
@@ -202,7 +203,7 @@ func (s *BBRequestTestSuite) TestGetPatient() {
 
 func (s *BBRequestTestSuite) TestGetPatient_500() {
 	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", "", now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), p)
 }
 func (s *BBRequestTestSuite) TestGetCoverage() {
@@ -214,7 +215,7 @@ func (s *BBRequestTestSuite) TestGetCoverage() {
 
 func (s *BBRequestTestSuite) TestGetCoverage_500() {
 	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), c)
 }
 
@@ -227,7 +228,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), e)
 }
 
@@ -240,7 +241,7 @@ func (s *BBRequestTestSuite) TestGetMetadata() {
 
 func (s *BBRequestTestSuite) TestGetMetadata_500() {
 	p, err := s.bbClient.GetMetadata()
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
