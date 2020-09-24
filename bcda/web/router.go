@@ -41,6 +41,7 @@ func NewAPIRouter() http.Handler {
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
 			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
+			r.Get(m.WrapHandler("/metadata", v2.Metadata))
 		})
 	}
 

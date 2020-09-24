@@ -240,6 +240,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:37112d27cc62afed7b6d053874d7b558969db688c72aeaa868f206916efdc5e6"
+  name = "github.com/samply/golang-fhir-models"
+  packages = ["fhir-models/fhir"]
+  pruneopts = "UT"
+  revision = "2ea51cd9c54ff30faf5ee989be6f0d733320726d"
+  version = "v0.2.0"
+
+[[projects]]
   branch = "master"
   digest = "1:68cecd4c1137f77dfa2db1f13a0ceef2b5606d6b69d66fa69f7df1b2f2fe9afc"
   name = "github.com/shurcooL/httpfs"
@@ -411,6 +419,7 @@
     "github.com/otiai10/copy",
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
+    "github.com/samply/golang-fhir-models/fhir-models/fhir",
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/test",
     "github.com/soheilhy/cmux",
