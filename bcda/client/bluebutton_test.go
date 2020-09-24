@@ -472,7 +472,7 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 	} else if strings.Contains(path, "Patient") {
 		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Patient")
 	} else {
-		err = fmt.Errorf("Unrecognized path supplid %s", path)
+		err = fmt.Errorf("Unrecognized path supplied %s", path)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
