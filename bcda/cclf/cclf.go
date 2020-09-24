@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -289,87 +288,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 	return nil
 }
 
-func getCCLFFileMetadata(fileName string) (cclfFileMetadata, error) {
-	var metadata cclfFileMetadata
-	// CCLF filename convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y]**.Dyymmdd.Thhmmsst
-	filenameRegexp := regexp.MustCompile(`(T|P)\.BCD\.((?:A|T)\d{4})\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
-	filenameMatches := filenameRegexp.FindStringSubmatch(fileName)
-
-	if len(filenameMatches) < 5 {
-		fmt.Printf("Invalid filename for file: %s.\n", fileName)
-		err := fmt.Errorf("invalid filename for file: %s", fileName)
-		log.Error(err)
-		return metadata, err
-	}
-
-	cclfNum, err := strconv.Atoi(filenameMatches[3])
-	if err != nil {
-		fmt.Printf("Failed to parse CCLF number from file: %s.\n", fileName)
-		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", fileName)
-		log.Error(err)
-		return metadata, err
-	}
-
-	perfYear, err := strconv.Atoi(filenameMatches[4])
-	if err != nil {
-		fmt.Printf("Failed to parse performance year from file: %s.\n", fileName)
-		err = errors.Wrapf(err, "failed to parse performance year from file: %s", fileName)
-		log.Error(err)
-		return metadata, err
-	}
-
-	filenameDate := filenameMatches[5]
-	t, err := time.Parse("D060102.T150405", filenameDate)
-	if err != nil || t.IsZero() {
-		fmt.Printf("Failed to parse date '%s' from file: %s.\n", filenameDate, fileName)
-		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
-		log.Error(err)
-		return metadata, err
-	}
-
-	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
-	refDateString := os.Getenv("CCLF_REF_DATE")
-	refDate, err := time.Parse("060102", refDateString)
-	if err != nil {
-		refDate = time.Now()
-	}
-
-	// Files must not be too old
-	filesNotBefore := refDate.Add(-1 * time.Duration(int64(maxFileDays*24)*int64(time.Hour)))
-	filesNotAfter := refDate
-	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
-		fmt.Printf("Date '%s' from file %s is out of range; comparison date %s\n", filenameDate, fileName, refDate.Format("060102"))
-		err = errors.New(fmt.Sprintf("date '%s' from file %s out of range; comparison date %s", filenameDate, fileName, refDate.Format("060102")))
-		log.Error(err)
-		return metadata, err
-	}
-
-	acoID := filenameMatches[2]
-	if len(acoID) < 5 {
-		fmt.Printf("Failed to parse aco id '%s' from file: %s.\n", acoID, fileName)
-		err = errors.Wrapf(err, "failed to parse aco id '%s' from file: %s", acoID, fileName)
-		log.Error(err)
-		return metadata, err
-	}
-
-	if filenameMatches[1] == "T" {
-		metadata.env = "test"
-	} else if filenameMatches[1] == "P" {
-		metadata.env = "production"
-	}
-
-	metadata.name = filenameMatches[0]
-	metadata.cclfNum = cclfNum
-	metadata.acoID = acoID
-	metadata.timestamp = t
-	metadata.perfYear = perfYear
-
-	return metadata, nil
-}
-
 func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err error) {
-	var cclfMap = make(map[string]map[int][]*cclfFileMetadata)
-
 	t := metrics.GetTimer()
 	defer t.Close()
 	ctx := metrics.NewContext(context.Background(), t)
@@ -377,7 +296,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	// We are not going to create any children from this parent so we can
 	// safely ignored the returned context.
 	_, c := metrics.NewParent(ctx, "ImportCCLFDirectory#sortCCLFArchives")
-	err = filepath.Walk(filePath, sortCCLFArchives(&cclfMap, &skipped))
+	cclfMap, skipped, err := processCCLFArchives(filePath)
 	c()
 
 	if err != nil {
@@ -389,7 +308,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		return 0, 0, skipped, nil
 	}
 
-	acoOrder := orderACOs(&cclfMap)
+	acoOrder := orderACOs(cclfMap)
 
 	for _, acoID := range acoOrder {
 		func() {
@@ -452,93 +371,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	return success, failure, skipped, err
 }
 
-func sortCCLFArchives(cclfMap *map[string]map[int][]*cclfFileMetadata, skipped *int) filepath.WalkFunc {
-	return func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			var fileName = "nil"
-			if info != nil {
-				fileName = info.Name()
-			}
-			fmt.Printf("Error in sorting CCLF file %s: %s.\n", fileName, err)
-			err = errors.Wrapf(err, "error in sorting cclf file: %v,", fileName)
-			log.Error(err)
-			return err
-		}
-
-		if info.IsDir() {
-			msg := fmt.Sprintf("Unable to sort %s: directory, not a CCLF archive.", path)
-			fmt.Println(msg)
-			log.Warn(msg)
-			return nil
-		}
-
-		zipReader, err := zip.OpenReader(filepath.Clean(path))
-		if err != nil {
-			*skipped = *skipped + 1
-			msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
-			fmt.Println(msg)
-			log.Warn(msg)
-			return nil
-		}
-		_ = zipReader.Close()
-
-		// validate the top level zipped folder
-		err = validateCCLFFolderName(info.Name())
-		if err != nil {
-			*skipped = *skipped + 1
-			msg := fmt.Sprintf("Skipping CCLF archive: %s.", info.Name())
-			fmt.Println(msg)
-			log.Warn(msg)
-			err = checkDeliveryDate(path, info.ModTime())
-			if err != nil {
-				fmt.Printf("Error moving unknown file %s to pending deletion dir.\n", path)
-				err = fmt.Errorf("error moving unknown file %s to pending deletion dir", path)
-				log.Error(err)
-				return err
-			}
-			return nil
-		}
-
-		for _, f := range zipReader.File {
-			metadata, err := getCCLFFileMetadata(f.Name)
-			metadata.filePath = path
-			metadata.deliveryDate = info.ModTime()
-
-			if err != nil {
-				// skipping files with a bad name.  An unknown file in this dir isn't a blocker
-				fmt.Printf("Unknown file found: %s.\n", f.Name)
-				log.Errorf("Unknown file found: %s", f.Name)
-				continue
-			}
-
-			if (*cclfMap)[metadata.acoID] != nil {
-				if (*cclfMap)[metadata.acoID][metadata.perfYear] != nil {
-					(*cclfMap)[metadata.acoID][metadata.perfYear] = append((*cclfMap)[metadata.acoID][metadata.perfYear], &metadata)
-				} else {
-					(*cclfMap)[metadata.acoID][metadata.perfYear] = []*cclfFileMetadata{&metadata}
-				}
-			} else {
-				(*cclfMap)[metadata.acoID] = map[int][]*cclfFileMetadata{metadata.perfYear: []*cclfFileMetadata{&metadata}}
-			}
-		}
-		return nil
-	}
-}
-
-func checkDeliveryDate(folderPath string, deliveryDate time.Time) error {
-	deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72))
-	if deliveryDate.Add(deleteThreshold).Before(time.Now()) {
-		folderName := filepath.Base(folderPath)
-		newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), folderName)
-		err := os.Rename(folderPath, newpath)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func orderACOs(cclfMap *map[string]map[int][]*cclfFileMetadata) []string {
+func orderACOs(cclfMap map[string]map[int][]*cclfFileMetadata) []string {
 	var acoOrder []string
 
 	db := database.GetGORMDbConnection()
@@ -547,12 +380,12 @@ func orderACOs(cclfMap *map[string]map[int][]*cclfFileMetadata) []string {
 	priorityACOs := getPriorityACOs(db)
 	for _, acoID := range priorityACOs {
 		acoID = strings.TrimSpace(acoID)
-		if (*cclfMap)[acoID] != nil {
+		if cclfMap[acoID] != nil {
 			acoOrder = append(acoOrder, acoID)
 		}
 	}
 
-	for acoID := range *cclfMap {
+	for acoID := range cclfMap {
 		if !utils.ContainsString(acoOrder, acoID) {
 			acoOrder = append(acoOrder, acoID)
 		}
@@ -568,7 +401,7 @@ func getPriorityACOs(db *gorm.DB) []string {
 	WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
 	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
 	`
-	
+
 	var acoIDs []string
 	if err := db.Raw(query).Pluck("aco_id", &acoIDs).Error; err != nil {
 		log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
@@ -661,19 +494,6 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	}
 	fmt.Printf("Successfully validated CCLF%d file %s.\n", fileMetadata.cclfNum, fileMetadata)
 	log.Infof("Successfully validated CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
-	return nil
-}
-
-func validateCCLFFolderName(folderName string) error {
-	// CCLF foldername convention for SSP with BCD identifier: P.BCD.A****.ZCY**.Dyymmdd.Thhmmsst
-	folderNameRegexp := regexp.MustCompile(`(T|P)\.BCD\.((?:A|T)\d{4})\.ZCY(\d{2})\.(D\d{6})\.T(\d{4})\d{3}`)
-	valid := folderNameRegexp.MatchString(folderName)
-	if !valid {
-		fmt.Printf("Invalid foldername for CCLF archive: %s.\n", folderName)
-		err := fmt.Errorf("invalid foldername for CCLF archive: %s", folderName)
-		log.Error(err)
-		return err
-	}
 	return nil
 }
 
