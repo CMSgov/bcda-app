@@ -180,7 +180,7 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 }
 
 func (s *RouterTestSuite) TestV2EndpointsDisabled() {
-	// Set the V2 endpoints to be off and restart the router so the test router has the correct configuation
+	// Set the V2 endpoints to be off and restart the router so the test router has the correct configuration
 	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
 	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "false")
@@ -190,10 +190,12 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/metadata")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestV2EndpointsEnabled() {
-	// Set the V2 endpoints to be on and restart the router so the test router has the correct configuation
+	// Set the V2 endpoints to be on and restart the router so the test router has the correct configuration
 	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
 	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
@@ -203,6 +205,8 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/metadata")
+	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
 
 func (s *RouterTestSuite) TestJobStatusRoute() {

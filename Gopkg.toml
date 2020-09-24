@@ -64,3 +64,7 @@
 [[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "v1.6.0"
+
+[[constraint]]
+  name = "github.com/samply/golang-fhir-models"
+  version = "0.2.0"
