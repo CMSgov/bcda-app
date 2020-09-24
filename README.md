@@ -38,7 +38,25 @@ The pre-commit hook will also ensure that any added, copied, or modified go file
 * Encrypt changed files with:
 ```
 ./ops/secrets --encrypt <filename>
-```  
+```
+
+### vscode
+#### Setup
+1. Follow installing go + vscode [setup guide](https://marketplace.visualstudio.com/items?itemName=golang.go#getting-started).
+2. Ensure that bcda-app is found within the $GOPATH.
+```
+> echo $GOPATH
+/Users/bcda-developer/go
+```
+
+*NOTE:* You may have to manually set the $GOPATH
+
+```
+> mkdir -p $GOPATH/src/github.com/CMSgov
+> git clone git@github.com:CMSgov/bcda-app.git $GOPATH/src/github.com/CMSgov/bcda-app
+```
+
+Additional settings found under `.vscode/settings.json` allow tests to be run within vscode.
 
 ## Build / Start
 
