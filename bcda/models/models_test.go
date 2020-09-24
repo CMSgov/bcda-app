@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"log"
 	random "math/rand"
 	"net/http"
@@ -766,4 +767,40 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	// Should be making two calls to BB for the MBI_MODE attemptsm, but this number will be four with the earlier test in this method.
 	// This is due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
+}
+
+func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
+	tests := []struct {
+		name     string
+		fileName string
+		acoIDs   []string
+		errMsg   string
+	}{
+		{"Different ACO ID", fmt.Sprintf("SOME_CCLF_FILE_NAME_%s", time.Now().String()), []string{"ACO1", "ACO2"},
+			""},
+		{"Duplicate ACO ID", fmt.Sprintf("SOME_CCLF_FILE_NAME_DUPLICATE_ACO_%s", time.Now().String()), []string{"ACO3", "ACO3"},
+			`pq: duplicate key value violates unique constraint "idx_cclf_files_name_aco_cms_id_key"`},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			var err error
+			for _, acoID := range tt.acoIDs {
+				cclfFile := &CCLFFile{
+					Name:            tt.fileName,
+					ACOCMSID:        acoID,
+					Timestamp:       time.Now(),
+					PerformanceYear: 20,
+				}
+				if err1 := s.db.Create(cclfFile).Error; err1 != nil {
+					err = err1
+				}
+			}
+			if tt.errMsg != "" {
+				assert.EqualError(t, err, tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
