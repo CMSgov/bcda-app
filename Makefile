@@ -43,6 +43,7 @@ clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-c
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 smoke-test:
+	docker-compose -f docker-compose.test.yml build tests
 	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
 
 postman:
