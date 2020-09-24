@@ -1,10 +1,12 @@
 package v1
 
 import (
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1415,18 +1417,57 @@ func (s *APITestSuite) TestJobStatusArchived() {
 
 func (s *APITestSuite) TestServeData() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
-	req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("fileName", "test.ndjson")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	tests := []struct {
+		name    string
+		headers []string
+	}{
+		{"gzip-only", []string{"gzip"}},
+		{"gzip", []string{"deflate", "br", "gzip"}},
+		{"non-gzip", nil},
+	}
 
-	handler := http.HandlerFunc(ServeData)
-	handler.ServeHTTP(s.rr, req)
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			defer s.SetupTest()
+			req := httptest.NewRequest("GET", "/data/test.ndjson", nil)
 
-	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-	assert.Equal(s.T(), "application/fhir+ndjson", s.rr.Result().Header.Get("Content-Type"))
-	assert.Contains(s.T(), s.rr.Body.String(), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("fileName", "test.ndjson")
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+			var useGZIP bool
+			for _, h := range tt.headers {
+				req.Header.Add("Accept-Encoding", h)
+				if h == "gzip" {
+					useGZIP = true
+				}
+			}
+
+			handler := http.HandlerFunc(ServeData)
+			handler.ServeHTTP(s.rr, req)
+
+			assert.Equal(t, http.StatusOK, s.rr.Code)
+			assert.Equal(t, "application/fhir+ndjson", s.rr.Result().Header.Get("Content-Type"))
+
+			var b []byte
+
+			if useGZIP {
+				assert.Equal(t, "gzip", s.rr.Header().Get("Content-Encoding"))
+				reader, err := gzip.NewReader(s.rr.Body)
+				assert.NoError(t, err)
+				defer reader.Close()
+				b, err = ioutil.ReadAll(reader)
+				assert.NoError(t, err)
+			} else {
+				assert.Equal(t, "", s.rr.Header().Get("Content-Encoding"))
+				b = s.rr.Body.Bytes()
+			}
+
+			assert.Contains(t, string(b), `{"resourceType": "Bundle", "total": 33, "entry": [{"resource": {"status": "active", "diagnosis": [{"diagnosisCodeableConcept": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "2113"}]},`)
+
+		})
+	}
 }
 
 func (s *APITestSuite) TestMetadata() {

@@ -1,8 +1,10 @@
 package v1
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
@@ -223,6 +225,15 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
 /*
 	swagger:route GET /data/{jobId}/{filename} bulkData serveData
 
@@ -250,7 +261,25 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
 	w.Header().Set("Content-Type", "application/fhir+ndjson")
-	http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+
+	var useGZIP bool
+	for _, header := range r.Header.Values("Accept-Encoding") {
+		if header == "gzip" {
+			useGZIP = true
+			break
+		}
+	}
+
+	if useGZIP {
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+
+		gzw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+		http.ServeFile(gzw, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+	} else {
+		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
+	}
 }
 
 /*

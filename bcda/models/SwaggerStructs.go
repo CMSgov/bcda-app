@@ -132,6 +132,22 @@ type FileParam struct {
 	Filename string `json:"filename"`
 }
 
+// swagger:parameters serveData
+type ServeDataRequestHeaders struct {
+	// Encoding type to use
+
+	// in: header
+	// enum: gzip
+	AcceptEncoding string `json:"Accept-Encoding"`
+}
+
+// swagger:response serveData
+type ServeDataResponseHeaders struct {
+	// in: header
+	// enum: gzip
+	ContentEncoding string `json:"Content-Encoding"`
+}
+
 // swagger:parameters bulkPatientRequest bulkGroupRequest
 type ResourceTypeParam struct {
 	// (Optional) Resource types requested
