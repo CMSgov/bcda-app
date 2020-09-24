@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"log"
 	random "math/rand"
 	"net/http"
@@ -776,9 +775,9 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 		acoIDs   []string
 		errMsg   string
 	}{
-		{"Different ACO ID", fmt.Sprintf("SOME_CCLF_FILE_NAME_%s", time.Now().String()), []string{"ACO1", "ACO2"},
+		{"Different ACO ID", uuid.New(), []string{"ACO1", "ACO2"},
 			""},
-		{"Duplicate ACO ID", fmt.Sprintf("SOME_CCLF_FILE_NAME_DUPLICATE_ACO_%s", time.Now().String()), []string{"ACO3", "ACO3"},
+		{"Duplicate ACO ID", uuid.New(), []string{"ACO3", "ACO3"},
 			`pq: duplicate key value violates unique constraint "idx_cclf_files_name_aco_cms_id_key"`},
 	}
 
@@ -794,7 +793,11 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 				}
 				if err1 := s.db.Create(cclfFile).Error; err1 != nil {
 					err = err1
+					continue
 				}
+				defer func() {
+					assert.Empty(t, cclfFile.Delete())
+				}()
 			}
 			if tt.errMsg != "" {
 				assert.EqualError(t, err, tt.errMsg)

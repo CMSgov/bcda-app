@@ -66,7 +66,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 	cmsID := "A00234"
 	jobID := "1"
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
 	os.RemoveAll(stagingDir)
@@ -153,7 +153,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
 
@@ -207,7 +207,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	var cclfBeneficiaryIDs []string
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012309"}
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
 
@@ -256,7 +256,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	cmsID := "A00234"
 	jobID := "1"
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: "T.A12345.ACO.ZC8Y19.D191120.T1012312"}
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
 
