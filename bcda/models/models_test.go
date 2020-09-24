@@ -784,6 +784,7 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			var err error
+			var expectedFileCount int
 			for _, acoID := range tt.acoIDs {
 				cclfFile := &CCLFFile{
 					Name:            tt.fileName,
@@ -795,15 +796,22 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 					err = err1
 					continue
 				}
+				expectedFileCount++
 				defer func() {
 					assert.Empty(t, cclfFile.Delete())
 				}()
 			}
+
 			if tt.errMsg != "" {
 				assert.EqualError(t, err, tt.errMsg)
 			} else {
 				assert.NoError(t, err)
 			}
+
+			var count int
+			s.db.Model(&CCLFFile{}).Where("name = ?", tt.fileName).Count(&count)
+			assert.True(t, expectedFileCount > 0)
+			assert.Equal(t, expectedFileCount, count)
 		})
 	}
 }
