@@ -69,6 +69,15 @@ func InitializeGormModels() *gorm.DB {
 
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
 
+	if err := db.Exec("ALTER TABLE cclf_files DROP CONSTRAINT IF EXISTS cclf_files_name_key").Error; err != nil {
+		log.Fatalf("Falied to remove name constraint on cclf_files table %s", err.Error())
+	}
+
+	if err := db.Model(&CCLFFile{}).AddUniqueIndex("idx_cclf_files_name_aco_cms_id_key",
+		"name", "aco_cms_id").Error; err != nil {
+		log.Fatalf("Failed to create unique index on cclf_files table %s", err.Error())
+	}
+
 	return db
 }
 
@@ -405,8 +414,8 @@ func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 type CCLFFile struct {
 	gorm.Model
 	CCLFNum         int       `gorm:"not null"`
-	Name            string    `gorm:"not null;unique"`
-	ACOCMSID        string    `gorm:"column:aco_cms_id"`
+	Name            string    `gorm:"not null;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
+	ACOCMSID        string    `gorm:"column:aco_cms_id;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
 	Timestamp       time.Time `gorm:"not null"`
 	PerformanceYear int       `gorm:"not null"`
 	ImportStatus    string    `gorm:"column:import_status"`

@@ -767,3 +767,51 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	// This is due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 }
+
+func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
+	tests := []struct {
+		name     string
+		fileName string
+		acoIDs   []string
+		errMsg   string
+	}{
+		{"Different ACO ID", uuid.New(), []string{"ACO1", "ACO2"},
+			""},
+		{"Duplicate ACO ID", uuid.New(), []string{"ACO3", "ACO3"},
+			`pq: duplicate key value violates unique constraint "idx_cclf_files_name_aco_cms_id_key"`},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			var err error
+			var expectedFileCount int
+			for _, acoID := range tt.acoIDs {
+				cclfFile := &CCLFFile{
+					Name:            tt.fileName,
+					ACOCMSID:        acoID,
+					Timestamp:       time.Now(),
+					PerformanceYear: 20,
+				}
+				if err1 := s.db.Create(cclfFile).Error; err1 != nil {
+					err = err1
+					continue
+				}
+				expectedFileCount++
+				defer func() {
+					assert.Empty(t, cclfFile.Delete())
+				}()
+			}
+
+			if tt.errMsg != "" {
+				assert.EqualError(t, err, tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			var count int
+			s.db.Model(&CCLFFile{}).Where("name = ?", tt.fileName).Count(&count)
+			assert.True(t, expectedFileCount > 0)
+			assert.Equal(t, expectedFileCount, count)
+		})
+	}
+}
