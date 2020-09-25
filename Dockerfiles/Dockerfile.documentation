@@ -13,4 +13,7 @@ COPY . .
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
-CMD ["swagger", "generate", "spec", "-i", "swaggerui/tags.yml", "-o", "swaggerui/swagger.json", "-m"]
+
+# TODO (BCDA-3776) - Re-enable generation of v2 endpoints once publically available.
+CMD ["swagger", "generate", "spec", "-i", "swaggerui/tags.yml", "-o", "swaggerui/swagger.json", "-m", \
+    "--exclude-tag", "metadataV2",  "--exclude-tag", "bulkDataV2"]
