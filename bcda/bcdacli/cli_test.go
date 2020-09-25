@@ -634,9 +634,9 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", targetACO).Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
+	var existingCCLFFiles []models.CCLFFile
+	db.Where("aco_cms_id = ?", targetACO).Find(&existingCCLFFiles)
+	for _, cclfFile := range existingCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(err)
 	}
@@ -658,23 +658,11 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 
 	buf.Reset()
 
-	db.Where("aco_cms_id = ?", targetACO).Find(&existngCCLFFiles)
-	for _, cclfFile := range existngCCLFFiles {
+	db.Where("aco_cms_id = ?", targetACO).Find(&existingCCLFFiles)
+	for _, cclfFile := range existingCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(err)
 	}
-
-	// dir has 4 files, but 2 will be ignored because of bad file names.
-	path, cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/cclf/mixed/with_invalid_filenames/")
-	defer cleanup()
-
-	args = []string{"bcda", "import-cclf-directory", "--directory", path}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), "Completed CCLF import.")
-	assert.Contains(buf.String(), "Successfully imported 2 files.")
-	assert.Contains(buf.String(), "Skipped 5 files.")
-	buf.Reset()
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
