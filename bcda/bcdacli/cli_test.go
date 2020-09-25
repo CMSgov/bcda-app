@@ -634,7 +634,7 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	defer database.Close(db)
 
 	var existngCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", "A0001").Find(&existngCCLFFiles)
+	db.Where("aco_cms_id in (?, ?, ?)", "A0001", "A9989", "A9988").Find(&existngCCLFFiles)
 	for _, cclfFile := range existngCCLFFiles {
 		err := cclfFile.Delete()
 		assert.Nil(err)
