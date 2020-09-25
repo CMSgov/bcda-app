@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jinzhu/gorm"
+
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
@@ -232,11 +234,16 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 
-	// save a job to our db
+	// timestamp to ensure that the job gets archived (older than the default 24h window)
+	t := time.Now().Add(-48 * time.Hour)
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     "Completed",
+		Model: gorm.Model{
+			CreatedAt: t,
+			UpdatedAt: t,
+		},
 	}
 	db.Save(&j)
 	assert.NotNil(j.ID)
@@ -270,7 +277,6 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	defer f.Close()
 
 	// execute the test case from CLI
-	os.Setenv("ARCHIVE_THRESHOLD_HR", "0")
 	args = []string{"bcda", "archive-job-files"}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
