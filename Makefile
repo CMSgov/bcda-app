@@ -98,8 +98,8 @@ load-synthetic-cclf-data:
 		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
-	for acoSize in dev, dev-auth, dev-cec, dev-cec-auth, dev-ng, dev-ng-auth, small, medium, large, extra-large ; do \
-		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
+	for acoSize in dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth small medium large extra-large ; do \
+		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
 	done
 
 load-synthetic-suppression-data:
