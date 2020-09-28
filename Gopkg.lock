@@ -209,6 +209,14 @@
   version = "v2.1.0"
 
 [[projects]]
+  digest = "1:995cf9a6f8eee1e7919cb42b93517c3332e3db2e4c9771804b02564d3f74e973"
+  name = "github.com/otiai10/copy"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c5f0361fe546fb0f4f26b13746afc8864ea7f6d9"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:8aa28c7fb16a7b9afb08568f21f06aa869f18e3637f6f024413e45c2e211072b"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -408,6 +416,7 @@
     "github.com/lib/pq",
     "github.com/newrelic/go-agent",
     "github.com/newrelic/go-agent/_integrations/nrlogrus",
+    "github.com/otiai10/copy",
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/samply/golang-fhir-models/fhir-models/fhir",

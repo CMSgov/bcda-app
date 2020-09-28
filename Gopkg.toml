@@ -68,3 +68,7 @@
 [[constraint]]
   name = "github.com/samply/golang-fhir-models"
   version = "0.2.0"
+
+[[constraint]]
+  name = "github.com/otiai10/copy"
+  version = "1.2.0"

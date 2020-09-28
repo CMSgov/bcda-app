@@ -4,10 +4,13 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"testing"
 
+	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -92,17 +95,13 @@ func SetUnitTestKeysForAuth() func() {
 
 func MakeDirToDelete(s suite.Suite, filePath string) {
 	assert := assert.New(s.T())
-	dirToDelete := filePath
-	err := os.Mkdir(dirToDelete, os.ModePerm)
+	_, err := os.Create(filepath.Join(filePath, "deleteMe1.txt"))
 	assert.Nil(err)
-
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe1.txt"))
+	_, err = os.Create(filepath.Join(filePath, "deleteMe2.txt"))
 	assert.Nil(err)
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe2.txt"))
+	_, err = os.Create(filepath.Join(filePath, "deleteMe3.txt"))
 	assert.Nil(err)
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe3.txt"))
-	assert.Nil(err)
-	_, err = os.Create(filepath.Join(dirToDelete, "deleteMe4.txt"))
+	_, err = os.Create(filepath.Join(filePath, "deleteMe4.txt"))
 	assert.Nil(err)
 }
 
@@ -120,23 +119,24 @@ func SetPendingDeletionDir(s suite.Suite, path string) {
 	}
 }
 
-func ResetFiles(s suite.Suite, resetPath string) {
-	err := filepath.Walk(os.Getenv("PENDING_DELETION_DIR"),
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				s.FailNow("error in walkfunc,", err)
-			}
-
-			if info.IsDir() {
-				return nil
-			}
-			err = os.Rename(path, resetPath+info.Name())
-			if err != nil {
-				s.FailNow("error in moving files,", err)
-			}
-			return nil
-		})
+// CopyToTemporaryDirectory copies all of the content found at src into a temporary directory.
+// The path to the temporary directory is returned along with a function that can be called to clean up the data.
+func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
+	newPath, err := ioutil.TempDir("", "*")
 	if err != nil {
-		s.FailNow("error in walkfunc,", err)
+		t.Fatalf("Failed to create temporary directory %s", err.Error())
 	}
+
+	if err = copy.Copy(src, newPath); err != nil {
+		t.Fatalf("Failed to copy contents from %s to %s %s", src, newPath, err.Error())
+	}
+
+	cleanup := func() {
+		err := os.RemoveAll(newPath)
+		if err != nil {
+			log.Printf("Failed to cleanup data %s", err.Error())
+		}
+	}
+
+	return newPath, cleanup
 }

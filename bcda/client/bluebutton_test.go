@@ -42,6 +42,7 @@ func (s *BBTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	os.Setenv("BB_TIMEOUT_MS", "2000")
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
@@ -52,12 +53,6 @@ func (s *BBRequestTestSuite) SetupSuite() {
 	ts500 = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Some server error", http.StatusInternalServerError)
 	}))
-
-	if bbClient, err := client.NewBlueButtonClient(); err != nil {
-		s.Fail("Failed to create Blue Button client", err)
-	} else {
-		s.bbClient = bbClient
-	}
 }
 
 func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
@@ -66,7 +61,15 @@ func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
 	} else {
 		s.ts = ts200
 	}
-	os.Setenv("BB_SERVER_LOCATION", s.ts.URL)
+
+	config := client.BlueButtonConfig{
+		BBServer: s.ts.URL,
+	}
+	if bbClient, err := client.NewBlueButtonClient(config); err != nil {
+		s.Fail("Failed to create Blue Button client", err)
+	} else {
+		s.bbClient = bbClient
+	}
 }
 
 /* Tests for creating client and other functions that don't make requests */
@@ -77,12 +80,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_CERT_FILE")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -94,12 +97,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 }
@@ -111,12 +114,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_KEY_FILE")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -128,12 +131,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 }
@@ -150,12 +153,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 
 	os.Unsetenv("BB_CLIENT_CA_FILE")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
 }
@@ -172,12 +175,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient()
+	bbc, err := client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient()
+	bbc, err = client.NewBlueButtonClient(client.NewConfig())
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 }
@@ -200,7 +203,7 @@ func (s *BBRequestTestSuite) TestGetPatient() {
 
 func (s *BBRequestTestSuite) TestGetPatient_500() {
 	p, err := s.bbClient.GetPatient("012345", "543210", "A0000", "", now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), p)
 }
 func (s *BBRequestTestSuite) TestGetCoverage() {
@@ -212,7 +215,7 @@ func (s *BBRequestTestSuite) TestGetCoverage() {
 
 func (s *BBRequestTestSuite) TestGetCoverage_500() {
 	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), c)
 }
 
@@ -225,7 +228,7 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), e)
 }
 
@@ -238,7 +241,7 @@ func (s *BBRequestTestSuite) TestGetMetadata() {
 
 func (s *BBRequestTestSuite) TestGetMetadata_500() {
 	p, err := s.bbClient.GetMetadata()
-	assert.Regexp(s.T(), `Blue Button request .+ failed \d+ time\(s\)`, err.Error())
+	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Equal(s.T(), "", p)
 }
 
@@ -286,7 +289,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -302,7 +305,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -318,7 +321,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatient",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetPatient("patient2", jobID, cmsID, since, now)
+				return bbClient.GetPatient("patient2", jobID, cmsID, since, now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -334,7 +337,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatientNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetPatient("patient2", jobID, cmsID, "", now)
+				return bbClient.GetPatient("patient2", jobID, cmsID, "", now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -350,7 +353,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetCoverage",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, since, now)
+				return bbClient.GetCoverage("beneID1", jobID, cmsID, since, now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -366,7 +369,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetCoverageNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetCoverage("beneID1", jobID, cmsID, "", now)
+				return bbClient.GetCoverage("beneID1", jobID, cmsID, "", now)
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -382,7 +385,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetPatientByIdentifierHash",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return s.bbClient.GetPatientByIdentifierHash("hashedIdentifier")
+				return bbClient.GetPatientByIdentifierHash("hashedIdentifier")
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(string)
@@ -436,16 +439,18 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			}))
 			defer tsValidation.Close()
 
-			// It's OK to keep swapping out the server location since every test is re-intialized
-			// with s.ts.URL
-			os.Setenv("BB_SERVER_LOCATION", tsValidation.URL)
-			bbClient, err := client.NewBlueButtonClient()
+			config := client.BlueButtonConfig{
+				BBServer: tsValidation.URL,
+			}
+			bbClient, err := client.NewBlueButtonClient(config)
 			if err != nil {
 				assert.FailNow(t, err.Error())
 			}
 
 			data, err := tt.funcUnderTest(bbClient, jobID, cmsID)
-			assert.NoError(t, err)
+			if err != nil {
+				assert.FailNow(t, err.Error())
+			}
 
 			tt.payloadChecker(t, data)
 		})
@@ -466,12 +471,17 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 		file, err = os.Open("./testdata/Metadata.json")
 	} else if strings.Contains(path, "Patient") {
 		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Patient")
+	} else {
+		err = fmt.Errorf("Unrecognized path supplied %s", path)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	defer file.Close()
 
 	w.Header().Set("Content-Type", r.URL.Query().Get("_format"))
 
