@@ -1,7 +1,7 @@
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
-	docker-compose up documentation openapi
+	docker-compose up --build documentation openapi
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm \
 	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \

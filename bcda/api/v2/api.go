@@ -23,7 +23,7 @@ const (
 )
 
 /*
-	swagger:route GET /api/v2/Patient/$export bulkData BulkPatientRequest
+	swagger:route GET /api/v2/Patient/$export bulkDataV2 BulkPatientRequest
 
 	Start data export for all supported resource types
 
@@ -53,7 +53,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v2/Group/{groupId}/$export bulkData bulkGroupRequest
+	swagger:route GET /api/v2/Group/{groupId}/$export bulkDataV2 bulkGroupRequest
 
     Start data export (for the specified group identifier) for all supported resource types
 
@@ -98,7 +98,7 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v2/metadata metadata metadata
+	swagger:route GET /api/v2/metadata metadataV2 metadata
 
 	Get metadata
 
