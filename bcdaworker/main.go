@@ -110,7 +110,7 @@ func processJob(j *que.Job) error {
 		return errors.Wrap(err, "could not update job status in database")
 	}
 
-	bb, err := client.NewBlueButtonClient()
+	bb, err := client.NewBlueButtonClient(client.NewConfig())
 	if err != nil {
 		err = errors.Wrap(err, "could not create Blue Button client")
 		log.Error(err)

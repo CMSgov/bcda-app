@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -18,6 +19,13 @@ type FileProcessorTestSuite struct {
 	suite.Suite
 	cclfRefDate        string
 	pendingDeletionDir string
+
+	basePath string
+	cleanup  func()
+}
+
+func (s *FileProcessorTestSuite) SetupTest() {
+	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
 func (s *FileProcessorTestSuite) SetupSuite() {
@@ -29,6 +37,10 @@ func (s *FileProcessorTestSuite) SetupSuite() {
 	}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
+}
+
+func (s *FileProcessorTestSuite) TearDownTest() {
+	s.cleanup()
 }
 
 func (s *FileProcessorTestSuite) TearDownSuite() {
@@ -45,13 +57,13 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
 		numCCLF0     int // Expected count for the cmsID, perfYear above
 		numCCLF8     int // Expected count for the cmsID, perfYear above
 	}{
-		{BASE_FILE_PATH + "cclf/archives/valid/", 2, 1, 1, 1},
-		{BASE_FILE_PATH + "cclf/archives/bcd/", 2, 1, 1, 1},
-		{BASE_FILE_PATH + "cclf/mixed/with_invalid_filenames/", 2, 5, 1, 1},
-		{BASE_FILE_PATH + "cclf/mixed/0/valid_names/", 3, 3, 3, 0},
-		{BASE_FILE_PATH + "cclf/archives/8/valid/", 5, 0, 0, 5},
-		{BASE_FILE_PATH + "cclf/files/9/valid_names/", 0, 4, 0, 0},
-		{BASE_FILE_PATH + "cclf/mixed/with_folders/", 2, 13, 1, 1},
+		{filepath.Join(s.basePath, "cclf/archives/valid/"), 2, 1, 1, 1},
+		{filepath.Join(s.basePath, "cclf/archives/bcd/"), 2, 1, 1, 1},
+		{filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/"), 2, 5, 1, 1},
+		{filepath.Join(s.basePath, "cclf/mixed/0/valid_names/"), 3, 3, 3, 0},
+		{filepath.Join(s.basePath, "cclf/archives/8/valid/"), 5, 0, 0, 5},
+		{filepath.Join(s.basePath, "cclf/files/9/valid_names/"), 0, 4, 0, 0},
+		{filepath.Join(s.basePath, "cclf/mixed/with_folders/"), 2, 13, 1, 1},
 	}
 
 	for _, tt := range tests {
@@ -73,15 +85,14 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
 			}
 			assert.Equal(t, tt.numCCLF0, numCCLF0)
 			assert.Equal(t, tt.numCCLF8, numCCLF8)
-			testUtils.ResetFiles(s.Suite, tt.path)
 		})
 	}
 }
 
 func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert := assert.New(s.T())
-	folderPath := BASE_FILE_PATH + "cclf/mixed/with_invalid_filenames/"
-	filePath := folderPath + "T.BCDE.ACO.ZC0Y18.D181120.T0001000"
+	folderPath := filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/")
+	filePath := filepath.Join(folderPath, "T.BCDE.ACO.ZC0Y18.D181120.T0001000")
 
 	origTime := time.Now().Truncate(time.Second)
 	err := os.Chtimes(filePath, origTime, origTime)
@@ -98,8 +109,6 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	_, err = os.Open(filePath)
 	assert.Nil(err)
 
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
-
 	timeChange := origTime.Add(-(time.Hour * 73)).Truncate(time.Second)
 	err = os.Chtimes(filePath, timeChange, timeChange)
 	if err != nil {
@@ -114,9 +123,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 
 	// assert that this file is not still here.
 	_, err = os.Open(filePath)
-	assert.EqualError(err, "open ../../shared_files/cclf/mixed/with_invalid_filenames/T.BCDE.ACO.ZC0Y18.D181120.T0001000: no such file or directory")
-
-	testUtils.ResetFiles(s.Suite, BASE_FILE_PATH+"cclf/mixed/with_invalid_filenames/")
+	assert.EqualError(err, fmt.Sprintf("open %s: no such file or directory", filePath))
 }
 
 func (s *FileProcessorTestSuite) TestProcessCCLFArchives_InvalidPath() {
