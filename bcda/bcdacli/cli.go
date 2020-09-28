@@ -391,7 +391,7 @@ func setUpApp() *cli.App {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "acoSize",
-					Usage:       "Set the size of the ACO.  Must be one of 'dev', 'dev-auth', 'small', 'medium', 'large', or 'extra-large'",
+					Usage:       "Set the size of the ACO.  Must be one of 'dev', 'dev-auth', 'dev-cec', 'dev-cec-auth', 'dev-ng', 'dev-ng-auth', 'small', 'medium', 'large', or 'extra-large'",
 					Destination: &acoSize,
 				},
 				cli.StringFlag{

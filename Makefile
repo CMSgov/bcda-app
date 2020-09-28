@@ -38,6 +38,7 @@ SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --r
 # or
 #    ACO_CMS_ID=A9999 make postman env=local
 #
+# TODO: as part of BCDA-3692, generate credentials for E9994 and V994
 ACO_CMS_ID ?= A9994
 clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
@@ -93,20 +94,14 @@ load-synthetic-cclf-data:
 	docker-compose up -d api
 	docker-compose up -d db
 	# The "test" environment provides baseline CCLF ingestion for ACO
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev-auth --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=small --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=medium --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=large --environment=test'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=extra-large --environment=test'
+	for acoSize in dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth small medium large extra-large ; do \
+		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
+	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev --environment=test-new-beneficiaries'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=dev-auth --environment=test-new-beneficiaries'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=small --environment=test-new-beneficiaries'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=medium --environment=test-new-beneficiaries'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=large --environment=test-new-beneficiaries'
-	docker-compose run api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize=extra-large --environment=test-new-beneficiaries'
+	for acoSize in dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth small medium large extra-large ; do \
+		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
+	done
 
 load-synthetic-suppression-data:
 	docker-compose up -d api

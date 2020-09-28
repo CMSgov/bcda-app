@@ -29,5 +29,7 @@ insert into acos(uuid, cms_id, name, client_id)
             ('3461C774-B48F-11E8-96F8-529269fb1459', 'A9990', 'ACO Small', '3461C774-B48F-11E8-96F8-529269fb1459'),
             ('C74C008D-42F8-4ED9-BF88-CEE659C7F692', 'A9991', 'ACO Medium', 'C74C008D-42F8-4ED9-BF88-CEE659C7F692'),
             ('8D80925A-027E-43DD-8AED-9A501CC4CD91', 'A9992', 'ACO Large', '8D80925A-027E-43DD-8AED-9A501CC4CD91'),
-            ('55954dba-d4d9-438d-bd03-453da4993fe9', 'A9993', 'ACO Extra Large', '55954dba-d4d9-438d-bd03-453da4993fe9');
+            ('55954dba-d4d9-438d-bd03-453da4993fe9', 'A9993', 'ACO Extra Large', '55954dba-d4d9-438d-bd03-453da4993fe9'),
+            ('94b050bb-5a58-4f16-bd41-73a903977dfc', 'E9994', 'CEC ACO Dev', '94b050bb-5a58-4f16-bd41-73a903977dfc'),
+            ('749e6e2f-c45b-41d1-9226-8b7c54f96526', 'V994', 'NG ACO Dev', '749e6e2f-c45b-41d1-9226-8b7c54f96526');
 

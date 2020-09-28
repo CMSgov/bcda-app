@@ -21,12 +21,16 @@ const DestDir = "tempCCLFDir/"
 func ImportCCLFPackage(acoSize, environment string) (err error) {
 	acoSize = strings.ToLower(acoSize)
 	acoIDNum := map[string]string{
-		"dev":         "9994",
-		"dev-auth":    "9996",
-		"small":       "9990",
-		"medium":      "9991",
-		"large":       "9992",
-		"extra-large": "9993",
+		"dev":          "A9994",
+		"dev-cec":      "E9994",
+		"dev-cec-auth": "E9996",
+		"dev-ng":       "V994",
+		"dev-ng-auth":  "V996",
+		"dev-auth":     "A9996",
+		"small":        "A9990",
+		"medium":       "A9991",
+		"large":        "A9992",
+		"extra-large":  "A9993",
 	}[acoSize]
 	if acoIDNum == "" {
 		return errors.New("invalid argument for ACO size")
@@ -66,8 +70,15 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 	now := time.Now()
 	dateStr := fmt.Sprintf("Y%s.D%s.T%s0", now.Format("06"), now.Format("060102"), now.Format("150405"))
 	for _, file := range files {
-		archiveName = fmt.Sprintf("T.BCD.A%s.ZC%s", acoIDNum, dateStr)
-		filename := fmt.Sprintf("T.BCD.A%s.%s%s", acoIDNum, file.Name(), dateStr)
+		var filename string
+		archiveName = fmt.Sprintf("T.BCD.%s.ZC%s", acoIDNum, dateStr)
+		if strings.HasPrefix(acoIDNum, "A") {
+                	filename = fmt.Sprintf("T.BCD.%s.%s%s", acoIDNum, file.Name(), dateStr)
+		} else if strings.HasPrefix(acoIDNum, "E") {
+                        filename = fmt.Sprintf("T.CEC.%s%s", file.Name(), dateStr)
+		} else if strings.HasPrefix(acoIDNum, "V") {
+                        filename = fmt.Sprintf("T.%s.ACO.%s%s", acoIDNum, file.Name(), dateStr)
+		}
 		sourceFilename := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(), filename)
 		fileList = append(fileList, sourceFilename)
 	}
