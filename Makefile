@@ -37,8 +37,6 @@ SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --r
 #    export ACO_CMS_ID=A9999; make postman env=local
 # or
 #    ACO_CMS_ID=A9999 make postman env=local
-#
-# TODO: as part of BCDA-3692, generate credentials for E9994 and V994
 ACO_CMS_ID ?= A9994
 clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
