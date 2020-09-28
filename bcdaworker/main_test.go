@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/bgentry/que-go"
@@ -28,15 +29,34 @@ import (
 
 type MainTestSuite struct {
 	suite.Suite
-	reset func()
+	reset   func()
+	db      *gorm.DB
+	testACO *models.ACO
 }
 
 func (s *MainTestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth()
+	s.db = database.GetGORMDbConnection()
+
+	cmsID := "A1B2C" // Some unique ID that should be unique to this test
+	s.db.Unscoped().Where("cms_id = ?", cmsID).Delete(&models.ACO{})
+
+	s.testACO = &models.ACO{
+		UUID:  uuid.NewUUID(),
+		CMSID: &cmsID,
+		Name:  "ACO_FOR_WORKER_TEST",
+	}
+
+	if err := s.db.Save(&s.testACO).Error; err != nil {
+		s.FailNowf("Failed to add new ACO %s", err.Error())
+	}
 }
 
 func (s *MainTestSuite) TearDownSuite() {
 	s.reset()
+	s.db.Unscoped().Where("aco_id = ?", s.testACO.UUID).Delete(&models.Job{})
+	s.db.Unscoped().Delete(s.testACO)
+	s.db.Close()
 }
 
 func (s *MainTestSuite) SetupTest() {
@@ -62,9 +82,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 	bbc := testUtils.BlueButtonClient{}
-	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
-	cmsID := "A00234"
-	jobID := "1"
+	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
+	jobID := generateUniqueJobID(s.T(), db, acoID)
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
@@ -85,7 +104,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetBundleData("ExplanationOfBenefit", beneficiaryID))
 	}
 
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.NoError(s.T(), err)
 
 	files, err := ioutil.ReadDir(stagingDir)
@@ -146,14 +165,13 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 	bbc.On("GetExplanationOfBenefit", "abcdef10000").Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", "abcdef11000").Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", "abcdef12000").Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
-	cmsID := "A00234"
+	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
 	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
 	var cclfBeneficiaryIDs []string
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
 
@@ -167,20 +185,20 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 		defer db.Delete(&cclfBeneficiary)
 
 	}
-	jobID := "1"
+	jobID := generateUniqueJobID(s.T(), db, acoID)
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.NoError(s.T(), err)
 
 	errorFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID)
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO %s"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}}]}`, acoID, acoID, acoID, acoID)
 	assert.Equal(s.T(), ooResp+"\n", string(fData))
 	bbc.AssertExpectations(s.T())
 
@@ -202,8 +220,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0])).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 	bbc.MBI = &beneficiaryIDs[1]
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[1])).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
-	acoID := "387c3a62-96fa-4d93-a5d0-fd8725509dd9"
-	cmsID := "A00234"
+	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
 	var cclfBeneficiaryIDs []string
 	db := database.GetGORMDbConnection()
 	defer db.Close()
@@ -219,10 +236,10 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 		defer db.Delete(&cclfBeneficiary)
 	}
 
-	jobID := "1"
+	jobID := generateUniqueJobID(s.T(), db, acoID)
 	testUtils.CreateStaging(jobID)
 
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
 
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
@@ -234,8 +251,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO 387c3a62-96fa-4d93-a5d0-fd8725509dd9"}}]}`
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO %s"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}}]}`, acoID, acoID, acoID, acoID)
 	assert.Equal(s.T(), ooResp+"\n", string(fData))
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
@@ -252,11 +269,10 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 	db := database.GetGORMDbConnection()
 	defer db.Close()
-	acoID := "9c05c1f8-349d-400f-9b69-7963f2262b07"
-	cmsID := "A00234"
-	jobID := "1"
+	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
+	jobID := generateUniqueJobID(s.T(), db, acoID)
 	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
+	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
 
@@ -276,7 +292,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
 	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(stagingDir)
@@ -338,11 +354,13 @@ func (s *MainTestSuite) TestGetFailureThreshold() {
 }
 
 func (s *MainTestSuite) TestAppendErrorToFile() {
+	db := database.GetGORMDbConnection()
+	defer db.Close()
 
-	acoID := "328e83c3-bc46-4827-836c-0ba0c713dc7d"
-	jobID := "1"
+	acoID := s.testACO.UUID
+	jobID := generateUniqueJobID(s.T(), db, acoID)
 	testUtils.CreateStaging(jobID)
-	appendErrorToFile(context.Background(), acoID, "", "", "", jobID)
+	appendErrorToFile(context.Background(), acoID.String(), "", "", "", jobID)
 
 	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
 	fData, err := ioutil.ReadFile(filePath)
@@ -508,4 +526,13 @@ func (s *MainTestSuite) TestQueueJobWithNoParent() {
 			}
 		})
 	}
+}
+
+func generateUniqueJobID(t *testing.T, db *gorm.DB, acoID uuid.UUID) string {
+	j := models.Job{
+		ACOID:      acoID,
+		RequestURL: "/some/request/URL",
+	}
+	assert.NoError(t, db.Save(&j).Error)
+	return strconv.FormatUint(uint64(j.ID), 10)
 }
