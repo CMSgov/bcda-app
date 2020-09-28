@@ -338,7 +338,7 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 	assert.Nil(s.T(), err)
 
 	requestParams := RequestParams{resourceType: "ExplanationOfBenefit", since: since}
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
+	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 	ad := makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
@@ -365,7 +365,6 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 
-	s.db.Unscoped().Where("request_url = ?", requestUrl).Delete(models.Job{})
 	s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
 }
 
@@ -514,7 +513,7 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 	}()
 
 	requestParams := RequestParams{resourceType: "Patient", since: since}
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
+	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 
 	ad := makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
@@ -540,7 +539,6 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
-	s.db.Unscoped().Where("request_url = ?", requestUrl).Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 
@@ -595,7 +593,7 @@ func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *
 	}()
 
 	requestParams.resourceType = "Coverage"
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
+	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 
 	ad := makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
@@ -621,7 +619,6 @@ func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
-	s.db.Unscoped().Where("request_url = ?", requestUrl).Delete(models.Job{})
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 }
 

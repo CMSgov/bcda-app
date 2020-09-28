@@ -35,6 +35,19 @@ var logger *logrus.Logger
 
 const blueButtonBasePath = "/v1/fhir"
 
+// BlueButtonConfig holds the configuration settings needed to create a BlueButtonClient
+// TODO (BCDA-3755): Move the other env vars used in NewBlueButtonClient to this struct
+type BlueButtonConfig struct {
+	BBServer string
+}
+
+// NewConfig generates a new BlueButtonConfig using various environment variables.
+func NewConfig() BlueButtonConfig {
+	return BlueButtonConfig{
+		BBServer: os.Getenv("BB_SERVER_LOCATION"),
+	}
+}
+
 type APIClient interface {
 	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
@@ -47,6 +60,8 @@ type BlueButtonClient struct {
 
 	maxTries      uint64
 	retryInterval time.Duration
+
+	bbServer string
 }
 
 // Ensure BlueButtonClient satisfies the interface
@@ -68,7 +83,7 @@ func init() {
 	}
 }
 
-func NewBlueButtonClient() (*BlueButtonClient, error) {
+func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
 	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 	pageSize := utils.GetEnvInt("BB_CLIENT_PAGE_SIZE", 0)
@@ -114,7 +129,7 @@ func NewBlueButtonClient() (*BlueButtonClient, error) {
 	client := fhir.NewClient(httpClient, pageSize)
 	maxTries := uint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
 	retryInterval := time.Duration(utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)) * time.Millisecond
-	return &BlueButtonClient{client, maxTries, retryInterval}, nil
+	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer}, nil
 }
 
 type BeneDataFunc func(string, string, string, string, time.Time) (*models.Bundle, error)
@@ -154,7 +169,7 @@ func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 }
 
 func (bbc *BlueButtonClient) getBundleData(path string, params url.Values, jobID, cmsID string) (*models.Bundle, error) {
-	req, err := getRequest(path, params)
+	req, err := bbc.getRequest(path, params)
 	if err != nil {
 		return nil, err
 	}
@@ -206,12 +221,12 @@ func (bbc *BlueButtonClient) tryBundleRequest(req *http.Request, jobID, cmsID st
 	},
 		b,
 		func(err error, d time.Duration) {
-			logger.Infof("Blue Button request %s retry in %s ms...", queryID, d.String())
+			logger.Infof("Blue Button request %s failed %s. Retry in %s ms...", queryID, err.Error(), d.String())
 		},
 	)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, bbc.maxTries)
+		return nil, nil, fmt.Errorf("blue button request %s failed %d time(s) %s", queryID, bbc.maxTries, err.Error())
 	}
 
 	return result, nextReq, nil
@@ -222,7 +237,7 @@ func (bbc *BlueButtonClient) getRawData(path string, params url.Values, jobID, c
 	txn := m.Start(path, nil, nil)
 	defer m.End(txn)
 
-	req, err := getRequest(path, params)
+	req, err := bbc.getRequest(path, params)
 	if err != nil {
 		return "", err
 	}
@@ -250,16 +265,14 @@ func (bbc *BlueButtonClient) getRawData(path string, params url.Values, jobID, c
 	)
 
 	if err != nil {
-		return "", fmt.Errorf("Blue Button request %s failed %d time(s)", queryID, bbc.maxTries)
+		return "", fmt.Errorf("blue button request %s failed %d time(s)", queryID, bbc.maxTries)
 	}
 
 	return result, nil
 }
 
-func getRequest(path string, params url.Values) (*http.Request, error) {
-	bbServer := os.Getenv("BB_SERVER_LOCATION")
-
-	req, err := http.NewRequest("GET", bbServer+path, nil)
+func (bbc *BlueButtonClient) getRequest(path string, params url.Values) (*http.Request, error) {
+	req, err := http.NewRequest("GET", bbc.bbServer+path, nil)
 	if err != nil {
 		return nil, err
 	}
