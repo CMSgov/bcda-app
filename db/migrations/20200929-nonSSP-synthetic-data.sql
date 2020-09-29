@@ -1,3 +1,6 @@
+-- This script is intended to be run ONLY in opensbx.  
+-- It exists here to audit/track the new data that was added to opensbx for non-SSP synthetic ACOs.
+
 INSERT INTO public.cclf_files (id, created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (1853, now(), now(), 8, 'T.CEC.ZC8Y20.D200929.T0000000', 'E9994', '2020-02-01', 20, 'Completed');
 INSERT INTO public.cclf_files (id, created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (1854, now(), now(), 8, 'T.CEC.ZC8Y20.D200929.T0000010', 'E9994', '2020-09-29', 20, 'Completed');
 INSERT INTO public.cclf_files (id, created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (1855, now(), now(), 8, 'T.V994.ACO.ZC8Y20.D200929.T0000000', 'V994', '2020-02-01', 20, 'Completed');
