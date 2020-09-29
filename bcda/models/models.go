@@ -78,14 +78,6 @@ func InitializeGormModels() *gorm.DB {
 		log.Fatalf("Failed to create unique index on cclf_files table %s", err.Error())
 	}
 
-	if err := db.Exec("ALTER TABLE cclf_files ALTER COLUMN aco_cms_id SET DATA TYPE varchar(5)").Error; err != nil {
-		log.Fatalf("Failed to update aco_cms_id column to varchar(5) %s", err.Error())
-	}
-
-	if err := db.Exec("ALTER TABLE acos ALTER COLUMN cms_id SET DATA TYPE varchar(5)").Error; err != nil {
-		log.Fatalf("Failed to update cms_id column from acos table to varchar(5) %s", err.Error())
-	}
-
 	return db
 }
 
