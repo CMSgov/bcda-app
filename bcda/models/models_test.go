@@ -815,3 +815,25 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 		})
 	}
 }
+
+// TestCMSID verifies that we can store and retrieve the CMS_ID as expected
+// i.e. the value is not padded with any extra characters
+func (s *ModelsTestSuite) TestCMSID() {
+	cmsID := "V001"
+	cclfFile := &CCLFFile{CCLFNum: 1, Name: "someName", ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 20}
+	aco := &ACO{UUID: uuid.NewUUID(), CMSID: &cmsID, Name: "someName"}
+
+	assert.NoError(s.T(), s.db.Save(cclfFile).Error)
+	defer s.db.Unscoped().Delete(cclfFile)
+	assert.NoError(s.T(), s.db.Save(aco).Error)
+	defer s.db.Unscoped().Delete(aco)
+
+	var actualCMSID []string
+	assert.NoError(s.T(), s.db.Find(&ACO{}, "id = ?", aco.ID).Pluck("cms_id", &actualCMSID).Error)
+	assert.Equal(s.T(), 1, len(actualCMSID))
+	assert.Equal(s.T(), cmsID, actualCMSID[0])
+
+	assert.NoError(s.T(), s.db.Find(&CCLFFile{}, "id = ?", cclfFile.ID).Pluck("aco_cms_id", &actualCMSID).Error)
+	assert.Equal(s.T(), 1, len(actualCMSID))
+	assert.Equal(s.T(), cmsID, actualCMSID[0])
+}
