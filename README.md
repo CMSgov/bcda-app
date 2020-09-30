@@ -38,7 +38,7 @@ The pre-commit hook will also ensure that any added, copied, or modified go file
 * Encrypt changed files with:
 ```
 ./ops/secrets --encrypt <filename>
-```  
+```
 
 ## Build / Start
 
@@ -115,23 +115,11 @@ The updated `dump.pgdata` should be committed with the other associated changes.
     ```sh
     $ make unit-test-db
     ```
-2. Source the required environment variables from the `./docker-compose.test.yml` and `./shared_files/decrypted/local.env`.
+2. Source the required environment variables from the `./.vscode/settings.json` (under go.testEnvVars) and `./shared_files/decrypted/local.env`.
 
    **NOTE:** Since we're connecting to Postgres externally, we need to use the local host/port instead.
    
-   For VSCode users, you can add these variables into your `settings.json` file as `go.testEnvVars` field.
-   
-   Example:
-   ```json
-    "go.testEnvVars": {
-        "DB": "postgresql://postgres:toor@localhost:15432",
-        "DB_HOST_URL": "postgresql://postgres:toor@localhost:15432?sslmode=disable",
-        "TEST_DB_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
-        "DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
-        "QUEUE_DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
-        ...
-    }
-   ``` 
+   For vscode users, these variables are already by the workspace settings file (`./.vscode/settings.json`)
 
 ### Auto-generating mock implementations
 
@@ -232,3 +220,22 @@ If you have no data in your database, you can load the fixture data with
 ```sh
 make load-fixtures
 ```
+
+# IDE Setup
+## vscode
+
+1. Follow installing go + vscode [setup guide](https://marketplace.visualstudio.com/items?itemName=golang.go#getting-started).
+2. Ensure that bcda-app is found within the $GOPATH.
+```
+> echo $GOPATH
+/Users/bcda-developer/go
+```
+
+*NOTE:* You may have to manually set the $GOPATH
+
+```
+> mkdir -p $GOPATH/src/github.com/CMSgov
+> git clone git@github.com:CMSgov/bcda-app.git $GOPATH/src/github.com/CMSgov/bcda-app
+```
+
+Additional settings found under `.vscode/settings.json` allow tests to be run within vscode.
