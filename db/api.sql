@@ -1,6 +1,6 @@
 create table acos (
   uuid uuid not null primary key,
-  cms_id char(5) unique null,
+  cms_id character varying(5) unique null,
   name text not null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
@@ -21,7 +21,7 @@ create table cclf_files (
     id serial primary key,
     cclf_num integer not null,
     name varchar not null,
-    aco_cms_id char(5),
+    aco_cms_id character varying(5),
     "timestamp" timestamp with time zone not null,
     performance_year integer not null,
     import_status varchar,
