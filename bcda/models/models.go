@@ -70,7 +70,7 @@ func InitializeGormModels() *gorm.DB {
 	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
 
 	if err := db.Exec("ALTER TABLE cclf_files DROP CONSTRAINT IF EXISTS cclf_files_name_key").Error; err != nil {
-		log.Fatalf("Falied to remove name constraint on cclf_files table %s", err.Error())
+		log.Fatalf("Failed to remove name constraint on cclf_files table %s", err.Error())
 	}
 
 	if err := db.Model(&CCLFFile{}).AddUniqueIndex("idx_cclf_files_name_aco_cms_id_key",
@@ -307,7 +307,7 @@ type JobKey struct {
 type ACO struct {
 	gorm.Model
 	UUID        uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
-	CMSID       *string   `gorm:"type:char(5);unique" json:"cms_id"`
+	CMSID       *string   `gorm:"type:varchar(5);unique" json:"cms_id"`
 	Name        string    `json:"name"`
 	ClientID    string    `json:"client_id"`
 	GroupID     string    `json:"group_id"`
