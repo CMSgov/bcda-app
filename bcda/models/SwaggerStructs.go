@@ -108,9 +108,15 @@ type MetadataResponse struct {
 // File of newline-delimited JSON FHIR objects
 // swagger:response FileNDJSON
 type FileNDJSON struct {
+	// Optional header defining encoding type used
+	// enum: gzip
+	ContentEncoding string `json:"Content-Encoding"`
 	// in: body
-	Body string `json:"ndjson"`
+	Body NDJSON
 }
+
+// swagger:model
+type NDJSON string
 
 // A JobStatus parameter model.
 //
@@ -135,17 +141,9 @@ type FileParam struct {
 // swagger:parameters serveData
 type ServeDataRequestHeaders struct {
 	// Encoding type to use
-
 	// in: header
 	// enum: gzip
 	AcceptEncoding string `json:"Accept-Encoding"`
-}
-
-// swagger:response serveData
-type ServeDataResponseHeaders struct {
-	// in: header
-	// enum: gzip
-	ContentEncoding string `json:"Content-Encoding"`
 }
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest
