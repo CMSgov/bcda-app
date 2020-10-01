@@ -73,11 +73,11 @@ func ImportCCLFPackage(acoSize, environment string) (err error) {
 		var filename string
 		archiveName = fmt.Sprintf("T.BCD.%s.ZC%s", acoIDNum, dateStr)
 		if strings.HasPrefix(acoIDNum, "A") {
-                	filename = fmt.Sprintf("T.BCD.%s.%s%s", acoIDNum, file.Name(), dateStr)
+			filename = fmt.Sprintf("T.BCD.%s.%s%s", acoIDNum, file.Name(), dateStr)
 		} else if strings.HasPrefix(acoIDNum, "E") {
-                        filename = fmt.Sprintf("T.CEC.%s%s", file.Name(), dateStr)
+			filename = fmt.Sprintf("T.CEC.%s%s", file.Name(), dateStr)
 		} else if strings.HasPrefix(acoIDNum, "V") {
-                        filename = fmt.Sprintf("T.%s.ACO.%s%s", acoIDNum, file.Name(), dateStr)
+			filename = fmt.Sprintf("T.%s.ACO.%s%s", acoIDNum, file.Name(), dateStr)
 		}
 		sourceFilename := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(), filename)
 		fileList = append(fileList, sourceFilename)

@@ -72,9 +72,6 @@ func setUpApp() *cli.App {
 				api.SetQC(qc)
 
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
-				if os.Getenv("DEBUG") == "true" {
-					autoMigrate()
-				}
 
 				// Accepts and redirects HTTP requests to HTTPS
 				srv := &http.Server{
@@ -288,15 +285,6 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "sql-migrate",
-			Category: "Database tools",
-			Usage:    "Migrate GORM schema changes to the DB",
-			Action: func(c *cli.Context) error {
-				autoMigrate()
-				return nil
-			},
-		},
-		{
 			Name:     "archive-job-files",
 			Category: "Cleanup",
 			Usage:    "Update job statuses and move files to an inaccessible location",
@@ -407,13 +395,6 @@ func setUpApp() *cli.App {
 		},
 	}
 	return app
-}
-
-func autoMigrate() {
-	fmt.Println("Initializing Database")
-	models.InitializeGormModels()
-	auth.InitializeGormModels()
-	fmt.Println("Completed Database Initialization")
 }
 
 func createGroup(id, name, acoID string) (string, error) {

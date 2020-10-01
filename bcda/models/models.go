@@ -46,41 +46,6 @@ func GetService(r Repository, cutoffDuration time.Duration, lookbackDays int) Se
 	return serviceInstance
 }
 
-func InitializeGormModels() *gorm.DB {
-	log.Println("Initialize bcda models")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	// Migrate the schema
-	// Add your new models here
-	// This should probably not be called in production
-	// What happens when you need to make a database change, there's already data you need to preserve, and
-	// you need to run a script to migrate existing data to its new home or shape?
-	db.AutoMigrate(
-		&ACO{},
-		&Job{},
-		&JobKey{},
-		&CCLFBeneficiaryXref{},
-		&CCLFFile{},
-		&CCLFBeneficiary{},
-		&Suppression{},
-		&SuppressionFile{},
-	)
-
-	db.Model(&CCLFBeneficiary{}).AddForeignKey("file_id", "cclf_files(id)", "RESTRICT", "RESTRICT")
-
-	if err := db.Exec("ALTER TABLE cclf_files DROP CONSTRAINT IF EXISTS cclf_files_name_key").Error; err != nil {
-		log.Fatalf("Failed to remove name constraint on cclf_files table %s", err.Error())
-	}
-
-	if err := db.Model(&CCLFFile{}).AddUniqueIndex("idx_cclf_files_name_aco_cms_id_key",
-		"name", "aco_cms_id").Error; err != nil {
-		log.Fatalf("Failed to create unique index on cclf_files table %s", err.Error())
-	}
-
-	return db
-}
-
 type Job struct {
 	gorm.Model
 	ACO               ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco

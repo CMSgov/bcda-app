@@ -5,19 +5,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/jinzhu/gorm"
 )
-
-func InitializeGormModels() *gorm.DB {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	// Migrate the schema
-	// Add your new models here
-	db.AutoMigrate()
-
-	return db
-}
 
 func GetACO(col, val string) (models.ACO, error) {
 	var (

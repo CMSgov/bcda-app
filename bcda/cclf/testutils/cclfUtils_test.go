@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -21,7 +20,6 @@ func (s *CCLFUtilTestSuite) SetupSuite() {
 }
 
 func (s *CCLFUtilTestSuite) SetupTest() {
-	models.InitializeGormModels()
 	os.Setenv("CCLF_REF_DATE", "D181201")
 }
 

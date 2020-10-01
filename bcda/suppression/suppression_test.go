@@ -39,7 +39,6 @@ func (s *SuppressionTestSuite) SetupSuite() {
 }
 
 func (s *SuppressionTestSuite) SetupTest() {
-	models.InitializeGormModels()
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 

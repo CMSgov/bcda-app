@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - .:/go/src/github.com/CMSgov/bcda-app

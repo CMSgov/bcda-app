@@ -93,7 +93,7 @@ func TestRawRequest(t *testing.T) {
 	}))
 	defer s.Close()
 
-	client := NewClient(http.DefaultClient,  0)
+	client := NewClient(http.DefaultClient, 0)
 
 	req, err := http.NewRequest("GET", s.URL, nil)
 	assert.NoError(t, err)

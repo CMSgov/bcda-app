@@ -42,10 +42,6 @@ func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	return router
 }
 
-func (s *MiddlewareTestSuite) SetupSuite() {
-	models.InitializeGormModels()
-}
-
 func (s *MiddlewareTestSuite) SetupTest() {
 	cmsID := "A9995"
 	acoID := "DBBD1CE1-AE24-435C-807D-ED45953077D3"
