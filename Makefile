@@ -99,7 +99,7 @@ load-fixtures:
 	# Since we've rebuilt the databases, we need to restart the worker and api
 	# to ensure it picks up connections to the new db instance.
 	# TODO (BCDA-3710) we should be able to remove this line once we have connection pooling on the worker
-	docker-compose restart api worker
+	docker-compose restart api worker ssas
 	sleep 5
 
 load-synthetic-cclf-data:
