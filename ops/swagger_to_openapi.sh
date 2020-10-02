@@ -9,3 +9,4 @@ java -jar -DswaggerUrl=swagger.yaml /swagger-converter/jetty-runner.jar /swagger
 sleep 30
 curl -X POST -d "@swaggerui/swagger.json" localhost:8080/api/convert -H "Content-Type: application/json" -o temp.json
 cat temp.json | jq > swaggerui/openapi.json
+grep "Beneficiary Claims Data API" swaggerui/openapi.json
