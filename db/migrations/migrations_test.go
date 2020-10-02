@@ -193,7 +193,7 @@ func (m migrator) runMigration(t *testing.T, idx string) {
 	out, err := exec.Command("migrate", "-database", m.dbURL, "-path",
 		m.migrationPath, "version").CombinedOutput()
 	if err != nil {
-		t.Errorf("Failed to retreive version information %s", err.Error())
+		t.Errorf("Failed to retrieve version information %s", err.Error())
 	}
 	str := strings.TrimSpace(string(out))
 
