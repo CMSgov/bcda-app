@@ -87,11 +87,6 @@ load-fixtures:
 	echo "Wait for databases to be ready..."
 	sleep 5
 
-	# Since we've rebuilt the databases, we need to restart the worker and api
-	# to ensure it picks up connections to the new db instance.
-	# TODO (BCDA-3710) we should be able to remove this line once we have connection pooling on the worker
-	docker-compose restart api worker
-
 	# Initialize schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
@@ -100,6 +95,12 @@ load-fixtures:
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
+
+	# Since we've rebuilt the databases, we need to restart the worker and api
+	# to ensure it picks up connections to the new db instance.
+	# TODO (BCDA-3710) we should be able to remove this line once we have connection pooling on the worker
+	docker-compose restart api worker
+	sleep 5
 
 load-synthetic-cclf-data:
 	docker-compose up -d api
