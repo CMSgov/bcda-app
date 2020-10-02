@@ -130,6 +130,7 @@ docker-build:
 
 docker-bootstrap:
 	$(MAKE) docker-build
+	docker-compose up --exit-code-from openapi openapi
 	docker-compose up -d
 	sleep 40
 	$(MAKE) load-fixtures
