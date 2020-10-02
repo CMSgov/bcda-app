@@ -98,13 +98,13 @@ func addOauthEndpointToStatement(statement *fhirmodels.CapabilityStatement, base
 			Url: "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris",
 			Extension: []fhirmodels.Extension{
 				{
-					Url:      "token",
+					Url: "token",
 					ValueUri: baseurl + "/auth/token",
 				},
 			},
 		},
 	}
-	securityComponent.Extension = extension
+  securityComponent.Extension = extension
 	statement.Rest[0].Security = securityComponent
 }
 func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
