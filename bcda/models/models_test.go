@@ -836,3 +836,37 @@ func (s *ModelsTestSuite) TestCMSID() {
 	assert.Equal(s.T(), 1, len(actualCMSID))
 	assert.Equal(s.T(), cmsID, actualCMSID[0])
 }
+
+func (s *ModelsTestSuite) TestCCLFFileType() {
+	noType := &CCLFFile{
+		CCLFNum:         8,
+		Name:            uuid.New(),
+		ACOCMSID:        "T9999",
+		Timestamp:       time.Now(),
+		PerformanceYear: 20,
+	}
+	withType := &CCLFFile{
+		CCLFNum:         8,
+		Name:            uuid.New(),
+		ACOCMSID:        "T9999",
+		Timestamp:       time.Now(),
+		PerformanceYear: 20,
+		Type:            FileTypeRunout,
+	}
+
+	defer func() {
+		s.db.Unscoped().Delete(noType)
+		s.db.Unscoped().Delete(withType)
+	}()
+
+	assert.NoError(s.T(), s.db.Create(noType).Error)
+	assert.NoError(s.T(), s.db.Create(withType).Error)
+
+	var result CCLFFile
+	assert.NoError(s.T(), s.db.First(&result, noType.ID).Error)
+	assert.Equal(s.T(), FileTypeDefault, result.Type)
+
+	result = CCLFFile{}
+	assert.NoError(s.T(), s.db.First(&result, withType.ID).Error)
+	assert.Equal(s.T(), withType.Type, result.Type)
+}
