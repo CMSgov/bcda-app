@@ -8,8 +8,6 @@ services:
       - POSTGRES_PASSWORD=toor
     ports:
       - "5433:5432"
-    volumes:
-      - ./db/worker.sql:/docker-entrypoint-initdb.d/schema.sql
   db:
     image: postgres
     environment:
@@ -18,7 +16,6 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./db/api.sql:/docker-entrypoint-initdb.d/init.sql
       - ./db:/var/db
   api:
     build:

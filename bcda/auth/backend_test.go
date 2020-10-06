@@ -5,16 +5,16 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
 
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type BackendTestSuite struct {
@@ -22,11 +22,6 @@ type BackendTestSuite struct {
 	AuthBackend   *auth.AlphaBackend
 	TmpFiles      []string
 	expectedSizes map[string]int
-}
-
-func (s *BackendTestSuite) SetupSuite() {
-	models.InitializeGormModels()
-	auth.InitializeGormModels()
 }
 
 func (s *BackendTestSuite) CreateTempFile() (*os.File, error) {

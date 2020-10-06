@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 var (
@@ -47,7 +46,6 @@ func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
 }
 
 func (s *SSASMiddlewareTestSuite) SetupSuite() {
-	models.InitializeGormModels()
 	s.server = httptest.NewServer(s.createRouter())
 
 	originalSSASURL = os.Getenv("SSAS_URL")

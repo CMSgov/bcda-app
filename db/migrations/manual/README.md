@@ -1,0 +1,1 @@
+This *.sql files were manual migrations performed on various environments prior to introduction of https://github.com/golang-migrate/migrate

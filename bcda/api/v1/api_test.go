@@ -74,8 +74,6 @@ func (s *APITestSuite) TearDownSuite() {
 }
 
 func (s *APITestSuite) SetupTest() {
-	models.InitializeGormModels()
-	auth.InitializeGormModels() // needed until token endpoint moves to auth
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }

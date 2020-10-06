@@ -33,8 +33,6 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 		public()
 	}
 	s.backend = auth.InitAlphaBackend()
-	models.InitializeGormModels()
-	auth.InitializeGormModels()
 }
 
 func (s *AlphaAuthPluginTestSuite) TearDownSuite() {

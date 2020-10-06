@@ -61,7 +61,6 @@ func (s *CLITestSuite) SetupSuite() {
 
 func (s *CLITestSuite) SetupTest() {
 	s.testApp = GetApp()
-	autoMigrate()
 }
 
 func (s *CLITestSuite) TearDownTest() {
@@ -92,14 +91,6 @@ func (s *CLITestSuite) TestSetup() {
 	app := setUpApp()
 	assert.Equal(s.T(), app.Name, Name)
 	assert.Equal(s.T(), app.Usage, Usage)
-}
-
-func (s *CLITestSuite) TestAutoMigrate() {
-	// Plenty of other tests will rely on this happening
-	// Other tests run these lines so as long as this doesn't error it sb fine
-	args := []string{"bcda", "sql-migrate"}
-	err := s.testApp.Run(args)
-	assert.Nil(s.T(), err)
 }
 
 func (s *CLITestSuite) TestSavePublicKeyCLI() {

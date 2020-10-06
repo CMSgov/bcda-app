@@ -49,8 +49,6 @@ func (s *AuthAPITestSuite) TearDownSuite() {
 }
 
 func (s *AuthAPITestSuite) SetupTest() {
-	models.InitializeGormModels()
-	auth.InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }

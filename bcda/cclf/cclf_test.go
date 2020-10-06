@@ -36,7 +36,6 @@ type CCLFTestSuite struct {
 }
 
 func (s *CCLFTestSuite) SetupTest() {
-	models.InitializeGormModels()
 	os.Setenv("CCLF_REF_DATE", "181201")
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")

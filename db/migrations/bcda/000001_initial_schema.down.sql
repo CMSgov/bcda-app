@@ -1,0 +1,10 @@
+BEGIN;
+DROP TABLE public.acos CASCADE;
+DROP TABLE public.cclf_beneficiaries CASCADE;
+DROP TABLE public.cclf_beneficiary_xrefs CASCADE;
+DROP TABLE public.cclf_files CASCADE;
+DROP TABLE public.job_keys CASCADE;
+DROP TABLE public.jobs CASCADE;
+DROP TABLE public.suppression_files CASCADE;
+DROP TABLE public.suppressions CASCADE;
+COMMIT;

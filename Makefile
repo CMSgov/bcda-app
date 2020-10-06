@@ -80,13 +80,27 @@ test:
 	$(MAKE) smoke-test
 
 load-fixtures:
-	docker-compose up -d db
-	echo "Wait for database to be ready..."
+	# Rebuild the databases to ensure that we're starting in a fresh state
+	docker-compose -f docker-compose.yml rm -fsv db queue
+
+	docker-compose up -d db queue
+	echo "Wait for databases to be ready..."
 	sleep 5
+
+	# Initialize schemas
+	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
+	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
+	
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
+
+	# Since we've rebuilt the databases, we need to restart the worker and api
+	# to ensure it picks up connections to the new db instance.
+	# TODO (BCDA-3710) we should be able to remove this line once we have connection pooling on the worker
+	docker-compose restart api worker ssas
+	sleep 5
 
 load-synthetic-cclf-data:
 	docker-compose up -d api

@@ -24,9 +24,6 @@ type OktaAuthPluginTestSuite struct {
 }
 
 func (s *OktaAuthPluginTestSuite) SetupSuite() {
-	models.InitializeGormModels()
-	InitializeGormModels()
-
 	db := database.GetGORMDbConnection()
 	defer func() {
 		if err := db.Close(); err != nil {

@@ -36,7 +36,6 @@ type ModelsTestSuite struct {
 }
 
 func (s *ModelsTestSuite) SetupTest() {
-	InitializeGormModels()
 	s.db = database.GetGORMDbConnection()
 	s.service = &MockService{}
 
