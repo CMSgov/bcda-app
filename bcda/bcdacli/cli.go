@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
@@ -45,8 +46,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
-	var ips cli.StringSlice
+	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips string
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -248,17 +248,21 @@ func setUpApp() *cli.App {
 					Usage:       "CMS ID of ACO",
 					Destination: &acoCMSID,
 				},
-				cli.StringSliceFlag{
-					Name:  "ips",
-					Usage: "Set of IPs associated with the ACO",
-					Value: &ips,
+				cli.StringFlag{
+					Name:        "ips",
+					Usage:       "Comma separated list of IPs associated with the ACO",
+					Destination: &ips,
 				},
 			},
 			Action: func(c *cli.Context) error {
 				if acoCMSID == "" {
 					return errors.New("ACO CMS ID (--cms-id) is required")
 				}
-				msg, err := generateClientCredentials(acoCMSID, ips)
+				var ipAddr []string
+				if len(ips) > 0 {
+					ipAddr = strings.Split(ips, ",")
+				}
+				msg, err := generateClientCredentials(acoCMSID, ipAddr)
 				if err != nil {
 					return err
 				}

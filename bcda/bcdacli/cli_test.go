@@ -168,7 +168,6 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 		buf := new(bytes.Buffer)
 		s.testApp.Writer = buf
 
-		fmt.Println(ips)
 		args := []string{"bcda", "generate-client-credentials", "--cms-id", cmsID, "--ips", strings.Join(ips, ",")}
 		err := s.testApp.Run(args)
 		assert.Nil(err)
