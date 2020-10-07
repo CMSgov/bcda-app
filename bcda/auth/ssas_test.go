@@ -140,12 +140,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 				creds Credentials
 				err   error
 			)
-
-			if len(tt.ips) == 0 {
-				creds, err = s.p.RegisterSystem(testACOUUID, "", "")
-			} else {
-				creds, err = s.p.RegisterSystemWithIPs(testACOUUID, "", "", tt.ips)
-			}
+			creds, err = s.p.RegisterSystem(testACOUUID, "", "", tt.ips...)
 
 			if tt.expErrMsg != "" {
 				assert.Error(t, err)
@@ -159,29 +154,6 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 			assert.Equal(t, "fake-client-id", creds.ClientID)
 		})
 	}
-}
-
-func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
-	router := chi.NewRouter()
-	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(201)
-		fmt.Fprintf(w, `"this is": "invalid"`)
-	})
-	server := httptest.NewServer(router)
-
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
-
-	c, err := client.NewSSASClient()
-	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
-	}
-	s.p = SSASPlugin{client: c}
-
-	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
-	assert.Contains(s.T(), err.Error(), "failed to unmarshal response json")
-	assert.Empty(s.T(), creds.SystemID)
 }
 
 func (s *SSASPluginTestSuite) TestUpdateSystem() {}

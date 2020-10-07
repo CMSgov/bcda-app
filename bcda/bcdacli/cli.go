@@ -490,13 +490,7 @@ func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	}
 
 	// The public key is optional for SSAS, and not used by the ACO API
-	var creds auth.Credentials
-	if len(ips) == 0 {
-		creds, err = auth.GetProvider().RegisterSystem(aco.UUID.String(), "", aco.GroupID)
-	} else {
-		creds, err = auth.GetProvider().RegisterSystemWithIPs(aco.UUID.String(), "", aco.GroupID, ips)
-	}
-
+	creds, err := auth.GetProvider().RegisterSystem(aco.UUID.String(), "", aco.GroupID, ips...)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
 	}

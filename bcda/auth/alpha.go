@@ -17,7 +17,7 @@ type AlphaAuthPlugin struct{}
 // validates that AlphaAuthPlugin implements the interface
 var _ Provider = AlphaAuthPlugin{}
 
-func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
+func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
 	regEvent := event{op: "RegisterSystem", trackingID: localID}
 	operationStarted(regEvent)
 	if localID == "" {
@@ -69,11 +69,6 @@ func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Cre
 	regEvent.clientID = aco.ClientID
 	operationSucceeded(regEvent)
 	return Credentials{ClientName: aco.Name, ClientID: localID, ClientSecret: s}, nil
-}
-
-// RegisterSystemWithIPs wraps RegisterSystem since Alpha has no notion of binding IP addresses with the system
-func (p AlphaAuthPlugin) RegisterSystemWithIPs(localID, publicKey, groupID string, ips []string) (Credentials, error) {
-	return p.RegisterSystem(localID, publicKey, groupID)
 }
 
 func generateClientSecret() (string, error) {

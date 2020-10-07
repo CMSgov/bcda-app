@@ -41,7 +41,7 @@ func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
 	return OktaAuthPlugin{backend}
 }
 
-func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
+func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
 	if localID == "" {
 		return Credentials{}, errors.New("you must provide a localID")
 	}
@@ -53,11 +53,6 @@ func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Cred
 		ClientSecret: secret,
 		ClientName:   name,
 	}, err
-}
-
-// RegisterSystemWithIPs wraps RegisterSystem since Okta has no notion of binding IP addresses with the system
-func (o OktaAuthPlugin) RegisterSystemWithIPs(localID, publicKey, groupID string, ips []string) (Credentials, error) {
-	return o.RegisterSystem(localID, publicKey, groupID)
 }
 
 func (o OktaAuthPlugin) UpdateSystem(params []byte) ([]byte, error) {
