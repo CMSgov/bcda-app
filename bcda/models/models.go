@@ -376,14 +376,22 @@ func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
 	return aco.UUID, db.Error
 }
 
+type CCLFFileType int16
+
+const (
+	FileTypeDefault CCLFFileType = iota
+	FileTypeRunout
+)
+
 type CCLFFile struct {
 	gorm.Model
-	CCLFNum         int       `gorm:"not null"`
-	Name            string    `gorm:"not null;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
-	ACOCMSID        string    `gorm:"column:aco_cms_id;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
-	Timestamp       time.Time `gorm:"not null"`
-	PerformanceYear int       `gorm:"not null"`
-	ImportStatus    string    `gorm:"column:import_status"`
+	CCLFNum         int          `gorm:"not null"`
+	Name            string       `gorm:"not null;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
+	ACOCMSID        string       `gorm:"column:aco_cms_id;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
+	Timestamp       time.Time    `gorm:"not null"`
+	PerformanceYear int          `gorm:"not null"`
+	ImportStatus    string       `gorm:"column:import_status"`
+	Type            CCLFFileType `gorm:"column:type;default:0"`
 }
 
 func (cclfFile *CCLFFile) Delete() error {

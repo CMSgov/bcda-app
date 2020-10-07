@@ -1,0 +1,3 @@
+BEGIN;
+ALTER TABLE public.cclf_files DROP COLUMN IF EXISTS type;
+COMMIT;

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
+
 	"github.com/jinzhu/gorm"
 
 	"github.com/stretchr/testify/assert"
@@ -42,7 +44,6 @@ func (s *MigrationTestSuite) SetupSuite() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	s.bcdaDB = fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())
 	s.bcdaQueueDB = fmt.Sprintf("migrate_test_bcda_queue_%d", time.Now().Nanosecond())
-	fmt.Printf("'%s'\n", databaseURL)
 	s.bcdaDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", s.bcdaDB))
 	s.bcdaQueueDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", s.bcdaQueueDB))
 
@@ -74,7 +75,6 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		migrationPath: "./bcda/",
 		dbURL:         s.bcdaDBURL,
 	}
-	fmt.Println(s.bcdaDBURL)
 	db, err := gorm.Open("postgres", s.bcdaDBURL)
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
@@ -99,6 +99,57 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			},
 		},
 		{
+			"Add type column to cclf_files",
+			func(t *testing.T) {
+				migrator.runMigration(t, "2")
+				noType := &models.CCLFFile{
+					CCLFNum:         8,
+					Name:            "CCLFFile_no_type",
+					ACOCMSID:        "T9999",
+					Timestamp:       time.Now(),
+					PerformanceYear: 20,
+				}
+				withType := &models.CCLFFile{
+					CCLFNum:         8,
+					Name:            "CCLFFile_with_type",
+					ACOCMSID:        "T9999",
+					Timestamp:       time.Now(),
+					PerformanceYear: 20,
+					Type:            models.FileTypeRunout,
+				}
+
+				assert.NoError(t, db.Create(noType).Error)
+				assert.NoError(t, db.Create(withType).Error)
+
+				var result models.CCLFFile
+				assert.NoError(t, db.First(&result, noType.ID).Error)
+				assert.Equal(t, models.FileTypeDefault, result.Type)
+
+				result = models.CCLFFile{}
+				assert.NoError(t, db.First(&result, withType.ID).Error)
+				assert.Equal(t, withType.Type, result.Type)
+			},
+		},
+		{
+			"Remove type column from cclf_files",
+			func(t *testing.T) {
+				migrator.runMigration(t, "1")
+
+				withType := &models.CCLFFile{
+					CCLFNum:         8,
+					Name:            "CCLFFile_with_type_no_column",
+					ACOCMSID:        "T9999",
+					Timestamp:       time.Now(),
+					PerformanceYear: 20,
+					Type:            models.FileTypeRunout,
+				}
+
+				err := db.Create(withType).Error
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "column \"type\" of relation \"cclf_files\" does not exist")
+			},
+		},
+		{
 			"Revert initial schema",
 			func(t *testing.T) {
 				migrator.runMigration(t, "0")
@@ -119,7 +170,6 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 		migrationPath: "./bcda_queue/",
 		dbURL:         s.bcdaQueueDBURL,
 	}
-	fmt.Println(s.bcdaDBURL)
 	db, err := gorm.Open("postgres", s.bcdaQueueDBURL)
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
