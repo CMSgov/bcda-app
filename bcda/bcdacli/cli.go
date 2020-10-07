@@ -250,6 +250,7 @@ func setUpApp() *cli.App {
 				},
 				cli.StringSliceFlag{
 					Name:  "ips",
+					Usage: "Set of IPs associated with the ACO",
 					Value: &ips,
 				},
 			},

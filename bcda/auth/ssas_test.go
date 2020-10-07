@@ -136,12 +136,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			ips, response, tester = tt.ips, tt.ssasResp, t
-			var (
-				creds Credentials
-				err   error
-			)
-			creds, err = s.p.RegisterSystem(testACOUUID, "", "", tt.ips...)
-
+			creds, err := s.p.RegisterSystem(testACOUUID, "", "", tt.ips...)
 			if tt.expErrMsg != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "failed to unmarshal response json")
