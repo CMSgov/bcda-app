@@ -154,14 +154,25 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 }
 
 func (s *CLITestSuite) TestGenerateClientCredentials() {
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
 	assert := assert.New(s.T())
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
 
-	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A8880", "--ips", "1.2.3.4,5.6.7.8"}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
+	cmsID := "A8880"
+	for _, ips := range [][]string{nil, []string{"1.2.3.4,5.6.7.8"}, []string{"1.2.3.4"}, []string{}} {
+		s.SetupTest()
+		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
+		assert.NoError(db.Model(&models.ACO{}).Where("cms_id = ?", cmsID).Update("alpha_secret", "").Error)
+
+		buf := new(bytes.Buffer)
+		s.testApp.Writer = buf
+
+		fmt.Println(ips)
+		args := []string{"bcda", "generate-client-credentials", "--cms-id", cmsID, "--ips", strings.Join(ips, ",")}
+		err := s.testApp.Run(args)
+		assert.Nil(err)
+		assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
+	}
 }
 
 func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
