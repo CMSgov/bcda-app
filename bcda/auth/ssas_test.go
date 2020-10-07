@@ -129,7 +129,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 		expErrMsg string
 	}{
 		{"Successful response", nil, validResp, ""},
-		{"Successful response with IPs", []string{"1.2.3.4", "1.2.3.5"}, validResp, ""},
+		{"Successful response with IPs", []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())}, validResp, ""},
 		{"Invalid JSON response", nil, `"this is": "invalid"`, "failed to unmarshal response json"},
 	}
 

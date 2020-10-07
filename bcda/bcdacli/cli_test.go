@@ -159,7 +159,8 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 	defer database.Close(db)
 
 	cmsID := "A8880"
-	for _, ips := range [][]string{nil, []string{"1.2.3.4,5.6.7.8"}, []string{"1.2.3.4"}, []string{}} {
+	for _, ips := range [][]string{nil, []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
+		[]string{testUtils.GetRandomIPV4Address(s.T())}, []string{}} {
 		s.SetupTest()
 		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
 		assert.NoError(db.Model(&models.ACO{}).Where("cms_id = ?", cmsID).Update("alpha_secret", "").Error)
