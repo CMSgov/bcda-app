@@ -19,8 +19,17 @@ type SSASPlugin struct {
 	client *client.SSASClient
 }
 
-// RegisterSystem adds a software client for the ACO identified by localID.
+// validates that SSASPlugin implements the interface
+var _ Provider = SSASPlugin{}
+
+// RegisterSystemWithIPs adds a software client for the ACO identified by localID. It does not
+// associate any IPs with the created client.
 func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
+	return s.RegisterSystemWithIPs(localID, publicKey, groupID, nil)
+}
+
+// RegisterSystemWithIPs adds a software client for the ACO identified by localID.
+func (s SSASPlugin) RegisterSystemWithIPs(localID, publicKey, groupID string, ips []string) (Credentials, error) {
 	creds := Credentials{}
 	aco, err := GetACOByUUID(localID)
 	if err != nil {
@@ -34,6 +43,7 @@ func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string) (Credenti
 		"bcda-api",
 		publicKey,
 		trackingID,
+		ips,
 	)
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to create system")

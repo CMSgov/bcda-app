@@ -46,6 +46,7 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName string
+	var ips cli.StringSlice
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
@@ -247,9 +248,16 @@ func setUpApp() *cli.App {
 					Usage:       "CMS ID of ACO",
 					Destination: &acoCMSID,
 				},
+				cli.StringSliceFlag{
+					Name:  "ips",
+					Value: &ips,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				msg, err := generateClientCredentials(acoCMSID)
+				if acoCMSID == "" {
+					return errors.New("ACO CMS ID (--cms-id) is required")
+				}
+				msg, err := generateClientCredentials(acoCMSID, ips)
 				if err != nil {
 					return err
 				}
@@ -475,18 +483,20 @@ func createACO(name, cmsID string) (string, error) {
 	return acoUUID.String(), nil
 }
 
-func generateClientCredentials(acoCMSID string) (string, error) {
-	if acoCMSID == "" {
-		return "", errors.New("ACO CMS ID (--cms-id) is required")
-	}
-
+func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
 	aco, err := auth.GetACOByCMSID(acoCMSID)
 	if err != nil {
 		return "", err
 	}
 
 	// The public key is optional for SSAS, and not used by the ACO API
-	creds, err := auth.GetProvider().RegisterSystem(aco.UUID.String(), "", aco.GroupID)
+	var creds auth.Credentials
+	if len(ips) == 0 {
+		creds, err = auth.GetProvider().RegisterSystem(aco.UUID.String(), "", aco.GroupID)
+	} else {
+		creds, err = auth.GetProvider().RegisterSystemWithIPs(aco.UUID.String(), "", aco.GroupID, ips)
+	}
+
 	if err != nil {
 		return "", errors.Wrapf(err, "could not register system for %s", acoCMSID)
 	}

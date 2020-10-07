@@ -33,6 +33,9 @@ type OktaAuthPlugin struct {
 	backend OktaBackend // interface, not a concrete type, so no *
 }
 
+// validates that OktaAuthPlugin implements the interface
+var _ Provider = OktaAuthPlugin{}
+
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
 func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
 	return OktaAuthPlugin{backend}
@@ -50,6 +53,11 @@ func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Cred
 		ClientSecret: secret,
 		ClientName:   name,
 	}, err
+}
+
+// RegisterSystemWithIPs wraps RegisterSystem since Okta has no notion of binding IP addresses with the system
+func (o OktaAuthPlugin) RegisterSystemWithIPs(localID, publicKey, groupID string, ips []string) (Credentials, error) {
+	return o.RegisterSystem(localID, publicKey, groupID)
 }
 
 func (o OktaAuthPlugin) UpdateSystem(params []byte) ([]byte, error) {

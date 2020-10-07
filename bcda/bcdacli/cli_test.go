@@ -158,7 +158,7 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 	s.testApp.Writer = buf
 	assert := assert.New(s.T())
 
-	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A8880"}
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", "A8880", "--ips", "1.2.3.4,5.6.7.8"}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())

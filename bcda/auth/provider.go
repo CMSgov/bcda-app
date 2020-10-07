@@ -84,6 +84,10 @@ type Provider interface {
 	// RegisterSystem adds a software client for the ACO identified by localID.
 	RegisterSystem(localID, publicKey, groupID string) (Credentials, error)
 
+	// RegisterSystem is an extension of RegisterSystem. It exposes the capability of association
+	// a set of IP Addresses with the given system.
+	RegisterSystemWithIPs(localID, publicKey, groupID string, ips []string) (Credentials, error)
+
 	// UpdateSystem changes data associated with the registered software client identified by clientID
 	UpdateSystem(params []byte) ([]byte, error)
 

@@ -150,13 +150,14 @@ func (c *SSASClient) DeleteGroup(id int) error {
 }
 
 // CreateSystem POSTs to the SSAS /system endpoint to create a system.
-func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackingID string) ([]byte, error) {
+func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackingID string, ips []string) ([]byte, error) {
 	type system struct {
-		ClientName string `json:"client_name"`
-		GroupID    string `json:"group_id"`
-		Scope      string `json:"scope"`
-		PublicKey  string `json:"public_key"`
-		TrackingID string `json:"tracking_id"`
+		ClientName string   `json:"client_name"`
+		GroupID    string   `json:"group_id"`
+		Scope      string   `json:"scope"`
+		PublicKey  string   `json:"public_key"`
+		TrackingID string   `json:"tracking_id"`
+		IPs        []string `json:"ips,omitempty"`
 	}
 
 	sys := system{
@@ -165,6 +166,7 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 		Scope:      scope,
 		PublicKey:  publicKey,
 		TrackingID: trackingID,
+		IPs:        ips,
 	}
 
 	bb, err := json.Marshal(sys)
