@@ -146,6 +146,7 @@ func TestGetCMSID(t *testing.T) {
 		cmsID    string
 	}{
 		{"validSSPPath", "path/T.BCD.A0001.ZCY18.D181120.T1000000", false, "A0001"},
+		{"validSSPRunoutPath", "path/T.BCD.A0002.ZCR18.D181120.T1000000", false, "A0002"},
 		{"validNGACOPath", "path/T.BCD.V299.ZCY19.D191005.T0209260", false, "V299"},
 		{"validCECPath", "path/T.BCD.E9999.ZCY19.D191005.T0209260", false, "E9999"},
 		{"missingBCD", "path/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009", true, ""},
@@ -187,7 +188,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 	// Timestamp that'll satisfy the time window requirement
 	validTime := startUTC.Add(-24 * time.Hour)
 	sspProdFile, sspTestFile, sspRunoutFile := gen(sspProd, validTime), gen(sspTest, validTime),
-		strings.Replace(gen(sspProd, validTime), "ZC8", "ZCR8", 1)
+		strings.Replace(gen(sspProd, validTime), "ZC8Y", "ZC8R", 1)
 	cecProdFile, cecTestFile := gen(cecProd, validTime), gen(cecTest, validTime)
 	ngacoProdFile, ngacoTestFile := gen(ngacoProd, validTime), gen(ngacoTest, validTime)
 
