@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -79,11 +81,33 @@ func (s *SSASPluginTestSuite) TearDownTest() {
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem() {
+	// These variables will allow us to swap out expectations without
+	// reinstantiating the server
+	var (
+		response string
+		ips      []string
+		tester   *testing.T
+	)
+
 	// TODO: Mock client instead of server
 	router := chi.NewRouter()
 	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
+		reqBody, err := ioutil.ReadAll(r.Body)
+		assert.NoError(tester, err)
+		var obj map[string]interface{}
+		assert.NoError(tester, json.Unmarshal(reqBody, &obj))
+		if obj["ips"] == nil {
+			assert.Equal(tester, 0, len(ips), "ips should be empty since request contained no ips field")
+		} else {
+			var ipsReceived []string
+			for _, ip := range obj["ips"].([]interface{}) {
+				ipsReceived = append(ipsReceived, ip.(string))
+			}
+			assert.Equal(tester, ipsReceived, ips)
+		}
+
 		w.WriteHeader(201)
-		fmt.Fprintf(w, `{ "system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name" }`)
+		fmt.Fprint(w, response)
 	})
 	server := httptest.NewServer(router)
 
@@ -97,33 +121,34 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	}
 	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
-	assert.Nil(s.T(), err)
-	assert.Equal(s.T(), "1", creds.SystemID)
-	assert.Equal(s.T(), "fake-client-id", creds.ClientID)
-}
-
-func (s *SSASPluginTestSuite) TestRegisterSystem_InvalidJSON() {
-	router := chi.NewRouter()
-	router.Post("/system", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(201)
-		fmt.Fprintf(w, `"this is": "invalid"`)
-	})
-	server := httptest.NewServer(router)
-
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
-
-	c, err := client.NewSSASClient()
-	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+	validResp := `{ "system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name" }`
+	tests := []struct {
+		name      string
+		ips       []string
+		ssasResp  string
+		expErrMsg string
+	}{
+		{"Successful response", nil, validResp, ""},
+		{"Successful response with IPs", []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())}, validResp, ""},
+		{"Invalid JSON response", nil, `"this is": "invalid"`, "failed to unmarshal response json"},
 	}
-	s.p = SSASPlugin{client: c}
 
-	creds, err := s.p.RegisterSystem(testACOUUID, "", "")
-	assert.Contains(s.T(), err.Error(), "failed to unmarshal response json")
-	assert.Empty(s.T(), creds.SystemID)
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			ips, response, tester = tt.ips, tt.ssasResp, t
+			creds, err := s.p.RegisterSystem(testACOUUID, "", "", tt.ips...)
+			if tt.expErrMsg != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "failed to unmarshal response json")
+				assert.Empty(t, creds.SystemID)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, "1", creds.SystemID)
+			assert.Equal(t, "fake-client-id", creds.ClientID)
+		})
+	}
 }
 
 func (s *SSASPluginTestSuite) TestUpdateSystem() {}
