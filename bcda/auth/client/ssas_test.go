@@ -148,7 +148,7 @@ func (s *SSASClientTestSuite) TestCreateSystem() {
 		s.FailNow("Failed to create SSAS client", err.Error())
 	}
 
-	resp, err := client.CreateSystem("fake-name", "fake-group", "fake-scope", "fake-key", "fake-tracking")
+	resp, err := client.CreateSystem("fake-name", "fake-group", "fake-scope", "fake-key", "fake-tracking", nil)
 	assert.Nil(s.T(), err)
 	creds := auth.Credentials{}
 	err = json.Unmarshal(resp, &creds)

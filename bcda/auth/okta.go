@@ -33,12 +33,15 @@ type OktaAuthPlugin struct {
 	backend OktaBackend // interface, not a concrete type, so no *
 }
 
+// validates that OktaAuthPlugin implements the interface
+var _ Provider = OktaAuthPlugin{}
+
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
 func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
 	return OktaAuthPlugin{backend}
 }
 
-func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
+func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
 	if localID == "" {
 		return Credentials{}, errors.New("you must provide a localID")
 	}

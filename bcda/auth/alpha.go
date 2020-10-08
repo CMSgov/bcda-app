@@ -14,7 +14,10 @@ import (
 
 type AlphaAuthPlugin struct{}
 
-func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string) (Credentials, error) {
+// validates that AlphaAuthPlugin implements the interface
+var _ Provider = AlphaAuthPlugin{}
+
+func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
 	regEvent := event{op: "RegisterSystem", trackingID: localID}
 	operationStarted(regEvent)
 	if localID == "" {
