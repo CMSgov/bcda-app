@@ -131,16 +131,16 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	// CCLF filename convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y]**.Dyymmdd.Thhmmsst
 	// CCLF filename convention for NGACO:  P.V***.ACO.ZC1.Dyymmdd.Thhmmsst
 	// CCLF file name convetion for CEC: P.CEC.ZC1.Dyymmdd.Thhmmsst
-	filenameRegexp := regexp.MustCompile(`(T|P)(?:\.BCD)?\.(.*?)(?:\.ACO)?\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	filenameRegexp := regexp.MustCompile(`(T|P)(?:\.BCD)?\.(.*?)(?:\.ACO)?\.ZC(?:(R))?(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	parts := filenameRegexp.FindStringSubmatch(fileName)
 
-	if len(parts) != 6 {
+	if len(parts) != 7 {
 		err := fmt.Errorf("invalid filename ('%s') for CCLF file, parts: %v", fileName, parts)
 		log.Error(err)
 		return metadata, err
 	}
 
-	cclfNum, err := strconv.Atoi(parts[3])
+	cclfNum, err := strconv.Atoi(parts[4])
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", fileName)
 		fmt.Println(err.Error())
@@ -148,7 +148,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		return metadata, err
 	}
 
-	perfYear, err := strconv.Atoi(parts[4])
+	perfYear, err := strconv.Atoi(parts[5])
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse performance year from file: %s", fileName)
 		fmt.Println(err.Error())
@@ -156,7 +156,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		return metadata, err
 	}
 
-	filenameDate := parts[5]
+	filenameDate := parts[6]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
@@ -186,6 +186,10 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		metadata.env = "test"
 	} else if parts[1] == "P" {
 		metadata.env = "production"
+	}
+
+	if parts[3] == "R" {
+		metadata.fileType = models.FileTypeRunout
 	}
 
 	metadata.name = parts[0]

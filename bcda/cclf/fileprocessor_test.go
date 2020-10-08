@@ -5,11 +5,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -184,7 +186,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 
 	// Timestamp that'll satisfy the time window requirement
 	validTime := startUTC.Add(-24 * time.Hour)
-	sspProdFile, sspTestFile := gen(sspProd, validTime), gen(sspTest, validTime)
+	sspProdFile, sspTestFile, sspRunoutFile := gen(sspProd, validTime), gen(sspTest, validTime),
+		strings.Replace(gen(sspProd, validTime), "ZC8", "ZCR8", 1)
 	cecProdFile, cecTestFile := gen(cecProd, validTime), gen(cecTest, validTime)
 	ngacoProdFile, ngacoTestFile := gen(ngacoProd, validTime), gen(ngacoTest, validTime)
 
@@ -207,6 +210,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     sspID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Test SSP file", sspID, sspTestFile, "",
@@ -217,6 +221,19 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     sspID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Runout SSP file", sspID, sspRunoutFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      sspRunoutFile,
+				cclfNum:   8,
+				acoID:     sspID,
+				timestamp: validTime,
+				perfYear:  20,
+				fileType:  models.FileTypeRunout,
 			},
 		},
 		{"Production CEC file", cecID, cecProdFile, "",
@@ -227,6 +244,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     cecID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Test CEC file", cecID, cecTestFile, "",
@@ -237,6 +255,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     cecID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Production NGACO file", ngacoID, ngacoProdFile, "",
@@ -247,6 +266,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     ngacoID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Test NGACO file", ngacoID, ngacoTestFile, "",
@@ -257,6 +277,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     ngacoID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 	}
