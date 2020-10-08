@@ -238,7 +238,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 	rc, err := rawFile.Open()
 	if err != nil {
 		fmt.Printf("Could not read file %s for CCLF%d in archive %s.\n", cclfFile.Name, fileMetadata.cclfNum, fileMetadata.filePath)
-		err = fmt.Errorf("could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, fileMetadata.filePath)
+		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, fileMetadata.filePath)
 		log.Error(err)
 		return err
 	}
