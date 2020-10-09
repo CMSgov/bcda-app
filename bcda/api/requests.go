@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -29,7 +30,8 @@ import (
 )
 
 var (
-	qc *que.Client
+	qc  *que.Client
+	svc models.Service
 )
 
 func init() {
@@ -42,10 +44,50 @@ func init() {
 	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
 	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
-	models.GetService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
+	svc = models.GetService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
 }
 
-func BulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, retrieveNewBeneHistData bool) {
+func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	resourceTypes, err := ValidateRequest(r)
+	if err != nil {
+		responseutils.WriteError(err, w, http.StatusBadRequest)
+		return
+	}
+	reqType := models.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	bulkRequest(resourceTypes, w, r, reqType)
+}
+
+func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	const (
+		groupAll = "all"
+	)
+
+	retrieveNewBeneHistData := false
+
+	groupID := chi.URLParam(r, "groupId")
+	if groupID == groupAll {
+		resourceTypes, err := ValidateRequest(r)
+		if err != nil {
+			responseutils.WriteError(err, w, http.StatusBadRequest)
+			return
+		}
+
+		reqType := models.DefaultRequest
+		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
+		_, ok := r.URL.Query()["_since"]
+		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
+			reqType = models.RetrieveNewBeneHistData
+		}
+
+		bulkRequest(resourceTypes, w, r, reqType)
+	} else {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+}
+
+func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
 	var (
 		ad  auth.AuthData
 		err error
@@ -161,15 +203,15 @@ func BulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		decodedSince, _ = url.QueryUnescape(params[0])
 	}
 
-	var enqueueJobs []*que.Job
-	enqueueJobs, err = newJob.GetEnqueJobs(resourceTypes, decodedSince, retrieveNewBeneHistData)
+	var queJobs []*que.Job
+	queJobs, err = svc.GetQueJobs(ad.CMSID, newJob, resourceTypes, decodedSince, reqType)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	newJob.JobCount = len(enqueueJobs)
+	newJob.JobCount = len(queJobs)
 
 	// We've now computed all of the fields necessary to populate a fully defined job
 	if err = tx.Save(&newJob).Error; err != nil {
@@ -182,7 +224,7 @@ func BulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	// Since we're enqueuing these queuejobs BEFORE we've created the actual job, we may encounter a transient
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
-	for _, j := range enqueueJobs {
+	for _, j := range queJobs {
 		if err = qc.Enqueue(j); err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")

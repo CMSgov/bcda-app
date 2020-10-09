@@ -1,9 +1,14 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
+	"strings"
 	"time"
+
+	"github.com/bgentry/que-go"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	log "github.com/sirupsen/logrus"
@@ -18,13 +23,7 @@ type Service interface {
 }
 
 type cclfBeneficiaryService interface {
-	// GetNewAndExistingBeneficiaries, when supplied with the "since" parameter, returns two arrays
-	// the first array contains all NEW beneficaries that were added to CCLF since the date supplied
-	// the second array contains all EXISTING benficiaries that have existed in CCLF since prior to the date supplied
-	GetNewAndExistingBeneficiaries(cmsID string, since time.Time) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error)
-
-	// GetBeneficiaries retrieves all beneficiaries associated with the ACO, contained in one array
-	GetBeneficiaries(cmsID string) ([]*CCLFBeneficiary, error)
+	GetQueJobs(cmsID string, job *Job, resourceTypes []string, since string, reqType RequestType) (queJobs []*que.Job, err error)
 }
 
 const (
@@ -59,7 +58,107 @@ type suppressionParameters struct {
 	lookbackDays                   int
 }
 
-func (s *service) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error) {
+func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, since string, reqType RequestType) (queJobs []*que.Job, err error) {
+	fileType := FileTypeDefault
+	switch reqType {
+	case Runout:
+		fileType = FileTypeRunout
+		fallthrough
+	case DefaultRequest:
+		beneficiaries, err := s.getBeneficiaries(cmsID, fileType)
+		if err != nil {
+			return nil, err
+		}
+
+		// add beneficaries to the job queue
+		jobs, err := s.createQueueJobs(job, cmsID, resourceTypes, since, beneficiaries, reqType)
+		if err != nil {
+			return nil, err
+		}
+		queJobs = append(queJobs, jobs...)
+	case RetrieveNewBeneHistData:
+		t, err := time.Parse(time.RFC3339Nano, since)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s using format %s", since, time.RFC3339Nano)
+		}
+
+		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(cmsID, t)
+		if err != nil {
+			return nil, err
+		}
+
+		// add new beneficaries to the job queue
+		jobs, err := s.createQueueJobs(job, cmsID, resourceTypes, "", newBeneficiaries, reqType)
+		if err != nil {
+			return nil, err
+		}
+		queJobs = append(queJobs, jobs...)
+
+		// add existing beneficaries to the job queue
+		jobs, err = s.createQueueJobs(job, cmsID, resourceTypes, since, beneficiaries, reqType)
+		if err != nil {
+			return nil, err
+		}
+		queJobs = append(queJobs, jobs...)
+	default:
+		return nil, fmt.Errorf("Unsupported RequestType %d", reqType)
+	}
+
+	return queJobs, nil
+}
+
+func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since string, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {
+
+	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
+	if since != "" {
+		since = "gt" + since
+	}
+	for _, rt := range resourceTypes {
+		maxBeneficiaries, err := GetMaxBeneCount(rt)
+		if err != nil {
+			return nil, err
+		}
+
+		var rowCount = 0
+		jobIDs := make([]string, 0, maxBeneficiaries)
+		for _, b := range beneficiaries {
+			rowCount++
+			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
+			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
+				enqueueArgs := JobEnqueueArgs{
+					ID:              int(job.ID),
+					ACOID:           job.ACOID.String(),
+					BeneficiaryIDs:  jobIDs,
+					ResourceType:    rt,
+					Since:           since,
+					TransactionTime: job.TransactionTime,
+				}
+
+				if reqType == Runout {
+					enqueueArgs.ServiceDate = time.Time{} // TODO - FILL ME IN
+				}
+
+				args, err := json.Marshal(enqueueArgs)
+				if err != nil {
+					return nil, err
+				}
+
+				j := &que.Job{
+					Type:     "ProcessJob",
+					Args:     args,
+					Priority: setJobPriority(CMSID, rt, (len(since) != 0 || reqType == RetrieveNewBeneHistData)),
+				}
+
+				jobs = append(jobs, j)
+				jobIDs = make([]string, 0, maxBeneficiaries)
+			}
+		}
+	}
+
+	return jobs, nil
+}
+
+func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error) {
 
 	var (
 		cutoffTime time.Time
@@ -69,7 +168,7 @@ func (s *service) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		cutoffTime = time.Now().Add(-1 * s.cutoffDuration)
 	}
 
-	cclfFileNew, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{})
+	cclfFileNew, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", cmsID, err.Error())
 	}
@@ -77,14 +176,14 @@ func (s *service) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		return nil, nil, fmt.Errorf("no CCLF8 file found for cmsID %s cutoffTime %s", cmsID, cutoffTime.String())
 	}
 
-	cclfFileOld, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, since)
+	cclfFileOld, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", cmsID, err.Error())
 	}
 
 	if cclfFileOld == nil {
 		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", cmsID, since)
-		newBeneficiaries, err = s.getBenes(cclfFileNew.ID)
+		newBeneficiaries, err = s.getBenesByFileID(cclfFileNew.ID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -100,7 +199,7 @@ func (s *service) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 	}
 
 	// Retrieve all of the benes associated with this CCLF file.
-	benes, err := s.getBenes(cclfFileNew.ID)
+	benes, err := s.getBenesByFileID(cclfFileNew.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -124,7 +223,7 @@ func (s *service) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 	return newBeneficiaries, beneficiaries, nil
 }
 
-func (s *service) GetBeneficiaries(cmsID string) ([]*CCLFBeneficiary, error) {
+func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLFBeneficiary, error) {
 	var (
 		cutoffTime time.Time
 	)
@@ -133,7 +232,7 @@ func (s *service) GetBeneficiaries(cmsID string) ([]*CCLFBeneficiary, error) {
 		cutoffTime = time.Now().Add(-1 * s.cutoffDuration)
 	}
 
-	cclfFile, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{})
+	cclfFile, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, fileType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s %s", cmsID, err.Error())
 	}
@@ -141,7 +240,7 @@ func (s *service) GetBeneficiaries(cmsID string) ([]*CCLFBeneficiary, error) {
 		return nil, fmt.Errorf("no CCLF8 file found for cmsID %s cutoffTime %s", cmsID, cutoffTime.String())
 	}
 
-	benes, err := s.getBenes(cclfFile.ID)
+	benes, err := s.getBenesByFileID(cclfFile.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +251,7 @@ func (s *service) GetBeneficiaries(cmsID string) ([]*CCLFBeneficiary, error) {
 	return benes, nil
 }
 
-func (s *service) getBenes(cclfFileID uint) ([]*CCLFBeneficiary, error) {
+func (s *service) getBenesByFileID(cclfFileID uint) ([]*CCLFBeneficiary, error) {
 	var (
 		ignoredMBIs []string
 		err         error
@@ -170,6 +269,36 @@ func (s *service) getBenes(cclfFileID uint) ([]*CCLFBeneficiary, error) {
 	}
 
 	return benes, nil
+}
+
+// Sets the priority for the job where the lower the number the higher the priority in the queue.
+// Prioirity is based on the request parameters that the job is executing on.
+func setJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
+	var priority int16
+	if isPriorityACO(acoID) {
+		priority = int16(10) // priority level for jobs for synthetic ACOs that are used for smoke testing
+	} else if resourceType == "Patient" || resourceType == "Coverage" {
+		priority = int16(20) // priority level for jobs that only request smaller resources
+	} else if sinceParam {
+		priority = int16(30) // priority level for jobs that only request data for a limited timeframe
+	} else {
+		priority = int16(100) // default priority level for jobs
+	}
+	return priority
+}
+
+// Checks to see if an ACO is priority ACO based on a list provided by an
+// environment variable.
+func isPriorityACO(acoID string) bool {
+	if priorityACOList := os.Getenv("PRIORITY_ACO_IDS"); priorityACOList != "" {
+		priorityACOs := strings.Split(priorityACOList, ",")
+		for _, priorityACO := range priorityACOs {
+			if priorityACO == acoID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // IsSupportedACO determines if the particular ACO is supported by checking

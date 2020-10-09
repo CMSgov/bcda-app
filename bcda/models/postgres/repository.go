@@ -21,10 +21,10 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db}
 }
 
-func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time) (*models.CCLFFile, error) {
+func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 
 	const (
-		queryNoTime     = "aco_cms_id = ? AND cclf_num = ? AND import_status = ?"
+		queryNoTime     = "aco_cms_id = ? AND cclf_num = ? AND import_status = ? AND type = ?"
 		queryLower      = queryNoTime + " AND timestamp >= ?"
 		queryUpper      = queryNoTime + " AND timestamp <= ?"
 		queryLowerUpper = queryNoTime + " AND timestamp >= ? AND timestamp <= ?"
@@ -36,18 +36,18 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 	)
 	if lowerBound.IsZero() && upperBound.IsZero() {
 		result = r.db.Where(queryNoTime,
-			cmsID, cclfNum, constants.ImportComplete)
+			cmsID, cclfNum, constants.ImportComplete, fileType)
 	} else if !lowerBound.IsZero() && upperBound.IsZero() {
 		result = r.db.Where(queryLower,
-			cmsID, cclfNum, constants.ImportComplete,
+			cmsID, cclfNum, constants.ImportComplete, fileType,
 			lowerBound)
 	} else if lowerBound.IsZero() && !upperBound.IsZero() {
 		result = r.db.Where(queryUpper,
-			cmsID, cclfNum, constants.ImportComplete,
+			cmsID, cclfNum, constants.ImportComplete, fileType,
 			upperBound)
 	} else {
 		result = r.db.Where(queryLowerUpper,
-			cmsID, cclfNum, constants.ImportComplete,
+			cmsID, cclfNum, constants.ImportComplete, fileType,
 			lowerBound, upperBound)
 	}
 
