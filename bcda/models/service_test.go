@@ -69,7 +69,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(1),
 			getCCLFFile(2),
 			func(serv *service) error {
-				_, _, err := serv.GetNewAndExistingBeneficiaries("cmsID", time.Now())
+				_, _, err := serv.getNewAndExistingBeneficiaries("cmsID", time.Now())
 				return err
 			},
 		},
@@ -78,7 +78,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(3),
 			nil,
 			func(serv *service) error {
-				_, err := serv.GetBeneficiaries("cmsID")
+				_, err := serv.getBeneficiaries("cmsID", FileTypeDefault)
 				return err
 			},
 		},
@@ -89,8 +89,8 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			lookbackDays := int(8)
 			sp := suppressionParameters{true, lookbackDays}
 			repository := &MockRepository{}
-			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher)).Return(tt.cclfFileOld, nil)
+			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, FileTypeDefault).Return(tt.cclfFileNew, nil)
+			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), FileTypeDefault).Return(tt.cclfFileOld, nil)
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return([]string{"1", "2", "3"}, nil)
 			}
@@ -198,8 +198,9 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 					// Make sure we're close enough.
 					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
 				}),
-				time.Time{}).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete, time.Time{}, since).Return(tt.cclfFileOld, nil)
+				time.Time{},
+				FileTypeDefault).Return(tt.cclfFileNew, nil)
+			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault).Return(tt.cclfFileOld, nil)
 
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
@@ -210,8 +211,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			}
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
 
-			serviceInstance := newService(repository, 1*time.Hour, lookbackDays)
-			newBenes, oldBenes, err := serviceInstance.GetNewAndExistingBeneficiaries("cmsID", since)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays).(*service)
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries("cmsID", since)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -234,26 +235,34 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 
 func (s *ServiceTestSuite) TestGetBeneficiaries() {
 	tests := []struct {
-		name string
-
-		cclfFile *CCLFFile
-
+		name        string
+		fileType    CCLFFileType
+		cclfFile    *CCLFFile
 		expectedErr error
 	}{
 		{
 			"BenesReturned",
+			FileTypeDefault,
 			getCCLFFile(1),
 			nil,
 		},
 		{
 			"NoCCLFFileFound",
+			FileTypeDefault,
 			nil,
 			fmt.Errorf("no CCLF8 file found for cmsID"),
 		},
 		{
 			"NoBenesFound",
+			FileTypeDefault,
 			getCCLFFile(2),
 			fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID"),
+		},
+		{
+			"BenesReturnedRunout",
+			FileTypeRunout,
+			getCCLFFile(3),
+			nil,
 		},
 	}
 
@@ -284,7 +293,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 					// Make sure we're close enough.
 					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
 				}),
-				time.Time{}).Return(tt.cclfFile, nil)
+				time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
 
 			suppressedMBI := "suppressedMBI"
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
@@ -292,8 +301,8 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				repository.On("GetCCLFBeneficiaries", tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
 
-			serviceInstance := newService(repository, 1*time.Hour, lookbackDays)
-			benes, err := serviceInstance.GetBeneficiaries("cmsID")
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays).(*service)
+			benes, err := serviceInstance.getBeneficiaries("cmsID", tt.fileType)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)

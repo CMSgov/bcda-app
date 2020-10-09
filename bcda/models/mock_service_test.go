@@ -3,8 +3,7 @@
 package models
 
 import (
-	time "time"
-
+	que "github.com/bgentry/que-go"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,77 +12,22 @@ type MockService struct {
 	mock.Mock
 }
 
-// GetBeneficiaries provides a mock function with given fields: cmsID
-func (_m *MockService) GetBeneficiaries(cmsID string) ([]*CCLFBeneficiary, error) {
-	ret := _m.Called(cmsID)
+// GetQueJobs provides a mock function with given fields: cmsID, job, resourceTypes, since, reqType
+func (_m *MockService) GetQueJobs(cmsID string, job *Job, resourceTypes []string, since string, reqType RequestType) ([]*que.Job, error) {
+	ret := _m.Called(cmsID, job, resourceTypes, since, reqType)
 
-	var r0 []*CCLFBeneficiary
-	if rf, ok := ret.Get(0).(func(string) []*CCLFBeneficiary); ok {
-		r0 = rf(cmsID)
+	var r0 []*que.Job
+	if rf, ok := ret.Get(0).(func(string, *Job, []string, string, RequestType) []*que.Job); ok {
+		r0 = rf(cmsID, job, resourceTypes, since, reqType)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*CCLFBeneficiary)
+			r0 = ret.Get(0).([]*que.Job)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(cmsID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetNewAndExistingBeneficiaries provides a mock function with given fields: cmsID, since
-func (_m *MockService) GetNewAndExistingBeneficiaries(cmsID string, since time.Time) ([]*CCLFBeneficiary, []*CCLFBeneficiary, error) {
-	ret := _m.Called(cmsID, since)
-
-	var r0 []*CCLFBeneficiary
-	if rf, ok := ret.Get(0).(func(string, time.Time) []*CCLFBeneficiary); ok {
-		r0 = rf(cmsID, since)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*CCLFBeneficiary)
-		}
-	}
-
-	var r1 []*CCLFBeneficiary
-	if rf, ok := ret.Get(1).(func(string, time.Time) []*CCLFBeneficiary); ok {
-		r1 = rf(cmsID, since)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]*CCLFBeneficiary)
-		}
-	}
-
-	var r2 error
-	if rf, ok := ret.Get(2).(func(string, time.Time) error); ok {
-		r2 = rf(cmsID, since)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
-// GetRunoutBeneficiaries provides a mock function with given fields: cmsID
-func (_m *MockService) GetRunoutBeneficiaries(cmsID string) ([]*CCLFBeneficiary, error) {
-	ret := _m.Called(cmsID)
-
-	var r0 []*CCLFBeneficiary
-	if rf, ok := ret.Get(0).(func(string) []*CCLFBeneficiary); ok {
-		r0 = rf(cmsID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*CCLFBeneficiary)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(cmsID)
+	if rf, ok := ret.Get(1).(func(string, *Job, []string, string, RequestType) error); ok {
+		r1 = rf(cmsID, job, resourceTypes, since, reqType)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -30,8 +30,8 @@ const (
 	cclf8FileNum = int(8)
 )
 
-func newService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
-	serviceInstance = &service{
+func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
+	return &service{
 		repository:     r,
 		logger:         log.StandardLogger(),
 		cutoffDuration: cutoffDuration,
@@ -40,8 +40,6 @@ func newService(r Repository, cutoffDuration time.Duration, lookbackDays int) Se
 			lookbackDays:                   lookbackDays,
 		},
 	}
-
-	return serviceInstance
 }
 
 type service struct {
