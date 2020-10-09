@@ -30,12 +30,10 @@ type ModelsTestSuite struct {
 
 	// Re-initialized for every test
 	db      *gorm.DB
-	service *MockService
 }
 
 func (s *ModelsTestSuite) SetupTest() {
 	s.db = database.GetGORMDbConnection()
-	s.service = &MockService{}
 }
 
 func (s *ModelsTestSuite) TearDownTest() {
@@ -685,56 +683,6 @@ func (s *ModelsTestSuite) TestJobStatusMessage() {
 	assert.Equal(s.T(), "Completed", j.StatusMessage())
 }
 
-func (s *ModelsTestSuite) TestGetMaxBeneCount() {
-	assert := s.Assert()
-
-	// ExplanationOfBenefit
-	eobMax, err := GetMaxBeneCount("ExplanationOfBenefit")
-	assert.Equal(BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT, eobMax)
-	assert.Nil(err)
-
-	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_EOB", "5")
-	if err != nil {
-		s.T().Error(err)
-	}
-	eobMax, err = GetMaxBeneCount("ExplanationOfBenefit")
-	assert.Equal(5, eobMax)
-	assert.Nil(err)
-	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
-
-	// Patient
-	patientMax, err := GetMaxBeneCount("Patient")
-	assert.Equal(BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT, patientMax)
-	assert.Nil(err)
-
-	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_PATIENT", "10")
-	if err != nil {
-		s.T().Error(err)
-	}
-	patientMax, err = GetMaxBeneCount("Patient")
-	assert.Equal(10, patientMax)
-	assert.Nil(err)
-	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_PATIENT")
-
-	// Coverage
-	coverageMax, err := GetMaxBeneCount("Coverage")
-	assert.Equal(BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT, coverageMax)
-	assert.Nil(err)
-
-	err = os.Setenv("BCDA_FHIR_MAX_RECORDS_COVERAGE", "15")
-	if err != nil {
-		s.T().Error(err)
-	}
-	coverageMax, err = GetMaxBeneCount("Coverage")
-	assert.Equal(15, coverageMax)
-	assert.Nil(err)
-	os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
-
-	// Invalid type
-	max, err := GetMaxBeneCount("Coverages")
-	assert.Equal(-1, max)
-	assert.EqualError(err, "invalid request type")
-}
 
 func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	assert := s.Assert()

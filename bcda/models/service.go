@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/bgentry/que-go"
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,7 +25,7 @@ type Service interface {
 }
 
 type cclfBeneficiaryService interface {
-	GetQueJobs(cmsID string, job *Job, resourceTypes []string, since string, reqType RequestType) (queJobs []*que.Job, err error)
+	GetQueJobs(cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
 }
 
 const (
@@ -39,6 +41,12 @@ func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Se
 			includeSuppressedBeneficiaries: false,
 			lookbackDays:                   lookbackDays,
 		},
+		rp: runoutParameters{
+			// Runouts apply to claims data for the previous year.
+			claimThruDate: time.Date(time.Now().Year()-1, time.December, 31, 23, 59, 59, 999999, time.UTC),
+			// Allow runout requests to be up to 4 months after runout data was ingested
+			cutoffDuration: 120 * 24 * time.Hour,
+		},
 	}
 }
 
@@ -49,6 +57,7 @@ type service struct {
 
 	cutoffDuration time.Duration
 	sp             suppressionParameters
+	rp             runoutParameters
 }
 
 type suppressionParameters struct {
@@ -56,7 +65,14 @@ type suppressionParameters struct {
 	lookbackDays                   int
 }
 
-func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, since string, reqType RequestType) (queJobs []*que.Job, err error) {
+type runoutParameters struct {
+	// All claims data occur at or before this date
+	claimThruDate time.Time
+	// Amount of time the callers can retrieve runout data (relative to when runout data was ingested)
+	cutoffDuration time.Duration
+}
+
+func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error) {
 	fileType := FileTypeDefault
 	switch reqType {
 	case Runout:
@@ -75,18 +91,13 @@ func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, sin
 		}
 		queJobs = append(queJobs, jobs...)
 	case RetrieveNewBeneHistData:
-		t, err := time.Parse(time.RFC3339Nano, since)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s using format %s", since, time.RFC3339Nano)
-		}
-
-		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(cmsID, t)
+		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(cmsID, since)
 		if err != nil {
 			return nil, err
 		}
 
 		// add new beneficaries to the job queue
-		jobs, err := s.createQueueJobs(job, cmsID, resourceTypes, "", newBeneficiaries, reqType)
+		jobs, err := s.createQueueJobs(job, cmsID, resourceTypes, time.Time{}, newBeneficiaries, reqType)
 		if err != nil {
 			return nil, err
 		}
@@ -105,14 +116,16 @@ func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, sin
 	return queJobs, nil
 }
 
-func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since string, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {
+func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since time.Time, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
-	if since != "" {
-		since = "gt" + since
+	var sinceArg string
+	if !since.IsZero() {
+		sinceArg = "gt" + since.Format(time.RFC3339Nano)
 	}
+
 	for _, rt := range resourceTypes {
-		maxBeneficiaries, err := GetMaxBeneCount(rt)
+		maxBeneficiaries, err := getMaxBeneCount(rt)
 		if err != nil {
 			return nil, err
 		}
@@ -128,12 +141,12 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 					ACOID:           job.ACOID.String(),
 					BeneficiaryIDs:  jobIDs,
 					ResourceType:    rt,
-					Since:           since,
+					Since:           sinceArg,
 					TransactionTime: job.TransactionTime,
 				}
 
 				if reqType == Runout {
-					enqueueArgs.ServiceDate = time.Time{} // TODO - FILL ME IN
+					enqueueArgs.ServiceDate = s.rp.claimThruDate
 				}
 
 				args, err := json.Marshal(enqueueArgs)
@@ -144,7 +157,7 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 				j := &que.Job{
 					Type:     "ProcessJob",
 					Args:     args,
-					Priority: setJobPriority(CMSID, rt, (len(since) != 0 || reqType == RetrieveNewBeneHistData)),
+					Priority: setJobPriority(CMSID, rt, (!since.IsZero() || reqType == RetrieveNewBeneHistData)),
 				}
 
 				jobs = append(jobs, j)
@@ -226,16 +239,20 @@ func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLF
 		cutoffTime time.Time
 	)
 
-	if s.cutoffDuration > 0 {
+	if fileType == FileTypeDefault && s.cutoffDuration > 0 {
 		cutoffTime = time.Now().Add(-1 * s.cutoffDuration)
+	} else if fileType == FileTypeRunout && s.rp.cutoffDuration > 0 {
+		cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
 	}
 
 	cclfFile, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, fileType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s %s", cmsID, err.Error())
+		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
+			cmsID, fileType, err.Error())
 	}
 	if cclfFile == nil {
-		return nil, fmt.Errorf("no CCLF8 file found for cmsID %s cutoffTime %s", cmsID, cutoffTime.String())
+		return nil, fmt.Errorf("no CCLF8 file found for cmsID %s fileType %d cutoffTime %s",
+			cmsID, fileType, cutoffTime.String())
 	}
 
 	benes, err := s.getBenesByFileID(cclfFile.ID)
@@ -243,7 +260,8 @@ func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLF
 		return nil, err
 	}
 	if len(benes) == 0 {
-		return nil, fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", cmsID, cclfFile.ID)
+		return nil, fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+			cmsID, cclfFile.ID)
 	}
 
 	return benes, nil
@@ -297,6 +315,34 @@ func isPriorityACO(acoID string) bool {
 		}
 	}
 	return false
+}
+
+func getMaxBeneCount(requestType string) (int, error) {
+	const (
+		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT      = 200
+		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT  = 5000
+		BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
+	)
+	var envVar string
+	var defaultVal int
+
+	switch requestType {
+	case "ExplanationOfBenefit":
+		envVar = "BCDA_FHIR_MAX_RECORDS_EOB"
+		defaultVal = BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT
+	case "Patient":
+		envVar = "BCDA_FHIR_MAX_RECORDS_PATIENT"
+		defaultVal = BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT
+	case "Coverage":
+		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		defaultVal = BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
+	default:
+		err := errors.New("invalid request type")
+		return -1, err
+	}
+	maxBeneficiaries := utils.GetEnvInt(envVar, defaultVal)
+
+	return maxBeneficiaries, nil
 }
 
 // IsSupportedACO determines if the particular ACO is supported by checking

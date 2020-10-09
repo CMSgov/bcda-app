@@ -2,11 +2,14 @@ package models
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/pborman/uuid"
 
 	"github.com/stretchr/testify/mock"
 
@@ -46,6 +49,62 @@ func TestSupportedACOs(t *testing.T) {
 			assert.Equal(sub, tt.isSupported, match)
 		})
 	}
+}
+
+func TestGetMaxBeneCount(t *testing.T) {
+	defer func() {
+		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
+		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_PATIENT")
+		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+	}()
+
+	getEnvVar := func(resourceType string) string {
+		switch resourceType {
+		case "ExplanationOfBenefit":
+			return "BCDA_FHIR_MAX_RECORDS_EOB"
+		case "Patient":
+			return "BCDA_FHIR_MAX_RECORDS_PATIENT"
+		case "Coverage":
+			return "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		default:
+			return ""
+		}
+	}
+
+	clearer := func(resourceType string, val int) {
+		os.Unsetenv(getEnvVar(resourceType))
+	}
+	setter := func(resourceType string, val int) {
+		os.Setenv(getEnvVar(resourceType), strconv.Itoa(val))
+	}
+
+	tests := []struct {
+		name     string
+		resource string
+		expVal   int
+		setup    func(resourceType string, val int)
+	}{
+		{"DefaultEOB", "ExplanationOfBenefit", 200, clearer},
+		{"MaxEOB", "ExplanationOfBenefit", 5, setter},
+		{"DefaultPatient", "Patient", 5000, clearer},
+		{"MaxPatient", "Patient", 10, setter},
+		{"DefaultCoverage", "Coverage", 4000, clearer},
+		{"MaxCoverage", "Coverage", 15, setter},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(sub *testing.T) {
+			tt.setup(tt.resource, tt.expVal)
+			max, err := getMaxBeneCount(tt.resource)
+			assert.NoError(sub, err)
+			assert.Equal(sub, tt.expVal, max)
+		})
+	}
+
+	// Invalid type
+	max, err := getMaxBeneCount("Coverages")
+	assert.Equal(t, -1, max)
+	assert.EqualError(t, err, "invalid request type")
 }
 
 type ServiceTestSuite struct {
@@ -291,7 +350,14 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				mock.MatchedBy(func(t time.Time) bool {
 					// Since we're using time.Now() within the service call, we can't compare directly.
 					// Make sure we're close enough.
-					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
+					switch tt.fileType {
+					case FileTypeDefault:
+						return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
+					case FileTypeRunout:
+						return time.Now().Add(-1*120*24*time.Hour).Sub(t) < time.Second
+					default:
+						return false // We do not understand this fileType
+					}
 				}),
 				time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
 
@@ -317,6 +383,56 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 			}
 		})
 	}
+}
+
+func (s *ServiceTestSuite) TestGetQueJobs() {
+	// runOutBenes, benes, oldBenes, newBenes := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20), make([]*CCLFBeneficiary, 30), make([]*CCLFBeneficiary, 40)
+	// allBenes := [][]*CCLFBeneficiary{runOutBenes, benes, oldBenes, newBenes}
+	// for idx, b := range allBenes {
+	// 	for i := 0; i < len(b); i++ {
+	// 		id := uint(idx*10000 + i + 1)
+	// 		b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
+	// 	}
+	// }
+
+	// // ugg this so gross. Consider pulling this stuff out
+	// repository := &MockRepository{}
+	// repository.On("GetSuppressedMBIs")
+	// runoutCMSID, defaultCMSID, retrieveNewBeneCMSID := "A1234", "A5678", "A9012"
+	// runoutFileID, defaultFileID, oldFileID, newFileID := uint(1234), uint(5678), uint(9012), uint(9013)
+	// repository.On("GetLatestCCLFFile", runoutCMSID, int(8), constants.ImportComplete, mock.Anything, mock.Anything,
+	// 	FileTypeRunout).Return(getCCLFFile(runoutFileID), nil)
+	// repository.On("GetLatestCCLFFile", defaultCMSID, int(8), constants.ImportComplete, mock.Anything, mock.Anything,
+	// 	FileTypeDefault).Return(getCCLFFile(defaultFileID), nil)
+	// repository.On("GetLatestCCLFFile", retrieveNewBeneCMSID, int(8), constants.ImportComplete, time.Time{}, mock.Anything,
+	// 	FileTypeRunout).Return(getCCLFFile(oldFileID), nil)
+	// repository.On("GetLatestCCLFFile", retrieveNewBeneCMSID, int(8), constants.ImportComplete, mock.Anything, time.Time{},
+	// 	FileTypeRunout).Return(getCCLFFile(newFileID), nil)
+
+	benes1, benes2 := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20)
+	allBenes := [][]*CCLFBeneficiary{benes1, benes2}
+	for idx, b := range allBenes {
+		for i := 0; i < len(b); i++ {
+			id := uint(idx*10000 + i + 1)
+			b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
+		}
+	}
+
+	// tests := []struct{
+	// 	name string
+	// 	reqType RequestType
+	// 	expSince time.Time
+
+	// }
+	repository := &MockRepository{}
+	repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+	repository.On("GetSuppressedMBIs", mock.Anything).Return(nil, nil)
+	repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(benes1, nil).Return(benes2, nil)
+	serviceInstance := NewService(repository, 1*time.Hour, 0)
+	res, err := serviceInstance.GetQueJobs("foo", &Job{ACOID: uuid.NewUUID()}, []string{"ExplanationOfBenefit"}, time.Time{}, Runout)
+	fmt.Println(res)
+	fmt.Println(err)
+
 }
 
 func getCCLFFile(id uint) *CCLFFile {

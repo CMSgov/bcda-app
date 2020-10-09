@@ -198,15 +198,20 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 	newJob.TransactionTime = b.Meta.LastUpdated
 
+	var since time.Time
 	// Decode the _since parameter (if it exists) so it can be persisted in job args
-	var decodedSince string
-	params, ok := r.URL.Query()["_since"]
-	if ok {
-		decodedSince, _ = url.QueryUnescape(params[0])
+	if params, ok := r.URL.Query()["_since"]; ok {
+		decodedSince, _ := url.QueryUnescape(params[0])
+		since, err = time.Parse(time.RFC3339Nano, decodedSince)
+		if err != nil {
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		}
 	}
 
 	var queJobs []*que.Job
-	queJobs, err = svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, decodedSince, reqType)
+	queJobs, err = svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, since, reqType)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")

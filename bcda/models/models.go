@@ -22,10 +22,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
-const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 5000
-const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
-
 type Job struct {
 	gorm.Model
 	ACO               ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
@@ -215,29 +211,6 @@ func (j *Job) StatusMessage() string {
 	}
 
 	return j.Status
-}
-
-func GetMaxBeneCount(requestType string) (int, error) {
-	var envVar string
-	var defaultVal int
-
-	switch requestType {
-	case "ExplanationOfBenefit":
-		envVar = "BCDA_FHIR_MAX_RECORDS_EOB"
-		defaultVal = BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT
-	case "Patient":
-		envVar = "BCDA_FHIR_MAX_RECORDS_PATIENT"
-		defaultVal = BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT
-	case "Coverage":
-		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
-		defaultVal = BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
-	default:
-		err := errors.New("invalid request type")
-		return -1, err
-	}
-	maxBeneficiaries := utils.GetEnvInt(envVar, defaultVal)
-
-	return maxBeneficiaries, nil
 }
 
 type JobKey struct {
