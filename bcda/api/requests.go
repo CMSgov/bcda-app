@@ -59,32 +59,34 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	const (
-		groupAll = "all"
+		groupAll    = "all"
+		groupRunout = "runout"
 	)
 
-	retrieveNewBeneHistData := false
-
+	reqType := models.DefaultRequest
 	groupID := chi.URLParam(r, "groupId")
-	if groupID == groupAll {
-		resourceTypes, err := ValidateRequest(r)
-		if err != nil {
-			responseutils.WriteError(err, w, http.StatusBadRequest)
-			return
-		}
-
-		reqType := models.DefaultRequest
+	switch groupID {
+	case groupAll:
 		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
 		_, ok := r.URL.Query()["_since"]
 		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
 			reqType = models.RetrieveNewBeneHistData
 		}
-
-		bulkRequest(resourceTypes, w, r, reqType)
-	} else {
+	case groupRunout:
+		reqType = models.Runout
+	default:
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
+
+	resourceTypes, err := ValidateRequest(r)
+	if err != nil {
+		responseutils.WriteError(err, w, http.StatusBadRequest)
+		return
+	}
+
+	bulkRequest(resourceTypes, w, r, reqType)
 }
 
 func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
@@ -204,7 +206,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 
 	var queJobs []*que.Job
-	queJobs, err = svc.GetQueJobs(ad.CMSID, newJob, resourceTypes, decodedSince, reqType)
+	queJobs, err = svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, decodedSince, reqType)
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")

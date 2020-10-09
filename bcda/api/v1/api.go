@@ -70,7 +70,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	return api.BulkGroupRequest(w, r)
+	api.BulkGroupRequest(w, r)
 }
 
 /*
