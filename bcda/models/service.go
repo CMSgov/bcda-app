@@ -287,7 +287,7 @@ func (s *service) getBenesByFileID(cclfFileID uint) ([]*CCLFBeneficiary, error) 
 	return benes, nil
 }
 
-// getJobPriority gets the priority for the job where the lower the number the higher the priority in the queue.
+// Gets the priority for the job where the lower the number the higher the priority in the queue.
 // Prioirity is based on the request parameters that the job is executing on.
 func getJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	var priority int16
