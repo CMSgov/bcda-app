@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -386,29 +387,6 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 }
 
 func (s *ServiceTestSuite) TestGetQueJobs() {
-	// runOutBenes, benes, oldBenes, newBenes := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20), make([]*CCLFBeneficiary, 30), make([]*CCLFBeneficiary, 40)
-	// allBenes := [][]*CCLFBeneficiary{runOutBenes, benes, oldBenes, newBenes}
-	// for idx, b := range allBenes {
-	// 	for i := 0; i < len(b); i++ {
-	// 		id := uint(idx*10000 + i + 1)
-	// 		b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
-	// 	}
-	// }
-
-	// // ugg this so gross. Consider pulling this stuff out
-	// repository := &MockRepository{}
-	// repository.On("GetSuppressedMBIs")
-	// runoutCMSID, defaultCMSID, retrieveNewBeneCMSID := "A1234", "A5678", "A9012"
-	// runoutFileID, defaultFileID, oldFileID, newFileID := uint(1234), uint(5678), uint(9012), uint(9013)
-	// repository.On("GetLatestCCLFFile", runoutCMSID, int(8), constants.ImportComplete, mock.Anything, mock.Anything,
-	// 	FileTypeRunout).Return(getCCLFFile(runoutFileID), nil)
-	// repository.On("GetLatestCCLFFile", defaultCMSID, int(8), constants.ImportComplete, mock.Anything, mock.Anything,
-	// 	FileTypeDefault).Return(getCCLFFile(defaultFileID), nil)
-	// repository.On("GetLatestCCLFFile", retrieveNewBeneCMSID, int(8), constants.ImportComplete, time.Time{}, mock.Anything,
-	// 	FileTypeRunout).Return(getCCLFFile(oldFileID), nil)
-	// repository.On("GetLatestCCLFFile", retrieveNewBeneCMSID, int(8), constants.ImportComplete, mock.Anything, time.Time{},
-	// 	FileTypeRunout).Return(getCCLFFile(newFileID), nil)
-
 	benes1, benes2 := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20)
 	allBenes := [][]*CCLFBeneficiary{benes1, benes2}
 	for idx, b := range allBenes {
@@ -417,22 +395,105 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
 		}
 	}
+	benes1MBI := make([]string, 0, len(benes1))
+	benes1ID := make(map[string]struct{})
+	for _, bene := range benes1 {
+		benes1MBI = append(benes1MBI, bene.MBI)
+		benes1ID[strconv.FormatUint(uint64(bene.ID), 10)] = struct{}{}
+	}
 
-	// tests := []struct{
-	// 	name string
-	// 	reqType RequestType
-	// 	expSince time.Time
+	since := time.Now()
+	serviceDate := time.Date(since.Year()-1, 12, 31, 23, 59, 59, 999999, time.UTC)
 
-	// }
-	repository := &MockRepository{}
-	repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
-	repository.On("GetSuppressedMBIs", mock.Anything).Return(nil, nil)
-	repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(benes1, nil).Return(benes2, nil)
-	serviceInstance := NewService(repository, 1*time.Hour, 0)
-	res, err := serviceInstance.GetQueJobs("foo", &Job{ACOID: uuid.NewUUID()}, []string{"ExplanationOfBenefit"}, time.Time{}, Runout)
-	fmt.Println(res)
-	fmt.Println(err)
+	type test struct {
+		name           string
+		reqType        RequestType
+		expSince       time.Time
+		expServiceDate time.Time
+		expBenes       []*CCLFBeneficiary
+		resourceTypes  []string
+	}
 
+	// TODO - Figure out job priority
+	baseTests := []test{
+		{"BasicRequest (non-Group)", DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
+		{"BasicRequest with Since (non-Group) ", DefaultRequest, since, time.Time{}, benes1, nil},
+		{"GroupAll", RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil},
+		{"RunoutRequest", Runout, time.Time{}, serviceDate, benes1, nil},
+		{"RunoutRequest with Since", Runout, since, serviceDate, benes1, nil},
+	}
+
+	// Add all combinations of resource types
+	var tests []test
+	for _, resourceTypes := range [][]string{{"ExplanationOfBenefit"}, {"Patient"}, {"Coverage"},
+		{"ExplanationOfBenefit", "Coverage"}, {"ExplanationOfBenefit", "Patient"}, {"Patient", "Coverage"},
+		{"ExplanationOfBenefit", "Patient", "Coverage"}} {
+		for _, baseTest := range baseTests {
+			baseTest.resourceTypes = resourceTypes
+			baseTest.name = fmt.Sprintf("%s-%s", baseTest.name, strings.Join(resourceTypes, ","))
+			tests = append(tests, baseTest)
+		}
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			repository := &MockRepository{}
+			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+			repository.On("GetSuppressedMBIs", mock.Anything).Return(nil, nil)
+			repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(tt.expBenes, nil)
+			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
+			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
+			serviceInstance := NewService(repository, 1*time.Hour, 0)
+			queJobs, err := serviceInstance.GetQueJobs("SOME_CMS_ID", &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
+			assert.NoError(t, err)
+			// map tuple of resourceType:beneID
+			benesInJob := make(map[string]map[string]struct{})
+			for _, qj := range queJobs {
+				var args JobEnqueueArgs
+				assert.NoError(t, json.Unmarshal(qj.Args, &args))
+				assert.Equal(t, tt.expServiceDate, args.ServiceDate)
+
+				subMap := benesInJob[args.ResourceType]
+				if subMap == nil {
+					subMap = make(map[string]struct{})
+					benesInJob[args.ResourceType] = subMap
+				}
+
+				// Need to see if the bene is considered "new" or not. If the bene
+				// is new, we should not provide a since parameter (need full history)
+				var expectedTime time.Time
+				if !tt.expSince.IsZero() {
+					var hasNewBene bool
+					for _, beneID := range args.BeneficiaryIDs {
+						if _, ok := benes1ID[beneID]; !ok {
+							hasNewBene = true
+							break
+						}
+					}
+					if !hasNewBene {
+						expectedTime = tt.expSince
+					}
+				}
+				if expectedTime.IsZero() {
+					assert.Empty(t, args.Since)
+				} else {
+					assert.Equal(t, fmt.Sprintf("gt%s", expectedTime.Format(time.RFC3339Nano)), args.Since)
+				}
+
+				for _, beneID := range args.BeneficiaryIDs {
+					subMap[beneID] = struct{}{}
+				}
+			}
+
+			for _, resourceType := range tt.resourceTypes {
+				subMap := benesInJob[resourceType]
+				assert.NotNil(t, subMap)
+				for _, bene := range tt.expBenes {
+					assert.Contains(t, subMap, strconv.FormatUint(uint64(bene.ID), 10))
+				}
+			}
+		})
+	}
 }
 
 func getCCLFFile(id uint) *CCLFFile {

@@ -157,7 +157,7 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 				j := &que.Job{
 					Type:     "ProcessJob",
 					Args:     args,
-					Priority: setJobPriority(CMSID, rt, (!since.IsZero() || reqType == RetrieveNewBeneHistData)),
+					Priority: getJobPriority(CMSID, rt, (!since.IsZero() || reqType == RetrieveNewBeneHistData)),
 				}
 
 				jobs = append(jobs, j)
@@ -287,9 +287,9 @@ func (s *service) getBenesByFileID(cclfFileID uint) ([]*CCLFBeneficiary, error) 
 	return benes, nil
 }
 
-// Sets the priority for the job where the lower the number the higher the priority in the queue.
+// getJobPriority gets the priority for the job where the lower the number the higher the priority in the queue.
 // Prioirity is based on the request parameters that the job is executing on.
-func setJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
+func getJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	var priority int16
 	if isPriorityACO(acoID) {
 		priority = int16(10) // priority level for jobs for synthetic ACOs that are used for smoke testing
