@@ -36,6 +36,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 		name          string
 		lowerBound    time.Time
 		upperBound    time.Time
+		fileType      models.CCLFFileType
 		expQueryRegex string
 		result        *models.CCLFFile
 	}{
@@ -43,35 +44,48 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			"NoTime",
 			time.Time{},
 			time.Time{},
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3)) ORDER BY timestamp DESC`,
-			getCCLFFile(cclfNum, cmsID, importStatus),
+			models.FileTypeDefault,
+			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4)) ORDER BY timestamp DESC`,
+			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
+		},
+		{
+			"Runout",
+			time.Time{},
+			time.Time{},
+			models.FileTypeRunout,
+			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4)) ORDER BY timestamp DESC`,
+			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeRunout),
 		},
 		{
 			"LowerBoundTime",
 			time.Now(),
 			time.Time{},
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND timestamp >= $4)) ORDER BY timestamp DESC`,
-			getCCLFFile(cclfNum, cmsID, importStatus),
+			models.FileTypeDefault,
+			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5)) ORDER BY timestamp DESC`,
+			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
 			"UpperBoundTime",
 			time.Time{},
 			time.Now(),
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND timestamp <= $4)) ORDER BY timestamp DESC`,
-			getCCLFFile(cclfNum, cmsID, importStatus),
+			models.FileTypeDefault,
+			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp <= $5)) ORDER BY timestamp DESC`,
+			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
 			"LowerAndUpperBoundTime",
 			time.Now(),
 			time.Now(),
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND timestamp >= $4 AND timestamp <= $5)) ORDER BY timestamp DESC`,
-			getCCLFFile(cclfNum, cmsID, importStatus),
+			models.FileTypeDefault,
+			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 AND timestamp <= $6)) ORDER BY timestamp DESC`,
+			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
 			"NoResult",
 			time.Time{},
 			time.Time{},
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3)) ORDER BY timestamp DESC`,
+			models.FileTypeDefault,
+			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4)) ORDER BY timestamp DESC`,
 			nil,
 		},
 	}
@@ -96,7 +110,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			}()
 			repository := NewRepository(gdb)
 
-			args := []driver.Value{cmsID, cclfNum, importStatus}
+			args := []driver.Value{cmsID, cclfNum, importStatus, tt.fileType}
 			if !tt.lowerBound.IsZero() {
 				args = append(args, tt.lowerBound)
 			}
@@ -110,10 +124,11 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 				query.WillReturnError(gorm.ErrRecordNotFound)
 			} else {
 				query.WillReturnRows(sqlmock.
-					NewRows([]string{"id", "cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status"}).
-					AddRow(tt.result.ID, tt.result.CCLFNum, tt.result.Name, tt.result.ACOCMSID, tt.result.Timestamp, tt.result.PerformanceYear, tt.result.ImportStatus))
+					NewRows([]string{"id", "cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type"}).
+					AddRow(tt.result.ID, tt.result.CCLFNum, tt.result.Name, tt.result.ACOCMSID, tt.result.Timestamp, tt.result.PerformanceYear, tt.result.ImportStatus, tt.result.Type))
 			}
-			cclfFile, err := repository.GetLatestCCLFFile(cmsID, cclfNum, importStatus, tt.lowerBound, tt.upperBound)
+			cclfFile, err := repository.GetLatestCCLFFile(cmsID, cclfNum, importStatus, tt.lowerBound, tt.upperBound,
+				tt.fileType)
 			assert.NoError(t, err)
 
 			if tt.result == nil {
@@ -349,7 +364,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 	}
 }
 
-func getCCLFFile(cclfNum int, cmsID, importStatus string) *models.CCLFFile {
+func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
 	createTime := time.Now()
 	return &models.CCLFFile{
 		Model: gorm.Model{
@@ -361,6 +376,7 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string) *models.CCLFFile {
 		Timestamp:       createTime,
 		PerformanceYear: 2020,
 		ImportStatus:    importStatus,
+		Type:            fileType,
 	}
 }
 
