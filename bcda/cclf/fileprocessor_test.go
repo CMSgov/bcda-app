@@ -149,7 +149,9 @@ func TestGetCMSID(t *testing.T) {
 		{"validSSPRunoutPath", "path/T.BCD.A0002.ZCR18.D181120.T1000000", false, "A0002"},
 		{"validNGACOPath", "path/T.BCD.V299.ZCY19.D191005.T0209260", false, "V299"},
 		{"validCECPath", "path/T.BCD.E9999.ZCY19.D191005.T0209260", false, "E9999"},
-		{"missingBCD", "path/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009", true, ""},
+		{"missingBCD", "path/T.A0001.ACO.ZCY18.D18NOV20.T1000009", true, ""},
+		{"not ZCY or ZCR", "path/T.BCD.A0001.ZC18.D181120.T1000000", true, ""},
+		{"missing ZCY and ZCR", "path/T.BCD.A0001.ZCA18.D181120.T1000000", true, ""},
 		{"empty", "", true, ""},
 	}
 	for _, tt := range tests {

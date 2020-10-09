@@ -114,7 +114,7 @@ func (p *processor) handleArchiveError(path string, info os.FileInfo, cause erro
 
 func getCMSID(name string) (string, error) {
 	// CCLF foldername convention with BCD identifier: P.BCD.<ACO_ID>.ZC[Y|R]**.Dyymmdd.Thhmmsst
-	exp := regexp.MustCompile(`(?:T|P)\.BCD\.(.*)\.ZC(?:Y|R)\d{2}\.D\d{6}\.T\d{7}`)
+	exp := regexp.MustCompile(`(?:T|P)\.BCD\.(.*)\.ZC[Y|R]\d{2}\.D\d{6}\.T\d{7}`)
 	parts := exp.FindStringSubmatch(name)
 	if len(parts) != 2 {
 		err := fmt.Errorf("invalid name ('%s') for CCLF archive, parts: %v", name, parts)
