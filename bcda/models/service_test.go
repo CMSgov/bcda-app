@@ -110,11 +110,20 @@ func TestGetMaxBeneCount(t *testing.T) {
 
 type ServiceTestSuite struct {
 	suite.Suite
+	priorityACOsEnvVar string
 }
 
 // Run all test suite tets
 func TestServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(ServiceTestSuite))
+}
+
+func (s *ServiceTestSuite) SetupTest() {
+	s.priorityACOsEnvVar = os.Getenv("PRIORITY_ACO_IDS")
+}
+
+func (s *ServiceTestSuite) TearDownTest() {
+	os.Setenv("PRIORITY_ACO_IDS", s.priorityACOsEnvVar)
 }
 
 func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
@@ -387,6 +396,10 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 }
 
 func (s *ServiceTestSuite) TestGetQueJobs() {
+
+	defaultACOID, priorityACOID := "SOME_ACO_ID", "PRIORITY_ACO_ID"
+	os.Setenv("PRIORITY_ACO_IDS", priorityACOID)
+
 	benes1, benes2 := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20)
 	allBenes := [][]*CCLFBeneficiary{benes1, benes2}
 	for idx, b := range allBenes {
@@ -407,6 +420,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 	type test struct {
 		name           string
+		acoID          string
 		reqType        RequestType
 		expSince       time.Time
 		expServiceDate time.Time
@@ -416,11 +430,12 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 	// TODO - Figure out job priority
 	baseTests := []test{
-		{"BasicRequest (non-Group)", DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
-		{"BasicRequest with Since (non-Group) ", DefaultRequest, since, time.Time{}, benes1, nil},
-		{"GroupAll", RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil},
-		{"RunoutRequest", Runout, time.Time{}, serviceDate, benes1, nil},
-		{"RunoutRequest with Since", Runout, since, serviceDate, benes1, nil},
+		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
+		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, time.Time{}, benes1, nil},
+		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil},
+		{"RunoutRequest", defaultACOID, Runout, time.Time{}, serviceDate, benes1, nil},
+		{"RunoutRequest with Since", defaultACOID, Runout, since, serviceDate, benes1, nil},
+		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
 	}
 
 	// Add all combinations of resource types
@@ -444,7 +459,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
 			serviceInstance := NewService(repository, 1*time.Hour, 0)
-			queJobs, err := serviceInstance.GetQueJobs("SOME_CMS_ID", &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
+			queJobs, err := serviceInstance.GetQueJobs(tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
@@ -479,6 +494,16 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				} else {
 					assert.Equal(t, fmt.Sprintf("gt%s", expectedTime.Format(time.RFC3339Nano)), args.Since)
 				}
+
+				expectedPriority := int16(100)
+				if isPriorityACO(tt.acoID) {
+					expectedPriority = 10
+				} else if args.ResourceType == "Patient" || args.ResourceType == "Coverage" {
+					expectedPriority = 20
+				} else if len(args.Since) > 0 || tt.reqType == RetrieveNewBeneHistData {
+					expectedPriority = 30
+				}
+				assert.Equal(t, expectedPriority, qj.Priority)
 
 				for _, beneID := range args.BeneficiaryIDs {
 					subMap[beneID] = struct{}{}

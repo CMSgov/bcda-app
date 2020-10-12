@@ -192,7 +192,7 @@ func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", cmsID, err.Error())
 	}
 	if cclfFileNew == nil {
-		return nil, nil, fmt.Errorf("no CCLF8 file found for cmsID %s cutoffTime %s", cmsID, cutoffTime.String())
+		return nil, nil, CCLFNotFoundError{8, cmsID, FileTypeDefault, cutoffTime}
 	}
 
 	cclfFileOld, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault)
@@ -259,8 +259,7 @@ func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLF
 			cmsID, fileType, err.Error())
 	}
 	if cclfFile == nil {
-		return nil, fmt.Errorf("no CCLF8 file found for cmsID %s fileType %d cutoffTime %s",
-			cmsID, fileType, cutoffTime.String())
+		return nil, CCLFNotFoundError{8, cmsID, fileType, cutoffTime}
 	}
 
 	benes, err := s.getBenesByFileID(cclfFile.ID)
@@ -364,4 +363,16 @@ func IsSupportedACO(cmsID string) bool {
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
+}
+
+type CCLFNotFoundError struct {
+	FileNumber int
+	CMSID      string
+	FileType   CCLFFileType
+	CutoffTime time.Time
+}
+
+func (e CCLFNotFoundError) Error() string {
+	return fmt.Sprintf("no CCLF%d file found for cmsID %s fileType %d cutoffTime %s",
+		e.FileNumber, e.CMSID, e.FileType, e.CutoffTime.String())
 }

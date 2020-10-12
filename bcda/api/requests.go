@@ -73,6 +73,11 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 			reqType = models.RetrieveNewBeneHistData
 		}
 	case groupRunout:
+		if !utils.GetEnvBool("BCDA_ENABLE_RUNOUT", false) {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Runouts are not enabled")
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		}
 		reqType = models.Runout
 	default:
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
@@ -214,8 +219,12 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	queJobs, err = svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, since, reqType)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		respCode := http.StatusInternalServerError
+		if _, ok := errors.Cause(err).(models.CCLFNotFoundError); ok {
+			respCode = http.StatusNotFound
+		}
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+		responseutils.WriteError(oo, w, respCode)
 		return
 	}
 	newJob.JobCount = len(queJobs)
