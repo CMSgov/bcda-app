@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -49,8 +50,16 @@ func contextToken(next http.Handler) http.Handler {
 }
 
 func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
-	reqLogPathOrig := os.Getenv("BCDA_REQUEST_LOG")
-	os.Setenv("BCDA_REQUEST_LOG", "bcda-req-test.log")
+	logFile, err := ioutil.TempFile("", "")
+	s.NoError(err)
+
+	defer os.Remove(logFile.Name())
+
+	defer func(path string) {
+		os.Setenv("BCDA_REQUEST_LOG", path)
+	}(os.Getenv("BCDA_REQUEST_LOG"))
+
+	os.Setenv("BCDA_REQUEST_LOG", logFile.Name())
 
 	server := httptest.NewTLSServer(s.CreateRouter())
 	client := server.Client()
@@ -59,6 +68,7 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	if err != nil {
 		s.Fail("Request error", err)
 	}
+	req.Header.Set("Accept-Encoding", "gzip")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -69,12 +79,6 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	assert.Equal(200, resp.StatusCode)
 
 	server.Close()
-
-	logFile, err := os.OpenFile(os.Getenv("BCDA_REQUEST_LOG"), os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		s.Fail("File read error")
-	}
-	defer logFile.Close()
 
 	sc := bufio.NewScanner(logFile)
 	var logFields log.Fields
@@ -98,12 +102,10 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
 		assert.Equal("A9995", logFields["cms_id"], "CMS ID in log entry should match the token.")
 		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
+		assert.Equal("gzip", logFields["accept_encoding"])
 	}
 
 	assert.False(sc.Scan(), "There should be no additional log entries.")
-
-	os.Remove("bcda-req-test.log")
-	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
 func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
