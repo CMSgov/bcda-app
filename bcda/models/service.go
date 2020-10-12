@@ -16,6 +16,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type RequestType uint8
+
+const (
+	DefaultRequest          RequestType = iota
+	RetrieveNewBeneHistData             // Allows caller to retrieve all of the data for newly attributed beneficiaries
+	Runout                              // Allows caller to retrieve claims data for beneficiaries no longer attributed to the ACO
+)
+
 // Ensure service satisfies the interface
 var _ Service = &service{}
 
