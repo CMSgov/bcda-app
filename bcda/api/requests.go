@@ -220,7 +220,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		log.Error(err)
 		respCode := http.StatusInternalServerError
-		if _, ok := errors.Cause(err).(models.CCLFNotFoundError); ok {
+		if _, ok := errors.Cause(err).(models.CCLFNotFoundError); ok && reqType == models.Runout {
 			respCode = http.StatusNotFound
 		}
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
