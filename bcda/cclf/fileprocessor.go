@@ -113,8 +113,8 @@ func (p *processor) handleArchiveError(path string, info os.FileInfo, cause erro
 }
 
 func getCMSID(name string) (string, error) {
-	// CCLF foldername convention with BCD identifier: P.BCD.<ACO_ID>.ZCY**.Dyymmdd.Thhmmsst
-	exp := regexp.MustCompile(`(?:T|P)\.BCD\.(.*)\.ZCY\d{2}\.D\d{6}\.T\d{7}`)
+	// CCLF foldername convention with BCD identifier: P.BCD.<ACO_ID>.ZC[Y|R]**.Dyymmdd.Thhmmsst
+	exp := regexp.MustCompile(`(?:T|P)\.BCD\.(.*)\.ZC[Y|R]\d{2}\.D\d{6}\.T\d{7}`)
 	parts := exp.FindStringSubmatch(name)
 	if len(parts) != 2 {
 		err := fmt.Errorf("invalid name ('%s') for CCLF archive, parts: %v", name, parts)
@@ -128,13 +128,13 @@ func getCMSID(name string) (string, error) {
 
 func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
-	// CCLF filename convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y]**.Dyymmdd.Thhmmsst
-	// CCLF filename convention for NGACO:  P.V***.ACO.ZC1.Dyymmdd.Thhmmsst
-	// CCLF file name convetion for CEC: P.CEC.ZC1.Dyymmdd.Thhmmsst
-	filenameRegexp := regexp.MustCompile(`(T|P)(?:\.BCD)?\.(.*?)(?:\.ACO)?\.ZC(0|8)Y(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	// CCLF filename convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y|R]**.Dyymmdd.Thhmmsst
+	// CCLF filename convention for NGACO:  P.V***.ACO.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
+	// CCLF file name convetion for CEC: P.CEC.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
+	filenameRegexp := regexp.MustCompile(`(T|P)(?:\.BCD)?\.(.*?)(?:\.ACO)?\.ZC(0|8)(Y|R)(\d{2})\.(D\d{6}\.T\d{6})\d`)
 	parts := filenameRegexp.FindStringSubmatch(fileName)
 
-	if len(parts) != 6 {
+	if len(parts) != 7 {
 		err := fmt.Errorf("invalid filename ('%s') for CCLF file, parts: %v", fileName, parts)
 		log.Error(err)
 		return metadata, err
@@ -148,7 +148,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		return metadata, err
 	}
 
-	perfYear, err := strconv.Atoi(parts[4])
+	perfYear, err := strconv.Atoi(parts[5])
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse performance year from file: %s", fileName)
 		fmt.Println(err.Error())
@@ -156,7 +156,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		return metadata, err
 	}
 
-	filenameDate := parts[5]
+	filenameDate := parts[6]
 	t, err := time.Parse("D060102.T150405", filenameDate)
 	if err != nil || t.IsZero() {
 		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
@@ -182,10 +182,18 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 		return metadata, err
 	}
 
-	if parts[1] == "T" {
+	switch parts[1] {
+	case "T":
 		metadata.env = "test"
-	} else if parts[1] == "P" {
+	case "P":
 		metadata.env = "production"
+	}
+
+	switch parts[4] {
+	case "Y":
+		metadata.fileType = models.FileTypeDefault
+	case "R":
+		metadata.fileType = models.FileTypeRunout
 	}
 
 	metadata.name = parts[0]
