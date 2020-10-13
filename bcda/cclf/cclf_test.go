@@ -1,7 +1,9 @@
 package cclf
 
 import (
+	"archive/zip"
 	"context"
+	"database/sql"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -351,6 +354,47 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 	}
 }
 
+func (s *CCLFTestSuite) TestImportRunoutCCLF() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	cmsID := "RNOUT"
+	defer func() {
+		s.NoError(deleteFilesByACO(cmsID, db))
+	}()
+
+	tests := []struct {
+		name     string
+		fileType models.CCLFFileType
+	}{
+		{"Default file type", models.FileTypeDefault},
+		{"Runout file type", models.FileTypeRunout},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			fileName, cclfName := createTemporaryZipFile(s.T())
+			defer os.Remove(fileName)
+
+			metadata := &cclfFileMetadata{
+				cclfNum:   8,
+				name:      cclfName,
+				acoID:     cmsID,
+				timestamp: time.Now(),
+				perfYear:  20,
+				fileType:  tt.fileType,
+				filePath:  fileName,
+			}
+
+			s.NoError(importCCLF(context.Background(), metadata, noopImporter{}))
+
+			var cclfFile models.CCLFFile
+			assert.NoError(t, db.Where("name = ?", cclfName).First(&cclfFile).Error)
+			assert.Equal(t, tt.fileType, cclfFile.Type)
+		})
+	}
+}
+
 func deleteFilesByACO(acoID string, db *gorm.DB) error {
 	var files []models.CCLFFile
 	db.Where("aco_cms_id = ?", acoID).Find(&files)
@@ -360,5 +404,33 @@ func deleteFilesByACO(acoID string, db *gorm.DB) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func createTemporaryZipFile(t *testing.T) (fileName, cclfName string) {
+	cclfName = uuid.New()
+
+	f, err := ioutil.TempFile("", "*")
+	assert.NoError(t, err)
+
+	w := zip.NewWriter(f)
+	f1, err := w.Create(cclfName)
+	assert.NoError(t, err)
+
+	_, err = f1.Write([]byte("SOME_CONTENT"))
+	assert.NoError(t, err)
+
+	assert.NoError(t, w.Close())
+
+	return f.Name(), cclfName
+}
+
+type noopImporter struct{}
+
+func (i noopImporter) do(ctx context.Context, tx *sql.Tx, fileID uint, b []byte) error {
+	return nil
+}
+
+func (i noopImporter) flush(ctx context.Context) error {
 	return nil
 }
