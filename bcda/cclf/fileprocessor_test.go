@@ -5,11 +5,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -144,9 +146,12 @@ func TestGetCMSID(t *testing.T) {
 		cmsID    string
 	}{
 		{"validSSPPath", "path/T.BCD.A0001.ZCY18.D181120.T1000000", false, "A0001"},
+		{"validSSPRunoutPath", "path/T.BCD.A0002.ZCR18.D181120.T1000000", false, "A0002"},
 		{"validNGACOPath", "path/T.BCD.V299.ZCY19.D191005.T0209260", false, "V299"},
 		{"validCECPath", "path/T.BCD.E9999.ZCY19.D191005.T0209260", false, "E9999"},
-		{"missingBCD", "path/T.A0001.ACO.ZC8Y18.D18NOV20.T1000009", true, ""},
+		{"missingBCD", "path/T.A0001.ACO.ZCY18.D18NOV20.T1000009", true, ""},
+		{"not ZCY or ZCR", "path/T.BCD.A0001.ZC18.D181120.T1000000", true, ""},
+		{"missing ZCY and ZCR", "path/T.BCD.A0001.ZCA18.D181120.T1000000", true, ""},
 		{"empty", "", true, ""},
 	}
 	for _, tt := range tests {
@@ -184,7 +189,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 
 	// Timestamp that'll satisfy the time window requirement
 	validTime := startUTC.Add(-24 * time.Hour)
-	sspProdFile, sspTestFile := gen(sspProd, validTime), gen(sspTest, validTime)
+	sspProdFile, sspTestFile, sspRunoutFile := gen(sspProd, validTime), gen(sspTest, validTime),
+		strings.Replace(gen(sspProd, validTime), "ZC8Y", "ZC8R", 1)
 	cecProdFile, cecTestFile := gen(cecProd, validTime), gen(cecTest, validTime)
 	ngacoProdFile, ngacoTestFile := gen(ngacoProd, validTime), gen(ngacoTest, validTime)
 
@@ -207,6 +213,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     sspID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Test SSP file", sspID, sspTestFile, "",
@@ -217,6 +224,19 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     sspID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{
+			"Runout SSP file", sspID, sspRunoutFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      sspRunoutFile,
+				cclfNum:   8,
+				acoID:     sspID,
+				timestamp: validTime,
+				perfYear:  20,
+				fileType:  models.FileTypeRunout,
 			},
 		},
 		{"Production CEC file", cecID, cecProdFile, "",
@@ -227,6 +247,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     cecID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Test CEC file", cecID, cecTestFile, "",
@@ -237,6 +258,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     cecID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Production NGACO file", ngacoID, ngacoProdFile, "",
@@ -247,6 +269,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     ngacoID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 		{"Test NGACO file", ngacoID, ngacoTestFile, "",
@@ -257,6 +280,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				acoID:     ngacoID,
 				timestamp: validTime,
 				perfYear:  20,
+				fileType:  models.FileTypeDefault,
 			},
 		},
 	}

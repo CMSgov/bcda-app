@@ -34,6 +34,7 @@ type cclfFileMetadata struct {
 	imported     bool
 	deliveryDate time.Time
 	fileID       uint
+	fileType     models.CCLFFileType
 }
 
 type cclfFileValidator struct {
@@ -199,6 +200,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 		Timestamp:       fileMetadata.timestamp,
 		PerformanceYear: fileMetadata.perfYear,
 		ImportStatus:    constants.ImportInprog,
+		Type:            fileMetadata.fileType,
 	}
 
 	db := database.GetGORMDbConnection()
@@ -228,7 +230,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 
 	if rawFile == nil {
 		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
-		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
+		err = fmt.Errorf("file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
 		log.Error(err)
 		return err
 	}
