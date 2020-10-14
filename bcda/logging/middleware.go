@@ -59,6 +59,7 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	logFields["remote_addr"] = r.RemoteAddr
 	logFields["forwarded_for"] = r.Header.Get("X-Forwarded-For")
 	logFields["user_agent"] = r.UserAgent()
+	logFields["accept_encoding"] = r.Header.Get("Accept-Encoding")
 
 	logFields["uri"] = fmt.Sprintf("%s://%s%s", scheme, r.Host, Redact(r.RequestURI))
 
