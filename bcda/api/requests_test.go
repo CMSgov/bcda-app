@@ -130,7 +130,7 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 
 	s.NoError(err)
 	s.Equal(http.StatusBadRequest, resp.StatusCode)
-	s.Contains(string(body), "Runouts are not enabled")
+	s.Contains(string(body), "Invalid group ID")
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string) *http.Request {

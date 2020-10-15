@@ -35,16 +35,16 @@ var (
 )
 
 func init() {
-	// Ensure that models.go is properly initialized with the service reference.
-	// As we refactor more of the code, we should be able to remove the initialization
-	// from models.go
 	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
+
+	// Allow runout requests to be up to 4 months after runout data was ingested
+	runoutCutoffDuration := time.Duration(utils.GetEnvInt("RUNOUT_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
 	db := database.GetGORMDbConnection()
 	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
 	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
 	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
-	svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60))
+	svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60), runoutCutoffDuration)
 }
 
 func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
@@ -73,12 +73,11 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 			reqType = models.RetrieveNewBeneHistData
 		}
 	case groupRunout:
-		if !utils.GetEnvBool("BCDA_ENABLE_RUNOUT", false) {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Runouts are not enabled")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-			return
+		if utils.GetEnvBool("BCDA_ENABLE_RUNOUT", true) {
+			reqType = models.Runout
+			break
 		}
-		reqType = models.Runout
+		fallthrough
 	default:
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
 		responseutils.WriteError(oo, w, http.StatusBadRequest)

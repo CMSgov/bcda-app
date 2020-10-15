@@ -20,6 +20,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const (
+	defaultRunoutCutoff = 120 * 24 * time.Hour
+)
+
 func TestSupportedACOs(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -166,7 +170,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 
 			var suppressedMBIs []string
 			repository.On("GetCCLFBeneficiaries", tt.cclfFileNew.ID, suppressedMBIs).Return([]*CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
-			serviceInstance := &service{repository: repository, sp: sp, cutoffDuration: 1 * time.Hour}
+			serviceInstance := &service{repository: repository, sp: sp, stdCutoffDuration: 1 * time.Hour}
 
 			err := tt.funcUnderTest(serviceInstance)
 			assert.NoError(t, err)
@@ -280,7 +284,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			}
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays).(*service)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff).(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries("cmsID", since)
 
 			if tt.expectedErr != nil {
@@ -377,7 +381,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				repository.On("GetCCLFBeneficiaries", tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays).(*service)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff).(*service)
 			benes, err := serviceInstance.getBeneficiaries("cmsID", tt.fileType)
 
 			if tt.expectedErr != nil {
@@ -428,7 +432,6 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		resourceTypes  []string
 	}
 
-	// TODO - Figure out job priority
 	baseTests := []test{
 		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
 		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, time.Time{}, benes1, nil},
@@ -458,7 +461,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
-			serviceInstance := NewService(repository, 1*time.Hour, 0)
+			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff)
 			queJobs, err := serviceInstance.GetQueJobs(tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID

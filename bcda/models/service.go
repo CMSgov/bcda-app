@@ -40,11 +40,11 @@ const (
 	cclf8FileNum = int(8)
 )
 
-func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
+func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int, runoutCutoffDuration time.Duration) Service {
 	return &service{
-		repository:     r,
-		logger:         log.StandardLogger(),
-		cutoffDuration: cutoffDuration,
+		repository:        r,
+		logger:            log.StandardLogger(),
+		stdCutoffDuration: cutoffDuration,
 		sp: suppressionParameters{
 			includeSuppressedBeneficiaries: false,
 			lookbackDays:                   lookbackDays,
@@ -52,8 +52,7 @@ func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int) Se
 		rp: runoutParameters{
 			// Runouts apply to claims data for the previous year.
 			claimThruDate: time.Date(time.Now().Year()-1, time.December, 31, 23, 59, 59, 999999, time.UTC),
-			// Allow runout requests to be up to 4 months after runout data was ingested
-			cutoffDuration: 120 * 24 * time.Hour,
+			cutoffDuration: runoutCutoffDuration,
 		},
 	}
 }
@@ -63,9 +62,9 @@ type service struct {
 
 	logger *log.Logger
 
-	cutoffDuration time.Duration
-	sp             suppressionParameters
-	rp             runoutParameters
+	stdCutoffDuration time.Duration
+	sp                suppressionParameters
+	rp                runoutParameters
 }
 
 type suppressionParameters struct {
@@ -183,8 +182,8 @@ func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		cutoffTime time.Time
 	)
 
-	if s.cutoffDuration > 0 {
-		cutoffTime = time.Now().Add(-1 * s.cutoffDuration)
+	if s.stdCutoffDuration > 0 {
+		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	}
 
 	cclfFileNew, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, FileTypeDefault)
@@ -247,8 +246,8 @@ func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLF
 		cutoffTime time.Time
 	)
 
-	if fileType == FileTypeDefault && s.cutoffDuration > 0 {
-		cutoffTime = time.Now().Add(-1 * s.cutoffDuration)
+	if fileType == FileTypeDefault && s.stdCutoffDuration > 0 {
+		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	} else if fileType == FileTypeRunout && s.rp.cutoffDuration > 0 {
 		cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
 	}
