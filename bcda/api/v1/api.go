@@ -23,11 +23,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/CMSgov/bcda-app/bcda/utils"
-)
-
-const (
-	groupAll = "all"
 )
 
 /*
@@ -51,13 +46,7 @@ const (
 		500: errorResponse
 */
 func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := api.ValidateRequest(r)
-	if err != nil {
-		responseutils.WriteError(err, w, http.StatusBadRequest)
-		return
-	}
-	retrieveNewBeneHistData := false // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	api.BulkRequest(resourceTypes, w, r, retrieveNewBeneHistData)
+	api.BulkPatientRequest(w, r)
 }
 
 /*
@@ -81,28 +70,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	retrieveNewBeneHistData := false
-
-	groupID := chi.URLParam(r, "groupId")
-	if groupID == groupAll {
-		resourceTypes, err := api.ValidateRequest(r)
-		if err != nil {
-			responseutils.WriteError(err, w, http.StatusBadRequest)
-			return
-		}
-
-		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
-		_, ok := r.URL.Query()["_since"]
-		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
-			retrieveNewBeneHistData = true
-		}
-
-		api.BulkRequest(resourceTypes, w, r, retrieveNewBeneHistData)
-	} else {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
+	api.BulkGroupRequest(w, r)
 }
 
 /*

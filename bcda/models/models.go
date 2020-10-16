@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
@@ -17,34 +16,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/bgentry/que-go"
 	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
-
-const BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT = 200
-const BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT = 5000
-const BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
-
-// NOTE: This should be temporary, we should get to the point where this file only contains data models. Once that happens,
-// we no longer have the need for the data models tor produce other data models and we can remove reference to the service.
-var (
-	serviceInstance Service // Singleton service instance
-	once            sync.Once
-)
-
-// GetService returns the singleton instance of Service. It creates the service if it has not been created before.
-// Once models.go no longer needs access to the service instance, we can get rid of this method
-// and promote newService as a public method.
-func GetService(r Repository, cutoffDuration time.Duration, lookbackDays int) Service {
-	once.Do(func() {
-		serviceInstance = newService(r, cutoffDuration, lookbackDays)
-	})
-
-	return serviceInstance
-}
 
 type Job struct {
 	gorm.Model
@@ -96,138 +72,6 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 	return false, nil
 }
 
-func (job *Job) GetEnqueJobs(resourceTypes []string, since string, retrieveNewBeneHistData bool) (enqueJobs []*que.Job, err error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	var jobs []*que.Job
-	var aco ACO
-	err = db.Find(&aco, "uuid = ?", job.ACOID).Error
-	if err != nil {
-		return nil, err
-	}
-
-	if aco.CMSID == nil {
-		return nil, fmt.Errorf("no CMS ID set for this ACO")
-	}
-
-	if retrieveNewBeneHistData {
-		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		t, err := time.Parse(time.RFC3339Nano, since)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s using format %s", since, time.RFC3339Nano)
-		}
-
-		newBeneficiaries, beneficiaries, err := serviceInstance.GetNewAndExistingBeneficiaries(*aco.CMSID, t)
-		if err != nil {
-			return nil, err
-		}
-
-		// add new beneficaries to the job queue
-		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, "", retrieveNewBeneHistData, newBeneficiaries)
-		if err != nil {
-			return nil, err
-		}
-		enqueJobs = append(enqueJobs, jobs...)
-
-		// add existing beneficaries to the job queue
-		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, since, retrieveNewBeneHistData, beneficiaries)
-		if err != nil {
-			return nil, err
-		}
-		enqueJobs = append(enqueJobs, jobs...)
-	} else {
-		// includeSuppressed = false to exclude beneficiaries who have opted out of data sharing
-		beneficiaries, err := serviceInstance.GetBeneficiaries(*aco.CMSID)
-		if err != nil {
-			return nil, err
-		}
-
-		// add beneficaries to the job queue
-		jobs, err = AddJobsToQueue(job, *aco.CMSID, resourceTypes, since, retrieveNewBeneHistData, beneficiaries)
-		if err != nil {
-			return nil, err
-		}
-		enqueJobs = append(enqueJobs, jobs...)
-	}
-
-	return enqueJobs, nil
-}
-
-func AddJobsToQueue(job *Job, CMSID string, resourceTypes []string, since string, retrieveNewBeneHistData bool, beneficiaries []*CCLFBeneficiary) (jobs []*que.Job, err error) {
-
-	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
-	if since != "" {
-		since = "gt" + since
-	}
-	for _, rt := range resourceTypes {
-		var rowCount = 0
-		var jobIDs []string
-		maxBeneficiaries, err := GetMaxBeneCount(rt)
-		if err != nil {
-			return nil, err
-		}
-		for _, b := range beneficiaries {
-			rowCount++
-			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
-			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-
-				args, err := json.Marshal(JobEnqueueArgs{
-					ID:              int(job.ID),
-					ACOID:           job.ACOID.String(),
-					BeneficiaryIDs:  jobIDs,
-					ResourceType:    rt,
-					Since:           since,
-					TransactionTime: job.TransactionTime,
-				})
-				if err != nil {
-					return nil, err
-				}
-
-				j := &que.Job{
-					Type:     "ProcessJob",
-					Args:     args,
-					Priority: setJobPriority(CMSID, rt, (len(since) != 0 || retrieveNewBeneHistData)),
-				}
-
-				jobs = append(jobs, j)
-
-				jobIDs = []string{}
-			}
-		}
-	}
-	return jobs, nil
-}
-
-// Sets the priority for the job where the lower the number the higher the priority in the queue.
-// Prioirity is based on the request parameters that the job is executing on.
-func setJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
-	var priority int16
-	if isPriorityACO(acoID) {
-		priority = int16(10) // priority level for jobs for sythetic ACOs that are used for smoke testing
-	} else if resourceType == "Patient" || resourceType == "Coverage" {
-		priority = int16(20) // priority level for jobs that only request smaller resources
-	} else if sinceParam {
-		priority = int16(30) // priority level for jobs that only request data for a limited timeframe
-	} else {
-		priority = int16(100) // default priority level for jobs
-	}
-	return priority
-}
-
-// Checks to see if an ACO is priority ACO based on a list provided by an
-// environment variable.
-func isPriorityACO(acoID string) bool {
-	if priorityACOList := os.Getenv("PRIORITY_ACO_IDS"); priorityACOList != "" {
-		priorityACOs := strings.Split(priorityACOList, ",")
-		for _, priorityACO := range priorityACOs {
-			if priorityACO == acoID {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func (j *Job) StatusMessage() string {
 	if j.Status == "In Progress" && j.JobCount > 0 {
 		pct := float64(j.CompletedJobCount) / float64(j.JobCount) * 100
@@ -235,29 +79,6 @@ func (j *Job) StatusMessage() string {
 	}
 
 	return j.Status
-}
-
-func GetMaxBeneCount(requestType string) (int, error) {
-	var envVar string
-	var defaultVal int
-
-	switch requestType {
-	case "ExplanationOfBenefit":
-		envVar = "BCDA_FHIR_MAX_RECORDS_EOB"
-		defaultVal = BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT
-	case "Patient":
-		envVar = "BCDA_FHIR_MAX_RECORDS_PATIENT"
-		defaultVal = BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT
-	case "Coverage":
-		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
-		defaultVal = BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
-	default:
-		err := errors.New("invalid request type")
-		return -1, err
-	}
-	maxBeneficiaries := utils.GetEnvInt(envVar, defaultVal)
-
-	return maxBeneficiaries, nil
 }
 
 type JobKey struct {
@@ -516,4 +337,5 @@ type JobEnqueueArgs struct {
 	ResourceType    string
 	Since           string
 	TransactionTime time.Time
+	ServiceDate     time.Time
 }

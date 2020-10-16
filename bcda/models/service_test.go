@@ -1,12 +1,16 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/pborman/uuid"
 
 	"github.com/stretchr/testify/mock"
 
@@ -14,6 +18,10 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/suite"
+)
+
+const (
+	defaultRunoutCutoff = 120 * 24 * time.Hour
 )
 
 func TestSupportedACOs(t *testing.T) {
@@ -48,13 +56,78 @@ func TestSupportedACOs(t *testing.T) {
 	}
 }
 
+func TestGetMaxBeneCount(t *testing.T) {
+	defer func() {
+		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
+		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_PATIENT")
+		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+	}()
+
+	getEnvVar := func(resourceType string) string {
+		switch resourceType {
+		case "ExplanationOfBenefit":
+			return "BCDA_FHIR_MAX_RECORDS_EOB"
+		case "Patient":
+			return "BCDA_FHIR_MAX_RECORDS_PATIENT"
+		case "Coverage":
+			return "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		default:
+			return ""
+		}
+	}
+
+	clearer := func(resourceType string, val int) {
+		os.Unsetenv(getEnvVar(resourceType))
+	}
+	setter := func(resourceType string, val int) {
+		os.Setenv(getEnvVar(resourceType), strconv.Itoa(val))
+	}
+
+	tests := []struct {
+		name     string
+		resource string
+		expVal   int
+		setup    func(resourceType string, val int)
+	}{
+		{"DefaultEOB", "ExplanationOfBenefit", 200, clearer},
+		{"MaxEOB", "ExplanationOfBenefit", 5, setter},
+		{"DefaultPatient", "Patient", 5000, clearer},
+		{"MaxPatient", "Patient", 10, setter},
+		{"DefaultCoverage", "Coverage", 4000, clearer},
+		{"MaxCoverage", "Coverage", 15, setter},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(sub *testing.T) {
+			tt.setup(tt.resource, tt.expVal)
+			max, err := getMaxBeneCount(tt.resource)
+			assert.NoError(sub, err)
+			assert.Equal(sub, tt.expVal, max)
+		})
+	}
+
+	// Invalid type
+	max, err := getMaxBeneCount("Coverages")
+	assert.Equal(t, -1, max)
+	assert.EqualError(t, err, "invalid request type")
+}
+
 type ServiceTestSuite struct {
 	suite.Suite
+	priorityACOsEnvVar string
 }
 
 // Run all test suite tets
 func TestServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(ServiceTestSuite))
+}
+
+func (s *ServiceTestSuite) SetupTest() {
+	s.priorityACOsEnvVar = os.Getenv("PRIORITY_ACO_IDS")
+}
+
+func (s *ServiceTestSuite) TearDownTest() {
+	os.Setenv("PRIORITY_ACO_IDS", s.priorityACOsEnvVar)
 }
 
 func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
@@ -69,7 +142,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(1),
 			getCCLFFile(2),
 			func(serv *service) error {
-				_, _, err := serv.GetNewAndExistingBeneficiaries("cmsID", time.Now())
+				_, _, err := serv.getNewAndExistingBeneficiaries("cmsID", time.Now())
 				return err
 			},
 		},
@@ -78,7 +151,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(3),
 			nil,
 			func(serv *service) error {
-				_, err := serv.GetBeneficiaries("cmsID")
+				_, err := serv.getBeneficiaries("cmsID", FileTypeDefault)
 				return err
 			},
 		},
@@ -89,15 +162,15 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			lookbackDays := int(8)
 			sp := suppressionParameters{true, lookbackDays}
 			repository := &MockRepository{}
-			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher)).Return(tt.cclfFileOld, nil)
+			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, FileTypeDefault).Return(tt.cclfFileNew, nil)
+			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), FileTypeDefault).Return(tt.cclfFileOld, nil)
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return([]string{"1", "2", "3"}, nil)
 			}
 
 			var suppressedMBIs []string
 			repository.On("GetCCLFBeneficiaries", tt.cclfFileNew.ID, suppressedMBIs).Return([]*CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
-			serviceInstance := &service{repository: repository, sp: sp, cutoffDuration: 1 * time.Hour}
+			serviceInstance := &service{repository: repository, sp: sp, stdCutoffDuration: 1 * time.Hour}
 
 			err := tt.funcUnderTest(serviceInstance)
 			assert.NoError(t, err)
@@ -198,8 +271,9 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 					// Make sure we're close enough.
 					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
 				}),
-				time.Time{}).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete, time.Time{}, since).Return(tt.cclfFileOld, nil)
+				time.Time{},
+				FileTypeDefault).Return(tt.cclfFileNew, nil)
+			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault).Return(tt.cclfFileOld, nil)
 
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
@@ -210,8 +284,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			}
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
 
-			serviceInstance := newService(repository, 1*time.Hour, lookbackDays)
-			newBenes, oldBenes, err := serviceInstance.GetNewAndExistingBeneficiaries("cmsID", since)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff).(*service)
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries("cmsID", since)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -234,26 +308,34 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 
 func (s *ServiceTestSuite) TestGetBeneficiaries() {
 	tests := []struct {
-		name string
-
-		cclfFile *CCLFFile
-
+		name        string
+		fileType    CCLFFileType
+		cclfFile    *CCLFFile
 		expectedErr error
 	}{
 		{
 			"BenesReturned",
+			FileTypeDefault,
 			getCCLFFile(1),
 			nil,
 		},
 		{
 			"NoCCLFFileFound",
+			FileTypeDefault,
 			nil,
 			fmt.Errorf("no CCLF8 file found for cmsID"),
 		},
 		{
 			"NoBenesFound",
+			FileTypeDefault,
 			getCCLFFile(2),
 			fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID"),
+		},
+		{
+			"BenesReturnedRunout",
+			FileTypeRunout,
+			getCCLFFile(3),
+			nil,
 		},
 	}
 
@@ -282,9 +364,16 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				mock.MatchedBy(func(t time.Time) bool {
 					// Since we're using time.Now() within the service call, we can't compare directly.
 					// Make sure we're close enough.
-					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
+					switch tt.fileType {
+					case FileTypeDefault:
+						return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
+					case FileTypeRunout:
+						return time.Now().Add(-1*120*24*time.Hour).Sub(t) < time.Second
+					default:
+						return false // We do not understand this fileType
+					}
 				}),
-				time.Time{}).Return(tt.cclfFile, nil)
+				time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
 
 			suppressedMBI := "suppressedMBI"
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
@@ -292,8 +381,8 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				repository.On("GetCCLFBeneficiaries", tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
 
-			serviceInstance := newService(repository, 1*time.Hour, lookbackDays)
-			benes, err := serviceInstance.GetBeneficiaries("cmsID")
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff).(*service)
+			benes, err := serviceInstance.getBeneficiaries("cmsID", tt.fileType)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -305,6 +394,131 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 
 			for _, bene := range benes {
 				assert.True(t, mbis[bene.MBI], "MBI %s should be found in MBI map %v", bene.MBI, mbis)
+			}
+		})
+	}
+}
+
+func (s *ServiceTestSuite) TestGetQueJobs() {
+
+	defaultACOID, priorityACOID := "SOME_ACO_ID", "PRIORITY_ACO_ID"
+	os.Setenv("PRIORITY_ACO_IDS", priorityACOID)
+
+	benes1, benes2 := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20)
+	allBenes := [][]*CCLFBeneficiary{benes1, benes2}
+	for idx, b := range allBenes {
+		for i := 0; i < len(b); i++ {
+			id := uint(idx*10000 + i + 1)
+			b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
+		}
+	}
+	benes1MBI := make([]string, 0, len(benes1))
+	benes1ID := make(map[string]struct{})
+	for _, bene := range benes1 {
+		benes1MBI = append(benes1MBI, bene.MBI)
+		benes1ID[strconv.FormatUint(uint64(bene.ID), 10)] = struct{}{}
+	}
+
+	since := time.Now()
+	serviceDate := time.Date(since.Year()-1, 12, 31, 23, 59, 59, 999999, time.UTC)
+
+	type test struct {
+		name           string
+		acoID          string
+		reqType        RequestType
+		expSince       time.Time
+		expServiceDate time.Time
+		expBenes       []*CCLFBeneficiary
+		resourceTypes  []string
+	}
+
+	baseTests := []test{
+		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
+		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, time.Time{}, benes1, nil},
+		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil},
+		{"RunoutRequest", defaultACOID, Runout, time.Time{}, serviceDate, benes1, nil},
+		{"RunoutRequest with Since", defaultACOID, Runout, since, serviceDate, benes1, nil},
+		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
+	}
+
+	// Add all combinations of resource types
+	var tests []test
+	for _, resourceTypes := range [][]string{{"ExplanationOfBenefit"}, {"Patient"}, {"Coverage"},
+		{"ExplanationOfBenefit", "Coverage"}, {"ExplanationOfBenefit", "Patient"}, {"Patient", "Coverage"},
+		{"ExplanationOfBenefit", "Patient", "Coverage"}} {
+		for _, baseTest := range baseTests {
+			baseTest.resourceTypes = resourceTypes
+			baseTest.name = fmt.Sprintf("%s-%s", baseTest.name, strings.Join(resourceTypes, ","))
+			tests = append(tests, baseTest)
+		}
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			repository := &MockRepository{}
+			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+			repository.On("GetSuppressedMBIs", mock.Anything).Return(nil, nil)
+			repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(tt.expBenes, nil)
+			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
+			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
+			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff)
+			queJobs, err := serviceInstance.GetQueJobs(tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
+			assert.NoError(t, err)
+			// map tuple of resourceType:beneID
+			benesInJob := make(map[string]map[string]struct{})
+			for _, qj := range queJobs {
+				var args JobEnqueueArgs
+				assert.NoError(t, json.Unmarshal(qj.Args, &args))
+				assert.Equal(t, tt.expServiceDate, args.ServiceDate)
+
+				subMap := benesInJob[args.ResourceType]
+				if subMap == nil {
+					subMap = make(map[string]struct{})
+					benesInJob[args.ResourceType] = subMap
+				}
+
+				// Need to see if the bene is considered "new" or not. If the bene
+				// is new, we should not provide a since parameter (need full history)
+				var expectedTime time.Time
+				if !tt.expSince.IsZero() {
+					var hasNewBene bool
+					for _, beneID := range args.BeneficiaryIDs {
+						if _, ok := benes1ID[beneID]; !ok {
+							hasNewBene = true
+							break
+						}
+					}
+					if !hasNewBene {
+						expectedTime = tt.expSince
+					}
+				}
+				if expectedTime.IsZero() {
+					assert.Empty(t, args.Since)
+				} else {
+					assert.Equal(t, fmt.Sprintf("gt%s", expectedTime.Format(time.RFC3339Nano)), args.Since)
+				}
+
+				expectedPriority := int16(100)
+				if isPriorityACO(tt.acoID) {
+					expectedPriority = 10
+				} else if args.ResourceType == "Patient" || args.ResourceType == "Coverage" {
+					expectedPriority = 20
+				} else if len(args.Since) > 0 || tt.reqType == RetrieveNewBeneHistData {
+					expectedPriority = 30
+				}
+				assert.Equal(t, expectedPriority, qj.Priority)
+
+				for _, beneID := range args.BeneficiaryIDs {
+					subMap[beneID] = struct{}{}
+				}
+			}
+
+			for _, resourceType := range tt.resourceTypes {
+				subMap := benesInJob[resourceType]
+				assert.NotNil(t, subMap)
+				for _, bene := range tt.expBenes {
+					assert.Contains(t, subMap, strconv.FormatUint(uint64(bene.ID), 10))
+				}
 			}
 		})
 	}
