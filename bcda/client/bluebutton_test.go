@@ -80,12 +80,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_CERT_FILE")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig())
+	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient(client.NewConfig())
+	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -97,12 +97,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig())
+	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
 	os.Setenv("BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient(client.NewConfig())
+	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 }
@@ -114,12 +114,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Unsetenv("BB_CLIENT_KEY_FILE")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig())
+	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient(client.NewConfig())
+	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
@@ -131,12 +131,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
 	assert := assert.New(s.T())
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig())
+	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
 	os.Setenv("BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient(client.NewConfig())
+	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 }
@@ -153,12 +153,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 
 	os.Unsetenv("BB_CLIENT_CA_FILE")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig())
+	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "foo.pem")
-	bbc, err = client.NewBlueButtonClient(client.NewConfig())
+	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
 }
@@ -175,12 +175,12 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
 	os.Unsetenv("BB_CHECK_CERT")
-	bbc, err := client.NewBlueButtonClient(client.NewConfig())
+	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
 	os.Setenv("BB_CLIENT_CA_FILE", "../static/badPublic.pem")
-	bbc, err = client.NewBlueButtonClient(client.NewConfig())
+	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -497,15 +498,32 @@ func (s *CLITestSuite) TestRevokeToken() {
 }
 
 func (s *CLITestSuite) TestStartAPI() {
-	// Negative case
-	originalQueueDBURL := os.Getenv("QUEUE_DATABASE_URL")
-	os.Setenv("QUEUE_DATABASE_URL", "http://bad url.com/")
-	args := []string{"bcda", "start-api"}
-	err := s.testApp.Run(args)
-	assert.NotNil(s.T(), err)
-	os.Setenv("QUEUE_DATABASE_URL", originalQueueDBURL)
+	httpsPort, httpPort := strconv.Itoa(getRandomPort(s.T())), strconv.Itoa(getRandomPort(s.T()))
+	args := []string{"bcda", "start-api", "--https-port", httpsPort, "--http-port", httpPort}
+	go func() {
+		if err := s.testApp.Run(args); err != nil {
+			s.FailNow(err.Error())
+		}
+		s.Fail("start-api command should not return")
+	}()
 
-	// We cannot test the positive case because we don't want to start the HTTP Server in unit test environment
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			s.FailNow("Failed to get health response in 10 seconds")
+		default:
+			// Still use http because our testing environment has HTTP_ONLY=true
+			resp, err := http.Get(fmt.Sprintf("http://localhost:%s/_health", httpsPort))
+			// Allow transient failures
+			if err != nil {
+				log.Warnf("Error occurred when making request. Retrying. %s", err.Error())
+				continue
+			}
+			s.Equal(http.StatusOK, resp.StatusCode)
+			return
+		}
+	}
 }
 
 func (s *CLITestSuite) TestCreateGroup() {
@@ -777,4 +795,18 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 	assert.Contains(buf.String(), "Files imported: 0")
 	assert.Contains(buf.String(), "Files failed: 1")
 	assert.Contains(buf.String(), "Files skipped: 0")
+}
+
+func getRandomPort(t *testing.T) int {
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer func() {
+		if err := listener.Close(); err != nil {
+			t.Fatal(err.Error())
+		}
+	}()
+
+	return listener.Addr().(*net.TCPAddr).Port
 }

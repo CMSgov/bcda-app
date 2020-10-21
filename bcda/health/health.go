@@ -30,7 +30,7 @@ func IsDatabaseOK() bool {
 }
 
 func IsBlueButtonOK() bool {
-	bbc, err := client.NewBlueButtonClient(client.NewConfig())
+	bbc, err := client.NewBlueButtonClient(client.NewConfig("/v1/fhir"))
 	if err != nil {
 		log.Error("Health check: Blue Button client error: ", err.Error())
 		return false

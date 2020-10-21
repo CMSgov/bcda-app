@@ -338,4 +338,5 @@ type JobEnqueueArgs struct {
 	Since           string
 	TransactionTime time.Time
 	ServiceDate     time.Time
+	BBBasePath      string
 }

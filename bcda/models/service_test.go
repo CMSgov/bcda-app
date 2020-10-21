@@ -284,7 +284,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			}
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff).(*service)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, "").(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries("cmsID", since)
 
 			if tt.expectedErr != nil {
@@ -381,7 +381,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				repository.On("GetCCLFBeneficiaries", tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff).(*service)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, "").(*service)
 			benes, err := serviceInstance.getBeneficiaries("cmsID", tt.fileType)
 
 			if tt.expectedErr != nil {
@@ -461,7 +461,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
-			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff)
+			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, "")
 			queJobs, err := serviceInstance.GetQueJobs(tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID

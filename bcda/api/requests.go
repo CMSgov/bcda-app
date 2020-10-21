@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -29,12 +30,34 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
-var (
+type Handler struct {
 	qc  *que.Client
 	svc models.Service
-)
 
-func init() {
+	supportedResources map[string]struct{}
+
+	bbBasePath string
+}
+
+func NewHandler(resources []string, basePath string) *Handler {
+	h := &Handler{}
+
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	h.qc = que.NewClient(pgxpool)
+
 	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
 
 	// Allow runout requests to be up to 4 months after runout data was ingested
@@ -44,20 +67,29 @@ func init() {
 	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
 	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
-	svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60), runoutCutoffDuration)
+	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60), runoutCutoffDuration, basePath)
+
+	h.supportedResources = make(map[string]struct{}, len(resources))
+	for _, r := range resources {
+		h.supportedResources[r] = struct{}{}
+	}
+
+	h.bbBasePath = basePath
+
+	return h
 }
 
-func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	resourceTypes, err := ValidateRequest(r)
 	if err != nil {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
 	reqType := models.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(resourceTypes, w, r, reqType)
 }
 
-func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	const (
 		groupAll    = "all"
 		groupRunout = "runout"
@@ -90,10 +122,10 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(resourceTypes, w, r, reqType)
 }
 
-func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
+func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
 	var (
 		ad  auth.AuthData
 		err error
@@ -105,15 +137,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if qc == nil {
-		err = errors.New("queue client not initialized")
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	bb, err := client.NewBlueButtonClient(client.NewConfig())
+	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
@@ -215,7 +239,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 
 	var queJobs []*que.Job
-	queJobs, err = svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, since, reqType)
+	queJobs, err = h.svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, since, reqType)
 	if err != nil {
 		log.Error(err)
 		respCode := http.StatusInternalServerError
@@ -240,7 +264,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
 	for _, j := range queJobs {
-		if err = qc.Enqueue(j); err != nil {
+		if err = h.qc.Enqueue(j); err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -356,10 +380,6 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 
 func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
-}
-
-func SetQC(client *que.Client) {
-	qc = client
 }
 
 // swagger:model fileItem

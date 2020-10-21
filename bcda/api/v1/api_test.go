@@ -118,13 +118,6 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 	bulkEOBRequestMissingTokenHelper("Group/all", s)
 }
 
-func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
-	bulkEOBRequestNoQueueHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestNoQueueHelper("Group/all", s)
-}
-
 func (s *APITestSuite) TestBulkPatientRequest() {
 	since := "2020-02-13T08:00:00.000-05:00"
 	bulkPatientRequestHelper("Patient", "", s)
@@ -340,24 +333,6 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
-
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
@@ -375,24 +350,6 @@ func bulkEOBRequestInvalidSinceFormatHelper(endpoint, since string, s *APITestSu
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -423,24 +380,6 @@ func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) 
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
-
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
@@ -467,42 +406,6 @@ func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
 	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Code)
 }
 
-func bulkEOBRequestNoQueueHelper(endpoint string, s *APITestSuite) {
-	// qc := nil
-	api.SetQC(nil)
-
-	acoID := acoUnderTest
-	jobCount, err := s.getJobCount(acoID)
-	assert.NoError(s.T(), err)
-
-	// Since we should've failed somewhere in the bulk request, we should not have
-	// have a job count change.
-	defer s.verifyJobCount(acoID, jobCount)
-
-	requestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	var respOO fhirmodels.OperationOutcome
-	err = json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.Processing, respOO.Issue[0].Details.Coding[0].Code)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-}
-
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 	acoID := acoUnderTest
 
@@ -515,24 +418,6 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -549,24 +434,6 @@ func bulkPatientRequestInvalidSinceFormatHelper(endpoint, since string, s *APITe
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -595,25 +462,7 @@ func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *
 
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
-
+	
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
@@ -629,24 +478,6 @@ func bulkCoverageRequestInvalidSinceFormatHelper(endpoint, since string, s *APIT
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -673,24 +504,6 @@ func bulkCoverageRequestInvalidSinceDateHelper(endpoint, since string, s *APITes
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
-
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
 
@@ -715,24 +528,6 @@ func bulkCoverageRequestInvalidOutputHelper(endpoint, outputFormat string, s *AP
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer pgxpool.Close()
-
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
 
 	handler := http.HandlerFunc(handlerFunc)
 	handler.ServeHTTP(s.rr, req)
@@ -1645,8 +1440,6 @@ func makeConnPool(s *APITestSuite) *pgx.ConnPool {
 	if err != nil {
 		s.T().Error(err)
 	}
-	qc := que.NewClient(pgxpool)
-	api.SetQC(qc)
 
 	return pgxpool
 }

@@ -8,15 +8,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/go-chi/chi"
 	"github.com/jinzhu/gorm"
@@ -32,7 +31,6 @@ type RequestsTestSuite struct {
 	suite.Suite
 
 	runoutEnabledEnvVar string
-	origSvc             models.Service
 
 	db *gorm.DB
 }
@@ -43,28 +41,10 @@ func TestRequestsTestSuite(t *testing.T) {
 
 func (s *RequestsTestSuite) SetupSuite() {
 	s.db = database.GetGORMDbConnection()
-
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	qc := que.NewClient(pgxpool)
-	SetQC(qc)
 }
 
 func (s *RequestsTestSuite) SetupTest() {
 	s.runoutEnabledEnvVar = os.Getenv("BCDA_ENABLE_RUNOUT")
-	s.origSvc = svc
 }
 
 func (s *RequestsTestSuite) TearDownSuite() {
@@ -73,7 +53,6 @@ func (s *RequestsTestSuite) TearDownSuite() {
 
 func (s *RequestsTestSuite) TearDownTest() {
 	os.Setenv("BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
-	svc = s.origSvc
 }
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
@@ -99,11 +78,12 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			}
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
-			svc = mockSvc
+			h := NewHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir")
+			h.svc = mockSvc
 
 			req := s.genGroupRequest("runout")
 			w := httptest.NewRecorder()
-			BulkGroupRequest(w, req)
+			h.BulkGroupRequest(w, req)
 
 			resp := w.Result()
 			body, err := ioutil.ReadAll(resp.Body)
@@ -123,7 +103,8 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	os.Setenv("BCDA_ENABLE_RUNOUT", "false")
 	req := s.genGroupRequest("runout")
 	w := httptest.NewRecorder()
-	BulkGroupRequest(w, req)
+	h := &Handler{}
+	h.BulkGroupRequest(w, req)
 
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
