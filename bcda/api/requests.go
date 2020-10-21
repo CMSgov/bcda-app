@@ -273,6 +273,68 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 }
 
+func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
+
+	// validate optional "_type" parameter
+	var resourceTypes []string
+	params, ok := r.URL.Query()["_type"]
+	if ok {
+		resourceMap := make(map[string]bool)
+		params = strings.Split(params[0], ",")
+		for _, p := range params {
+			if !resourceMap[p] {
+				resourceMap[p] = true
+				resourceTypes = append(resourceTypes, p)
+			} else {
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
+				return nil, oo
+			}
+		}
+	} else {
+		// resource types not supplied in request; default to applying all resource types.
+		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+	}
+
+	for _, resourceType := range resourceTypes {
+		if _, ok := h.supportedResources[resourceType]; !ok {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr,
+				fmt.Sprintf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources))
+			return nil, oo
+		}
+	}
+
+	// validate optional "_since" parameter
+	params, ok = r.URL.Query()["_since"]
+	if ok {
+		sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
+		if err != nil {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
+			return nil, oo
+		} else if sinceDate.After(time.Now()) {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
+			return nil, oo
+		}
+	}
+
+	//validate "_outputFormat" parameter
+	params, ok = r.URL.Query()["_outputFormat"]
+	if ok {
+		if params[0] != "ndjson" && params[0] != "application/fhir+ndjson" && params[0] != "application/ndjson" {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson")
+			return nil, oo
+		}
+	}
+
+	// we do not support "_elements" parameter
+	_, ok = r.URL.Query()["_elements"]
+	if ok {
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
+		return nil, oo
+	}
+
+	return resourceTypes, nil
+}
+
 func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
 	var unworkedTypes []string
 
@@ -308,68 +370,6 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 	} else {
 		return unworkedTypes, true
 	}
-}
-
-func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
-
-	// validate optional "_type" parameter
-	var resourceTypes []string
-	params, ok := r.URL.Query()["_type"]
-	if ok {
-		resourceMap := make(map[string]bool)
-		params = strings.Split(params[0], ",")
-		for _, p := range params {
-			if !resourceMap[p] {
-				resourceMap[p] = true
-				resourceTypes = append(resourceTypes, p)
-			} else {
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
-				return nil, oo
-			}
-		}
-	} else {
-		// resource types not supplied in request; default to applying all resource types.
-		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
-	}
-
-	for _, resourceType := range resourceTypes {
-		if _, ok := h.supportedResources[resourceType]; !ok {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr,
-				fmt.Sprintf("Invalid resource type. Supported types %s.", h.supportedResources))
-			return nil, oo
-		}
-	}
-
-	// validate optional "_since" parameter
-	params, ok = r.URL.Query()["_since"]
-	if ok {
-		sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
-		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
-			return nil, oo
-		} else if sinceDate.After(time.Now()) {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
-			return nil, oo
-		}
-	}
-
-	//validate "_outputFormat" parameter
-	params, ok = r.URL.Query()["_outputFormat"]
-	if ok {
-		if params[0] != "ndjson" && params[0] != "application/fhir+ndjson" && params[0] != "application/ndjson" {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson")
-			return nil, oo
-		}
-	}
-
-	// we do not support "_elements" parameter
-	_, ok = r.URL.Query()["_elements"]
-	if ok {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
-		return nil, oo
-	}
-
-	return resourceTypes, nil
 }
 
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {

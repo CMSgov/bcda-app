@@ -183,17 +183,15 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 		s.T().Run(fmt.Sprintf("%s-group", tt.name), func(t *testing.T) {
 			rr := httptest.NewRecorder()
 			h.BulkGroupRequest(rr, req)
-			body, err := ioutil.ReadAll(rr.Body)
-			assert.NoError(t, err)
-			assert.Contains(t, string(body), tt.errMsg)
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+			assert.Contains(t, rr.Body.String(), tt.errMsg)
 		})
 
 		s.T().Run(fmt.Sprintf("%s-patient", tt.name), func(t *testing.T) {
 			rr := httptest.NewRecorder()
 			h.BulkGroupRequest(rr, req)
-			body, err := ioutil.ReadAll(rr.Body)
-			assert.NoError(t, err)
-			assert.Contains(t, string(body), tt.errMsg)
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+			assert.Contains(t, rr.Body.String(), tt.errMsg)
 		})
 	}
 }
