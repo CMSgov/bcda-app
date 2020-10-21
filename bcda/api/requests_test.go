@@ -2,10 +2,13 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -112,6 +115,87 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	s.NoError(err)
 	s.Equal(http.StatusBadRequest, resp.StatusCode)
 	s.Contains(string(body), "Invalid group ID")
+}
+
+func (s *RequestsTestSuite) TestInvalidRequests() {
+	supportedTypes := []string{"ExplanationOfBenefit", "Coverage", "Patient"}
+	h := NewHandler(supportedTypes, "/v1/fhir")
+
+	type reqParams struct {
+		types        []string
+		since        string
+		outputFormat string
+	}
+	tests := []struct {
+		name             string
+		reqParams        reqParams
+		extraQueryParams map[string]string
+		errMsg           string
+	}{
+		{"_elements query parameter", reqParams{}, map[string]string{"_elements": "blah,blah,blah"}, "Invalid parameter: this server does not support the _elements parameter."},
+
+		{"Unsupported type", reqParams{types: []string{"Practitioner"}}, nil, "Invalid resource type"},
+		{"Duplicate types", reqParams{types: []string{"Patient", "Patient"}}, nil, "Repeated resource type"},
+
+		{"Invalid since", reqParams{since: "01-01-2020"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (non-date)", reqParams{since: "invalidDate"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (in the future)", reqParams{since: "2100-01-01T00:00:00Z"}, nil, "Invalid date format supplied in _since parameter. Date must be a date that has already passed"},
+		{"Invalid since (escape character format)", reqParams{since: "2020-03-01T00%3A%2000%3A00.000-00%3A00"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (missing timezone)", reqParams{since: "2020-02-13T08:00:00.000"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (invalid time)", reqParams{since: "2020-02-13T33:00:00.000-05:00"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (invalid date)", reqParams{since: "2020-20-13T08:00:00.000-05:00"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (no time)", reqParams{since: "2020-03-01"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (invalid date no time)", reqParams{since: "2020-04-0"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (junk after time)", reqParams{since: "2020-02-13T08:00:00.000-05:00dfghj"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+		{"Invalid since (junk before date)", reqParams{since: "erty2020-02-13T08:00:00.000-05:00"}, nil, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format."},
+
+		{"Invalid output format (text/html)", reqParams{outputFormat: "text/html"}, nil, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson"},
+		{"Invalid output format (application/xml)", reqParams{outputFormat: "application/xml"}, nil, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson"},
+		{"Invalid output format (x-custom)", reqParams{outputFormat: "x-custom"}, nil, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson"},
+	}
+
+	for _, tt := range tests {
+		u, err := url.Parse("/api/v1")
+		if err != nil {
+			s.Failf("Failed to parse URL %s", err.Error())
+		}
+
+		q := u.Query()
+		if len(tt.reqParams.types) > 0 {
+			q.Set("_type", strings.Join(tt.reqParams.types, ","))
+		}
+		if len(tt.reqParams.since) > 0 {
+			q.Set("_since", tt.reqParams.since)
+		}
+		if len(tt.reqParams.outputFormat) > 0 {
+			q.Set("_outputFormat", tt.reqParams.outputFormat)
+		}
+		for key, value := range tt.extraQueryParams {
+			q.Set(key, value)
+		}
+
+		u.RawQuery = q.Encode()
+		req := httptest.NewRequest("GET", u.String(), nil)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("groupId", "all")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		s.T().Run(fmt.Sprintf("%s-group", tt.name), func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			h.BulkGroupRequest(rr, req)
+			body, err := ioutil.ReadAll(rr.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(body), tt.errMsg)
+		})
+
+		s.T().Run(fmt.Sprintf("%s-patient", tt.name), func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			h.BulkGroupRequest(rr, req)
+			body, err := ioutil.ReadAll(rr.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(body), tt.errMsg)
+		})
+	}
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string) *http.Request {

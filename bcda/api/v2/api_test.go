@@ -70,3 +70,5 @@ func TestMetadataResponse(t *testing.T) {
 	assert.Equal(t, ts.URL, subExtension["valueUri"])
 
 }
+
+f

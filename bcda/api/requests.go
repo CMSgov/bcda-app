@@ -80,7 +80,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 }
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := ValidateRequest(r)
+	resourceTypes, err := h.validateRequest(r)
 	if err != nil {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
@@ -116,7 +116,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resourceTypes, err := ValidateRequest(r)
+	resourceTypes, err := h.validateRequest(r)
 	if err != nil {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
@@ -310,7 +310,7 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 	}
 }
 
-func ValidateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
+func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 
 	// validate optional "_type" parameter
 	var resourceTypes []string
@@ -319,22 +319,25 @@ func ValidateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 		resourceMap := make(map[string]bool)
 		params = strings.Split(params[0], ",")
 		for _, p := range params {
-			if p != "ExplanationOfBenefit" && p != "Patient" && p != "Coverage" {
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid resource type")
-				return nil, oo
+			if !resourceMap[p] {
+				resourceMap[p] = true
+				resourceTypes = append(resourceTypes, p)
 			} else {
-				if !resourceMap[p] {
-					resourceMap[p] = true
-					resourceTypes = append(resourceTypes, p)
-				} else {
-					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
-					return nil, oo
-				}
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
+				return nil, oo
 			}
 		}
 	} else {
 		// resource types not supplied in request; default to applying all resource types.
 		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+	}
+
+	for _, resourceType := range resourceTypes {
+		if _, ok := h.supportedResources[resourceType]; !ok {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr,
+				fmt.Sprintf("Invalid resource type. Supported types %s.", h.supportedResources))
+			return nil, oo
+		}
 	}
 
 	// validate optional "_since" parameter
