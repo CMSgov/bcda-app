@@ -58,7 +58,7 @@ func createWorkerDirs() {
 }
 
 func processJob(j *que.Job) error {
-	// TODO (PUT_JIRA_TICKET_HERE) -- once we have jobs
+	// TODO (BCDA-3895) -- once we have jobs
 	// populated with the basePath, we do not need this fallback.
 	const blueButtonBasePath = "/v1/fhir"
 
@@ -114,7 +114,7 @@ func processJob(j *que.Job) error {
 		return errors.Wrap(err, "could not update job status in database")
 	}
 
-	// TODO (PUT_JIRA_TICKET_HERE) - Remove this fallback once we can guarantee
+	// TODO (BCDA-3895) - Remove this fallback once we can guarantee
 	// that all jobs are created with the expected path
 	basePath := jobArgs.BBBasePath
 	if len(basePath) == 0 {

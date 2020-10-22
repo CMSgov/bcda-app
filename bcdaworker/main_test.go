@@ -377,6 +377,7 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	defer database.Close(db)
 
 	// Verifies that we can handle an empty and specified basePath
+	// TODO (BCDA-3895) - we should confirm that the job fails when we supply an empty basePath
 	for _, basePath := range []string{"", "/v1/fhir"} {
 		j := models.Job{
 			ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
