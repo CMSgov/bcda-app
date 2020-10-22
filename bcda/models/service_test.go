@@ -453,6 +453,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		}
 	}
 
+	basePath := "/v2/fhir"
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			repository := &MockRepository{}
@@ -461,7 +462,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
-			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, "")
+			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, basePath)
 			queJobs, err := serviceInstance.GetQueJobs(tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
@@ -511,6 +512,8 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				for _, beneID := range args.BeneficiaryIDs {
 					subMap[beneID] = struct{}{}
 				}
+
+				assert.Equal(t, basePath, args.BBBasePath)
 			}
 
 			for _, resourceType := range tt.resourceTypes {

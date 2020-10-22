@@ -2390,7 +2390,7 @@
 							"",
 							"",
 							"pm.test(\"Issue details text is Invalid Resource Type\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid resource type\")",
+							"    pm.expect(respJson.issue[0].details.text).to.include(\"Invalid resource type\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -2470,7 +2470,7 @@
 							"});",
 							"",
 							"pm.test(\"Issue details text is Invalid Resource Type\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Invalid resource type\")",
+							"    pm.expect(respJson.issue[0].details.text).to.include(\"Invalid resource type\")",
 							"});"
 						],
 						"type": "text/javascript"
