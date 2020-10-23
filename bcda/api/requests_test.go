@@ -133,6 +133,35 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	s.Contains(string(body), "Invalid group ID")
 }
 
+func (s *RequestsTestSuite) TestValidateRequest() {
+	tests := []struct {
+		name   string
+		url    string
+		errMsg string
+	}{
+		{"Valid URL", "/api/v1/Patient/$export?_type=ExplanationOfBenefit&_since=2020-09-13T08:00:00.000-05:00", ""},
+		{"Invalid URL", "/api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00",
+			"Invalid parameter: query parameters cannot start with ?"},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", tt.url, nil)
+			assert.NoError(t, err)
+			assert.NotNil(t, req)
+			types, oo := ValidateRequest(req)
+			if len(tt.errMsg) == 0 {
+				assert.Contains(t, types, "ExplanationOfBenefit")
+				assert.Nil(t, oo)
+			} else {
+				assert.Nil(t, types)
+				assert.NotNil(t, oo)
+				assert.Contains(t, oo.Issue[0].Details.Text, tt.errMsg)
+			}
+		})
+	}
+}
+
 func (s *RequestsTestSuite) genGroupRequest(groupID string) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov", nil)
 
