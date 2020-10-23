@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -196,8 +197,36 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 	}
 }
 
+func (s *RequestsTestSuite) TestCheck429() {
+	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: "In Progress", Model: gorm.Model{CreatedAt: time.Now()}}
+	tests := []struct {
+		name        string
+		job         models.Job
+		version     string
+		passesCheck bool
+	}{
+		{"Same version", validJob, "v1", false},
+		{"Different version", validJob, "v2", true},
+		{"Invalid job (bad URL)", models.Job{RequestURL: string([]byte{0x7f})}, "", false},
+		{"Invalid job (no version)", models.Job{RequestURL: "/api/Group/$export"}, "", false},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			res, err := check429([]models.Job{tt.job}, []string{"Patient"}, tt.version)
+			if tt.passesCheck {
+				assert.NotNil(t, res)
+				assert.NoError(t, err)
+			} else {
+				assert.Nil(t, res)
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
 func (s *RequestsTestSuite) genGroupRequest(groupID string) *http.Request {
-	req := httptest.NewRequest("GET", "http://bcda.cms.gov", nil)
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("groupId", groupID)

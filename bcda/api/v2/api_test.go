@@ -141,7 +141,12 @@ func (s *APITestSuite) TestResourceTypes() {
 			s.T().Run(fmt.Sprintf("%s-%d", tt.name, idx), func(t *testing.T) {
 				rr := httptest.NewRecorder()
 
-				u, err := url.Parse("/api/v2")
+				ep := "Group"
+				if idx == 1 {
+					ep = "Patient"
+				}
+
+				u, err := url.Parse(fmt.Sprintf("/api/v2/%s/$export", ep))
 				assert.NoError(t, err)
 
 				q := u.Query()

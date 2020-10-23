@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	"github.com/go-chi/chi"
@@ -127,9 +128,16 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
 	var (
-		ad  auth.AuthData
-		err error
+		ad      auth.AuthData
+		version string
+		err     error
 	)
+
+	if version, err = getVersion(r.URL); err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+	}
 
 	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.TokenErr, "")
@@ -156,9 +164,16 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") && (!db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound()) {
-		if types, ok := check429(jobs, resourceTypes, w); !ok {
-			w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-			w.WriteHeader(http.StatusTooManyRequests)
+		if types, err := check429(jobs, resourceTypes, version); err != nil {
+			if _, ok := err.(duplicateTypeError); ok {
+				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+				w.WriteHeader(http.StatusTooManyRequests)
+			} else {
+				log.Error(err)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			}
+
 			return
 		} else {
 			resourceTypes = types
@@ -335,7 +350,15 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 	return resourceTypes, nil
 }
 
-func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
+type duplicateTypeError struct{}
+
+func (e duplicateTypeError) Error() string {
+	return "Duplicate type found"
+}
+
+// check429 verifies that we do not have a duplicate resource type request.
+// Returns the unworkedTypes (if any)
+func check429(jobs []models.Job, types []string, version string) ([]string, error) {
 	var unworkedTypes []string
 
 	for _, t := range types {
@@ -343,9 +366,16 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 		for _, job := range jobs {
 			req, err := url.Parse(job.RequestURL)
 			if err != nil {
-				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+				return nil, err
+			}
+			jobVersion, err := getVersion(req)
+			if err != nil {
+				return nil, err
+			}
+
+			// We allow different API versions to trigger jobs with the same resource type
+			if jobVersion != version {
+				continue
 			}
 
 			if requestedTypes, ok := req.Query()["_type"]; ok {
@@ -357,7 +387,7 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 			} else {
 				// check to see if the export all is still being worked
 				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-					return nil, false
+					return nil, duplicateTypeError{}
 				}
 			}
 		}
@@ -366,9 +396,9 @@ func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]strin
 		}
 	}
 	if len(unworkedTypes) == 0 {
-		return nil, false
+		return nil, duplicateTypeError{}
 	} else {
-		return unworkedTypes, true
+		return unworkedTypes, nil
 	}
 }
 
@@ -383,6 +413,15 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 
 func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+}
+
+func getVersion(url *url.URL) (string, error) {
+	re := regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
+	parts := re.FindStringSubmatch(url.Path)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("unexpected path provided %s", url.Path)
+	}
+	return parts[1], nil
 }
 
 // swagger:model fileItem
