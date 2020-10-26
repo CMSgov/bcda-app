@@ -205,8 +205,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	var since time.Time
 	// Decode the _since parameter (if it exists) so it can be persisted in job args
 	if params, ok := r.URL.Query()["_since"]; ok {
-		decodedSince, _ := url.QueryUnescape(params[0])
-		since, err = time.Parse(time.RFC3339Nano, decodedSince)
+		since, err = time.Parse(time.RFC3339Nano, params[0])
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
