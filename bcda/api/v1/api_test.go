@@ -126,17 +126,13 @@ func (s *APITestSuite) TestBulkEOBRequestNoQueue() {
 }
 
 func (s *APITestSuite) TestBulkPatientRequest() {
-	bulkPatientRequestHelper("Patient", "", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestHelper("Group/all", "", s)
-	s.TearDownTest()
-	s.SetupTest()
-	for _, since := range []string{"2020-02-13T08:00:00.000-05:00", "2020-02-13T08:00:00.000+05:00"} {
+	for _, since := range []string{"", "2020-02-13T08:00:00.000-05:00", "2020-02-13T08:00:00.000+05:00"} {
 		bulkPatientRequestHelper("Patient", since, s)
 		s.TearDownTest()
 		s.SetupTest()
 		bulkPatientRequestHelper("Group/all", since, s)
+		s.TearDownTest()
+		s.SetupTest()
 	}
 }
 
