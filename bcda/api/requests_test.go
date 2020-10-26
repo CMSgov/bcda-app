@@ -153,6 +153,7 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 		{"Invalid output format (text/html)", reqParams{outputFormat: "text/html"}, nil, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson"},
 		{"Invalid output format (application/xml)", reqParams{outputFormat: "application/xml"}, nil, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson"},
 		{"Invalid output format (x-custom)", reqParams{outputFormat: "x-custom"}, nil, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson"},
+		{"Invalid query parameter (extra ?)", reqParams{}, map[string]string{"?_since": "2020-09-13T08:00:00.000-05:00"}, "Invalid parameter: query parameters cannot start with ?"},
 	}
 
 	for _, tt := range tests {

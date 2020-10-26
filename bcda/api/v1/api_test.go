@@ -111,17 +111,14 @@ func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
 }
 
 func (s *APITestSuite) TestBulkPatientRequest() {
-	since := "2020-02-13T08:00:00.000-05:00"
-	bulkPatientRequestHelper("Patient", "", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestHelper("Group/all", "", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestHelper("Patient", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestHelper("Group/all", since, s)
+	for _, since := range []string{"", "2020-02-13T08:00:00.000-05:00", "2020-02-13T08:00:00.000+05:00"} {
+		bulkPatientRequestHelper("Patient", since, s)
+		s.TearDownTest()
+		s.SetupTest()
+		bulkPatientRequestHelper("Group/all", since, s)
+		s.TearDownTest()
+		s.SetupTest()
+	}
 }
 
 func (s *APITestSuite) TestBulkCoverageRequest() {

@@ -244,8 +244,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	var since time.Time
 	// Decode the _since parameter (if it exists) so it can be persisted in job args
 	if params, ok := r.URL.Query()["_since"]; ok {
-		decodedSince, _ := url.QueryUnescape(params[0])
-		since, err = time.Parse(time.RFC3339Nano, decodedSince)
+		since, err = time.Parse(time.RFC3339Nano, params[0])
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
@@ -345,6 +344,15 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 	if ok {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
 		return nil, oo
+	}
+
+	// Check and see if the user has a duplicated the query parameter symbol (?)
+	// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
+	for key := range r.URL.Query() {
+		if strings.HasPrefix(key, "?") {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
+			return nil, oo
+		}
 	}
 
 	return resourceTypes, nil
