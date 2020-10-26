@@ -342,6 +342,15 @@ func ValidateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 		return nil, oo
 	}
 
+	// Check and see if the user has a duplicated the query parameter symbol (?)
+	// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
+	for key := range r.URL.Query() {
+		if strings.HasPrefix(key, "?") {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
+			return nil, oo
+		}
+	}
+
 	return resourceTypes, nil
 }
 
