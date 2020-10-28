@@ -25,6 +25,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 )
 
+var h *api.Handler
+
+func init() {
+	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit"}, "/v1/fhir")
+}
+
 /*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
@@ -46,7 +52,7 @@ import (
 		500: errorResponse
 */
 func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	api.BulkPatientRequest(w, r)
+	h.BulkPatientRequest(w, r)
 }
 
 /*
@@ -70,7 +76,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	api.BulkGroupRequest(w, r)
+	h.BulkGroupRequest(w, r)
 }
 
 /*

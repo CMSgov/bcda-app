@@ -58,6 +58,10 @@ func createWorkerDirs() {
 }
 
 func processJob(j *que.Job) error {
+	// TODO (BCDA-3895) -- once we have jobs
+	// populated with the basePath, we do not need this fallback.
+	const blueButtonBasePath = "/v1/fhir"
+
 	m := monitoring.GetMonitor()
 	txn := m.Start("processJob", nil, nil)
 	ctx := newrelic.NewContext(context.Background(), txn)
@@ -110,7 +114,14 @@ func processJob(j *que.Job) error {
 		return errors.Wrap(err, "could not update job status in database")
 	}
 
-	bb, err := client.NewBlueButtonClient(client.NewConfig())
+	// TODO (BCDA-3895) - Remove this fallback once we can guarantee
+	// that all jobs are created with the expected path
+	basePath := jobArgs.BBBasePath
+	if len(basePath) == 0 {
+		basePath = blueButtonBasePath
+	}
+
+	bb, err := client.NewBlueButtonClient(client.NewConfig(basePath))
 	if err != nil {
 		err = errors.Wrap(err, "could not create Blue Button client")
 		log.Error(err)

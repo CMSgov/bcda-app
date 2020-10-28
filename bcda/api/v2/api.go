@@ -15,6 +15,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var h *api.Handler
+
+func init() {
+	// TODO (BCDA-3582) - Since v2 APIs are not available (as of 2020-10-21), we're still
+	// routing requests to the v1 BFD endpoints
+	h = api.NewHandler([]string{"Patient", "Coverage"}, "/v1/fhir")
+}
+
 /*
 	swagger:route GET /api/v2/Patient/$export bulkDataV2 BulkPatientRequest
 
@@ -36,7 +44,7 @@ import (
 		500: errorResponse
 */
 func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	api.BulkPatientRequest(w, r)
+	h.BulkPatientRequest(w, r)
 }
 
 /*
@@ -60,7 +68,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	api.BulkGroupRequest(w, r)
+	h.BulkGroupRequest(w, r)
 }
 
 /*

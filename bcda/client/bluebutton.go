@@ -33,18 +33,18 @@ import (
 
 var logger *logrus.Logger
 
-const blueButtonBasePath = "/v1/fhir"
-
 // BlueButtonConfig holds the configuration settings needed to create a BlueButtonClient
 // TODO (BCDA-3755): Move the other env vars used in NewBlueButtonClient to this struct
 type BlueButtonConfig struct {
-	BBServer string
+	BBServer   string
+	BBBasePath string
 }
 
 // NewConfig generates a new BlueButtonConfig using various environment variables.
-func NewConfig() BlueButtonConfig {
+func NewConfig(basePath string) BlueButtonConfig {
 	return BlueButtonConfig{
-		BBServer: os.Getenv("BB_SERVER_LOCATION"),
+		BBServer:   os.Getenv("BB_SERVER_LOCATION"),
+		BBBasePath: basePath,
 	}
 }
 
@@ -61,7 +61,8 @@ type BlueButtonClient struct {
 	maxTries      uint64
 	retryInterval time.Duration
 
-	bbServer string
+	bbServer   string
+	bbBasePath string
 }
 
 // Ensure BlueButtonClient satisfies the interface
@@ -129,7 +130,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	client := fhir.NewClient(httpClient, pageSize)
 	maxTries := uint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
 	retryInterval := time.Duration(utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)) * time.Millisecond
-	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer}, nil
+	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer, config.BBBasePath}, nil
 }
 
 type BeneDataFunc func(string, string, string, string, time.Time) (*models.Bundle, error)
@@ -138,7 +139,7 @@ func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, t
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData(blueButtonBasePath+"/Patient/", params, jobID, cmsID)
+	return bbc.getBundleData("/Patient/", params, jobID, cmsID)
 }
 
 func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
@@ -146,14 +147,14 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string)
 
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
 	params.Set("identifier", fmt.Sprintf("https://bluebutton.cms.gov/resources/identifier/%s|%v", "mbi-hash", hashedIdentifier))
-	return bbc.getRawData(blueButtonBasePath+"/Patient/", params, "", "")
+	return bbc.getRawData("/Patient/", params, "", "")
 }
 
 func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData(blueButtonBasePath+"/Coverage/", params, jobID, cmsID)
+	return bbc.getBundleData("/Coverage/", params, jobID, cmsID)
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
@@ -161,11 +162,11 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData(blueButtonBasePath+"/ExplanationOfBenefit/", params, jobID, cmsID)
+	return bbc.getBundleData("/ExplanationOfBenefit/", params, jobID, cmsID)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
-	return bbc.getRawData(blueButtonBasePath+"/metadata/", GetDefaultParams(), "", "")
+	return bbc.getRawData("/metadata/", GetDefaultParams(), "", "")
 }
 
 func (bbc *BlueButtonClient) getBundleData(path string, params url.Values, jobID, cmsID string) (*models.Bundle, error) {
@@ -272,7 +273,7 @@ func (bbc *BlueButtonClient) getRawData(path string, params url.Values, jobID, c
 }
 
 func (bbc *BlueButtonClient) getRequest(path string, params url.Values) (*http.Request, error) {
-	req, err := http.NewRequest("GET", bbc.bbServer+path, nil)
+	req, err := http.NewRequest("GET", bbc.bbServer+bbc.bbBasePath+path, nil)
 	if err != nil {
 		return nil, err
 	}

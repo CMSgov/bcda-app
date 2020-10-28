@@ -3,9 +3,11 @@ package api
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
 
 	"net/http"
@@ -29,12 +31,34 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
-var (
+type Handler struct {
 	qc  *que.Client
 	svc models.Service
-)
 
-func init() {
+	supportedResources map[string]struct{}
+
+	bbBasePath string
+}
+
+func NewHandler(resources []string, basePath string) *Handler {
+	h := &Handler{}
+
+	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   pgxcfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	h.qc = que.NewClient(pgxpool)
+
 	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
 
 	// Allow runout requests to be up to 4 months after runout data was ingested
@@ -44,20 +68,29 @@ func init() {
 	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
 	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
-	svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60), runoutCutoffDuration)
+	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60), runoutCutoffDuration, basePath)
+
+	h.supportedResources = make(map[string]struct{}, len(resources))
+	for _, r := range resources {
+		h.supportedResources[r] = struct{}{}
+	}
+
+	h.bbBasePath = basePath
+
+	return h
 }
 
-func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := ValidateRequest(r)
+func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
+	resourceTypes, err := h.validateRequest(r)
 	if err != nil {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
 	reqType := models.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(resourceTypes, w, r, reqType)
 }
 
-func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	const (
 		groupAll    = "all"
 		groupRunout = "runout"
@@ -84,20 +117,27 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resourceTypes, err := ValidateRequest(r)
+	resourceTypes, err := h.validateRequest(r)
 	if err != nil {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
 
-	bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(resourceTypes, w, r, reqType)
 }
 
-func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
+func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
 	var (
-		ad  auth.AuthData
-		err error
+		ad      auth.AuthData
+		version string
+		err     error
 	)
+
+	if version, err = getVersion(r.URL); err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+	}
 
 	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.TokenErr, "")
@@ -105,15 +145,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	if qc == nil {
-		err = errors.New("queue client not initialized")
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	bb, err := client.NewBlueButtonClient(client.NewConfig())
+	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
@@ -132,9 +164,16 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") && (!db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound()) {
-		if types, ok := check429(jobs, resourceTypes, w); !ok {
-			w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-			w.WriteHeader(http.StatusTooManyRequests)
+		if types, err := check429(jobs, resourceTypes, version); err != nil {
+			if _, ok := err.(duplicateTypeError); ok {
+				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+				w.WriteHeader(http.StatusTooManyRequests)
+			} else {
+				log.Error(err)
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			}
+
 			return
 		} else {
 			resourceTypes = types
@@ -214,7 +253,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 
 	var queJobs []*que.Job
-	queJobs, err = svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, since, reqType)
+	queJobs, err = h.svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, since, reqType)
 	if err != nil {
 		log.Error(err)
 		respCode := http.StatusInternalServerError
@@ -239,7 +278,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
 	for _, j := range queJobs {
-		if err = qc.Enqueue(j); err != nil {
+		if err = h.qc.Enqueue(j); err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -248,44 +287,7 @@ func bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request,
 	}
 }
 
-func check429(jobs []models.Job, types []string, w http.ResponseWriter) ([]string, bool) {
-	var unworkedTypes []string
-
-	for _, t := range types {
-		worked := false
-		for _, job := range jobs {
-			req, err := url.Parse(job.RequestURL)
-			if err != nil {
-				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			}
-
-			if requestedTypes, ok := req.Query()["_type"]; ok {
-				// if this type is being worked no need to keep looking, break out and go to the next type.
-				if strings.Contains(requestedTypes[0], t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-					worked = true
-					break
-				}
-			} else {
-				// check to see if the export all is still being worked
-				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-					return nil, false
-				}
-			}
-		}
-		if !worked {
-			unworkedTypes = append(unworkedTypes, t)
-		}
-	}
-	if len(unworkedTypes) == 0 {
-		return nil, false
-	} else {
-		return unworkedTypes, true
-	}
-}
-
-func ValidateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
+func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 
 	// validate optional "_type" parameter
 	var resourceTypes []string
@@ -294,22 +296,25 @@ func ValidateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 		resourceMap := make(map[string]bool)
 		params = strings.Split(params[0], ",")
 		for _, p := range params {
-			if p != "ExplanationOfBenefit" && p != "Patient" && p != "Coverage" {
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid resource type")
-				return nil, oo
+			if !resourceMap[p] {
+				resourceMap[p] = true
+				resourceTypes = append(resourceTypes, p)
 			} else {
-				if !resourceMap[p] {
-					resourceMap[p] = true
-					resourceTypes = append(resourceTypes, p)
-				} else {
-					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
-					return nil, oo
-				}
+				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
+				return nil, oo
 			}
 		}
 	} else {
 		// resource types not supplied in request; default to applying all resource types.
 		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+	}
+
+	for _, resourceType := range resourceTypes {
+		if _, ok := h.supportedResources[resourceType]; !ok {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr,
+				fmt.Sprintf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources))
+			return nil, oo
+		}
 	}
 
 	// validate optional "_since" parameter
@@ -353,6 +358,58 @@ func ValidateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
 	return resourceTypes, nil
 }
 
+type duplicateTypeError struct{}
+
+func (e duplicateTypeError) Error() string {
+	return "Duplicate type found"
+}
+
+// check429 verifies that we do not have a duplicate resource type request.
+// Returns the unworkedTypes (if any)
+func check429(jobs []models.Job, types []string, version string) ([]string, error) {
+	var unworkedTypes []string
+
+	for _, t := range types {
+		worked := false
+		for _, job := range jobs {
+			req, err := url.Parse(job.RequestURL)
+			if err != nil {
+				return nil, err
+			}
+			jobVersion, err := getVersion(req)
+			if err != nil {
+				return nil, err
+			}
+
+			// We allow different API versions to trigger jobs with the same resource type
+			if jobVersion != version {
+				continue
+			}
+
+			if requestedTypes, ok := req.Query()["_type"]; ok {
+				// if this type is being worked no need to keep looking, break out and go to the next type.
+				if strings.Contains(requestedTypes[0], t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+					worked = true
+					break
+				}
+			} else {
+				// check to see if the export all is still being worked
+				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+					return nil, duplicateTypeError{}
+				}
+			}
+		}
+		if !worked {
+			unworkedTypes = append(unworkedTypes, t)
+		}
+	}
+	if len(unworkedTypes) == 0 {
+		return nil, duplicateTypeError{}
+	} else {
+		return unworkedTypes, nil
+	}
+}
+
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 	var ok bool
 	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
@@ -366,8 +423,13 @@ func GetJobTimeout() time.Duration {
 	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }
 
-func SetQC(client *que.Client) {
-	qc = client
+func getVersion(url *url.URL) (string, error) {
+	re := regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
+	parts := re.FindStringSubmatch(url.Path)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("unexpected path provided %s", url.Path)
+	}
+	return parts[1], nil
 }
 
 // swagger:model fileItem

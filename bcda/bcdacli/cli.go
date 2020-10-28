@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
@@ -24,8 +23,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
-	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -34,8 +31,6 @@ import (
 // App Name and usage.  Edit them here to prevent breaking tests
 const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
-
-var qc *que.Client
 
 func GetApp() *cli.App {
 	return setUpApp()
@@ -47,40 +42,46 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips string
+	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
 			Name:  "start-api",
 			Usage: "Start the API",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "http-port",
+					Usage:       "Port to use for http",
+					Destination: &httpPort,
+				},
+				cli.IntFlag{
+					Name:        "https-port",
+					Usage:       "Port to use for http",
+					Destination: &httpsPort,
+				},
+			},
 			Action: func(c *cli.Context) error {
-				// Worker queue connection
-				queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-				pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-				if err != nil {
-					return err
-				}
-
-				pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-					ConnConfig:   pgxcfg,
-					AfterConnect: que.PrepareStatements,
-				})
-				if err != nil {
-					log.Fatal(err)
-				}
-				defer pgxpool.Close()
-
-				qc = que.NewClient(pgxpool)
-
-				api.SetQC(qc)
-
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
+				
+				var httpAddr, httpsAddr string
+				if httpPort != 0 {
+					httpAddr = fmt.Sprintf(":%d", httpPort)
+				} else {
+					httpAddr = ":3001"
+				}
+				if httpsPort != 0 {
+					httpsAddr = fmt.Sprintf(":%d", httpsPort)
+				} else {
+					httpsAddr = ":3000"
+				}
 
 				// Accepts and redirects HTTP requests to HTTPS
 				srv := &http.Server{
 					Handler:      web.NewHTTPRouter(),
-					Addr:         ":3001",
+					Addr:         httpAddr,
 					ReadTimeout:  5 * time.Second,
 					WriteTimeout: 5 * time.Second,
 				}
+
 				go func() { log.Fatal(srv.ListenAndServe()) }()
 
 				auth := &http.Server{
@@ -104,7 +105,7 @@ func setUpApp() *cli.App {
 					IdleTimeout:  time.Duration(utils.GetEnvInt("FILESERVER_IDLE_TIMEOUT", 120)) * time.Second,
 				}
 
-				smux := servicemux.New(":3000")
+				smux := servicemux.New(httpsAddr)
 				smux.AddServer(fileserver, "/data")
 				smux.AddServer(auth, "/auth")
 				smux.AddServer(api, "")
