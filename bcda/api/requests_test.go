@@ -27,16 +27,14 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const (
-	acoID = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
-)
-
 type RequestsTestSuite struct {
 	suite.Suite
 
 	runoutEnabledEnvVar string
 
 	db *gorm.DB
+
+	acoID uuid.UUID
 }
 
 func TestRequestsTestSuite(t *testing.T) {
@@ -45,6 +43,15 @@ func TestRequestsTestSuite(t *testing.T) {
 
 func (s *RequestsTestSuite) SetupSuite() {
 	s.db = database.GetGORMDbConnection()
+
+	// Create an ACO for us to test with
+	s.acoID = uuid.NewUUID()
+	cmsID := "ZYXWV"
+
+	aco := &models.ACO{UUID: s.acoID, CMSID: &cmsID}
+	if err := s.db.Create(aco).Error; err != nil {
+		s.FailNow(err.Error())
+	}
 }
 
 func (s *RequestsTestSuite) SetupTest() {
@@ -52,6 +59,8 @@ func (s *RequestsTestSuite) SetupTest() {
 }
 
 func (s *RequestsTestSuite) TearDownSuite() {
+	s.NoError(s.db.Unscoped().Delete(&models.Job{}, "aco_id = ?", s.acoID).Error)
+	s.NoError(s.db.Unscoped().Delete(&models.ACO{}, "uuid = ?", s.acoID).Error)
 	s.db.Close()
 }
 
@@ -226,6 +235,36 @@ func (s *RequestsTestSuite) TestCheck429() {
 	}
 }
 
+// TestBulkRequestWithOldJobPaths verifies that bulk requests for a caller with older jobs
+// whose paths are no longer valid will still be accepted.
+func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
+	// Switch over to validate the 429 behavior
+	dt := "DEPLOYMENT_TARGET"
+	target := os.Getenv(dt)
+	defer os.Setenv(dt, target)
+	os.Setenv(dt, "prod")
+
+	var aco models.ACO
+	s.NoError(s.db.First(&aco, "uuid = ?", s.acoID).Error)
+
+	// Create jobs that are completed but have an unsupported path
+	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: "Failed"}).Error)
+	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: "Expired"}).Error)
+	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: "Completed"}).Error)
+
+	resources := []string{"ExplanationOfBenefit", "Coverage", "Patient"}
+	mockSvc := &models.MockService{}
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+	h := NewHandler(resources, "/v1/fhir")
+	h.svc = mockSvc
+
+	req := s.genGroupRequest("all")
+	w := httptest.NewRecorder()
+	h.bulkRequest(resources, w, req, models.RetrieveNewBeneHistData)
+
+	s.Equal(http.StatusAccepted, w.Result().StatusCode)
+}
+
 func (s *RequestsTestSuite) genGroupRequest(groupID string) *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Group/$export", nil)
 
@@ -233,8 +272,8 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string) *http.Request {
 	rctx.URLParams.Add("groupId", groupID)
 
 	var aco models.ACO
-	s.db.First(&aco, "uuid = ?", acoID)
-	ad := auth.AuthData{ACOID: acoID, CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
+	s.db.First(&aco, "uuid = ?", s.acoID)
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))

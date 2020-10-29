@@ -157,14 +157,15 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	defer database.Close(db)
 	acoID := ad.ACOID
 
-	var jobs []models.Job
+	var pendingAndInProgressJobs []models.Job
 	// If we really do find this record with the below matching criteria then this particular ACO has already made
 	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") && (!db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound()) {
-		if types, err := check429(jobs, resourceTypes, version); err != nil {
+	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") &&
+		(!db.Find(&pendingAndInProgressJobs, "aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").RecordNotFound()) {
+		if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
 			if _, ok := err.(duplicateTypeError); ok {
 				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
 				w.WriteHeader(http.StatusTooManyRequests)
