@@ -365,14 +365,14 @@ func (e duplicateTypeError) Error() string {
 	return "Duplicate type found"
 }
 
-// check429 verifies that we do not have a duplicate resource type request.
+// check429 verifies that we do not have a duplicate resource type request based on the supplied in-progress/pending jobs.
 // Returns the unworkedTypes (if any)
-func check429(jobs []models.Job, types []string, version string) ([]string, error) {
+func check429(pendingAndInProgressJobs []models.Job, types []string, version string) ([]string, error) {
 	var unworkedTypes []string
 
 	for _, t := range types {
 		worked := false
-		for _, job := range jobs {
+		for _, job := range pendingAndInProgressJobs {
 			req, err := url.Parse(job.RequestURL)
 			if err != nil {
 				return nil, err
@@ -387,17 +387,20 @@ func check429(jobs []models.Job, types []string, version string) ([]string, erro
 				continue
 			}
 
+			// If the job has timed-out we will allow another job to be in progress
+			if time.Now().After(job.CreatedAt.Add(GetJobTimeout())) {
+				continue
+			}
+
 			if requestedTypes, ok := req.Query()["_type"]; ok {
 				// if this type is being worked no need to keep looking, break out and go to the next type.
-				if strings.Contains(requestedTypes[0], t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+				if strings.Contains(requestedTypes[0], t) {
 					worked = true
 					break
 				}
 			} else {
-				// check to see if the export all is still being worked
-				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-					return nil, duplicateTypeError{}
-				}
+				// we have an export all types that is still in progress
+				return nil, duplicateTypeError{}
 			}
 		}
 		if !worked {

@@ -209,6 +209,8 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 
 func (s *RequestsTestSuite) TestCheck429() {
 	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: "In Progress", Model: gorm.Model{CreatedAt: time.Now()}}
+	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: "In Progress", Model: gorm.Model{CreatedAt: time.Now().Add(-2 * GetJobTimeout())}}
+	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: "In Progress", Model: gorm.Model{CreatedAt: time.Now()}}
 	tests := []struct {
 		name        string
 		job         models.Job
@@ -219,6 +221,8 @@ func (s *RequestsTestSuite) TestCheck429() {
 		{"Different version", validJob, "v2", true},
 		{"Invalid job (bad URL)", models.Job{RequestURL: string([]byte{0x7f})}, "", false},
 		{"Invalid job (no version)", models.Job{RequestURL: "/api/Group/$export"}, "", false},
+		{"Same version - expired", expiredJob, "v1", true},
+		{"Duplicate type", duplicateType, "v1", false},
 	}
 
 	for _, tt := range tests {
