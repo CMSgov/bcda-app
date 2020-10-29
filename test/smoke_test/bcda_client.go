@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	accessToken, apiHost, proto, resourceType, clientID, clientSecret, endpoint string
-	timeout                                                                     int
+	accessToken, apiHost, proto, resourceType, clientID, clientSecret, endpoint, apiVersion string
+	timeout                                                                                 int
 )
 
 type OutputCollection []Output
@@ -41,6 +41,7 @@ func init() {
 	flag.StringVar(&apiHost, "host", "localhost:3000", "host to send requests to")
 	flag.StringVar(&proto, "proto", "http", "protocol to use")
 	flag.StringVar(&resourceType, "resourceType", "", "resourceType to test")
+	flag.StringVar(&apiVersion, "apiVersion", "v1", "resourceType to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
 	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint in the format of Patient or Group/all or Group/new")
 	flag.Parse()
@@ -84,9 +85,9 @@ func startJob(endpoint, resourceType string) *http.Response {
 	var url string
 
 	if resourceType != "" {
-		url = fmt.Sprintf("%s://%s/api/v1/%s/$export?_type=%s", proto, apiHost, endpoint, resourceType)
+		url = fmt.Sprintf("%s://%s/api/%s/%s/$export?_type=%s", proto, apiHost, apiVersion, endpoint, resourceType)
 	} else {
-		url = fmt.Sprintf("%s://%s/api/v1/%s/$export", proto, apiHost, endpoint)
+		url = fmt.Sprintf("%s://%s/api/%s/%s/$export", proto, apiHost, apiVersion, endpoint)
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -188,6 +189,7 @@ func main() {
 	fmt.Printf("bulk data request to %s endpoint with %s resource types\n", endpoint, resourceType)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
 	if result := startJob(endpoint, resourceType); result.StatusCode == 202 {
+		result.Body.Close()
 		for {
 			<-time.After(5 * time.Second)
 
@@ -268,7 +270,13 @@ func main() {
 			}
 		}
 	} else {
-		fmt.Printf("error: failed to start %s %s data aggregation job\n", endpoint, resourceType)
+		fmt.Printf("error: failed to start %s data aggregation job\n", result.Request.URL.String())
+		body, err := ioutil.ReadAll(result.Body)
+		result.Body.Close()
+		if err != nil {
+			fmt.Printf("Failed to read response body %s\n", err.Error())
+		}
+		fmt.Printf("respCode %d respBody %s\n", result.StatusCode, string(body))
 		os.Exit(1)
 	}
 }
