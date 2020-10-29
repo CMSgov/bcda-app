@@ -387,7 +387,7 @@ func check429(pendingAndInProgressJobs []models.Job, types []string, version str
 				continue
 			}
 
-			// If the job has timed-out we will allow another job to be in progress
+			// If the job has timed-out we will allow new job to be created
 			if time.Now().After(job.CreatedAt.Add(GetJobTimeout())) {
 				continue
 			}
