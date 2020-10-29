@@ -18,8 +18,6 @@ import (
 var h *api.Handler
 
 func init() {
-	// TODO (BCDA-3582) - Since v2 APIs are not available (as of 2020-10-21), we're still
-	// routing requests to the v1 BFD endpoints
 	h = api.NewHandler([]string{"Patient"}, "/v2/fhir")
 }
 
