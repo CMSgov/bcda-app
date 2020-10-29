@@ -247,7 +247,7 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	var aco models.ACO
 	s.NoError(s.db.First(&aco, "uuid = ?", s.acoID).Error)
 
-	// Create jobs that are completed but have an unsupported path
+	// Create jobs that githave an unsupported path
 	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: "Failed"}).Error)
 	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: "Expired"}).Error)
 	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: "Completed"}).Error)
