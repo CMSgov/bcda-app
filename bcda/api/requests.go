@@ -157,14 +157,15 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	defer database.Close(db)
 	acoID := ad.ACOID
 
-	var jobs []models.Job
+	var pendingAndInProgressJobs []models.Job
 	// If we really do find this record with the below matching criteria then this particular ACO has already made
 	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") && (!db.Find(&jobs, "aco_id = ?", acoID).RecordNotFound()) {
-		if types, err := check429(jobs, resourceTypes, version); err != nil {
+	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") &&
+		(!db.Find(&pendingAndInProgressJobs, "aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").RecordNotFound()) {
+		if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
 			if _, ok := err.(duplicateTypeError); ok {
 				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -364,14 +365,14 @@ func (e duplicateTypeError) Error() string {
 	return "Duplicate type found"
 }
 
-// check429 verifies that we do not have a duplicate resource type request.
+// check429 verifies that we do not have a duplicate resource type request based on the supplied in-progress/pending jobs.
 // Returns the unworkedTypes (if any)
-func check429(jobs []models.Job, types []string, version string) ([]string, error) {
+func check429(pendingAndInProgressJobs []models.Job, types []string, version string) ([]string, error) {
 	var unworkedTypes []string
 
 	for _, t := range types {
 		worked := false
-		for _, job := range jobs {
+		for _, job := range pendingAndInProgressJobs {
 			req, err := url.Parse(job.RequestURL)
 			if err != nil {
 				return nil, err
@@ -386,17 +387,20 @@ func check429(jobs []models.Job, types []string, version string) ([]string, erro
 				continue
 			}
 
+			// If the job has timed-out we will allow new job to be created
+			if time.Now().After(job.CreatedAt.Add(GetJobTimeout())) {
+				continue
+			}
+
 			if requestedTypes, ok := req.Query()["_type"]; ok {
 				// if this type is being worked no need to keep looking, break out and go to the next type.
-				if strings.Contains(requestedTypes[0], t) && (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
+				if strings.Contains(requestedTypes[0], t) {
 					worked = true
 					break
 				}
 			} else {
-				// check to see if the export all is still being worked
-				if (job.Status == "Pending" || job.Status == "In Progress") && (job.CreatedAt.Add(GetJobTimeout()).After(time.Now())) {
-					return nil, duplicateTypeError{}
-				}
+				// we have an export all types that is still in progress
+				return nil, duplicateTypeError{}
 			}
 		}
 		if !worked {
