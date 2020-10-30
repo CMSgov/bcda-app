@@ -189,7 +189,10 @@ func main() {
 	fmt.Printf("bulk data request to %s endpoint with %s resource types\n", endpoint, resourceType)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
 	if result := startJob(endpoint, resourceType); result.StatusCode == 202 {
-		result.Body.Close()
+		if err := result.Body.Close(); err != nil {
+			fmt.Println("Failed to close body " + err.Error())
+		}
+
 		for {
 			<-time.After(5 * time.Second)
 
@@ -272,9 +275,11 @@ func main() {
 	} else {
 		fmt.Printf("error: failed to start %s data aggregation job\n", result.Request.URL.String())
 		body, err := ioutil.ReadAll(result.Body)
-		result.Body.Close()
 		if err != nil {
 			fmt.Printf("Failed to read response body %s\n", err.Error())
+		}
+		if err := result.Body.Close(); err != nil {
+			fmt.Println("Failed to close body " + err.Error())
 		}
 		fmt.Printf("respCode %d respBody %s\n", result.StatusCode, string(body))
 		os.Exit(1)
