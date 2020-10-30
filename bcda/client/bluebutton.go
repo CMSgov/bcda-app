@@ -49,7 +49,7 @@ func NewConfig(basePath string) BlueButtonConfig {
 }
 
 type APIClient interface {
-	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
+	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error)
 	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
@@ -157,10 +157,16 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since stri
 	return bbc.getBundleData("/Coverage/", params, jobID, cmsID)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error) {
+	// ServiceDate only uses yyyy-mm-dd
+	const svcDateFmt = "2006-01-02"
+
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
+	if !serviceDate.IsZero() {
+		params.Set("service-date", serviceDate.Format(svcDateFmt))
+	}
 	updateParamWithLastUpdated(&params, since, transactionTime)
 	return bbc.getBundleData("/ExplanationOfBenefit/", params, jobID, cmsID)
 }

@@ -83,7 +83,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 	bbc := testUtils.BlueButtonClient{}
 	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
 	jobID := generateUniqueJobID(s.T(), db, acoID)
-	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
@@ -103,7 +103,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetBundleData("ExplanationOfBenefit", beneficiaryID))
 	}
 
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now()}
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
 	assert.NoError(s.T(), err)
 
 	files, err := ioutil.ReadDir(stagingDir)
@@ -111,7 +112,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 	assert.Len(s.T(), files, 1)
 
 	for _, f := range files {
-		filePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
+		filePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
 		file, err := os.Open(filePath)
 		if err != nil {
 			log.Fatal(err)
@@ -135,23 +136,6 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 		file.Close()
 		os.Remove(filePath)
 	}
-}
-
-func (s *MainTestSuite) TestWriteEOBDataToFileNoClient() {
-	_, err := writeBBDataToFile(context.Background(), nil, nil, "9c05c1f8-349d-400f-9b69-7963f2262b08", "A00234", []string{"20000", "21000"}, "1", "ExplanationOfBenefit", "", time.Now())
-	assert.NotNil(s.T(), err)
-}
-
-func (s *MainTestSuite) TestWriteEOBDataToFileInvalidACO() {
-	bbc := testUtils.BlueButtonClient{}
-	acoID := "9c05c1f8-349d-400f-9b69-7963f2262zzz"
-	cmsID := "A00234"
-	beneficiaryIDs := []string{"10000", "11000"}
-
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID, cmsID, beneficiaryIDs, "1", "ExplanationOfBenefit", "", time.Now())
-	assert.NotNil(s.T(), err)
 }
 
 func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
@@ -185,14 +169,15 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 
 	}
 	jobID := generateUniqueJobID(s.T(), db, acoID)
-	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: acoID.String()}
+	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
 	assert.NoError(s.T(), err)
 
-	errorFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID)
+	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID)
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -201,7 +186,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 	assert.Equal(s.T(), ooResp+"\n", string(fData))
 	bbc.AssertExpectations(s.T())
 
-	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID))
+	os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID))
 	os.Remove(errorFilePath)
 }
 
@@ -238,15 +223,16 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	jobID := generateUniqueJobID(s.T(), db, acoID)
 	testUtils.CreateStaging(jobID)
 
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: acoID.String()}
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
 	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
 
-	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	files, err := ioutil.ReadDir(stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	errorFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -257,7 +243,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
 	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2])
 
-	os.Remove(fmt.Sprintf("%s/%s/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
+	os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
 	os.Remove(errorFilePath)
 }
 
@@ -270,7 +256,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	defer db.Close()
 	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
 	jobID := generateUniqueJobID(s.T(), db, acoID)
-	stagingDir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
+	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
 	defer db.Delete(&cclfFile)
@@ -291,14 +277,15 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, acoID.String(), cmsID, cclfBeneficiaryIDs, jobID, "ExplanationOfBenefit", "", time.Now())
+	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: acoID.String()}
+	_, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
 	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	dataFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[1].Name())
+	dataFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[1].Name())
 	dataFile, err := os.Open(dataFilePath)
 	if err != nil {
 		log.Fatal(err)
@@ -308,7 +295,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.False(s.T(), dataFileScanner.Scan())
 	dataFile.Close()
 
-	errorFilePath := fmt.Sprintf("%s/%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
 	errorFile, err := os.Open(errorFilePath)
 	if err != nil {
 		log.Fatal(err)
@@ -361,7 +348,7 @@ func (s *MainTestSuite) TestAppendErrorToFile() {
 	testUtils.CreateStaging(jobID)
 	appendErrorToFile(context.Background(), acoID.String(), "", "", "", jobID)
 
-	filePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
+	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
 	fData, err := ioutil.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 
@@ -532,11 +519,11 @@ func (s *MainTestSuite) TestQueueJobWithNoParent() {
 	}
 }
 
-func generateUniqueJobID(t *testing.T, db *gorm.DB, acoID uuid.UUID) string {
+func generateUniqueJobID(t *testing.T, db *gorm.DB, acoID uuid.UUID) int {
 	j := models.Job{
 		ACOID:      acoID,
 		RequestURL: "/some/request/URL",
 	}
 	assert.NoError(t, db.Save(&j).Error)
-	return strconv.FormatUint(uint64(j.ID), 10)
+	return int(j.ID)
 }

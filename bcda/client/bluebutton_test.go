@@ -220,14 +220,14 @@ func (s *BBRequestTestSuite) TestGetCoverage_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 33, len(e.Entries))
 	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
 	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -289,7 +289,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, time.Time{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -305,7 +305,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, time.Time{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)

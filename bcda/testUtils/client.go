@@ -18,7 +18,7 @@ type BlueButtonClient struct {
 	MBI  *string
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error) {
 	args := bbc.Called(patientID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
