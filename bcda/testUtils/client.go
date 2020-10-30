@@ -32,12 +32,12 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string)
 }
 
 func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
-	args := bbc.Called(patientID, jobID, cmsID)
+	args := bbc.Called(patientID)
 	return args.Get(0).(*models.Bundle), args.Error(1)
 }
 
 func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
-	args := bbc.Called(beneficiaryID, jobID, cmsID)
+	args := bbc.Called(beneficiaryID)
 	return args.Get(0).(*models.Bundle), args.Error(1)
 }
 

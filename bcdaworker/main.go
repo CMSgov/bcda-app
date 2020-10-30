@@ -202,7 +202,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 		}
 	case "Patient":
 		bbFunc = func(bbID string) (*fhirmodels.Bundle, error) {
-			return bb.GetCoverage(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+			return bb.GetPatient(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
 	default:
 		return "", fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)

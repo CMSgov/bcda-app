@@ -77,7 +77,7 @@ func TestMainTestSuite(t *testing.T) {
 	suite.Run(t, new(MainTestSuite))
 }
 
-func (s *MainTestSuite) TestWriteEOBDataToFile() {
+func (s *MainTestSuite) TestWriteResourceToFile() {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 	bbc := testUtils.BlueButtonClient{}
@@ -86,56 +86,89 @@ func (s *MainTestSuite) TestWriteEOBDataToFile() {
 	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	db.Create(&cclfFile)
-	defer db.Delete(&cclfFile)
+	defer func() {
+		db.Unscoped().Delete(&models.CCLFBeneficiary{}, "file_id = ?", cclfFile.ID)
+		db.Unscoped().Delete(&cclfFile)
+	}()
 	os.RemoveAll(stagingDir)
 	testUtils.CreateStaging(jobID)
 
-	beneficiaryIDs := []string{"a1000003701", "a1000050699"}
 	var cclfBeneficiaryIDs []string
-	for i := 0; i < len(beneficiaryIDs); i++ {
-		beneficiaryID := beneficiaryIDs[i]
-		bbc.MBI = &beneficiaryID
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
+	for _, beneID := range []string{"a1000003701", "a1000050699"} {
+		bbc.MBI = &beneID
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneID, BlueButtonID: beneID}
 		db.Create(&cclfBeneficiary)
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
-		bbc.On("GetExplanationOfBenefit", beneficiaryIDs[i]).Return(bbc.GetBundleData("ExplanationOfBenefit", beneficiaryID))
+		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
+		bbc.On("GetExplanationOfBenefit", beneID).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		bbc.On("GetCoverage", beneID).Return(bbc.GetBundleData("Coverage", beneID))
+		bbc.On("GetPatient", beneID).Return(bbc.GetBundleData("Patient", beneID))
 	}
 
-	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now()}
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
-	assert.NoError(s.T(), err)
-
-	files, err := ioutil.ReadDir(stagingDir)
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), files, 1)
-
-	for _, f := range files {
-		filePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
-		file, err := os.Open(filePath)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		scanner := bufio.NewScanner(file)
-
-		// 33 entries in test EOB data returned by bbc.getData, times two beneficiaries
-		for i := 0; i < 66; i++ {
-			assert.True(s.T(), scanner.Scan())
-			var jsonOBJ map[string]interface{}
-			err := json.Unmarshal(scanner.Bytes(), &jsonOBJ)
-			assert.Nil(s.T(), err)
-			assert.NotNil(s.T(), jsonOBJ["status"], "JSON should contain a value for `status`.")
-			assert.NotNil(s.T(), jsonOBJ["type"], "JSON should contain a value for `type`.")
-		}
-		assert.False(s.T(), scanner.Scan(), "There should be only 66 entries in the file.")
-
-		bbc.AssertExpectations(s.T())
-
-		file.Close()
-		os.Remove(filePath)
+	tests := []struct {
+		resource      string
+		expectedCount int
+	}{
+		{"ExplanationOfBenefit", 66},
+		{"Coverage", 6},
+		{"Patient", 2},
+		{"SomeUnsupportedResource", 0},
 	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.resource, func(t *testing.T) {
+			jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now()}
+			uuid, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
+
+			files, err1 := ioutil.ReadDir(stagingDir)
+			assert.NoError(t, err1)
+
+			// If we don't expect any files, we must've encountered some error
+			if tt.expectedCount == 0 {
+				assert.Error(t, err)
+				assert.Empty(t, uuid)
+				files, err := ioutil.ReadDir(stagingDir)
+				assert.NoError(t, err)
+				assert.Len(t, files, 0)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.NotEmpty(t, uuid)
+			assert.Len(t, files, 1)
+
+			for _, f := range files {
+				filePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
+				file, err := os.Open(filePath)
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer func() {
+					assert.NoError(t, file.Close())
+					assert.NoError(t, os.Remove(filePath))
+				}()
+
+				scanner := bufio.NewScanner(file)
+
+				for i := 0; i < tt.expectedCount; i++ {
+					assert.True(t, scanner.Scan())
+					var jsonOBJ map[string]interface{}
+					err := json.Unmarshal(scanner.Bytes(), &jsonOBJ)
+					assert.Nil(t, err)
+					assert.Equal(t, tt.resource, jsonOBJ["resourceType"])
+					if tt.resource == "ExplanationOfBenefit" || tt.resource == "Coverage" {
+						assert.NotNil(t, jsonOBJ["status"], "JSON should contain a value for `status`.")
+						assert.NotNil(t, jsonOBJ["type"], "JSON should contain a value for `type`.")
+					}
+				}
+				assert.False(t, scanner.Scan(), "There should be only %d entries in the file.", tt.expectedCount)
+			}
+		})
+	}
+
+	// After running all of our subtests, we expect that our mocks were called as expected.
+	bbc.AssertExpectations(s.T())
 }
 
 func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
