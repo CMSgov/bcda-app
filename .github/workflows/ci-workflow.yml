@@ -17,8 +17,12 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: "Build the stack"
+        env:
+          COMPOSE_INTERACTIVE_NO_CLI: 1
         run: |
           make docker-bootstrap
       - name: "Run all tests"
+        env:
+          COMPOSE_INTERACTIVE_NO_CLI: 1
         run: |
           make test
