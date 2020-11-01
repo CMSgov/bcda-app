@@ -5,12 +5,12 @@ set -e
 function cleanup() {
         for CMS_ID in "${CMS_IDs[@]}"
         do 
-                docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM encryption_keys WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"${CMS_ID}"'"')"'
-                docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM secrets WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"${CMS_ID}"'"')"'
-                docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM systems WHERE group_id = '"'"${CMS_ID}"'"'"'
-                docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM groups WHERE group_id = '"'"${CMS_ID}"'"'"'
-                docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM jobs WHERE aco_id IN (SELECT uuid FROM acos where cms_id = '"'"${CMS_ID}"'"')"'
-                docker-compose exec db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM acos WHERE cms_id = '"'"${CMS_ID}"'"'"'
+                docker-compose exec -T db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM encryption_keys WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"${CMS_ID}"'"')"'
+                docker-compose exec -T db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM secrets WHERE system_id IN (SELECT id FROM systems WHERE group_id = '"'"${CMS_ID}"'"')"'
+                docker-compose exec -T db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM systems WHERE group_id = '"'"${CMS_ID}"'"'"'
+                docker-compose exec -T db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM groups WHERE group_id = '"'"${CMS_ID}"'"'"'
+                docker-compose exec -T db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM jobs WHERE aco_id IN (SELECT uuid FROM acos where cms_id = '"'"${CMS_ID}"'"')"'
+                docker-compose exec -T db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "DELETE FROM acos WHERE cms_id = '"'"${CMS_ID}"'"'"'
         done
 }
 trap cleanup EXIT
@@ -23,10 +23,10 @@ sleep 30
 
 for CMS_ID in "${CMS_IDs[@]}"
 do
-        ACO_ID=$(docker-compose exec -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda create-aco --name "Smoke Test ACO" --cms-id ${CMS_ID}' | tail -n1 | tr -d '\r')
-        SAVE_KEY_RESULT=$(docker-compose exec -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda save-public-key --cms-id ${CMS_ID} --key-file "../shared_files/ATO_public.pem"' | tail -n1)
-        GROUP_ID=$(docker-compose exec -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda create-group --id ${CMS_ID} --name "Smoke Test Group" --aco-id ${CMS_ID}' | tail -n1 | tr -d '\r')
-        CREDS=($(docker-compose exec -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda generate-client-credentials --cms-id ${CMS_ID}' | tail -n2 | tr -d '\r'))
+        ACO_ID=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda create-aco --name "Smoke Test ACO" --cms-id ${CMS_ID}' | tail -n1 | tr -d '\r')
+        SAVE_KEY_RESULT=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda save-public-key --cms-id ${CMS_ID} --key-file "../shared_files/ATO_public.pem"' | tail -n1)
+        GROUP_ID=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda create-group --id ${CMS_ID} --name "Smoke Test Group" --aco-id ${CMS_ID}' | tail -n1 | tr -d '\r')
+        CREDS=($(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda generate-client-credentials --cms-id ${CMS_ID}' | tail -n2 | tr -d '\r'))
         CLIENT_ID=${CREDS[0]}
         CLIENT_SECRET=${CREDS[1]}
 
