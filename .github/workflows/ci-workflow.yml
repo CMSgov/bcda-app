@@ -9,20 +9,18 @@ jobs:
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v1
-      - name: "Decrypt secrets"
-        env:
+      - name: "Set env vars"
+        env: 
+          COMPOSE_INTERACTIVE_NO_CLI: 1
           VAULT_PW: ${{ secrets.VAULT_PW }}
+      - name: "Decrypt secrets"
         run: |
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: "Build the stack"
-        env:
-          COMPOSE_INTERACTIVE_NO_CLI: 1
         run: |
           make docker-bootstrap
       - name: "Run all tests"
-        env:
-          COMPOSE_INTERACTIVE_NO_CLI: 1
         run: |
           make test
