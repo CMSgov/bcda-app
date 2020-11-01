@@ -2,6 +2,10 @@ name: "BCDA CI Workflow"
 
 on: [push]
 
+env:
+  COMPOSE_INTERACTIVE_NO_CLI: 1
+  VAULT_PW: ${{ secrets.VAULT_PW }}
+
 jobs:
   build:
     name: "Build and Test"
@@ -9,10 +13,6 @@ jobs:
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v1
-      - name: "Set env vars"
-        env: 
-          COMPOSE_INTERACTIVE_NO_CLI: 1
-          VAULT_PW: ${{ secrets.VAULT_PW }}
       - name: "Decrypt secrets"
         run: |
           echo $VAULT_PW > .vault_password
