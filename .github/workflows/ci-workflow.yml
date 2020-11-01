@@ -10,7 +10,7 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v1
       - name: "Decrypt secrets"
-      - run: |
+        run: |
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
