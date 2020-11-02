@@ -74,7 +74,10 @@ func (s *MainTestSuite) SetupTest() {
 
 	s.NoError(s.db.Create(s.cclfFile).Error)
 	os.RemoveAll(s.stagingDir)
-	testUtils.CreateStaging(s.jobID)
+
+	if err := os.MkdirAll(s.stagingDir, os.ModePerm); err != nil {
+		s.FailNow(err.Error())
+	}
 }
 
 func (s *MainTestSuite) TearDownTest() {
@@ -334,15 +337,9 @@ func (s *MainTestSuite) TestGetFailureThreshold() {
 }
 
 func (s *MainTestSuite) TestAppendErrorToFile() {
-	db := database.GetGORMDbConnection()
-	defer db.Close()
+	appendErrorToFile(context.Background(), s.testACO.UUID.String(), "", "", "", s.jobID)
 
-	acoID := s.testACO.UUID
-	jobID := generateUniqueJobID(s.T(), db, acoID)
-	testUtils.CreateStaging(jobID)
-	appendErrorToFile(context.Background(), acoID.String(), "", "", "", jobID)
-
-	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID)
+	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), s.jobID, s.testACO.UUID)
 	fData, err := ioutil.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 
@@ -354,9 +351,6 @@ func (s *MainTestSuite) TestAppendErrorToFile() {
 }
 
 func (s *MainTestSuite) TestProcessJobEOB() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	// Verifies that we can handle an empty and specified basePath
 	// TODO (BCDA-3895) - we should confirm that the job fails when we supply an empty basePath
 	for _, basePath := range []string{"", "/v1/fhir"} {
@@ -366,9 +360,9 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 			Status:     "Pending",
 			JobCount:   1,
 		}
-		db.Save(&j)
+		s.db.Save(&j)
 
-		complete, err := j.CheckCompletedAndCleanup(db)
+		complete, err := j.CheckCompletedAndCleanup(s.db)
 		assert.Nil(s.T(), err)
 		assert.False(s.T(), complete)
 
@@ -388,10 +382,10 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 		fmt.Println("About to queue up the job")
 		err = processJob(job)
 		assert.Nil(s.T(), err)
-		_, err = j.CheckCompletedAndCleanup(db)
+		_, err = j.CheckCompletedAndCleanup(s.db)
 		assert.Nil(s.T(), err)
 		var completedJob models.Job
-		err = db.First(&completedJob, "ID = ?", jobArgs.ID).Error
+		err = s.db.First(&completedJob, "ID = ?", jobArgs.ID).Error
 		assert.Nil(s.T(), err)
 		// As this test actually connects to BB, we can't be sure it will succeed
 		assert.Contains(s.T(), []string{"Failed", "Completed"}, completedJob.Status)
@@ -420,16 +414,13 @@ func (s *MainTestSuite) TestProcessJob_InvalidJobID() {
 }
 
 func (s *MainTestSuite) TestProcessJob_NoBBClient() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export",
 		Status:     "Pending",
 		JobCount:   1,
 	}
-	db.Save(&j)
+	s.db.Save(&j)
 
 	qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
 		ID:             int(j.ID),
@@ -449,7 +440,7 @@ func (s *MainTestSuite) TestProcessJob_NoBBClient() {
 
 	assert.Contains(s.T(), processJob(&qj).Error(), "could not create Blue Button client")
 
-	db.Unscoped().Delete(&j)
+	s.db.Unscoped().Delete(&j)
 }
 
 func (s *MainTestSuite) TestSetupQueue() {
@@ -459,9 +450,6 @@ func (s *MainTestSuite) TestSetupQueue() {
 }
 
 func (s *MainTestSuite) TestUpdateJobStats() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	j := models.Job{
 		ACOID:             uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL:        "",
@@ -469,9 +457,9 @@ func (s *MainTestSuite) TestUpdateJobStats() {
 		JobCount:          4,
 		CompletedJobCount: 1,
 	}
-	db.Create(&j)
-	updateJobStats(j.ID, db)
-	db.First(&j, j.ID)
+	s.db.Create(&j)
+	updateJobStats(j.ID, s.db)
+	s.db.First(&j, j.ID)
 	assert.Equal(s.T(), 2, j.CompletedJobCount)
 }
 
