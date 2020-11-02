@@ -32,6 +32,11 @@ type MainTestSuite struct {
 	reset   func()
 	db      *gorm.DB
 	testACO *models.ACO
+
+	// test params
+	jobID      int
+	stagingDir string
+	cclfFile   *models.CCLFFile
 }
 
 func (s *MainTestSuite) SetupSuite() {
@@ -49,16 +54,7 @@ func (s *MainTestSuite) SetupSuite() {
 	if err := s.db.Save(&s.testACO).Error; err != nil {
 		s.FailNowf("Failed to add new ACO %s", err.Error())
 	}
-}
 
-func (s *MainTestSuite) TearDownSuite() {
-	s.reset()
-	s.db.Unscoped().Where("aco_id = ?", s.testACO.UUID).Delete(&models.Job{})
-	s.db.Unscoped().Delete(s.testACO)
-	s.db.Close()
-}
-
-func (s *MainTestSuite) SetupTest() {
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
 	os.Setenv("FHIR_STAGING_DIR", "data/test")
 	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/decrypted/bfd-dev-test-cert.pem")
@@ -68,8 +64,27 @@ func (s *MainTestSuite) SetupTest() {
 	os.Setenv("ATO_PRIVATE_KEY_FILE", "../shared_files/ATO_private.pem")
 }
 
+func (s *MainTestSuite) SetupTest() {
+	s.jobID = generateUniqueJobID(s.T(), s.db, s.testACO.UUID)
+	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
+	s.stagingDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), s.jobID)
+
+	s.NoError(s.db.Create(s.cclfFile).Error)
+	os.RemoveAll(s.stagingDir)
+	testUtils.CreateStaging(s.jobID)
+}
+
 func (s *MainTestSuite) TearDownTest() {
-	testUtils.PrintSeparator()
+	s.db.Unscoped().Delete(&models.CCLFBeneficiary{}, "file_id = ?", s.cclfFile.ID)
+	s.db.Unscoped().Delete(s.cclfFile)
+	os.RemoveAll(s.stagingDir)
+}
+
+func (s *MainTestSuite) TearDownSuite() {
+	s.reset()
+	s.db.Unscoped().Where("aco_id = ?", s.testACO.UUID).Delete(&models.Job{})
+	s.db.Unscoped().Delete(s.testACO)
+	s.db.Close()
 }
 
 func TestMainTestSuite(t *testing.T) {
@@ -80,31 +95,19 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	db := database.GetGORMDbConnection()
 	defer db.Close()
 	bbc := testUtils.BlueButtonClient{}
-	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
-	jobID := generateUniqueJobID(s.T(), db, acoID)
-	jobIDStr := strconv.Itoa(jobID)
-	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	since, transactionTime, serviceDate := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now(), time.Now().Add(-180*24*time.Hour)
-	db.Create(&cclfFile)
-	defer func() {
-		db.Unscoped().Delete(&models.CCLFBeneficiary{}, "file_id = ?", cclfFile.ID)
-		db.Unscoped().Delete(&cclfFile)
-	}()
-	os.RemoveAll(stagingDir)
-	testUtils.CreateStaging(jobID)
 
 	var cclfBeneficiaryIDs []string
 	for _, beneID := range []string{"a1000003701", "a1000050699"} {
 		bbc.MBI = &beneID
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneID, BlueButtonID: beneID}
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, HICN: "whatever", MBI: beneID, BlueButtonID: beneID}
 		db.Create(&cclfBeneficiary)
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
-		bbc.On("GetExplanationOfBenefit", beneID, jobIDStr, cmsID, since, transactionTime, serviceDate).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
-		bbc.On("GetCoverage", beneID, jobIDStr, cmsID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
-		bbc.On("GetPatient", beneID, jobIDStr, cmsID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
+		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime, serviceDate).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		bbc.On("GetCoverage", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
+		bbc.On("GetPatient", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
 	}
 
 	tests := []struct {
@@ -119,18 +122,18 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.resource, func(t *testing.T) {
-			jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
+			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
 				Since: since, TransactionTime: transactionTime, ServiceDate: serviceDate}
-			uuid, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
+			uuid, err := writeBBDataToFile(context.Background(), &bbc, db, *s.testACO.CMSID, jobArgs)
 
-			files, err1 := ioutil.ReadDir(stagingDir)
+			files, err1 := ioutil.ReadDir(s.stagingDir)
 			assert.NoError(t, err1)
 
 			// If we don't expect any files, we must've encountered some error
 			if tt.expectedCount == 0 {
 				assert.Error(t, err)
 				assert.Empty(t, uuid)
-				files, err := ioutil.ReadDir(stagingDir)
+				files, err := ioutil.ReadDir(s.stagingDir)
 				assert.NoError(t, err)
 				assert.Len(t, files, 0)
 				return
@@ -141,7 +144,7 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 			assert.Len(t, files, 1)
 
 			for _, f := range files {
-				filePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, f.Name())
+				filePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, f.Name())
 				file, err := os.Open(filePath)
 				if err != nil {
 					log.Fatal(err)

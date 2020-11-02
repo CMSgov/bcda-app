@@ -181,7 +181,6 @@ func createDir(path string) error {
 	return nil
 }
 
-// func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t, since string, transactionTime time.Time) (fileUUID string, error error) {
 func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
 	defer func() {
@@ -190,18 +189,18 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 		}
 	}()
 
-	var bbFunc func(bbID string) (*fhirmodels.Bundle, error)
+	var bundleFunc func(bbID string) (*fhirmodels.Bundle, error)
 	switch jobArgs.ResourceType {
 	case "Coverage":
-		bbFunc = func(bbID string) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
 			return bb.GetCoverage(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
 	case "ExplanationOfBenefit":
-		bbFunc = func(bbID string) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
 			return bb.GetExplanationOfBenefit(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, jobArgs.ServiceDate)
 		}
 	case "Patient":
-		bbFunc = func(bbID string) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
 			return bb.GetPatient(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
 	default:
@@ -230,7 +229,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 		if err != nil {
 			handleBBError(ctx, err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", beneID), jobArgs.ID)
 		} else {
-			b, err := bbFunc(blueButtonID)
+			b, err := bundleFunc(blueButtonID)
 			if err != nil {
 				handleBBError(ctx, err, &errorCount, fileUUID,
 					fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", jobArgs.ResourceType, blueButtonID, jobArgs.ACOID),
