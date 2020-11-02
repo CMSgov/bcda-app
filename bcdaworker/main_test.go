@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -52,7 +53,7 @@ func (s *MainTestSuite) SetupSuite() {
 	}
 
 	if err := s.db.Save(&s.testACO).Error; err != nil {
-		s.FailNowf("Failed to add new ACO %s", err.Error())
+		s.FailNowf("Failed to add new ACO", err.Error())
 	}
 
 	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
@@ -92,8 +93,6 @@ func TestMainTestSuite(t *testing.T) {
 }
 
 func (s *MainTestSuite) TestWriteResourceToFile() {
-	db := database.GetGORMDbConnection()
-	defer db.Close()
 	bbc := testUtils.BlueButtonClient{}
 	since, transactionTime, serviceDate := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now(), time.Now().Add(-180*24*time.Hour)
 
@@ -101,8 +100,7 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	for _, beneID := range []string{"a1000003701", "a1000050699"} {
 		bbc.MBI = &beneID
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, HICN: "whatever", MBI: beneID, BlueButtonID: beneID}
-		db.Create(&cclfBeneficiary)
-		defer db.Delete(&cclfBeneficiary)
+		s.db.Create(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime, serviceDate).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
@@ -124,7 +122,7 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
 				Since: since, TransactionTime: transactionTime, ServiceDate: serviceDate}
-			uuid, err := writeBBDataToFile(context.Background(), &bbc, db, *s.testACO.CMSID, jobArgs)
+			uuid, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
 
 			files, err1 := ioutil.ReadDir(s.stagingDir)
 			assert.NoError(t, err1)
@@ -180,109 +178,81 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "70")
+	transactionTime := time.Now()
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefit", "abcdef10000").Return(nil, errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "abcdef11000").Return(nil, errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "abcdef12000").Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
-	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
+	bbc.On("GetExplanationOfBenefit", "abcdef10000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, time.Time{}).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef11000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, time.Time{}).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, time.Time{}).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
 	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
 	var cclfBeneficiaryIDs []string
-
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
-	db.Create(&cclfFile)
-	defer db.Delete(&cclfFile)
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		beneficiaryID := beneficiaryIDs[i]
 		bbc.MBI = &beneficiaryID
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
-		db.Create(&cclfBeneficiary)
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
+		s.db.Create(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
-		defer db.Delete(&cclfBeneficiary)
-
 	}
-	jobID := generateUniqueJobID(s.T(), db, acoID)
-	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	os.RemoveAll(stagingDir)
-	testUtils.CreateStaging(jobID)
 
-	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: acoID.String()}
-	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
+	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
+	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
 	assert.NoError(s.T(), err)
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID)
+	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), s.jobID, fileUUID)
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}}]}`, acoID, acoID, acoID, acoID)
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 	assert.Equal(s.T(), ooResp+"\n", string(fData))
 	bbc.AssertExpectations(s.T())
-
-	os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, fileUUID))
-	os.Remove(errorFilePath)
 }
 
 func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "60")
+	transactionTime := time.Now()
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
 	beneficiaryIDs := []string{"a1000089833", "a1000065301", "a1000012463"}
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0]).Return(nil, errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1]).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, time.Time{}).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, time.Time{}).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0])).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 	bbc.MBI = &beneficiaryIDs[1]
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[1])).Return(bbc.GetData("Patient", beneficiaryIDs[1]))
-	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
 	var cclfBeneficiaryIDs []string
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
-	db.Create(&cclfFile)
-	defer db.Delete(&cclfFile)
 
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		beneficiaryID := beneficiaryIDs[i]
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
-		db.Create(&cclfBeneficiary)
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, HICN: "whatever", MBI: beneficiaryID, BlueButtonID: beneficiaryID}
+		s.db.Create(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
-		defer db.Delete(&cclfBeneficiary)
 	}
 
-	jobID := generateUniqueJobID(s.T(), db, acoID)
-	testUtils.CreateStaging(jobID)
-
-	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: acoID.String()}
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
+	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
+	_, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
 	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
 
-	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	files, err := ioutil.ReadDir(stagingDir)
+	files, err := ioutil.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}}]}`, acoID, acoID, acoID, acoID)
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 	assert.Equal(s.T(), ooResp+"\n", string(fData))
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
 	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2])
-
-	os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", os.Getenv("FHIR_STAGING_DIR"), jobID, acoID))
-	os.Remove(errorFilePath)
 }
 
 func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
@@ -290,55 +260,41 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "51")
 
-	db := database.GetGORMDbConnection()
-	defer db.Close()
-	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
-	jobID := generateUniqueJobID(s.T(), db, acoID)
-	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
-	db.Create(&cclfFile)
-	defer db.Delete(&cclfFile)
-
 	bbc := testUtils.BlueButtonClient{}
 	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for MBI"))
 
-	// clean out the data dir before beginning this test
-	os.RemoveAll(stagingDir)
-	testUtils.CreateStaging(jobID)
 	badMBIs := []string{"ab000000001", "ab000000002"}
 	var cclfBeneficiaryIDs []string
 	for i := 0; i < len(badMBIs); i++ {
 		mbi := badMBIs[i]
-		cclfBeneficiary := models.CCLFBeneficiary{FileID: cclfFile.ID, HICN: "", MBI: mbi, BlueButtonID: ""}
-		db.Create(&cclfBeneficiary)
-		defer db.Delete(&cclfBeneficiary)
+		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, HICN: "", MBI: mbi, BlueButtonID: ""}
+		s.db.Create(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
-	jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: acoID.String()}
-	_, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
+	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
+	_, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
 	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
 
-	files, err := ioutil.ReadDir(stagingDir)
+	files, err := ioutil.ReadDir(s.stagingDir)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	dataFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[1].Name())
-	dataFile, err := os.Open(dataFilePath)
+	dataFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, files[1].Name())
+	d, err := ioutil.ReadFile(dataFilePath)
 	if err != nil {
-		log.Fatal(err)
+		s.FailNow(err.Error())
 	}
-	dataFileScanner := bufio.NewScanner(dataFile)
 	// Should be empty
-	assert.False(s.T(), dataFileScanner.Scan())
-	dataFile.Close()
+	s.Empty(d)
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), jobID, files[0].Name())
-	errorFile, err := os.Open(errorFilePath)
+	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
+	d, err = ioutil.ReadFile(errorFilePath)
 	if err != nil {
-		log.Fatal(err)
+		s.FailNow(err.Error())
 	}
-	errorFileScanner := bufio.NewScanner(errorFile)
+
+	errorFileScanner := bufio.NewScanner(bytes.NewReader(d))
 	for _, cclfBeneID := range cclfBeneficiaryIDs {
 		assert.True(s.T(), errorFileScanner.Scan())
 		var jsonObj map[string]interface{}
@@ -352,12 +308,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 		assert.Equal(s.T(), fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
 	}
 	assert.False(s.T(), errorFileScanner.Scan(), "There should be only 2 entries in the file.")
-	errorFile.Close()
 
 	bbc.AssertExpectations(s.T())
-
-	os.Remove(dataFilePath)
-	os.Remove(errorFilePath)
 }
 
 func (s *MainTestSuite) TestGetFailureThreshold() {
