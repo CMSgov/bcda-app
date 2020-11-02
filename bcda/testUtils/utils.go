@@ -21,10 +21,6 @@ func PrintSeparator() {
 }
 
 func CreateStaging(jobID int) {
-	err := os.Setenv("FHIR_STAGING_DIR", "data/test")
-	if err != nil {
-		log.Panic(err)
-	}
 	testdir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
 
 	if _, err := os.Stat(testdir); os.IsNotExist(err) {

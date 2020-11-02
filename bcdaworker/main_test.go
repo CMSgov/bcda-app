@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"testing"
@@ -30,7 +29,6 @@ import (
 
 type MainTestSuite struct {
 	suite.Suite
-	reset   func()
 	db      *gorm.DB
 	testACO *models.ACO
 
@@ -41,7 +39,6 @@ type MainTestSuite struct {
 }
 
 func (s *MainTestSuite) SetupSuite() {
-	s.reset = testUtils.SetUnitTestKeysForAuth()
 	s.db = database.GetGORMDbConnection()
 
 	cmsID := "A1B2C" // Some unique ID that should be unique to this test
@@ -56,8 +53,13 @@ func (s *MainTestSuite) SetupSuite() {
 		s.FailNowf("Failed to add new ACO", err.Error())
 	}
 
-	os.Setenv("FHIR_PAYLOAD_DIR", "data/test")
-	os.Setenv("FHIR_STAGING_DIR", "data/test")
+	tempDir, err := ioutil.TempDir("", "*")
+	if err != nil {
+		s.FailNow(err.Error())
+	}
+
+	os.Setenv("FHIR_PAYLOAD_DIR", tempDir)
+	os.Setenv("FHIR_STAGING_DIR", tempDir)
 	os.Setenv("BB_CLIENT_CERT_FILE", "../shared_files/decrypted/bfd-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../shared_files/decrypted/bfd-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
@@ -82,10 +84,12 @@ func (s *MainTestSuite) TearDownTest() {
 }
 
 func (s *MainTestSuite) TearDownSuite() {
-	s.reset()
+	testUtils.SetUnitTestKeysForAuth()
 	s.db.Unscoped().Where("aco_id = ?", s.testACO.UUID).Delete(&models.Job{})
 	s.db.Unscoped().Delete(s.testACO)
 	s.db.Close()
+	os.RemoveAll(os.Getenv("FHIR_STAGING_DIR"))
+	os.RemoveAll(os.Getenv("FHIR_PAYLOAD_DIR"))
 }
 
 func TestMainTestSuite(t *testing.T) {
@@ -145,7 +149,7 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 				filePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, f.Name())
 				file, err := os.Open(filePath)
 				if err != nil {
-					log.Fatal(err)
+					s.FailNow(err.Error())
 				}
 				defer func() {
 					assert.NoError(t, file.Close())
