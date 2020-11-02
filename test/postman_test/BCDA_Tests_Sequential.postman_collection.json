@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "f761bc0e-450e-42f2-b247-ecd8be93f88e",
+		"_postman_id": "db43685f-537c-44b8-b35b-54e67e71e11d",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -11,7 +11,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "df92b634-556c-4331-b53b-3a19668ca846",
+						"id": "ad63b716-3407-4006-9e75-64f2a50a8e40",
 						"exec": [
 							"pm.test(\"Response contains version\", function() {",
 							"    pm.expect(pm.response.json()).to.have.property(\"version\");",
@@ -25,10 +25,6 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/_version",
 					"protocol": "{{scheme}}",
@@ -48,7 +44,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "00a9ceb7-a32e-4a21-a689-201af70162bf",
+						"id": "cf32d8c9-5dea-4e61-b656-334ac2d1e233",
 						"exec": [
 							"pm.test(\"Response time is less than 200 ms\", function() {",
 							"    pm.expect(pm.response.responseTime).to.be.below(200);",
@@ -128,10 +124,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/metadata",
 					"protocol": "{{scheme}}",
@@ -153,7 +145,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "d982c280-433d-4732-8169-bc7d8ed0a217",
+						"id": "21248982-329c-4980-9c08-f53f73ab98b3",
 						"exec": [
 							"pm.test(\"Response contains database status\", function() {",
 							"    pm.expect(pm.response.json()).to.have.property(\"database\");",
@@ -166,10 +158,6 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/_health",
 					"protocol": "{{scheme}}",
@@ -189,7 +177,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "6c95f79e-c7de-4e64-9baf-db77f12e9e64",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -227,10 +215,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -259,7 +243,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "32984f41-b285-4cdf-a316-783f43e16896",
+						"id": "2737091f-d971-4dc1-85a2-0083654b89a9",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -296,10 +280,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
 					"protocol": "{{scheme}}",
@@ -328,7 +308,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "f1078057-407c-4833-b49a-6f80bb5acefb",
+						"id": "98e3c47f-e962-4b19-8ca9-052aff6bbb20",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -365,10 +345,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
 					"protocol": "{{scheme}}",
@@ -397,7 +373,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "46e3bcf1-0dde-441a-8eb7-3038188e5314",
+						"id": "065e1f80-a88f-4cff-a821-313c4dfe3142",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -431,10 +407,6 @@
 						"disabled": true
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/jobs/{{jobId}}",
 					"protocol": "{{scheme}}",
@@ -457,7 +429,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"id": "5ebf033f-781a-48d8-86fd-87ba3c65f778",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -478,10 +450,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/data/{{jobId}}/{{acoId}}.ndjson",
 					"protocol": "{{scheme}}",
@@ -503,7 +471,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "242471cf-b883-4318-ab28-90181a59fd74",
+						"id": "cbe9f997-6868-4484-8c0c-bb1d8e45a968",
 						"exec": [
 							"var env = pm.environment.get(\"env\");",
 							"pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
@@ -578,7 +546,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"id": "7935c03d-2792-4df1-96f6-86b37b16ebdc",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -618,10 +586,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient",
 					"protocol": "{{scheme}}",
@@ -650,7 +614,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "4aa90ed8-0665-474f-a6fd-218c56c7387b",
+						"id": "2e864853-8291-4894-81ef-477934a972fa",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -690,10 +654,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Coverage",
 					"protocol": "{{scheme}}",
@@ -717,12 +677,88 @@
 			"response": []
 		},
 		{
+			"name": "Start Coverage export v2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "08a99c52-1136-4249-a6ad-dfa088acd289",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Invalid Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.include(\"Invalid resource type Coverage.\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Coverage",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Coverage"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Start EOB export",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "aa788d60-8e40-4df2-9230-c173483b22b2",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -762,10 +798,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -789,12 +821,158 @@
 			"response": []
 		},
 		{
+			"name": "Start EOB export v2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "4709c84e-961e-47a2-a23f-0f8532cff68d",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Invalid Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.include(\"Invalid resource type\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=ExplanationOfBenefit",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "ExplanationOfBenefit"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start all type export v2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "cb3525b2-6f51-432a-8dc6-85c08c74fca3",
+						"exec": [
+							"pm.test(\"Status code is 400\", function() {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Resource type is OperationOutcome\", function() {",
+							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
+							"});",
+							"",
+							"pm.test(\"Issue details code is Request Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"});",
+							"",
+							"pm.test(\"Issue details text is Invalid Resource Type\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.include(\"Invalid resource type\")",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
+						"Patient",
+						"$export"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Get Patient export job status",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"id": "d7b2d57d-fb2b-4781-93c0-c3ae6134d34f",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -840,7 +1018,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "ebe6d81b-ef2b-48c6-88c1-bbaffdc28c4b",
+						"id": "2a07159b-13db-454d-bbfe-d2383fc863ec",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -908,10 +1086,6 @@
 						"disabled": true
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{patientJobUrl}}",
 					"host": [
@@ -927,7 +1101,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"id": "fb909a1d-a267-4cc0-83f4-d4ecb2bcae01",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -954,10 +1128,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{patientDataUrl}}",
 					"host": [
@@ -973,7 +1143,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"id": "f34cd3b5-0983-48ee-86a3-4d6059209cd2",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1019,7 +1189,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "cff036f5-befc-4bfb-9482-309f10272212",
+						"id": "1a844bf4-5d09-4d8a-b601-8a9aaf390648",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1087,10 +1257,6 @@
 						"disabled": true
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{coverageJobUrl}}",
 					"host": [
@@ -1106,7 +1272,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb9",
+						"id": "88db4208-46c8-4c37-881d-10110c270450",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1133,10 +1299,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{coverageDataUrl}}",
 					"host": [
@@ -1152,7 +1314,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"id": "bd4efbcf-03a2-47fd-b033-c9c840acebe1",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1198,7 +1360,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "70646143-9885-45c1-94e4-061c2f40295a",
+						"id": "eb587463-5310-4615-b001-df40a1448483",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1266,10 +1428,6 @@
 						"disabled": true
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{eobJobUrl}}",
 					"host": [
@@ -1285,7 +1443,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"id": "1f6eecb5-134f-411a-8897-c18b892bb909",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1312,10 +1470,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{eobDataUrl}}",
 					"host": [
@@ -1331,7 +1485,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"id": "7e0e5505-e379-43c9-8d6b-e8569e21a08c",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -1349,7 +1503,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "b822f300-2ead-4f25-b623-22c68df6b017",
+						"id": "da4ac209-ca87-4e0f-b823-01e40c11aa19",
 						"exec": [
 							"let timestamp = new Date().toJSON();",
 							"pm.environment.set('now', timestamp);"
@@ -1382,10 +1536,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&_since={{now}}",
 					"protocol": "{{scheme}}",
@@ -1418,7 +1568,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"id": "5c34fc63-f25a-4ffa-a0b7-04d3847ff3e1",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1464,7 +1614,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "ebe6d81b-ef2b-48c6-88c1-bbaffdc28c4b",
+						"id": "2d2c8e70-6ec8-4cca-900f-634876c76d04",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1532,10 +1682,6 @@
 						"disabled": true
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{patientValidSinceJobUrl}}",
 					"host": [
@@ -1551,7 +1697,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"id": "6b933f11-e1f1-4f56-a08b-2299f7f459e1",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1578,10 +1724,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{patientValidSinceDataUrl}}",
 					"host": [
@@ -1597,7 +1739,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"id": "13fb9a6b-b123-47dc-9efa-4575133d9cdc",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -1637,10 +1779,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient",
 					"protocol": "{{scheme}}",
@@ -1670,7 +1808,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"id": "fed50408-6e12-472e-af26-91c5b3adf6b8",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1725,7 +1863,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "70646143-9885-45c1-94e4-061c2f40295a",
+						"id": "cb75c696-749e-4240-9bea-47afaedcafeb",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1793,10 +1931,6 @@
 						"disabled": true
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{groupAllNoSinceJobUrl}}",
 					"host": [
@@ -1812,7 +1946,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"id": "b6dc4367-f725-4397-9ba1-5ade0a49f7b2",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1841,10 +1975,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{groupAllNoSinceJobUrl}}",
 					"host": [
@@ -1860,7 +1990,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"id": "bb96c9d3-14c6-4a78-993c-643b75f25f04",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -1900,10 +2030,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient&_since=2020-02-13T08:00:00.000-05:00",
 					"protocol": "{{scheme}}",
@@ -1937,7 +2063,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "dc6615ac-febe-49d0-98b6-9b4b8614bfcf",
+						"id": "931f74a6-9b24-4f0a-bea9-ab466295d46c",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1995,7 +2121,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "70646143-9885-45c1-94e4-061c2f40295a",
+						"id": "d1c0c9bd-526b-423c-9d65-4122ae236ada",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -2063,10 +2189,6 @@
 						"disabled": true
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{groupAllSinceJobUrl}}",
 					"host": [
@@ -2082,7 +2204,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9cc089de-3f67-4a42-9290-8e32afdbeb97",
+						"id": "24f5f59f-3383-442a-ad92-0f057b606309",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -2112,10 +2234,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{groupAllSinceJobUrl}}",
 					"host": [
@@ -2131,7 +2249,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "58b41ccd-4e9f-4ac0-b654-24dfe0eba48c",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2179,10 +2297,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=ExplanationOfBenefit,ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -2211,7 +2325,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"id": "a6405fe6-cb76-405b-aa5b-203783d22aeb",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2255,10 +2369,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient&_since=123invalid",
 					"protocol": "{{scheme}}",
@@ -2291,7 +2401,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "0b4c1e3e-a40d-45e2-8be1-81199866a2b1",
+						"id": "1194fa6c-cc8d-43dc-a888-03685039dac2",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2335,10 +2445,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Patient&_since=123invalid",
 					"protocol": "{{scheme}}",
@@ -2372,7 +2478,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "9cefcc0e-cf56-4306-96a5-0c21642e574e",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2421,10 +2527,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Practitioner",
 					"protocol": "{{scheme}}",
@@ -2453,7 +2555,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "32de5b7b-76dd-43f8-84db-8d53bf971449",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2501,10 +2603,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=Practitioner",
 					"protocol": "{{scheme}}",
@@ -2534,7 +2632,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "aae3e6db-2659-46b1-82db-b13dc6ccccaf",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2581,10 +2679,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_type=ExplanationOfBenefit,ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -2614,7 +2708,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "143f154f-0b03-4302-806e-772a7584f26e",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2662,10 +2756,6 @@
 						"type": "text"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/sub/$export?_type=ExplanationOfBenefit",
 					"protocol": "{{scheme}}",
@@ -2695,7 +2785,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "3e2beb21-78b7-473e-a5ce-0f4181714a07",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2743,10 +2833,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_elements=Patient",
 					"protocol": "{{scheme}}",
@@ -2775,7 +2861,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ea1530bd-2243-4f35-8e2c-f4eeb9269c71",
+						"id": "937d20d8-0b5a-4a2d-98db-50c25dec6e06",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2823,10 +2909,6 @@
 						"value": "respond-async"
 					}
 				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/Group/all/$export?_elements=Patient",
 					"protocol": "{{scheme}}",
@@ -2850,5 +2932,6 @@
 			},
 			"response": []
 		}
-	]
+	],
+	"protocolProfileBehavior": {}
 }
