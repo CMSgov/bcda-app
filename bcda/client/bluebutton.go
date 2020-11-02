@@ -133,8 +133,6 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer, config.BBBasePath}, nil
 }
 
-type BeneDataFunc func(string, string, string, string, time.Time) (*models.Bundle, error)
-
 func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
@@ -164,8 +162,10 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
+	// If service date is supplied, it represents the latest date (inclusive) that claims should occur.
+	// That's why the le (less than or equal to) operator is used.
 	if !serviceDate.IsZero() {
-		params.Set("service-date", serviceDate.Format(svcDateFmt))
+		params.Set("service-date", fmt.Sprintf("le%s", serviceDate.Format(svcDateFmt)))
 	}
 	updateParamWithLastUpdated(&params, since, transactionTime)
 	return bbc.getBundleData("/ExplanationOfBenefit/", params, jobID, cmsID)
