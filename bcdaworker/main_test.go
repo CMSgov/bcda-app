@@ -39,7 +39,6 @@ func (s *MainTestSuite) SetupSuite() {
 	s.db = database.GetGORMDbConnection()
 
 	cmsID := "A1B2C" // Some unique ID that should be unique to this test
-	s.db.Unscoped().Where("cms_id = ?", cmsID).Delete(&models.ACO{})
 
 	s.testACO = &models.ACO{
 		UUID:  uuid.NewUUID(),
@@ -83,8 +82,10 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	bbc := testUtils.BlueButtonClient{}
 	acoID, cmsID := s.testACO.UUID, *s.testACO.CMSID
 	jobID := generateUniqueJobID(s.T(), db, acoID)
+	jobIDStr := strconv.Itoa(jobID)
 	stagingDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), jobID)
 	cclfFile := models.CCLFFile{CCLFNum: 8, ACOCMSID: "12345", Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
+	since, transactionTime, serviceDate := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now(), time.Now().Add(-180*24*time.Hour)
 	db.Create(&cclfFile)
 	defer func() {
 		db.Unscoped().Delete(&models.CCLFBeneficiary{}, "file_id = ?", cclfFile.ID)
@@ -101,9 +102,9 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 		defer db.Delete(&cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
-		bbc.On("GetExplanationOfBenefit", beneID).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
-		bbc.On("GetCoverage", beneID).Return(bbc.GetBundleData("Coverage", beneID))
-		bbc.On("GetPatient", beneID).Return(bbc.GetBundleData("Patient", beneID))
+		bbc.On("GetExplanationOfBenefit", beneID, jobIDStr, cmsID, since, transactionTime, serviceDate).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		bbc.On("GetCoverage", beneID, jobIDStr, cmsID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
+		bbc.On("GetPatient", beneID, jobIDStr, cmsID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
 	}
 
 	tests := []struct {
@@ -118,7 +119,8 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.resource, func(t *testing.T) {
-			jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now()}
+			jobArgs := models.JobEnqueueArgs{ID: jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
+				Since: since, TransactionTime: transactionTime, ServiceDate: serviceDate}
 			uuid, err := writeBBDataToFile(context.Background(), &bbc, db, cmsID, jobArgs)
 
 			files, err1 := ioutil.ReadDir(stagingDir)
