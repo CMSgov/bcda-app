@@ -142,7 +142,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	fileUUID, err := writeBBDataToFile(ctx, bb, db, jobArgs.ACOID, *aco.CMSID, jobArgs.BeneficiaryIDs, jobID, jobArgs.ResourceType, jobArgs.Since, jobArgs.TransactionTime)
+	fileUUID, err := writeBBDataToFile(ctx, bb, db, *aco.CMSID, jobArgs)
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
@@ -181,7 +181,7 @@ func createDir(path string) error {
 	return nil
 }
 
-func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, acoID string, acoCMSID string, cclfBeneficiaryIDs []string, jobID, t, since string, transactionTime time.Time) (fileUUID string, error error) {
+func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
 	defer func() {
 		if err := segment.End(); err != nil {
@@ -189,28 +189,27 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, ac
 		}
 	}()
 
-	if bb == nil {
-		err := errors.New("Blue Button client is required")
-		log.Error(err)
-		return "", err
-	}
-
-	bbFunc := bbFuncByType(bb, t)
-	if bbFunc == nil {
-		err := fmt.Errorf("Invalid resource type requested: %s", t)
-		log.Error(err)
-		return "", err
-	}
-
-	if !utils.IsUUID(acoID) {
-		err := errors.New("Invalid ACO ID")
-		log.Error(err)
-		return "", err
+	var bundleFunc func(bbID string) (*fhirmodels.Bundle, error)
+	switch jobArgs.ResourceType {
+	case "Coverage":
+		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
+			return bb.GetCoverage(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+		}
+	case "ExplanationOfBenefit":
+		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
+			return bb.GetExplanationOfBenefit(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, jobArgs.ServiceDate)
+		}
+	case "Patient":
+		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
+			return bb.GetPatient(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+		}
+	default:
+		return "", fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
 	}
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
-	fileUUID = uuid.NewRandom().String()
-	f, err := os.Create(fmt.Sprintf("%s/%s/%s.ndjson", dataDir, jobID, fileUUID))
+	fileUUID = uuid.New()
+	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
 		log.Error(err)
 		return "", err
@@ -220,21 +219,23 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, ac
 
 	w := bufio.NewWriter(f)
 	errorCount := 0
-	totalBeneIDs := float64(len(cclfBeneficiaryIDs))
+	totalBeneIDs := float64(len(jobArgs.BeneficiaryIDs))
 	failThreshold := getFailureThreshold()
 	failed := false
 
-	for _, cclfBeneficiaryID := range cclfBeneficiaryIDs {
-		blueButtonID, err := beneBBID(cclfBeneficiaryID, bb, db)
+	for _, beneID := range jobArgs.BeneficiaryIDs {
+		blueButtonID, err := beneBBID(beneID, bb, db)
 
 		if err != nil {
-			handleBBError(ctx, err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneficiaryID), jobID)
+			handleBBError(ctx, err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", beneID), jobArgs.ID)
 		} else {
-			b, err := bbFunc(blueButtonID, jobID, acoCMSID, since, transactionTime)
+			b, err := bundleFunc(blueButtonID)
 			if err != nil {
-				handleBBError(ctx, err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", t, blueButtonID, acoID), jobID)
+				handleBBError(ctx, err, &errorCount, fileUUID,
+					fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", jobArgs.ResourceType, blueButtonID, jobArgs.ACOID),
+					jobArgs.ID)
 			} else {
-				fhirBundleToResourceNDJSON(ctx, w, b, t, cclfBeneficiaryID, acoCMSID, jobID, fileUUID)
+				fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, jobArgs.ID)
 			}
 		}
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
@@ -244,8 +245,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, ac
 		}
 	}
 
-	err = w.Flush()
-	if err != nil {
+	if err = w.Flush(); err != nil {
 		return "", err
 	}
 
@@ -254,14 +254,6 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, ac
 	}
 
 	return fileUUID, nil
-}
-
-func bbFuncByType(bb client.APIClient, t string) client.BeneDataFunc {
-	return map[string]client.BeneDataFunc{
-		"ExplanationOfBenefit": bb.GetExplanationOfBenefit,
-		"Patient":              bb.GetPatient,
-		"Coverage":             bb.GetCoverage,
-	}[t]
 }
 
 // beneBBID returns the beneficiary's Blue Button ID. The ID value is retrieved from BB and saved.
@@ -282,7 +274,7 @@ func beneBBID(cclfBeneID string, bb client.APIClient, db *gorm.DB) (string, erro
 	return bbID, nil
 }
 
-func handleBBError(ctx context.Context, err error, errorCount *int, fileUUID, msg, jobID string) {
+func handleBBError(ctx context.Context, err error, errorCount *int, fileUUID, msg string, jobID int) {
 	log.Error(err)
 	(*errorCount)++
 	appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.BbErr, msg, jobID)
@@ -301,7 +293,7 @@ func getFailureThreshold() float64 {
 	return float64(exportFailPct)
 }
 
-func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, detailsDisplay string, jobID string) {
+func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
 	defer func() {
 		if err := segment.End(); err != nil {
@@ -312,7 +304,7 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
-	fileName := fmt.Sprintf("%s/%s/%s-error.ndjson", dataDir, jobID, fileUUID)
+	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
 	/* #nosec -- opening file defined by variable */
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
@@ -332,7 +324,7 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 	}
 }
 
-func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, jobID, fileUUID string) {
+func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	segment := getSegment(ctx, "fhirBundleToResourceNDJSON")
 	defer func() {
 		if err := segment.End(); err != nil {

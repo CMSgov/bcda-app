@@ -32,10 +32,13 @@ type BBRequestTestSuite struct {
 	ts       *httptest.Server
 }
 
-var ts200, ts500 *httptest.Server
-var now = time.Now()
-var nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
-var since = "gt2020-02-14"
+var (
+	ts200, ts500 *httptest.Server
+	now          = time.Now()
+	nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
+	since        = "gt2020-02-14"
+	serviceDate  = time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)
+)
 
 func (s *BBTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
@@ -220,14 +223,14 @@ func (s *BBRequestTestSuite) TestGetCoverage_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 33, len(e.Entries))
 	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
 	assert.Regexp(s.T(), `blue button request .+ failed \d+ time\(s\)`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -289,7 +292,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, time.Time{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -300,12 +303,13 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noServiceDateChecker,
 			},
 		},
 		{
 			"GetExplanationOfBenefitNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, time.Time{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -316,6 +320,24 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noSinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
+				noServiceDateChecker,
+			},
+		},
+		{
+			"GetExplanationOfBenefitWithServiceDate",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, serviceDate)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, string){
+				sinceChecker,
+				nowChecker,
+				excludeSAMHSAChecker,
+				serviceDateChecker,
 			},
 		},
 		{
@@ -513,6 +535,13 @@ func excludeSAMHSAChecker(t *testing.T, url string) {
 }
 func nowChecker(t *testing.T, url string) {
 	assert.Contains(t, url, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+}
+func noServiceDateChecker(t *testing.T, url string) {
+	assert.NotContains(t, url, "service-date")
+}
+func serviceDateChecker(t *testing.T, url string) {
+	// We expect that service date only contains YYYY-MM-DD
+	assert.Contains(t, url, fmt.Sprintf("service-date=le%s", serviceDate.Format("2006-01-02")))
 }
 
 func TestBBTestSuite(t *testing.T) {

@@ -20,21 +20,6 @@ func PrintSeparator() {
 	fmt.Println("**********************************************************************************")
 }
 
-func CreateStaging(jobID string) {
-	err := os.Setenv("FHIR_STAGING_DIR", "data/test")
-	if err != nil {
-		log.Panic(err)
-	}
-	testdir := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-
-	if _, err := os.Stat(testdir); os.IsNotExist(err) {
-		err = os.MkdirAll(testdir, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}
-
 func RandomHexID() string {
 	b, err := someRandomBytes(4)
 	if err != nil {
