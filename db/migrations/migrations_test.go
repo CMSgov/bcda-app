@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pborman/uuid"
+
 	"github.com/CMSgov/bcda-app/bcda/models"
 
 	"github.com/jinzhu/gorm"
@@ -128,6 +130,70 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				result = models.CCLFFile{}
 				assert.NoError(t, db.First(&result, withType.ID).Error)
 				assert.Equal(t, withType.Type, result.Type)
+			},
+		},
+		{
+			"Add blacklisted column to acos",
+			func(t *testing.T) {
+				// Verify that existing ACOs have blacklisted equal to false
+				beforeMigration := &models.ACO{
+					UUID:        uuid.NewUUID(),
+					Name:        uuid.New(),
+					Blacklisted: true,
+				}
+				assert.NoError(t, db.Select("uuid", "name").Create(beforeMigration).Error)
+
+				migrator.runMigration(t, "3")
+				blacklisted := &models.ACO{
+					UUID:        uuid.NewUUID(),
+					Name:        uuid.New(),
+					Blacklisted: true,
+				}
+				notBlacklisted := &models.ACO{
+					UUID:        uuid.NewUUID(),
+					Name:        uuid.New(),
+					Blacklisted: false,
+				}
+				notSet := &models.ACO{
+					UUID: uuid.NewUUID(),
+					Name: uuid.New(),
+				}
+
+				assert.NoError(t, db.Create(blacklisted).Error)
+				assert.NoError(t, db.Create(notBlacklisted).Error)
+				assert.NoError(t, db.Create(notSet).Error)
+
+				var result models.ACO
+				assert.NoError(t, db.First(&result, blacklisted.ID).Error)
+				assert.True(t, result.Blacklisted)
+
+				result = models.ACO{}
+				assert.NoError(t, db.First(&result, notBlacklisted.ID).Error)
+				assert.False(t, result.Blacklisted)
+
+				result = models.ACO{}
+				assert.NoError(t, db.First(&result, notSet.ID).Error)
+				assert.False(t, result.Blacklisted)
+
+				result = models.ACO{}
+				assert.NoError(t, db.First(&result, beforeMigration.ID).Error)
+				assert.False(t, result.Blacklisted)
+			},
+		},
+		{
+			"Remove blacklisted column from acos",
+			func(t *testing.T) {
+				migrator.runMigration(t, "2")
+
+				blacklisted := &models.ACO{
+					UUID:        uuid.NewUUID(),
+					Name:        uuid.New(),
+					Blacklisted: true,
+				}
+
+				err := db.Create(blacklisted).Error
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "column \"blacklisted\" of relation \"acos\" does not exist")
 			},
 		},
 		{
