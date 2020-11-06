@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -797,6 +798,32 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 	assert.Contains(buf.String(), "Files skipped: 0")
 }
 
+func (s *CLITestSuite) TestBlacklistACO() {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	blacklistedCMSID := getUnusedCMSID()
+	notBlacklistedCMSID := getUnusedCMSID()
+	notFoundCMSID := getUnusedCMSID()
+
+	blacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &blacklistedCMSID, Blacklisted: true}
+	notBlacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notBlacklistedCMSID, Blacklisted: false}
+	defer func() {
+		db.Unscoped().Delete(&blacklistedACO)
+		db.Unscoped().Delete(&notBlacklistedACO)
+	}()
+
+	s.NoError(db.Create(&blacklistedACO).Error)
+	s.NoError(db.Create(&notBlacklistedACO).Error)
+	s.NoError(s.testApp.Run([]string{"bcda", "unblacklist-aco", "--cms-id", blacklistedCMSID}))
+	s.NoError(s.testApp.Run([]string{"bcda", "blacklist-aco", "--cms-id", notBlacklistedCMSID}))
+	s.Error(s.testApp.Run([]string{"bcda", "unblacklist-aco", "--cms-id", notFoundCMSID}))
+	s.Error(s.testApp.Run([]string{"bcda", "blacklist-aco", "--cms-id", notFoundCMSID}))
+
+	s.True(db.First(&blacklistedACO).Error == nil && !blacklistedACO.Blacklisted)
+	s.True(db.First(&notBlacklistedACO).Error == nil && notBlacklistedACO.Blacklisted)
+}
+
 func getRandomPort(t *testing.T) int {
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -809,4 +836,19 @@ func getRandomPort(t *testing.T) int {
 	}()
 
 	return listener.Addr().(*net.TCPAddr).Port
+}
+
+func getUnusedCMSID() string {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	gen := func() string {
+		return fmt.Sprintf("%05d", rand.Int()%100000)
+	}
+
+	cmsID := gen()
+	for !db.First(&models.ACO{}, "cms_id = ?", cmsID).RecordNotFound() {
+		cmsID = gen()
+	}
+	return cmsID
 }
