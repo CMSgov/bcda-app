@@ -1,12 +1,18 @@
 package web
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -246,6 +252,60 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 	assert.Equal(s.T(), http.StatusMethodNotAllowed, res.StatusCode, "http to https redirect rejects POST requests")
 }
 
+// TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
+func (s *RouterTestSuite) TestBlacklistedACO() {
+	// Use a new router to ensure that v2 endpoints are active
+	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
+	apiRouter := NewAPIRouter()
+
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	p := auth.GetProvider()
+	cmsID := testUtils.RandomHexID()[0:4]
+	acoUUID, err := models.CreateACO("TestRegisterSystem", &cmsID)
+	s.NoError(err)
+	defer db.Unscoped().Delete(&models.ACO{}, "uuid = ?", acoUUID)
+	c, err := p.RegisterSystem(acoUUID.String(), "", "")
+	s.NoError(err)
+	token, err := p.MakeAccessToken(c)
+	s.NoError(err)
+
+	configs := []struct {
+		handler http.Handler
+		paths   []string
+	}{
+		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export",
+			"/api/v2/Patient/$export", "/api/v2/Group/all/$export",
+			"/api/v1/jobs/1"}},
+		{s.dataRouter, []string{"/data/test/test.ndjson"}},
+		{NewAuthRouter(), []string{"/auth/welcome"}},
+	}
+
+	for _, blacklistValue := range []bool{true, false} {
+		for _, config := range configs {
+			for _, path := range config.paths {
+				s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blacklistValue, path), func(t *testing.T) {
+					assert.NoError(t, db.Model(&models.ACO{}).Where("uuid = ?", acoUUID).Update("blacklisted", blacklistValue).Error)
+					rr := httptest.NewRecorder()
+					req, err := http.NewRequest("GET", path, nil)
+					assert.NoError(t, err)
+					req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+					config.handler.ServeHTTP(rr, req)
+
+					if blacklistValue {
+						assert.Equal(t, http.StatusForbidden, rr.Code)
+						assert.Contains(t, rr.Body.String(), fmt.Sprintf("ACO (CMS_ID: %s) is blacklisted", cmsID))
+					} else {
+						assert.NotEqual(t, http.StatusForbidden, rr.Code)
+					}
+				})
+			}
+		}
+	}
+}
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))
 }
