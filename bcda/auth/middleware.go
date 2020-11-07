@@ -132,7 +132,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 		}
 
 		if ad.Blacklisted {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.TokenErr,
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr,
 				fmt.Sprintf("ACO (CMS_ID: %s) is blacklisted", ad.CMSID))
 			responseutils.WriteError(oo, w, http.StatusForbidden)
 			return
