@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "b386f592-ce8a-46dc-af1b-dbec80430274",
+		"_postman_id": "675eaa86-3299-404e-b7f7-2cc4dadd6773",
 		"name": "Beneficiary Claims Data API Tests, Sequential",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -11,7 +11,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "33608e96-4135-4f28-a1aa-900b9e79fe8b",
+						"id": "fba8a3f2-99a3-4585-b24b-818631161775",
 						"exec": [
 							"pm.test(\"Response contains version\", function() {",
 							"    pm.expect(pm.response.json()).to.have.property(\"version\");",
@@ -44,7 +44,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "7fb065b8-7dc3-4b76-9d74-fef399983b3c",
+						"id": "e8742678-e37a-4ed1-9cd4-00b1973f20d2",
 						"exec": [
 							"pm.test(\"Response time is less than 200 ms\", function() {",
 							"    pm.expect(pm.response.responseTime).to.be.below(200);",
@@ -145,7 +145,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "fc8b0dcb-eff0-4ddb-8824-798c27aa5607",
+						"id": "ffe00405-03f2-4552-a37a-0d97e22b4455",
 						"exec": [
 							"pm.test(\"Response contains database status\", function() {",
 							"    pm.expect(pm.response.json()).to.have.property(\"database\");",
@@ -177,7 +177,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "62eb9303-f406-49a9-87ec-bc6dc4aec0db",
+						"id": "84291b36-59a2-4f9b-a8bb-e70948bb5f71",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -243,7 +243,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "a41ff8f6-cafa-43e5-bdcf-7b4b7b175fe7",
+						"id": "4aab5c7f-e4b6-4321-b59f-f8fed646660e",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -308,7 +308,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "14028e23-c3d0-429b-9679-23907ab9706e",
+						"id": "9cc13b9d-3e94-4473-bbe2-cf14879b9df3",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -373,7 +373,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "5b196343-79de-4d97-a851-80505ef7c57e",
+						"id": "93813bb0-b15e-4530-9df0-198498801aed",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -429,7 +429,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "847eb790-2cf5-4fc3-8e5c-9360c7c72e82",
+						"id": "805c1508-6e7e-4a5e-a291-6409ed16216d",
 						"exec": [
 							"pm.test(\"Status code is 401\", function() {",
 							"    pm.response.to.have.status(401);",
@@ -471,7 +471,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "6e948def-80fb-4331-9f2b-fea4d3cb5e57",
+						"id": "7fb15741-828e-444d-aaf7-7aa5ad54e884",
 						"exec": [
 							"var env = pm.environment.get(\"env\");",
 							"pm.environment.set(\"clientId\", pm.globals.get(\"clientId\"));",
@@ -546,7 +546,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "2ff34eba-6461-4e82-8e3b-f3ebc512996b",
+						"id": "c363307e-236d-42f6-892b-7d615445df25",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -614,7 +614,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "d2ee6e97-ab4c-4204-8476-edcad9c041d6",
+						"id": "b2ef02ef-8460-4cbd-9778-cde30e951275",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -682,7 +682,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "9466320d-9473-4f82-81d5-df89bc2826bb",
+						"id": "efdd39b2-9764-43b6-b33f-0fbced651728",
 						"exec": [
 							"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
 							"",
@@ -767,7 +767,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "a3f6aed2-8e47-483d-9f63-7bd50e7d79b7",
+						"id": "2a86d478-b9af-4044-8006-7fb80daefa60",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -835,7 +835,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "5f95c9cb-9a3b-495f-9aee-f99a3a269a8c",
+						"id": "61170a3b-99df-4402-ac7d-acabdc457cea",
 						"exec": [
 							"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
 							"",
@@ -920,7 +920,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "57269ceb-078f-4516-ba81-340dd9922e8d",
+						"id": "30eb59d1-629f-4f1a-8082-87a0ae3e8759",
 						"exec": [
 							"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
 							"",
@@ -999,7 +999,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "7c66d61a-7f8a-498b-9cb1-d87fd7bbebbb",
+						"id": "510a1b8d-8256-49c5-8e6c-64938c8c0fe8",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1045,7 +1045,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "960467bc-44e5-4368-9afa-cac156a41241",
+						"id": "136687e6-66c0-4ddd-86d1-d91b258c4cee",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1128,7 +1128,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "11d99b22-5e01-4704-b84b-dc58c594c31a",
+						"id": "59c536b5-dd86-4187-a545-684157d5bbf3",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1170,7 +1170,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "2f888e79-ad78-4768-a921-29b1c876b424",
+						"id": "c16c76b0-bf90-48e5-836b-5fff12c420bd",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1216,7 +1216,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "9ea5e988-3909-4ec3-981d-1dfcfeb9b6dd",
+						"id": "1582caaf-7fd9-4561-9675-c1e79faca290",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1299,7 +1299,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "d8925242-f086-44e7-8cd3-4244563bdcc5",
+						"id": "c4ad6a44-cf07-45c0-85b7-8468092d4c6f",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1341,7 +1341,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "59a308a2-fabb-4e38-8cca-aa23d2c8a0e0",
+						"id": "23c1fa47-dcee-4bb0-a465-1b551d835e00",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1387,7 +1387,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "6a04609c-fb9b-46f2-a976-979172d07bba",
+						"id": "e42ec2f1-c906-4ec5-9a77-bae0f427b967",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1470,7 +1470,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "f924e6c9-0cec-44a9-9380-ecec27efff4e",
+						"id": "40709a52-9824-4b12-affd-79a3619d9c09",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1512,7 +1512,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "089daf9f-a6da-40e3-b4b4-5d5214a349fc",
+						"id": "6878d45e-6328-4d38-9fb3-eea3bf11a78f",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -1530,7 +1530,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "534a6a88-37e2-49ae-a912-ec5c94a4b3bd",
+						"id": "1573efa6-d808-453f-ad6d-b310ce442e82",
 						"exec": [
 							"let timestamp = new Date().toJSON();",
 							"pm.environment.set('now', timestamp);"
@@ -1595,7 +1595,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "5afa9599-733a-4d89-8d5a-37cf38ef06fa",
+						"id": "853066dc-7493-421a-8b6d-3e191bb15392",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1641,7 +1641,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "49ab8588-8269-486a-96e3-0e8a34e6c30f",
+						"id": "231ddbaf-3c16-4f78-87bc-e642eb3d09aa",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1724,7 +1724,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "8418f8fa-a0aa-4d32-bd60-bf0f304a8fc3",
+						"id": "ed28437b-86db-4249-ba67-d3d8a595920d",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -1766,7 +1766,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "262602aa-ad82-470f-bc5b-34d10bd87206",
+						"id": "b20b73f9-701b-4ec2-8b86-b930842d6931",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -1835,7 +1835,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "5276911b-52c0-4ded-af43-46d5153170b4",
+						"id": "1051593e-8e7c-48a8-9238-51a3393b4a33",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -1890,7 +1890,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "caec2f1a-40a3-449c-80d3-b04da8d804db",
+						"id": "16134c4e-5eba-4490-849e-1a979f97578a",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -1973,7 +1973,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "2653615e-66a0-44ae-824f-4a46d89d6724",
+						"id": "2a67013c-1ea6-4209-bbe3-1824297d9960",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -2017,7 +2017,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "a20ec82d-3983-404d-9318-9ce1fb3231b5",
+						"id": "9078d1b4-45d6-45a2-814e-92f4a2af0d8f",
 						"exec": [
 							"pm.test(\"Status code is 202\", function() {",
 							"    pm.response.to.have.status(202);",
@@ -2090,7 +2090,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "e6c2933c-ae34-4202-b791-fbe384ce43bf",
+						"id": "3f76d633-3ac0-4fab-8138-a304f3567a04",
 						"exec": [
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
@@ -2148,7 +2148,7 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"id": "4293015a-04cc-4724-962c-e372d6dddf86",
+						"id": "caa43f9a-f909-41d3-a113-7a1261422369",
 						"exec": [
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
@@ -2231,7 +2231,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "21324bf6-812a-4bf2-8e30-cd3554fc4177",
+						"id": "bf32eb9e-8c6a-403c-8c08-45c5ccd8fe06",
 						"exec": [
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
@@ -2276,7 +2276,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "b7306152-2677-4c55-a05d-f9180c32eb71",
+						"id": "44ea6fe5-3ccf-4139-b67c-0eb55b22b6f4",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2352,7 +2352,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "4967ff74-0e63-4db3-8418-f8632401b884",
+						"id": "ee2bcf9f-5404-45fa-832c-7145326d8cf0",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2428,7 +2428,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "148f489b-f43c-42e4-86be-94f521648b82",
+						"id": "9314121d-be2e-43fa-a970-afb6dd1f2f26",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2505,7 +2505,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "350f7aaf-9ef9-4e44-b734-82f0669c0275",
+						"id": "ebc05942-baaf-4828-81cf-e397c62ed750",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2582,7 +2582,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "dd37ac91-342b-4ef5-9b7d-e9aa211c2d4f",
+						"id": "f4351eaf-2197-4961-a166-94299496a036",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2659,7 +2659,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "887c86c8-a8b3-4532-bac4-e5731da0f3c4",
+						"id": "6fdfab19-d788-4b7b-bc55-39403c3cd73b",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2735,7 +2735,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "c868430f-d54a-417d-922f-69c3e2ece828",
+						"id": "79d71cdd-2782-49b8-b9e9-0febd04b4c06",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2812,7 +2812,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "d66c8097-51e5-4e33-90a4-0ff07db0d725",
+						"id": "19157f12-1b7b-44b2-a0a2-2fbf19a23d53",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2888,7 +2888,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "8977ed30-5f87-442a-a172-b30b237facea",
+						"id": "52164a5c-2c98-4486-9f79-c107bb2c4a09",
 						"exec": [
 							"pm.test(\"Status code is 400\", function() {",
 							"    pm.response.to.have.status(400);",
@@ -2965,8 +2965,12 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "b3c724d2-d1b0-4478-aebc-d500c3937443",
+						"id": "f58245c3-baac-411b-8f1b-8085eea6f2da",
 						"exec": [
+							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"    console.log(\"Blacklist test skipped due to creds not set.\")",
+							"    return",
+							"}",
 							"var env = pm.environment.get(\"env\");",
 							"pm.environment.set(\"blacklistedClientId\", pm.globals.get(\"blacklistedClientId\"));",
 							"pm.environment.set(\"blacklistedClientSecret\", pm.globals.get(\"blacklistedClientSecret\"));",
@@ -3041,8 +3045,12 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "ad03134f-7bd8-4d62-8fc8-0c5ba97034f9",
+						"id": "b1feadd8-2885-474c-a410-e9ad29fba4e5",
 						"exec": [
+							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"    console.log(\"Blacklist test skipped due to creds not set.\")",
+							"    return",
+							"}",
 							"pm.test(\"Status code is 403 (Unauthorized)\", function() {",
 							"    pm.response.to.have.status(403);",
 							"});",
@@ -3111,8 +3119,12 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "d4c5702a-1743-4ae3-943b-2faaea687a2d",
+						"id": "a51f4592-7103-4246-b1dd-7b7156bda8fa",
 						"exec": [
+							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"    console.log(\"Blacklist test skipped due to creds not set.\")",
+							"    return",
+							"}",
 							"pm.test(\"Status code is 403 (Unauthorized)\", function() {",
 							"    pm.response.to.have.status(403);",
 							"});",
@@ -3182,8 +3194,12 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "2dfe2874-cac1-415b-b4c4-7d37dd726a4b",
+						"id": "dfa54879-2a8d-4644-b560-29c10cb3b505",
 						"exec": [
+							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"    console.log(\"Blacklist test skipped due to creds not set.\")",
+							"    return",
+							"}",
 							"pm.test(\"Status code is 403 (Unauthorized)\", function() {",
 							"    pm.response.to.have.status(403);",
 							"});",
@@ -3252,8 +3268,12 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "7e2dfa16-8eb1-4718-9d16-b5f8708d9af3",
+						"id": "23e18e84-113d-43c6-b7ae-6f4b4f2d13c5",
 						"exec": [
+							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"    console.log(\"Blacklist test skipped due to creds not set.\")",
+							"    return",
+							"}",
 							"pm.test(\"Status code is 403 (Unauthorized)\", function() {",
 							"    pm.response.to.have.status(403);",
 							"});",
