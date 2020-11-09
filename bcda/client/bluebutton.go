@@ -134,10 +134,12 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 }
 
 func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+	header := make(http.Header)
+	header.Add("IncludeAddressFields", "true")
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData("/Patient/", params, jobID, cmsID)
+	return bbc.getBundleData("/Patient/", params, jobID, cmsID, header)
 }
 
 func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
@@ -152,7 +154,7 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since stri
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData("/Coverage/", params, jobID, cmsID)
+	return bbc.getBundleData("/Coverage/", params, jobID, cmsID, nil)
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error) {
@@ -168,17 +170,23 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 		params.Set("service-date", fmt.Sprintf("le%s", serviceDate.Format(svcDateFmt)))
 	}
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData("/ExplanationOfBenefit/", params, jobID, cmsID)
+	return bbc.getBundleData("/ExplanationOfBenefit/", params, jobID, cmsID, nil)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
 	return bbc.getRawData("/metadata/", GetDefaultParams(), "", "")
 }
 
-func (bbc *BlueButtonClient) getBundleData(path string, params url.Values, jobID, cmsID string) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) getBundleData(path string, params url.Values, jobID, cmsID string, headers http.Header) (*models.Bundle, error) {
 	req, err := bbc.getRequest(path, params)
 	if err != nil {
 		return nil, err
+	}
+
+	for key, values := range headers {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
 	}
 
 	var b *models.Bundle

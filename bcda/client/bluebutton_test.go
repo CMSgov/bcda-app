@@ -287,7 +287,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error)
 		// Lighter validation checks since we've already thoroughly tested the methods in other tests
 		payloadChecker func(t *testing.T, payload interface{})
-		pathCheckers   []func(t *testing.T, url string)
+		pathCheckers   []func(t *testing.T, req *http.Request)
 	}{
 		{
 			"GetExplanationOfBenefit",
@@ -299,11 +299,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
 				noServiceDateChecker,
+				noIncludeAddressFieldsChecker,
 			},
 		},
 		{
@@ -316,11 +317,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				noSinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
 				noServiceDateChecker,
+				noIncludeAddressFieldsChecker,
 			},
 		},
 		{
@@ -333,11 +335,12 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
 				serviceDateChecker,
+				noIncludeAddressFieldsChecker,
 			},
 		},
 		{
@@ -350,10 +353,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				sinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				includeAddressFieldsChecker,
 			},
 		},
 		{
@@ -366,10 +370,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				noSinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				includeAddressFieldsChecker,
 			},
 		},
 		{
@@ -382,10 +387,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				sinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				noIncludeAddressFieldsChecker,
 			},
 		},
 		{
@@ -398,10 +404,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result.Entries)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				noSinceChecker,
 				nowChecker,
 				noExcludeSAMHSAChecker,
+				noIncludeAddressFieldsChecker,
 			},
 		},
 		{
@@ -414,8 +421,9 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.True(t, ok)
 				assert.NotEmpty(t, result)
 			},
-			[]func(*testing.T, string){
+			[]func(*testing.T, *http.Request){
 				noExcludeSAMHSAChecker,
+				noIncludeAddressFieldsChecker,
 			},
 		},
 	}
@@ -454,7 +462,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.Equal(t, "gzip", req.Header.Get("Accept-Encoding"))
 
 				for _, checker := range tt.pathCheckers {
-					checker(t, req.URL.String())
+					checker(t, req)
 				}
 
 				handlerFunc(w, req, true)
@@ -521,27 +529,33 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 	}
 }
 
-func noSinceChecker(t *testing.T, url string) {
-	assert.NotContains(t, url, "_lastUpdated=gt")
+func noSinceChecker(t *testing.T, req *http.Request) {
+	assert.NotContains(t, req.URL.String(), "_lastUpdated=gt")
 }
-func sinceChecker(t *testing.T, url string) {
-	assert.Contains(t, url, fmt.Sprintf("_lastUpdated=%s", since))
+func sinceChecker(t *testing.T, req *http.Request) {
+	assert.Contains(t, req.URL.String(), fmt.Sprintf("_lastUpdated=%s", since))
 }
-func noExcludeSAMHSAChecker(t *testing.T, url string) {
-	assert.NotContains(t, url, "excludeSAMHSA=true")
+func noExcludeSAMHSAChecker(t *testing.T, req *http.Request) {
+	assert.NotContains(t, req.URL.String(), "excludeSAMHSA=true")
 }
-func excludeSAMHSAChecker(t *testing.T, url string) {
-	assert.Contains(t, url, "excludeSAMHSA=true")
+func excludeSAMHSAChecker(t *testing.T, req *http.Request) {
+	assert.Contains(t, req.URL.String(), "excludeSAMHSA=true")
 }
-func nowChecker(t *testing.T, url string) {
-	assert.Contains(t, url, fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
+func nowChecker(t *testing.T, req *http.Request) {
+	assert.Contains(t, req.URL.String(), fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
-func noServiceDateChecker(t *testing.T, url string) {
-	assert.NotContains(t, url, "service-date")
+func noServiceDateChecker(t *testing.T, req *http.Request) {
+	assert.NotContains(t, req.URL.String(), "service-date")
 }
-func serviceDateChecker(t *testing.T, url string) {
+func serviceDateChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, url, fmt.Sprintf("service-date=le%s", serviceDate.Format("2006-01-02")))
+	assert.Contains(t, req.URL.String(), fmt.Sprintf("service-date=le%s", serviceDate.Format("2006-01-02")))
+}
+func noIncludeAddressFieldsChecker(t *testing.T, req *http.Request) {
+	assert.Empty(t, req.Header.Get("IncludeAddressFields"))
+}
+func includeAddressFieldsChecker(t *testing.T, req *http.Request) {
+	assert.Equal(t, "true", req.Header.Get("IncludeAddressFields"))
 }
 
 func TestBBTestSuite(t *testing.T) {
