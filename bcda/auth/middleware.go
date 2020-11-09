@@ -126,7 +126,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Error()
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "AuthData not found")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
 		}
