@@ -100,6 +100,7 @@ type ACO struct {
 	SystemID    string    `json:"system_id"`
 	AlphaSecret string    `json:"alpha_secret"`
 	PublicKey   string    `json:"public_key"`
+	Blacklisted bool      `json:"blacklisted"`
 }
 
 type CCLFBeneficiaryXref struct {
