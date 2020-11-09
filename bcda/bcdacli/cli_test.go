@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -802,9 +801,9 @@ func (s *CLITestSuite) TestBlacklistACO() {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
-	blacklistedCMSID := getUnusedCMSID()
-	notBlacklistedCMSID := getUnusedCMSID()
-	notFoundCMSID := getUnusedCMSID()
+	blacklistedCMSID := testUtils.RandomHexID()[0:4]
+	notBlacklistedCMSID := testUtils.RandomHexID()[0:4]
+	notFoundCMSID := testUtils.RandomHexID()[0:4]
 
 	blacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &blacklistedCMSID, Blacklisted: true}
 	notBlacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notBlacklistedCMSID, Blacklisted: false}
@@ -836,19 +835,4 @@ func getRandomPort(t *testing.T) int {
 	}()
 
 	return listener.Addr().(*net.TCPAddr).Port
-}
-
-func getUnusedCMSID() string {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	gen := func() string {
-		return fmt.Sprintf("%05d", rand.Int()%100000)
-	}
-
-	cmsID := gen()
-	for !db.First(&models.ACO{}, "cms_id = ?", cmsID).RecordNotFound() {
-		cmsID = gen()
-	}
-	return cmsID
 }
