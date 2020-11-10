@@ -61,7 +61,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				fmt.Fprintf(app.Writer, "%s\n", "Starting bcda...")
-				
+
 				var httpAddr, httpsAddr string
 				if httpPort != 0 {
 					httpAddr = fmt.Sprintf(":%d", httpPort)
@@ -407,6 +407,36 @@ func setUpApp() *cli.App {
 				return err
 			},
 		},
+		{
+			Name:     "blacklist-aco",
+			Category: "Authentication tools",
+			Usage:    "Blacklists an ACO by their CMS ID",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return setBlacklistState(acoCMSID, true)
+			},
+		},
+		{
+			Name:     "unblacklist-aco",
+			Category: "Authentication tools",
+			Usage:    "Unblacklists an ACO by their CMS ID",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				return setBlacklistState(acoCMSID, false)
+			},
+		},
 	}
 	return app
 }
@@ -602,4 +632,15 @@ func cleanupArchive(hrThreshold int) error {
 	}
 
 	return nil
+}
+
+func setBlacklistState(cmsID string, blacklistState bool) error {
+	aco, err := auth.GetACOByCMSID(cmsID)
+	if err != nil {
+		return err
+	}
+	db := database.GetGORMDbConnection()
+	defer db.Close()
+
+	return db.Model(&aco).Update("blacklisted", blacklistState).Error
 }
