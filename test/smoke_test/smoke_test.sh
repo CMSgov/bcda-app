@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CMS_IDs=("A9996" "E9996" "V996" "A9997")
+CMS_IDs=("A9996" "E9996" "V996")
 set -e
 function cleanup() {
         for CMS_ID in "${CMS_IDs[@]}"
@@ -33,9 +33,6 @@ do
         testFile=bulk_data_requests_lite.sh
         if [ ${CMS_ID} = "A9996" ]; then
                 testFile=bulk_data_requests.sh
-        elif [ ${CMS_ID} = "A9997" ]; then
-                docker-compose exec -T db sh -c 'psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "UPDATE acos SET blacklisted=true WHERE cms_id = '"'"${CMS_ID}"'"'"'
-                testFile=bulk_data_requests_blacklisted.sh
         fi
         CLIENT_ID=${CLIENT_ID} CLIENT_SECRET=${CLIENT_SECRET} docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh ${testFile} &
 done

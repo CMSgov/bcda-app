@@ -297,7 +297,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 
 					if blacklistValue {
 						assert.Equal(t, http.StatusForbidden, rr.Code)
-						assert.Contains(t, rr.Body.String(), fmt.Sprintf("ACO (CMS_ID: %s) is blacklisted", cmsID))
+						assert.Contains(t, rr.Body.String(), fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", cmsID))
 					} else {
 						assert.NotEqual(t, http.StatusForbidden, rr.Code)
 					}

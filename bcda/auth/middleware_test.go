@@ -279,7 +279,7 @@ func (s *MiddlewareTestSuite) TestCheckBlacklist() {
 	}{
 		{"No auth data found", nil, http.StatusNotFound, "AuthData not found"},
 		{"Blacklisted ACO", &auth.AuthData{CMSID: blacklisted, Blacklisted: true}, http.StatusForbidden,
-			fmt.Sprintf("ACO (CMS_ID: %s) is blacklisted", blacklisted)},
+			fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", blacklisted)},
 		{"Non-blacklisted ACO", &auth.AuthData{CMSID: notBlacklisted, Blacklisted: false}, http.StatusOK, ""},
 	}
 

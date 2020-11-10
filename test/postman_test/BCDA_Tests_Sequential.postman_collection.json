@@ -2967,13 +2967,13 @@
 					"script": {
 						"id": "f58245c3-baac-411b-8f1b-8085eea6f2da",
 						"exec": [
-							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"if (!pm.globals.get(\"blacklistedClientId\") || !pm.globals.get(\"blacklistedClientSecret\")) {",
 							"    console.log(\"Blacklist test skipped due to creds not set.\")",
 							"    return",
 							"}",
 							"var env = pm.environment.get(\"env\");",
 							"pm.environment.set(\"blacklistedClientId\", pm.globals.get(\"blacklistedClientId\"));",
-							"pm.environment.set(\"blacklistedClientSecret\", pm.globals.get(\"blacklistedClientSecret\"));",
+							"pm.environment.set(\"blacklistedClientSecret\", !pm.globals.get(\"blacklistedClientSecret\"));",
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
 							"});",
@@ -3047,7 +3047,7 @@
 					"script": {
 						"id": "b1feadd8-2885-474c-a410-e9ad29fba4e5",
 						"exec": [
-							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"if (!pm.globals.get(\"blacklistedClientId\") || !pm.globals.get(\"blacklistedClientSecret\")) {",
 							"    console.log(\"Blacklist test skipped due to creds not set.\")",
 							"    return",
 							"}",
@@ -3061,12 +3061,12 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details code is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Unauthorized Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Unauthorized Error\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text are blacklisted ACO\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is blacklisted/)",
+							"pm.test(\"Issue details text are unauthorized ACO\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is unauthorized/)",
 							"});"
 						],
 						"type": "text/javascript"
@@ -3121,7 +3121,7 @@
 					"script": {
 						"id": "a51f4592-7103-4246-b1dd-7b7156bda8fa",
 						"exec": [
-							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"if (!pm.globals.get(\"blacklistedClientId\") || !pm.globals.get(\"blacklistedClientSecret\")) {",
 							"    console.log(\"Blacklist test skipped due to creds not set.\")",
 							"    return",
 							"}",
@@ -3135,12 +3135,12 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details code is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Unauthorized Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Unauthorized Error\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text are blacklisted ACO\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is blacklisted/)",
+							"pm.test(\"Issue details text are unauthorized ACO\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is unauthorized/)",
 							"});"
 						],
 						"type": "text/javascript"
@@ -3196,7 +3196,7 @@
 					"script": {
 						"id": "dfa54879-2a8d-4644-b560-29c10cb3b505",
 						"exec": [
-							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"if (!pm.globals.get(\"blacklistedClientId\") || !pm.globals.get(\"blacklistedClientSecret\")) {",
 							"    console.log(\"Blacklist test skipped due to creds not set.\")",
 							"    return",
 							"}",
@@ -3210,12 +3210,12 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details code is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Unauthorized Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Unauthorized Error\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text are blacklisted ACO\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is blacklisted/)",
+							"pm.test(\"Issue details text are unauthorized ACO\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is unauthorized/)",
 							"});"
 						],
 						"type": "text/javascript"
@@ -3270,7 +3270,7 @@
 					"script": {
 						"id": "23e18e84-113d-43c6-b7ae-6f4b4f2d13c5",
 						"exec": [
-							"if (!pm.globals.get(\"blacklistedClientId\") || pm.globals.get(\"blacklistedClientSecret\")) {",
+							"if (!pm.globals.get(\"blacklistedClientId\") || !pm.globals.get(\"blacklistedClientSecret\")) {",
 							"    console.log(\"Blacklist test skipped due to creds not set.\")",
 							"    return",
 							"}",
@@ -3284,12 +3284,12 @@
 							"    pm.expect(respJson.resourceType).to.eql(\"OperationOutcome\")",
 							"});",
 							"",
-							"pm.test(\"Issue details code is Request Error\", function() {",
-							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
+							"pm.test(\"Issue details code is Unauthorized Error\", function() {",
+							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Unauthorized Error\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text are blacklisted ACO\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is blacklisted/)",
+							"pm.test(\"Issue details text are unauthorized ACO\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.match(/ACO \\(CMS_ID: .*\\) is unauthorized/)",
 							"});"
 						],
 						"type": "text/javascript"
