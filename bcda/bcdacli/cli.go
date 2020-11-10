@@ -425,7 +425,7 @@ func setUpApp() *cli.App {
 		{
 			Name:     "unblacklist-aco",
 			Category: "Authentication tools",
-			Usage:    "Blacklists an ACO by their CMS ID",
+			Usage:    "Unblacklists an ACO by their CMS ID",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "cms-id",
