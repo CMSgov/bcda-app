@@ -13,7 +13,6 @@ import (
 )
 
 type importer interface {
-	// do(ctx context.Context, tx *sql.Tx, cclfBeneficiary models.CCLFBeneficiary) error
 	do(ctx context.Context, tx *sql.Tx, data interface{}) error
 
 	// flush should be called once the import process is complete.

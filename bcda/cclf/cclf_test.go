@@ -431,10 +431,6 @@ func (i noopImporter) do(ctx context.Context, tx *sql.Tx, data interface{}) erro
 	return nil
 }
 
-// func (i noopImporter) do(ctx context.Context, tx *sql.Tx, fileID uint, b []byte) error {
-// 	return nil
-// }
-
 func (i noopImporter) flush(ctx context.Context) error {
 	return nil
 }
