@@ -13,7 +13,8 @@ import (
 )
 
 type importer interface {
-	do(ctx context.Context, tx *sql.Tx, cclfBeneficiary models.CCLFBeneficiary) error
+	// do(ctx context.Context, tx *sql.Tx, cclfBeneficiary models.CCLFBeneficiary) error
+	do(ctx context.Context, tx *sql.Tx, data interface{}) error
 
 	// flush should be called once the import process is complete.
 	// This will guarantee any remaining work involved with the importer is complete.
@@ -32,9 +33,13 @@ type cclf8Importer struct {
 }
 
 // validates that cclf8Importer implements the interface
-var _ importer = &cclf8Importer{}
+// var _ importer = &cclf8Importer{}
 
-func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, cclfBeneficiary models.CCLFBeneficiary) error {
+func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, data interface{}) error {
+	bene, ok := data.(models.CCLFBeneficiary)
+	if !ok {
+		return errors.New("invalid type sent, expected models.CCLFBeneficiary")
+	}
 	if cclfImporter.inprogress == nil {
 		if err := cclfImporter.refreshStatement(ctx, tx); err != nil {
 			return errors.Wrap(err, "failed to refresh statement")
@@ -54,7 +59,7 @@ func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, cclfBenef
 	close := metrics.NewChild(ctx, "importCCLF8-benecreate")
 	defer close()
 
-	_, err := cclfImporter.inprogress.Exec(cclfBeneficiary.FileID, cclfBeneficiary.HICN, cclfBeneficiary.MBI)
+	_, err := cclfImporter.inprogress.Exec(bene.FileID, bene.HICN, bene.MBI)
 	if err != nil {
 		fmt.Println("Could not create CCLF8 beneficiary record.")
 		err = errors.Wrap(err, "could not create CCLF8 beneficiary record")
