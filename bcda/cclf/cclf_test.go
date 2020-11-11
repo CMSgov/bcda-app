@@ -112,7 +112,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	// positive
 	validator, err := importCCLF0(ctx, cclf0metadata)
 	assert.Nil(err)
-	assert.Equal(cclfFileValidator{totalRecordCount: 6, maxRecordLength: 549}, validator["CCLF8"])
+	assert.Equal(cclfFileValidator{totalRecordCount: 7, maxRecordLength: 549}, validator["CCLF8"])
 
 	// negative
 	cclf0metadata = &cclfFileMetadata{}
@@ -151,7 +151,7 @@ func (s *CCLFTestSuite) TestValidate() {
 	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "T.BCD.A0001.ZC8Y18.D181120.T1000009"}
 
 	// positive
-	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 6, maxRecordLength: 549}}
+	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
 	err := validate(ctx, cclf8metadata, cclfvalidator)
 	assert.Nil(err)
 
