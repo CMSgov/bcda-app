@@ -165,8 +165,7 @@ func adFromClaims(claims *CommonClaims) (AuthData, error) {
 		return ad, fmt.Errorf("no aco for cmsID %s; %v", ad.CMSID, err)
 	}
 	ad.ACOID = aco.UUID.String()
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	ad.Blacklisted = aco.Blacklisted
 
 	return ad, nil
 }

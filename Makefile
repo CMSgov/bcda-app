@@ -41,6 +41,7 @@ ACO_CMS_ID ?= A9994
 clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
+
 smoke-test:
 	docker-compose -f docker-compose.test.yml build tests
 	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
@@ -50,8 +51,14 @@ postman:
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
+	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id A9997'|tail -n2))
+
+	$(eval BLACKLIST_CLIENT_ID:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$1}'))
+	$(eval BLACKLIST_CLIENT_SECRET:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$2}'))
 	docker-compose -f docker-compose.test.yml build postman_test
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json -e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET)
+	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
+	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET)
 
 unit-test:
 	$(MAKE) unit-test-db

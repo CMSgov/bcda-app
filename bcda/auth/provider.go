@@ -63,11 +63,12 @@ func GetProvider() Provider {
 }
 
 type AuthData struct {
-	ACOID    string
-	TokenID  string
-	ClientID string
-	SystemID string
-	CMSID    string
+	ACOID       string
+	TokenID     string
+	ClientID    string
+	SystemID    string
+	CMSID       string
+	Blacklisted bool
 }
 
 type Credentials struct {

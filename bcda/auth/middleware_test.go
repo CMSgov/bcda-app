@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -262,6 +264,41 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+}
+
+func (s *MiddlewareTestSuite) TestCheckBlacklist() {
+	blacklisted := testUtils.RandomHexID()[0:4]
+	notBlacklisted := testUtils.RandomHexID()[0:4]
+
+	handler := auth.CheckBlacklist(mockHandler)
+	tests := []struct {
+		name            string
+		ad              *auth.AuthData
+		expectedCode    int
+		expectedMessage string
+	}{
+		{"No auth data found", nil, http.StatusNotFound, "AuthData not found"},
+		{"Blacklisted ACO", &auth.AuthData{CMSID: blacklisted, Blacklisted: true}, http.StatusForbidden,
+			fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", blacklisted)},
+		{"Non-blacklisted ACO", &auth.AuthData{CMSID: notBlacklisted, Blacklisted: false}, http.StatusOK, ""},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			ctx := context.Background()
+			if tt.ad != nil {
+				ctx = context.WithValue(ctx, auth.AuthDataContextKey, *tt.ad)
+			}
+			req, err := http.NewRequestWithContext(ctx, "GET", "", nil)
+			assert.NoError(t, err)
+			handler.ServeHTTP(rr, req)
+
+			assert.Equal(t, tt.expectedCode, rr.Code)
+			assert.Contains(t, rr.Body.String(), tt.expectedMessage)
+		})
+	}
+
 }
 
 func TestMiddlewareTestSuite(t *testing.T) {
