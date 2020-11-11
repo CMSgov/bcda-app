@@ -3,7 +3,6 @@ package cclf
 import (
 	"archive/zip"
 	"context"
-	"database/sql"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -386,7 +385,7 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 				filePath:  fileName,
 			}
 
-			s.NoError(importCCLF(context.Background(), metadata, noopImporter{}))
+			s.NoError(importCCLF8(context.Background(), metadata))
 
 			var cclfFile models.CCLFFile
 			assert.NoError(t, db.Where("name = ?", cclfName).First(&cclfFile).Error)
@@ -423,14 +422,4 @@ func createTemporaryZipFile(t *testing.T) (fileName, cclfName string) {
 	assert.NoError(t, w.Close())
 
 	return f.Name(), cclfName
-}
-
-type noopImporter struct{}
-
-func (i noopImporter) do(ctx context.Context, tx *sql.Tx, data interface{}) error {
-	return nil
-}
-
-func (i noopImporter) flush(ctx context.Context) error {
-	return nil
 }

@@ -12,14 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type importer interface {
-	do(ctx context.Context, tx *sql.Tx, data interface{}) error
-
-	// flush should be called once the import process is complete.
-	// This will guarantee any remaining work involved with the importer is complete.
-	flush(ctx context.Context) error
-}
-
 // A cclf8Importer is not safe for concurrent use by multiple goroutines.
 // It should be scoped to a single *sql.Tx
 type cclf8Importer struct {
