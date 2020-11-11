@@ -157,6 +157,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) error {
 		fmt.Println("CCLF file not found.")
 		err := errors.New("CCLF file not found")
 		log.Error(err)
+		return err
 	}
 
 	fmt.Printf("Importing CCLF%d file %s...\n", fileMetadata.cclfNum, fileMetadata)
