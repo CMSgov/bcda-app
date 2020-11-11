@@ -266,7 +266,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 		}
 	}()
 
-	var importedMBI = make(map[string]models.CCLFBeneficiary)
+	var importedMBI = make(map[string]struct{})
 
 	for sc.Scan() {
 		close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d-readlines", cclfFile.CCLFNum))
@@ -291,7 +291,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 			continue
 		}
 
-		importedMBI[cclfBeneficiary.MBI] = cclfBeneficiary
+		importedMBI[cclfBeneficiary.MBI] = struct{}{}
 
 		err = importer.do(ctx, txn, cclfBeneficiary)
 		if err != nil {
