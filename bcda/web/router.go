@@ -14,6 +14,11 @@ import (
 	"github.com/go-chi/chi"
 )
 
+// Auth middleware checks that verifies that caller is authorized
+var commonAuth = []func(http.Handler) http.Handler{
+	auth.RequireTokenAuth,
+	auth.CheckBlacklist}
+
 func NewAPIRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
@@ -31,16 +36,16 @@ func NewAPIRouter() http.Handler {
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	}
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
-		r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
-		r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
+		r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
+		r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
+		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
 		r.Get(m.WrapHandler("/metadata", v1.Metadata))
 	})
 
 	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", true) {
 		r.Route("/api/v2", func(r chi.Router) {
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
-			r.With(auth.RequireTokenAuth, ValidateBulkRequestHeaders).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
+			r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
+			r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
 		})
 	}
@@ -59,7 +64,7 @@ func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), SecurityHeader, ConnectionClose)
-	r.With(auth.RequireTokenAuth, auth.RequireTokenJobMatch).
+	r.With(append(commonAuth, auth.RequireTokenJobMatch)...).
 		Get(m.WrapHandler("/data/{jobID}/{fileName}", v1.ServeData))
 	return r
 }

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -76,6 +77,8 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
 				ad.CMSID = *aco.CMSID
+				ad.Blacklisted = aco.Blacklisted
+
 			default:
 				var aco, err = GetACOByUUID(claims.ACOID)
 				if err != nil {
@@ -86,6 +89,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.TokenID = claims.UUID
 				ad.ACOID = claims.ACOID
 				ad.CMSID = *aco.CMSID
+				ad.Blacklisted = aco.Blacklisted
 			}
 		}
 		ctx := context.WithValue(r.Context(), TokenContextKey, token)
@@ -113,6 +117,27 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 
 			next.ServeHTTP(w, r)
 		}
+	})
+}
+
+// CheckBlacklist checks the auth data is associated with a blacklisted entity
+func CheckBlacklist(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
+		if !ok {
+			log.Error()
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "AuthData not found")
+			responseutils.WriteError(oo, w, http.StatusNotFound)
+			return
+		}
+
+		if ad.Blacklisted {
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.UnauthorizedErr,
+				fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
+			responseutils.WriteError(oo, w, http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
