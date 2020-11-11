@@ -197,7 +197,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 
 	beneficiaries := []models.CCLFBeneficiary{}
 	db.Find(&beneficiaries, "file_id = ?", file.ID)
-	assert.Equal(6, len(beneficiaries))
+	assert.Equal(5, len(beneficiaries))
 	assert.Equal("203031401M", beneficiaries[0].HICN)
 	assert.Equal("1A69B98CD30", beneficiaries[0].MBI)
 	assert.Equal("203031402A", beneficiaries[1].HICN)
