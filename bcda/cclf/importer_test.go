@@ -89,9 +89,7 @@ func (s *ImporterTestSuite) TestCCLF8ImporterHappyPath() {
 				}
 				prepare.ExpectExec().WithArgs(bene.FileID, hicn, mbi).WillReturnResult(sqlmock.NewResult(1, 1))
 
-				// data := append([]byte(mbi), []byte(hicn)...)
 				err := importer.do(context.Background(), s.tx, cclfBeneficiary)
-				// err := importer.do(context.Background(), s.tx, fileID, data)
 				assert.NoError(t, err)
 
 				execCount++
@@ -156,7 +154,6 @@ func (s *ImporterTestSuite) TestCCLF8ImporterErrorPaths() {
 				MBI:    mbi,
 				HICN:   hicn,
 			}
-			// data := append([]byte(mbi), []byte(hicn)...)
 
 			execWithArgs := prepare.ExpectExec().WithArgs(bene.FileID, hicn, mbi)
 			execNoArgs := prepare.ExpectExec().WithArgs()

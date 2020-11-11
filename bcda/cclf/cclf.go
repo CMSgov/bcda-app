@@ -294,7 +294,6 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 		importedMBI[cclfBeneficiary.MBI] = cclfBeneficiary
 
 		err = importer.do(ctx, txn, cclfBeneficiary)
-		// err = importer.do(ctx, txn, cclfFile.ID, b)
 		if err != nil {
 			log.Error(err)
 			return err
