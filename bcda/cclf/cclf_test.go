@@ -89,7 +89,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 
 	sc, f, sk, err := ImportCCLFDirectory(filepath.Join(s.basePath, "cclf/archives/valid/"))
 	assert.Nil(err)
-	assert.Equal(6, sc)
+	assert.Equal(5, sc)
 	assert.Equal(0, f)
 	assert.Equal(1, sk)
 
