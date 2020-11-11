@@ -427,9 +427,13 @@ func createTemporaryZipFile(t *testing.T) (fileName, cclfName string) {
 
 type noopImporter struct{}
 
-func (i noopImporter) do(ctx context.Context, tx *sql.Tx, fileID uint, b []byte) error {
+func (i noopImporter) do(ctx context.Context, tx *sql.Tx, cclfBeneficiary models.CCLFBeneficiary) error {
 	return nil
 }
+
+// func (i noopImporter) do(ctx context.Context, tx *sql.Tx, fileID uint, b []byte) error {
+// 	return nil
+// }
 
 func (i noopImporter) flush(ctx context.Context) error {
 	return nil

@@ -1,7 +1,6 @@
 package cclf
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -14,7 +13,7 @@ import (
 )
 
 type importer interface {
-	do(ctx context.Context, tx *sql.Tx, fileID uint, b []byte) error
+	do(ctx context.Context, tx *sql.Tx, cclfBeneficiary models.CCLFBeneficiary) error
 
 	// flush should be called once the import process is complete.
 	// This will guarantee any remaining work involved with the importer is complete.
@@ -35,7 +34,7 @@ type cclf8Importer struct {
 // validates that cclf8Importer implements the interface
 var _ importer = &cclf8Importer{}
 
-func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, fileID uint, b []byte) error {
+func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, cclfBeneficiary models.CCLFBeneficiary) error {
 	if cclfImporter.inprogress == nil {
 		if err := cclfImporter.refreshStatement(ctx, tx); err != nil {
 			return errors.Wrap(err, "failed to refresh statement")
@@ -54,15 +53,7 @@ func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, fileID ui
 
 	close := metrics.NewChild(ctx, "importCCLF8-benecreate")
 	defer close()
-	const (
-		mbiStart, mbiEnd   = 0, 11
-		hicnStart, hicnEnd = 11, 22
-	)
-	cclfBeneficiary := &models.CCLFBeneficiary{
-		FileID: fileID,
-		MBI:    string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
-		HICN:   string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
-	}
+
 	_, err := cclfImporter.inprogress.Exec(cclfBeneficiary.FileID, cclfBeneficiary.HICN, cclfBeneficiary.MBI)
 	if err != nil {
 		fmt.Println("Could not create CCLF8 beneficiary record.")

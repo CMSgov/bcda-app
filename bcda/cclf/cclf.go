@@ -266,6 +266,8 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 		}
 	}()
 
+	var importedMBI = make(map[string]models.CCLFBeneficiary)
+
 	for sc.Scan() {
 		close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d-readlines", cclfFile.CCLFNum))
 		b := sc.Bytes()
@@ -275,7 +277,24 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 			continue
 		}
 
-		err = importer.do(ctx, txn, cclfFile.ID, b)
+		const (
+			mbiStart, mbiEnd   = 0, 11
+			hicnStart, hicnEnd = 11, 22
+		)
+		cclfBeneficiary := models.CCLFBeneficiary{
+			FileID: cclfFile.ID,
+			MBI:    string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
+			HICN:   string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
+		}
+		// Filtering for duplicate benes in CCLF file
+		if _, ok := importedMBI[cclfBeneficiary.MBI]; ok {
+			continue
+		}
+
+		importedMBI[cclfBeneficiary.MBI] = cclfBeneficiary
+
+		err = importer.do(ctx, txn, cclfBeneficiary)
+		// err = importer.do(ctx, txn, cclfFile.ID, b)
 		if err != nil {
 			log.Error(err)
 			return err
