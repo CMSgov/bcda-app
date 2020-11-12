@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,25 +36,26 @@ func TestCCLFTestSuite(t *testing.T) {
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
 	os.Setenv("CCLF_REF_DATE", "D190617")
-	err := ImportCCLFPackage("NOTREAL", "test")
+	err := ImportCCLFPackage("NOTREAL", "test", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for ACO size")
 }
 
 func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage("dev", "environment")
+	err := ImportCCLFPackage("dev", "environment", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for environment")
 }
 
 func (s *CCLFUtilTestSuite) TestImport() {
-	assert := assert.New(s.T())
-	err := ImportCCLFPackage("large", "test-new-beneficiaries")
-	assert.Nil(err)
-}
-
-func (s *CCLFUtilTestSuite) TearDownTest() {
-	err := os.RemoveAll(DestDir)
-	if err != nil {
-		fmt.Println("Failed to delete CCLF DestDir")
+	for _, acoSize := range []string{"dev", "dev-cec", "dev-ng"} {
+		for _, env := range []string{"test", "test-new-beneficiaries"} {
+			for _, fileType := range []models.CCLFFileType{models.FileTypeDefault, models.FileTypeRunout} {
+				s.T().Run(fmt.Sprintf("ACO Size %s - Env %s - File Type %s", acoSize, env, fileType),
+					func(t *testing.T) {
+						err := ImportCCLFPackage(acoSize, env, fileType)
+						assert.NoError(t, err)
+					})
+			}
+		}
 	}
 }
