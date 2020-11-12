@@ -26,11 +26,7 @@ type cclf8Importer struct {
 // validates that cclf8Importer implements the interface
 // var _ importer = &cclf8Importer{}
 
-func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, data interface{}) error {
-	bene, ok := data.(models.CCLFBeneficiary)
-	if !ok {
-		return errors.New("invalid type sent, expected models.CCLFBeneficiary")
-	}
+func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, bene models.CCLFBeneficiary) error {
 	if cclfImporter.inprogress == nil {
 		if err := cclfImporter.refreshStatement(ctx, tx); err != nil {
 			return errors.Wrap(err, "failed to refresh statement")
