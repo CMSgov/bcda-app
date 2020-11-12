@@ -46,7 +46,7 @@ func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 
 func (s *CCLFUtilTestSuite) TestImport() {
 	assert := assert.New(s.T())
-	err := ImportCCLFPackage("large", "unit-test-new-beneficiaries")
+	err := ImportCCLFPackage("large", "test-new-beneficiaries")
 	assert.Nil(err)
 }
 
