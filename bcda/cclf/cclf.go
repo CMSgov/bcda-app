@@ -300,7 +300,6 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		}
 	}
 
-	updateImportStatus(fileMetadata, constants.ImportComplete)
 	return nil
 }
 
