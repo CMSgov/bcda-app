@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -214,12 +215,28 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Nil(err)
 }
 
-func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
+func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	assert := assert.New(s.T())
 
 	var metadata *cclfFileMetadata
 	err := importCCLF8(context.Background(), metadata)
 	assert.EqualError(err, "CCLF file not found")
+
+	// mbi is found before hicn, separated by a space.
+	// since we do not have the correct number of characters, the import should fail.
+	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
+	defer os.Remove(fileName)
+	metadata = &cclfFileMetadata{
+		cclfNum:   8,
+		name:      cclfName,
+		acoID:     testUtils.RandomHexID()[0:4],
+		timestamp: time.Now(),
+		perfYear:  20,
+		filePath:  fileName,
+	}
+	err = importCCLF8(context.Background(), metadata)
+	// This error indicates that we did not supply enough characters for the MBI
+	assert.EqualError(err, "pq: invalid byte sequence for encoding \"UTF8\": 0x00")
 }
 
 func (s *CCLFTestSuite) TestOrderACOs() {
@@ -372,7 +389,11 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			fileName, cclfName := createTemporaryZipFile(s.T())
+			mbi := "123456789AB"  // We expect 11 characters for the MBI
+			hicn := "BA987654321" // We expect 11 characters for the HICN
+
+			// mbi is found before hicn, separated by a space.
+			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), fmt.Sprintf("%s %s", mbi, hicn))
 			defer os.Remove(fileName)
 
 			metadata := &cclfFileMetadata{
@@ -406,7 +427,7 @@ func deleteFilesByACO(acoID string, db *gorm.DB) error {
 	return nil
 }
 
-func createTemporaryZipFile(t *testing.T) (fileName, cclfName string) {
+func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName string) {
 	cclfName = uuid.New()
 
 	f, err := ioutil.TempFile("", "*")
@@ -416,7 +437,7 @@ func createTemporaryZipFile(t *testing.T) (fileName, cclfName string) {
 	f1, err := w.Create(cclfName)
 	assert.NoError(t, err)
 
-	_, err = f1.Write([]byte("SOME_CONTENT"))
+	_, err = f1.Write([]byte(data))
 	assert.NoError(t, err)
 
 	assert.NoError(t, w.Close())

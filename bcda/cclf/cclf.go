@@ -154,8 +154,8 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	}
 
 	if fileMetadata == nil {
-		fmt.Println("CCLF file not found.")
 		err = errors.New("CCLF file not found")
+		fmt.Println(err.Error())
 		log.Error(err)
 		return err
 	}
@@ -242,16 +242,20 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 
 	// Open transaction to encompass entire CCLF file ingest.
 	txn, err := db.DB().Begin()
-	// if err != nil {
-	// 	return err
-	// }
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if err == nil {
 			err = importer.flush(ctx)
 		}
 
 		if err != nil {
-			err = txn.Rollback()
+			// We want to preserve the original err that caused us to rollback
+			if err1 := txn.Rollback(); err1 != nil {
+				log.Errorf("Failed to rollback transaction %s", err1.Error())
+			}
+			return
 		}
 
 		if err = txn.Commit(); err == nil {
@@ -300,6 +304,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		}
 	}
 
+	updateImportStatus(fileMetadata, constants.ImportComplete)
 	return nil
 }
 

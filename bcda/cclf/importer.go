@@ -23,9 +23,6 @@ type cclf8Importer struct {
 	maxPendingQueries int
 }
 
-// validates that cclf8Importer implements the interface
-// var _ importer = &cclf8Importer{}
-
 func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, bene models.CCLFBeneficiary) error {
 	if cclfImporter.inprogress == nil {
 		if err := cclfImporter.refreshStatement(ctx, tx); err != nil {
