@@ -47,15 +47,23 @@ func (s *CCLFUtilTestSuite) TestImportInvalidEnvironment() {
 }
 
 func (s *CCLFUtilTestSuite) TestImport() {
-	for _, acoSize := range []string{"dev", "dev-cec", "dev-ng"} {
-		for _, env := range []string{"test", "test-new-beneficiaries"} {
-			for _, fileType := range []models.CCLFFileType{models.FileTypeDefault, models.FileTypeRunout} {
-				s.T().Run(fmt.Sprintf("ACO Size %s - Env %s - File Type %s", acoSize, env, fileType),
-					func(t *testing.T) {
-						err := ImportCCLFPackage(acoSize, env, fileType)
-						assert.NoError(t, err)
-					})
-			}
+	tests := []struct {
+		env     string
+		acoSize string
+	}{
+		// We should only have one entry for a given acoSize.
+		// If there are duplicates, we may collide on the resulting CCLF file name.
+		{"test", "dev"},
+		{"test-new-beneficiaries", "dev-cec"},
+		{"test", "dev-ng"},
+	}
+	for _, tt := range tests {
+		for _, fileType := range []models.CCLFFileType{models.FileTypeDefault, models.FileTypeRunout} {
+			s.T().Run(fmt.Sprintf("ACO Size %s - Env %s - File Type %s", tt.acoSize, tt.env, fileType),
+				func(t *testing.T) {
+					err := ImportCCLFPackage(tt.acoSize, tt.env, fileType)
+					assert.NoError(t, err)
+				})
 		}
 	}
 }
