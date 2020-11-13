@@ -224,11 +224,11 @@ func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
 }
 
 func (s *CCLFTestSuite) TestOrderACOs() {
-	var cclfMap = map[string]map[int][]*cclfFileMetadata{
-		"A1111": map[int][]*cclfFileMetadata{},
-		"A8765": map[int][]*cclfFileMetadata{},
-		"A3456": map[int][]*cclfFileMetadata{},
-		"A0246": map[int][]*cclfFileMetadata{},
+	var cclfMap = map[string]map[metadataKey][]*cclfFileMetadata{
+		"A1111": map[metadataKey][]*cclfFileMetadata{},
+		"A8765": map[metadataKey][]*cclfFileMetadata{},
+		"A3456": map[metadataKey][]*cclfFileMetadata{},
+		"A0246": map[metadataKey][]*cclfFileMetadata{},
 	}
 
 	acoOrder := orderACOs(cclfMap)
@@ -243,7 +243,7 @@ func (s *CCLFTestSuite) TestOrderACOs() {
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
-	cclfmap := make(map[string]map[int][]*cclfFileMetadata)
+	cclfmap := make(map[string]map[metadataKey][]*cclfFileMetadata)
 
 	// failed import: file that's within the threshold - stay put
 	acoID := "A0001"
@@ -286,7 +286,9 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.T1000000"),
 		imported:  true,
 	}
-	cclfmap["A0001"] = map[int][]*cclfFileMetadata{18: []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata}}
+	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
+		metadataKey{perfYear: 18, fileType: models.FileTypeDefault}: []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata},
+	}
 	err := cleanUpCCLF(context.Background(), cclfmap)
 	assert.Nil(err)
 

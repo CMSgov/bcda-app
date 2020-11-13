@@ -17,10 +17,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type metadataKey struct {
+	perfYear int
+	fileType models.CCLFFileType
+}
+
 // processCCLFArchives walks through all of the CCLF files captured in the root path and generates
 // a mapping between CMS_ID + perf year and associated CCLF Metadata
-func processCCLFArchives(rootPath string) (map[string]map[int][]*cclfFileMetadata, int, error) {
-	p := &processor{0, make(map[string]map[int][]*cclfFileMetadata)}
+func processCCLFArchives(rootPath string) (map[string]map[metadataKey][]*cclfFileMetadata, int, error) {
+	p := &processor{0, make(map[string]map[metadataKey][]*cclfFileMetadata)}
 	if err := filepath.Walk(rootPath, p.walk); err != nil {
 		return nil, 0, err
 	}
@@ -29,7 +34,7 @@ func processCCLFArchives(rootPath string) (map[string]map[int][]*cclfFileMetadat
 
 type processor struct {
 	skipped int
-	cclfMap map[string]map[int][]*cclfFileMetadata
+	cclfMap map[string]map[metadataKey][]*cclfFileMetadata
 }
 
 func (p *processor) walk(path string, info os.FileInfo, err error) error {
@@ -86,12 +91,13 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 			continue
 		}
 
+		key := metadataKey{perfYear: metadata.perfYear, fileType: metadata.fileType}
 		sub := p.cclfMap[metadata.acoID]
 		if sub == nil {
-			sub = make(map[int][]*cclfFileMetadata)
+			sub = make(map[metadataKey][]*cclfFileMetadata)
 			p.cclfMap[metadata.acoID] = sub
 		}
-		sub[metadata.perfYear] = append(sub[metadata.perfYear], &metadata)
+		sub[key] = append(sub[key], &metadata)
 	}
 
 	return nil

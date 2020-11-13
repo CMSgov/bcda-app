@@ -373,7 +373,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	return success, failure, skipped, err
 }
 
-func orderACOs(cclfMap map[string]map[int][]*cclfFileMetadata) []string {
+func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string {
 	var acoOrder []string
 
 	db := database.GetGORMDbConnection()
@@ -499,10 +499,10 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	return nil
 }
 
-func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[int][]*cclfFileMetadata) error {
+func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclfFileMetadata) error {
 	errCount := 0
-	for _, perfYearCCLFFileList := range cclfMap {
-		for _, cclfFileList := range perfYearCCLFFileList {
+	for _, cclfFileMap := range cclfMap {
+		for _, cclfFileList := range cclfFileMap {
 			for _, cclf := range cclfFileList {
 				func() {
 					close := metrics.NewChild(ctx, fmt.Sprintf("cleanUpCCLF%d", cclf.cclfNum))
