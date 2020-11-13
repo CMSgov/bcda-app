@@ -268,6 +268,9 @@ func main() {
 				}
 				break
 
+			} else if status.StatusCode == http.StatusInternalServerError {
+				fmt.Printf("Job failed! Path %s\n", status.Request.URL.String())
+				os.Exit(1)
 			} else {
 				fmt.Println("  => job is still pending. waiting...")
 			}

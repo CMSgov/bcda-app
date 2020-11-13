@@ -21,6 +21,7 @@ SSAS_URL="http://ssas:3004" SSAS_PUBLIC_URL="http://ssas:3003" BCDA_AUTH_PROVIDE
 echo "waiting for API to rebuild with SSAS as auth provider"
 sleep 30
 
+PIDS=()
 for CMS_ID in "${CMS_IDs[@]}"
 do
         ACO_ID=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'tmp/bcda create-aco --name "Smoke Test ACO" --cms-id ${CMS_ID}' | tail -n1 | tr -d '\r')
@@ -35,9 +36,15 @@ do
                 testFile=bulk_data_requests.sh
         fi
         CLIENT_ID=${CLIENT_ID} CLIENT_SECRET=${CLIENT_SECRET} docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh ${testFile} &
+        PID=$!
+        PIDS+=($PID)
 done
 
-wait
+for PID in "${PIDS[@]}"
+do
+    wait $PID
+done
+
 docker-compose stop api ssas
 
 echo "waiting for API to rebuild with alpha as auth provider"
