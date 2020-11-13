@@ -2416,7 +2416,7 @@
 							"                    awaitExportJob(++retryCount);",
 							"                }, retryDelay);",
 							"            } else {",
-							"                console.log(\"Retry limit reached for ExplanationOfBenefit job status.\");",
+							"                console.error(\"Retry limit reached for ExplanationOfBenefit job status.\");",
 							"                postman.setNextRequest(null);",
 							"            }",
 							"        } else if (response.code == 200) {",
