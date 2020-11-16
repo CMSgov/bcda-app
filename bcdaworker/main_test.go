@@ -429,6 +429,7 @@ func (s *MainTestSuite) TestProcessJob_InvalidJobID() {
 		ACOID:          "00000000-0000-0000-0000-000000000000",
 		BeneficiaryIDs: []string{},
 		ResourceType:   "Patient",
+		BBBasePath:     "/v1/fhir",
 	})
 
 	qj := que.Job{
@@ -453,6 +454,7 @@ func (s *MainTestSuite) TestProcessJob_NoBBClient() {
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
 		ResourceType:   "Patient",
+		BBBasePath:     "/v1/fhir",
 	})
 
 	qj := que.Job{
@@ -508,6 +510,7 @@ func (s *MainTestSuite) TestQueueJobWithNoParent() {
 				ACOID:          "00000000-0000-0000-0000-000000000000",
 				BeneficiaryIDs: []string{},
 				ResourceType:   "Patient",
+				BBBasePath:     "/v1/fhir",
 			})
 
 			qj := &que.Job{
