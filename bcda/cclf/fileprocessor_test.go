@@ -1,6 +1,7 @@
 package cclf
 
 import (
+	"archive/zip"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -51,7 +52,7 @@ func (s *FileProcessorTestSuite) TearDownSuite() {
 }
 
 func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
-	cmsID, perfYear := "A0001", 18
+	cmsID, key := "A0001", metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
 	tests := []struct {
 		path         string
 		numCCLFFiles int // Expected count for the cmsID, perfYear above
@@ -71,7 +72,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
 	for _, tt := range tests {
 		s.T().Run(tt.path, func(t *testing.T) {
 			cclfMap, skipped, err := processCCLFArchives(tt.path)
-			cclfFiles := cclfMap[cmsID][perfYear]
+			cclfFiles := cclfMap[cmsID][key]
 			assert.NoError(t, err)
 			assert.Equal(t, tt.skipped, skipped)
 			assert.Equal(t, tt.numCCLFFiles, len(cclfFiles))
@@ -93,6 +94,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives() {
 
 func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 	assert := assert.New(s.T())
+	key := metadataKey{perfYear: 18, fileType: models.FileTypeDefault}
 	folderPath := filepath.Join(s.basePath, "cclf/mixed/with_invalid_filenames/")
 	filePath := filepath.Join(folderPath, "T.BCDE.ACO.ZC0Y18.D181120.T0001000")
 
@@ -104,7 +106,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 
 	cclfMap, skipped, err := processCCLFArchives(folderPath)
 	assert.Nil(err)
-	cclfList := cclfMap["A0001"][18]
+	cclfList := cclfMap["A0001"][key]
 	assert.Equal(2, len(cclfList))
 	assert.Equal(5, skipped)
 	// assert that this file is still here.
@@ -119,7 +121,7 @@ func (s *FileProcessorTestSuite) TestProcessCCLFArchives_ExpireFiles() {
 
 	cclfMap, skipped, err = processCCLFArchives(folderPath)
 	assert.Nil(err)
-	cclfList = cclfMap["A0001"][18]
+	cclfList = cclfMap["A0001"][key]
 	assert.Equal(2, len(cclfList))
 	assert.Equal(5, skipped)
 
@@ -296,4 +298,48 @@ func TestGetCCLFMetadata(t *testing.T) {
 			assert.Equal(sub, tt.metadata, metadata)
 		})
 	}
+}
+
+func TestMultipleFileTypes(t *testing.T) {
+	dir, err := ioutil.TempDir("", "*")
+	assert.NoError(t, err)
+
+	defer os.RemoveAll(dir)
+
+	// Create various CCLF files that have unique perfYear:fileType
+	createZip(t, dir, "T.BCD.A9990.ZCY20.D201113.T0000000", "T.BCD.A9990.ZC0Y20.D201113.T0000010", "T.BCD.A9990.ZC8Y20.D201113.T0000010")
+	// different perf year
+	createZip(t, dir, "T.BCD.A9990.ZCY19.D201113.T0000000", "T.BCD.A9990.ZC0Y19.D201113.T0000010", "T.BCD.A9990.ZC8Y19.D201113.T0000010")
+	// different file type
+	createZip(t, dir, "T.BCD.A9990.ZCR20.D201113.T0000000", "T.BCD.A9990.ZC0R20.D201113.T0000010", "T.BCD.A9990.ZC8R20.D201113.T0000010")
+	// different perf year and file type
+	createZip(t, dir, "T.BCD.A9990.ZCR19.D201113.T0000000", "T.BCD.A9990.ZC0R19.D201113.T0000010", "T.BCD.A9990.ZC8R19.D201113.T0000010")
+
+	m, s, err := processCCLFArchives(dir)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, s)
+	assert.Equal(t, 1, len(m)) // Only one ACO present
+
+	for _, fileMap := range m {
+		// We should contain 4 unique entries, one for each unique perfYear:fileType tuple
+		assert.Equal(t, 4, len(fileMap)) 
+		for _, files := range fileMap {
+			assert.Equal(t, 2, len(files)) // each tuple contains two files
+		}
+	}
+}
+
+func createZip(t *testing.T, dir, zipName string, cclfNames ...string) {
+	name := filepath.Join(dir, zipName)
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	assert.NoError(t, err)
+	defer f.Close()
+
+	w := zip.NewWriter(f)
+	for _, cclfName := range cclfNames {
+		_, err := w.Create(cclfName)
+		assert.NoError(t, err)
+	}
+
+	assert.NoError(t, w.Close())
 }
