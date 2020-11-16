@@ -3,8 +3,8 @@ package cclf
 import (
 	"archive/zip"
 	"context"
-	"database/sql"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -112,7 +112,7 @@ func (s *CCLFTestSuite) TestImportCCLF0() {
 	// positive
 	validator, err := importCCLF0(ctx, cclf0metadata)
 	assert.Nil(err)
-	assert.Equal(cclfFileValidator{totalRecordCount: 6, maxRecordLength: 549}, validator["CCLF8"])
+	assert.Equal(cclfFileValidator{totalRecordCount: 7, maxRecordLength: 549}, validator["CCLF8"])
 
 	// negative
 	cclf0metadata = &cclfFileMetadata{}
@@ -151,7 +151,7 @@ func (s *CCLFTestSuite) TestValidate() {
 	cclf8metadata := &cclfFileMetadata{env: "test", acoID: "A0001", cclfNum: 8, timestamp: time.Now(), filePath: cclf8filePath, perfYear: 18, name: "T.BCD.A0001.ZC8Y18.D181120.T1000009"}
 
 	// positive
-	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 6, maxRecordLength: 549}}
+	cclfvalidator := map[string]cclfFileValidator{"CCLF8": {totalRecordCount: 7, maxRecordLength: 549}}
 	err := validate(ctx, cclf8metadata, cclfvalidator)
 	assert.Nil(err)
 
@@ -215,20 +215,36 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Nil(err)
 }
 
-func (s *CCLFTestSuite) TestImportCCLF8_InvalidMetadata() {
+func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	assert := assert.New(s.T())
 
 	var metadata *cclfFileMetadata
 	err := importCCLF8(context.Background(), metadata)
 	assert.EqualError(err, "CCLF file not found")
+
+	// mbi is found before hicn, separated by a space.
+	// since we do not have the correct number of characters, the import should fail.
+	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
+	defer os.Remove(fileName)
+	metadata = &cclfFileMetadata{
+		cclfNum:   8,
+		name:      cclfName,
+		acoID:     testUtils.RandomHexID()[0:4],
+		timestamp: time.Now(),
+		perfYear:  20,
+		filePath:  fileName,
+	}
+	err = importCCLF8(context.Background(), metadata)
+	// This error indicates that we did not supply enough characters for the MBI
+	assert.EqualError(err, "pq: invalid byte sequence for encoding \"UTF8\": 0x00")
 }
 
 func (s *CCLFTestSuite) TestOrderACOs() {
-	var cclfMap = map[string]map[int][]*cclfFileMetadata{
-		"A1111": map[int][]*cclfFileMetadata{},
-		"A8765": map[int][]*cclfFileMetadata{},
-		"A3456": map[int][]*cclfFileMetadata{},
-		"A0246": map[int][]*cclfFileMetadata{},
+	var cclfMap = map[string]map[metadataKey][]*cclfFileMetadata{
+		"A1111": map[metadataKey][]*cclfFileMetadata{},
+		"A8765": map[metadataKey][]*cclfFileMetadata{},
+		"A3456": map[metadataKey][]*cclfFileMetadata{},
+		"A0246": map[metadataKey][]*cclfFileMetadata{},
 	}
 
 	acoOrder := orderACOs(cclfMap)
@@ -243,7 +259,7 @@ func (s *CCLFTestSuite) TestOrderACOs() {
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {
 	assert := assert.New(s.T())
-	cclfmap := make(map[string]map[int][]*cclfFileMetadata)
+	cclfmap := make(map[string]map[metadataKey][]*cclfFileMetadata)
 
 	// failed import: file that's within the threshold - stay put
 	acoID := "A0001"
@@ -286,7 +302,9 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181122.T1000000"),
 		imported:  true,
 	}
-	cclfmap["A0001"] = map[int][]*cclfFileMetadata{18: []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata}}
+	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
+		metadataKey{perfYear: 18, fileType: models.FileTypeDefault}: []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata},
+	}
 	err := cleanUpCCLF(context.Background(), cclfmap)
 	assert.Nil(err)
 
@@ -373,7 +391,11 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			fileName, cclfName := createTemporaryZipFile(s.T())
+			mbi := "123456789AB"  // We expect 11 characters for the MBI
+			hicn := "BA987654321" // We expect 11 characters for the HICN
+
+			// mbi is found before hicn, separated by a space.
+			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), fmt.Sprintf("%s %s", mbi, hicn))
 			defer os.Remove(fileName)
 
 			metadata := &cclfFileMetadata{
@@ -386,7 +408,7 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 				filePath:  fileName,
 			}
 
-			s.NoError(importCCLF(context.Background(), metadata, noopImporter{}))
+			s.NoError(importCCLF8(context.Background(), metadata))
 
 			var cclfFile models.CCLFFile
 			assert.NoError(t, db.Where("name = ?", cclfName).First(&cclfFile).Error)
@@ -407,7 +429,7 @@ func deleteFilesByACO(acoID string, db *gorm.DB) error {
 	return nil
 }
 
-func createTemporaryZipFile(t *testing.T) (fileName, cclfName string) {
+func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName string) {
 	cclfName = uuid.New()
 
 	f, err := ioutil.TempFile("", "*")
@@ -417,20 +439,10 @@ func createTemporaryZipFile(t *testing.T) (fileName, cclfName string) {
 	f1, err := w.Create(cclfName)
 	assert.NoError(t, err)
 
-	_, err = f1.Write([]byte("SOME_CONTENT"))
+	_, err = f1.Write([]byte(data))
 	assert.NoError(t, err)
 
 	assert.NoError(t, w.Close())
 
 	return f.Name(), cclfName
-}
-
-type noopImporter struct{}
-
-func (i noopImporter) do(ctx context.Context, tx *sql.Tx, fileID uint, b []byte) error {
-	return nil
-}
-
-func (i noopImporter) flush(ctx context.Context) error {
-	return nil
 }

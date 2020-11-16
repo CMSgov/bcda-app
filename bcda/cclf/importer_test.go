@@ -82,10 +82,14 @@ func (s *ImporterTestSuite) TestCCLF8ImporterHappyPath() {
 			for _, bene := range benes {
 				hicn := string([]byte(bene.HICN)[0:11])
 				mbi := string([]byte(bene.MBI)[0:11])
+				cclfBeneficiary := models.CCLFBeneficiary{
+					FileID: fileID,
+					MBI:    mbi,
+					HICN:   hicn,
+				}
 				prepare.ExpectExec().WithArgs(bene.FileID, hicn, mbi).WillReturnResult(sqlmock.NewResult(1, 1))
 
-				data := append([]byte(mbi), []byte(hicn)...)
-				err := importer.do(context.Background(), s.tx, fileID, data)
+				err := importer.do(context.Background(), s.tx, cclfBeneficiary)
 				assert.NoError(t, err)
 
 				execCount++
@@ -145,7 +149,11 @@ func (s *ImporterTestSuite) TestCCLF8ImporterErrorPaths() {
 			prepare := s.mock.ExpectPrepare(regexp.QuoteMeta(`COPY "cclf_beneficiaries" ("file_id", "hicn", "mbi")`))
 			hicn := string([]byte(bene.HICN)[0:11])
 			mbi := string([]byte(bene.MBI)[0:11])
-			data := append([]byte(mbi), []byte(hicn)...)
+			cclfBeneficiary := models.CCLFBeneficiary{
+				FileID: fileID,
+				MBI:    mbi,
+				HICN:   hicn,
+			}
 
 			execWithArgs := prepare.ExpectExec().WithArgs(bene.FileID, hicn, mbi)
 			execNoArgs := prepare.ExpectExec().WithArgs()
@@ -168,11 +176,11 @@ func (s *ImporterTestSuite) TestCCLF8ImporterErrorPaths() {
 
 				// Run an import call, this'll force the next importer.do call to
 				// fail on the attempt to flush (which will fail)
-				err := importer.do(context.Background(), s.tx, fileID, data)
+				err := importer.do(context.Background(), s.tx, cclfBeneficiary)
 				assert.NoError(t, err)
 			}
 
-			errOnDo := importer.do(context.Background(), s.tx, fileID, data)
+			errOnDo := importer.do(context.Background(), s.tx, cclfBeneficiary)
 			errOnFlush := importer.flush(context.Background())
 
 			switch tt.err.et {
