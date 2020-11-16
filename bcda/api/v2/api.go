@@ -102,7 +102,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 		Publisher: getStringPtr("Centers for Medicare & Medicaid Services"),
 		Kind:      fhir.CapabilityStatementKindInstance,
 		// TODO (BCDA-3732): Update to r4 once endpoint is available
-		Instantiates: []string{bbServer + "/baseDstu3/metadata/", "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
+		Instantiates: []string{bbServer + "/v2/fhir/metadata/", "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
 		Software: &fhir.CapabilityStatementSoftware{
 			Name:        "Beneficiary Claims Data API",
 			Version:     &constants.Version,
