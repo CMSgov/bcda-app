@@ -54,7 +54,7 @@ func init() {
 		fmt.Println("Access Token not supplied.  Retrieving one to use.")
 		start := time.Now()
 		accessToken = getAccessToken()
-		fmt.Printf("Finished getting access token %s\n", time.Since(start).String())
+		fmt.Printf("Finished getting access token. Took %s.\n", time.Since(start).String())
 	}
 }
 
@@ -292,5 +292,5 @@ func main() {
 }
 
 func client() *http.Client {
-	return &http.Client{Timeout: time.Second * 30}
+	return &http.Client{Timeout: time.Second * 10}
 }
