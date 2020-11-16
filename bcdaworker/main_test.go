@@ -351,45 +351,71 @@ func (s *MainTestSuite) TestAppendErrorToFile() {
 }
 
 func (s *MainTestSuite) TestProcessJobEOB() {
-	// Verifies that we can handle an empty and specified basePath
-	// TODO (BCDA-3895) - we should confirm that the job fails when we supply an empty basePath
-	for _, basePath := range []string{"", "/v1/fhir"} {
-		j := models.Job{
-			ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-			RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-			Status:     "Pending",
-			JobCount:   1,
-		}
-		s.db.Save(&j)
-
-		complete, err := j.CheckCompletedAndCleanup(s.db)
-		assert.Nil(s.T(), err)
-		assert.False(s.T(), complete)
-
-		jobArgs := models.JobEnqueueArgs{
-			ID:             int(j.ID),
-			ACOID:          j.ACOID.String(),
-			BeneficiaryIDs: []string{"10000", "11000"},
-			ResourceType:   "ExplanationOfBenefit",
-			BBBasePath:     basePath,
-		}
-		args, _ := json.Marshal(jobArgs)
-
-		job := &que.Job{
-			Type: "ProcessJob",
-			Args: args,
-		}
-		fmt.Println("About to queue up the job")
-		err = processJob(job)
-		assert.Nil(s.T(), err)
-		_, err = j.CheckCompletedAndCleanup(s.db)
-		assert.Nil(s.T(), err)
-		var completedJob models.Job
-		err = s.db.First(&completedJob, "ID = ?", jobArgs.ID).Error
-		assert.Nil(s.T(), err)
-		// As this test actually connects to BB, we can't be sure it will succeed
-		assert.Contains(s.T(), []string{"Failed", "Completed"}, completedJob.Status)
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Pending",
+		JobCount:   1,
 	}
+	s.db.Save(&j)
+
+	complete, err := j.CheckCompletedAndCleanup(s.db)
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), complete)
+
+	jobArgs := models.JobEnqueueArgs{
+		ID:             int(j.ID),
+		ACOID:          j.ACOID.String(),
+		BeneficiaryIDs: []string{"10000", "11000"},
+		ResourceType:   "ExplanationOfBenefit",
+		BBBasePath:     "/v1/fhir",
+	}
+	args, _ := json.Marshal(jobArgs)
+
+	job := &que.Job{
+		Type: "ProcessJob",
+		Args: args,
+	}
+	fmt.Println("About to queue up the job")
+	err = processJob(job)
+	assert.Nil(s.T(), err)
+	_, err = j.CheckCompletedAndCleanup(s.db)
+	assert.Nil(s.T(), err)
+	var completedJob models.Job
+	err = s.db.First(&completedJob, "ID = ?", jobArgs.ID).Error
+	assert.Nil(s.T(), err)
+	// As this test actually connects to BB, we can't be sure it will succeed
+	assert.Contains(s.T(), []string{"Failed", "Completed"}, completedJob.Status)
+}
+
+func (s *MainTestSuite) TestProcessJob_EmptyBasePath() {
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     "Pending",
+		JobCount:   1,
+	}
+	s.db.Save(&j)
+
+	complete, err := j.CheckCompletedAndCleanup(s.db)
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), complete)
+
+	jobArgs := models.JobEnqueueArgs{
+		ID:             int(j.ID),
+		ACOID:          j.ACOID.String(),
+		BeneficiaryIDs: []string{"10000", "11000"},
+		ResourceType:   "ExplanationOfBenefit",
+	}
+	args, _ := json.Marshal(jobArgs)
+
+	job := &que.Job{
+		Type: "ProcessJob",
+		Args: args,
+	}
+	fmt.Println("About to queue up the job")
+	err = processJob(job)
+	assert.EqualError(s.T(), err, "empty BBBasePath: Must be set")
 }
 
 func (s *MainTestSuite) TestProcessJob_InvalidArgs() {
