@@ -315,17 +315,6 @@ func (bbc *BlueButtonClient) getRawData(u *url.URL) (string, error) {
 	return result, nil
 }
 
-func (bbc *BlueButtonClient) getRequest(path string, params url.Values) (*http.Request, error) {
-	req, err := http.NewRequest("GET", bbc.bbServer+bbc.bbBasePath+path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.URL.RawQuery = params.Encode()
-
-	return req, nil
-}
-
 func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, error) {
 	u, err := url.Parse(fmt.Sprintf("%s%s/%s/", bbc.bbServer, bbc.bbBasePath, path))
 	if err != nil {
