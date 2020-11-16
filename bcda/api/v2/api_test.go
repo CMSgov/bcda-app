@@ -84,6 +84,8 @@ func (s *APITestSuite) TestMetadataResponse() {
 	assert.Equal(s.T(), fhir.FHIRVersion4_0_1, cs.FhirVersion)
 	assert.Equal(s.T(), 1, len(cs.Rest))
 	assert.Equal(s.T(), 2, len(cs.Rest[0].Resource))
+	assert.Len(s.T(), cs.Instantiates, 2)
+	assert.Contains(s.T(), cs.Instantiates[0], "/v2/fhir/metadata/")
 	resourceData := []struct {
 		rt           fhir.ResourceType
 		opName       string
