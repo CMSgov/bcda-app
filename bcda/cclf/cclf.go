@@ -147,29 +147,24 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 	return validator, nil
 }
 
-func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) error {
+func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
 	importer := &cclf8Importer{
 		logger:            log.StandardLogger(),
 		maxPendingQueries: utils.GetEnvInt("STATEMENT_EXEC_COUNT", 200000),
 	}
 
-	err := importCCLF(ctx, fileMetadata, importer)
-
-	if err != nil {
-		updateImportStatus(fileMetadata, constants.ImportFail)
-		return err
-	}
-	updateImportStatus(fileMetadata, constants.ImportComplete)
-	return nil
-}
-
-func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer importer) (err error) {
 	if fileMetadata == nil {
-		fmt.Println("CCLF file not found.")
-		err := errors.New("CCLF file not found")
+		err = errors.New("CCLF file not found")
+		fmt.Println(err.Error())
 		log.Error(err)
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			updateImportStatus(fileMetadata, constants.ImportFail)
+		}
+	}()
 
 	fmt.Printf("Importing CCLF%d file %s...\n", fileMetadata.cclfNum, fileMetadata)
 	log.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
@@ -177,7 +172,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 	r, err := zip.OpenReader(filepath.Clean(fileMetadata.filePath))
 	if err != nil {
 		fmt.Printf("Could not read CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
-		err := errors.Wrapf(err, "could not read CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
+		err = errors.Wrapf(err, "could not read CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
 		log.Error(err)
 		return err
 	}
@@ -185,7 +180,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 
 	if len(r.File) < 1 {
 		fmt.Printf("No files found in CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
-		err := fmt.Errorf("no files found in CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
+		err = fmt.Errorf("no files found in CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
 		log.Error(err)
 		return err
 	}
@@ -256,7 +251,11 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 		}
 
 		if err != nil {
-			err = txn.Rollback()
+			// We want to preserve the original err that caused us to rollback
+			if err1 := txn.Rollback(); err1 != nil {
+				log.Errorf("Failed to rollback transaction %s", err1.Error())
+			}
+			return
 		}
 
 		if err = txn.Commit(); err == nil {
@@ -265,6 +264,8 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 			log.Infof(successMsg)
 		}
 	}()
+
+	var importedMBI = make(map[string]struct{})
 
 	for sc.Scan() {
 		close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d-readlines", cclfFile.CCLFNum))
@@ -275,7 +276,23 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 			continue
 		}
 
-		err = importer.do(ctx, txn, cclfFile.ID, b)
+		const (
+			mbiStart, mbiEnd   = 0, 11
+			hicnStart, hicnEnd = 11, 22
+		)
+		cclfBeneficiary := models.CCLFBeneficiary{
+			FileID: cclfFile.ID,
+			MBI:    string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
+			HICN:   string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
+		}
+		// Filtering for duplicate benes in CCLF file
+		if _, ok := importedMBI[cclfBeneficiary.MBI]; ok {
+			continue
+		}
+
+		importedMBI[cclfBeneficiary.MBI] = struct{}{}
+
+		err = importer.do(ctx, txn, cclfBeneficiary)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -287,6 +304,7 @@ func importCCLF(ctx context.Context, fileMetadata *cclfFileMetadata, importer im
 		}
 	}
 
+	updateImportStatus(fileMetadata, constants.ImportComplete)
 	return nil
 }
 
