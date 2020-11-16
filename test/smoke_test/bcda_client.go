@@ -292,5 +292,5 @@ func main() {
 }
 
 func client() *http.Client {
-	return &http.Client{Timeout: time.Second * 20}
+	return &http.Client{Timeout: time.Second * 30}
 }
