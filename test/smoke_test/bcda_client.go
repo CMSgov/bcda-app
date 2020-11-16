@@ -52,7 +52,9 @@ func init() {
 		}
 
 		fmt.Println("Access Token not supplied.  Retrieving one to use.")
+		start := time.Now()
 		accessToken = getAccessToken()
+		fmt.Printf("Finished getting access token %s\n", time.Since(start).String())
 	}
 }
 
