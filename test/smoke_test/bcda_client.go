@@ -52,7 +52,9 @@ func init() {
 		}
 
 		fmt.Println("Access Token not supplied.  Retrieving one to use.")
+		start := time.Now()
 		accessToken = getAccessToken()
+		fmt.Printf("Finished getting access token. Took %s.\n", time.Since(start).String())
 	}
 }
 
@@ -268,6 +270,9 @@ func main() {
 				}
 				break
 
+			} else if status.StatusCode == http.StatusInternalServerError {
+				fmt.Printf("Job failed! Path %s\n", status.Request.URL.String())
+				os.Exit(1)
 			} else {
 				fmt.Println("  => job is still pending. waiting...")
 			}
