@@ -139,7 +139,13 @@ func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, t
 	params := GetDefaultParams()
 	params.Set("_id", patientID)
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData("/Patient/", params, jobID, cmsID, header)
+
+	u, err := bbc.getURL("Patient", params)
+	if err != nil {
+		return nil, err
+	}
+
+	return bbc.getBundleData(u, jobID, cmsID, header)
 }
 
 func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string) (string, error) {
@@ -147,14 +153,26 @@ func (bbc *BlueButtonClient) GetPatientByIdentifierHash(hashedIdentifier string)
 
 	// FHIR spec requires a FULLY qualified namespace so this is in fact the argument, not a URL
 	params.Set("identifier", fmt.Sprintf("https://bluebutton.cms.gov/resources/identifier/%s|%v", "mbi-hash", hashedIdentifier))
-	return bbc.getRawData("/Patient/", params, "", "")
+
+	u, err := bbc.getURL("Patient", params)
+	if err != nil {
+		return "", err
+	}
+
+	return bbc.getRawData(u)
 }
 
 func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
 	params := GetDefaultParams()
 	params.Set("beneficiary", beneficiaryID)
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData("/Coverage/", params, jobID, cmsID, nil)
+
+	u, err := bbc.getURL("Coverage", params)
+	if err != nil {
+		return nil, err
+	}
+
+	return bbc.getBundleData(u, jobID, cmsID, nil)
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error) {
@@ -170,28 +188,28 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 		params.Set("service-date", fmt.Sprintf("le%s", serviceDate.Format(svcDateFmt)))
 	}
 	updateParamWithLastUpdated(&params, since, transactionTime)
-	return bbc.getBundleData("/ExplanationOfBenefit/", params, jobID, cmsID, nil)
-}
 
-func (bbc *BlueButtonClient) GetMetadata() (string, error) {
-	return bbc.getRawData("/metadata/", GetDefaultParams(), "", "")
-}
-
-func (bbc *BlueButtonClient) getBundleData(path string, params url.Values, jobID, cmsID string, headers http.Header) (*models.Bundle, error) {
-	req, err := bbc.getRequest(path, params)
+	u, err := bbc.getURL("ExplanationOfBenefit", params)
 	if err != nil {
 		return nil, err
 	}
 
-	for key, values := range headers {
-		for _, value := range values {
-			req.Header.Add(key, value)
-		}
+	return bbc.getBundleData(u, jobID, cmsID, nil)
+}
+
+func (bbc *BlueButtonClient) GetMetadata() (string, error) {
+	u, err := bbc.getURL("metadata", GetDefaultParams())
+	if err != nil {
+		return "", err
 	}
 
+	return bbc.getRawData(u)
+}
+
+func (bbc *BlueButtonClient) getBundleData(u *url.URL, jobID, cmsID string, headers http.Header) (*models.Bundle, error) {
 	var b *models.Bundle
 	for ok := true; ok; {
-		result, nextReq, err := bbc.tryBundleRequest(req, jobID, cmsID)
+		result, nextURL, err := bbc.tryBundleRequest(u, jobID, cmsID, headers)
 		if err != nil {
 			return nil, err
 		}
@@ -202,24 +220,21 @@ func (bbc *BlueButtonClient) getBundleData(path string, params url.Values, jobID
 			b.Entries = append(b.Entries, result.Entries...)
 		}
 
-		req = nextReq
-		ok = nextReq != nil
+		u = nextURL
+		ok = nextURL != nil
 	}
 
 	return b, nil
 }
 
-func (bbc *BlueButtonClient) tryBundleRequest(req *http.Request, jobID, cmsID string) (*models.Bundle, *http.Request, error) {
+func (bbc *BlueButtonClient) tryBundleRequest(u *url.URL, jobID, cmsID string, headers http.Header) (*models.Bundle, *url.URL, error) {
 	m := monitoring.GetMonitor()
-	txn := m.Start(req.URL.Path, nil, nil)
+	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
-
-	queryID := uuid.NewRandom()
-	addRequestHeaders(req, queryID, jobID, cmsID)
 
 	var (
 		result  *models.Bundle
-		nextReq *http.Request
+		nextURL *url.URL
 		err     error
 	)
 
@@ -228,7 +243,22 @@ func (bbc *BlueButtonClient) tryBundleRequest(req *http.Request, jobID, cmsID st
 	b := backoff.WithMaxRetries(eb, bbc.maxTries)
 
 	err = backoff.RetryNotify(func() error {
-		result, nextReq, err = bbc.client.DoBundleRequest(req)
+		req, err := http.NewRequest("GET", u.String(), nil)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		for key, values := range headers {
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
+
+		queryID := uuid.NewRandom()
+		addRequestHeaders(req, queryID, jobID, cmsID)
+
+		result, nextURL, err = bbc.client.DoBundleRequest(req)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -236,29 +266,21 @@ func (bbc *BlueButtonClient) tryBundleRequest(req *http.Request, jobID, cmsID st
 	},
 		b,
 		func(err error, d time.Duration) {
-			logger.Infof("Blue Button request %s failed %s. Retry in %s ms...", queryID, err.Error(), d.String())
+			logger.Infof("Blue Button request failed %s. Retry in %s", err.Error(), d.String())
 		},
 	)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("blue button request %s failed %d time(s) %s", queryID, bbc.maxTries, err.Error())
+		return nil, nil, fmt.Errorf("blue button request failed %d time(s) %s", bbc.maxTries, err.Error())
 	}
 
-	return result, nextReq, nil
+	return result, nextURL, nil
 }
 
-func (bbc *BlueButtonClient) getRawData(path string, params url.Values, jobID, cmsID string) (string, error) {
+func (bbc *BlueButtonClient) getRawData(u *url.URL) (string, error) {
 	m := monitoring.GetMonitor()
-	txn := m.Start(path, nil, nil)
+	txn := m.Start(u.Path, nil, nil)
 	defer m.End(txn)
-
-	req, err := bbc.getRequest(path, params)
-	if err != nil {
-		return "", err
-	}
-
-	queryID := uuid.NewRandom()
-	addRequestHeaders(req, queryID, jobID, cmsID)
 
 	eb := backoff.NewExponentialBackOff()
 	eb.InitialInterval = bbc.retryInterval
@@ -266,7 +288,14 @@ func (bbc *BlueButtonClient) getRawData(path string, params url.Values, jobID, c
 
 	var result string
 
-	err = backoff.RetryNotify(func() error {
+	err := backoff.RetryNotify(func() error {
+		req, err := http.NewRequest("GET", u.String(), nil)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		addRequestHeaders(req, uuid.NewRandom(), "", "")
+
 		result, err = bbc.client.DoRaw(req)
 		if err != nil {
 			logger.Error(err)
@@ -275,26 +304,25 @@ func (bbc *BlueButtonClient) getRawData(path string, params url.Values, jobID, c
 	},
 		b,
 		func(err error, d time.Duration) {
-			logger.Infof("Blue Button request %s retry in %s", queryID, d.String())
+			logger.Infof("Blue Button request failed %s. Retry in %s", err, d.String())
 		},
 	)
 
 	if err != nil {
-		return "", fmt.Errorf("blue button request %s failed %d time(s)", queryID, bbc.maxTries)
+		return "", fmt.Errorf("blue button request failed %d time(s) %s", bbc.maxTries, err.Error())
 	}
 
 	return result, nil
 }
 
-func (bbc *BlueButtonClient) getRequest(path string, params url.Values) (*http.Request, error) {
-	req, err := http.NewRequest("GET", bbc.bbServer+bbc.bbBasePath+path, nil)
+func (bbc *BlueButtonClient) getURL(path string, params url.Values) (*url.URL, error) {
+	u, err := url.Parse(fmt.Sprintf("%s%s/%s/", bbc.bbServer, bbc.bbBasePath, path))
 	if err != nil {
 		return nil, err
 	}
+	u.RawQuery = params.Encode()
 
-	req.URL.RawQuery = params.Encode()
-
-	return req, nil
+	return u, nil
 }
 
 func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) {
