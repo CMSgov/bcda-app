@@ -376,7 +376,6 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 		Type: "ProcessJob",
 		Args: args,
 	}
-	fmt.Println("About to queue up the job")
 	err = processJob(job)
 	assert.Nil(s.T(), err)
 	_, err = j.CheckCompletedAndCleanup(s.db)
@@ -413,7 +412,6 @@ func (s *MainTestSuite) TestProcessJob_EmptyBasePath() {
 		Type: "ProcessJob",
 		Args: args,
 	}
-	fmt.Println("About to queue up the job")
 	err = processJob(job)
 	assert.EqualError(s.T(), err, "empty BBBasePath: Must be set")
 }
