@@ -2,7 +2,9 @@ package main
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -28,12 +30,6 @@ type Output struct {
 	Type string `json:"type"`
 }
 
-type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   string `json:"expires_in,omitempty"`
-}
-
 func init() {
 	flag.StringVar(&accessToken, "token", "", "access token used to make request to bcda")
 	flag.StringVar(&clientID, "clientID", "", "client id for retrieving an access token")
@@ -46,150 +42,22 @@ func init() {
 	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint in the format of Patient or Group/all or Group/new")
 	flag.Parse()
 
-	if accessToken == "" {
-		if clientID == "" && clientSecret == "" {
-			panic(fmt.Errorf("Must provide a token or credentials for retrieving a token"))
-		}
-
-		fmt.Println("Access Token not supplied.  Retrieving one to use.")
-		start := time.Now()
-		accessToken = getAccessToken()
-		fmt.Printf("Finished getting access token. Took %s.\n", time.Since(start).String())
-	}
-}
-
-func getAccessToken() string {
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s://%s/auth/token", proto, apiHost), nil)
-	if err != nil {
-		panic(err)
-	}
-
-	req.SetBasicAuth(clientID, clientSecret)
-	req.Header.Add("Accept", "application/json")
-
-	resp, err := client().Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	defer resp.Body.Close()
-
-	var t = TokenResponse{}
-	if err = json.NewDecoder(resp.Body).Decode(&t); err != nil {
-		panic(fmt.Sprintf("unexpected token response format: %s", err.Error()))
-	}
-
-	return t.AccessToken
-}
-
-func startJob(endpoint, resourceType string) *http.Response {
-	client := &http.Client{}
-	var url string
-
-	if resourceType != "" {
-		url = fmt.Sprintf("%s://%s/api/%s/%s/$export?_type=%s", proto, apiHost, apiVersion, endpoint, resourceType)
-	} else {
-		url = fmt.Sprintf("%s://%s/api/%s/%s/$export", proto, apiHost, apiVersion, endpoint)
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	req.Header.Add("Prefer", "respond-async")
-	req.Header.Add("Accept", "application/fhir+json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	return resp
-}
-
-func get(location string, compressed bool) *http.Response {
-	client := &http.Client{}
-	req, err := http.NewRequest(
-		"GET", location, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-	if compressed {
-		req.Header.Add("Accept-Encoding", "gzip")
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-
-	return resp
-}
-
-func writeFile(resp *http.Response, filename string) {
-	defer resp.Body.Close()
-
-	var isGZIP bool
-	for _, h := range resp.Header.Values("Content-Encoding") {
-		if h == "gzip" {
-			isGZIP = true
-			break
-		}
-	}
-
-	if !isGZIP {
-		panic("Data responses should be gzip-encoded.")
-	}
-
-	reader, err := gzip.NewReader(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-	defer reader.Close()
-
-	/* #nosec */
-	out, err := os.Create(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer utils.CloseFileAndLogError(out)
-
-	/* #nosec G110 - not concerned with OOM since we're using this in a controlled setting */
-	num, err := io.Copy(out, reader)
-	if err != nil && num <= 0 {
-		panic(err)
-	}
-}
-
-func isValidNDJSONText(data string) bool {
-	isValid := true
-
-	// blank file is not valid
-	if len(data) == 0 {
-		return false
-	}
-
-	for _, line := range strings.Split(data, "\n") {
-		if len(line) == 0 {
-			continue
-		}
-		if !json.Valid([]byte(line)) {
-			isValid = false
-			fmt.Println(line)
-			break
-		}
-	}
-
-	return isValid
 }
 
 func main() {
+	c := &client{httpClient: &http.Client{Timeout: 10 * time.Second}, accessToken: accessToken}
+
 	fmt.Printf("bulk data request to %s endpoint with %s resource types\n", endpoint, resourceType)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
+
+	resp, err := startJob(c, endpoint, resourceType)
+	if err != nil {
+		fmt.Printf("Failed to start job %s", err.Error())
+		os.Exit(1)
+	}
+
+	defer resp.Body.Close()
+
 	if result := startJob(endpoint, resourceType); result.StatusCode == 202 {
 		if err := result.Body.Close(); err != nil {
 			fmt.Println("Failed to close body " + err.Error())
@@ -209,7 +77,10 @@ func main() {
 			// Acquire new token if the current token has expired
 			if status.StatusCode == 401 {
 				fmt.Println("acquire new token...")
-				accessToken = getAccessToken()
+				if accessToken, err = getAccessToken(); err != nil {
+					fmt.Printf("Failed to get access token %s", err.Error())
+					os.Exit(1)
+				}
 			} else if status.StatusCode == 200 {
 				fmt.Println("file is ready for download...")
 
@@ -229,8 +100,10 @@ func main() {
 				for _, fileItem := range data {
 
 					// Acquire new access token for each file download
-					accessToken = getAccessToken()
-
+					if accessToken, err = getAccessToken(); err != nil {
+						fmt.Printf("Failed to get access token %s", err.Error())
+						os.Exit(1)
+					}
 					fmt.Printf("fetching: %s\n", fileItem.Url)
 					download := get(fileItem.Url, true)
 					if download.StatusCode == 200 {
@@ -270,9 +143,6 @@ func main() {
 				}
 				break
 
-			} else if status.StatusCode == http.StatusInternalServerError {
-				fmt.Printf("Job failed! Path %s\n", status.Request.URL.String())
-				os.Exit(1)
 			} else {
 				fmt.Println("  => job is still pending. waiting...")
 			}
@@ -291,6 +161,203 @@ func main() {
 	}
 }
 
-func client() *http.Client {
-	return &http.Client{Timeout: time.Second * 10}
+func startJob(c *client, endpoint, resourceType string) (*http.Response, error) {
+	var url string
+
+	if resourceType != "" {
+		url = fmt.Sprintf("%s://%s/api/%s/%s/$export?_type=%s", proto, apiHost, apiVersion, endpoint, resourceType)
+	} else {
+		url = fmt.Sprintf("%s://%s/api/%s/%s/$export", proto, apiHost, apiVersion, endpoint)
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Add("Prefer", "respond-async")
+	req.Header.Add("Accept", "application/fhir+json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func get(c *client, location string, compressed bool) (*http.Response, error) {
+	req, err := http.NewRequest("GET", location, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	if compressed {
+		req.Header.Add("Accept-Encoding", "gzip")
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func writeFile(resp *http.Response, filename string) error {
+	defer resp.Body.Close()
+
+	var isGZIP bool
+	for _, h := range resp.Header.Values("Content-Encoding") {
+		if h == "gzip" {
+			isGZIP = true
+			break
+		}
+	}
+
+	if !isGZIP {
+		return errors.New("Data responses should be gzip-encoded.")
+	}
+
+	reader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	/* #nosec */
+	out, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer utils.CloseFileAndLogError(out)
+
+	/* #nosec G110 - not concerned with OOM since we're using this in a controlled setting */
+	num, err := io.Copy(out, reader)
+	if err != nil {
+		return err
+	}
+	if num <= 0 {
+		return errors.New("failed to write data")
+	}
+
+	return nil
+}
+
+func isValidNDJSONText(data string) bool {
+	isValid := true
+
+	// blank file is not valid
+	if len(data) == 0 {
+		return false
+	}
+
+	for _, line := range strings.Split(data, "\n") {
+		if len(line) == 0 {
+			continue
+		}
+		if !json.Valid([]byte(line)) {
+			isValid = false
+			fmt.Println(line)
+			break
+		}
+	}
+
+	return isValid
+}
+
+type client struct {
+	httpClient  *http.Client
+	accessToken string
+
+	retries int
+}
+
+func (c *client) Do(req *http.Request) (*http.Response, error) {
+	if len(c.accessToken) == 0 {
+		if err := c.updateAccessToken(); err != nil {
+			return nil, fmt.Errorf("failed to update access token %s", err.Error())
+		}
+	}
+	for i := 0; i <= c.retries; i++ {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				continue
+			}
+			return nil, err
+		}
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			if err := c.updateAccessToken(); err != nil {
+				return nil, fmt.Errorf("failed to update access token %s", err.Error())
+			}
+			// Retry request with new access token
+			continue
+		}
+
+		return resp, nil
+	}
+
+	return nil, fmt.Errorf("failed to receive response after %d tries", c.retries)
+}
+
+func (c *client) updateAccessToken() error {
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s://%s/auth/token", proto, apiHost), nil)
+	if err != nil {
+		return err
+	}
+
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	type tokenResponse struct {
+		AccessToken string `json:"access_token"`
+		TokenType   string `json:"token_type"`
+		ExpiresIn   string `json:"expires_in,omitempty"`
+	}
+
+	var t = tokenResponse{}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+<<<<<<< HEAD
+			} else if status.StatusCode == http.StatusInternalServerError {
+				fmt.Printf("Job failed! Path %s\n", status.Request.URL.String())
+				os.Exit(1)
+			} else {
+				fmt.Println("  => job is still pending. waiting...")
+			}
+		}
+	} else {
+		fmt.Printf("error: failed to start %s data aggregation job\n", result.Request.URL.String())
+		body, err := ioutil.ReadAll(result.Body)
+		if err != nil {
+			fmt.Printf("Failed to read response body %s\n", err.Error())
+		}
+		if err := result.Body.Close(); err != nil {
+			fmt.Println("Failed to close body " + err.Error())
+		}
+		fmt.Printf("respCode %d respBody %s\n", result.StatusCode, string(body))
+		os.Exit(1)
+=======
+	if err = json.Unmarshal(body, &t); err != nil {
+		return fmt.Errorf("failed to parse '%s' into token %s", string(body), err.Error())
+>>>>>>> WIP
+	}
+
+	c.accessToken = t.AccessToken
+	return nil
 }
