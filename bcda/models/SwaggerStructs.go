@@ -179,6 +179,7 @@ type GroupIDParam struct {
 	// ID of group export
 	// in: path
 	// required: true
+	// enum: all,runout
 	GroupID string `json:"groupId"`
 }
 
