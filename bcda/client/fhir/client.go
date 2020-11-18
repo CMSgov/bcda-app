@@ -13,7 +13,7 @@ import (
 )
 
 type Client interface {
-	DoBundleRequest(req *http.Request) (bundle *models.Bundle, nextReq *http.Request, err error)
+	DoBundleRequest(req *http.Request) (bundle *models.Bundle, nextURL *url.URL, err error)
 
 	// DoRaw makes a request and return the raw response from the service
 	DoRaw(req *http.Request) (string, error)
@@ -37,7 +37,7 @@ type singleClient struct {
 // Ensure singleClient satisfies the interface
 var _ Client = &singleClient{}
 
-func (c *singleClient) DoBundleRequest(req *http.Request) (bundle *models.Bundle, nextReq *http.Request, err error) {
+func (c *singleClient) DoBundleRequest(req *http.Request) (bundle *models.Bundle, nextURL *url.URL, err error) {
 
 	// Ensure that we'll receive the entire bundle response in a single request
 	vals := req.URL.Query()
@@ -68,7 +68,7 @@ type client struct {
 // Ensure client satisfies the interface
 var _ Client = &client{}
 
-func (c *client) DoBundleRequest(req *http.Request) (bundle *models.Bundle, nextReq *http.Request, err error) {
+func (c *client) DoBundleRequest(req *http.Request) (bundle *models.Bundle, nextURL *url.URL, err error) {
 	const (
 		nextRelation = "next" // Relation that contains the next URL that we should be requesting
 	)
@@ -82,28 +82,24 @@ func (c *client) DoBundleRequest(req *http.Request) (bundle *models.Bundle, next
 		return nil, nil, fmt.Errorf("failed to get bundle response: %w", err)
 	}
 
-	var nextURL string
+	var next string
 	for _, link := range b.Links {
 		if link.Relation == nextRelation {
-			nextURL = link.URL
+			next = link.URL
 			break
 		}
 	}
 
 	// We've reached the last page
-	if nextURL == "" {
+	if next == "" {
 		return b, nil, nil
 	}
 
-	url, err := url.Parse(nextURL)
+	url, err := url.Parse(next)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse URL %s: %w", nextURL, err)
 	}
-
-	newReq := req.Clone(req.Context())
-	newReq.URL = url
-
-	return b, newReq, nil
+	return b, url, nil
 }
 
 func (c *client) DoRaw(req *http.Request) (string, error) {

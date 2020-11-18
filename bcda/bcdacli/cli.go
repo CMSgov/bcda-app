@@ -41,7 +41,7 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips string
+	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -401,9 +401,23 @@ func setUpApp() *cli.App {
 					Usage:       "Which set of files to use.",
 					Destination: &environment,
 				},
+				cli.StringFlag{
+					Name:        "fileType",
+					Usage:       "Type of CCLF File to generate. Must be one of 'default', 'runout'. Defaults to 'default'",
+					Destination: &fileType,
+				},
 			},
 			Action: func(c *cli.Context) error {
-				err := cclfUtils.ImportCCLFPackage(acoSize, environment)
+				ft := models.FileTypeDefault
+				if fileType != "" {
+					switch fileType {
+					case "runout":
+						ft = models.FileTypeRunout
+					default:
+						return errors.New("Unsupported file type.")
+					}
+				}
+				err := cclfUtils.ImportCCLFPackage(acoSize, environment, ft)
 				return err
 			},
 		},

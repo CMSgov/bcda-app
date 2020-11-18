@@ -25,3 +25,5 @@ echo "Running Patient v2 (Patient resource)"
 go run bcda_client.go -host=api:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=Patient -resourceType=Patient -apiVersion=v2
 echo "Running Group All v2 (Patient resource)"
 go run bcda_client.go -host=api:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=Group/all -resourceType=Patient -apiVersion=v2
+echo "Running Group Runout (EOB resource)"
+go run bcda_client.go -host=api:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=Group/runout -resourceType=ExplanationOfBenefit

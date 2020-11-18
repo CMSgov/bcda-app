@@ -205,6 +205,11 @@ const (
 	FileTypeRunout
 )
 
+// String returns the letter associated with the CCLFFileType.
+func (t CCLFFileType) String() string {
+	return [...]string{"Y", "R"}[t]
+}
+
 type CCLFFile struct {
 	gorm.Model
 	CCLFNum         int          `gorm:"not null"`
