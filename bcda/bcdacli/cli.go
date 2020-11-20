@@ -743,7 +743,10 @@ func CloneCCLFZip(path, name string) (string, error) {
 		if err != nil {
 			return filename, err
 		}
-		io.Copy(w, r)
+		_, err = io.Copy(w, r)
+		if err != nil {
+			return filename, err
+		}
 	}
 
 	return filename, nil
