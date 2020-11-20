@@ -835,18 +835,6 @@ func getRandomPort(t *testing.T) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-func TestRenameCCLF(t *testing.T) {
-	testZipFileName := "T.BCD.A0002.ZCY18.D181120.T1000000"
-	expectedZipFileName := "T.BCD.A0002.ZCR18.D181120.T1000000"
-	renamedZipFile := RenameCCLF(testZipFileName)
-	assert.Equal(t, expectedZipFileName, renamedZipFile)
-
-	testFileName := "T.BCD.A0002.ZC20Y18.D181120.T1000000"
-	expectedFileName := "T.BCD.A0002.ZC20R18.D181120.T1000000"
-	renamedFile := RenameCCLF(testFileName)
-	assert.Equal(t, expectedFileName, renamedFile)
-}
-
 func CreateTestZipFile(file string) error {
 	zf, err := os.Create(file)
 	if err != nil {
