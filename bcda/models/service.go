@@ -40,7 +40,9 @@ const (
 	cclf8FileNum = int(8)
 )
 
-func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int, runoutCutoffDuration time.Duration, basePath string) Service {
+func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int,
+	runoutCutoffDuration time.Duration, runoutClaimThru time.Time,
+	basePath string) Service {
 	return &service{
 		repository:        r,
 		logger:            log.StandardLogger(),
@@ -51,7 +53,7 @@ func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int, ru
 		},
 		rp: runoutParameters{
 			// Runouts apply to claims data for the previous year.
-			claimThruDate:  time.Date(time.Now().Year()-1, time.December, 31, 23, 59, 59, 999999, time.UTC),
+			claimThruDate:  runoutClaimThru,
 			cutoffDuration: runoutCutoffDuration,
 		},
 		bbBasePath: basePath,
