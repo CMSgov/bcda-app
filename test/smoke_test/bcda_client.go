@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	accessToken, apiHost, proto, resourceType, clientID, clientSecret, endpoint, apiVersion string
-	timeout                                                                                 int
+	apiHost, proto, resourceType, clientID, clientSecret, endpoint, apiVersion string
+	timeout                                                                    int
 )
 
 type OutputCollection []Output
@@ -50,13 +50,11 @@ func main() {
 	fmt.Printf("bulk data request to %s endpoint with %s resource types\n", endpoint, resourceType)
 	end := time.Now().Add(time.Duration(timeout) * time.Second)
 
-	resp, err := startJob(c, endpoint, resourceType)
+	jobURL, err := startJob(c, endpoint, resourceType)
 	if err != nil {
-		fmt.Printf("Failed to start job %s", err.Error())
+		fmt.Printf("Failed to start job %s\n", err.Error())
 		os.Exit(1)
 	}
-
-	defer resp.Body.Close()
 
 	if result := startJob(endpoint, resourceType); result.StatusCode == 202 {
 		if err := result.Body.Close(); err != nil {
@@ -161,7 +159,7 @@ func main() {
 	}
 }
 
-func startJob(c *client, endpoint, resourceType string) (*http.Response, error) {
+func startJob(c *client, endpoint, resourceType string) (string, error) {
 	var url string
 
 	if resourceType != "" {
@@ -177,14 +175,44 @@ func startJob(c *client, endpoint, resourceType string) (*http.Response, error) 
 
 	req.Header.Add("Prefer", "respond-async")
 	req.Header.Add("Accept", "application/fhir+json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
+	defer resp.Body.Close()
 
-	return resp, nil
+	switch resp.StatusCode {
+	case http.StatusAccepted:
+		return resp.Header.Get("Content-Location"), nil
+	default:
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("Failed to read response body %s\n", err.Error())
+		}
+		return "", fmt.Errorf("unexpected response code received %d, body '%s'",
+			req.URL.String(), resp.StatusCode, body)
+	}
+}
+
+func waitForComplete(c *client, jobEndpoint string, timeout time.Duration) ([]string, error) {
+	check := func() ([]string, error) {
+		req, err := http.NewRequest("GET", jobEndpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := c.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		switch resp.StatusCode {
+		case http.StatusOK:
+
+		case http.StatusAccepted:
+		}
+	}
 }
 
 func get(c *client, location string, compressed bool) (*http.Response, error) {
@@ -333,29 +361,8 @@ func (c *client) updateAccessToken() error {
 		return err
 	}
 
-<<<<<<< HEAD
-			} else if status.StatusCode == http.StatusInternalServerError {
-				fmt.Printf("Job failed! Path %s\n", status.Request.URL.String())
-				os.Exit(1)
-			} else {
-				fmt.Println("  => job is still pending. waiting...")
-			}
-		}
-	} else {
-		fmt.Printf("error: failed to start %s data aggregation job\n", result.Request.URL.String())
-		body, err := ioutil.ReadAll(result.Body)
-		if err != nil {
-			fmt.Printf("Failed to read response body %s\n", err.Error())
-		}
-		if err := result.Body.Close(); err != nil {
-			fmt.Println("Failed to close body " + err.Error())
-		}
-		fmt.Printf("respCode %d respBody %s\n", result.StatusCode, string(body))
-		os.Exit(1)
-=======
 	if err = json.Unmarshal(body, &t); err != nil {
 		return fmt.Errorf("failed to parse '%s' into token %s", string(body), err.Error())
->>>>>>> WIP
 	}
 
 	c.accessToken = t.AccessToken
