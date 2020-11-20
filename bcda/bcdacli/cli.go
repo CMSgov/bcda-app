@@ -726,7 +726,11 @@ func CloneCCLFZip(path, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer newf.Close()
+	defer func() {
+		if err = newf.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	zw := zip.NewWriter(newf)
 	defer zw.Close()
@@ -743,7 +747,7 @@ func CloneCCLFZip(path, name string) (string, error) {
 		if err != nil {
 			return filename, err
 		}
-		_, err = io.Copy(w, r)
+		_, err = io.Copy(w, r) // #nosec G110
 		if err != nil {
 			return filename, err
 		}
