@@ -358,17 +358,9 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				files, err := ioutil.ReadDir(filePath)
-				if err != nil {
+				if err := CloneCCLFZips(filePath); err != nil {
 					fmt.Fprintf(app.Writer, "%s\n", err)
 					return err
-				}
-
-				for _, f := range files {
-					if err := cloneZipFile(filePath, f.Name()); err != nil {
-						fmt.Fprintf(app.Writer, "%s\n", err)
-						return err
-					}
 				}
 				return nil
 			},
@@ -689,46 +681,70 @@ func setBlacklistState(cmsID string, blacklistState bool) error {
 	return db.Model(&aco).Update("blacklisted", blacklistState).Error
 }
 
-// CCLF file name pattern and regular expression
+// CCLF file name pattern and regex
 const cclfPattern = `((?:T|P)\.BCD\..*\.ZC\d*)Y(\d{2}\.D\d{6}\.T\d{7})`
 
-var cclfRe = regexp.MustCompile(cclfPattern)
+var cclfregex = regexp.MustCompile(cclfPattern)
 
-func cloneZipFile(path, name string) error {
-	zr, err := zip.OpenReader(filepath.Join(path, name))
+func RenameCCLF(name string) string {
+	return cclfregex.ReplaceAllString(name, "${1}R${2}")
+}
+
+func CloneCCLFZips(path string) error {
+	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		return err
+	}
+
+	// Iterate through all cclf zip files in provided directory
+	for _, f := range files {
+		// Make sure to not clone non CCLF files in case the wrong directory is given
+		if !cclfregex.MatchString(f.Name()) {
+			log.Infof("Skipping file `%s`, does not match expected name... ", f.Name())
+			continue
+		}
+		fn, err := CloneCCLFZip(path, f.Name())
+		if err != nil {
+			return err
+		}
+		log.Infof("Created runout file: %s", fn)
+	}
+	return nil
+}
+
+func CloneCCLFZip(path, name string) (string, error) {
+	// Open source zip file for cloning
+	zr, err := zip.OpenReader(filepath.Join(path, name))
+	if err != nil {
+		return "", err
 	}
 	defer zr.Close()
 
-	zfname := cclfRe.ReplaceAllString(name, "${1}R${2}")
-	zfile, err := os.Create(filepath.Join(path, zfname))
+	// Create destination runout zip file with proper nomenclature
+	filename := RenameCCLF(name)
+	newf, err := os.Create(filepath.Join(path, filename))
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer zfile.Close()
+	defer newf.Close()
 
-	zw := zip.NewWriter(zfile)
+	zw := zip.NewWriter(newf)
+	defer zw.Close()
 
+	// For each CCLF file in src zip, rename and write to dst zip
 	for _, f := range zr.File {
-		if err = cloneCCLFFile(f, zw); err != nil {
-			return err
+		r, err := f.Open()
+		if err != nil {
+			return filename, err
 		}
+		defer r.Close()
+
+		w, err := zw.Create(RenameCCLF(f.Name))
+		if err != nil {
+			return filename, err
+		}
+		io.Copy(w, r)
 	}
 
-	return zw.Close()
-}
-
-func cloneCCLFFile(f *zip.File, zw *zip.Writer) error {
-	r, err := f.Open()
-	if err != nil {
-		return err
-	}
-	rfname := cclfRe.ReplaceAllString(f.Name, "${1}R${2}")
-	w, err := zw.Create(rfname)
-	if err != nil {
-		return err
-	}
-	io.Copy(w, r)
-	return r.Close()
+	return filename, nil
 }
