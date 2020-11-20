@@ -24,6 +24,10 @@ const (
 	defaultRunoutCutoff = 120 * 24 * time.Hour
 )
 
+var (
+	defaultRunoutClaimThru = time.Date(time.Now().Year()-1, time.December, 31, 23, 59, 59, 999999, time.UTC)
+)
+
 func TestSupportedACOs(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -45,7 +49,7 @@ func TestSupportedACOs(t *testing.T) {
 		{"CEC invalid characters", "E999E", false},
 		{"valid CEC", "E9999", true},
 
-		{"Unregisted ACO", "Z1234", false},
+		{"Unregistered ACO", "Z1234", false},
 	}
 
 	for _, tt := range tests {
@@ -284,7 +288,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			}
 			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, "").(*service)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries("cmsID", since)
 
 			if tt.expectedErr != nil {
@@ -381,7 +385,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				repository.On("GetCCLFBeneficiaries", tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, "").(*service)
+			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
 			benes, err := serviceInstance.getBeneficiaries("cmsID", tt.fileType)
 
 			if tt.expectedErr != nil {
@@ -420,7 +424,6 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 
 	since := time.Now()
-	serviceDate := time.Date(since.Year()-1, 12, 31, 23, 59, 59, 999999, time.UTC)
 
 	type test struct {
 		name           string
@@ -436,8 +439,8 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
 		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, time.Time{}, benes1, nil},
 		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil},
-		{"RunoutRequest", defaultACOID, Runout, time.Time{}, serviceDate, benes1, nil},
-		{"RunoutRequest with Since", defaultACOID, Runout, since, serviceDate, benes1, nil},
+		{"RunoutRequest", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil},
+		{"RunoutRequest with Since", defaultACOID, Runout, since, defaultRunoutClaimThru, benes1, nil},
 		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
 	}
 
@@ -462,7 +465,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
-			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, basePath)
+			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, defaultRunoutClaimThru, basePath)
 			queJobs, err := serviceInstance.GetQueJobs(tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
