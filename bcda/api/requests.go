@@ -41,6 +41,8 @@ type Handler struct {
 }
 
 func NewHandler(resources []string, basePath string) *Handler {
+	const claimThruDateFmt = "2006-01-02"
+
 	h := &Handler{}
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
@@ -62,13 +64,21 @@ func NewHandler(resources []string, basePath string) *Handler {
 	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
 
 	// Allow runout requests to be up to 4 months after runout data was ingested
-	runoutCutoffDuration := time.Duration(utils.GetEnvInt("RUNOUT_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
+	runoutCutoffDuration := time.Duration(utils.GetEnvInt("RUNOUT_CUTOFF_DATE_DAYS", 120)*24) * time.Hour
+	runoutClaimThru := utils.FromEnv("RUNOUT_CLAIM_THRU_DATE", "2020-12-31")
+	runoutClaimThruDate, err := time.Parse(claimThruDateFmt, runoutClaimThru)
+	if err != nil {
+		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %s", runoutClaimThru, err.Error())
+	}
+
 	db := database.GetGORMDbConnection()
 	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
 	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
 	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
-	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60), runoutCutoffDuration, basePath)
+	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
+		runoutCutoffDuration, runoutClaimThruDate,
+		basePath)
 
 	h.supportedResources = make(map[string]struct{}, len(resources))
 	for _, r := range resources {
