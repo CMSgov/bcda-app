@@ -1,6 +1,7 @@
 package bcdacli
 
 import (
+	"archive/zip"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -14,21 +15,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jinzhu/gorm"
-
-	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/go-chi/chi"
-	log "github.com/sirupsen/logrus"
-
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
-	"github.com/urfave/cli"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/go-chi/chi"
+	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"github.com/urfave/cli"
 )
 
 var origDate string
@@ -835,4 +833,123 @@ func getRandomPort(t *testing.T) int {
 	}()
 
 	return listener.Addr().(*net.TCPAddr).Port
+}
+
+func TestRenameCCLF(t *testing.T) {
+	testZipFileName := "T.BCD.A0002.ZCY18.D181120.T1000000"
+	expectedZipFileName := "T.BCD.A0002.ZCR18.D181120.T1000000"
+	renamedZipFile := RenameCCLF(testZipFileName)
+	assert.Equal(t, expectedZipFileName, renamedZipFile)
+
+	testFileName := "T.BCD.A0002.ZC20Y18.D181120.T1000000"
+	expectedFileName := "T.BCD.A0002.ZC20R18.D181120.T1000000"
+	renamedFile := RenameCCLF(testFileName)
+	assert.Equal(t, expectedFileName, renamedFile)
+}
+
+func CreateTestZipFile(file string) error {
+	zf, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer zf.Close()
+
+	w := zip.NewWriter(zf)
+	var files = []string{
+		"T.BCD.A0001.ZC8Y18.D181120.T1000001",
+		"T.BCD.A0001.ZC8Y18.D181120.T1000002",
+		"T.BCD.A0001.ZC8Y18.D181120.T1000003",
+	}
+
+	for _, file := range files {
+		f, err := w.Create(file)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write([]byte("foo bar"))
+		if err != nil {
+			return err
+		}
+	}
+
+	return w.Close()
+}
+
+func getFileCount(path string) int {
+	f, _ := ioutil.ReadDir(path)
+	return len(f)
+}
+
+func TestCloneCCLFZips(t *testing.T) {
+	srcZips := []string{
+		"T.BCD.A0002.ZCY18.D181120.T9999990",
+		"T.BCD.A0002.ZCY18.D181120.T9999991",
+		"T.BCD.A0002.ZCY18.D181120.T9999992",
+		"not_a_cclf_file",
+	}
+
+	for _, srcZip := range srcZips {
+		err := CreateTestZipFile(srcZip)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func(f string) { os.Remove(f) }(srcZip)
+	}
+
+	dstZips := []string{
+		"T.BCD.A0002.ZCR18.D181120.T9999990",
+		"T.BCD.A0002.ZCR18.D181120.T9999991",
+		"T.BCD.A0002.ZCR18.D181120.T9999992",
+	}
+
+	beforeCount := getFileCount("./")
+	err := CloneCCLFZips("./")
+	defer func() {
+		for _, dstZip := range dstZips {
+			os.Remove(dstZip)
+		}
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, dstZip := range dstZips {
+		assert.FileExists(t, dstZip)
+	}
+
+	assert.Equal(t, beforeCount+len(dstZips), getFileCount("./"))
+}
+
+func TestCloneCCLFZip(t *testing.T) {
+	srcZip := "T.BCD.A0002.ZCY18.D181120.T9999999"
+
+	err := CreateTestZipFile(srcZip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { os.Remove(srcZip) }()
+
+	dstFiles := []string{
+		"T.BCD.A0001.ZC8R18.D181120.T1000001",
+		"T.BCD.A0001.ZC8R18.D181120.T1000002",
+		"T.BCD.A0001.ZC8R18.D181120.T1000003",
+	}
+
+	dstZip, err := CloneCCLFZip("", srcZip)
+	defer func() {
+		if dstZip != "" {
+			os.Remove(dstZip)
+		}
+	}()
+	assert.NoError(t, err)
+
+	assert.FileExists(t, dstZip)
+
+	zr, err := zip.OpenReader(dstZip)
+	assert.NoError(t, err)
+	defer zr.Close()
+
+	for i, f := range zr.File {
+		assert.Equal(t, dstFiles[i], f.Name)
+	}
 }
