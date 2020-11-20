@@ -1,9 +1,12 @@
 package bcdacli
 
 import (
+	"archive/zip"
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -344,6 +347,33 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
+			Name:     "generate-cclf-runout-files",
+			Category: "Data import",
+			Usage:    "Clone CCLF files and rename them as runout files",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "directory",
+					Usage:       "Directory where CCLF files are located",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				files, err := ioutil.ReadDir(filePath)
+				if err != nil {
+					fmt.Fprintf(app.Writer, "%s\n", err)
+					return err
+				}
+
+				for _, f := range files {
+					if err := cloneZipFile(filePath, f.Name()); err != nil {
+						fmt.Fprintf(app.Writer, "%s\n", err)
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
 			Name:     "import-suppression-directory",
 			Category: "Data import",
 			Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
@@ -657,4 +687,48 @@ func setBlacklistState(cmsID string, blacklistState bool) error {
 	defer db.Close()
 
 	return db.Model(&aco).Update("blacklisted", blacklistState).Error
+}
+
+// CCLF file name pattern and regular expression
+const cclfPattern = `((?:T|P)\.BCD\..*\.ZC\d*)Y(\d{2}\.D\d{6}\.T\d{7})`
+
+var cclfRe = regexp.MustCompile(cclfPattern)
+
+func cloneZipFile(path, name string) error {
+	zr, err := zip.OpenReader(filepath.Join(path, name))
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+
+	zfname := cclfRe.ReplaceAllString(name, "${1}R${2}")
+	zfile, err := os.Create(filepath.Join(path, zfname))
+	if err != nil {
+		return err
+	}
+	defer zfile.Close()
+
+	zw := zip.NewWriter(zfile)
+
+	for _, f := range zr.File {
+		if err = cloneCCLFFile(f, zw); err != nil {
+			return err
+		}
+	}
+
+	return zw.Close()
+}
+
+func cloneCCLFFile(f *zip.File, zw *zip.Writer) error {
+	r, err := f.Open()
+	if err != nil {
+		return err
+	}
+	rfname := cclfRe.ReplaceAllString(f.Name, "${1}R${2}")
+	w, err := zw.Create(rfname)
+	if err != nil {
+		return err
+	}
+	io.Copy(w, r)
+	return r.Close()
 }
