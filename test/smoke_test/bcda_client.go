@@ -13,11 +13,13 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
 	accessToken, apiHost, proto, resourceType, clientID, clientSecret, endpoint, apiVersion string
-	timeout                                                                                 int
+	timeout, httpRetry                                                                      int
 )
 
 type OutputCollection []Output
@@ -37,37 +39,40 @@ func init() {
 	flag.StringVar(&apiVersion, "apiVersion", "v1", "resourceType to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
 	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint in the format of Patient or Group/all or Group/new")
+	flag.IntVar(&httpRetry, "httpRetry", 3, "amount of times to retry an http request")
 	flag.Parse()
+
+	log.SetReportCaller(true)
 
 }
 
 func main() {
-	c := &client{httpClient: &http.Client{Timeout: 10 * time.Second}, accessToken: accessToken}
+	c := &client{httpClient: &http.Client{Timeout: 10 * time.Second}, accessToken: accessToken, retries: httpRetry}
 
-	fmt.Printf("bulk data request to %s endpoint with %s resource types\n", endpoint, resourceType)
+	log.Infof("bulk data request to %s endpoint with %s resource types", endpoint, resourceType)
 
 	jobURL, err := startJob(c, endpoint, resourceType)
 	if err != nil {
-		fmt.Printf("Failed to start job %s\n", err.Error())
+		log.Errorf("Failed to start job %s", err.Error())
 		os.Exit(1)
 	}
 	urls, err := getDataURLs(c, jobURL, time.Duration(timeout)*time.Second)
 	if err != nil {
-		fmt.Printf("Failed to get data URLs %s\n", err.Error())
+		log.Errorf("Failed to get data URLs %s", err.Error())
 		os.Exit(1)
 	}
 
 	for _, u := range urls {
 		data, err := getData(c, u)
 		if err != nil {
-			fmt.Printf("Failed to get data from URL %s %s\n", u, err.Error())
+			log.Errorf("Failed to get data from URL %s %s", u, err.Error())
 		}
 
-		fmt.Printf("Finished downloading data from url %s\n", u)
+		log.Infof("Finished downloading data from url %s", u)
 		if err := validateData(data); err != nil {
-			fmt.Printf("Failed to validate data %s", err.Error())
+			log.Errorf("Failed to validate data %s", err.Error())
 		}
-		fmt.Printf("Finished validating data from url %s\n", u)
+		log.Infof("Finished validating data from url %s", u)
 	}
 }
 
@@ -100,7 +105,7 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 	default:
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Printf("Failed to read response body %s\n", err.Error())
+			log.Errorf("Failed to read response body %s", err.Error())
 		}
 		return "", fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
 			req.URL.String(), resp.StatusCode, body)
@@ -139,12 +144,13 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 			return urls, nil
 
 		case http.StatusAccepted:
-			fmt.Printf("Job has not completed %s\n", resp.Header.Get("X-Progress"))
+			log.Infof("Job has not completed %s", resp.Header.Get("X-Progress"))
+			<-time.After(5 * time.Second)
 			return nil, nil
 		default:
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				fmt.Printf("Failed to read response body %s\n", err.Error())
+				log.Errorf("Failed to read response body %s", err.Error())
 			}
 			return nil, fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
 				req.URL.String(), resp.StatusCode, body)
@@ -228,7 +234,7 @@ func isValidNDJSONText(data string) bool {
 		}
 		if !json.Valid([]byte(line)) {
 			isValid = false
-			fmt.Println(line)
+			log.Info(line)
 			break
 		}
 	}
@@ -245,6 +251,7 @@ type client struct {
 
 func (c *client) Do(req *http.Request) (*http.Response, error) {
 	if len(c.accessToken) == 0 {
+		log.Info("No access token supplied. Refreshing...")
 		if err := c.updateAccessToken(); err != nil {
 			return nil, fmt.Errorf("failed to update access token %s", err.Error())
 		}
@@ -260,6 +267,7 @@ func (c *client) Do(req *http.Request) (*http.Response, error) {
 		}
 
 		if resp.StatusCode == http.StatusUnauthorized {
+			log.Info("Access token expired. Refreshing...")
 			if err := c.updateAccessToken(); err != nil {
 				return nil, fmt.Errorf("failed to update access token %s", err.Error())
 			}
@@ -282,12 +290,21 @@ func (c *client) updateAccessToken() error {
 	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Add("Accept", "application/json")
 
-	resp, err := c.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Errorf("Failed to read response body %s", err.Error())
+		}
+		return fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
+			req.URL.String(), resp.StatusCode, body)
+	}
 
 	type tokenResponse struct {
 		AccessToken string `json:"access_token"`
