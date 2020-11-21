@@ -43,7 +43,6 @@ func init() {
 	flag.Parse()
 
 	log.SetReportCaller(true)
-
 }
 
 func main() {
