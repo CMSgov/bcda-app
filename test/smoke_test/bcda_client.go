@@ -1,26 +1,23 @@
 package main
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 	"time"
-
-	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
 var (
-	apiHost, proto, resourceType, clientID, clientSecret, endpoint, apiVersion string
-	timeout                                                                    int
+	accessToken, apiHost, proto, resourceType, clientID, clientSecret, endpoint, apiVersion string
+	timeout                                                                                 int
 )
 
 type OutputCollection []Output
@@ -48,114 +45,29 @@ func main() {
 	c := &client{httpClient: &http.Client{Timeout: 10 * time.Second}, accessToken: accessToken}
 
 	fmt.Printf("bulk data request to %s endpoint with %s resource types\n", endpoint, resourceType)
-	end := time.Now().Add(time.Duration(timeout) * time.Second)
 
 	jobURL, err := startJob(c, endpoint, resourceType)
 	if err != nil {
 		fmt.Printf("Failed to start job %s\n", err.Error())
 		os.Exit(1)
 	}
-
-	if result := startJob(endpoint, resourceType); result.StatusCode == 202 {
-		if err := result.Body.Close(); err != nil {
-			fmt.Println("Failed to close body " + err.Error())
-		}
-
-		for {
-			<-time.After(5 * time.Second)
-
-			if time.Now().After(end) {
-				fmt.Println("timeout exceeded...")
-				os.Exit(1)
-			}
-
-			fmt.Println("checking job status...")
-			status := get(result.Header["Content-Location"][0], false)
-
-			// Acquire new token if the current token has expired
-			if status.StatusCode == 401 {
-				fmt.Println("acquire new token...")
-				if accessToken, err = getAccessToken(); err != nil {
-					fmt.Printf("Failed to get access token %s", err.Error())
-					os.Exit(1)
-				}
-			} else if status.StatusCode == 200 {
-				fmt.Println("file is ready for download...")
-
-				defer status.Body.Close()
-
-				var objmap map[string]*json.RawMessage
-				err := json.NewDecoder(status.Body).Decode(&objmap)
-				if err != nil {
-					panic(err)
-				}
-				output := (*json.RawMessage)(objmap["output"])
-				var data OutputCollection
-				if err := json.Unmarshal(*output, &data); err != nil {
-					panic(err)
-				}
-
-				for _, fileItem := range data {
-
-					// Acquire new access token for each file download
-					if accessToken, err = getAccessToken(); err != nil {
-						fmt.Printf("Failed to get access token %s", err.Error())
-						os.Exit(1)
-					}
-					fmt.Printf("fetching: %s\n", fileItem.Url)
-					download := get(fileItem.Url, true)
-					if download.StatusCode == 200 {
-						filename := "/tmp/" + path.Base(fileItem.Url)
-						fmt.Printf("writing download to disk: %s\n", filename)
-						writeFile(download, filename)
-
-						fmt.Println("validating file...")
-						fi, err := os.Stat(filename)
-						if err != nil {
-							panic(err)
-						}
-						if fi.Size() <= 0 {
-							fmt.Println("Error: file is empty!.")
-							os.Exit(1)
-						}
-
-						fmt.Println("reading file contents...")
-						// #nosec
-						bytes, err := ioutil.ReadFile(filename)
-						if err != nil {
-							panic(err)
-						}
-						output := string(bytes)
-
-						if !isValidNDJSONText(output) {
-							fmt.Println("Error: file is not in valid NDJSON format!")
-							os.Exit(1)
-						}
-
-						fmt.Println("done.")
-
-					} else {
-						fmt.Printf("error: unable to request file download... status is: %s\n", download.Status)
-						os.Exit(1)
-					}
-				}
-				break
-
-			} else {
-				fmt.Println("  => job is still pending. waiting...")
-			}
-		}
-	} else {
-		fmt.Printf("error: failed to start %s data aggregation job\n", result.Request.URL.String())
-		body, err := ioutil.ReadAll(result.Body)
-		if err != nil {
-			fmt.Printf("Failed to read response body %s\n", err.Error())
-		}
-		if err := result.Body.Close(); err != nil {
-			fmt.Println("Failed to close body " + err.Error())
-		}
-		fmt.Printf("respCode %d respBody %s\n", result.StatusCode, string(body))
+	urls, err := getDataURLs(c, jobURL, time.Duration(timeout)*time.Second)
+	if err != nil {
+		fmt.Printf("Failed to get data URLs %s\n", err.Error())
 		os.Exit(1)
+	}
+
+	for _, u := range urls {
+		data, err := getData(c, u)
+		if err != nil {
+			fmt.Printf("Failed to get data from URL %s %s\n", u, err.Error())
+		}
+
+		fmt.Printf("Finished downloading data from url %s\n", u)
+		if err := validateData(data); err != nil {
+			fmt.Printf("Failed to validate data %s", err.Error())
+		}
+		fmt.Printf("Finished validating data from url %s\n", u)
 	}
 }
 
@@ -190,12 +102,12 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 		if err != nil {
 			fmt.Printf("Failed to read response body %s\n", err.Error())
 		}
-		return "", fmt.Errorf("unexpected response code received %d, body '%s'",
+		return "", fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
 			req.URL.String(), resp.StatusCode, body)
 	}
 }
 
-func waitForComplete(c *client, jobEndpoint string, timeout time.Duration) ([]string, error) {
+func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string, error) {
 	check := func() ([]string, error) {
 		req, err := http.NewRequest("GET", jobEndpoint, nil)
 		if err != nil {
@@ -209,66 +121,94 @@ func waitForComplete(c *client, jobEndpoint string, timeout time.Duration) ([]st
 
 		switch resp.StatusCode {
 		case http.StatusOK:
+			var objmap map[string]json.RawMessage
+			if err := json.NewDecoder(resp.Body).Decode(&objmap); err != nil {
+				return nil, err
+			}
+
+			output := objmap["output"]
+			var data OutputCollection
+			if err := json.Unmarshal(output, &data); err != nil {
+				return nil, err
+			}
+
+			var urls []string
+			for _, item := range data {
+				urls = append(urls, item.Url)
+			}
+			return urls, nil
 
 		case http.StatusAccepted:
+			fmt.Printf("Job has not completed %s\n", resp.Header.Get("X-Progress"))
+			return nil, nil
+		default:
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				fmt.Printf("Failed to read response body %s\n", err.Error())
+			}
+			return nil, fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
+				req.URL.String(), resp.StatusCode, body)
+		}
+	}
+
+	expire := time.After(timeout)
+	for {
+		select {
+		case <-expire:
+			return nil, fmt.Errorf("failed to get response in %s", timeout.String())
+		default:
+			urls, err := check()
+			if err != nil {
+				return nil, err
+			}
+			if len(urls) == 0 {
+				continue
+			}
+			return urls, nil
 		}
 	}
 }
 
-func get(c *client, location string, compressed bool) (*http.Response, error) {
-	req, err := http.NewRequest("GET", location, nil)
+func getData(c *client, dataURL string) ([]byte, error) {
+	req, err := http.NewRequest("GET", dataURL, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-	if compressed {
-		req.Header.Add("Accept-Encoding", "gzip")
-	}
-
+	req.Header.Add("Accept-Encoding", "gzip")
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
-
-	return resp, nil
-}
-
-func writeFile(resp *http.Response, filename string) error {
 	defer resp.Body.Close()
 
-	var isGZIP bool
-	for _, h := range resp.Header.Values("Content-Encoding") {
-		if h == "gzip" {
-			isGZIP = true
-			break
-		}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	if !isGZIP {
-		return errors.New("Data responses should be gzip-encoded.")
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request %s has unexpected response code received %d, body '%s'",
+			req.URL.String(), resp.StatusCode, body)
 	}
 
-	reader, err := gzip.NewReader(resp.Body)
+	return body, nil
+}
+
+func validateData(encoded []byte) error {
+	// Data is expected to be gzip encoded
+	reader, err := gzip.NewReader(bytes.NewReader(encoded))
 	if err != nil {
 		return err
 	}
 	defer reader.Close()
 
-	/* #nosec */
-	out, err := os.Create(filename)
+	decoded, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
 	}
-	defer utils.CloseFileAndLogError(out)
 
-	/* #nosec G110 - not concerned with OOM since we're using this in a controlled setting */
-	num, err := io.Copy(out, reader)
-	if err != nil {
-		return err
-	}
-	if num <= 0 {
-		return errors.New("failed to write data")
+	if !isValidNDJSONText(string(decoded)) {
+		return errors.New("data is not valid NDJSON format")
 	}
 
 	return nil
