@@ -14,12 +14,13 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 var (
 	accessToken, apiHost, proto, resourceType, clientID, clientSecret, endpoint, apiVersion string
 	timeout, httpRetry                                                                      int
+	log                                                                                     logrus.FieldLogger
 )
 
 type OutputCollection []Output
@@ -41,12 +42,20 @@ func init() {
 	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint in the format of Patient or Group/all or Group/new")
 	flag.IntVar(&httpRetry, "httpRetry", 3, "amount of times to retry an http request")
 	flag.Parse()
-
-	log.SetReportCaller(true)
 }
 
 func main() {
 	c := &client{httpClient: &http.Client{Timeout: 10 * time.Second}, accessToken: accessToken, retries: httpRetry}
+
+	logFields := logrus.Fields{
+		"endpoint":      endpoint,
+		"resourceTypes": resourceType,
+	}
+
+	l := logrus.StandardLogger()
+	l.SetReportCaller(true)
+	l.SetFormatter(&logrus.JSONFormatter{})
+	log = logrus.NewEntry(l).WithFields(logFields)
 
 	log.Infof("bulk data request to %s endpoint with %s resource types", endpoint, resourceType)
 
