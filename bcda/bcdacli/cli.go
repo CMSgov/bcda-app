@@ -358,10 +358,12 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				if err := cloneCCLFZips(filePath); err != nil {
+				rc, err := cloneCCLFZips(filePath)
+				if err != nil {
 					fmt.Fprintf(app.Writer, "%s\n", err)
 					return err
 				}
+				fmt.Fprintf(app.Writer, "Completed CCLF runout file generation. Generated %d zip files.", rc)
 				return nil
 			},
 		},
@@ -690,12 +692,13 @@ func renameCCLF(name string) string {
 	return cclfregex.ReplaceAllString(name, "${1}R${2}")
 }
 
-func cloneCCLFZips(path string) error {
+func cloneCCLFZips(path string) (int, error) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
+	rcount := 0 // Track the number of runout files that are created
 	// Iterate through all cclf zip files in provided directory
 	for _, f := range files {
 		// Make sure to not clone non CCLF files in case the wrong directory is given
@@ -706,11 +709,12 @@ func cloneCCLFZips(path string) error {
 		fn := renameCCLF(f.Name())
 		err := cloneCCLFZip(filepath.Join(path, f.Name()), filepath.Join(path, fn))
 		if err != nil {
-			return err
+			return rcount, err
 		}
+		rcount++
 		log.Infof("Created runout file: %s", fn)
 	}
-	return nil
+	return rcount, nil
 }
 
 func cloneCCLFZip(src, dst string) error {
