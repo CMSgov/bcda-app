@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -835,97 +836,95 @@ func getRandomPort(t *testing.T) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-func TestCloneCCLFZips(t *testing.T) {
-	srcZips := []string{
+func (s *CLITestSuite) TestCloneCCLFZips() {
+	assert := assert.New(s.T())
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	// set up a test directory for cclf file generating and cloning
+	path, err := ioutil.TempDir(".", "clone_cclf")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(path)
+
+	// test cclf zip file names and a dummy file name that should not be cloned
+	zipFiles := []string{
 		"T.BCD.A0002.ZCY18.D181120.T9999990",
 		"T.BCD.A0002.ZCY18.D181120.T9999991",
 		"T.BCD.A0002.ZCY18.D181120.T9999992",
 		"not_a_cclf_file",
 	}
-
-	for _, srcZip := range srcZips {
-		err := createTestZipFile(srcZip)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func(f string) { os.Remove(f) }(srcZip)
+	// cclf file names that are contained within the cclf zip files
+	cclfFiles := []string{
+		"T.BCD.A0001.ZC48Y18.D181120.T1000001",
+		"T.BCD.A0001.ZC48Y18.D181120.T1000002",
+		"T.BCD.A0001.ZC48Y18.D181120.T1000003",
 	}
 
-	dstZips := []string{
+	// create the test files under the temporary directory
+	for _, zf := range zipFiles {
+		err := createTestZipFile(filepath.Join(path, zf), cclfFiles...)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	beforecount := getFileCount(s.T(), path)
+
+	args := []string{"bcda", "generate-cclf-runout-files", "--directory", path}
+	err = s.testApp.Run(args)
+	fmt.Print(buf.String())
+	assert.Nil(err)
+	assert.Contains(buf.String(), "Completed CCLF runout file generation.")
+	assert.Contains(buf.String(), "Generated 3 zip files.")
+	buf.Reset()
+
+	// runout zip file names that will be generated
+	zipRFiles := []string{
 		"T.BCD.A0002.ZCR18.D181120.T9999990",
 		"T.BCD.A0002.ZCR18.D181120.T9999991",
 		"T.BCD.A0002.ZCR18.D181120.T9999992",
 	}
 
-	beforeCount := getFileCount(t, "./")
-	err := cloneCCLFZips("./")
-	defer func() {
-		for _, dstZip := range dstZips {
-			os.Remove(dstZip)
+	// assert the zip file count matches after cloning
+	assert.Equal(beforecount+len(zipRFiles), getFileCount(s.T(), path))
+
+	// runout cclf file names that will be generated for each zip file
+	cclfRFiles := []string{
+		"T.BCD.A0001.ZC48R18.D181120.T1000001",
+		"T.BCD.A0001.ZC48R18.D181120.T1000002",
+		"T.BCD.A0001.ZC48R18.D181120.T1000003",
+	}
+
+	// assert that each zip was cloned with the proper name and each zip file
+	// contains the correct cclf file clones
+	for _, zrf := range zipRFiles {
+		assert.FileExists(filepath.Join(path, zrf))
+
+		zr, err := zip.OpenReader(filepath.Join(path, zrf))
+		assert.NoError(err)
+		defer zr.Close()
+
+		for i, f := range zr.File {
+			assert.Equal(cclfRFiles[i], f.Name)
 		}
-	}()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, dstZip := range dstZips {
-		assert.FileExists(t, dstZip)
-	}
-
-	assert.Equal(t, beforeCount+len(dstZips), getFileCount(t, "./"))
-}
-
-func TestCloneCCLFZip(t *testing.T) {
-	srcZip := "T.BCD.A0002.ZCY18.D181120.T9999999"
-
-	err := createTestZipFile(srcZip)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { os.Remove(srcZip) }()
-
-	dstFiles := []string{
-		"T.BCD.A0001.ZC8R18.D181120.T1000001",
-		"T.BCD.A0001.ZC8R18.D181120.T1000002",
-		"T.BCD.A0001.ZC8R18.D181120.T1000003",
-	}
-
-	dstZip := renameCCLF(srcZip)
-	assert.Equal(t, "T.BCD.A0002.ZCR18.D181120.T9999999", dstZip)
-
-	err = cloneCCLFZip(srcZip, dstZip)
-	defer func() {
-		os.Remove(dstZip)
-	}()
-	assert.NoError(t, err)
-
-	assert.FileExists(t, dstZip)
-
-	zr, err := zip.OpenReader(dstZip)
-	assert.NoError(t, err)
-	defer zr.Close()
-
-	for i, f := range zr.File {
-		assert.Equal(t, dstFiles[i], f.Name)
 	}
 }
 
-func createTestZipFile(file string) error {
-	zf, err := os.Create(file)
+func createTestZipFile(zFile string, cclfFiles ...string) error {
+	zf, err := os.Create(zFile)
 	if err != nil {
 		return err
 	}
 	defer zf.Close()
 
 	w := zip.NewWriter(zf)
-	var files = []string{
-		"T.BCD.A0001.ZC8Y18.D181120.T1000001",
-		"T.BCD.A0001.ZC8Y18.D181120.T1000002",
-		"T.BCD.A0001.ZC8Y18.D181120.T1000003",
-	}
 
-	for _, file := range files {
-		f, err := w.Create(file)
+	for _, f := range cclfFiles {
+		f, err := w.Create(f)
 		if err != nil {
 			return err
 		}
