@@ -835,39 +835,6 @@ func getRandomPort(t *testing.T) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-func CreateTestZipFile(file string) error {
-	zf, err := os.Create(file)
-	if err != nil {
-		return err
-	}
-	defer zf.Close()
-
-	w := zip.NewWriter(zf)
-	var files = []string{
-		"T.BCD.A0001.ZC8Y18.D181120.T1000001",
-		"T.BCD.A0001.ZC8Y18.D181120.T1000002",
-		"T.BCD.A0001.ZC8Y18.D181120.T1000003",
-	}
-
-	for _, file := range files {
-		f, err := w.Create(file)
-		if err != nil {
-			return err
-		}
-		_, err = f.Write([]byte("foo bar"))
-		if err != nil {
-			return err
-		}
-	}
-
-	return w.Close()
-}
-
-func getFileCount(path string) int {
-	f, _ := ioutil.ReadDir(path)
-	return len(f)
-}
-
 func TestCloneCCLFZips(t *testing.T) {
 	srcZips := []string{
 		"T.BCD.A0002.ZCY18.D181120.T9999990",
@@ -877,7 +844,7 @@ func TestCloneCCLFZips(t *testing.T) {
 	}
 
 	for _, srcZip := range srcZips {
-		err := CreateTestZipFile(srcZip)
+		err := createTestZipFile(srcZip)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -890,7 +857,7 @@ func TestCloneCCLFZips(t *testing.T) {
 		"T.BCD.A0002.ZCR18.D181120.T9999992",
 	}
 
-	beforeCount := getFileCount("./")
+	beforeCount := getFileCount(t, "./")
 	err := cloneCCLFZips("./")
 	defer func() {
 		for _, dstZip := range dstZips {
@@ -905,13 +872,13 @@ func TestCloneCCLFZips(t *testing.T) {
 		assert.FileExists(t, dstZip)
 	}
 
-	assert.Equal(t, beforeCount+len(dstZips), getFileCount("./"))
+	assert.Equal(t, beforeCount+len(dstZips), getFileCount(t, "./"))
 }
 
 func TestCloneCCLFZip(t *testing.T) {
 	srcZip := "T.BCD.A0002.ZCY18.D181120.T9999999"
 
-	err := CreateTestZipFile(srcZip)
+	err := createTestZipFile(srcZip)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -941,4 +908,38 @@ func TestCloneCCLFZip(t *testing.T) {
 	for i, f := range zr.File {
 		assert.Equal(t, dstFiles[i], f.Name)
 	}
+}
+
+func createTestZipFile(file string) error {
+	zf, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer zf.Close()
+
+	w := zip.NewWriter(zf)
+	var files = []string{
+		"T.BCD.A0001.ZC8Y18.D181120.T1000001",
+		"T.BCD.A0001.ZC8Y18.D181120.T1000002",
+		"T.BCD.A0001.ZC8Y18.D181120.T1000003",
+	}
+
+	for _, file := range files {
+		f, err := w.Create(file)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write([]byte("foo bar"))
+		if err != nil {
+			return err
+		}
+	}
+
+	return w.Close()
+}
+
+func getFileCount(t *testing.T, path string) int {
+	f, err := ioutil.ReadDir(path)
+	assert.NoError(t, err)
+	return len(f)
 }
