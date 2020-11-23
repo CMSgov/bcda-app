@@ -358,7 +358,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				if err := CloneCCLFZips(filePath); err != nil {
+				if err := cloneCCLFZips(filePath); err != nil {
 					fmt.Fprintf(app.Writer, "%s\n", err)
 					return err
 				}
@@ -686,11 +686,11 @@ const cclfPattern = `((?:T|P)\.BCD\..*\.ZC\d*)Y(\d{2}\.D\d{6}\.T\d{7})`
 
 var cclfregex = regexp.MustCompile(cclfPattern)
 
-func RenameCCLF(name string) string {
+func renameCCLF(name string) string {
 	return cclfregex.ReplaceAllString(name, "${1}R${2}")
 }
 
-func CloneCCLFZips(path string) error {
+func cloneCCLFZips(path string) error {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		return err
@@ -703,7 +703,8 @@ func CloneCCLFZips(path string) error {
 			log.Infof("Skipping file `%s`, does not match expected name... ", f.Name())
 			continue
 		}
-		fn, err := CloneCCLFZip(path, f.Name())
+		fn := renameCCLF(f.Name())
+		err := cloneCCLFZip(filepath.Join(path, f.Name()), filepath.Join(path, fn))
 		if err != nil {
 			return err
 		}
@@ -712,19 +713,19 @@ func CloneCCLFZips(path string) error {
 	return nil
 }
 
-func CloneCCLFZip(path, name string) (string, error) {
+func cloneCCLFZip(src, dst string) error {
 	// Open source zip file for cloning
-	zr, err := zip.OpenReader(filepath.Join(path, name))
+	zr, err := zip.OpenReader(src)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer zr.Close()
 
 	// Create destination runout zip file with proper nomenclature
-	filename := RenameCCLF(name)
-	newf, err := os.Create(filepath.Join(path, filename))
+	// filename := renameCCLF(name)
+	newf, err := os.Create(dst)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer func() {
 		if err = newf.Close(); err != nil {
@@ -739,19 +740,19 @@ func CloneCCLFZip(path, name string) (string, error) {
 	for _, f := range zr.File {
 		r, err := f.Open()
 		if err != nil {
-			return filename, err
+			return err
 		}
 		defer r.Close()
 
-		w, err := zw.Create(RenameCCLF(f.Name))
+		w, err := zw.Create(renameCCLF(f.Name))
 		if err != nil {
-			return filename, err
+			return err
 		}
 		_, err = io.Copy(w, r) // #nosec G110
 		if err != nil {
-			return filename, err
+			return err
 		}
 	}
 
-	return filename, nil
+	return nil
 }
