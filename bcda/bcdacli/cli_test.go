@@ -891,7 +891,7 @@ func TestCloneCCLFZips(t *testing.T) {
 	}
 
 	beforeCount := getFileCount("./")
-	err := CloneCCLFZips("./")
+	err := cloneCCLFZips("./")
 	defer func() {
 		for _, dstZip := range dstZips {
 			os.Remove(dstZip)
@@ -923,11 +923,12 @@ func TestCloneCCLFZip(t *testing.T) {
 		"T.BCD.A0001.ZC8R18.D181120.T1000003",
 	}
 
-	dstZip, err := CloneCCLFZip("", srcZip)
+	dstZip := renameCCLF(srcZip)
+	assert.Equal(t, "T.BCD.A0002.ZCR18.D181120.T9999999", dstZip)
+
+	err = cloneCCLFZip(srcZip, dstZip)
 	defer func() {
-		if dstZip != "" {
-			os.Remove(dstZip)
-		}
+		os.Remove(dstZip)
 	}()
 	assert.NoError(t, err)
 
