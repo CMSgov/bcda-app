@@ -726,7 +726,6 @@ func cloneCCLFZip(src, dst string) error {
 	defer zr.Close()
 
 	// Create destination runout zip file with proper nomenclature
-	// filename := renameCCLF(name)
 	newf, err := os.Create(dst)
 	if err != nil {
 		return err
