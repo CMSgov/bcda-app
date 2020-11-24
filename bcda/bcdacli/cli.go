@@ -1,9 +1,12 @@
 package bcdacli
 
 import (
+	"archive/zip"
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -344,6 +347,27 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
+			Name:     "generate-cclf-runout-files",
+			Category: "Data import",
+			Usage:    "Clone CCLF files and rename them as runout files",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "directory",
+					Usage:       "Directory where CCLF files are located",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				rc, err := cloneCCLFZips(filePath)
+				if err != nil {
+					fmt.Fprintf(app.Writer, "%s\n", err)
+					return err
+				}
+				fmt.Fprintf(app.Writer, "Completed CCLF runout file generation. Generated %d zip files.", rc)
+				return nil
+			},
+		},
+		{
 			Name:     "import-suppression-directory",
 			Category: "Data import",
 			Usage:    "Import all 1-800-MEDICARE suppression data files from the specified directory",
@@ -657,4 +681,77 @@ func setBlacklistState(cmsID string, blacklistState bool) error {
 	defer db.Close()
 
 	return db.Model(&aco).Update("blacklisted", blacklistState).Error
+}
+
+// CCLF file name pattern and regex
+const cclfPattern = `((?:T|P)\.BCD\..*\.ZC\d*)Y(\d{2}\.D\d{6}\.T\d{7})`
+
+var cclfregex = regexp.MustCompile(cclfPattern)
+
+func renameCCLF(name string) string {
+	return cclfregex.ReplaceAllString(name, "${1}R${2}")
+}
+
+func cloneCCLFZips(path string) (int, error) {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return 0, err
+	}
+
+	rcount := 0 // Track the number of runout files that are created
+	// Iterate through all cclf zip files in provided directory
+	for _, f := range files {
+		// Make sure to not clone non CCLF files in case the wrong directory is given
+		if !cclfregex.MatchString(f.Name()) {
+			log.Infof("Skipping file `%s`, does not match expected name... ", f.Name())
+			continue
+		}
+		fn := renameCCLF(f.Name())
+		err := cloneCCLFZip(filepath.Join(path, f.Name()), filepath.Join(path, fn))
+		if err != nil {
+			return rcount, err
+		}
+		rcount++
+		log.Infof("Created runout file: %s", fn)
+	}
+	return rcount, nil
+}
+
+func cloneCCLFZip(src, dst string) error {
+	// Open source zip file for cloning
+	zr, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+
+	// Create destination runout zip file with proper nomenclature
+	newf, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer utils.CloseFileAndLogError(newf)
+
+	zw := zip.NewWriter(newf)
+	defer zw.Close()
+
+	// For each CCLF file in src zip, rename and write to dst zip
+	for _, f := range zr.File {
+		r, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+
+		w, err := zw.Create(renameCCLF(f.Name))
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(w, r) // #nosec G110
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -1,6 +1,7 @@
 package bcdacli
 
 import (
+	"archive/zip"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -8,27 +9,25 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/jinzhu/gorm"
-
-	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/go-chi/chi"
-	log "github.com/sirupsen/logrus"
-
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
-	"github.com/urfave/cli"
-
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/go-chi/chi"
+	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"github.com/urfave/cli"
 )
 
 var origDate string
@@ -835,4 +834,111 @@ func getRandomPort(t *testing.T) int {
 	}()
 
 	return listener.Addr().(*net.TCPAddr).Port
+}
+
+func (s *CLITestSuite) TestCloneCCLFZips() {
+	assert := assert.New(s.T())
+
+	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	// set up a test directory for cclf file generating and cloning
+	path, err := ioutil.TempDir(".", "clone_cclf")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(path)
+
+	// test cclf zip file names and a dummy file name that should not be cloned
+	zipFiles := []string{
+		"T.BCD.A0002.ZCY18.D181120.T9999990",
+		"T.BCD.A0002.ZCY18.D181120.T9999991",
+		"T.BCD.A0002.ZCY18.D181120.T9999992",
+		"not_a_cclf_file",
+	}
+	// cclf file names that are contained within the cclf zip files
+	cclfFiles := []string{
+		"T.BCD.A0001.ZC48Y18.D181120.T1000001",
+		"T.BCD.A0001.ZC48Y18.D181120.T1000002",
+		"T.BCD.A0001.ZC48Y18.D181120.T1000003",
+	}
+
+	// create the test files under the temporary directory
+	for _, zf := range zipFiles {
+		err := createTestZipFile(filepath.Join(path, zf), cclfFiles...)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	beforecount := getFileCount(s.T(), path)
+
+	args := []string{"bcda", "generate-cclf-runout-files", "--directory", path}
+	err = s.testApp.Run(args)
+	fmt.Print(buf.String())
+	assert.Nil(err)
+	assert.Contains(buf.String(), "Completed CCLF runout file generation.")
+	assert.Contains(buf.String(), "Generated 3 zip files.")
+	buf.Reset()
+
+	// runout zip file names that will be generated
+	zipRFiles := []string{
+		"T.BCD.A0002.ZCR18.D181120.T9999990",
+		"T.BCD.A0002.ZCR18.D181120.T9999991",
+		"T.BCD.A0002.ZCR18.D181120.T9999992",
+	}
+
+	// assert the zip file count matches after cloning
+	assert.Equal(beforecount+len(zipRFiles), getFileCount(s.T(), path))
+
+	// runout cclf file names that will be generated for each zip file
+	cclfRFiles := []string{
+		"T.BCD.A0001.ZC48R18.D181120.T1000001",
+		"T.BCD.A0001.ZC48R18.D181120.T1000002",
+		"T.BCD.A0001.ZC48R18.D181120.T1000003",
+	}
+
+	// assert that each zip was cloned with the proper name and each zip file
+	// contains the correct cclf file clones
+	for _, zrf := range zipRFiles {
+		assert.FileExists(filepath.Join(path, zrf))
+
+		zr, err := zip.OpenReader(filepath.Join(path, zrf))
+		assert.NoError(err)
+		defer zr.Close()
+
+		for i, f := range zr.File {
+			assert.Equal(cclfRFiles[i], f.Name)
+		}
+	}
+}
+
+func createTestZipFile(zFile string, cclfFiles ...string) error {
+	zf, err := os.Create(zFile)
+	if err != nil {
+		return err
+	}
+	defer zf.Close()
+
+	w := zip.NewWriter(zf)
+
+	for _, f := range cclfFiles {
+		f, err := w.Create(f)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write([]byte("foo bar"))
+		if err != nil {
+			return err
+		}
+	}
+
+	return w.Close()
+}
+
+func getFileCount(t *testing.T, path string) int {
+	f, err := ioutil.ReadDir(path)
+	assert.NoError(t, err)
+	return len(f)
 }
