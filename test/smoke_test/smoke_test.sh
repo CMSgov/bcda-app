@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CMS_IDs=("A9996")
+CMS_IDs=("A9996" "E9996" "V996")
 set -e
 function cleanup() {
         for CMS_ID in "${CMS_IDs[@]}"
