@@ -107,10 +107,9 @@ func startJob(c *client, endpoint, resourceType string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	switch resp.StatusCode {
-	case http.StatusAccepted:
+	if resp.StatusCode == http.StatusAccepted {
 		return resp.Header.Get("Content-Location"), nil
-	default:
+	} else {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Errorf("Failed to read response body %s", err.Error())
