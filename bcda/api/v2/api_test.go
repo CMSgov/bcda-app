@@ -132,8 +132,8 @@ func (s *APITestSuite) TestResourceTypes() {
 		statusCode    int
 	}{
 		{"Supported type - Patient", []string{"Patient"}, http.StatusAccepted},
-		{"Unsupported type - Coverage", []string{"Coverage"}, http.StatusBadRequest},
-		{"Unsupported type - Patient,Coverage", []string{"Patient", "Coverage"}, http.StatusBadRequest},
+		{"Supported type - Coverage", []string{"Coverage"}, http.StatusAccepted},
+		{"Supported type - Patient,Coverage", []string{"Patient", "Coverage"}, http.StatusAccepted},
 		{"Unsupported type - EOB", []string{"ExplanationOfBenefit"}, http.StatusBadRequest},
 		{"Unsupported type - default", nil, http.StatusBadRequest},
 	}
