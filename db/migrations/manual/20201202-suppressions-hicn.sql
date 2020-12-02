@@ -8,4 +8,4 @@ INSERT INTO suppression_files_to_remove SELECT DISTINCT(file_id) from suppressio
 DELETE FROM suppressions WHERE LENGTH(hicn) > 0;
 DELETE FROM suppression_files WHERE id IN (SELECT file_id FROM suppression_files_to_remove);
 
-ROLLBACK;
+COMMIT;
