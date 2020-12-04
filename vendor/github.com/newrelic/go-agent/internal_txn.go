@@ -1,3 +1,6 @@
+// Copyright 2020 New Relic Corporation. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 package newrelic
 
 import (
@@ -6,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,11 +17,11 @@ import (
 )
 
 type txnInput struct {
-	W          http.ResponseWriter
-	Config     Config
-	Reply      *internal.ConnectReply
-	Consumer   dataConsumer
-	attrConfig *internal.AttributeConfig
+	// This ResponseWriter should only be accessed using txn.getWriter()
+	writer   http.ResponseWriter
+	app      Application
+	Consumer dataConsumer
+	*appRun
 }
 
 type txn struct {
@@ -29,6 +33,7 @@ type txn struct {
 	// finished has been set to true, no recording should occur.
 	finished           bool
 	numPayloadsCreated uint32
+	sampledCalculated  bool
 
 	ignore bool
 
@@ -37,45 +42,71 @@ type txn struct {
 	wroteHeader bool
 
 	internal.TxnData
+
+	mainThread   internal.Thread
+	asyncThreads []*internal.Thread
 }
 
-func newTxn(input txnInput, req *http.Request, name string) *txn {
+type thread struct {
+	*txn
+	// thread does not have locking because it should only be accessed while
+	// the txn is locked.
+	thread *internal.Thread
+}
+
+func (txn *txn) markStart(now time.Time) {
+	txn.Start = now
+	// The mainThread is considered active now.
+	txn.mainThread.RecordActivity(now)
+
+}
+
+func (txn *txn) markEnd(now time.Time, thread *internal.Thread) {
+	txn.Stop = now
+	// The thread on which End() was called is considered active now.
+	thread.RecordActivity(now)
+	txn.Duration = txn.Stop.Sub(txn.Start)
+
+	// TotalTime is the sum of "active time" across all threads.  A thread
+	// was active when it started the transaction, stopped the transaction,
+	// started a segment, or stopped a segment.
+	txn.TotalTime = txn.mainThread.TotalTime()
+	for _, thd := range txn.asyncThreads {
+		txn.TotalTime += thd.TotalTime()
+	}
+	// Ensure that TotalTime is at least as large as Duration so that the
+	// graphs look sensible.  This can happen under the following situation:
+	// goroutine1: txn.start----|segment1|
+	// goroutine2:                                   |segment2|----txn.end
+	if txn.Duration > txn.TotalTime {
+		txn.TotalTime = txn.Duration
+	}
+}
+
+func newTxn(input txnInput, name string) *thread {
 	txn := &txn{
 		txnInput: input,
 	}
-	txn.Start = time.Now()
+	txn.markStart(time.Now())
+
 	txn.Name = name
-	txn.IsWeb = nil != req
-	txn.Attrs = internal.NewAttributes(input.attrConfig)
+	txn.Attrs = internal.NewAttributes(input.AttributeConfig)
 
 	if input.Config.DistributedTracer.Enabled {
 		txn.BetterCAT.Enabled = true
 		txn.BetterCAT.Priority = internal.NewPriority()
-		txn.BetterCAT.ID = internal.NewSpanID()
-
-		// Calculate sampled at the beginning of the transaction (rather
-		// than lazily at payload creation time) because it controls the
-		// creation of span events.
-		txn.BetterCAT.Sampled = txn.Reply.AdaptiveSampler.ComputeSampled(txn.BetterCAT.Priority.Float32(), txn.Start)
-		if txn.BetterCAT.Sampled {
-			txn.BetterCAT.Priority += 1.0
-		}
-		txn.SpanEventsEnabled = input.Config.SpanEvents.Enabled
+		txn.TraceIDGenerator = input.Reply.TraceIDGenerator
+		txn.BetterCAT.ID = txn.TraceIDGenerator.GenerateTraceID()
+		txn.SpanEventsEnabled = txn.Config.SpanEvents.Enabled
+		txn.LazilyCalculateSampled = txn.lazilyCalculateSampled
 	}
 
-	if nil != req {
-		txn.Queuing = internal.QueueDuration(req.Header, txn.Start)
-		internal.RequestAgentAttributes(txn.Attrs, req)
-	}
-	txn.Attrs.Agent.HostDisplayName = txn.Config.HostDisplayName
-	txn.TxnTrace.Enabled = txn.txnTracesEnabled()
+	txn.Attrs.Agent.Add(internal.AttributeHostDisplayName, txn.Config.HostDisplayName, nil)
+	txn.TxnTrace.Enabled = txn.Config.TransactionTracer.Enabled
 	txn.TxnTrace.SegmentThreshold = txn.Config.TransactionTracer.SegmentThreshold
 	txn.StackTraceThreshold = txn.Config.TransactionTracer.StackTraceThreshold
-	txn.SlowQueriesEnabled = txn.slowQueriesEnabled()
+	txn.SlowQueriesEnabled = txn.Config.DatastoreTracer.SlowQuery.Enabled
 	txn.SlowQueryThreshold = txn.Config.DatastoreTracer.SlowQuery.Threshold
-	if nil != req && nil != req.URL {
-		txn.CleanURL = internal.SafeURL(req.URL)
-	}
 
 	// Synthetics support is tied up with a transaction's Old CAT field,
 	// CrossProcess. To support Synthetics with either BetterCAT or Old CAT,
@@ -83,29 +114,106 @@ func newTxn(input txnInput, req *http.Request, name string) *txn {
 	// the top-level configuration.
 	doOldCAT := txn.Config.CrossApplicationTracer.Enabled
 	noGUID := txn.Config.DistributedTracer.Enabled
-	txn.CrossProcess.InitFromHTTPRequest(doOldCAT, noGUID, input.Reply, req)
+	txn.CrossProcess.Init(doOldCAT, noGUID, input.Reply)
 
-	return txn
+	return &thread{
+		txn:    txn,
+		thread: &txn.mainThread,
+	}
 }
 
-func (txn *txn) slowQueriesEnabled() bool {
-	return txn.Config.DatastoreTracer.SlowQuery.Enabled &&
-		txn.Reply.CollectTraces
+// lazilyCalculateSampled calculates and returns whether or not the transaction
+// should be sampled.  Sampled is not computed at the beginning of the
+// transaction because we want to calculate Sampled only for transactions that
+// do not accept an inbound payload.
+func (txn *txn) lazilyCalculateSampled() bool {
+	if !txn.BetterCAT.Enabled {
+		return false
+	}
+	if txn.sampledCalculated {
+		return txn.BetterCAT.Sampled
+	}
+	txn.BetterCAT.Sampled = txn.Reply.AdaptiveSampler.ComputeSampled(txn.BetterCAT.Priority.Float32(), time.Now())
+	if txn.BetterCAT.Sampled {
+		txn.BetterCAT.Priority += 1.0
+	}
+	txn.sampledCalculated = true
+	return txn.BetterCAT.Sampled
 }
 
-func (txn *txn) txnTracesEnabled() bool {
-	return txn.Config.TransactionTracer.Enabled &&
-		txn.Reply.CollectTraces
+type requestWrap struct{ request *http.Request }
+
+func (r requestWrap) Header() http.Header { return r.request.Header }
+func (r requestWrap) URL() *url.URL       { return r.request.URL }
+func (r requestWrap) Method() string      { return r.request.Method }
+
+func (r requestWrap) Transport() TransportType {
+	if strings.HasPrefix(r.request.Proto, "HTTP") {
+		if r.request.TLS != nil {
+			return TransportHTTPS
+		}
+		return TransportHTTP
+	}
+	return TransportUnknown
+
 }
 
-func (txn *txn) txnEventsEnabled() bool {
-	return txn.Config.TransactionEvents.Enabled &&
-		txn.Reply.CollectAnalyticsEvents
+type staticWebRequest struct {
+	header    http.Header
+	url       *url.URL
+	method    string
+	transport TransportType
 }
 
-func (txn *txn) errorEventsEnabled() bool {
-	return txn.Config.ErrorCollector.CaptureEvents &&
-		txn.Reply.CollectErrorEvents
+func (r staticWebRequest) Header() http.Header      { return r.header }
+func (r staticWebRequest) URL() *url.URL            { return r.url }
+func (r staticWebRequest) Method() string           { return r.method }
+func (r staticWebRequest) Transport() TransportType { return TransportHTTP }
+
+func (txn *txn) SetWebRequest(r WebRequest) error {
+	txn.Lock()
+	defer txn.Unlock()
+
+	if txn.finished {
+		return errAlreadyEnded
+	}
+
+	// Any call to SetWebRequest should indicate a web transaction.
+	txn.IsWeb = true
+
+	if nil == r {
+		return nil
+	}
+	h := r.Header()
+	if nil != h {
+		txn.Queuing = internal.QueueDuration(h, txn.Start)
+
+		if p := h.Get(DistributedTracePayloadHeader); p != "" {
+			txn.acceptDistributedTracePayloadLocked(r.Transport(), p)
+		}
+
+		txn.CrossProcess.InboundHTTPRequest(h)
+	}
+
+	internal.RequestAgentAttributes(txn.Attrs, r.Method(), h, r.URL())
+
+	return nil
+}
+
+func (thd *thread) SetWebResponse(w http.ResponseWriter) Transaction {
+	txn := thd.txn
+	txn.Lock()
+	defer txn.Unlock()
+
+	// Replace the ResponseWriter even if the transaction has ended so that
+	// consumers calling ResponseWriter methods on the transactions see that
+	// data flowing through as expected.
+	txn.writer = w
+
+	return upgradeTxn(&thread{
+		thread: thd.thread,
+		txn:    txn,
+	})
 }
 
 func (txn *txn) freezeName() {
@@ -123,16 +231,14 @@ func (txn *txn) getsApdex() bool {
 	return txn.IsWeb
 }
 
-func (txn *txn) txnTraceThreshold() time.Duration {
-	if txn.Config.TransactionTracer.Threshold.IsApdexFailing {
-		return internal.ApdexFailingThreshold(txn.ApdexThreshold)
-	}
-	return txn.Config.TransactionTracer.Threshold.Duration
-}
-
 func (txn *txn) shouldSaveTrace() bool {
-	return txn.CrossProcess.IsSynthetics() ||
-		(txn.txnTracesEnabled() && (txn.Duration >= txn.txnTraceThreshold()))
+	if !txn.Config.TransactionTracer.Enabled {
+		return false
+	}
+	if txn.CrossProcess.IsSynthetics() {
+		return true
+	}
+	return txn.Duration >= txn.txnTraceThreshold(txn.ApdexThreshold)
 }
 
 func (txn *txn) MergeIntoHarvest(h *internal.Harvest) {
@@ -147,16 +253,18 @@ func (txn *txn) MergeIntoHarvest(h *internal.Harvest) {
 	internal.CreateTxnMetrics(&txn.TxnData, h.Metrics)
 	internal.MergeBreakdownMetrics(&txn.TxnData, h.Metrics)
 
-	if txn.txnEventsEnabled() {
+	if txn.Config.TransactionEvents.Enabled {
 		// Allocate a new TxnEvent to prevent a reference to the large transaction.
 		alloc := new(internal.TxnEvent)
 		*alloc = txn.TxnData.TxnEvent
 		h.TxnEvents.AddTxnEvent(alloc, priority)
 	}
 
-	internal.MergeTxnErrors(&h.ErrorTraces, txn.Errors, txn.TxnEvent)
+	if txn.Reply.CollectErrors {
+		internal.MergeTxnErrors(&h.ErrorTraces, txn.Errors, txn.TxnEvent)
+	}
 
-	if txn.errorEventsEnabled() {
+	if txn.Config.ErrorCollector.CaptureEvents {
 		for _, e := range txn.Errors {
 			errEvent := &internal.ErrorEvent{
 				ErrorData: *e,
@@ -180,54 +288,12 @@ func (txn *txn) MergeIntoHarvest(h *internal.Harvest) {
 		h.SlowSQLs.Merge(txn.SlowQueries, txn.TxnEvent)
 	}
 
-	if txn.BetterCAT.Sampled && txn.Config.SpanEvents.Enabled {
+	if txn.BetterCAT.Sampled && txn.SpanEventsEnabled {
 		h.SpanEvents.MergeFromTransaction(&txn.TxnData)
 	}
 }
 
-// TransportType's name field is not mutable outside of its package
-// however, it still periodically needs to be used and assigned within
-// the this package.  For testing purposes only.
-func getTransport(transport string) string {
-	var retVal string
-
-	switch transport {
-	case TransportHTTP.name:
-		retVal = TransportHTTP.name
-	case TransportHTTPS.name:
-		retVal = TransportHTTPS.name
-	case TransportKafka.name:
-		retVal = TransportKafka.name
-	case TransportJMS.name:
-		retVal = TransportJMS.name
-	case TransportIronMQ.name:
-		retVal = TransportIronMQ.name
-	case TransportAMQP.name:
-		retVal = TransportAMQP.name
-	case TransportQueue.name:
-		retVal = TransportQueue.name
-	case TransportOther.name:
-		retVal = TransportOther.name
-	case TransportUnknown.name:
-	default:
-		retVal = TransportUnknown.name
-	}
-	return retVal
-}
-
-func responseCodeIsError(cfg *Config, code int) bool {
-	if code < http.StatusBadRequest { // 400
-		return false
-	}
-	for _, ignoreCode := range cfg.ErrorCollector.IgnoreStatusCodes {
-		if code == ignoreCode {
-			return false
-		}
-	}
-	return true
-}
-
-func headersJustWritten(txn *txn, code int) {
+func headersJustWritten(txn *txn, code int, hdr http.Header) {
 	txn.Lock()
 	defer txn.Unlock()
 
@@ -239,17 +305,17 @@ func headersJustWritten(txn *txn, code int) {
 	}
 	txn.wroteHeader = true
 
-	internal.ResponseHeaderAttributes(txn.Attrs, txn.W.Header())
+	internal.ResponseHeaderAttributes(txn.Attrs, hdr)
 	internal.ResponseCodeAttribute(txn.Attrs, code)
 
-	if responseCodeIsError(&txn.Config, code) {
+	if txn.appRun.responseCodeIsError(code) {
 		e := internal.TxnErrorFromResponseCode(time.Now(), code)
-		e.Stack = internal.GetStackTrace(1)
+		e.Stack = internal.GetStackTrace()
 		txn.noticeErrorInternal(e)
 	}
 }
 
-func (txn *txn) responseHeader() http.Header {
+func (txn *txn) responseHeader(hdr http.Header) http.Header {
 	txn.Lock()
 	defer txn.Unlock()
 
@@ -266,7 +332,7 @@ func (txn *txn) responseHeader() http.Header {
 		return nil
 	}
 	txn.freezeName()
-	contentLength := internal.GetContentLengthFromHeader(txn.W.Header())
+	contentLength := internal.GetContentLengthFromHeader(hdr)
 
 	appData, err := txn.CrossProcess.CreateAppData(txn.FinalName, txn.Queuing, time.Since(txn.Start), contentLength)
 	if err != nil {
@@ -278,39 +344,74 @@ func (txn *txn) responseHeader() http.Header {
 	return internal.AppDataToHTTPHeader(appData)
 }
 
-func addCrossProcessHeaders(txn *txn) {
+func addCrossProcessHeaders(txn *txn, hdr http.Header) {
 	// responseHeader() checks the wroteHeader field and returns a nil map if the
 	// header has been written, so we don't need a check here.
-	for key, values := range txn.responseHeader() {
-		for _, value := range values {
-			txn.W.Header().Add(key, value)
+	if nil != hdr {
+		for key, values := range txn.responseHeader(hdr) {
+			for _, value := range values {
+				hdr.Add(key, value)
+			}
 		}
 	}
 }
 
-func (txn *txn) Header() http.Header { return txn.W.Header() }
+// getWriter is used to access the transaction's ResponseWriter. The
+// ResponseWriter is mutex protected since it may be changed with
+// txn.SetWebResponse, and we want changes to be visible across goroutines.  The
+// ResponseWriter is accessed using this getWriter() function rather than directly
+// in mutex protected methods since we do NOT want the transaction to be locked
+// while calling the ResponseWriter's methods.
+func (txn *txn) getWriter() http.ResponseWriter {
+	txn.Lock()
+	rw := txn.writer
+	txn.Unlock()
+	return rw
+}
 
-func (txn *txn) Write(b []byte) (int, error) {
+func nilSafeHeader(rw http.ResponseWriter) http.Header {
+	if nil == rw {
+		return nil
+	}
+	return rw.Header()
+}
+
+func (txn *txn) Header() http.Header {
+	return nilSafeHeader(txn.getWriter())
+}
+
+func (txn *txn) Write(b []byte) (n int, err error) {
+	rw := txn.getWriter()
+	hdr := nilSafeHeader(rw)
+
 	// This is safe to call unconditionally, even if Write() is called multiple
 	// times; see also the commentary in addCrossProcessHeaders().
-	addCrossProcessHeaders(txn)
+	addCrossProcessHeaders(txn, hdr)
 
-	n, err := txn.W.Write(b)
+	if rw != nil {
+		n, err = rw.Write(b)
+	}
 
-	headersJustWritten(txn, http.StatusOK)
+	headersJustWritten(txn, http.StatusOK, hdr)
 
-	return n, err
+	return
 }
 
 func (txn *txn) WriteHeader(code int) {
-	addCrossProcessHeaders(txn)
+	rw := txn.getWriter()
+	hdr := nilSafeHeader(rw)
 
-	txn.W.WriteHeader(code)
+	addCrossProcessHeaders(txn, hdr)
 
-	headersJustWritten(txn, code)
+	if nil != rw {
+		rw.WriteHeader(code)
+	}
+
+	headersJustWritten(txn, code, hdr)
 }
 
-func (txn *txn) End() error {
+func (thd *thread) End() error {
+	txn := thd.txn
 	txn.Lock()
 	defer txn.Unlock()
 
@@ -323,17 +424,15 @@ func (txn *txn) End() error {
 	r := recover()
 	if nil != r {
 		e := internal.TxnErrorFromPanic(time.Now(), r)
-		e.Stack = internal.GetStackTrace(0)
+		e.Stack = internal.GetStackTrace()
 		txn.noticeErrorInternal(e)
 	}
 
-	txn.Stop = time.Now()
-	txn.Duration = txn.Stop.Sub(txn.Start)
-	if children := internal.TracerRootChildren(&txn.TxnData); txn.Duration > children {
-		txn.Exclusive = txn.Duration - children
-	}
-
+	txn.markEnd(time.Now(), thd.thread)
 	txn.freezeName()
+	// Make a sampling decision if there have been no segments or outbound
+	// payloads.
+	txn.lazilyCalculateSampled()
 
 	// Finalise the CAT state.
 	if err := txn.CrossProcess.Finalise(txn.Name, txn.Config.AppName); err != nil {
@@ -358,10 +457,10 @@ func (txn *txn) End() error {
 
 	if txn.Config.Logger.DebugEnabled() {
 		txn.Config.Logger.Debug("transaction ended", map[string]interface{}{
-			"name":        txn.FinalName,
-			"duration_ms": txn.Duration.Seconds() * 1000.0,
-			"ignored":     txn.ignore,
-			"run":         txn.Reply.RunID,
+			"name":          txn.FinalName,
+			"duration_ms":   txn.Duration.Seconds() * 1000.0,
+			"ignored":       txn.ignore,
+			"app_connected": "" != txn.Reply.RunID,
 		})
 	}
 
@@ -398,11 +497,12 @@ func (txn *txn) AddAttribute(name string, value interface{}) error {
 }
 
 var (
-	errorsLocallyDisabled  = errors.New("errors locally disabled")
-	errorsRemotelyDisabled = errors.New("errors remotely disabled")
-	errNilError            = errors.New("nil error")
-	errAlreadyEnded        = errors.New("transaction has already ended")
-	errSecurityPolicy      = errors.New("disabled by security policy")
+	errorsDisabled        = errors.New("errors disabled")
+	errNilError           = errors.New("nil error")
+	errAlreadyEnded       = errors.New("transaction has already ended")
+	errSecurityPolicy     = errors.New("disabled by security policy")
+	errTransactionIgnored = errors.New("transaction has been ignored")
+	errBrowserDisabled    = errors.New("browser disabled by local configuration")
 )
 
 const (
@@ -412,11 +512,7 @@ const (
 
 func (txn *txn) noticeErrorInternal(err internal.ErrorData) error {
 	if !txn.Config.ErrorCollector.Enabled {
-		return errorsLocallyDisabled
-	}
-
-	if !txn.Reply.CollectErrors {
-		return errorsRemotelyDisabled
+		return errorsDisabled
 	}
 
 	if nil == txn.Errors {
@@ -441,7 +537,98 @@ var (
 		internal.AttributeErrorLimit)
 )
 
-func (txn *txn) NoticeError(err error) error {
+// errorCause returns the error's deepest wrapped ancestor.
+func errorCause(err error) error {
+	for {
+		if unwrapper, ok := err.(interface{ Unwrap() error }); ok {
+			if next := unwrapper.Unwrap(); nil != next {
+				err = next
+				continue
+			}
+		}
+		return err
+	}
+}
+
+func errorClassMethod(err error) string {
+	if ec, ok := err.(ErrorClasser); ok {
+		return ec.ErrorClass()
+	}
+	return ""
+}
+
+func errorStackTraceMethod(err error) internal.StackTrace {
+	if st, ok := err.(StackTracer); ok {
+		return st.StackTrace()
+	}
+	return nil
+}
+
+func errorAttributesMethod(err error) map[string]interface{} {
+	if st, ok := err.(ErrorAttributer); ok {
+		return st.ErrorAttributes()
+	}
+	return nil
+}
+
+func errDataFromError(input error) (data internal.ErrorData, err error) {
+	cause := errorCause(input)
+
+	data = internal.ErrorData{
+		When: time.Now(),
+		Msg:  input.Error(),
+	}
+
+	if c := errorClassMethod(input); "" != c {
+		// If the error implements ErrorClasser, use that.
+		data.Klass = c
+	} else if c := errorClassMethod(cause); "" != c {
+		// Otherwise, if the error's cause implements ErrorClasser, use that.
+		data.Klass = c
+	} else {
+		// As a final fallback, use the type of the error's cause.
+		data.Klass = reflect.TypeOf(cause).String()
+	}
+
+	if st := errorStackTraceMethod(input); nil != st {
+		// If the error implements StackTracer, use that.
+		data.Stack = st
+	} else if st := errorStackTraceMethod(cause); nil != st {
+		// Otherwise, if the error's cause implements StackTracer, use that.
+		data.Stack = st
+	} else {
+		// As a final fallback, generate a StackTrace here.
+		data.Stack = internal.GetStackTrace()
+	}
+
+	var unvetted map[string]interface{}
+	if ats := errorAttributesMethod(input); nil != ats {
+		// If the error implements ErrorAttributer, use that.
+		unvetted = ats
+	} else {
+		// Otherwise, if the error's cause implements ErrorAttributer, use that.
+		unvetted = errorAttributesMethod(cause)
+	}
+	if unvetted != nil {
+		if len(unvetted) > internal.AttributeErrorLimit {
+			err = errTooManyErrorAttributes
+			return
+		}
+
+		data.ExtraAttributes = make(map[string]interface{})
+		for key, val := range unvetted {
+			val, err = internal.ValidateUserAttribute(key, val)
+			if nil != err {
+				return
+			}
+			data.ExtraAttributes[key] = val
+		}
+	}
+
+	return data, nil
+}
+
+func (txn *txn) NoticeError(input error) error {
 	txn.Lock()
 	defer txn.Unlock()
 
@@ -449,46 +636,20 @@ func (txn *txn) NoticeError(err error) error {
 		return errAlreadyEnded
 	}
 
-	if nil == err {
+	if nil == input {
 		return errNilError
 	}
 
-	e := internal.ErrorData{
-		When: time.Now(),
-		Msg:  err.Error(),
-	}
-	if ec, ok := err.(ErrorClasser); ok {
-		e.Klass = ec.ErrorClass()
-	}
-	if "" == e.Klass {
-		e.Klass = reflect.TypeOf(err).String()
-	}
-	if st, ok := err.(StackTracer); ok {
-		e.Stack = st.StackTrace()
-		// Note that if the provided stack trace is excessive in length,
-		// it will be truncated during JSON creation.
-	}
-	if nil == e.Stack {
-		e.Stack = internal.GetStackTrace(2)
+	data, err := errDataFromError(input)
+	if nil != err {
+		return err
 	}
 
-	if ea, ok := err.(ErrorAttributer); ok && !txn.Config.HighSecurity && txn.Reply.SecurityPolicies.CustomParameters.Enabled() {
-		unvetted := ea.ErrorAttributes()
-		if len(unvetted) > internal.AttributeErrorLimit {
-			return errTooManyErrorAttributes
-		}
-
-		e.ExtraAttributes = make(map[string]interface{})
-		for key, val := range unvetted {
-			val, errr := internal.ValidateUserAttribute(key, val)
-			if nil != errr {
-				return errr
-			}
-			e.ExtraAttributes[key] = val
-		}
+	if txn.Config.HighSecurity || !txn.Reply.SecurityPolicies.CustomParameters.Enabled() {
+		data.ExtraAttributes = nil
 	}
 
-	return txn.noticeErrorInternal(e)
+	return txn.noticeErrorInternal(data)
 }
 
 func (txn *txn) SetName(name string) error {
@@ -514,47 +675,145 @@ func (txn *txn) Ignore() error {
 	return nil
 }
 
-func (txn *txn) StartSegmentNow() SegmentStartTime {
+func (thd *thread) StartSegmentNow() SegmentStartTime {
 	var s internal.SegmentStartTime
+	txn := thd.txn
 	txn.Lock()
 	if !txn.finished {
-		s = internal.StartSegment(&txn.TxnData, time.Now())
+		s = internal.StartSegment(&txn.TxnData, thd.thread, time.Now())
 	}
 	txn.Unlock()
 	return SegmentStartTime{
 		segment: segment{
-			start: s,
-			txn:   txn,
+			start:  s,
+			thread: thd,
 		},
 	}
 }
 
+const (
+	// Browser fields are encoded using the first digits of the license
+	// key.
+	browserEncodingKeyLimit = 13
+)
+
+func browserEncodingKey(licenseKey string) []byte {
+	key := []byte(licenseKey)
+	if len(key) > browserEncodingKeyLimit {
+		key = key[0:browserEncodingKeyLimit]
+	}
+	return key
+}
+
+func (txn *txn) BrowserTimingHeader() (*BrowserTimingHeader, error) {
+	txn.Lock()
+	defer txn.Unlock()
+
+	if !txn.Config.BrowserMonitoring.Enabled {
+		return nil, errBrowserDisabled
+	}
+
+	if txn.Reply.AgentLoader == "" {
+		// If the loader is empty, either browser has been disabled
+		// by the server or the application is not yet connected.
+		return nil, nil
+	}
+
+	if txn.finished {
+		return nil, errAlreadyEnded
+	}
+
+	txn.freezeName()
+
+	// Freezing the name might cause the transaction to be ignored, so check
+	// this after txn.freezeName().
+	if txn.ignore {
+		return nil, errTransactionIgnored
+	}
+
+	encodingKey := browserEncodingKey(txn.Config.License)
+
+	attrs, err := internal.Obfuscate(internal.BrowserAttributes(txn.Attrs), encodingKey)
+	if err != nil {
+		return nil, fmt.Errorf("error getting browser attributes: %v", err)
+	}
+
+	name, err := internal.Obfuscate([]byte(txn.FinalName), encodingKey)
+	if err != nil {
+		return nil, fmt.Errorf("error obfuscating name: %v", err)
+	}
+
+	return &BrowserTimingHeader{
+		agentLoader: txn.Reply.AgentLoader,
+		info: browserInfo{
+			Beacon:                txn.Reply.Beacon,
+			LicenseKey:            txn.Reply.BrowserKey,
+			ApplicationID:         txn.Reply.AppID,
+			TransactionName:       name,
+			QueueTimeMillis:       txn.Queuing.Nanoseconds() / (1000 * 1000),
+			ApplicationTimeMillis: time.Now().Sub(txn.Start).Nanoseconds() / (1000 * 1000),
+			ObfuscatedAttributes:  attrs,
+			ErrorBeacon:           txn.Reply.ErrorBeacon,
+			Agent:                 txn.Reply.JSAgentFile,
+		},
+	}, nil
+}
+
+func createThread(txn *txn) *internal.Thread {
+	newThread := internal.NewThread(&txn.TxnData)
+	txn.asyncThreads = append(txn.asyncThreads, newThread)
+	return newThread
+}
+
+func (thd *thread) NewGoroutine() Transaction {
+	txn := thd.txn
+	txn.Lock()
+	defer txn.Unlock()
+
+	if txn.finished {
+		// If the transaction has finished, return the same thread.
+		return upgradeTxn(thd)
+	}
+	return upgradeTxn(&thread{
+		thread: createThread(txn),
+		txn:    txn,
+	})
+}
+
 type segment struct {
-	start internal.SegmentStartTime
-	txn   *txn
+	start  internal.SegmentStartTime
+	thread *thread
 }
 
 func endSegment(s *Segment) error {
-	txn := s.StartTime.txn
-	if nil == txn {
+	if nil == s {
 		return nil
 	}
+	thd := s.StartTime.thread
+	if nil == thd {
+		return nil
+	}
+	txn := thd.txn
 	var err error
 	txn.Lock()
 	if txn.finished {
 		err = errAlreadyEnded
 	} else {
-		err = internal.EndBasicSegment(&txn.TxnData, s.StartTime.start, time.Now(), s.Name)
+		err = internal.EndBasicSegment(&txn.TxnData, thd.thread, s.StartTime.start, time.Now(), s.Name)
 	}
 	txn.Unlock()
 	return err
 }
 
 func endDatastore(s *DatastoreSegment) error {
-	txn := s.StartTime.txn
-	if nil == txn {
+	if nil == s {
 		return nil
 	}
+	thd := s.StartTime.thread
+	if nil == thd {
+		return nil
+	}
+	txn := thd.txn
 	txn.Lock()
 	defer txn.Unlock()
 
@@ -581,7 +840,8 @@ func endDatastore(s *DatastoreSegment) error {
 		s.PortPathOrID = ""
 	}
 	return internal.EndDatastoreSegment(internal.EndDatastoreParams{
-		Tracer:             &txn.TxnData,
+		TxnData:            &txn.TxnData,
+		Thread:             thd.thread,
 		Start:              s.StartTime.start,
 		Now:                time.Now(),
 		Product:            string(s.Product),
@@ -596,23 +856,24 @@ func endDatastore(s *DatastoreSegment) error {
 }
 
 func externalSegmentMethod(s *ExternalSegment) string {
+	if "" != s.Procedure {
+		return s.Procedure
+	}
 	r := s.Request
-
-	// Is this a client request?
 	if nil != s.Response && nil != s.Response.Request {
 		r = s.Response.Request
+	}
 
-		// Golang's http package states that when a client's
-		// Request has an empty string for Method, the
-		// method is GET.
-		if "" == r.Method {
-			return "GET"
+	if nil != r {
+		if "" != r.Method {
+			return r.Method
 		}
+		// Golang's http package states that when a client's Request has
+		// an empty string for Method, the method is GET.
+		return "GET"
 	}
-	if nil == r {
-		return ""
-	}
-	return r.Method
+
+	return ""
 }
 
 func externalSegmentURL(s *ExternalSegment) (*url.URL, error) {
@@ -630,22 +891,69 @@ func externalSegmentURL(s *ExternalSegment) (*url.URL, error) {
 }
 
 func endExternal(s *ExternalSegment) error {
-	txn := s.StartTime.txn
-	if nil == txn {
+	if nil == s {
 		return nil
 	}
+	thd := s.StartTime.thread
+	if nil == thd {
+		return nil
+	}
+	txn := thd.txn
 	txn.Lock()
 	defer txn.Unlock()
 
 	if txn.finished {
 		return errAlreadyEnded
 	}
-	m := externalSegmentMethod(s)
 	u, err := externalSegmentURL(s)
 	if nil != err {
 		return err
 	}
-	return internal.EndExternalSegment(&txn.TxnData, s.StartTime.start, time.Now(), u, m, s.Response)
+	return internal.EndExternalSegment(internal.EndExternalParams{
+		TxnData:  &txn.TxnData,
+		Thread:   thd.thread,
+		Start:    s.StartTime.start,
+		Now:      time.Now(),
+		Logger:   txn.Config.Logger,
+		Response: s.Response,
+		URL:      u,
+		Host:     s.Host,
+		Library:  s.Library,
+		Method:   externalSegmentMethod(s),
+	})
+}
+
+func endMessage(s *MessageProducerSegment) error {
+	if nil == s {
+		return nil
+	}
+	thd := s.StartTime.thread
+	if nil == thd {
+		return nil
+	}
+	txn := thd.txn
+	txn.Lock()
+	defer txn.Unlock()
+
+	if txn.finished {
+		return errAlreadyEnded
+	}
+
+	if "" == s.DestinationType {
+		s.DestinationType = MessageQueue
+	}
+
+	return internal.EndMessageSegment(internal.EndMessageParams{
+		TxnData:         &txn.TxnData,
+		Thread:          thd.thread,
+		Start:           s.StartTime.start,
+		Now:             time.Now(),
+		Library:         s.Library,
+		Logger:          txn.Config.Logger,
+		DestinationName: s.DestinationName,
+		DestinationType: string(s.DestinationType),
+		DestinationTemp: s.DestinationTemporary,
+	})
 }
 
 // oldCATOutboundHeaders generates the Old CAT and Synthetics headers, depending
@@ -674,17 +982,17 @@ func oldCATOutboundHeaders(txn *txn) http.Header {
 }
 
 func outboundHeaders(s *ExternalSegment) http.Header {
-	txn := s.StartTime.txn
+	thd := s.StartTime.thread
 
-	if nil == txn {
+	if nil == thd {
 		return http.Header{}
 	}
-
+	txn := thd.txn
 	hdr := oldCATOutboundHeaders(txn)
 
 	// hdr may be empty, or it may contain headers.  If DistributedTracer
 	// is enabled, add more to the existing hdr
-	if p := txn.CreateDistributedTracePayload().HTTPSafe(); "" != p {
+	if p := thd.CreateDistributedTracePayload().HTTPSafe(); "" != p {
 		hdr.Add(DistributedTracePayloadHeader, p)
 		return hdr
 	}
@@ -701,9 +1009,10 @@ type shimPayload struct{}
 func (s shimPayload) Text() string     { return "" }
 func (s shimPayload) HTTPSafe() string { return "" }
 
-func (txn *txn) CreateDistributedTracePayload() (payload DistributedTracePayload) {
+func (thd *thread) CreateDistributedTracePayload() (payload DistributedTracePayload) {
 	payload = shimPayload{}
 
+	txn := thd.txn
 	txn.Lock()
 	defer txn.Unlock()
 
@@ -716,8 +1025,10 @@ func (txn *txn) CreateDistributedTracePayload() (payload DistributedTracePayload
 		return
 	}
 
-	if "" == txn.Reply.PrimaryAppID {
-		// Return a shimPayload if the application is not yet connected.
+	if "" == txn.Reply.AccountID || "" == txn.Reply.TrustedAccountKey {
+		// We can't create a payload:  The application is not yet
+		// connected or serverless distributed tracing configuration was
+		// not provided.
 		return
 	}
 
@@ -737,15 +1048,16 @@ func (txn *txn) CreateDistributedTracePayload() (payload DistributedTracePayload
 		p.TrustedAccountKey = txn.Reply.TrustedAccountKey
 	}
 
-	if txn.BetterCAT.Sampled && txn.Config.SpanEvents.Enabled {
-		p.ID = txn.CurrentSpanIdentifier()
+	sampled := txn.lazilyCalculateSampled()
+	if sampled && txn.SpanEventsEnabled {
+		p.ID = txn.CurrentSpanIdentifier(thd.thread)
 	}
 
 	// limit the number of outbound sampled=true payloads to prevent too
 	// many downstream sampled events.
 	p.SetSampled(false)
 	if txn.numPayloadsCreated < maxSampledDistributedPayloads {
-		p.SetSampled(txn.BetterCAT.Sampled)
+		p.SetSampled(sampled)
 	}
 
 	txn.CreatePayloadSuccess = true
@@ -758,11 +1070,17 @@ var (
 	errOutboundPayloadCreated   = errors.New("outbound payload already created")
 	errAlreadyAccepted          = errors.New("AcceptDistributedTracePayload has already been called")
 	errInboundPayloadDTDisabled = errors.New("DistributedTracer must be enabled to accept an inbound payload")
+	errTrustedAccountKey        = errors.New("trusted account key missing or does not match")
 )
 
 func (txn *txn) AcceptDistributedTracePayload(t TransportType, p interface{}) error {
 	txn.Lock()
 	defer txn.Unlock()
+
+	return txn.acceptDistributedTracePayloadLocked(t, p)
+}
+
+func (txn *txn) acceptDistributedTracePayloadLocked(t TransportType, p interface{}) error {
 
 	if !txn.BetterCAT.Enabled {
 		return errInboundPayloadDTDisabled
@@ -785,6 +1103,13 @@ func (txn *txn) AcceptDistributedTracePayload(t TransportType, p interface{}) er
 
 	if nil == p {
 		txn.AcceptPayloadNullPayload = true
+		return nil
+	}
+
+	if "" == txn.Reply.AccountID || "" == txn.Reply.TrustedAccountKey {
+		// We can't accept a payload:  The application is not yet
+		// connected or serverless distributed tracing configuration was
+		// not provided.
 		return nil
 	}
 
@@ -820,7 +1145,7 @@ func (txn *txn) AcceptDistributedTracePayload(t TransportType, p interface{}) er
 	}
 	if receivedTrustKey != txn.Reply.TrustedAccountKey {
 		txn.AcceptPayloadUntrustedAccount = true
-		return internal.ErrTrustedAccountKey{Message: "trusted account key missing or does not match"}
+		return errTrustedAccountKey
 	}
 
 	if 0 != payload.Priority {
@@ -830,8 +1155,7 @@ func (txn *txn) AcceptDistributedTracePayload(t TransportType, p interface{}) er
 	// a nul payload.Sampled means the a field wasn't provided
 	if nil != payload.Sampled {
 		txn.BetterCAT.Sampled = *payload.Sampled
-	} else {
-		txn.BetterCAT.Sampled = txn.Reply.AdaptiveSampler.ComputeSampled(txn.BetterCAT.Priority.Float32(), time.Now())
+		txn.sampledCalculated = true
 	}
 
 	txn.BetterCAT.Inbound = payload
@@ -851,4 +1175,72 @@ func (txn *txn) AcceptDistributedTracePayload(t TransportType, p interface{}) er
 	txn.AcceptPayloadSuccess = true
 
 	return nil
+}
+
+func (txn *txn) Application() Application {
+	return txn.app
+}
+
+func (thd *thread) AddAgentSpanAttribute(key internal.SpanAttribute, val string) {
+	thd.thread.AddAgentSpanAttribute(key, val)
+}
+
+var (
+	// Ensure that txn implements AddAgentAttributer to avoid breaking
+	// integration package type assertions.
+	_ internal.AddAgentAttributer = &txn{}
+)
+
+func (txn *txn) AddAgentAttribute(id internal.AgentAttributeID, stringVal string, otherVal interface{}) {
+	txn.Lock()
+	defer txn.Unlock()
+
+	if txn.finished {
+		return
+	}
+	txn.Attrs.Agent.Add(id, stringVal, otherVal)
+}
+
+func (thd *thread) GetTraceMetadata() (metadata TraceMetadata) {
+	txn := thd.txn
+	txn.Lock()
+	defer txn.Unlock()
+
+	if txn.finished {
+		return
+	}
+
+	if txn.BetterCAT.Enabled {
+		metadata.TraceID = txn.BetterCAT.TraceID()
+		if txn.SpanEventsEnabled && txn.lazilyCalculateSampled() {
+			metadata.SpanID = txn.CurrentSpanIdentifier(thd.thread)
+		}
+	}
+
+	return
+}
+
+func (thd *thread) GetLinkingMetadata() (metadata LinkingMetadata) {
+	txn := thd.txn
+	metadata.EntityName = txn.appRun.firstAppName
+	metadata.EntityType = "SERVICE"
+	metadata.EntityGUID = txn.appRun.Reply.EntityGUID
+	metadata.Hostname = internal.ThisHost
+
+	md := thd.GetTraceMetadata()
+	metadata.TraceID = md.TraceID
+	metadata.SpanID = md.SpanID
+
+	return
+}
+
+func (txn *txn) IsSampled() bool {
+	txn.Lock()
+	defer txn.Unlock()
+
+	if txn.finished {
+		return false
+	}
+
+	return txn.lazilyCalculateSampled()
 }
