@@ -72,3 +72,7 @@
 [[constraint]]
   name = "github.com/otiai10/copy"
   version = "1.2.0"
+
+[[constraint]]
+  name = "github.com/newrelic/go-agent"
+  version = "3.9.0"
