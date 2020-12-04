@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	newrelic "github.com/newrelic/go-agent"
 	"github.com/newrelic/go-agent/_integrations/nrlogrus"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus/hooks/test"
 )
 
@@ -24,12 +24,10 @@ func (s *MetricTestSuite) SetupTest() {
 
 	logrus.SetLevel(logrus.DebugLevel)
 
-	c := newrelic.Config{
-		Enabled: false,
-		Logger:  nrlogrus.StandardLogger(),
-	}
-
-	nr, err := newrelic.NewApplication(c)
+	nr, err := newrelic.NewApplication(
+		newrelic.ConfigEnabled(false),
+		newrelic.ConfigLogger(nrlogrus.StandardLogger()),
+	)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), nr)
 
