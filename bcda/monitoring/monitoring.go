@@ -5,29 +5,29 @@ import (
 	"net/http"
 	"os"
 
-	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	log "github.com/sirupsen/logrus"
 )
 
 var a *apm
 
 type apm struct {
-	App newrelic.Application
+	App *newrelic.Application
 }
 
-func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) newrelic.Transaction {
+func (a apm) Start(msg string, w http.ResponseWriter, r *http.Request) *newrelic.Transaction {
 	if a.App != nil {
-		return a.App.StartTransaction(msg, w, r)
+		txn := a.App.StartTransaction(msg)
+		txn.SetWebResponse(w)
+		txn.SetWebRequestHTTP(r)
+		return txn
 	}
 	return nil
 }
 
-func (a apm) End(txn newrelic.Transaction) {
+func (a apm) End(txn *newrelic.Transaction) {
 	if a.App != nil {
-		err := txn.End()
-		if err != nil {
-			log.Error(err)
-		}
+		txn.End()
 	}
 }
 
@@ -37,10 +37,14 @@ func GetMonitor() *apm {
 		if target == "" {
 			target = "local"
 		}
-		config := newrelic.NewConfig(fmt.Sprintf("BCDA-%s", target), os.Getenv("NEW_RELIC_LICENSE_KEY"))
-		config.Enabled = true
-		config.HighSecurity = true
-		app, err := newrelic.NewApplication(config)
+		app, err := newrelic.NewApplication(
+			newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
+			newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
+			newrelic.ConfigEnabled(true),
+			func(cfg *newrelic.Config) {
+				cfg.HighSecurity = true
+			},
+		)
 		if err != nil {
 			log.Error(err)
 		}
