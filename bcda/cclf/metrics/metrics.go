@@ -8,7 +8,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
-	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -80,10 +80,14 @@ func GetTimer() Timer {
 	if target == "" {
 		target = "local"
 	}
-	config := newrelic.NewConfig(fmt.Sprintf("BCDA-%s", target), os.Getenv("NEW_RELIC_LICENSE_KEY"))
-	config.Enabled = true
-	config.HighSecurity = true
-	app, err := newrelic.NewApplication(config)
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
+		newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
+		newrelic.ConfigEnabled(true),
+		func(cfg *newrelic.Config) {
+			cfg.HighSecurity = true
+		},
+	)
 
 	if err != nil {
 		log.Warnf("Failed to instantiate NeRelic application. Default to no-op timer. %s", err.Error())
@@ -104,18 +108,16 @@ func GetTimer() Timer {
 var _ Timer = &timer{}
 
 type timer struct {
-	nr newrelic.Application
+	nr *newrelic.Application
 }
 
 func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context, close func()) {
 	// Passing in nil http artifacts will allow us to time non-HTTP request
-	txn := t.nr.StartTransaction(name, nil, nil)
+	txn := t.nr.StartTransaction(name)
 	ctx = newrelic.NewContext(parentCtx, txn)
 
 	f := func() {
-		if err := txn.End(); err != nil {
-			log.Warnf("Error occurred when ending transaction %s", err.Error())
-		}
+		txn.End()
 	}
 	return ctx, f
 }
@@ -129,9 +131,7 @@ func (t *timer) newChild(parentCtx context.Context, name string) (close func()) 
 	segment := newrelic.StartSegment(txn, name)
 
 	return func() {
-		if err := segment.End(); err != nil {
-			log.Warnf("Error occurred when ending segment %s", err.Error())
-		}
+		segment.End()
 	}
 }
 
