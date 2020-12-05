@@ -128,7 +128,7 @@ func (t *timer) newChild(parentCtx context.Context, name string) (close func()) 
 		log.Warn("No transaction found. Cannot create child.")
 		return noop
 	}
-	segment := newrelic.StartSegment(txn, name)
+	segment := txn.StartSegment(name)
 
 	return func() {
 		segment.End()
