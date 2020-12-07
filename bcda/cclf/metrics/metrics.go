@@ -112,7 +112,6 @@ type timer struct {
 }
 
 func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context, close func()) {
-	// Passing in nil http artifacts will allow us to time non-HTTP request
 	txn := t.nr.StartTransaction(name)
 	ctx = newrelic.NewContext(parentCtx, txn)
 
