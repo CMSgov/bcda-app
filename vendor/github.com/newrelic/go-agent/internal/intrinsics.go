@@ -1,3 +1,6 @@
+// Copyright 2020 New Relic Corporation. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 package internal
 
 import (
@@ -14,6 +17,8 @@ func intrinsicsJSON(e *TxnEvent, buf *bytes.Buffer) {
 	w := jsonFieldsWriter{buf: buf}
 
 	buf.WriteByte('{')
+
+	w.floatField("totalTime", e.TotalTime.Seconds())
 
 	if e.BetterCAT.Enabled {
 		w.stringField("guid", e.BetterCAT.ID)
