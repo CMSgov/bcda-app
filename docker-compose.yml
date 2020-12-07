@@ -57,6 +57,7 @@ services:
       - SSAS_USE_TLS=false
       - SSAS_URL=${SSAS_URL}
       - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
+      - SSAS_TIMEOUT_MS=2000
       - BCDA_ENABLE_NEW_GROUP=true
       - PRIORITY_ACO_IDS=A9990,A9991,A9992,A9993,A9994
       - USER_GUIDE_LOC=https://stage.bcda.cms.gov

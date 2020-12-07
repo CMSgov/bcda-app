@@ -15,7 +15,7 @@ import (
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/jinzhu/gorm"
-	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -180,9 +180,7 @@ func createDir(path string) error {
 func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
 	defer func() {
-		if err := segment.End(); err != nil {
-			log.Error(err)
-		}
+		segment.End()
 	}()
 
 	var bundleFunc func(bbID string) (*fhirmodels.Bundle, error)
@@ -292,9 +290,7 @@ func getFailureThreshold() float64 {
 func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
 	defer func() {
-		if err := segment.End(); err != nil {
-			log.Error(err)
-		}
+		segment.End()
 	}()
 
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
@@ -323,9 +319,7 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	segment := getSegment(ctx, "fhirBundleToResourceNDJSON")
 	defer func() {
-		if err := segment.End(); err != nil {
-			log.Error(err)
-		}
+		segment.End()
 	}()
 
 	for _, entry := range b.Entries {

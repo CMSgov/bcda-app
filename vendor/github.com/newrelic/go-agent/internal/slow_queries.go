@@ -1,3 +1,6 @@
+// Copyright 2020 New Relic Corporation. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 package internal
 
 import (
@@ -11,21 +14,23 @@ import (
 
 type queryParameters map[string]interface{}
 
-func vetQueryParameters(params map[string]interface{}) queryParameters {
+func vetQueryParameters(params map[string]interface{}) (queryParameters, error) {
 	if nil == params {
-		return nil
+		return nil, nil
 	}
 	// Copying the parameters into a new map is safer than modifying the map
 	// from the customer.
 	vetted := make(map[string]interface{})
+	var retErr error
 	for key, val := range params {
 		val, err := ValidateUserAttribute(key, val)
 		if nil != err {
+			retErr = err
 			continue
 		}
 		vetted[key] = val
 	}
-	return queryParameters(vetted)
+	return queryParameters(vetted), retErr
 }
 
 func (q queryParameters) WriteJSON(buf *bytes.Buffer) {
@@ -177,7 +182,12 @@ func (slow *slowQuery) WriteJSON(buf *bytes.Buffer) {
 	buf.WriteByte('[')
 	jsonx.AppendString(buf, slow.TxnEvent.FinalName)
 	buf.WriteByte(',')
-	jsonx.AppendString(buf, slow.TxnEvent.CleanURL)
+	// Include request.uri if it is included in any destination.
+	// TODO: Change this to the transaction trace segment destination
+	// once transaction trace segment attribute configuration has been
+	// added.
+	uri, _ := slow.TxnEvent.Attrs.GetAgentValue(attributeRequestURI, DestAll)
+	jsonx.AppendString(buf, uri)
 	buf.WriteByte(',')
 	jsonx.AppendInt(buf, int64(makeSlowQueryID(slow.ParameterizedQuery)))
 	buf.WriteByte(',')
