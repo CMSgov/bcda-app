@@ -218,7 +218,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
-		bundle := func() (string, error) {
+		errMsg, err := func() (string, error) {
 			bene, err := getBeneficiary(beneID, bb, db)
 			if err != nil {
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), err
@@ -229,9 +229,9 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 			}
 			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, jobArgs.ID)
 			return "", nil
-		}
+		}()
 
-		if errMsg, err := bundle(); err != nil {
+		if err != nil {
 			log.Error(err)
 			errorCount++
 			appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.BbErr, errMsg, jobArgs.ID)
