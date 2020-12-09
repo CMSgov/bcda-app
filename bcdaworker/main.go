@@ -218,20 +218,25 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
-		blueButtonID, err := beneBBID(beneID, bb, db)
-
-		if err != nil {
-			handleBBError(ctx, err, &errorCount, fileUUID, fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", beneID), jobArgs.ID)
-		} else {
-			b, err := bundleFunc(blueButtonID)
+		bundle := func() (string, error) {
+			bene, err := getBeneficiary(beneID, bb, db)
 			if err != nil {
-				handleBBError(ctx, err, &errorCount, fileUUID,
-					fmt.Sprintf("Error retrieving %s for beneficiary %s in ACO %s", jobArgs.ResourceType, blueButtonID, jobArgs.ACOID),
-					jobArgs.ID)
-			} else {
-				fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, jobArgs.ID)
+				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), err
 			}
+			b, err := bundleFunc(bene.BlueButtonID)
+			if err != nil {
+				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), err
+			}
+			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, jobArgs.ID)
+			return "", nil
 		}
+
+		if errMsg, err := bundle(); err != nil {
+			log.Error(err)
+			errorCount++
+			appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.BbErr, errMsg, jobArgs.ID)
+		}
+
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
 			failed = true
@@ -250,14 +255,14 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 	return fileUUID, nil
 }
 
-// beneBBID returns the beneficiary's Blue Button ID. The ID value is retrieved from BB and saved.
-func beneBBID(cclfBeneID string, bb client.APIClient, db *gorm.DB) (string, error) {
+// getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
+func getBeneficiary(cclfBeneID string, bb client.APIClient, db *gorm.DB) (models.CCLFBeneficiary, error) {
 
 	var cclfBeneficiary models.CCLFBeneficiary
 	db.First(&cclfBeneficiary, cclfBeneID)
 	bbID, err := cclfBeneficiary.GetBlueButtonID(bb)
 	if err != nil {
-		return "", err
+		return cclfBeneficiary, err
 	}
 
 	// Update the value in the DB only if necessary
@@ -265,13 +270,8 @@ func beneBBID(cclfBeneID string, bb client.APIClient, db *gorm.DB) (string, erro
 		db.Model(&cclfBeneficiary).Update("blue_button_id", bbID)
 	}
 
-	return bbID, nil
-}
-
-func handleBBError(ctx context.Context, err error, errorCount *int, fileUUID, msg string, jobID int) {
-	log.Error(err)
-	(*errorCount)++
-	appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.BbErr, msg, jobID)
+	cclfBeneficiary.BlueButtonID = bbID
+	return cclfBeneficiary, nil
 }
 
 func getFailureThreshold() float64 {
