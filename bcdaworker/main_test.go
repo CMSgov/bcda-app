@@ -212,8 +212,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef10000 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary abcdef11000 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 	assert.Equal(s.T(), ooResp+"\n", string(fData))
 	bbc.AssertExpectations(s.T())
 }
@@ -254,8 +254,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000089833 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary a1000065301 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 	assert.Equal(s.T(), ooResp+"\n", string(fData))
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
@@ -303,6 +303,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 	errorFileScanner := bufio.NewScanner(bytes.NewReader(d))
 	for _, cclfBeneID := range cclfBeneficiaryIDs {
+		var cclfBeneficiary models.CCLFBeneficiary
+		s.db.First(&cclfBeneficiary, cclfBeneID)
 		assert.True(s.T(), errorFileScanner.Scan())
 		var jsonObj map[string]interface{}
 		err := json.Unmarshal(errorFileScanner.Bytes(), &jsonObj)
@@ -312,7 +314,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 		issue := issues[0].(map[string]interface{})
 		assert.Equal(s.T(), "error", issue["severity"])
 		details := issue["details"].(map[string]interface{})
-		assert.Equal(s.T(), fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary %s", cclfBeneID), details["text"])
+		assert.Equal(s.T(), fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", cclfBeneficiary.MBI), details["text"])
 	}
 	assert.False(s.T(), errorFileScanner.Scan(), "There should be only 2 entries in the file.")
 
