@@ -1,7 +1,7 @@
 package api
 
 import (
-	goerr "errors"
+	goerrors "errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -182,7 +182,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	if os.Getenv("DEPLOYMENT_TARGET") == "prod" {
 		err := db.First(&pendingAndInProgressJobs, "aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").Error
 
-		if !goerr.Is(err, gorm.ErrRecordNotFound) {
+		if !goerrors.Is(err, gorm.ErrRecordNotFound) {
 			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
 				if _, ok := err.(duplicateTypeError); ok {
 					w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
