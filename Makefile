@@ -137,7 +137,10 @@ docker-build:
 docker-bootstrap:
 	$(MAKE) docker-build
 	docker-compose up --exit-code-from openapi openapi
-	docker-compose up -d
+	# Let the databases start up so we can successfully start up the application
+	docker-compose up -d queue db
+	sleep 5
+	docker-compose up -d api worker
 	sleep 40
 	$(MAKE) load-fixtures
 
