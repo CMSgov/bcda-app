@@ -101,7 +101,9 @@ func NewHandler(resources []string, basePath string) *Handler {
 				if err := c1.PingContext(ctx); err != nil {
 					log.Warnf("Failed to ping %s", err.Error())
 				}
-				c1.Close()
+				if err := c1.Close(); err != nil {
+					log.Warnf("Failed to close conection %s", err.Error())
+				}
 			}
 		}
 	}()
