@@ -19,10 +19,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/go-chi/chi"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 type ModelsTestSuite struct {
@@ -517,7 +517,7 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 				assert.NoError(t, err)
 			}
 
-			var count int
+			var count int64
 			s.db.Model(&CCLFFile{}).Where("name = ?", tt.fileName).Count(&count)
 			assert.True(t, expectedFileCount > 0)
 			assert.Equal(t, expectedFileCount, count)

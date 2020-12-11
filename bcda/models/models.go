@@ -16,10 +16,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 type Job struct {
@@ -223,7 +223,7 @@ type CCLFFile struct {
 
 func (cclfFile *CCLFFile) Delete() error {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	err := db.Unscoped().Where("file_id = ?", cclfFile.ID).Delete(&CCLFBeneficiary{}).Error
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ type SuppressionFile struct {
 
 func (suppressionFile *SuppressionFile) Delete() error {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	err := db.Unscoped().Where("file_id = ?", suppressionFile.ID).Delete(&Suppression{}).Error
 	if err != nil {
 		return err
