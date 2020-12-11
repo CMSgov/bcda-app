@@ -19,7 +19,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jinzhu/gorm"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -336,18 +337,17 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			db, mock, err := sqlmock.New()
+			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
 			if err != nil {
 				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 			}
-			gdb, err := gorm.Open("postgres", db)
+			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
 			if err != nil {
 				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
 			}
-			gdb.LogMode(true)
 			defer func() {
 				assert.NoError(t, mock.ExpectationsWereMet())
-				gdb.Close()
+				database.Close(gdb)
 				db.Close()
 			}()
 
