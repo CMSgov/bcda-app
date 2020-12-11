@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 type ConnectionTestSuite struct {
@@ -40,11 +40,12 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 
 	// asert that Ping returns an error
 	assert.NotNil(suite.T(), suite.db.Ping(), "Database should fail to connect (negative scenario)")
-	assert.NotNil(suite.T(), suite.gormdb.DB().Ping(), "Gorm database should fail to connect (negative scenario)")
+	gdb, _ := suite.gormdb.DB()
+	assert.NotNil(suite.T(), gdb.Ping(), "Gorm database should fail to connect (negative scenario)")
 
 	// close DBs to reset the test
 	suite.db.Close()
-	suite.gormdb.Close()
+	Close(suite.gormdb)
 
 	// set the database URL back to the real value to test the positive scenarios
 	os.Setenv("DATABASE_URL", actualDatabaseURL)
@@ -53,11 +54,12 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	defer suite.db.Close()
 
 	suite.gormdb = GetGORMDbConnection()
-	defer suite.gormdb.Close()
+	defer Close(suite.gormdb)
 
 	// assert that Ping() does not return an error
 	assert.Nil(suite.T(), suite.db.Ping(), "Error connecting to sql database")
-	assert.Nil(suite.T(), suite.gormdb.DB().Ping(), "Error connecting to gorm database")
+	gdb, _ = suite.gormdb.DB()
+	assert.Nil(suite.T(), gdb.Ping(), "Error connecting to gorm database")
 
 }
 
