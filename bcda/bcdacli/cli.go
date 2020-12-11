@@ -524,7 +524,7 @@ func createGroup(id, name, acoID string) (string, error) {
 		aco.GroupID = ssasID
 
 		db := database.GetGORMDbConnection()
-		defer db.Close()
+		defer database.Close(db)
 
 		err = db.Save(&aco).Error
 		if err != nil {
@@ -678,7 +678,7 @@ func setBlacklistState(cmsID string, blacklistState bool) error {
 		return err
 	}
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	return db.Model(&aco).Update("blacklisted", blacklistState).Error
 }
