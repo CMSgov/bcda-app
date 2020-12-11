@@ -19,10 +19,10 @@ import (
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -1050,14 +1050,14 @@ func (s *APITestSuite) TestAuthInfoOkta() {
 	auth.SetProvider(originalProvider)
 }
 
-func (s *APITestSuite) verifyJobCount(acoID string, expectedJobCount int) {
+func (s *APITestSuite) verifyJobCount(acoID string, expectedJobCount int64) {
 	count, err := s.getJobCount(acoID)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), expectedJobCount, count)
 }
 
-func (s *APITestSuite) getJobCount(acoID string) (int, error) {
-	var count int
+func (s *APITestSuite) getJobCount(acoID string) (int64, error) {
+	var count int64
 	err := s.db.Model(&models.Job{}).Where("aco_id = ?", acoID).Count(&count).Error
 	return count, err
 }
