@@ -1,6 +1,7 @@
 package api
 
 import (
+	goerr "errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
+	"gorm.io/gorm"
 
 	"net/http"
 	"os"
@@ -68,13 +70,17 @@ func NewHandler(resources []string, basePath string) *Handler {
 	runoutClaimThru := utils.FromEnv("RUNOUT_CLAIM_THRU_DATE", "2020-12-31")
 	runoutClaimThruDate, err := time.Parse(claimThruDateFmt, runoutClaimThru)
 	if err != nil {
-		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %s", runoutClaimThru, err.Error())
+		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %v", runoutClaimThru, err)
 	}
 
 	db := database.GetGORMDbConnection()
-	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
+	dbc, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to retrieve database connection. Err: %v", err)
+	}
+	dbc.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
+	dbc.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
+	dbc.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
 	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
 		runoutCutoffDuration, runoutClaimThruDate,
@@ -173,21 +179,24 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") &&
-		(!db.Find(&pendingAndInProgressJobs, "aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").RecordNotFound()) {
-		if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
-			if _, ok := err.(duplicateTypeError); ok {
-				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-				w.WriteHeader(http.StatusTooManyRequests)
-			} else {
-				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			}
+	if os.Getenv("DEPLOYMENT_TARGET") == "prod" {
+		err := db.First(&pendingAndInProgressJobs, "aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").Error
 
-			return
-		} else {
-			resourceTypes = types
+		if !goerr.Is(err, gorm.ErrRecordNotFound) {
+			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
+				if _, ok := err.(duplicateTypeError); ok {
+					w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+					w.WriteHeader(http.StatusTooManyRequests)
+				} else {
+					log.Error(err)
+					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+					responseutils.WriteError(oo, w, http.StatusInternalServerError)
+				}
+
+				return
+			} else {
+				resourceTypes = types
+			}
 		}
 	}
 
