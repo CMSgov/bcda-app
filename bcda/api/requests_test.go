@@ -61,6 +61,7 @@ func (s *RequestsTestSuite) SetupTest() {
 func (s *RequestsTestSuite) TearDownSuite() {
 	s.NoError(s.db.Unscoped().Delete(&models.Job{}, "aco_id = ?", s.acoID).Error)
 	s.NoError(s.db.Unscoped().Delete(&models.ACO{}, "uuid = ?", s.acoID).Error)
+	database.Close(s.db)
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
