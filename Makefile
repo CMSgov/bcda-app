@@ -81,8 +81,6 @@ performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
-	# Ensure instances are running as expected
-	docker-compose restart api worker ssas
 	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
@@ -104,6 +102,10 @@ load-fixtures:
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
+
+	# Ensure components are started as expected
+	docker-compose restart api worker ssas
+	sleep 5
 
 load-synthetic-cclf-data:
 	docker-compose up -d api
