@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
@@ -90,7 +90,7 @@ func (s *MainTestSuite) TearDownSuite() {
 	testUtils.SetUnitTestKeysForAuth()
 	s.db.Unscoped().Where("aco_id = ?", s.testACO.UUID).Delete(&models.Job{})
 	s.db.Unscoped().Delete(s.testACO)
-	s.db.Close()
+	database.Close(s.db)
 	os.RemoveAll(os.Getenv("FHIR_STAGING_DIR"))
 	os.RemoveAll(os.Getenv("FHIR_PAYLOAD_DIR"))
 }
