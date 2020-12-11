@@ -48,9 +48,16 @@ func (s *AlphaAuthPluginTestSuite) BeforeTest(suiteName, testName string) {
 }
 
 func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
-	_, ok := connections[testName]
+	c, ok := connections[testName]
 	if !ok {
 		s.FailNow("WTF? no db connection for %s", testName)
+	}
+	gc, err := c.DB()
+	if err != nil {
+		s.FailNow("error retrieving db connection: %s", err)
+	}
+	if err := gc.Close(); err != nil {
+		s.FailNow("error closing db connection for %s because %s", testName, err)
 	}
 }
 
