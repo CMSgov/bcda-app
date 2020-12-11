@@ -103,8 +103,6 @@ load-fixtures:
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
 
-	docker-compose log api worker
-
 load-synthetic-cclf-data:
 	docker-compose up -d api
 	docker-compose up -d db
@@ -138,13 +136,12 @@ docker-build:
 
 docker-bootstrap:
 	$(MAKE) docker-build
-	# docker-compose up --exit-code-from openapi openapi
+	docker-compose up --exit-code-from openapi openapi
 	# Let the databases start up so we can successfully start up the application
 	docker-compose up -d queue db
 	sleep 20
-	docker-compose restart api worker
+	docker-compose up -d api worker
 	sleep 20
-	docker-compose log api worker
 	$(MAKE) load-fixtures
 
 api-shell:
