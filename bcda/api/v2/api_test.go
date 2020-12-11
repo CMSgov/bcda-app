@@ -19,11 +19,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/go-chi/chi"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 const (
@@ -57,7 +57,6 @@ func (s *APITestSuite) SetupSuite() {
 
 func (s *APITestSuite) TearDownSuite() {
 	s.cleanup()
-	s.db.Close()
 }
 
 func TestAPITestSuite(t *testing.T) {
