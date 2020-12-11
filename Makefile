@@ -81,6 +81,8 @@ performance-test:
 	docker-compose -f docker-compose.test.yml run --rm -w /go/src/github.com/CMSgov/bcda-app/test/performance_test tests sh performance_test.sh
 
 test:
+	# Ensure instances are running as expected
+	docker-compose restart api worker ssas
 	$(MAKE) lint
 	$(MAKE) unit-test
 	$(MAKE) postman env=local
@@ -136,12 +138,9 @@ docker-build:
 
 docker-bootstrap:
 	$(MAKE) docker-build
-	# Let the databases start up so we can successfully start up the application
-	docker-compose up -d queue db
-	sleep 5
-	docker-compose up -d
 	docker-compose up --exit-code-from openapi openapi
-	sleep 120
+	docker-compose up -d
+	sleep 40
 	$(MAKE) load-fixtures
 
 api-shell:
