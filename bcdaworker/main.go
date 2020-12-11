@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -14,11 +15,11 @@ import (
 
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
-	"github.com/jinzhu/gorm"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -87,7 +88,7 @@ func processJob(j *que.Job) error {
 	var exportJob models.Job
 	result := db.First(&exportJob, "ID = ?", jobArgs.ID)
 
-	if result.RecordNotFound() {
+	if goerrors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
 		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
@@ -430,7 +431,7 @@ func updateJobStats(jID uint, db *gorm.DB) {
 
 	var j models.Job
 	if err := db.First(&j, jID).Error; err == nil {
-		db.Model(&j).Update(models.Job{CompletedJobCount: j.CompletedJobCount + 1})
+		db.Model(&j).Update("completed_job_count", j.CompletedJobCount+1)
 	}
 }
 
