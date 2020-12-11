@@ -46,6 +46,11 @@ func NewHandler(resources []string, basePath string) *Handler {
 
 	h := &Handler{}
 
+	db := database.GetGORMDbConnection()
+	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
+	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
+	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
+
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -64,6 +69,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 	// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
 	// This implementation is based off of the "fix" that is present in v4
 	// (see: https://github.com/jackc/pgx/blob/v4.10.0/pgxpool/pool.go#L333)
+	// Use the same approach to validate the connection associated with the gorm client
 
 	// If we implement a cleanup function on the handler,
 	// consider using context.WithCancel() to give us a hook to stop the goroutine
@@ -78,15 +84,24 @@ func NewHandler(resources []string, basePath string) *Handler {
 				return
 			case <-ticker.C:
 				log.Debug("Sending ping")
-				conn, err := pgxpool.Acquire()
+				c, err := pgxpool.Acquire()
 				if err != nil {
 					log.Warnf("Failed to acquire connection %s", err.Error())
-					return
 				}
-				if err := conn.Ping(ctx); err != nil {
+				if err := c.Ping(ctx); err != nil {
 					log.Warnf("Failed to ping %s", err.Error())
 				}
-				pgxpool.Release(conn)
+				pgxpool.Release(c)
+
+				c1, err := db.DB().Conn(ctx)
+				if err != nil {
+					log.Warnf("Failed to acquire connection %s", err.Error())
+					continue
+				}
+				if err := c1.PingContext(ctx); err != nil {
+					log.Warnf("Failed to ping %s", err.Error())
+				}
+				c1.Close()
 			}
 		}
 	}()
@@ -103,10 +118,6 @@ func NewHandler(resources []string, basePath string) *Handler {
 		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %s", runoutClaimThru, err.Error())
 	}
 
-	db := database.GetGORMDbConnection()
-	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
 	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
 		runoutCutoffDuration, runoutClaimThruDate,
