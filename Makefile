@@ -140,8 +140,9 @@ docker-bootstrap:
 	# Let the databases start up so we can successfully start up the application
 	docker-compose up -d queue db
 	sleep 20
-	docker-compose up -d api worker
+	docker-compose up -d
 	sleep 20
+	docker-compose logs api worker ssas
 	$(MAKE) load-fixtures
 
 api-shell:
