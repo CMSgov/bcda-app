@@ -1,13 +1,14 @@
 package postgres
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // Ensure Repository satisfies the interface
@@ -52,7 +53,7 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 	}
 
 	result = result.Order("timestamp DESC").First(&cclfFile)
-	if result.RecordNotFound() {
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 
@@ -79,7 +80,7 @@ func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string)
 
 	// NOTE: We changed the query that was being used for "old benes"
 	// By querying by IDs, we really should not need to also query by the corresponding MBIs as well
-	query := r.db.Where("id in (?)", r.db.Raw(idQuery, cclfFileID).SubQuery())
+	query := r.db.Where("id in (?)", r.db.Raw(idQuery, cclfFileID))
 
 	if len(ignoredMBIs) != 0 {
 		query = query.Not("mbi", ignoredMBIs)
