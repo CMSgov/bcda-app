@@ -56,7 +56,7 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 
 func (s *SSASPluginTestSuite) SetupTest() {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	db.Create(&models.ACO{
 		UUID:     uuid.Parse(testACOUUID),
@@ -75,7 +75,7 @@ func (s *SSASPluginTestSuite) TearDownTest() {
 	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	db.Unscoped().Delete(models.ACO{}, "uuid = ?", testACOUUID)
 }
