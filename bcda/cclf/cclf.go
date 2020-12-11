@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -241,7 +241,11 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	sc := bufio.NewScanner(rc)
 
 	// Open transaction to encompass entire CCLF file ingest.
-	txn, err := db.DB().Begin()
+	sdb, err := db.DB()
+	if err != nil {
+		return err
+	}
+	txn, err := sdb.Begin()
 	if err != nil {
 		return err
 	}
@@ -395,7 +399,7 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 	var acoOrder []string
 
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	priorityACOs := getPriorityACOs(db)
 	for _, acoID := range priorityACOs {
