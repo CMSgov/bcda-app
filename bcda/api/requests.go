@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -58,6 +59,37 @@ func NewHandler(resources []string, basePath string) *Handler {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// With que-go locked to pgx v3, we need a mechanism that will allow us to
+	// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
+	// This implementation is based off of the "fix" that is present in v4
+	// (see: https://github.com/jackc/pgx/blob/v4.10.0/pgxpool/pool.go#L333)
+
+	// If we implement a cleanup function on the handler,
+	// consider using context.WithCancel() to give us a hook to stop the goroutine
+	ctx := context.Background()
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				log.Debug("Stopping pgxpool checker")
+				return
+			case <-ticker.C:
+				log.Debug("Sending ping")
+				conn, err := pgxpool.Acquire()
+				if err != nil {
+					log.Warnf("Failed to acquire connection %s", err.Error())
+					return
+				}
+				if err := conn.Ping(ctx); err != nil {
+					log.Warnf("Failed to ping %s", err.Error())
+				}
+				pgxpool.Release(conn)
+			}
+		}
+	}()
 
 	h.qc = que.NewClient(pgxpool)
 
