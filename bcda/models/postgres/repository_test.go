@@ -11,9 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/database"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/jinzhu/gorm"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/suite"
@@ -93,11 +95,11 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 
-			db, mock, err := sqlmock.New()
+			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
 			if err != nil {
 				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 			}
-			gdb, err := gorm.Open("postgres", db)
+			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
 			if err != nil {
 				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
 			}
@@ -105,7 +107,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			defer func() {
 				err = mock.ExpectationsWereMet()
 				assert.NoError(t, err)
-				gdb.Close()
+				database.Close(gdb)
 				db.Close()
 			}()
 			repository := NewRepository(gdb)
@@ -163,11 +165,11 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 			mbis := []string{"0", "1", "2"}
 			cclfFileID := uint(rand.Int63())
 
-			db, mock, err := sqlmock.New()
+			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
 			if err != nil {
 				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 			}
-			gdb, err := gorm.Open("postgres", db)
+			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
 			if err != nil {
 				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
 			}
@@ -175,7 +177,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 			defer func() {
 				err = mock.ExpectationsWereMet()
 				assert.NoError(t, err)
-				gdb.Close()
+				database.Close(gdb)
 				db.Close()
 			}()
 
@@ -247,11 +249,11 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		r.T().Run(tt.name, func(t *testing.T) {
 			cclfFileID := uint(rand.Int63())
 
-			db, mock, err := sqlmock.New()
+			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
 			if err != nil {
 				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 			}
-			gdb, err := gorm.Open("postgres", db)
+			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
 			if err != nil {
 				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
 			}
@@ -259,7 +261,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 			defer func() {
 				err = mock.ExpectationsWereMet()
 				assert.NoError(t, err)
-				gdb.Close()
+				database.Close(gdb)
 				db.Close()
 			}()
 
@@ -322,11 +324,11 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 		r.T().Run(tt.name, func(t *testing.T) {
 			suppressedMBIs := []string{"0", "1", "2"}
 
-			db, mock, err := sqlmock.New()
+			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
 			if err != nil {
 				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 			}
-			gdb, err := gorm.Open("postgres", db)
+			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
 			if err != nil {
 				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
 			}
@@ -334,7 +336,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 			defer func() {
 				err = mock.ExpectationsWereMet()
 				assert.NoError(t, err)
-				gdb.Close()
+				database.Close(gdb)
 				db.Close()
 			}()
 
