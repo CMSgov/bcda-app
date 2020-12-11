@@ -10,10 +10,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 var connections = make(map[string]*gorm.DB)
@@ -48,12 +48,9 @@ func (s *AlphaAuthPluginTestSuite) BeforeTest(suiteName, testName string) {
 }
 
 func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
-	c, ok := connections[testName]
+	_, ok := connections[testName]
 	if !ok {
 		s.FailNow("WTF? no db connection for %s", testName)
-	}
-	if err := c.Close(); err != nil {
-		s.FailNow("error closing db connection for %s because %s", testName, err)
 	}
 }
 
