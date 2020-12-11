@@ -183,15 +183,17 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:2d370ad7a48d3523291ad53a04b9b1510c182880927f800b46221cc465427800"
+  digest = "1:1f56b7e0292f71c450ab897beb96e9978f22b46da14f2d1add4bcfee669c2d3f"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "hstore",
     "oid",
+    "scram",
   ]
   pruneopts = "UT"
-  revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+  revision = "4604d39ddc9f62e2ca152114c73aec99b77a3468"
+  version = "v1.9.0"
 
 [[projects]]
   branch = "master"
@@ -537,7 +539,6 @@
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/postgres",
     "github.com/lib/pq",
-    "github.com/newrelic/go-agent",
     "github.com/newrelic/go-agent/_integrations/nrlogrus",
     "github.com/newrelic/go-agent/v3/newrelic",
     "github.com/otiai10/copy",
