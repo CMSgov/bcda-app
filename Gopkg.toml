@@ -24,7 +24,6 @@
 #   go-tests = true
 #   unused-packages = true
 
-
 [[constraint]]
   name = "github.com/bgentry/que-go"
   version = "1.0.1"
@@ -76,3 +75,11 @@
 [[constraint]]
   name = "github.com/newrelic/go-agent"
   version = "3.9.0"
+
+[[constraint]]
+  name = "gorm.io/gorm"
+  version = "1.20.8"
+
+[[constraint]]
+  name = "gorm.io/driver/postgres"
+  version = "0.2.4"
