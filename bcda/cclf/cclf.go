@@ -427,7 +427,7 @@ func getPriorityACOs(db *gorm.DB) []string {
 	`
 
 	var acoIDs []string
-	if err := db.Raw(query).Pluck("aco_id", &acoIDs).Error; err != nil {
+	if err := db.Raw(query).Scan(&acoIDs).Error; err != nil {
 		log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
 		return nil
 	}
