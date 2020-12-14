@@ -235,11 +235,11 @@ func (cclfFile *CCLFFile) Delete() error {
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
 	gorm.Model
-	CCLFFile     CCLFFile
-	FileID       uint   `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
-	HICN         string `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
-	MBI          string `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
-	BlueButtonID string `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
+	CCLFFile     CCLFFile `gorm:"foreignkey:file_id;association_foreignkey:id"`
+	FileID       uint     `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
+	HICN         string   `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
+	MBI          string   `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
+	BlueButtonID string   `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
 }
 
 type SuppressionFile struct {
