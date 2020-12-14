@@ -261,7 +261,6 @@ func (suppressionFile *SuppressionFile) Delete() error {
 
 type Suppression struct {
 	gorm.Model
-	SuppressionFile     SuppressionFile
 	FileID              uint      `gorm:"not null"`
 	MBI                 string    `gorm:"type:varchar(11);index:idx_suppression_mbi"`
 	HICN                string    `gorm:"type:varchar(11)"`
