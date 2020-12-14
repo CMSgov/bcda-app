@@ -31,7 +31,6 @@ type Job struct {
 	TransactionTime   time.Time // most recent data load transaction time from BFD
 	JobCount          int
 	CompletedJobCount int
-	JobKeys           []JobKey
 }
 
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
