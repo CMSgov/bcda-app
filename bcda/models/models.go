@@ -82,7 +82,6 @@ func (j *Job) StatusMessage() string {
 
 type JobKey struct {
 	gorm.Model
-	Job          Job    `gorm:"foreignkey:jobID"`
 	JobID        uint   `gorm:"primary_key" json:"job_id"`
 	FileName     string `gorm:"type:char(127)"`
 	ResourceType string
