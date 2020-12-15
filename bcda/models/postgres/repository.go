@@ -71,16 +71,11 @@ func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error) {
 }
 
 func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string) ([]*models.CCLFBeneficiary, error) {
-
-	const (
-		// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
-		idQuery = "SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = ? GROUP BY mbi ) as id"
-	)
 	var beneficiaries []*models.CCLFBeneficiary
 
 	// NOTE: We changed the query that was being used for "old benes"
 	// By querying by IDs, we really should not need to also query by the corresponding MBIs as well
-	query := r.db.Where("id in (?)", r.db.Raw(idQuery, cclfFileID))
+	query := r.db.Where("id in (?)", r.db.Table("cclf_beneficiaries").Select("MAX(id)").Where("file_id = ?", cclfFileID).Group("mbi"))
 
 	if len(ignoredMBIs) != 0 {
 		query = query.Not("mbi", ignoredMBIs)
