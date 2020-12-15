@@ -1,7 +1,6 @@
 package api
 
 import (
-	goerrors "errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -10,7 +9,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
-	"gorm.io/gorm"
 
 	"net/http"
 	"os"
@@ -180,9 +178,8 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if os.Getenv("DEPLOYMENT_TARGET") == "prod" {
-		err := db.First(&pendingAndInProgressJobs, "aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").Error
-
-		if !goerrors.Is(err, gorm.ErrRecordNotFound) {
+		db.Where("aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").Find(&pendingAndInProgressJobs)
+		if len(pendingAndInProgressJobs) > 0 {
 			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
 				if _, ok := err.(duplicateTypeError); ok {
 					w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
