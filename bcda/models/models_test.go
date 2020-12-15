@@ -538,11 +538,11 @@ func (s *ModelsTestSuite) TestCMSID() {
 	defer s.db.Unscoped().Delete(aco)
 
 	var actualCMSID []string
-	assert.NoError(s.T(), s.db.Find(&ACO{}, "id = ?", aco.ID).Pluck("cms_id", &actualCMSID).Error)
+	assert.NoError(s.T(), s.db.Model(&ACO{}).Where("id = ?", aco.ID).Pluck("cms_id", &actualCMSID).Error)
 	assert.Equal(s.T(), 1, len(actualCMSID))
 	assert.Equal(s.T(), cmsID, actualCMSID[0])
 
-	assert.NoError(s.T(), s.db.Find(&CCLFFile{}, "id = ?", cclfFile.ID).Pluck("aco_cms_id", &actualCMSID).Error)
+	assert.NoError(s.T(), s.db.Model(&CCLFFile{}).Where("id = ?", cclfFile.ID).Pluck("aco_cms_id", &actualCMSID).Error)
 	assert.Equal(s.T(), 1, len(actualCMSID))
 	assert.Equal(s.T(), cmsID, actualCMSID[0])
 }
