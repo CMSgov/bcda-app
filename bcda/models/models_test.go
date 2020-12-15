@@ -493,7 +493,7 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			var err error
-			var expectedFileCount int
+			var expectedFileCount int64
 			for _, acoID := range tt.acoIDs {
 				cclfFile := &CCLFFile{
 					Name:            tt.fileName,
