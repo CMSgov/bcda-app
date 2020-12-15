@@ -12,9 +12,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -47,7 +47,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4)) ORDER BY timestamp DESC`,
+			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -55,7 +55,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeRunout,
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4)) ORDER BY timestamp DESC`,
+			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeRunout),
 		},
 		{
@@ -63,7 +63,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Now(),
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5)) ORDER BY timestamp DESC`,
+			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -71,7 +71,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Now(),
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp <= $5)) ORDER BY timestamp DESC`,
+			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp <= $5) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -79,7 +79,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Now(),
 			time.Now(),
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 AND timestamp <= $6)) ORDER BY timestamp DESC`,
+			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 AND timestamp <= $6) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -87,7 +87,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE "cclf_files"."deleted_at" IS NULL AND ((aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4)) ORDER BY timestamp DESC`,
+			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
 			nil,
 		},
 	}
@@ -95,20 +95,11 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 
-			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
-			if err != nil {
-				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-			}
-			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
-			if err != nil {
-				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
-			}
-
+			gdb, mock := testUtils.GetGormMock(t)
 			defer func() {
-				err = mock.ExpectationsWereMet()
+				err := mock.ExpectationsWereMet()
 				assert.NoError(t, err)
 				database.Close(gdb)
-				db.Close()
 			}()
 			repository := NewRepository(gdb)
 
@@ -150,12 +141,12 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 	}{
 		{
 			"HappyPath",
-			`SELECT mbi FROM "cclf_beneficiaries" WHERE (file_id = $1)`,
+			`SELECT "mbi" FROM "cclf_beneficiaries" WHERE file_id = $1`,
 			nil,
 		},
 		{
 			"ErrorOnQuery",
-			`SELECT mbi FROM "cclf_beneficiaries" WHERE (file_id = $1)`,
+			`SELECT "mbi" FROM "cclf_beneficiaries" WHERE file_id = $1`,
 			fmt.Errorf("Some SQL error"),
 		},
 	}
@@ -165,20 +156,12 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 			mbis := []string{"0", "1", "2"}
 			cclfFileID := uint(rand.Int63())
 
-			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
-			if err != nil {
-				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-			}
-			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
-			if err != nil {
-				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
-			}
+			gdb, mock := testUtils.GetGormMock(t)
 
 			defer func() {
-				err = mock.ExpectationsWereMet()
+				err := mock.ExpectationsWereMet()
 				assert.NoError(t, err)
 				database.Close(gdb)
-				db.Close()
 			}()
 
 			repository := NewRepository(gdb)
@@ -217,7 +200,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 	}{
 		{
 			"NoIgnoreMBIs",
-			`SELECT * FROM "cclf_beneficiaries" WHERE "cclf_beneficiaries"."deleted_at" IS NULL AND ((id in (( SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi ) as id))))`,
+			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND "cclf_beneficiaries"."deleted_at" IS NULL`,
 			nil,
 			[]*models.CCLFBeneficiary{
 				getCCLFBeneficiary(),
@@ -229,7 +212,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		},
 		{
 			"IgnoredMBIs",
-			`SELECT * FROM "cclf_beneficiaries" WHERE "cclf_beneficiaries"."deleted_at" IS NULL AND ((id in (( SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi ) as id))) AND ("cclf_beneficiaries"."mbi" NOT IN ($2,$3)))`,
+			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND "mbi" <> ($2,$3) AND "cclf_beneficiaries"."deleted_at`,
 			[]string{"123", "456"},
 			[]*models.CCLFBeneficiary{
 				getCCLFBeneficiary(),
@@ -238,7 +221,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		},
 		{
 			"ErrorOnQuery",
-			`SELECT * FROM "cclf_beneficiaries" WHERE "cclf_beneficiaries"."deleted_at" IS NULL AND ((id in (( SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi ) as id))))`,
+			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND "cclf_beneficiaries"."deleted_at" IS NULL`,
 			nil,
 			nil,
 			fmt.Errorf("Some SQL error"),
@@ -248,21 +231,11 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			cclfFileID := uint(rand.Int63())
-
-			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
-			if err != nil {
-				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-			}
-			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
-			if err != nil {
-				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
-			}
-
+			gdb, mock := testUtils.GetGormMock(t)
 			defer func() {
-				err = mock.ExpectationsWereMet()
+				err := mock.ExpectationsWereMet()
 				assert.NoError(t, err)
 				database.Close(gdb)
-				db.Close()
 			}()
 
 			repository := NewRepository(gdb)
@@ -323,21 +296,11 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			suppressedMBIs := []string{"0", "1", "2"}
-
-			db, mock, err := sqlmock.NewWithDSN("psqlmock_db")
-			if err != nil {
-				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-			}
-			gdb, err := gorm.Open(postgres.Open("psqlmock_db"), &gorm.Config{})
-			if err != nil {
-				t.Fatalf("Failed to instantiate gorm db %s", err.Error())
-			}
-
+			gdb, mock := testUtils.GetGormMock(t)
 			defer func() {
-				err = mock.ExpectationsWereMet()
+				err := mock.ExpectationsWereMet()
 				assert.NoError(t, err)
 				database.Close(gdb)
-				db.Close()
 			}()
 
 			repository := NewRepository(gdb)

@@ -10,9 +10,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/callbacks"
 )
 
 // PrintSeparator prints a line of stars to stdout
@@ -134,4 +138,28 @@ func GetRandomIPV4Address(t *testing.T) string {
 	}
 
 	return fmt.Sprintf("%d.%d.%d.%d", data[0], data[1], data[2], data[3])
+}
+
+// GetGormMock returns a gorm.DB along with a sqlmock instance used for testing
+// This implementation is based off a newer version of GORM's postgres driver.
+// See: https://github.com/go-gorm/postgres/blob/v1.0.5/postgres.go#L24
+// In the newer versions, you can explicitly set the ConnPool on the postgres.Config struct.
+// It allows the caller to inject sqlmock's db instance into gorm without forcing the caller to
+// rely on connecting via DSN, which will always fail when using sqlmock.
+func GetGormMock(t *testing.T) (*gorm.DB, sqlmock.Sqlmock) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	gdb, err := gorm.Open(nil, &gorm.Config{
+		ConnPool: db,
+	})
+	if err != nil {
+		t.Fatalf("Failed to instantiate gorm db %s", err.Error())
+	}
+	gdb.Dialector = &postgres.Dialector{}
+	callbacks.RegisterDefaultCallbacks(gdb, &callbacks.Config{})
+
+	return gdb, mock
 }
