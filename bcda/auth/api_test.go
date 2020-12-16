@@ -3,17 +3,18 @@ package auth_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi"
+
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"

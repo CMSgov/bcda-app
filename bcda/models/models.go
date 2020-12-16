@@ -16,10 +16,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 type Job struct {
@@ -31,7 +31,6 @@ type Job struct {
 	TransactionTime   time.Time // most recent data load transaction time from BFD
 	JobCount          int
 	CompletedJobCount int
-	JobKeys           []JobKey
 }
 
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
@@ -83,7 +82,6 @@ func (j *Job) StatusMessage() string {
 
 type JobKey struct {
 	gorm.Model
-	Job          Job    `gorm:"foreignkey:jobID"`
 	JobID        uint   `gorm:"primary_key" json:"job_id"`
 	FileName     string `gorm:"type:char(127)"`
 	ResourceType string
@@ -223,7 +221,7 @@ type CCLFFile struct {
 
 func (cclfFile *CCLFFile) Delete() error {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	err := db.Unscoped().Where("file_id = ?", cclfFile.ID).Delete(&CCLFBeneficiary{}).Error
 	if err != nil {
 		return err
@@ -235,11 +233,11 @@ func (cclfFile *CCLFFile) Delete() error {
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
 	gorm.Model
-	CCLFFile     CCLFFile
-	FileID       uint   `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
-	HICN         string `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
-	MBI          string `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
-	BlueButtonID string `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
+	CCLFFile     CCLFFile `gorm:"foreignkey:file_id;association_foreignkey:id"`
+	FileID       uint     `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
+	HICN         string   `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
+	MBI          string   `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
+	BlueButtonID string   `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
 }
 
 type SuppressionFile struct {
@@ -251,7 +249,7 @@ type SuppressionFile struct {
 
 func (suppressionFile *SuppressionFile) Delete() error {
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 	err := db.Unscoped().Where("file_id = ?", suppressionFile.ID).Delete(&Suppression{}).Error
 	if err != nil {
 		return err
@@ -261,7 +259,6 @@ func (suppressionFile *SuppressionFile) Delete() error {
 
 type Suppression struct {
 	gorm.Model
-	SuppressionFile     SuppressionFile
 	FileID              uint      `gorm:"not null"`
 	MBI                 string    `gorm:"type:varchar(11);index:idx_suppression_mbi"`
 	HICN                string    `gorm:"type:varchar(11)"`

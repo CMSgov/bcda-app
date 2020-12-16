@@ -1,13 +1,14 @@
 package postgres
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // Ensure Repository satisfies the interface
@@ -52,7 +53,7 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 	}
 
 	result = result.Order("timestamp DESC").First(&cclfFile)
-	if result.RecordNotFound() {
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 
@@ -70,16 +71,11 @@ func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error) {
 }
 
 func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string) ([]*models.CCLFBeneficiary, error) {
-
-	const (
-		// this is used to get unique ids for de-duplicating MBIs that are listed multiple times in the CCLF8 file
-		idQuery = "SELECT id FROM ( SELECT max(id) as id, mbi FROM cclf_beneficiaries WHERE file_id = ? GROUP BY mbi ) as id"
-	)
 	var beneficiaries []*models.CCLFBeneficiary
 
 	// NOTE: We changed the query that was being used for "old benes"
 	// By querying by IDs, we really should not need to also query by the corresponding MBIs as well
-	query := r.db.Where("id in (?)", r.db.Raw(idQuery, cclfFileID).SubQuery())
+	query := r.db.Where("id in (?)", r.db.Table("cclf_beneficiaries").Select("MAX(id)").Where("file_id = ?", cclfFileID).Group("mbi"))
 
 	if len(ignoredMBIs) != 0 {
 		query = query.Not("mbi", ignoredMBIs)
@@ -100,12 +96,12 @@ func (r *Repository) GetSuppressedMBIs(lookbackDays int) ([]string, error) {
 	FROM (
 		SELECT mbi, MAX(effective_date) max_date
 		FROM suppressions
-		WHERE (NOW() - interval '`+strconv.Itoa(lookbackDays)+` days') < effective_date AND effective_date <= NOW()
+		WHERE (NOW() - interval '` + strconv.Itoa(lookbackDays) + ` days') < effective_date AND effective_date <= NOW()
 					AND preference_indicator != ''
 		GROUP BY mbi
 	) h
 	JOIN suppressions s ON s.mbi = h.mbi and s.effective_date = h.max_date
-	WHERE preference_indicator = 'N'`).Pluck("mbi", &suppressedMBIs).Error; err != nil {
+	WHERE preference_indicator = 'N'`).Scan(&suppressedMBIs).Error; err != nil {
 		return nil, err
 	}
 

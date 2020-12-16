@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
@@ -25,14 +27,14 @@ type OktaAuthPluginTestSuite struct {
 
 func (s *OktaAuthPluginTestSuite) SetupSuite() {
 	db := database.GetGORMDbConnection()
+
 	defer func() {
-		if err := db.Close(); err != nil {
-			assert.Failf(s.T(), err.Error(), "okta plugin test")
-		}
+		database.Close(db)
 	}()
 
 	var aco models.ACO
-	if db.Find(&aco, "UUID = ?", uuid.Parse(KnownFixtureACO)).RecordNotFound() {
+	err := db.First(&aco, "UUID = ?", uuid.Parse(KnownFixtureACO)).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		assert.NotNil(s.T(), fmt.Errorf("Unable to find ACO %s", KnownFixtureACO))
 		return
 	}

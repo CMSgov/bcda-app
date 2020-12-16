@@ -61,7 +61,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
     Start data export (for the specified group identifier) for all supported resource types
 
 	Initiates a job to collect data from the Blue Button API for your ACO. The supported Group identifiers are `all` and `runout`.
-	
+
 	The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
 
 	The `runout` identifier returns claims runouts data.
@@ -113,7 +113,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	defer database.Close(db)
 
 	var job models.Job
-	err := db.Find(&job, "id = ?", jobID).Error
+	err := db.First(&job, jobID).Error
 	if err != nil {
 		log.Print(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")

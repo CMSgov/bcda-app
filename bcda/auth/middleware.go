@@ -164,7 +164,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		defer database.Close(db)
 
 		var job models.Job
-		err = db.Find(&job, "id = ? and aco_id = ?", i, ad.ACOID).Error
+		err = db.First(&job, "id = ? and aco_id = ?", i, ad.ACOID).Error
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")

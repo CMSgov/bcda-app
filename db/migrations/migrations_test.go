@@ -14,7 +14,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
 
@@ -77,11 +78,11 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		migrationPath: "./bcda/",
 		dbURL:         s.bcdaDBURL,
 	}
-	db, err := gorm.Open("postgres", s.bcdaDBURL)
+	db, err := gorm.Open(postgres.Open(s.bcdaDBURL), &gorm.Config{})
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
-	defer db.Close()
+	defer database.Close(db)
 
 	migration1Tables := []string{"acos", "cclf_beneficiaries", "cclf_beneficiary_xrefs",
 		"cclf_files", "job_keys", "jobs", "suppression_files", "suppressions"}
@@ -96,7 +97,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "1")
 				for _, table := range migration1Tables {
-					assert.True(t, db.HasTable(table), fmt.Sprintf("Table %s should exist", table))
+					assert.True(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should exist", table))
 				}
 			},
 		},
@@ -220,7 +221,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "0")
 				for _, table := range migration1Tables {
-					assert.False(t, db.HasTable(table), fmt.Sprintf("Table %s should not exist", table))
+					assert.False(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should not exist", table))
 				}
 			},
 		},
@@ -236,11 +237,11 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 		migrationPath: "./bcda_queue/",
 		dbURL:         s.bcdaQueueDBURL,
 	}
-	db, err := gorm.Open("postgres", s.bcdaQueueDBURL)
+	db, err := gorm.Open(postgres.Open(s.bcdaQueueDBURL), &gorm.Config{})
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
-	defer db.Close()
+	defer database.Close(db)
 
 	migration1Tables := []string{"que_jobs"}
 
@@ -254,7 +255,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "1")
 				for _, table := range migration1Tables {
-					assert.True(t, db.HasTable(table), fmt.Sprintf("Table %s should exist", table))
+					assert.True(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should exist", table))
 				}
 			},
 		},
@@ -263,7 +264,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "0")
 				for _, table := range migration1Tables {
-					assert.False(t, db.HasTable(table), fmt.Sprintf("Table %s should not exist", table))
+					assert.False(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should not exist", table))
 				}
 			},
 		},

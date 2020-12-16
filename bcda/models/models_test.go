@@ -19,10 +19,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/go-chi/chi"
-	"github.com/jinzhu/gorm"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 type ModelsTestSuite struct {
@@ -493,7 +493,7 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			var err error
-			var expectedFileCount int
+			var expectedFileCount int64
 			for _, acoID := range tt.acoIDs {
 				cclfFile := &CCLFFile{
 					Name:            tt.fileName,
@@ -517,7 +517,7 @@ func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
 				assert.NoError(t, err)
 			}
 
-			var count int
+			var count int64
 			s.db.Model(&CCLFFile{}).Where("name = ?", tt.fileName).Count(&count)
 			assert.True(t, expectedFileCount > 0)
 			assert.Equal(t, expectedFileCount, count)
@@ -538,11 +538,11 @@ func (s *ModelsTestSuite) TestCMSID() {
 	defer s.db.Unscoped().Delete(aco)
 
 	var actualCMSID []string
-	assert.NoError(s.T(), s.db.Find(&ACO{}, "id = ?", aco.ID).Pluck("cms_id", &actualCMSID).Error)
+	assert.NoError(s.T(), s.db.Model(&ACO{}).Where("id = ?", aco.ID).Pluck("cms_id", &actualCMSID).Error)
 	assert.Equal(s.T(), 1, len(actualCMSID))
 	assert.Equal(s.T(), cmsID, actualCMSID[0])
 
-	assert.NoError(s.T(), s.db.Find(&CCLFFile{}, "id = ?", cclfFile.ID).Pluck("aco_cms_id", &actualCMSID).Error)
+	assert.NoError(s.T(), s.db.Model(&CCLFFile{}).Where("id = ?", cclfFile.ID).Pluck("aco_cms_id", &actualCMSID).Error)
 	assert.Equal(s.T(), 1, len(actualCMSID))
 	assert.Equal(s.T(), cmsID, actualCMSID[0])
 }

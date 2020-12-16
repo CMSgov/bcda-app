@@ -22,9 +22,9 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/go-chi/chi"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 type RequestsTestSuite struct {
@@ -61,7 +61,7 @@ func (s *RequestsTestSuite) SetupTest() {
 func (s *RequestsTestSuite) TearDownSuite() {
 	s.NoError(s.db.Unscoped().Delete(&models.Job{}, "aco_id = ?", s.acoID).Error)
 	s.NoError(s.db.Unscoped().Delete(&models.ACO{}, "uuid = ?", s.acoID).Error)
-	s.db.Close()
+	database.Close(s.db)
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
