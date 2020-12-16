@@ -11,6 +11,7 @@ func Close(db *gorm.DB) {
 	dbc, err := db.DB()
 	if err != nil {
 		log.Infof("failed to retrieve db connection: %v", err)
+		return
 	}
 	if err := dbc.Close(); err != nil {
 		_, file, line, _ := runtime.Caller(1)
