@@ -29,10 +29,6 @@ func (s *OktaAuthPluginTestSuite) SetupSuite() {
 	db := database.GetGORMDbConnection()
 
 	defer func() {
-		dbc, _ := db.DB()
-		if err := dbc.Close(); err != nil {
-			assert.Failf(s.T(), err.Error(), "okta plugin test")
-		}
 		database.Close(db)
 	}()
 
