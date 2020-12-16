@@ -113,7 +113,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	defer database.Close(db)
 
 	var job models.Job
-	err := db.First(&job, "id = ?", jobID).Error
+	err := db.First(&job, jobID).Error
 	if err != nil {
 		log.Print(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
