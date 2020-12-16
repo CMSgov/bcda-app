@@ -13,7 +13,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -56,7 +56,7 @@ func TestSuppressionTestSuite(t *testing.T) {
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -129,7 +129,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	assert := assert.New(s.T())
 	db := database.GetGORMDbConnection()
-	defer db.Close()
+	defer database.Close(db)
 
 	metadata := &suppressionFileMetadata{}
 	err := importSuppressionData(metadata)

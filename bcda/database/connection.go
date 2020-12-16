@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 // Variable substitution to support testing.
@@ -28,13 +28,9 @@ func GetDbConnection() *sql.DB {
 
 func GetGORMDbConnection() *gorm.DB {
 	databaseURL := os.Getenv("DATABASE_URL")
-	db, err := gorm.Open("postgres", databaseURL)
+	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 	if err != nil {
 		LogFatal(err)
-	}
-	pingErr := db.DB().Ping()
-	if pingErr != nil {
-		LogFatal(pingErr)
 	}
 	return db
 }

@@ -4,18 +4,19 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
+
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"

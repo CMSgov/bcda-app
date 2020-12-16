@@ -47,9 +47,13 @@ func NewHandler(resources []string, basePath string) *Handler {
 	h := &Handler{}
 
 	db := database.GetGORMDbConnection()
-	db.DB().SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	db.DB().SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	db.DB().SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
+	dbc, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to retrieve database connection. Err: %v", err)
+	}
+	dbc.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
+	dbc.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
+	dbc.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -93,7 +97,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 				}
 				pgxpool.Release(c)
 
-				c1, err := db.DB().Conn(ctx)
+				c1, err := dbc.Conn(ctx)
 				if err != nil {
 					log.Warnf("Failed to acquire connection %s", err.Error())
 					continue
@@ -117,7 +121,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 	runoutClaimThru := utils.FromEnv("RUNOUT_CLAIM_THRU_DATE", "2020-12-31")
 	runoutClaimThruDate, err := time.Parse(claimThruDateFmt, runoutClaimThru)
 	if err != nil {
-		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %s", runoutClaimThru, err.Error())
+		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %v", runoutClaimThru, err)
 	}
 
 	repository := postgres.NewRepository(db)
@@ -218,21 +222,23 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	if (os.Getenv("DEPLOYMENT_TARGET") == "prod") &&
-		(!db.Find(&pendingAndInProgressJobs, "aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").RecordNotFound()) {
-		if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
-			if _, ok := err.(duplicateTypeError); ok {
-				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-				w.WriteHeader(http.StatusTooManyRequests)
-			} else {
-				log.Error(err)
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
-				responseutils.WriteError(oo, w, http.StatusInternalServerError)
-			}
+	if os.Getenv("DEPLOYMENT_TARGET") == "prod" {
+		db.Where("aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").Find(&pendingAndInProgressJobs)
+		if len(pendingAndInProgressJobs) > 0 {
+			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
+				if _, ok := err.(duplicateTypeError); ok {
+					w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+					w.WriteHeader(http.StatusTooManyRequests)
+				} else {
+					log.Error(err)
+					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+					responseutils.WriteError(oo, w, http.StatusInternalServerError)
+				}
 
-			return
-		} else {
-			resourceTypes = types
+				return
+			} else {
+				resourceTypes = types
+			}
 		}
 	}
 
