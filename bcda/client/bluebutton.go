@@ -333,8 +333,8 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("keep-alive", "")
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
-	req.Header.Add("BCDA-JOBID", jobID)
-	req.Header.Add("BCDA-CMSID", cmsID)
+	req.Header.Add("BULK-JOBID", jobID)
+	req.Header.Add("BULK-CLIENTID", cmsID)
 	req.Header.Add("IncludeIdentifiers", "mbi")
 
 	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.
@@ -398,8 +398,8 @@ func (h *httpLogger) logRequest(req *http.Request) {
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.URL.String(),
-		"job_id":      req.Header.Get("BCDA-JOBID"),
-		"cms_id":      req.Header.Get("BCDA-CMSID"),
+		"job_id":      req.Header.Get("BULK-JOBID"),
+		"cms_id":      req.Header.Get("BULK-CLIENTID"),
 	}).Infoln("request")
 }
 
@@ -409,7 +409,7 @@ func (h *httpLogger) logResponse(req *http.Request, resp *http.Response) {
 		"bb_query_id": req.Header.Get("BlueButton-OriginalQueryId"),
 		"bb_query_ts": req.Header.Get("BlueButton-OriginalQueryTimestamp"),
 		"bb_uri":      req.URL.String(),
-		"job_id":      req.Header.Get("BCDA-JOBID"),
-		"cms_id":      req.Header.Get("BCDA-CMSID"),
+		"job_id":      req.Header.Get("BULK-JOBID"),
+		"cms_id":      req.Header.Get("BULK-CLIENTID"),
 	}).Infoln("response")
 }
