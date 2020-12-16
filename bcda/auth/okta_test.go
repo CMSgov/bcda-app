@@ -33,6 +33,7 @@ func (s *OktaAuthPluginTestSuite) SetupSuite() {
 		if err := dbc.Close(); err != nil {
 			assert.Failf(s.T(), err.Error(), "okta plugin test")
 		}
+		database.Close(db)
 	}()
 
 	var aco models.ACO
