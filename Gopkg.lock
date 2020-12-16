@@ -180,14 +180,16 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:37ce7d7d80531b227023331002c0d42b4b4b291a96798c82a049d03a54ba79e4"
+  digest = "1:1f56b7e0292f71c450ab897beb96e9978f22b46da14f2d1add4bcfee669c2d3f"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid",
+    "scram",
   ]
   pruneopts = "UT"
-  revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+  revision = "4604d39ddc9f62e2ca152114c73aec99b77a3468"
+  version = "v1.9.0"
 
 [[projects]]
   branch = "master"

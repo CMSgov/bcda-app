@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -45,6 +46,15 @@ func NewHandler(resources []string, basePath string) *Handler {
 
 	h := &Handler{}
 
+	db := database.GetGORMDbConnection()
+	dbc, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to retrieve database connection. Err: %v", err)
+	}
+	dbc.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
+	dbc.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
+	dbc.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
+
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -59,6 +69,49 @@ func NewHandler(resources []string, basePath string) *Handler {
 		log.Fatal(err)
 	}
 
+	// With que-go locked to pgx v3, we need a mechanism that will allow us to
+	// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
+	// This implementation is based off of the "fix" that is present in v4
+	// (see: https://github.com/jackc/pgx/blob/v4.10.0/pgxpool/pool.go#L333)
+	// Use the same approach to validate the connection associated with the gorm client
+
+	// If we implement a cleanup function on the handler,
+	// consider using context.WithCancel() to give us a hook to stop the goroutine
+	ctx := context.Background()
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				log.Debug("Stopping pgxpool checker")
+				return
+			case <-ticker.C:
+				log.Debug("Sending ping")
+				c, err := pgxpool.Acquire()
+				if err != nil {
+					log.Warnf("Failed to acquire connection %s", err.Error())
+				}
+				if err := c.Ping(ctx); err != nil {
+					log.Warnf("Failed to ping %s", err.Error())
+				}
+				pgxpool.Release(c)
+
+				c1, err := dbc.Conn(ctx)
+				if err != nil {
+					log.Warnf("Failed to acquire connection %s", err.Error())
+					continue
+				}
+				if err := c1.PingContext(ctx); err != nil {
+					log.Warnf("Failed to ping %s", err.Error())
+				}
+				if err := c1.Close(); err != nil {
+					log.Warnf("Failed to close conection %s", err.Error())
+				}
+			}
+		}
+	}()
+
 	h.qc = que.NewClient(pgxpool)
 
 	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
@@ -71,14 +124,6 @@ func NewHandler(resources []string, basePath string) *Handler {
 		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %v", runoutClaimThru, err)
 	}
 
-	db := database.GetGORMDbConnection()
-	dbc, err := db.DB()
-	if err != nil {
-		log.Fatalf("Failed to retrieve database connection. Err: %v", err)
-	}
-	dbc.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	dbc.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	dbc.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 	repository := postgres.NewRepository(db)
 	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
 		runoutCutoffDuration, runoutClaimThruDate,

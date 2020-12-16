@@ -103,9 +103,7 @@ load-fixtures:
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
 
-	# Since we've rebuilt the databases, we need to restart the worker and api
-	# to ensure it picks up connections to the new db instance.
-	# TODO (BCDA-3710) we should be able to remove this line once we have connection pooling on the worker
+	# Ensure components are started as expected
 	docker-compose restart api worker ssas
 	sleep 5
 
