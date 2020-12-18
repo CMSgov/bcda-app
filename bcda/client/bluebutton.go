@@ -338,8 +338,8 @@ func addRequestHeaders(req *http.Request, reqID uuid.UUID, jobID, cmsID string) 
 	req.Header.Add("keep-alive", "")
 	req.Header.Add("BlueButton-OriginalUrl", req.URL.String())
 	req.Header.Add("BlueButton-OriginalQuery", req.URL.RawQuery)
-	req.Header.Add("BULK-JOBID", jobID)
-	req.Header.Add("BULK-CLIENTID", cmsID)
+	req.Header.Add(jobIDHeader, jobID)
+	req.Header.Add(clientIDHeader, cmsID)
 	req.Header.Add("IncludeIdentifiers", "mbi")
 
 	// We SHOULD NOT be specifying "Accept-Encoding: gzip" on the request header.

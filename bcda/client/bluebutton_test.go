@@ -461,8 +461,8 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 
 				assert.Equal(t, jobID, req.Header.Get(jobIDHeader))
 				assert.Equal(t, cmsID, req.Header.Get(clientIDHeader))
-				assert.Equal(t, "", req.Header.Get(oldJobIDHeader))
-				assert.Equal(t, "", req.Header.Get(oldClientIDHeader))
+				assert.Empty(t, req.Header.Get(oldJobIDHeader))
+				assert.Empty(t, req.Header.Get(oldClientIDHeader))
 
 				assert.Equal(t, "mbi", req.Header.Get("IncludeIdentifiers"))
 
