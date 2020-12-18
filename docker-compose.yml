@@ -59,7 +59,7 @@ services:
       - SSAS_PUBLIC_URL=${SSAS_PUBLIC_URL}
       - SSAS_TIMEOUT_MS=2000
       - BCDA_ENABLE_NEW_GROUP=true
-      - PRIORITY_ACO_IDS=A9990,A9991,A9992,A9993,A9994
+      - PRIORITY_ACO_REG_EX=([A-Z]99([0-8]|9[0-8])$)
       - USER_GUIDE_LOC=https://stage.bcda.cms.gov
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
