@@ -451,7 +451,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				assert.NotNil(t, uuid.Parse(req.Header.Get("BlueButton-OriginalQueryId")))
 				assert.Equal(t, "1", req.Header.Get("BlueButton-OriginalQueryCounter"))
 
-				assert.Equal(t, "", req.Header.Get("keep-alive"))
+				assert.Empty(t, req.Header.Get("keep-alive"))
 				assert.Nil(t, req.Header.Values("X-Forwarded-Proto"))
 				assert.Nil(t, req.Header.Values("X-Forwarded-Host"))
 
