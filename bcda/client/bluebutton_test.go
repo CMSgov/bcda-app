@@ -22,6 +22,13 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const (
+	clientIDHeader    = "BULK-CLIENTID"
+	jobIDHeader       = "BULK-JOBID"
+	oldClientIDHeader = "BCDA-JOBID"
+	oldJobIDHeader    = "BCDA-CMSID"
+)
+
 type BBTestSuite struct {
 	suite.Suite
 }
@@ -452,8 +459,11 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 					"%s does not end with %s", req.Header.Get("BlueButton-OriginalUrl"), req.URL.String())
 				assert.Equal(t, req.URL.RawQuery, req.Header.Get("BlueButton-OriginalQuery"))
 
-				assert.Equal(t, jobID, req.Header.Get("BULK-JOBID"))
-				assert.Equal(t, cmsID, req.Header.Get("BULK-CLIENTID"))
+				assert.Equal(t, jobID, req.Header.Get(jobIDHeader))
+				assert.Equal(t, cmsID, req.Header.Get(clientIDHeader))
+				assert.Equal(t, "", req.Header.Get(oldJobIDHeader))
+				assert.Equal(t, "", req.Header.Get(oldClientIDHeader))
+
 				assert.Equal(t, "mbi", req.Header.Get("IncludeIdentifiers"))
 
 				// Verify that we have compression enabled on these HTTP requests.
