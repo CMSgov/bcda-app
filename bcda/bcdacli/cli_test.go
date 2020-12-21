@@ -862,6 +862,8 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	// cclf file names that are contained within the cclf zip files
 	cclfFiles := []string{
 		"T.BCD.A0001.ZC48Y18.D181120.T1000001",
+		"T.BCD.A0001.ZCAY18.D181120.T1000001",
+		"T.BCD.A0001.ZCBY18.D181120.T1000001",
 		"T.BCD.A0001.ZC48Y18.D181120.T1000002",
 		"T.BCD.A0001.ZC48Y18.D181120.T1000003",
 		"P.V001.ACO.ZC8Y20.D201002.T0806400",
@@ -901,6 +903,8 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	// runout cclf file names that will be generated for each zip file
 	cclfRFiles := []string{
 		"T.BCD.A0001.ZC48R18.D181120.T1000001",
+		"T.BCD.A0001.ZCAR18.D181120.T1000001",
+		"T.BCD.A0001.ZCBR18.D181120.T1000001",
 		"T.BCD.A0001.ZC48R18.D181120.T1000002",
 		"T.BCD.A0001.ZC48R18.D181120.T1000003",
 		"P.V001.ACO.ZC8R20.D201002.T0806400",
