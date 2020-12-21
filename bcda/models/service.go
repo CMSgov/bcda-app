@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/bgentry/que-go"
@@ -299,7 +298,7 @@ func (s *service) getBenesByFileID(cclfFileID uint) ([]*CCLFBeneficiary, error) 
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
-// Prioirity is based on the request parameters that the job is executing on.
+// Priority is based on the request parameters that the job is executing on.
 func getJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	var priority int16
 	if isPriorityACO(acoID) {
@@ -314,18 +313,17 @@ func getJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	return priority
 }
 
-// Checks to see if an ACO is priority ACO based on a list provided by an
+// Checks to see if an ACO is priority ACO based on a regex pattern provided by an
 // environment variable.
 func isPriorityACO(acoID string) bool {
-	if priorityACOList := os.Getenv("PRIORITY_ACO_IDS"); priorityACOList != "" {
-		priorityACOs := strings.Split(priorityACOList, ",")
-		for _, priorityACO := range priorityACOs {
-			if priorityACO == acoID {
-				return true
-			}
+	if priorityACOPattern := os.Getenv("PRIORITY_ACO_REG_EX"); priorityACOPattern != "" {
+		var priorityACORegex = regexp.MustCompile(priorityACOPattern)
+		if priorityACORegex.MatchString(acoID) {
+			return true
 		}
 	}
 	return false
+
 }
 
 func getMaxBeneCount(requestType string) (int, error) {
