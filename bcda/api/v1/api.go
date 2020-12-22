@@ -84,7 +84,7 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/jobs/{jobId} bulkData jobStatus
+	swagger:route GET /api/v1/jobs/{jobId} bulkData job jobStatus
 
 	Get job status
 
@@ -213,7 +213,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 /*
-	swagger:route GET /data/{jobId}/{filename} bulkData serveData
+	swagger:route GET /data/{jobId}/{filename} bulkData job serveData
 
 	Get data file
 

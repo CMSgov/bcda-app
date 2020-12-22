@@ -25,11 +25,11 @@ func NewAPIRouter() http.Handler {
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), SecurityHeader, ConnectionClose)
 
 	// Serve up the swagger ui folder
-	swagger_path := "./swaggerui"
-	if _, err := os.Stat(swagger_path); os.IsNotExist(err) {
-		swagger_path = "../swaggerui"
-	}
-	FileServer(r, "/api/v1/swagger", http.Dir(swagger_path))
+	// swagger_path := "./swaggerui/v1"
+	// if _, err := os.Stat(swagger_path); os.IsNotExist(err) {
+	// 	swagger_path = "../swaggerui/v1"
+	// }
+	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
 
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
@@ -40,13 +40,16 @@ func NewAPIRouter() http.Handler {
 		r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
 		r.Get(m.WrapHandler("/metadata", v1.Metadata))
+		// r.Get("/swagger", http.HandlerFunc(http.FileServer(http.Dir("../swaggerui/v1")).ServeHTTP))
 	})
 
 	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", true) {
+		FileServer(r, "/api/v2/swagger", http.Dir("./swaggerui/v2"))
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
 			r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
+			// r.Get("/swagger", http.HandlerFunc(http.FileServer(http.Dir("../swaggerui/v2")).ServeHTTP))
 		})
 	}
 
