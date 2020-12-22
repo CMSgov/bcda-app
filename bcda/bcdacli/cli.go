@@ -684,7 +684,7 @@ func setBlacklistState(cmsID string, blacklistState bool) error {
 }
 
 // CCLF file name pattern and regex
-const cclfPattern = `((?:T|P)\.BCD\..*\.ZC\d*)Y(\d{2}\.D\d{6}\.T\d{7})`
+const cclfPattern = `((?:T|P).*\.ZC[A-B0-9]*)Y(\d{2}\.D\d{6}\.T\d{7})`
 
 var cclfregex = regexp.MustCompile(cclfPattern)
 

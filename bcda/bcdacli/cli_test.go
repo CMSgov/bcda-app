@@ -855,13 +855,19 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 		"T.BCD.A0002.ZCY18.D181120.T9999990",
 		"T.BCD.A0002.ZCY18.D181120.T9999991",
 		"T.BCD.A0002.ZCY18.D181120.T9999992",
+		"P.BCD.E0002.ZCY20.D200914.T0850090",
+		"P.BCD.V002.ZCY20.D201002.T0811490",
 		"not_a_cclf_file",
 	}
 	// cclf file names that are contained within the cclf zip files
 	cclfFiles := []string{
 		"T.BCD.A0001.ZC48Y18.D181120.T1000001",
+		"T.BCD.A0001.ZCAY18.D181120.T1000001",
+		"T.BCD.A0001.ZCBY18.D181120.T1000001",
 		"T.BCD.A0001.ZC48Y18.D181120.T1000002",
 		"T.BCD.A0001.ZC48Y18.D181120.T1000003",
+		"P.V001.ACO.ZC8Y20.D201002.T0806400",
+		"P.CEC.ZC8Y20.D201108.T0958300",
 	}
 
 	// create the test files under the temporary directory
@@ -879,7 +885,7 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	fmt.Print(buf.String())
 	assert.Nil(err)
 	assert.Contains(buf.String(), "Completed CCLF runout file generation.")
-	assert.Contains(buf.String(), "Generated 3 zip files.")
+	assert.Contains(buf.String(), "Generated 5 zip files.")
 	buf.Reset()
 
 	// runout zip file names that will be generated
@@ -887,6 +893,8 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 		"T.BCD.A0002.ZCR18.D181120.T9999990",
 		"T.BCD.A0002.ZCR18.D181120.T9999991",
 		"T.BCD.A0002.ZCR18.D181120.T9999992",
+		"P.BCD.E0002.ZCR20.D200914.T0850090",
+		"P.BCD.V002.ZCR20.D201002.T0811490",
 	}
 
 	// assert the zip file count matches after cloning
@@ -895,8 +903,12 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	// runout cclf file names that will be generated for each zip file
 	cclfRFiles := []string{
 		"T.BCD.A0001.ZC48R18.D181120.T1000001",
+		"T.BCD.A0001.ZCAR18.D181120.T1000001",
+		"T.BCD.A0001.ZCBR18.D181120.T1000001",
 		"T.BCD.A0001.ZC48R18.D181120.T1000002",
 		"T.BCD.A0001.ZC48R18.D181120.T1000003",
+		"P.V001.ACO.ZC8R20.D201002.T0806400",
+		"P.CEC.ZC8R20.D201108.T0958300",
 	}
 
 	// assert that each zip was cloned with the proper name and each zip file
