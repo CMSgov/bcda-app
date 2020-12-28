@@ -303,7 +303,9 @@ func TestGetCCLFMetadata(t *testing.T) {
 func TestMultipleFileTypes(t *testing.T) {
 	dir, err := ioutil.TempDir("", "*")
 	assert.NoError(t, err)
-
+	cclfRefDate := os.Getenv("CCLF_REF_DATE")
+	os.Setenv("CCLF_REF_DATE", "201201")
+	defer os.Setenv("CCLF_REF_DATE", cclfRefDate)
 	defer os.RemoveAll(dir)
 
 	// Create various CCLF files that have unique perfYear:fileType
@@ -322,7 +324,7 @@ func TestMultipleFileTypes(t *testing.T) {
 
 	for _, fileMap := range m {
 		// We should contain 4 unique entries, one for each unique perfYear:fileType tuple
-		assert.Equal(t, 4, len(fileMap)) 
+		assert.Equal(t, 4, len(fileMap))
 		for _, files := range fileMap {
 			assert.Equal(t, 2, len(files)) // each tuple contains two files
 		}
