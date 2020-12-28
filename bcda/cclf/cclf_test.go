@@ -198,17 +198,11 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	beneficiaries := []models.CCLFBeneficiary{}
 	db.Find(&beneficiaries, "file_id = ?", file.ID)
 	assert.Equal(6, len(beneficiaries))
-	assert.Equal("203031401M", beneficiaries[0].HICN)
 	assert.Equal("1A69B98CD30", beneficiaries[0].MBI)
-	assert.Equal("203031402A", beneficiaries[1].HICN)
 	assert.Equal("1A69B98CD31", beneficiaries[1].MBI)
-	assert.Equal("203031403A", beneficiaries[2].HICN)
 	assert.Equal("1A69B98CD32", beneficiaries[2].MBI)
-	assert.Equal("203031404A", beneficiaries[3].HICN)
 	assert.Equal("1A69B98CD33", beneficiaries[3].MBI)
-	assert.Equal("203031405C7", beneficiaries[4].HICN)
 	assert.Equal("1A69B98CD34", beneficiaries[4].MBI)
-	assert.Equal("203031406M", beneficiaries[5].HICN)
 	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
 
 	err = deleteFilesByACO("A0001", db)
@@ -222,7 +216,6 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	err := importCCLF8(context.Background(), metadata)
 	assert.EqualError(err, "CCLF file not found")
 
-	// mbi is found before hicn, separated by a space.
 	// since we do not have the correct number of characters, the import should fail.
 	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
 	defer os.Remove(fileName)
@@ -382,11 +375,9 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			mbi := "123456789AB"  // We expect 11 characters for the MBI
-			hicn := "BA987654321" // We expect 11 characters for the HICN
+			mbi := "123456789AB" // We expect 11 characters for the MBI
 
-			// mbi is found before hicn, separated by a space.
-			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), fmt.Sprintf("%s %s", mbi, hicn))
+			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), fmt.Sprintf("%s", mbi))
 			defer os.Remove(fileName)
 
 			metadata := &cclfFileMetadata{
