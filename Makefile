@@ -1,7 +1,8 @@
 package:
 	# This target should be executed by passing in an argument representing the version of the artifacts we are packaging
 	# For example: make package version=r1
-	docker-compose up --build documentation openapi
+	docker-compose up --build documentation
+	docker-compose up --build openapi
 	docker build -t packaging -f Dockerfiles/Dockerfile.package .
 	docker run --rm \
 	-e BCDA_GPG_RPM_PASSPHRASE='${BCDA_GPG_RPM_PASSPHRASE}' \
@@ -140,6 +141,7 @@ docker-build:
 
 docker-bootstrap:
 	$(MAKE) docker-build
+	docker-compose up --build documentation
 	docker-compose up --exit-code-from openapi openapi
 	docker-compose up -d
 	sleep 40
