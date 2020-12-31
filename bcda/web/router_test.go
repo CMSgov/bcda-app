@@ -13,7 +13,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -25,27 +24,10 @@ type RouterTestSuite struct {
 	dataRouter http.Handler
 }
 
-func (s *RouterTestSuite) SetupSuite() {
-	// Setup our file server resources at the expected path
-	if err := os.MkdirAll("./swaggerui/v1", 0755); err != nil {
-		s.FailNow(err.Error())
-	}
-	if err := ioutil.WriteFile("./swaggerui/v1/test.json", []byte("test"), 0644); err != nil {
-		s.FailNow(err.Error())
-	}
-}
-
 func (s *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
 	s.apiRouter = NewAPIRouter()
 	s.dataRouter = NewDataRouter()
-}
-
-func (s *RouterTestSuite) TearDownSuite() {
-	// Cleanup our file server resources
-	if err := os.RemoveAll("./swaggerui"); err != nil {
-		s.FailNow(err.Error())
-	}
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
@@ -91,20 +73,6 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 func (s *RouterTestSuite) TestDataRoute() {
 	res := s.getDataRoute("/data/test/test.ndjson")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-}
-
-func (s *RouterTestSuite) TestFileServerRoute() {
-	res := s.getAPIRoute("/api/v1/swagger")
-	assert.Equal(s.T(), http.StatusMovedPermanently, res.StatusCode)
-
-	res = s.getAPIRoute("/api/v1/swagger/")
-	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
-
-	r := chi.NewRouter()
-	// Set up a bad route.  DON'T do this in real life
-	assert.Panics(s.T(), func() {
-		FileServer(r, "/api/v1/swagger{}", http.Dir("./swaggerui"))
-	})
 }
 
 func (s *RouterTestSuite) TestMetadataRoute() {
