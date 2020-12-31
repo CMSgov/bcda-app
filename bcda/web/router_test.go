@@ -25,10 +25,27 @@ type RouterTestSuite struct {
 	dataRouter http.Handler
 }
 
+func (s *RouterTestSuite) SetupSuite() {
+	// Setup our file server resources at the expected path
+	if err := os.MkdirAll("./swaggerui/v1", 0755); err != nil {
+		s.FailNow(err.Error())
+	}
+	if err := ioutil.WriteFile("./swaggerui/v1/test.json", []byte("test"), 0644); err != nil {
+		s.FailNow(err.Error())
+	}
+}
+
 func (s *RouterTestSuite) SetupTest() {
 	os.Setenv("DEBUG", "true")
 	s.apiRouter = NewAPIRouter()
 	s.dataRouter = NewDataRouter()
+}
+
+func (s *RouterTestSuite) TearDownSuite() {
+	// Cleanup our file server resources
+	if err := os.RemoveAll("./swaggerui"); err != nil {
+		s.FailNow(err.Error())
+	}
 }
 
 func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
