@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -191,6 +192,8 @@ func TestGetCCLFMetadata(t *testing.T) {
 
 	// Timestamp that'll satisfy the time window requirement
 	validTime := startUTC.Add(-24 * time.Hour)
+	perfYear, err := strconv.Atoi(validTime.Format("06"))
+	assert.NoError(t, err)
 	sspProdFile, sspTestFile, sspRunoutFile := gen(sspProd, validTime), gen(sspTest, validTime),
 		strings.Replace(gen(sspProd, validTime), "ZC8Y", "ZC8R", 1)
 	cecProdFile, cecTestFile := gen(cecProd, validTime), gen(cecTest, validTime)
@@ -214,7 +217,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				cclfNum:   8,
 				acoID:     sspID,
 				timestamp: validTime,
-				perfYear:  20,
+				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,
 			},
 		},
@@ -225,7 +228,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				cclfNum:   8,
 				acoID:     sspID,
 				timestamp: validTime,
-				perfYear:  20,
+				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,
 			},
 		},
@@ -237,7 +240,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				cclfNum:   8,
 				acoID:     sspID,
 				timestamp: validTime,
-				perfYear:  20,
+				perfYear:  perfYear,
 				fileType:  models.FileTypeRunout,
 			},
 		},
@@ -248,7 +251,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				cclfNum:   8,
 				acoID:     cecID,
 				timestamp: validTime,
-				perfYear:  20,
+				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,
 			},
 		},
@@ -259,7 +262,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				cclfNum:   8,
 				acoID:     cecID,
 				timestamp: validTime,
-				perfYear:  20,
+				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,
 			},
 		},
@@ -270,7 +273,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				cclfNum:   8,
 				acoID:     ngacoID,
 				timestamp: validTime,
-				perfYear:  20,
+				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,
 			},
 		},
@@ -281,7 +284,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 				cclfNum:   8,
 				acoID:     ngacoID,
 				timestamp: validTime,
-				perfYear:  20,
+				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,
 			},
 		},
@@ -303,6 +306,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 func TestMultipleFileTypes(t *testing.T) {
 	dir, err := ioutil.TempDir("", "*")
 	assert.NoError(t, err)
+	// Hard code the reference date to ensure to ensure we do not reject any CCLF files because they are too old.
 	cclfRefDate := os.Getenv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", "201201")
 	defer os.Setenv("CCLF_REF_DATE", cclfRefDate)
