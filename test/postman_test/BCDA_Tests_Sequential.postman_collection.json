@@ -206,27 +206,19 @@
 						"swagger",
 						""
 					]
-				}
+				},
+				"description": "TODO (BCDA-4109) - Remove test verifying v1 specific artifacts"
 			},
 			"response": []
 		},
 		{
-			"name": "Swagger V2",
+			"name": "Swagger V1 + V2",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"id": "d2fa6db1-d1da-402d-9566-b60cdb7a0fc3",
 						"exec": [
-							"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
-							"",
-							"if (v2Disabled) {",
-							"    pm.test(\"Status code is 404\", function () {",
-							"        pm.response.to.have.status(404);",
-							"    });",
-							"    return;",
-							"}",
-							"",
 							"pm.test(\"Status code is 200\", function () {",
 							"    pm.response.to.have.status(200);",
 							"});",
@@ -243,18 +235,17 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v2/swagger/",
+					"raw": "{{scheme}}://{{host}}/swagger/",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
 					],
 					"path": [
-						"api",
-						"v2",
 						"swagger",
 						""
 					]
-				}
+				},
+				"description": "Make request to location that should contain v1 and v2 API requests"
 			},
 			"response": []
 		},
