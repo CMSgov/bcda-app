@@ -312,6 +312,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				noServiceDateChecker,
 				noIncludeAddressFieldsChecker,
+				includeTaxNumbersChecker,
 			},
 		},
 		{
@@ -330,6 +331,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				noServiceDateChecker,
 				noIncludeAddressFieldsChecker,
+				includeTaxNumbersChecker,
 			},
 		},
 		{
@@ -348,6 +350,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				excludeSAMHSAChecker,
 				serviceDateChecker,
 				noIncludeAddressFieldsChecker,
+				includeTaxNumbersChecker,
 			},
 		},
 		{
@@ -365,6 +368,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noExcludeSAMHSAChecker,
 				includeAddressFieldsChecker,
+				noIncludeTaxNumbersChecker,
 			},
 		},
 		{
@@ -382,6 +386,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noExcludeSAMHSAChecker,
 				includeAddressFieldsChecker,
+				noIncludeTaxNumbersChecker,
 			},
 		},
 		{
@@ -399,6 +404,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noExcludeSAMHSAChecker,
 				noIncludeAddressFieldsChecker,
+				noIncludeTaxNumbersChecker,
 			},
 		},
 		{
@@ -416,6 +422,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				nowChecker,
 				noExcludeSAMHSAChecker,
 				noIncludeAddressFieldsChecker,
+				noIncludeTaxNumbersChecker,
 			},
 		},
 		{
@@ -431,6 +438,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			[]func(*testing.T, *http.Request){
 				noExcludeSAMHSAChecker,
 				noIncludeAddressFieldsChecker,
+				noIncludeTaxNumbersChecker,
 			},
 		},
 	}
@@ -566,6 +574,12 @@ func noIncludeAddressFieldsChecker(t *testing.T, req *http.Request) {
 }
 func includeAddressFieldsChecker(t *testing.T, req *http.Request) {
 	assert.Equal(t, "true", req.Header.Get("IncludeAddressFields"))
+}
+func noIncludeTaxNumbersChecker(t *testing.T, req *http.Request) {
+	assert.Empty(t, req.Header.Get("IncludeTaxNumbers"))
+}
+func includeTaxNumbersChecker(t *testing.T, req *http.Request) {
+	assert.Equal(t, "true", req.Header.Get("IncludeTaxNumbers"))
 }
 
 func TestBBTestSuite(t *testing.T) {
