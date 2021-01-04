@@ -202,7 +202,6 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	}
 
 	return bbc.getBundleData(u, jobID, cmsID, header)
-	//return bbc.getBundleData(u, jobID, cmsID, nil)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
