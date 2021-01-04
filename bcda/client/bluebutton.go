@@ -184,6 +184,8 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	// ServiceDate only uses yyyy-mm-dd
 	const svcDateFmt = "2006-01-02"
 
+	header := make(http.Header)
+	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
@@ -199,7 +201,8 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 		return nil, err
 	}
 
-	return bbc.getBundleData(u, jobID, cmsID, nil)
+	return bbc.getBundleData(u, jobID, cmsID, header)
+	//return bbc.getBundleData(u, jobID, cmsID, nil)
 }
 
 func (bbc *BlueButtonClient) GetMetadata() (string, error) {
