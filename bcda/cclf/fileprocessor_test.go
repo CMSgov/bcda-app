@@ -182,17 +182,17 @@ func TestGetCCLFMetadata(t *testing.T) {
 	startUTC := time.Date(start.Year(), start.Month(), start.Day(), start.Hour(), start.Minute(), start.Second(), 0,
 		time.UTC)
 
+	const (
+		dateFormat     = "D060102.T1504050"
+		perfYearFormat = "06"
+	)
 	gen := func(prefix string, t time.Time) string {
-		const (
-			format         = "D060102.T1504050"
-			perfYearFormat = "06"
-		)
-		return fmt.Sprintf("%s.ZC8Y%s.%s", prefix, t.Format(perfYearFormat), t.Format(format))
+		return fmt.Sprintf("%s.ZC8Y%s.%s", prefix, t.Format(perfYearFormat), t.Format(dateFormat))
 	}
 
 	// Timestamp that'll satisfy the time window requirement
 	validTime := startUTC.Add(-24 * time.Hour)
-	perfYear, err := strconv.Atoi(validTime.Format("06"))
+	perfYear, err := strconv.Atoi(validTime.Format(perfYearFormat))
 	assert.NoError(t, err)
 	sspProdFile, sspTestFile, sspRunoutFile := gen(sspProd, validTime), gen(sspTest, validTime),
 		strings.Replace(gen(sspProd, validTime), "ZC8Y", "ZC8R", 1)
