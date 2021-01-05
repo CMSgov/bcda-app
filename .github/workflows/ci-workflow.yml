@@ -24,3 +24,9 @@ jobs:
       - name: "Run all tests"
         run: |
           make test
+      - name: "Run Snyk"
+        uses: snyk/actions/go@master
+        continue-on-error: false
+        with:
+          command: test
+          args: --severity-threshold=high
