@@ -5,6 +5,7 @@ on: [push]
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
   VAULT_PW: ${{ secrets.VAULT_PW }}
+  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
 jobs:
   build:
@@ -24,9 +25,16 @@ jobs:
       - name: "Run all tests"
         run: |
           make test
-      - name: "Run Snyk"
-        uses: snyk/actions/go@master
-        continue-on-error: false
-        with:
-          command: test
-          args: --severity-threshold=high
+
+  snyk:
+    name: "Run Snyk Workflow"
+    runs-on: ubuntu-latest
+    steps:
+    - name: "Checkout code"
+      uses: actions/checkout@v2
+    - name: "Run Snyk"
+      uses: snyk/actions/golang@master
+      continue-on-error: false
+      with:
+        command: test
+        args: --severity-threshold=high
