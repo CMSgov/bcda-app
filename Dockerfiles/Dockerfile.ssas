@@ -14,5 +14,5 @@ RUN go get github.com/mattn/go-colorable
 RUN go get github.com/CMSgov/bcda-ssas-app/ssas/service/main
 
 WORKDIR /go/src/github.com/CMSgov/bcda-ssas-app/ssas
-RUN go build github.com/CMSgov/bcda-ssas-app/ssas/service/main
-CMD ["./main", "--start"]
+RUN go install github.com/CMSgov/bcda-ssas-app/ssas/service/main
+CMD ["main", "--start"]
