@@ -17,4 +17,5 @@ COPY . .
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
-CMD ["go", "run", "main.go", "start-api"]
+RUN go build
+CMD ["./bcda", "start-api"]

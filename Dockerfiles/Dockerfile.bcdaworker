@@ -14,4 +14,5 @@ COPY . .
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
-CMD ["go", "run", "."]
+RUN go build
+CMD ["./bcdaworker"]
