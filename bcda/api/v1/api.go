@@ -123,16 +123,14 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 	switch job.Status {
 
-	case "Failed":
+	case models.JobStatusFailed:
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-	case "Pending":
-		fallthrough
-	case "In Progress":
+	case models.JobStatusPending, models.JobStatusInProgress:
 		w.Header().Set("X-Progress", job.StatusMessage())
 		w.WriteHeader(http.StatusAccepted)
 		return
-	case "Completed":
+	case models.JobStatusCompleted:
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(api.GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
@@ -194,9 +192,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-	case "Archived":
-		fallthrough
-	case "Expired":
+	case models.JobStatusArchived, models.JobStatusExpired:
 		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
 		responseutils.WriteError(oo, w, http.StatusGone)

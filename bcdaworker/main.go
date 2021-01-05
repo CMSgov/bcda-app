@@ -113,7 +113,7 @@ func processJob(j *que.Job) error {
 		return errors.Wrap(err, "could not retrieve ACO from database")
 	}
 
-	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
+	err = db.Model(&exportJob).Where("status = ?", models.JobStatusPending).Update("status", "In Progress").Error
 	if err != nil {
 		return errors.Wrap(err, "could not update job status in database")
 	}
@@ -144,7 +144,7 @@ func processJob(j *que.Job) error {
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
-		err = db.Model(&exportJob).Update("status", "Failed").Error
+		err = db.Model(&exportJob).Update("status", models.JobStatusFailed).Error
 		if err != nil {
 			return err
 		}

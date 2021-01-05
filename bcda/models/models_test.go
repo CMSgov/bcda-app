@@ -376,7 +376,7 @@ func (s *ModelsTestSuite) TestJobCompleted() {
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export",
-		Status:     "Pending",
+		Status:     JobStatusPending,
 		JobCount:   1,
 	}
 	s.db.Save(&j)
@@ -397,7 +397,7 @@ func (s *ModelsTestSuite) TestJobDefaultCompleted() {
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export",
-		Status:     "Completed",
+		Status:     JobStatusCompleted,
 		JobCount:   10,
 	}
 	s.db.Save(&j)
@@ -413,7 +413,7 @@ func (s *ModelsTestSuite) TestJobwithKeysCompleted() {
 	j := Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export",
-		Status:     "Pending",
+		Status:     JobStatusPending,
 		JobCount:   10,
 	}
 	s.db.Save(&j)
@@ -447,8 +447,8 @@ func (s *ModelsTestSuite) TestJobStatusMessage() {
 	j = Job{Status: "In Progress", JobCount: 0, CompletedJobCount: 0}
 	assert.Equal(s.T(), "In Progress", j.StatusMessage())
 
-	j = Job{Status: "Completed", JobCount: 25, CompletedJobCount: 25}
-	assert.Equal(s.T(), "Completed", j.StatusMessage())
+	j = Job{Status: JobStatusCompleted, JobCount: 25, CompletedJobCount: 25}
+	assert.Equal(s.T(), string(JobStatusCompleted), j.StatusMessage())
 }
 
 func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {

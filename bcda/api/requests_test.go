@@ -208,9 +208,9 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 }
 
 func (s *RequestsTestSuite) TestCheck429() {
-	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: "In Progress", Model: gorm.Model{CreatedAt: time.Now()}}
-	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: "In Progress", Model: gorm.Model{CreatedAt: time.Now().Add(-2 * GetJobTimeout())}}
-	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: "In Progress", Model: gorm.Model{CreatedAt: time.Now()}}
+	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now()}}
+	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now().Add(-2 * GetJobTimeout())}}
+	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now()}}
 	tests := []struct {
 		name        string
 		job         models.Job
@@ -252,9 +252,9 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	s.NoError(s.db.First(&aco, "uuid = ?", s.acoID).Error)
 
 	// Create jobs that githave an unsupported path
-	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: "Failed"}).Error)
-	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: "Expired"}).Error)
-	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: "Completed"}).Error)
+	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: models.JobStatusFailed}).Error)
+	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: models.JobStatusExpired}).Error)
+	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: models.JobStatusCompleted}).Error)
 
 	resources := []string{"ExplanationOfBenefit", "Coverage", "Patient"}
 	mockSvc := &models.MockService{}
