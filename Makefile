@@ -39,7 +39,7 @@ SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --r
 # or
 #    ACO_CMS_ID=A9999 make postman env=local
 ACO_CMS_ID ?= A9994
-clientTemp := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
+clientTemp := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 
@@ -52,7 +52,7 @@ postman:
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm api sh -c 'tmp/bcda reset-client-credentials --cms-id A9997'|tail -n2))
+	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id A9997'|tail -n2))
 
 	$(eval BLACKLIST_CLIENT_ID:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$1}'))
 	$(eval BLACKLIST_CLIENT_SECRET:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$2}'))
@@ -114,22 +114,22 @@ load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
 	for acoSize in $(ACO_SIZES) ; do \
-		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
+		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
 	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
+		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
 	done
 
 	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'tmp/bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test --fileType=runout' ; \
+		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test --fileType=runout' ; \
 	done
 
 load-synthetic-suppression-data:
 	docker-compose up -d api
 	docker-compose up -d db
-	docker-compose run api sh -c 'tmp/bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
+	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
 
 load-fixtures-ssas:
 	docker-compose -f docker-compose.ssas-migrate.yml run --rm ssas-migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
