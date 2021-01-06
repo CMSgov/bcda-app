@@ -180,7 +180,7 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:1f56b7e0292f71c450ab897beb96e9978f22b46da14f2d1add4bcfee669c2d3f"
+  digest = "1:62f794e53445d22aa4d1709a9123053b9bf7c3284571b5b807f80d57e1648844"
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -576,6 +576,7 @@
     "golang.org/x/crypto/pbkdf2",
     "gorm.io/driver/postgres",
     "gorm.io/gorm",
+    "gorm.io/gorm/callbacks",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
