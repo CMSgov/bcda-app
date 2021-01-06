@@ -182,6 +182,22 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			},
 		},
 		{
+			"Remove HICN column from cclf_beneficiaries and suppressions",
+			func(t *testing.T) {
+				assert.True(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+				migrator.runMigration(t, "4")
+				assert.False(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+			},
+		},
+		{
+			"Add HICN column to cclf_beneficiaries and suppressions",
+			func(t *testing.T) {
+				assert.False(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+				migrator.runMigration(t, "3")
+				assert.True(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+			},
+		},
+		{
 			"Remove blacklisted column from acos",
 			func(t *testing.T) {
 				migrator.runMigration(t, "2")
