@@ -14,8 +14,8 @@ RUN go get github.com/mattn/go-colorable
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
-RUN go install ./vendor/github.com/pressly/fresh
 RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
-CMD ["fresh", "-r", "start-api"]
+RUN go install
+CMD ["bcda", "start-api"]
