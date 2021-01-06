@@ -356,7 +356,7 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Pending",
+		Status:     models.JobStatusPending,
 		JobCount:   1,
 	}
 	s.db.Save(&j)
@@ -386,14 +386,14 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	err = s.db.First(&completedJob, "ID = ?", jobArgs.ID).Error
 	assert.Nil(s.T(), err)
 	// As this test actually connects to BB, we can't be sure it will succeed
-	assert.Contains(s.T(), []string{"Failed", "Completed"}, completedJob.Status)
+	assert.Contains(s.T(), []models.JobStatus{models.JobStatusFailed, models.JobStatusCompleted}, completedJob.Status)
 }
 
 func (s *MainTestSuite) TestProcessJob_EmptyBasePath() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Pending",
+		Status:     models.JobStatusPending,
 		JobCount:   1,
 	}
 	s.db.Save(&j)

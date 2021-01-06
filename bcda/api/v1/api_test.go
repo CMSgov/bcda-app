@@ -329,7 +329,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		RequestURL: requestUrl,
-		Status:     "In Progress",
+		Status:     models.JobStatusInProgress,
 		JobCount:   1,
 	}
 	s.db.Save(&j)
@@ -348,7 +348,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	var job models.Job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Pending").Error)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusPending).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
@@ -356,7 +356,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	// change status to Completed and serve job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Completed").Error)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusCompleted).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -367,7 +367,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	// change status to Failed and serve job
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Failed").Error)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusFailed).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -378,7 +378,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	// change status to Archived
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Archived").Error)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusArchived).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -389,7 +389,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	// change status to Expired
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", "Expired").Error)
+	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusExpired).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -400,7 +400,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	// different aco same endpoint
 	err = s.db.Find(&job, "id = ?", j.ID).Error
 	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Updates(models.Job{ACOID: uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), Status: "In Progress"}).Error)
+	assert.Nil(s.T(), s.db.Model(&job).Updates(models.Job{ACOID: uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), Status: models.JobStatusInProgress}).Error)
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
@@ -448,7 +448,7 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	j := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		RequestURL: requestUrl,
-		Status:     "In Progress",
+		Status:     models.JobStatusInProgress,
 		JobCount:   1,
 	}
 	s.db.Save(&j)
@@ -560,7 +560,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Pending",
+		Status:     models.JobStatusPending,
 		JobCount:   1,
 	}
 	s.db.Save(&j)
@@ -579,7 +579,7 @@ func (s *APITestSuite) TestJobStatusPending() {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), "Pending", s.rr.Header().Get("X-Progress"))
+	assert.Equal(s.T(), string(models.JobStatusPending), s.rr.Header().Get("X-Progress"))
 	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
 	s.db.Unscoped().Delete(&j)
 }
@@ -588,7 +588,7 @@ func (s *APITestSuite) TestJobStatusInProgress() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "In Progress",
+		Status:     models.JobStatusInProgress,
 		JobCount:   1,
 	}
 	s.db.Save(&j)
@@ -616,7 +616,7 @@ func (s *APITestSuite) TestJobStatusFailed() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Failed",
+		Status:     models.JobStatusFailed,
 	}
 
 	s.db.Save(&j)
@@ -643,7 +643,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Completed",
+		Status:     models.JobStatusCompleted,
 	}
 	s.db.Save(&j)
 
@@ -709,7 +709,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Completed",
+		Status:     models.JobStatusCompleted,
 	}
 	s.db.Save(&j)
 	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
@@ -774,7 +774,7 @@ func (s *APITestSuite) TestJobStatusExpired() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Expired",
+		Status:     models.JobStatusExpired,
 	}
 
 	s.db.Save(&j)
@@ -801,7 +801,7 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Completed",
+		Status:     models.JobStatusCompleted,
 	}
 
 	// s.db.Save(&j)
@@ -829,7 +829,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Archived",
+		Status:     models.JobStatusArchived,
 	}
 
 	s.db.Save(&j)
@@ -937,7 +937,7 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	j := models.Job{
 		ACOID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     "Pending",
+		Status:     models.JobStatusPending,
 	}
 	s.db.Save(&j)
 
