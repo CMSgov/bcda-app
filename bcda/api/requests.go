@@ -223,7 +223,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if os.Getenv("DEPLOYMENT_TARGET") == "prod" {
-		db.Where("aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").Find(&pendingAndInProgressJobs)
+		db.Where("aco_id = ? AND status IN (?, ?)", acoID, models.JobStatusInProgress, models.JobStatusPending).Find(&pendingAndInProgressJobs)
 		if len(pendingAndInProgressJobs) > 0 {
 			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
 				if _, ok := err.(duplicateTypeError); ok {
@@ -250,7 +250,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	newJob := models.Job{
 		ACOID:      uuid.Parse(acoID),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
-		Status:     "Pending",
+		Status:     models.JobStatusPending,
 	}
 
 	// Need to create job in transaction instead of the very end of the process because we need

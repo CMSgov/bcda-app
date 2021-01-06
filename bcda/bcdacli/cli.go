@@ -588,7 +588,7 @@ func archiveExpiring(hrThreshold int) error {
 	defer database.Close(db)
 
 	var jobs []models.Job
-	err := db.Find(&jobs, "status = ?", "Completed").Error
+	err := db.Find(&jobs, "status = ?", models.JobStatusCompleted).Error
 	if err != nil {
 		log.Error(err)
 		return err
@@ -611,7 +611,7 @@ func archiveExpiring(hrThreshold int) error {
 				continue
 			}
 
-			j.Status = "Archived"
+			j.Status = models.JobStatusArchived
 			err = db.Save(j).Error
 			if err != nil {
 				log.Error(err)
@@ -630,7 +630,7 @@ func cleanupArchive(hrThreshold int) error {
 	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
 
 	var jobs []models.Job
-	err := db.Find(&jobs, "status = ? AND updated_at <= ?", "Archived", maxDate).Error
+	err := db.Find(&jobs, "status = ? AND updated_at <= ?", models.JobStatusArchived, maxDate).Error
 	if err != nil {
 		return err
 	}
@@ -655,7 +655,7 @@ func cleanupArchive(hrThreshold int) error {
 				continue
 			}
 
-			job.Status = "Expired"
+			job.Status = models.JobStatusExpired
 			err = db.Save(job).Error
 			if err != nil {
 				return err

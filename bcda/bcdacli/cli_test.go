@@ -241,7 +241,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Completed",
+		Status:     models.JobStatusCompleted,
 		Model: gorm.Model{
 			CreatedAt: t,
 			UpdatedAt: t,
@@ -295,7 +295,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	db.First(&testjob, "id = ?", j.ID)
 
 	// check the status of the job
-	assert.Equal("Archived", testjob.Status)
+	assert.Equal(models.JobStatusArchived, testjob.Status)
 
 	// clean up
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
@@ -311,7 +311,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Completed",
+		Status:     models.JobStatusCompleted,
 	}
 	db.Save(&j)
 	assert.NotNil(s.T(), j.ID)
@@ -353,7 +353,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	db.First(&testjob, "id = ?", j.ID)
 
 	// check the status of the job
-	assert.Equal(s.T(), "Completed", testjob.Status)
+	assert.Equal(s.T(), models.JobStatusCompleted, testjob.Status)
 
 	// clean up
 	os.Remove(dataPath)
@@ -370,7 +370,7 @@ func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
 	j := models.Job{
 		ACOID:      uuid.Parse(acoUUID),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Archived",
+		Status:     models.JobStatusArchived,
 	}
 	db.Save(&j)
 	db.Exec("UPDATE jobs SET updated_at=? WHERE id = ?", modified.Format("2006-01-02 15:04:05"), j.ID)
@@ -458,13 +458,13 @@ func (s *CLITestSuite) TestCleanArchive() {
 
 	var beforeJob models.Job
 	db.First(&beforeJob, "id = ?", beforeJobID)
-	assert.Equal("Expired", beforeJob.Status)
+	assert.Equal(models.JobStatusExpired, beforeJob.Status)
 
 	assert.FileExists(after.Name(), "%s not found; it should have been", after.Name())
 
 	var afterJob models.Job
 	db.First(&afterJob, "id = ?", afterJobID)
-	assert.Equal("Archived", afterJob.Status)
+	assert.Equal(models.JobStatusArchived, afterJob.Status)
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
