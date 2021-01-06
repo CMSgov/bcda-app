@@ -153,7 +153,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Failed",
+		Status:     models.JobStatusFailed,
 	}
 
 	db.Save(&j)
@@ -191,7 +191,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Failed",
+		Status:     models.JobStatusFailed,
 	}
 
 	db.Save(&j)
@@ -234,7 +234,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     "Failed",
+		Status:     models.JobStatusFailed,
 	}
 
 	db.Save(&j)

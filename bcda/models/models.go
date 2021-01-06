@@ -22,12 +22,22 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	JobStatusPending    JobStatus = "Pending"
+	JobStatusInProgress JobStatus = "In Progress"
+	JobStatusCompleted  JobStatus = "Completed"
+	JobStatusArchived   JobStatus = "Archived"
+	JobStatusExpired    JobStatus = "Expired"
+	JobStatusFailed     JobStatus = "Failed"
+)
+
+type JobStatus string
 type Job struct {
 	gorm.Model
 	ACO               ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
 	ACOID             uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
 	RequestURL        string    `json:"request_url"` // request_url
-	Status            string    `json:"status"`      // status
+	Status            JobStatus `json:"status"`      // status
 	TransactionTime   time.Time // most recent data load transaction time from BFD
 	JobCount          int
 	CompletedJobCount int
@@ -36,7 +46,7 @@ type Job struct {
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 
 	// Trivial case, no need to keep going
-	if job.Status == "Completed" {
+	if job.Status == JobStatusCompleted {
 		return true, nil
 	}
 
@@ -65,19 +75,19 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 		if err != nil {
 			log.Error(err)
 		}
-		return true, db.Model(&job).Update("status", "Completed").Error
+		return true, db.Model(&job).Update("status", JobStatusCompleted).Error
 	}
 
 	return false, nil
 }
 
 func (j *Job) StatusMessage() string {
-	if j.Status == "In Progress" && j.JobCount > 0 {
+	if j.Status == JobStatusInProgress && j.JobCount > 0 {
 		pct := float64(j.CompletedJobCount) / float64(j.JobCount) * 100
 		return fmt.Sprintf("%s (%d%%)", j.Status, int(pct))
 	}
 
-	return j.Status
+	return string(j.Status)
 }
 
 type JobKey struct {
