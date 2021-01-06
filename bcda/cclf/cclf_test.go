@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"context"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -377,7 +376,7 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mbi := "123456789AB" // We expect 11 characters for the MBI
 
-			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), fmt.Sprintf("%s", mbi))
+			fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), mbi)
 			defer os.Remove(fileName)
 
 			metadata := &cclfFileMetadata{
