@@ -625,7 +625,7 @@ func archiveExpiring(hrThreshold int) error {
 			}
 		}
 
-		err = db.Model(&j).Update("status", models.JobStatusArchived).Error
+		err = db.Model(j).Update("status", models.JobStatusArchived).Error
 		if err != nil {
 			log.Error(err)
 			lastJobError = err
