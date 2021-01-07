@@ -599,8 +599,10 @@ func archiveExpiring(hrThreshold int) error {
 	db := database.GetGORMDbConnection()
 	defer database.Close(db)
 
+	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
+
 	var jobs []models.Job
-	err := db.Find(&jobs, "status = ?", models.JobStatusCompleted).Error
+	err := db.Find(&jobs, "status = ? AND updated_at <= ?", models.JobStatusCompleted, maxDate).Error
 	if err != nil {
 		log.Error(err)
 		return err
@@ -608,43 +610,25 @@ func archiveExpiring(hrThreshold int) error {
 
 	var lastJobError error
 	for _, j := range jobs {
-		t := j.UpdatedAt
-		elapsed := time.Since(t).Hours()
-		id := int(j.ID)
-		jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-		_, err = os.Stat(jobDir)
-		jobDirExist := err == nil
-		expDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
-		_, err = os.Stat(expDir)
-		expDirExist := err == nil
+		id := j.ID
+		jobPayloadDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+		_, err = os.Stat(jobPayloadDir)
+		jobPayloadDirExist := err == nil
+		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
-		// TODO: Should we care about the threshold when setting archived status to already archived files?
-		if !jobDirExist && expDirExist {
-			log.Info("Archived job files found, setting status to archived...")
-			// TODO: Separate Status update function - might get messy passing db connection.
-			j.Status = models.JobStatusArchived
-			err = db.Save(j).Error
+		if jobPayloadDirExist {
+			err = os.Rename(jobPayloadDir, jobArchiveDir)
 			if err != nil {
 				log.Error(err)
 				lastJobError = err
+				continue
 			}
-		} else if int(elapsed) >= hrThreshold {
-			if jobDirExist && !expDirExist {
-				err = os.Rename(jobDir, expDir)
-				if err != nil {
-					log.Error(err)
-					lastJobError = err
-					continue
-				}
-			}
+		}
 
-			// TODO: Separate Status update function - might get messy passing db connection.
-			j.Status = models.JobStatusArchived
-			err = db.Save(j).Error
-			if err != nil {
-				log.Error(err)
-				lastJobError = err
-			}
+		err = db.Model(&j).Update("status", models.JobStatusArchived).Error
+		if err != nil {
+			log.Error(err)
+			lastJobError = err
 		}
 	}
 

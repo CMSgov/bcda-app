@@ -298,24 +298,6 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	// check the status of the job
 	assert.Equal(models.JobStatusArchived, testjob.Status)
 
-	// condition: archive files exist, but status is completed
-	// reset status to completed
-	testjob.Status = models.JobStatusCompleted
-	err = db.Save(testjob).Error
-	if err != nil {
-		log.Error(err)
-	}
-
-	// execute the test case from CLI
-	args = []string{"bcda", "archive-job-files"}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-
-	db.First(&testjob, "id = ?", j.ID)
-
-	// check the status of the job
-	assert.Equal(models.JobStatusArchived, testjob.Status)
-
 	// clean up
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
 }
