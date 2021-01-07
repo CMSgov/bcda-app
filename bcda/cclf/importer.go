@@ -43,7 +43,7 @@ func (cclfImporter *cclf8Importer) do(ctx context.Context, tx *sql.Tx, bene mode
 	close := metrics.NewChild(ctx, "importCCLF8-benecreate")
 	defer close()
 
-	_, err := cclfImporter.inprogress.Exec(bene.FileID, bene.HICN, bene.MBI)
+	_, err := cclfImporter.inprogress.Exec(bene.FileID, bene.MBI)
 	if err != nil {
 		fmt.Println("Could not create CCLF8 beneficiary record.")
 		err = errors.Wrap(err, "could not create CCLF8 beneficiary record")
@@ -73,7 +73,7 @@ func (cclfImporter *cclf8Importer) flush(ctx context.Context) error {
 }
 
 func (cclfImporter *cclf8Importer) refreshStatement(ctx context.Context, tx *sql.Tx) error {
-	stmt, err := tx.PrepareContext(ctx, pq.CopyIn("cclf_beneficiaries", "file_id", "hicn", "mbi"))
+	stmt, err := tx.PrepareContext(ctx, pq.CopyIn("cclf_beneficiaries", "file_id", "mbi"))
 	if err != nil {
 		return err
 	}

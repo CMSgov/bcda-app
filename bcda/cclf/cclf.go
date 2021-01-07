@@ -281,13 +281,11 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		}
 
 		const (
-			mbiStart, mbiEnd   = 0, 11
-			hicnStart, hicnEnd = 11, 22
+			mbiStart, mbiEnd = 0, 11
 		)
 		cclfBeneficiary := models.CCLFBeneficiary{
 			FileID: cclfFile.ID,
 			MBI:    string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
-			HICN:   string(bytes.TrimSpace(b[hicnStart:hicnEnd])),
 		}
 		// Filtering for duplicate benes in CCLF file
 		if _, ok := importedMBI[cclfBeneficiary.MBI]; ok {

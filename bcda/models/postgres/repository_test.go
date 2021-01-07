@@ -253,9 +253,9 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 					WithArgs(args...)
 			}
 			if tt.errToReturn == nil {
-				rows := sqlmock.NewRows([]string{"id", "file_id", "hicn", "mbi", "blue_button_id"})
+				rows := sqlmock.NewRows([]string{"id", "file_id", "mbi", "blue_button_id"})
 				for _, bene := range tt.expectedResults {
-					rows.AddRow(bene.ID, bene.FileID, bene.HICN, bene.MBI, bene.BlueButtonID)
+					rows.AddRow(bene.ID, bene.FileID, bene.MBI, bene.BlueButtonID)
 				}
 				query.WillReturnRows(rows)
 			} else {
@@ -351,7 +351,6 @@ func getCCLFBeneficiary() *models.CCLFBeneficiary {
 			ID: uint(rand.Int63()),
 		},
 		FileID:       uint(rand.Uint32()),
-		HICN:         fmt.Sprintf("HICN%d", rand.Uint32()),
 		MBI:          fmt.Sprintf("MBI%d", rand.Uint32()),
 		BlueButtonID: fmt.Sprintf("BlueButton%d", rand.Uint32()),
 	}
