@@ -78,7 +78,7 @@ func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string)
 	query := r.db.Where("id in (?)", r.db.Table("cclf_beneficiaries").Select("MAX(id)").Where("file_id = ?", cclfFileID).Group("mbi"))
 
 	if len(ignoredMBIs) != 0 {
-		query = query.Not("mbi", ignoredMBIs)
+		query = query.Where("mbi NOT IN (?)", ignoredMBIs)
 	}
 
 	if err := query.Find(&beneficiaries).Error; err != nil {
