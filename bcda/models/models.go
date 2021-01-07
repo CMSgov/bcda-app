@@ -90,8 +90,8 @@ func (j *Job) StatusMessage() string {
 	return string(j.Status)
 }
 
-// Naming convention for empty ndjson file
-const BlankFileName = "blank.ndjson"
+// BlankFileName contains the naming convention for empty ndjson file
+const BlankFileName string = "blank.ndjson"
 
 type JobKey struct {
 	gorm.Model
