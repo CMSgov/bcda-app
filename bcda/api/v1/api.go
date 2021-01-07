@@ -158,6 +158,10 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		db.Find(&jobKeysObj, "job_id = ?", job.ID)
 		for _, jobKey := range jobKeysObj {
 
+			if jobKey.FileName == models.BlankFileName {
+				continue
+			}
+
 			// data files
 			fi := api.FileItem{
 				Type: jobKey.ResourceType,
