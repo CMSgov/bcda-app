@@ -278,6 +278,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	}
 	defer f.Close()
 
+	// condition: normal execution
 	// execute the test case from CLI
 	args = []string{"bcda", "archive-job-files"}
 	err = s.testApp.Run(args)
@@ -292,6 +293,24 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.FileExists(expPath, "File not Found")
 
 	var testjob models.Job
+	db.First(&testjob, "id = ?", j.ID)
+
+	// check the status of the job
+	assert.Equal(models.JobStatusArchived, testjob.Status)
+
+	// condition: archive files exist, but status is completed
+	// reset status to completed
+	testjob.Status = models.JobStatusCompleted
+	err = db.Save(testjob).Error
+	if err != nil {
+		log.Error(err)
+	}
+
+	// execute the test case from CLI
+	args = []string{"bcda", "archive-job-files"}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
+
 	db.First(&testjob, "id = ?", j.ID)
 
 	// check the status of the job
@@ -336,10 +355,10 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	}
 	defer f.Close()
 
-	err = archiveExpiring(1)
-	if err != nil {
-		s.T().Error(err)
-	}
+	// execute the test case from CLI
+	args := []string{"bcda", "archive-job-files", "--threshold", "1"}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
 
 	// check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)

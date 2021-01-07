@@ -305,9 +305,21 @@ func setUpApp() *cli.App {
 			Name:     "archive-job-files",
 			Category: "Cleanup",
 			Usage:    "Update job statuses and move files to an inaccessible location",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "threshold",
+					Value:       "24",
+					Usage:       "How long files should wait in archive before deletion",
+					EnvVar:      "ARCHIVE_THRESHOLD_HR",
+					Destination: &threshold,
+				},
+			},
 			Action: func(c *cli.Context) error {
-				threshold := utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24)
-				return archiveExpiring(threshold)
+				th, err := strconv.Atoi(threshold)
+				if err != nil {
+					return err
+				}
+				return archiveExpiring(th)
 			},
 		},
 		{
@@ -598,19 +610,35 @@ func archiveExpiring(hrThreshold int) error {
 	for _, j := range jobs {
 		t := j.UpdatedAt
 		elapsed := time.Since(t).Hours()
-		if int(elapsed) >= hrThreshold {
+		id := int(j.ID)
+		jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+		_, err = os.Stat(jobDir)
+		jobDirExist := err == nil
+		expDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+		_, err = os.Stat(expDir)
+		expDirExist := err == nil
 
-			id := int(j.ID)
-			jobDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-			expDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
-
-			err = os.Rename(jobDir, expDir)
+		// TODO: Should we care about the threshold when setting archived status to already archived files?
+		if !jobDirExist && expDirExist {
+			log.Info("Archived job files found, setting status to archived...")
+			// TODO: Separate Status update function - might get messy passing db connection.
+			j.Status = models.JobStatusArchived
+			err = db.Save(j).Error
 			if err != nil {
 				log.Error(err)
 				lastJobError = err
-				continue
+			}
+		} else if int(elapsed) >= hrThreshold {
+			if jobDirExist && !expDirExist {
+				err = os.Rename(jobDir, expDir)
+				if err != nil {
+					log.Error(err)
+					lastJobError = err
+					continue
+				}
 			}
 
+			// TODO: Separate Status update function - might get messy passing db connection.
 			j.Status = models.JobStatusArchived
 			err = db.Save(j).Error
 			if err != nil {
