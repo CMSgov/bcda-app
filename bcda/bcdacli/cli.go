@@ -653,32 +653,27 @@ func cleanupArchive(hrThreshold int) error {
 	}
 
 	for _, job := range jobs {
-		t := job.UpdatedAt
-		elapsed := time.Since(t).Hours()
-		if int(elapsed) >= hrThreshold {
+		id := int(job.ID)
+		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
-			id := int(job.ID)
-			jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
-
-			err = os.RemoveAll(jobArchiveDir)
-			if err != nil {
-				e := fmt.Sprintf("Unable to remove %s because %s", jobArchiveDir, err)
-				log.Error(e)
-				continue
-			}
-
-			job.Status = models.JobStatusExpired
-			err = db.Save(job).Error
-			if err != nil {
-				return err
-			}
-
-			log.WithFields(log.Fields{
-				"job_began":     job.CreatedAt,
-				"files_removed": time.Now(),
-				"job_id":        job.ID,
-			}).Info("Files cleaned from archive and job status set to Expired")
+		err = os.RemoveAll(jobArchiveDir)
+		if err != nil {
+			e := fmt.Sprintf("Unable to remove %s because %s", jobArchiveDir, err)
+			log.Error(e)
+			continue
 		}
+
+		job.Status = models.JobStatusExpired
+		err = db.Save(job).Error
+		if err != nil {
+			return err
+		}
+
+		log.WithFields(log.Fields{
+			"job_began":     job.CreatedAt,
+			"files_removed": time.Now(),
+			"job_id":        job.ID,
+		}).Info("Files cleaned from archive and job status set to Expired")
 	}
 
 	return nil
