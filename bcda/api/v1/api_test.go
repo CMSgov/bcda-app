@@ -662,7 +662,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	// Add a blank ndjson file to verify its being skipped via `expectedUrls` assertion and Files length assertion
 	jobKey := models.JobKey{
 		JobID:        j.ID,
-		FileName:     "blank.ndjson",
+		FileName:     models.BlankFileName,
 		ResourceType: "ExplanationOfBenefit",
 	}
 	err := s.db.Save(&jobKey).Error
