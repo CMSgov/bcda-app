@@ -1545,9 +1545,8 @@
 							"    ",
 							"    pm.test(\"Schema is valid\", function() {",
 							"        pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"        pm.expect(respJson.output).to.be.empty;",
 							"    });",
-							"    ",
-							"    pm.environment.set(\"patientValidSinceDataUrl\", respJson.output[0].url);",
 							"}"
 						],
 						"type": "text/javascript"
@@ -1628,48 +1627,6 @@
 					"raw": "{{patientValidSinceJobUrl}}",
 					"host": [
 						"{{patientValidSinceJobUrl}}"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get Patient export data Valid Since",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "18400bb7-7974-49fd-a96e-4df89748d3c9",
-						"exec": [
-							"pm.test(\"Status code is 200\", function() {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"pm.test(\"Body does not contain data\", function() {",
-							"    pm.expect(pm.response.length === 0)",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{patientValidSinceDataUrl}}",
-					"host": [
-						"{{patientValidSinceDataUrl}}"
 					]
 				}
 			},
