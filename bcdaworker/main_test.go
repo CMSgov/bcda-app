@@ -116,20 +116,26 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	}
 
 	tests := []struct {
-		resource      string
-		expectedCount int
+		resource       string
+		expectedCount  int
+		expectZeroSize bool
 	}{
-		{"ExplanationOfBenefit", 66},
-		{"Coverage", 6},
-		{"Patient", 2},
-		{"SomeUnsupportedResource", 0},
+		{"ExplanationOfBenefit", 66, false},
+		{"Coverage", 6, false},
+		{"Patient", 2, false},
+		{"SomeUnsupportedResource", 0, true},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
 				Since: since, TransactionTime: transactionTime, ServiceDate: serviceDate}
-			uuid, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+			uuid, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+			if tt.expectZeroSize {
+				assert.EqualValues(t, 0, size)
+			} else {
+				assert.NotEqual(t, int64(0), size)
+			}
 
 			files, err1 := ioutil.ReadDir(s.stagingDir)
 			assert.NoError(t, err1)
@@ -181,6 +187,27 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	bbc.AssertExpectations(s.T())
 }
 
+func (s *MainTestSuite) TestWriteEmptyResourceToFile() {
+	transactionTime := time.Now()
+
+	bbc := testUtils.BlueButtonClient{}
+	// Set up the mock function to return the expected values
+	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, time.Time{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
+	beneficiaryID := "abcdef12000"
+	var cclfBeneficiaryIDs []string
+
+	bbc.MBI = &beneficiaryID
+	cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
+	s.db.Create(&cclfBeneficiary)
+	cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
+
+	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
+	_, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	assert.EqualValues(s.T(), 0, size)
+	assert.NoError(s.T(), err)
+}
+
 func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
@@ -205,7 +232,8 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	fileUUID, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	fileUUID, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	assert.NotEqual(s.T(), int64(0), size)
 	assert.NoError(s.T(), err)
 
 	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), s.jobID, fileUUID)
@@ -243,7 +271,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	_, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	_, _, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
 	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
 
 	files, err := ioutil.ReadDir(s.stagingDir)
@@ -280,7 +308,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	_, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	_, _, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
 	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(s.stagingDir)
