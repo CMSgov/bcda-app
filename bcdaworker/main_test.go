@@ -182,6 +182,27 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	bbc.AssertExpectations(s.T())
 }
 
+func (s *MainTestSuite) TestWriteEmptyResourceToFile() {
+	transactionTime := time.Now()
+
+	bbc := testUtils.BlueButtonClient{}
+	// Set up the mock function to return the expected values
+	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, time.Time{}).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
+	beneficiaryID := "abcdef12000"
+	var cclfBeneficiaryIDs []string
+
+	bbc.MBI = &beneficiaryID
+	cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
+	s.db.Create(&cclfBeneficiary)
+	cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
+	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
+
+	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
+	_, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	assert.EqualValues(s.T(), 0, size)
+	assert.NoError(s.T(), err)
+}
+
 func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
