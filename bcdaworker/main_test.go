@@ -116,13 +116,14 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	}
 
 	tests := []struct {
-		resource      string
-		expectedCount int
+		resource       string
+		expectedCount  int
+		expectZeroSize bool
 	}{
-		{"ExplanationOfBenefit", 66},
-		{"Coverage", 6},
-		{"Patient", 2},
-		{"SomeUnsupportedResource", 0},
+		{"ExplanationOfBenefit", 66, false},
+		{"Coverage", 6, false},
+		{"Patient", 2, false},
+		{"SomeUnsupportedResource", 0, true},
 	}
 
 	for _, tt := range tests {
@@ -130,7 +131,11 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
 				Since: since, TransactionTime: transactionTime, ServiceDate: serviceDate}
 			uuid, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
-			assert.NotEqual(t, 0, size)
+			if tt.expectZeroSize {
+				assert.EqualValues(t, 0, size)
+			} else {
+				assert.NotEqual(t, int64(0), size)
+			}
 
 			files, err1 := ioutil.ReadDir(s.stagingDir)
 			assert.NoError(t, err1)
@@ -228,7 +233,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
 	fileUUID, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
-	assert.NotEqual(s.T(), 0, size)
+	assert.NotEqual(s.T(), int64(0), size)
 	assert.NoError(s.T(), err)
 
 	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), s.jobID, fileUUID)
