@@ -212,7 +212,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		},
 		{
 			"IgnoredMBIs",
-			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND "mbi" <> ($2,$3) AND "cclf_beneficiaries"."deleted_at`,
+			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND mbi NOT IN ($2,$3) AND "cclf_beneficiaries"."deleted_at" IS NULL`,
 			[]string{"123", "456"},
 			[]*models.CCLFBeneficiary{
 				getCCLFBeneficiary(),
