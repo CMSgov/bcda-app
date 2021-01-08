@@ -278,6 +278,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	}
 	defer f.Close()
 
+	// condition: normal execution
 	// execute the test case from CLI
 	args = []string{"bcda", "archive-job-files"}
 	err = s.testApp.Run(args)
@@ -290,6 +291,49 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 		s.T().Error(err)
 	}
 	assert.FileExists(expPath, "File not Found")
+
+	var testjob models.Job
+	db.First(&testjob, "id = ?", j.ID)
+
+	// check the status of the job
+	assert.Equal(models.JobStatusArchived, testjob.Status)
+
+	// clean up
+	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+}
+
+func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
+
+	// init
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	assert := assert.New(s.T())
+
+	// condition: no jobs exist
+	args := []string{"bcda", "archive-job-files"}
+	err := s.testApp.Run(args)
+	assert.Nil(err)
+
+	// timestamp to ensure that the job gets archived (older than the default 24h window)
+	t := time.Now().Add(-48 * time.Hour)
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     models.JobStatusCompleted,
+		Model: gorm.Model{
+			CreatedAt: t,
+			UpdatedAt: t,
+		},
+	}
+	db.Save(&j)
+	assert.NotNil(j.ID)
+
+	// condition: normal execution
+	// execute the test case from CLI
+	args = []string{"bcda", "archive-job-files"}
+	err = s.testApp.Run(args)
+	assert.Nil(err)
 
 	var testjob models.Job
 	db.First(&testjob, "id = ?", j.ID)
@@ -336,10 +380,10 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	}
 	defer f.Close()
 
-	err = archiveExpiring(1)
-	if err != nil {
-		s.T().Error(err)
-	}
+	// execute the test case from CLI
+	args := []string{"bcda", "archive-job-files", "--threshold", "1"}
+	err = s.testApp.Run(args)
+	assert.Nil(s.T(), err)
 
 	// check that the file has not moved to the archive location
 	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
