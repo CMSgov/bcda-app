@@ -134,6 +134,8 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
+	// Create directory for job results.
+	// This will be used in the clean up later to move over processed files.
 	if err = createDir(payloadPath); err != nil {
 		log.Error(err)
 		return err
@@ -150,6 +152,7 @@ func processJob(j *que.Job) error {
 		}
 	} else {
 		if fileSize == 0 {
+			log.Warn("Empty file found in request: ", fileName)
 			fileName = models.BlankFileName
 		}
 
