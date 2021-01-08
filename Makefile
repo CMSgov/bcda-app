@@ -131,7 +131,7 @@ load-synthetic-suppression-data:
 	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
 	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
 	# See postgres#GetSuppressedMBIs for more information
-	docker-compose exec db sh -c "PGPASSWORD=\$$POSTGRES_PASSWORD psql \$$POSTGRES_DB postgres -c \"UPDATE suppressions SET effective_date = now(), preference_indicator = 'N'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);\""
+	docker-compose exec db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
 
 load-fixtures-ssas:
 	docker-compose -f docker-compose.ssas-migrate.yml run --rm ssas-migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
