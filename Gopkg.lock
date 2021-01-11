@@ -127,6 +127,14 @@
   version = "v1.4.3"
 
 [[projects]]
+  digest = "1:35b72a1d144b08649d808cd80dbff91933e2eaf62178ef827903242aa622eb47"
+  name = "github.com/huandu/go-sqlbuilder"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9c912372c6a0f1aa9692c6467eab29963b38d063"
+  version = "v1.10.0"
+
+[[projects]]
   branch = "master"
   digest = "1:cddf81f7eefbb8bf6cf65fe56c3b3c01784d5ca2f133bd5adfc4912497b5176b"
   name = "github.com/influxdata/tdigest"
@@ -555,6 +563,7 @@
     "github.com/go-chi/chi",
     "github.com/go-chi/chi/middleware",
     "github.com/go-chi/render",
+    "github.com/huandu/go-sqlbuilder",
     "github.com/jackc/pgx",
     "github.com/lib/pq",
     "github.com/newrelic/go-agent/_integrations/nrlogrus",

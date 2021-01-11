@@ -1,25 +1,36 @@
 package postgres
 
 import (
+	"database/sql"
 	"errors"
-	"strconv"
+	"fmt"
+	"log"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/huandu/go-sqlbuilder"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"gorm.io/gorm"
+)
+
+const (
+	sqlFlavor = sqlbuilder.PostgreSQL
 )
 
 // Ensure Repository satisfies the interface
 var _ models.Repository = &Repository{}
 
 type Repository struct {
-	db *gorm.DB
+	db *sql.DB
 }
 
 func NewRepository(db *gorm.DB) *Repository {
-	return &Repository{db}
+	// FIXME: Take *sql.DB instead
+	db1, err := db.DB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return &Repository{db1}
 }
 
 func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
@@ -31,39 +42,68 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 		queryLowerUpper = queryNoTime + " AND timestamp >= ? AND timestamp <= ?"
 	)
 
-	var (
-		cclfFile models.CCLFFile
-		result   *gorm.DB
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("id", "name", "timestamp", "performance_year")
+	sb.From("cclf_files")
+	sb.Where(
+		sb.Equal("aco_cms_id", cmsID),
+		sb.Equal("cclf_num", cclfNum),
+		sb.Equal("import_status", importStatus),
+		sb.Equal("type", fileType),
 	)
-	if lowerBound.IsZero() && upperBound.IsZero() {
-		result = r.db.Where(queryNoTime,
-			cmsID, cclfNum, constants.ImportComplete, fileType)
-	} else if !lowerBound.IsZero() && upperBound.IsZero() {
-		result = r.db.Where(queryLower,
-			cmsID, cclfNum, constants.ImportComplete, fileType,
-			lowerBound)
+
+	cclfFile := models.CCLFFile{
+		ACOCMSID:     cmsID,
+		CCLFNum:      cclfNum,
+		ImportStatus: importStatus,
+		Type:         fileType,
+	}
+
+	if !lowerBound.IsZero() && upperBound.IsZero() {
+		sb.Where(sb.GreaterEqualThan("timestamp", lowerBound))
 	} else if lowerBound.IsZero() && !upperBound.IsZero() {
-		result = r.db.Where(queryUpper,
-			cmsID, cclfNum, constants.ImportComplete, fileType,
-			upperBound)
-	} else {
-		result = r.db.Where(queryLowerUpper,
-			cmsID, cclfNum, constants.ImportComplete, fileType,
-			lowerBound, upperBound)
+		sb.Where(sb.LessEqualThan("timestamp", upperBound))
+	} else if !lowerBound.IsZero() && !upperBound.IsZero() {
+		sb.Where(
+			sb.GreaterEqualThan("timestamp", lowerBound),
+			sb.LessEqualThan("timestamp", upperBound),
+		)
+	}
+	sb.OrderBy("timestamp").Desc().Limit(1)
+
+	query, args := sb.Build()
+	row := r.db.QueryRow(query, args...)
+	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
-	result = result.Order("timestamp DESC").First(&cclfFile)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
-	return &cclfFile, result.Error
+	return &cclfFile, nil
 }
 
 func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error) {
 	var mbis []string
 
-	if err := r.db.Table("cclf_beneficiaries").Where("file_id = ?", cclfFileID).Pluck("mbi", &mbis).Error; err != nil {
+	sb := sqlFlavor.NewSelectBuilder().Select("mbi").From("cclf_beneficiaries")
+	sb.Where(sb.Equal("file_id", cclfFileID))
+
+	query, args := sb.Build()
+	rows, err := r.db.Query(query, args)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mbi string
+		if err = rows.Scan(&mbi); err != nil {
+			return nil, err
+		}
+		mbis = append(mbis, mbi)
+	}
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -73,15 +113,43 @@ func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error) {
 func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string) ([]*models.CCLFBeneficiary, error) {
 	var beneficiaries []*models.CCLFBeneficiary
 
-	// NOTE: We changed the query that was being used for "old benes"
-	// By querying by IDs, we really should not need to also query by the corresponding MBIs as well
-	query := r.db.Where("id in (?)", r.db.Table("cclf_beneficiaries").Select("MAX(id)").Where("file_id = ?", cclfFileID).Group("mbi"))
+	// Subquery to deal with duplicate MBIs found within a single CCLF file.
+	// NOTE: We no longer have duplicate MBIs after this PR: https://github.com/CMSgov/bcda-app/pull/583
+	// We have to remove duplicates on older files, but once that's done, we can remove the subquery
+	// and query for the benes by file_id directly.
+	subSB := sqlFlavor.NewSelectBuilder()
+	subSB.Select("MAX(id)").From("cclf_beneficiaries").Where(
+		subSB.Equal("file_id", cclfFileID),
+	).GroupBy("mbi")
+
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("id", "file_id", "mbi", "blue_button_id")
+	sb.From("cclf_beneficiaries").Where(sb.In("id", subSB))
 
 	if len(ignoredMBIs) != 0 {
-		query = query.Where("mbi NOT IN (?)", ignoredMBIs)
+		ignored := make([]interface{}, len(ignoredMBIs))
+		for i, v := range ignoredMBIs {
+			ignored[i] = v
+		}
+		sb.Where(sb.NotIn("mbi", ignored...))
 	}
 
-	if err := query.Find(&beneficiaries).Error; err != nil {
+	query, args := sb.Build()
+	rows, err := r.db.Query(query, args...)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var bene models.CCLFBeneficiary
+		if err := rows.Scan(&bene.ID, &bene.FileID, &bene.MBI, &bene.BlueButtonID); err != nil {
+			return nil, err
+		}
+		beneficiaries = append(beneficiaries, &bene)
+	}
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -91,17 +159,32 @@ func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string)
 func (r *Repository) GetSuppressedMBIs(lookbackDays int) ([]string, error) {
 	var suppressedMBIs []string
 
-	// #nosec G202
-	if err := r.db.Raw(`SELECT DISTINCT s.mbi
-	FROM (
-		SELECT mbi, MAX(effective_date) max_date
-		FROM suppressions
-		WHERE (NOW() - interval '` + strconv.Itoa(lookbackDays) + ` days') < effective_date AND effective_date <= NOW()
-					AND preference_indicator != ''
-		GROUP BY mbi
-	) h
-	JOIN suppressions s ON s.mbi = h.mbi and s.effective_date = h.max_date
-	WHERE preference_indicator = 'N'`).Scan(&suppressedMBIs).Error; err != nil {
+	subSB := sqlFlavor.NewSelectBuilder()
+	subSB.Select("mbi", "MAX(effective_date) as max_date").From("suppressions")
+	subSB.Where(
+		subSB.Between("effective_date", sqlbuilder.Raw(fmt.Sprintf("NOW() - interval '%d days'", lookbackDays)), sqlbuilder.Raw("NOW()")),
+		subSB.NotEqual("preference_indicator", ""),
+	).GroupBy("mbi")
+
+	sb := sqlFlavor.NewSelectBuilder().Distinct().Select("s.mbi")
+	sb.From(sb.BuilderAs(subSB, "h")).Join("suppressions s", "s.mbi = h.mbi", "s.effective_date = h.max_date")
+	sb.Where(sb.Equal("preference_indicator", "N"))
+
+	query, args := sb.Build()
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mbi string
+		if err = rows.Scan(&mbi); err != nil {
+			return nil, err
+		}
+		suppressedMBIs = append(suppressedMBIs, mbi)
+	}
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 

@@ -46,14 +46,10 @@ func NewHandler(resources []string, basePath string) *Handler {
 
 	h := &Handler{}
 
-	db := database.GetGORMDbConnection()
-	dbc, err := db.DB()
-	if err != nil {
-		log.Fatalf("Failed to retrieve database connection. Err: %v", err)
-	}
-	dbc.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	dbc.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	dbc.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
+	db := database.GetDbConnection()
+	db.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
+	db.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
+	db.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -97,7 +93,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 				}
 				pgxpool.Release(c)
 
-				c1, err := dbc.Conn(ctx)
+				c1, err := db.Conn(ctx)
 				if err != nil {
 					log.Warnf("Failed to acquire connection %s", err.Error())
 					continue
@@ -212,8 +208,6 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		return
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 	acoID := ad.ACOID
 
 	var pendingAndInProgressJobs []models.Job
@@ -495,24 +489,6 @@ func getVersion(url *url.URL) (string, error) {
 		return "", fmt.Errorf("unexpected path provided %s", url.Path)
 	}
 	return parts[1], nil
-}
-
-// swagger:model fileItem
-type FileItem struct {
-	// FHIR resource type of file contents
-	Type string `json:"type"`
-	// URL of the file
-	URL string `json:"url"`
-}
-
-/*
-Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
-swagger:response completedJobResponse
-*/
-// nolint
-type CompletedJobResponse struct {
-	// in: body
-	Body BulkResponseBody
 }
 
 type BulkResponseBody struct {
