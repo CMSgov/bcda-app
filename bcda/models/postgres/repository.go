@@ -24,13 +24,8 @@ type Repository struct {
 	db *sql.DB
 }
 
-func NewRepository(db *gorm.DB) *Repository {
-	// FIXME: Take *sql.DB instead
-	db1, err := db.DB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return &Repository{db1}
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{db}
 }
 
 func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {

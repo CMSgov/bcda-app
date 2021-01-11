@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/CMSgov/bcda-app/bcda/api"
 	fhirmodels "github.com/eug48/fhir/models"
 )
 
@@ -193,23 +192,6 @@ type TokenResponse struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
 	}
-}
-
-// swagger:model fileItem
-type FileItem struct {
-	// FHIR resource type of file contents
-	Type string `json:"type"`
-	// URL of the file
-	URL string `json:"url"`
-}
-
-/*
-Data export job has completed successfully. The response body will contain a JSON object providing metadata about the transaction.
-swagger:response completedJobResponse
-*/
-type CompletedJobResponse struct {
-	// in: body
-	Body api.BulkResponseBody
 }
 
 // Missing credentials
