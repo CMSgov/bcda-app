@@ -14,7 +14,5 @@ RUN go get -u -d github.com/golang-migrate/migrate/cmd/migrate; \
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
-RUN go mod tidy
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 ENTRYPOINT []

@@ -10,7 +10,6 @@ RUN go get github.com/mattn/go-colorable
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
-RUN go mod tidy
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 RUN go install

@@ -13,8 +13,6 @@ RUN gem install --no-ri --no-rdoc fpm etc
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
-RUN go mod tidy
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app/ops
 RUN chmod u+x build_and_package.sh
 
