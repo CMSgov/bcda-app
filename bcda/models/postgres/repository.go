@@ -210,7 +210,7 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...mo
 	sb.Select("id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at")
 	sb.From("jobs").Where(
 		sb.Equal("aco_id", acoID),
-		sb.In("job_status", s...),
+		sb.In("status", s...),
 	)
 
 	query, args := sb.Build()
@@ -222,7 +222,7 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...mo
 
 	var jobs []models.Job
 	for rows.Next() {
-		var j models.Job
+		j := models.Job{ACOID: acoID}
 		if err = rows.Scan(&j.ID, &j.RequestURL, &j.Status, &j.TransactionTime,
 			&j.JobCount, &j.CompletedJobCount, &j.CreatedAt, &j.UpdatedAt); err != nil {
 			return nil, err

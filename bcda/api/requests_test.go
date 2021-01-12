@@ -90,7 +90,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				jobs = qj
 			}
 
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
 			h := NewHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir")
 			h.svc = mockSvc
 
@@ -258,7 +258,7 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 
 	resources := []string{"ExplanationOfBenefit", "Coverage", "Patient"}
 	mockSvc := &models.MockService{}
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	h := NewHandler(resources, "/v1/fhir")
 	h.svc = mockSvc
 
