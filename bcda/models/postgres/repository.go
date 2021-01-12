@@ -1,17 +1,26 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
+	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"gorm.io/gorm"
 )
+
+type queryable interface {
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+}
+
+type executable interface {
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+}
 
 const (
 	sqlFlavor = sqlbuilder.PostgreSQL
@@ -21,14 +30,19 @@ const (
 var _ models.Repository = &Repository{}
 
 type Repository struct {
-	db *sql.DB
+	queryable
+	executable
 }
 
 func NewRepository(db *sql.DB) *Repository {
-	return &Repository{db}
+	return &Repository{db, db}
 }
 
-func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+func NewRepositoryTx(tx *sql.Tx) *Repository {
+	return &Repository{tx, tx}
+}
+
+func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 
 	const (
 		queryNoTime     = "aco_cms_id = ? AND cclf_num = ? AND import_status = ? AND type = ?"
@@ -67,7 +81,7 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 	sb.OrderBy("timestamp").Desc().Limit(1)
 
 	query, args := sb.Build()
-	row := r.db.QueryRow(query, args...)
+	row := r.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -78,14 +92,14 @@ func (r *Repository) GetLatestCCLFFile(cmsID string, cclfNum int, importStatus s
 	return &cclfFile, nil
 }
 
-func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error) {
+func (r *Repository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID uint) ([]string, error) {
 	var mbis []string
 
 	sb := sqlFlavor.NewSelectBuilder().Select("mbi").From("cclf_beneficiaries")
 	sb.Where(sb.Equal("file_id", cclfFileID))
 
 	query, args := sb.Build()
-	rows, err := r.db.Query(query, args)
+	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +119,7 @@ func (r *Repository) GetCCLFBeneficiaryMBIs(cclfFileID uint) ([]string, error) {
 	return mbis, nil
 }
 
-func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string) ([]*models.CCLFBeneficiary, error) {
+func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, ignoredMBIs []string) ([]*models.CCLFBeneficiary, error) {
 	var beneficiaries []*models.CCLFBeneficiary
 
 	// Subquery to deal with duplicate MBIs found within a single CCLF file.
@@ -130,7 +144,7 @@ func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string)
 	}
 
 	query, args := sb.Build()
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.QueryContext(ctx, query, args...)
 
 	if err != nil {
 		return nil, err
@@ -151,7 +165,7 @@ func (r *Repository) GetCCLFBeneficiaries(cclfFileID uint, ignoredMBIs []string)
 	return beneficiaries, nil
 }
 
-func (r *Repository) GetSuppressedMBIs(lookbackDays int) ([]string, error) {
+func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([]string, error) {
 	var suppressedMBIs []string
 
 	subSB := sqlFlavor.NewSelectBuilder()
@@ -166,7 +180,7 @@ func (r *Repository) GetSuppressedMBIs(lookbackDays int) ([]string, error) {
 	sb.Where(sb.Equal("preference_indicator", "N"))
 
 	query, args := sb.Build()
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -184,4 +198,87 @@ func (r *Repository) GetSuppressedMBIs(lookbackDays int) ([]string, error) {
 	}
 
 	return suppressedMBIs, nil
+}
+
+func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...models.JobStatus) ([]models.Job, error) {
+	s := make([]interface{}, len(statues))
+	for i, v := range statues {
+		s[i] = v
+	}
+
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at")
+	sb.From("jobs").Where(
+		sb.Equal("aco_id", acoID),
+		sb.In("job_status", s...),
+	)
+
+	query, args := sb.Build()
+	rows, err := r.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var jobs []models.Job
+	for rows.Next() {
+		var j models.Job
+		if err = rows.Scan(&j.ID, &j.RequestURL, &j.Status, &j.TransactionTime,
+			&j.JobCount, &j.CompletedJobCount, &j.CreatedAt, &j.UpdatedAt); err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, j)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
+}
+
+func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) {
+	// User raw builder since we need to retrieve the associated ID
+	query, args := sqlbuilder.Buildf(`INSERT INTO jobs 
+		(aco_id, request_url, status, transaction_time, job_count, completed_job_count) VALUES
+		(%s, %s, %s, %s, %s, %s) RETURNING id`,
+		j.ACOID, j.RequestURL, j.Status, j.TransactionTime, j.JobCount, j.CompletedJobCount).
+		BuildWithFlavor(sqlFlavor)
+
+	var id uint
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
+	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
+	ub.Set(
+		ub.Assign("aco_id", j.ACOID),
+		ub.Assign("request_url", j.RequestURL),
+		ub.Assign("status", j.Status),
+		ub.Assign("transaction_time", j.TransactionTime),
+		ub.Assign("job_count", j.JobCount),
+		ub.Assign("completed_job_count", j.CompletedJobCount),
+	)
+	ub.Where(ub.Equal("id", j.ID))
+	query, args := ub.Build()
+
+	res, err := r.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows != 1 {
+		return fmt.Errorf("expected to affect 1 row, affected %d", rows)
+	}
+
+	return nil
 }
