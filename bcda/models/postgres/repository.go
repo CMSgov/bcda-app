@@ -220,13 +220,17 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...mo
 	}
 	defer rows.Close()
 
-	var jobs []models.Job
+	var (
+		jobs                                  []models.Job
+		transactionTime, createdAt, updatedAt sql.NullTime
+	)
 	for rows.Next() {
 		j := models.Job{ACOID: acoID}
-		if err = rows.Scan(&j.ID, &j.RequestURL, &j.Status, &j.TransactionTime,
-			&j.JobCount, &j.CompletedJobCount, &j.CreatedAt, &j.UpdatedAt); err != nil {
+		if err = rows.Scan(&j.ID, &j.RequestURL, &j.Status, &transactionTime,
+			&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
+		j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 		jobs = append(jobs, j)
 	}
 
@@ -240,8 +244,8 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...mo
 func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) {
 	// User raw builder since we need to retrieve the associated ID
 	query, args := sqlbuilder.Buildf(`INSERT INTO jobs 
-		(aco_id, request_url, status, transaction_time, job_count, completed_job_count) VALUES
-		(%s, %s, %s, %s, %s, %s) RETURNING id`,
+		(aco_id, request_url, status, transaction_time, job_count, completed_job_count, created_at, updated_at) VALUES
+		(%s, %s, %s, %s, %s, %s, NOW(), NOW()) RETURNING id`,
 		j.ACOID, j.RequestURL, j.Status, j.TransactionTime, j.JobCount, j.CompletedJobCount).
 		BuildWithFlavor(sqlFlavor)
 
@@ -262,9 +266,11 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 		ub.Assign("transaction_time", j.TransactionTime),
 		ub.Assign("job_count", j.JobCount),
 		ub.Assign("completed_job_count", j.CompletedJobCount),
+		ub.Assign("updated_at", sqlbuilder.Raw("NOW()")),
 	)
 	ub.Where(ub.Equal("id", j.ID))
 	query, args := ub.Build()
+	fmt.Printf("SQL: %s ARGS: %v\n", query, args)
 
 	res, err := r.ExecContext(ctx, query, args...)
 	if err != nil {
