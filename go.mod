@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.21.3
 	github.com/bgentry/que-go v1.0.1
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
@@ -20,9 +20,9 @@ require (
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
 	github.com/lib/pq v1.9.0
-	github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329 // indirect
+	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/newrelic/go-agent v3.9.0+incompatible
-	github.com/newrelic/go-agent/v3 v3.10.0
+	github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/otiai10/copy v1.2.0
 	github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
 	github.com/pkg/errors v0.8.1
