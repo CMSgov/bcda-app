@@ -1,6 +1,8 @@
 package postgres
 
 import (
+	"context"
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"math/rand"
@@ -11,8 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"gorm.io/gorm"
@@ -47,7 +47,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -55,7 +55,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeRunout,
-			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeRunout),
 		},
 		{
@@ -63,7 +63,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Now(),
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 ORDER BY timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -71,7 +71,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Now(),
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp <= $5) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp <= $5 ORDER BY timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -79,7 +79,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Now(),
 			time.Now(),
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 AND timestamp <= $6) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 AND timestamp >= $5 AND timestamp <= $6 ORDER BY timestamp DESC LIMIT 1`,
 			getCCLFFile(cclfNum, cmsID, importStatus, models.FileTypeDefault),
 		},
 		{
@@ -87,7 +87,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 			time.Time{},
 			time.Time{},
 			models.FileTypeDefault,
-			`SELECT * FROM "cclf_files" WHERE (aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4) AND "cclf_files"."deleted_at" IS NULL ORDER BY timestamp DESC,"cclf_files"."id" LIMIT 1`,
+			`SELECT id, name, timestamp, performance_year FROM cclf_files WHERE aco_cms_id = $1 AND cclf_num = $2 AND import_status = $3 AND type = $4 ORDER BY timestamp DESC LIMIT 1`,
 			nil,
 		},
 	}
@@ -95,13 +95,13 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 
-			gdb, mock := testUtils.GetGormMock(t)
+			db, mock, err := sqlmock.New()
+			assert.NoError(t, err)
 			defer func() {
-				err := mock.ExpectationsWereMet()
-				assert.NoError(t, err)
-				database.Close(gdb)
+				assert.NoError(t, mock.ExpectationsWereMet())
+				db.Close()
 			}()
-			repository := NewRepository(gdb)
+			repository := NewRepository(db)
 
 			args := []driver.Value{cmsID, cclfNum, importStatus, tt.fileType}
 			if !tt.lowerBound.IsZero() {
@@ -111,16 +111,16 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 				args = append(args, tt.upperBound)
 			}
 
-			query := mock.ExpectQuery(regexp.QuoteMeta(tt.expQueryRegex)).
+			query := mock.ExpectQuery(fmt.Sprintf("^%s$", regexp.QuoteMeta(tt.expQueryRegex))).
 				WithArgs(args...)
 			if tt.result == nil {
-				query.WillReturnError(gorm.ErrRecordNotFound)
+				query.WillReturnError(sql.ErrNoRows)
 			} else {
 				query.WillReturnRows(sqlmock.
-					NewRows([]string{"id", "cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type"}).
-					AddRow(tt.result.ID, tt.result.CCLFNum, tt.result.Name, tt.result.ACOCMSID, tt.result.Timestamp, tt.result.PerformanceYear, tt.result.ImportStatus, tt.result.Type))
+					NewRows([]string{"id", "name", "timestamp", "performance_year"}).
+					AddRow(tt.result.ID, tt.result.Name, tt.result.Timestamp, tt.result.PerformanceYear))
 			}
-			cclfFile, err := repository.GetLatestCCLFFile(cmsID, cclfNum, importStatus, tt.lowerBound, tt.upperBound,
+			cclfFile, err := repository.GetLatestCCLFFile(context.Background(), cmsID, cclfNum, importStatus, tt.lowerBound, tt.upperBound,
 				tt.fileType)
 			assert.NoError(t, err)
 
@@ -141,12 +141,12 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 	}{
 		{
 			"HappyPath",
-			`SELECT "mbi" FROM "cclf_beneficiaries" WHERE file_id = $1`,
+			`SELECT mbi FROM cclf_beneficiaries WHERE file_id = $1`,
 			nil,
 		},
 		{
 			"ErrorOnQuery",
-			`SELECT "mbi" FROM "cclf_beneficiaries" WHERE file_id = $1`,
+			`SELECT mbi FROM cclf_beneficiaries WHERE file_id = $1`,
 			fmt.Errorf("Some SQL error"),
 		},
 	}
@@ -156,17 +156,15 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 			mbis := []string{"0", "1", "2"}
 			cclfFileID := uint(rand.Int63())
 
-			gdb, mock := testUtils.GetGormMock(t)
-
+			db, mock, err := sqlmock.New()
+			assert.NoError(t, err)
 			defer func() {
-				err := mock.ExpectationsWereMet()
-				assert.NoError(t, err)
-				database.Close(gdb)
+				assert.NoError(t, mock.ExpectationsWereMet())
+				db.Close()
 			}()
+			repository := NewRepository(db)
 
-			repository := NewRepository(gdb)
-
-			query := mock.ExpectQuery(regexp.QuoteMeta(tt.expQueryRegex)).
+			query := mock.ExpectQuery(fmt.Sprintf("^%s$", regexp.QuoteMeta(tt.expQueryRegex))).
 				WithArgs(cclfFileID)
 			if tt.errToReturn == nil {
 				rows := sqlmock.NewRows([]string{"mbi"})
@@ -178,7 +176,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 				query.WillReturnError(tt.errToReturn)
 			}
 
-			result, err := repository.GetCCLFBeneficiaryMBIs(cclfFileID)
+			result, err := repository.GetCCLFBeneficiaryMBIs(context.Background(), cclfFileID)
 			if tt.errToReturn == nil {
 				assert.NoError(t, err)
 				assert.Equal(t, mbis, result)
@@ -200,7 +198,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 	}{
 		{
 			"NoIgnoreMBIs",
-			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND "cclf_beneficiaries"."deleted_at" IS NULL`,
+			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi)`,
 			nil,
 			[]*models.CCLFBeneficiary{
 				getCCLFBeneficiary(),
@@ -212,7 +210,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		},
 		{
 			"IgnoredMBIs",
-			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND mbi NOT IN ($2,$3) AND "cclf_beneficiaries"."deleted_at" IS NULL`,
+			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi) AND mbi NOT IN ($2, $3)`,
 			[]string{"123", "456"},
 			[]*models.CCLFBeneficiary{
 				getCCLFBeneficiary(),
@@ -221,7 +219,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 		},
 		{
 			"ErrorOnQuery",
-			`SELECT * FROM "cclf_beneficiaries" WHERE id in (SELECT MAX(id) FROM "cclf_beneficiaries" WHERE file_id = $1 GROUP BY "mbi") AND "cclf_beneficiaries"."deleted_at" IS NULL`,
+			`SELECT id, file_id, mbi, blue_button_id FROM cclf_beneficiaries WHERE id IN (SELECT MAX(id) FROM cclf_beneficiaries WHERE file_id = $1 GROUP BY mbi)`,
 			nil,
 			nil,
 			fmt.Errorf("Some SQL error"),
@@ -231,18 +229,18 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			cclfFileID := uint(rand.Int63())
-			gdb, mock := testUtils.GetGormMock(t)
-			defer func() {
-				err := mock.ExpectationsWereMet()
-				assert.NoError(t, err)
-				database.Close(gdb)
-			}()
 
-			repository := NewRepository(gdb)
+			db, mock, err := sqlmock.New()
+			assert.NoError(t, err)
+			defer func() {
+				assert.NoError(t, mock.ExpectationsWereMet())
+				db.Close()
+			}()
+			repository := NewRepository(db)
 
 			var query *sqlmock.ExpectedQuery
 			if tt.ignoredMBIs == nil {
-				query = mock.ExpectQuery(regexp.QuoteMeta(tt.expQueryRegex)).
+				query = mock.ExpectQuery(fmt.Sprintf("^%s$", regexp.QuoteMeta(tt.expQueryRegex))).
 					WithArgs(cclfFileID)
 			} else {
 				args := []driver.Value{cclfFileID}
@@ -262,7 +260,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 				query.WillReturnError(tt.errToReturn)
 			}
 
-			result, err := repository.GetCCLFBeneficiaries(cclfFileID, tt.ignoredMBIs)
+			result, err := repository.GetCCLFBeneficiaries(context.Background(), cclfFileID, tt.ignoredMBIs)
 			if tt.errToReturn == nil {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedResults, result)
@@ -283,12 +281,12 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 	}{
 		{
 			"HappyPath",
-			`SELECT DISTINCT s.mbi FROM ( SELECT mbi, MAX(effective_date) max_date FROM suppressions WHERE (NOW() - interval '10 days') < effective_date AND effective_date <= NOW() AND preference_indicator != '' GROUP BY mbi ) h JOIN suppressions s ON s.mbi = h.mbi and s.effective_date = h.max_date WHERE preference_indicator = 'N'`,
+			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW()  AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2`,
 			nil,
 		},
 		{
 			"ErrorOnQuery",
-			`SELECT DISTINCT s.mbi FROM ( SELECT mbi, MAX(effective_date) max_date FROM suppressions WHERE (NOW() - interval '10 days') < effective_date AND effective_date <= NOW() AND preference_indicator != '' GROUP BY mbi ) h JOIN suppressions s ON s.mbi = h.mbi and s.effective_date = h.max_date WHERE preference_indicator = 'N'`,
+			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW()  AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2`,
 			fmt.Errorf("Some SQL error"),
 		},
 	}
@@ -296,17 +294,16 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 	for _, tt := range tests {
 		r.T().Run(tt.name, func(t *testing.T) {
 			suppressedMBIs := []string{"0", "1", "2"}
-			gdb, mock := testUtils.GetGormMock(t)
+			db, mock, err := sqlmock.New()
+			assert.NoError(t, err)
 			defer func() {
-				err := mock.ExpectationsWereMet()
-				assert.NoError(t, err)
-				database.Close(gdb)
+				assert.NoError(t, mock.ExpectationsWereMet())
+				db.Close()
 			}()
-
-			repository := NewRepository(gdb)
+			repository := NewRepository(db)
 
 			// No arguments because the lookback days is embedded in the query
-			query := mock.ExpectQuery(regexp.QuoteMeta(tt.expQueryRegex))
+			query := mock.ExpectQuery(regexp.QuoteMeta(tt.expQueryRegex)).WithArgs("", "N")
 			if tt.errToReturn == nil {
 				rows := sqlmock.NewRows([]string{"mbi"})
 				for _, mbi := range suppressedMBIs {
@@ -317,7 +314,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 				query.WillReturnError(tt.errToReturn)
 			}
 
-			result, err := repository.GetSuppressedMBIs(lookbackDays)
+			result, err := repository.GetSuppressedMBIs(context.Background(), lookbackDays)
 			if tt.errToReturn == nil {
 				assert.NoError(t, err)
 				assert.Equal(t, suppressedMBIs, result)
