@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"testing"
 	"time"
 
@@ -17,10 +18,10 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -93,13 +94,12 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 	assert.Equal(0, f)
 	assert.Equal(1, sk)
 
-	var aco1fs, aco2fs, aco3fs []models.CCLFFile
-	db.Where("aco_cms_id = ?", aco1).Find(&aco1fs)
-	db.Where("aco_cms_id = ?", aco2).Find(&aco2fs)
-	db.Where("aco_cms_id = ?", aco3).Find(&aco3fs)
+	aco1fs := postgrestest.GetCCLFFilesByCMSID(s.T(), s.db, aco1)
+	aco2fs := postgrestest.GetCCLFFilesByCMSID(s.T(), s.db, aco2)
+	aco3fs := postgrestest.GetCCLFFilesByCMSID(s.T(), s.db, aco3)
 
-	assert.True(aco1fs[0].CreatedAt.Before(aco2fs[0].CreatedAt))
-	assert.True(aco2fs[0].CreatedAt.Before(aco3fs[0].CreatedAt))
+	assert.True(aco1fs[0].ID < aco2fs[0].ID)
+	assert.True(aco2fs[0].ID < aco3fs[0].ID)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
@@ -163,11 +163,9 @@ func (s *CCLFTestSuite) TestValidate() {
 
 func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert := assert.New(s.T())
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
-	err := deleteFilesByACO("A0001", db)
-	assert.Nil(err)
+	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
+	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
 
 	acoID := "A0001"
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -181,32 +179,29 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"),
 	}
 
-	err = importCCLF8(context.Background(), metadata)
+	err := importCCLF8(context.Background(), metadata)
 	if err != nil {
 		s.FailNow("importCCLF8() error: %s", err.Error())
 	}
 
-	file := models.CCLFFile{}
-	db.First(&file, "name = ?", metadata.name)
-	assert.NotNil(file)
+	file := postgrestest.GetCCLFFilesByName(s.T(), s.db, metadata.name)[0]
 	assert.Equal("T.BCD.A0001.ZC8Y18.D181120.T1000009", file.Name)
 	assert.Equal(acoID, file.ACOCMSID)
 	assert.Equal(fileTime.Format("010203040506"), file.Timestamp.Format("010203040506"))
 	assert.Equal(18, file.PerformanceYear)
 	assert.Equal(constants.ImportComplete, file.ImportStatus)
 
-	beneficiaries := []models.CCLFBeneficiary{}
-	db.Find(&beneficiaries, "file_id = ?", file.ID)
-	assert.Equal(6, len(beneficiaries))
-	assert.Equal("1A69B98CD30", beneficiaries[0].MBI)
-	assert.Equal("1A69B98CD31", beneficiaries[1].MBI)
-	assert.Equal("1A69B98CD32", beneficiaries[2].MBI)
-	assert.Equal("1A69B98CD33", beneficiaries[3].MBI)
-	assert.Equal("1A69B98CD34", beneficiaries[4].MBI)
-	assert.Equal("1A69B98CD35", beneficiaries[5].MBI)
-
-	err = deleteFilesByACO("A0001", db)
-	assert.Nil(err)
+	mbis, err := postgres.NewRepository(s.db).GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
+	assert.NoError(err)
+	
+	assert.Len(mbis, 6)
+	sort.Strings(mbis)
+	assert.Equal("1A69B98CD30", mbis[0])
+	assert.Equal("1A69B98CD31", mbis[1])
+	assert.Equal("1A69B98CD32", mbis[2])
+	assert.Equal("1A69B98CD33", mbis[3])
+	assert.Equal("1A69B98CD34", mbis[4])
+	assert.Equal("1A69B98CD35", mbis[5])
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
@@ -362,7 +357,7 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 
 	cmsID := "RNOUT"
 	defer func() {
-		s.NoError(deleteFilesByACO(cmsID, db))
+		postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, cmsID)
 	}()
 
 	tests := []struct {
@@ -397,18 +392,6 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 			assert.Equal(t, tt.fileType, cclfFile.Type)
 		})
 	}
-}
-
-func deleteFilesByACO(acoID string, db *gorm.DB) error {
-	var files []models.CCLFFile
-	db.Where("aco_cms_id = ?", acoID).Find(&files)
-	for _, cclfFile := range files {
-		err := cclfFile.Delete()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func createTemporaryCCLF8ZipFile(t *testing.T, data string) (fileName, cclfName string) {

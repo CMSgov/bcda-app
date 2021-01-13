@@ -83,6 +83,18 @@ func DeleteACO(t *testing.T, db *sql.DB, acoID uuid.UUID) {
 	assert.NoError(t, err)
 }
 
+func GetCCLFFilesByCMSID(t *testing.T, db *sql.DB, cmsID string) []models.CCLFFile {
+	cclfFiles, err := getCCLFFiles(db, "aco_cms_id", cmsID)
+	assert.NoError(t, err)
+	return cclfFiles
+}
+
+func GetCCLFFilesByName(t *testing.T, db *sql.DB, name string) []models.CCLFFile {
+	cclfFiles, err := getCCLFFiles(db, "name", name)
+	assert.NoError(t, err)
+	return cclfFiles
+}
+
 // DeleteCCLFFilesByCMSID deletes all CCLFFile associated with a particular ACO represented by cmsID
 // Since (as of 2021-01-13), we have foreign key ties to this table, we'll
 // also delete any relational ties (e.g. CCLFBeneficiary)
@@ -248,4 +260,36 @@ func getFileIDsForCMSID(db *sql.DB, cmsID string) ([]interface{}, error) {
 	}
 
 	return ids, nil
+}
+
+func getCCLFFiles(db *sql.DB, field, value string) ([]models.CCLFFile, error) {
+	sb := sqlFlavor.NewSelectBuilder().
+		Select("id", "cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type").
+		From("cclf_files")
+	sb.Where(sb.Equal(field, value))
+
+	query, args := sb.Build()
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var cclfFiles []models.CCLFFile
+	for rows.Next() {
+		var cclfFile models.CCLFFile
+		if err := rows.Scan(&cclfFile.ID, &cclfFile.CCLFNum, &cclfFile.Name,
+			&cclfFile.ACOCMSID, &cclfFile.Timestamp, &cclfFile.PerformanceYear,
+			&cclfFile.ImportStatus, &cclfFile.Type); err != nil {
+			return nil, err
+		}
+		cclfFiles = append(cclfFiles, cclfFile)
+	}
+
+	if rows.Err() != nil {
+		return nil, err
+	}
+
+	return cclfFiles, nil
 }
