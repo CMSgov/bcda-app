@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"gorm.io/gorm"
@@ -82,12 +83,9 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 
 	assert := assert.New(s.T())
 
-	var fs []models.CCLFFile
-	db.Where("aco_cms_id in (?, ?, ?)", aco1, aco2, aco3).Find(&fs)
-	for _, f := range fs {
-		err := f.Delete()
-		assert.Nil(err)
-	}
+	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, aco1)
+	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, aco2)
+	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, aco3)
 
 	sc, f, sk, err := ImportCCLFDirectory(filepath.Join(s.basePath, "cclf/archives/valid/"))
 	assert.Nil(err)
