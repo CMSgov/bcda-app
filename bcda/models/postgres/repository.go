@@ -42,6 +42,31 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 	return &Repository{tx, tx}
 }
 
+func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error {
+	ub := sqlFlavor.NewUpdateBuilder().Update("acos")
+	for field, value := range fieldsAndValues {
+		ub.SetMore(ub.Assign(field, value))
+	}
+	ub.Where(ub.Equal("uuid", acoUUID))
+
+	query, args := ub.Build()
+	result, err := r.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return fmt.Errorf("ACO %s not updated, no row found", acoUUID)
+	}
+
+	return nil
+}
+
 func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
 
 	const (
@@ -202,9 +227,9 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([
 
 var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at"}
 
-func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...models.JobStatus) ([]*models.Job, error) {
-	s := make([]interface{}, len(statues))
-	for i, v := range statues {
+func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {
+	s := make([]interface{}, len(statuses))
+	for i, v := range statuses {
 		s[i] = v
 	}
 
@@ -216,31 +241,30 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...mo
 	)
 
 	query, args := sb.Build()
-	rows, err := r.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	return r.getJobs(ctx, query, args...)
 
-	var (
-		jobs                                  []*models.Job
-		transactionTime, createdAt, updatedAt sql.NullTime
+}
+
+func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBound, upperBound time.Time, statuses ...models.JobStatus) ([]*models.Job, error) {
+	s := make([]interface{}, len(statuses))
+	for i, v := range statuses {
+		s[i] = v
+	}
+
+	sb := sqlFlavor.NewSelectBuilder().Select(jobColumns...).From("jobs")
+	if !lowerBound.IsZero() {
+		sb.Where(sb.GreaterEqualThan("updated_at", lowerBound))
+	}
+	if !upperBound.IsZero() {
+		sb.Where(sb.LessEqualThan("updated_at", lowerBound))
+	}
+
+	sb.From("jobs").Where(
+		sb.In("status", s...),
 	)
-	for rows.Next() {
-		var j models.Job
-		if err = rows.Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
-			&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt); err != nil {
-			return nil, err
-		}
-		j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
-		jobs = append(jobs, &j)
-	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return jobs, nil
+	query, args := sb.Build()
+	return r.getJobs(ctx, query, args...)
 }
 
 func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, error) {
@@ -350,4 +374,32 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 	}
 
 	return keys, nil
+}
+
+func (r *Repository) getJobs(ctx context.Context, query string, args ...interface{}) ([]*models.Job, error) {
+	rows, err := r.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var (
+		jobs                                  []*models.Job
+		transactionTime, createdAt, updatedAt sql.NullTime
+	)
+	for rows.Next() {
+		var j models.Job
+		if err = rows.Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
+			&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt); err != nil {
+			return nil, err
+		}
+		j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
+		jobs = append(jobs, &j)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
 }

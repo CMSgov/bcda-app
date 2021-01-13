@@ -9,11 +9,19 @@ import (
 
 // Repository contains all of the CRUD methods represented in the models package from the storage layer
 type Repository interface {
+	acoRepository
 	cclfFileRepository
 	cclfBeneficiaryRepository
 	suppressionRepository
 	jobRepository
 	jobKeyRepository
+}
+
+type acoRepository interface {
+	// UpdateACO updates the ACO (found by the acoUUID field) with the fields and values indicated by the fieldsAndValues map.
+	// For example, to update the group_id field, the caller should supply
+	// "group_id": "new_id_value"
+	UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error
 }
 
 type cclfFileRepository interface {
@@ -40,6 +48,8 @@ type jobRepository interface {
 
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]*Job, error)
 
+	GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBound, upperBound time.Time, statuses ...JobStatus) ([]*Job, error)
+
 	GetJobByID(ctx context.Context, jobID uint) (*Job, error)
 
 	UpdateJob(ctx context.Context, j Job) error
@@ -47,6 +57,6 @@ type jobRepository interface {
 
 type jobKeyRepository interface {
 	CreateJobKeys(ctx context.Context, jobKeys ...JobKey) error
-	
+
 	GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error)
 }

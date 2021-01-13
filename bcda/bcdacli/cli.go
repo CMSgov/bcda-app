@@ -3,6 +3,8 @@ package bcdacli
 import (
 	"archive/zip"
 	"bufio"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,6 +24,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -35,6 +38,11 @@ import (
 const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
 
+var (
+	db *sql.DB
+	r  models.Repository
+)
+
 func GetApp() *cli.App {
 	return setUpApp()
 }
@@ -44,6 +52,15 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
+	app.Before = func(c *cli.Context) error {
+		db = database.GetDbConnection()
+		r = postgres.NewRepository(db)
+		return nil
+	}
+	app.After = func(c *cli.Context) error {
+		db.Close()
+		return nil
+	}
 	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
@@ -535,10 +552,8 @@ func createGroup(id, name, acoID string) (string, error) {
 	if aco.UUID != nil {
 		aco.GroupID = ssasID
 
-		db := database.GetGORMDbConnection()
-		defer database.Close(db)
-
-		err = db.Save(&aco).Error
+		err := r.UpdateACO(context.Background(), aco.UUID,
+			map[string]interface{}{"group_id": ssasID})
 		if err != nil {
 			return ssasID, errors.Wrapf(err, "group %s was created, but ACO could not be updated", ssasID)
 		}
@@ -596,13 +611,10 @@ func revokeAccessToken(accessToken string) error {
 
 func archiveExpiring(hrThreshold int) error {
 	log.Info("Archiving expiring job files...")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
 	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
-
-	var jobs []models.Job
-	err := db.Find(&jobs, "status = ? AND updated_at <= ?", models.JobStatusCompleted, maxDate).Error
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+		time.Time{}, maxDate, models.JobStatusCompleted)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -625,7 +637,8 @@ func archiveExpiring(hrThreshold int) error {
 			}
 		}
 
-		err = db.Model(j).Update("status", models.JobStatusArchived).Error
+		j.Status = models.JobStatusArchived
+		err = r.UpdateJob(context.Background(), *j)
 		if err != nil {
 			log.Error(err)
 			lastJobError = err
@@ -636,13 +649,10 @@ func archiveExpiring(hrThreshold int) error {
 }
 
 func cleanupArchive(hrThreshold int) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
 
-	var jobs []models.Job
-	err := db.Find(&jobs, "status = ? AND updated_at <= ?", models.JobStatusArchived, maxDate).Error
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+		time.Time{}, maxDate, models.JobStatusArchived)
 	if err != nil {
 		return err
 	}
@@ -664,7 +674,7 @@ func cleanupArchive(hrThreshold int) error {
 		}
 
 		job.Status = models.JobStatusExpired
-		err = db.Save(job).Error
+		err = r.UpdateJob(context.Background(), *job)
 		if err != nil {
 			return err
 		}
@@ -684,10 +694,8 @@ func setBlacklistState(cmsID string, blacklistState bool) error {
 	if err != nil {
 		return err
 	}
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	return db.Model(&aco).Update("blacklisted", blacklistState).Error
+	return r.UpdateACO(context.Background(), aco.UUID,
+		map[string]interface{}{"blacklisted": blacklistState})
 }
 
 // CCLF file name pattern and regex
