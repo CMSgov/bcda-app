@@ -69,75 +69,7 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
 }
 
-func (s *ModelsTestSuite) TestDuplicateCCLFFileNames() {
-	tests := []struct {
-		name     string
-		fileName string
-		acoIDs   []string
-		errMsg   string
-	}{
-		{"Different ACO ID", uuid.New(), []string{"ACO1", "ACO2"},
-			""},
-		{"Duplicate ACO ID", uuid.New(), []string{"ACO3", "ACO3"},
-			`pq: duplicate key value violates unique constraint "idx_cclf_files_name_aco_cms_id_key"`},
-	}
 
-	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
-			var err error
-			var expectedFileCount int64
-			for _, acoID := range tt.acoIDs {
-				cclfFile := &CCLFFile{
-					Name:            tt.fileName,
-					ACOCMSID:        acoID,
-					Timestamp:       time.Now(),
-					PerformanceYear: 20,
-				}
-				if err1 := s.db.Create(cclfFile).Error; err1 != nil {
-					err = err1
-					continue
-				}
-				expectedFileCount++
-				defer func() {
-					assert.Empty(t, cclfFile.Delete())
-				}()
-			}
-
-			if tt.errMsg != "" {
-				assert.EqualError(t, err, tt.errMsg)
-			} else {
-				assert.NoError(t, err)
-			}
-
-			var count int64
-			s.db.Model(&CCLFFile{}).Where("name = ?", tt.fileName).Count(&count)
-			assert.True(t, expectedFileCount > 0)
-			assert.Equal(t, expectedFileCount, count)
-		})
-	}
-}
-
-// TestCMSID verifies that we can store and retrieve the CMS_ID as expected
-// i.e. the value is not padded with any extra characters
-func (s *ModelsTestSuite) TestCMSID() {
-	cmsID := "V001"
-	cclfFile := &CCLFFile{CCLFNum: 1, Name: "someName", ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 20}
-	aco := &ACO{UUID: uuid.NewUUID(), CMSID: &cmsID, Name: "someName"}
-
-	assert.NoError(s.T(), s.db.Save(cclfFile).Error)
-	defer s.db.Unscoped().Delete(cclfFile)
-	assert.NoError(s.T(), s.db.Save(aco).Error)
-	defer s.db.Unscoped().Delete(aco)
-
-	var actualCMSID []string
-	assert.NoError(s.T(), s.db.Model(&ACO{}).Where("id = ?", aco.ID).Pluck("cms_id", &actualCMSID).Error)
-	assert.Equal(s.T(), 1, len(actualCMSID))
-	assert.Equal(s.T(), cmsID, actualCMSID[0])
-
-	assert.NoError(s.T(), s.db.Model(&CCLFFile{}).Where("id = ?", cclfFile.ID).Pluck("aco_cms_id", &actualCMSID).Error)
-	assert.Equal(s.T(), 1, len(actualCMSID))
-	assert.Equal(s.T(), cmsID, actualCMSID[0])
-}
 
 func (s *ModelsTestSuite) TestCCLFFileType() {
 	noType := &CCLFFile{

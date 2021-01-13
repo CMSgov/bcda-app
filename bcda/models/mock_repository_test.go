@@ -16,6 +16,27 @@ type MockRepository struct {
 	mock.Mock
 }
 
+// CreateCCLFFile provides a mock function with given fields: ctx, cclfFile
+func (_m *MockRepository) CreateCCLFFile(ctx context.Context, cclfFile CCLFFile) (uint, error) {
+	ret := _m.Called(ctx, cclfFile)
+
+	var r0 uint
+	if rf, ok := ret.Get(0).(func(context.Context, CCLFFile) uint); ok {
+		r0 = rf(ctx, cclfFile)
+	} else {
+		r0 = ret.Get(0).(uint)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, CCLFFile) error); ok {
+		r1 = rf(ctx, cclfFile)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CreateJob provides a mock function with given fields: ctx, j
 func (_m *MockRepository) CreateJob(ctx context.Context, j Job) (uint, error) {
 	ret := _m.Called(ctx, j)

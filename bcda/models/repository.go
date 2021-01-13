@@ -29,6 +29,9 @@ type cclfFileRepository interface {
 	// The returned CCLF file will fall between the provided time window.
 	// If any of the time values equals time.Time (default value), then the time value IS NOT used in the filtering.
 	GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType CCLFFileType) (*CCLFFile, error)
+
+	// CreateCCLFFile creates a CCLFFile and returns the unique ID associated with the newly created CCLF file
+	CreateCCLFFile(ctx context.Context, cclfFile CCLFFile) (uint, error)
 }
 
 // CCLFBeneficiaryRepository contains methods need to interact with CCLF Beneficiary data.

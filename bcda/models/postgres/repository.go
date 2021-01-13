@@ -117,6 +117,23 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 	return &cclfFile, nil
 }
 
+func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFile) (uint, error) {
+	query, args := sqlbuilder.Buildf(`INSERT INTO cclf_files
+		(cclf_num, name, aco_cms_id, timestamp, performance_year, 
+			import_status, type) VALUES
+		(%s, %s, %s, %s, %s, %s, %s) RETURNING id`,
+		cclfFile.CCLFNum, cclfFile.Name, cclfFile.ACOCMSID, cclfFile.Timestamp, cclfFile.PerformanceYear,
+		cclfFile.ImportStatus, cclfFile.Type).
+		BuildWithFlavor(sqlFlavor)
+
+	var id uint
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
 func (r *Repository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID uint) ([]string, error) {
 	var mbis []string
 
