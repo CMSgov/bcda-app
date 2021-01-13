@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -396,8 +396,8 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string {
 	var acoOrder []string
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	priorityACOs := getPriorityACOs(db)
 	for _, acoID := range priorityACOs {
@@ -416,7 +416,7 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 	return acoOrder
 }
 
-func getPriorityACOs(db *gorm.DB) []string {
+func getPriorityACOs(db *sql.DB) []string {
 	const query = `
 	SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
 	FROM systems s JOIN groups g ON s.group_id=g.group_id 
@@ -424,8 +424,24 @@ func getPriorityACOs(db *gorm.DB) []string {
 	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
 	`
 
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
+		return nil
+	}
+	defer rows.Close()
+
 	var acoIDs []string
-	if err := db.Raw(query).Scan(&acoIDs).Error; err != nil {
+	for rows.Next() {
+		var acoID string
+		if err := rows.Scan(&acoID); err != nil {
+			log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
+			return nil
+		}
+		acoIDs = append(acoIDs, acoID)
+	}
+
+	if err := rows.Err(); err != nil {
 		log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
 		return nil
 	}

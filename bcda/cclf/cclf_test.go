@@ -193,7 +193,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 
 	mbis, err := postgres.NewRepository(s.db).GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
 	assert.NoError(err)
-	
+
 	assert.Len(mbis, 6)
 	sort.Strings(mbis)
 	assert.Equal("1A69B98CD30", mbis[0])
@@ -291,7 +291,7 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 		imported:  true,
 	}
 	cclfmap["A0001"] = map[metadataKey][]*cclfFileMetadata{
-		metadataKey{perfYear: 18, fileType: models.FileTypeDefault}: []*cclfFileMetadata{cclf0metadata, cclf8metadata, cclf9metadata},
+		{perfYear: 18, fileType: models.FileTypeDefault}: {cclf0metadata, cclf8metadata, cclf9metadata},
 	}
 	err := cleanUpCCLF(context.Background(), cclfmap)
 	assert.Nil(err)
@@ -324,10 +324,11 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			gdb, mock := testUtils.GetGormMock(t)
+			db, mock, err := sqlmock.New()
+			assert.NoError(t, err)
 			defer func() {
 				assert.NoError(t, mock.ExpectationsWereMet())
-				database.Close(gdb)
+				db.Close()
 			}()
 
 			expected := mock.ExpectQuery(query)
@@ -341,7 +342,7 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 				expected.WillReturnRows(rows)
 			}
 
-			result := getPriorityACOs(gdb)
+			result := getPriorityACOs(db)
 			if tt.errToReturn != nil {
 				assert.Nil(t, result)
 			} else {
