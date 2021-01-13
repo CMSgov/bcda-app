@@ -59,4 +59,6 @@ type jobKeyRepository interface {
 	CreateJobKeys(ctx context.Context, jobKeys ...JobKey) error
 
 	GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error)
+
+	GetJobKeysCount(ctx context.Context, jobID uint) (int, error)
 }

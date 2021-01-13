@@ -377,6 +377,18 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 	return keys, nil
 }
 
+func (r *Repository) GetJobKeysCount(ctx context.Context, jobID uint) (int, error) {
+	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("job_keys")
+	sb.Where(sb.Equal("job_id", jobID))
+
+	query, args := sb.Build()
+	var count int
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+		return -1, err
+	}
+	return count, nil
+}
+
 func (r *Repository) getJobs(ctx context.Context, query string, args ...interface{}) ([]*models.Job, error) {
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {

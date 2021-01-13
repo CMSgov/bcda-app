@@ -150,6 +150,27 @@ func (_m *MockRepository) GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey
 	return r0, r1
 }
 
+// GetJobKeysCount provides a mock function with given fields: ctx, jobID
+func (_m *MockRepository) GetJobKeysCount(ctx context.Context, jobID uint) (int, error) {
+	ret := _m.Called(ctx, jobID)
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func(context.Context, uint) int); ok {
+		r0 = rf(ctx, jobID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(ctx, jobID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetJobs provides a mock function with given fields: ctx, acoID, statuses
 func (_m *MockRepository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]*Job, error) {
 	_va := make([]interface{}, len(statuses))
