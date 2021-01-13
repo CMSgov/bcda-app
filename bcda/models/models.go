@@ -1,23 +1,16 @@
 package models
 
 import (
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -95,6 +88,21 @@ func (j *Job) StatusMessage() string {
 	return string(j.Status)
 }
 
+// CreateACO creates an ACO with the provided name and CMS ID.
+func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
+	db := database.GetGORMDbConnection()
+	defer database.Close(db)
+
+	id := uuid.NewRandom()
+
+	// TODO: remove ClientID below when a future refactor removes the need
+	//    for every ACO to have a client_id at creation
+	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String()}
+	db.Create(&aco)
+
+	return aco.UUID, db.Error
+}
+
 // BlankFileName contains the naming convention for empty ndjson file
 const BlankFileName string = "blank.ndjson"
 
@@ -127,91 +135,6 @@ type CCLFBeneficiaryXref struct {
 	PrevNum       string `json:"previous_number"`
 	PrevsEfctDt   string `json:"effective_date"`
 	PrevsObsltDt  string `json:"obsolete_date"`
-}
-
-// GetPublicKey returns the ACO's public key.
-func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
-	var key string
-	if strings.ToLower(os.Getenv("BCDA_AUTH_PROVIDER")) == "ssas" {
-		ssas, err := authclient.NewSSASClient()
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
-		}
-
-		systemID, err := strconv.Atoi(aco.ClientID)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
-		}
-
-		keyBytes, err := ssas.GetPublicKey(systemID)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
-		}
-
-		key = string(keyBytes)
-	} else {
-		key = aco.PublicKey
-	}
-	return rsautils.ReadPublicKey(key)
-}
-
-func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	k, err := ioutil.ReadAll(publicKey)
-	if err != nil {
-		return errors.Wrap(err, "cannot read public key for ACO "+aco.UUID.String())
-	}
-
-	key, err := rsautils.ReadPublicKey(string(k))
-	if err != nil || key == nil {
-		return errors.Wrap(err, "invalid public key for ACO "+aco.UUID.String())
-	}
-
-	aco.PublicKey = string(k)
-	err = db.Save(&aco).Error
-	if err != nil {
-		return errors.Wrap(err, "cannot save public key for ACO "+aco.UUID.String())
-	}
-
-	return nil
-}
-
-// This exists to provide a known static keys used for ACO's in our alpha tests.
-// This key is not meant to protect anything and both halves will be made available publicly
-func GetATOPublicKey() *rsa.PublicKey {
-	fmt.Println("Looking for a key at:")
-	fmt.Println(os.Getenv("ATO_PUBLIC_KEY_FILE"))
-	atoPublicKeyFile, err := os.Open(os.Getenv("ATO_PUBLIC_KEY_FILE"))
-	if err != nil {
-		fmt.Println("failed to open file")
-		panic(err)
-	}
-	return utils.OpenPublicKeyFile(atoPublicKeyFile)
-}
-
-func GetATOPrivateKey() *rsa.PrivateKey {
-	atoPrivateKeyFile, err := os.Open(os.Getenv("ATO_PRIVATE_KEY_FILE"))
-	if err != nil {
-		panic(err)
-	}
-	return utils.OpenPrivateKeyFile(atoPrivateKeyFile)
-}
-
-// CreateACO creates an ACO with the provided name and CMS ID.
-func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	id := uuid.NewRandom()
-
-	// TODO: remove ClientID below when a future refactor removes the need
-	//    for every ACO to have a client_id at creation
-	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String()}
-	db.Create(&aco)
-
-	return aco.UUID, db.Error
 }
 
 type CCLFFileType int16

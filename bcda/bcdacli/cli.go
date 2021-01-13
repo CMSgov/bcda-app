@@ -2,7 +2,6 @@ package bcdacli
 
 import (
 	"archive/zip"
-	"bufio"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -186,56 +185,6 @@ func setUpApp() *cli.App {
 					return err
 				}
 				fmt.Fprintf(app.Writer, "%s\n", acoUUID)
-				return nil
-			},
-		},
-		{
-			Name:     "save-public-key",
-			Category: "Authentication tools",
-			Usage:    "Upload an ACO's public key to the database",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "cms-id",
-					Usage:       "CMS ID of ACO",
-					Destination: &acoCMSID,
-				},
-				cli.StringFlag{
-					Name:        "key-file",
-					Usage:       "Location of public key in PEM format",
-					Destination: &filePath,
-				},
-			},
-			Action: func(c *cli.Context) error {
-				if acoCMSID == "" {
-					fmt.Fprintf(app.Writer, "cms-id is required\n")
-					return errors.New("cms-id is required")
-				}
-
-				if filePath == "" {
-					fmt.Fprintf(app.Writer, "key-file is required\n")
-					return errors.New("key-file is required")
-				}
-
-				aco, err := auth.GetACOByCMSID(acoCMSID)
-				if err != nil {
-					fmt.Fprintf(app.Writer, "Unable to find ACO %s: %s\n", acoCMSID, err.Error())
-					return err
-				}
-
-				f, err := os.Open(filepath.Clean(filePath))
-				if err != nil {
-					fmt.Fprintf(app.Writer, "Unable to open file %s: %s\n", filePath, err.Error())
-					return err
-				}
-				reader := bufio.NewReader(f)
-
-				err = aco.SavePublicKey(reader)
-				if err != nil {
-					fmt.Fprintf(app.Writer, "Unable to save public key for ACO %s: %s\n", acoCMSID, err.Error())
-					return err
-				}
-
-				fmt.Fprintf(app.Writer, "Public key saved for ACO %s\n", acoCMSID)
 				return nil
 			},
 		},

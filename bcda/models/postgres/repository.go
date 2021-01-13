@@ -256,7 +256,7 @@ func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBoun
 		sb.Where(sb.GreaterEqualThan("updated_at", lowerBound))
 	}
 	if !upperBound.IsZero() {
-		sb.Where(sb.LessEqualThan("updated_at", lowerBound))
+		sb.Where(sb.LessEqualThan("updated_at", upperBound))
 	}
 
 	sb.From("jobs").Where(
@@ -264,6 +264,7 @@ func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBoun
 	)
 
 	query, args := sb.Build()
+	fmt.Printf("QUERY %s ARGS %v\n", query, args)
 	return r.getJobs(ctx, query, args...)
 }
 

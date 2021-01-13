@@ -180,6 +180,36 @@ func (_m *MockRepository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses
 	return r0, r1
 }
 
+// GetJobsByUpdateTimeAndStatus provides a mock function with given fields: ctx, lowerBound, upperBound, statuses
+func (_m *MockRepository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBound time.Time, upperBound time.Time, statuses ...JobStatus) ([]*Job, error) {
+	_va := make([]interface{}, len(statuses))
+	for _i := range statuses {
+		_va[_i] = statuses[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, lowerBound, upperBound)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []*Job
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, ...JobStatus) []*Job); ok {
+		r0 = rf(ctx, lowerBound, upperBound, statuses...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time, ...JobStatus) error); ok {
+		r1 = rf(ctx, lowerBound, upperBound, statuses...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetLatestCCLFFile provides a mock function with given fields: ctx, cmsID, cclfNum, importStatus, lowerBound, upperBound, fileType
 func (_m *MockRepository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound time.Time, upperBound time.Time, fileType CCLFFileType) (*CCLFFile, error) {
 	ret := _m.Called(ctx, cmsID, cclfNum, importStatus, lowerBound, upperBound, fileType)
@@ -224,6 +254,20 @@ func (_m *MockRepository) GetSuppressedMBIs(ctx context.Context, lookbackDays in
 	}
 
 	return r0, r1
+}
+
+// UpdateACO provides a mock function with given fields: ctx, acoUUID, fieldsAndValues
+func (_m *MockRepository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error {
+	ret := _m.Called(ctx, acoUUID, fieldsAndValues)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, map[string]interface{}) error); ok {
+		r0 = rf(ctx, acoUUID, fieldsAndValues)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpdateJob provides a mock function with given fields: ctx, j

@@ -99,63 +99,6 @@ func (s *CLITestSuite) TestSetup() {
 	assert.Equal(s.T(), app.Usage, Usage)
 }
 
-func (s *CLITestSuite) TestSavePublicKeyCLI() {
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-	assert := assert.New(s.T())
-
-	cmsID := "A9901"
-	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
-	assert.Nil(err)
-	aco, err := auth.GetACOByCMSID(cmsID)
-	assert.Nil(err)
-	defer postgrestest.DeleteACO(s.T(), s.db, aco.UUID)
-
-	// Unexpected flag
-	args := []string{"bcda", "save-public-key", "--abcd", "efg"}
-	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
-	buf.Reset()
-
-	// Unspecified ACO
-	args = []string{"bcda", "save-public-key", "--key-file", "../../shared_files/ATO_public.pem"}
-	err = s.testApp.Run(args)
-	assert.Equal("cms-id is required", err.Error())
-	assert.Contains(buf.String(), "")
-
-	// Unspecified File
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901"}
-	err = s.testApp.Run(args)
-	assert.Equal("key-file is required", err.Error())
-	assert.Contains(buf.String(), "")
-
-	// Non-existent ACO
-	args = []string{"bcda", "save-public-key", "--cms-id", "ABCDE", "--key-file", "../../shared_files/ATO_public.pem"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "no ACO record found for ABCDE")
-	assert.Contains(buf.String(), "Unable to find ACO")
-
-	// Missing file
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "FILE_DOES_NOT_EXIST"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "open FILE_DOES_NOT_EXIST: no such file or directory")
-	assert.Contains(buf.String(), "Unable to open file")
-
-	// Invalid key
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_private.pem"}
-	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), fmt.Sprintf("invalid public key for ACO %s: unable to parse public key: asn1: structure error: tags don't match", aco.UUID))
-	assert.Contains(buf.String(), "Unable to save public key for ACO")
-
-	// Success
-	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_public.pem"}
-	err = s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Contains(buf.String(), "Public key saved for ACO")
-}
-
 func (s *CLITestSuite) TestGenerateClientCredentials() {
 	assert := assert.New(s.T())
 
