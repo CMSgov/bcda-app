@@ -36,7 +36,7 @@ var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgre
 
 type JobStatus string
 type Job struct {
-	gorm.Model
+	ID                uint
 	ACO               ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
 	ACOID             uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
 	RequestURL        string    `json:"request_url"` // request_url
@@ -44,6 +44,8 @@ type Job struct {
 	TransactionTime   time.Time // most recent data load transaction time from BFD
 	JobCount          int
 	CompletedJobCount int
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {

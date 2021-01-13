@@ -26,7 +26,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 type RequestsTestSuite struct {
@@ -207,9 +206,9 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 }
 
 func (s *RequestsTestSuite) TestCheck429() {
-	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now()}}
-	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now().Add(-2 * GetJobTimeout())}}
-	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now()}}
+	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
+	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now().Add(-2 * GetJobTimeout())}
+	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
 	tests := []struct {
 		name        string
 		job         models.Job

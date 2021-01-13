@@ -77,7 +77,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 	// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
 	// This implementation is based off of the "fix" that is present in v4
 	// (see: https://github.com/jackc/pgx/blob/v4.10.0/pgxpool/pool.go#L333)
-	// Use the same approach to validate the connection associated with the gorm client
+	// Use the same approach to validate the connection associated with the sql.DB
 
 	// If we implement a cleanup function on the handler,
 	// consider using context.WithCancel() to give us a hook to stop the goroutine

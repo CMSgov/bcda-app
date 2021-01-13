@@ -27,7 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
-	"gorm.io/gorm"
 )
 
 var origDate string
@@ -242,10 +241,8 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusCompleted,
-		Model: gorm.Model{
-			CreatedAt: t,
-			UpdatedAt: t,
-		},
+		CreatedAt:  t,
+		UpdatedAt:  t,
 	}
 	db.Save(&j)
 	assert.NotNil(j.ID)
@@ -321,10 +318,8 @@ func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusCompleted,
-		Model: gorm.Model{
 			CreatedAt: t,
 			UpdatedAt: t,
-		},
 	}
 	db.Save(&j)
 	assert.NotNil(j.ID)
