@@ -31,6 +31,9 @@ const (
 	JobStatusFailed     JobStatus = "Failed"
 )
 
+var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress,
+	JobStatusCompleted, JobStatusArchived, JobStatusExpired, JobStatusFailed}
+
 type JobStatus string
 type Job struct {
 	gorm.Model

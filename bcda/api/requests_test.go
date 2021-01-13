@@ -91,7 +91,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
 			h := NewHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir")
-			h.svc = mockSvc
+			h.Svc = mockSvc
 
 			req := s.genGroupRequest("runout")
 			w := httptest.NewRecorder()
@@ -226,7 +226,7 @@ func (s *RequestsTestSuite) TestCheck429() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			res, err := check429([]models.Job{tt.job}, []string{"Patient"}, tt.version)
+			res, err := check429([]*models.Job{&tt.job}, []string{"Patient"}, tt.version)
 			if tt.passesCheck {
 				assert.NotNil(t, res)
 				assert.NoError(t, err)
@@ -249,9 +249,9 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	postgrestest.CreateJobs(s.T(), s.db,
-		models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: models.JobStatusFailed},
-		models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: models.JobStatusExpired},
-		models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: models.JobStatusCompleted},
+		&models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: models.JobStatusFailed},
+		&models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: models.JobStatusExpired},
+		&models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: models.JobStatusCompleted},
 	)
 	// Create jobs that githave an unsupported path
 
@@ -259,7 +259,7 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	mockSvc := &models.MockService{}
 	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	h := NewHandler(resources, "/v1/fhir")
-	h.svc = mockSvc
+	h.Svc = mockSvc
 
 	req := s.genGroupRequest("all")
 	w := httptest.NewRecorder()

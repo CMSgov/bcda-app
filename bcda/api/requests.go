@@ -35,7 +35,9 @@ import (
 
 type Handler struct {
 	qc  *que.Client
-	svc models.Service
+
+	Svc models.Service
+
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (ADD_JIRA_TICKET): Remove this reference once we've captured all of the necessary
 	// logic into a service method.
@@ -128,7 +130,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 
 	repository := postgres.NewRepository(db)
 	h.db, h.r = db, repository
-	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
+	h.Svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
 		runoutCutoffDuration, runoutClaimThruDate,
 		basePath)
 
@@ -335,7 +337,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 
 	var queJobs []*que.Job
-	queJobs, err = h.svc.GetQueJobs(ctx, ad.CMSID, &newJob, resourceTypes, since, reqType)
+	queJobs, err = h.Svc.GetQueJobs(ctx, ad.CMSID, &newJob, resourceTypes, since, reqType)
 	if err != nil {
 		log.Error(err)
 		respCode := http.StatusInternalServerError
@@ -448,7 +450,7 @@ func (e duplicateTypeError) Error() string {
 
 // check429 verifies that we do not have a duplicate resource type request based on the supplied in-progress/pending jobs.
 // Returns the unworkedTypes (if any)
-func check429(pendingAndInProgressJobs []models.Job, types []string, version string) ([]string, error) {
+func check429(pendingAndInProgressJobs []*models.Job, types []string, version string) ([]string, error) {
 	var unworkedTypes []string
 
 	for _, t := range types {

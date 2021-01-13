@@ -13,6 +13,7 @@ type Repository interface {
 	cclfBeneficiaryRepository
 	suppressionRepository
 	jobRepository
+	jobKeyRepository
 }
 
 type cclfFileRepository interface {
@@ -37,7 +38,15 @@ type jobRepository interface {
 	// CreateJob creates a job and returns the id associated with the updated job
 	CreateJob(ctx context.Context, j Job) (jobID uint, err error)
 
-	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]Job, error)
+	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]*Job, error)
+
+	GetJobByID(ctx context.Context, jobID uint) (*Job, error)
 
 	UpdateJob(ctx context.Context, j Job) error
+}
+
+type jobKeyRepository interface {
+	CreateJobKeys(ctx context.Context, jobKeys ...JobKey) error
+	
+	GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error)
 }

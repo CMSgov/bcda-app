@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/bgentry/que-go"
@@ -29,11 +30,9 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	cclfBeneficiaryService
-}
-
-type cclfBeneficiaryService interface {
 	GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
+
+	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
 }
 
 const (
@@ -81,6 +80,33 @@ type runoutParameters struct {
 	claimThruDate time.Time
 	// Amount of time the callers can retrieve runout data (relative to when runout data was ingested)
 	cutoffDuration time.Duration
+}
+
+func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error) {
+	j, err := s.repository.GetJobByID(ctx, jobID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// No need to look up job keys if the
+	if j.Status != JobStatusCompleted {
+		return j, nil, nil
+	}
+
+	keys, err := s.repository.GetJobKeys(ctx, jobID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nonEmptyKeys := make([]*JobKey, 0, len(keys))
+	for i, key := range keys {
+		if strings.TrimSpace(key.FileName) == BlankFileName {
+			continue
+		}
+		nonEmptyKeys = append(nonEmptyKeys, keys[i])
+	}
+
+	return j, nonEmptyKeys, nil
 }
 
 func (s *service) GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error) {
@@ -278,7 +304,7 @@ func (s *service) getBeneficiaries(ctx context.Context, cmsID string, fileType C
 	return benes, nil
 }
 
-func (s *service) getBenesByFileID(ctx context.Context,cclfFileID uint) ([]*CCLFBeneficiary, error) {
+func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint) ([]*CCLFBeneficiary, error) {
 	var (
 		ignoredMBIs []string
 		err         error

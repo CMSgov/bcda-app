@@ -200,14 +200,16 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([
 	return suppressedMBIs, nil
 }
 
-func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...models.JobStatus) ([]models.Job, error) {
+var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at"}
+
+func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...models.JobStatus) ([]*models.Job, error) {
 	s := make([]interface{}, len(statues))
 	for i, v := range statues {
 		s[i] = v
 	}
 
 	sb := sqlFlavor.NewSelectBuilder()
-	sb.Select("id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at")
+	sb.Select(jobColumns...)
 	sb.From("jobs").Where(
 		sb.Equal("aco_id", acoID),
 		sb.In("status", s...),
@@ -221,17 +223,17 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...mo
 	defer rows.Close()
 
 	var (
-		jobs                                  []models.Job
+		jobs                                  []*models.Job
 		transactionTime, createdAt, updatedAt sql.NullTime
 	)
 	for rows.Next() {
-		j := models.Job{ACOID: acoID}
-		if err = rows.Scan(&j.ID, &j.RequestURL, &j.Status, &transactionTime,
+		var j models.Job
+		if err = rows.Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
 			&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
 		j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
-		jobs = append(jobs, j)
+		jobs = append(jobs, &j)
 	}
 
 	if err = rows.Err(); err != nil {
@@ -239,6 +241,29 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statues ...mo
 	}
 
 	return jobs, nil
+}
+
+func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, error) {
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select(jobColumns...)
+	sb.From("jobs").Where(sb.Equal("id", jobID))
+
+	query, args := sb.Build()
+
+	var (
+		j                                     models.Job
+		transactionTime, createdAt, updatedAt sql.NullTime
+	)
+
+	err := r.QueryRowContext(ctx, query, args...).Scan(&j.ID, &j.ACOID, &j.RequestURL, &j.Status, &transactionTime,
+		&j.JobCount, &j.CompletedJobCount, &createdAt, &updatedAt)
+	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &j, nil
 }
 
 func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) {
@@ -287,4 +312,42 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 	}
 
 	return nil
+}
+func (r *Repository) CreateJobKeys(ctx context.Context, jobKeys ...models.JobKey) error {
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
+	ib.Cols("job_id", "file_name", "resource_type")
+	for _, key := range jobKeys {
+		ib.Values(key.JobID, key.FileName, key.ResourceType)
+	}
+
+	query, args := ib.Build()
+	_, err := r.ExecContext(ctx, query, args...)
+	return err
+}
+
+func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobKey, error) {
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_name", "resource_type").From("job_keys")
+	sb.Where(sb.Equal("job_id", jobID))
+
+	query, args := sb.Build()
+	rows, err := r.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []*models.JobKey
+	for rows.Next() {
+		jk := models.JobKey{JobID: jobID}
+		if err = rows.Scan(&jk.ID, &jk.FileName, &jk.ResourceType); err != nil {
+			return nil, err
+		}
+		keys = append(keys, &jk)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return keys, nil
 }

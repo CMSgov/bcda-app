@@ -2,11 +2,14 @@ package v1
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/pkg/errors"
 
 	"net/http"
 	"os"
@@ -18,7 +21,6 @@ import (
 
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -108,15 +110,22 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		500: errorResponse
 */
 func JobStatus(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobID")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	jobIDStr := chi.URLParam(r, "jobID")
 
-	var job models.Job
-	err := db.First(&job, jobID).Error
+	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
-		log.Print(err)
+		err = errors.Wrap(err, "cannot convert jobID to uint")
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
+	job, jobKeys, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
+	if err != nil {
+		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+		// NOTE: This is a catch and may not necessarily mean that the job was not found. So returning a StatusNotFound may be a misnomer
 		responseutils.WriteError(oo, w, http.StatusNotFound)
 		return
 	}
@@ -132,6 +141,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	case models.JobStatusCompleted:
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
+		fmt.Println(("<<<<<<<<<<<<<<<<<<<<<<<< " + job.UpdatedAt.String()))
 		if job.UpdatedAt.Add(api.GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
@@ -154,28 +164,21 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 			JobID:               job.ID,
 		}
 
-		var jobKeysObj []models.JobKey
-		db.Find(&jobKeysObj, "job_id = ?", job.ID)
-		for _, jobKey := range jobKeysObj {
-
-			if strings.TrimSpace(jobKey.FileName) == models.BlankFileName {
-				continue
-			}
-
+		for _, jobKey := range jobKeys {
 			// data files
 			fi := api.FileItem{
 				Type: jobKey.ResourceType,
-				URL:  fmt.Sprintf("%s://%s/data/%s/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
 			}
 			rb.Files = append(rb.Files, fi)
 
 			// error files
 			errFileName := strings.Split(jobKey.FileName, ".")[0]
-			errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
+			errFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
 			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 				errFI := api.FileItem{
 					Type: "OperationOutcome",
-					URL:  fmt.Sprintf("%s://%s/data/%s/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
+					URL:  fmt.Sprintf("%s://%s/data/%d/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
 				}
 				rb.Errors = append(rb.Errors, errFI)
 			}

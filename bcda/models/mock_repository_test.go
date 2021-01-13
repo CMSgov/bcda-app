@@ -37,6 +37,27 @@ func (_m *MockRepository) CreateJob(ctx context.Context, j Job) (uint, error) {
 	return r0, r1
 }
 
+// CreateJobKeys provides a mock function with given fields: ctx, jobKeys
+func (_m *MockRepository) CreateJobKeys(ctx context.Context, jobKeys ...JobKey) error {
+	_va := make([]interface{}, len(jobKeys))
+	for _i := range jobKeys {
+		_va[_i] = jobKeys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...JobKey) error); ok {
+		r0 = rf(ctx, jobKeys...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetCCLFBeneficiaries provides a mock function with given fields: ctx, cclfFileID, ignoredMBIs
 func (_m *MockRepository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, ignoredMBIs []string) ([]*CCLFBeneficiary, error) {
 	ret := _m.Called(ctx, cclfFileID, ignoredMBIs)
@@ -83,8 +104,54 @@ func (_m *MockRepository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID
 	return r0, r1
 }
 
+// GetJobByID provides a mock function with given fields: ctx, jobID
+func (_m *MockRepository) GetJobByID(ctx context.Context, jobID uint) (*Job, error) {
+	ret := _m.Called(ctx, jobID)
+
+	var r0 *Job
+	if rf, ok := ret.Get(0).(func(context.Context, uint) *Job); ok {
+		r0 = rf(ctx, jobID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(ctx, jobID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetJobKeys provides a mock function with given fields: ctx, jobID
+func (_m *MockRepository) GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error) {
+	ret := _m.Called(ctx, jobID)
+
+	var r0 []*JobKey
+	if rf, ok := ret.Get(0).(func(context.Context, uint) []*JobKey); ok {
+		r0 = rf(ctx, jobID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*JobKey)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(ctx, jobID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetJobs provides a mock function with given fields: ctx, acoID, statuses
-func (_m *MockRepository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]Job, error) {
+func (_m *MockRepository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...JobStatus) ([]*Job, error) {
 	_va := make([]interface{}, len(statuses))
 	for _i := range statuses {
 		_va[_i] = statuses[_i]
@@ -94,12 +161,12 @@ func (_m *MockRepository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 []Job
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, ...JobStatus) []Job); ok {
+	var r0 []*Job
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, ...JobStatus) []*Job); ok {
 		r0 = rf(ctx, acoID, statuses...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]Job)
+			r0 = ret.Get(0).([]*Job)
 		}
 	}
 

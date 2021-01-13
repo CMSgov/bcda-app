@@ -16,6 +16,38 @@ type MockService struct {
 	mock.Mock
 }
 
+// GetJobAndKeys provides a mock function with given fields: ctx, jobID
+func (_m *MockService) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error) {
+	ret := _m.Called(ctx, jobID)
+
+	var r0 *Job
+	if rf, ok := ret.Get(0).(func(context.Context, uint) *Job); ok {
+		r0 = rf(ctx, jobID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Job)
+		}
+	}
+
+	var r1 []*JobKey
+	if rf, ok := ret.Get(1).(func(context.Context, uint) []*JobKey); ok {
+		r1 = rf(ctx, jobID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]*JobKey)
+		}
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, uint) error); ok {
+		r2 = rf(ctx, jobID)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // GetQueJobs provides a mock function with given fields: ctx, cmsID, job, resourceTypes, since, reqType
 func (_m *MockService) GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) ([]*que.Job, error) {
 	ret := _m.Called(ctx, cmsID, job, resourceTypes, since, reqType)
