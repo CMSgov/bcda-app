@@ -30,7 +30,7 @@ cp ops/pre-commit .git/hooks
 The pre-commit hook will also ensure that any added, copied, or modified go files are formatted properly.
 
 ### Managing encrypted files
-* Temporarily decrypt files by running the following command from the repository root directory: 
+* Temporarily decrypt files by running the following command from the repository root directory:
 ```
 ./ops/secrets --decrypt
 ```
@@ -56,8 +56,8 @@ docker-compose up
 
 ## Test
 
-Run tests and produce test metrics.  
-The items identified above in the `Build/Start` section are prerequisites to running tests.  
+Run tests and produce test metrics.
+The items identified above in the `Build/Start` section are prerequisites to running tests.
 In order to keep the test feedback loop optimized, the following items must be handled by the caller (and are not handled by the test targets):
 - Ensuring the compose stack is up and running
 - Ensuring the database has been seeded
@@ -118,7 +118,7 @@ The updated `dump.pgdata` should be committed with the other associated changes.
 2. Source the required environment variables from the `./.vscode/settings.json` (under go.testEnvVars) and `./shared_files/decrypted/local.env`.
 
    **NOTE:** Since we're connecting to Postgres externally, we need to use the local host/port instead.
-   
+
    For vscode users, these variables are already by the workspace settings file (`./.vscode/settings.json`)
 
 ### Auto-generating mock implementations
@@ -166,8 +166,9 @@ apiKey := os.Getenv("OKTA_CLIENT_TOKEN")
 
 Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line
 ```
-source $GOPATH/src/github.com/CMSgov/bcda-app/.env.sh
+source [src-path]/bcda-app/.env.sh
 ```
+where `[src-path]` is the relative path to the bcda-app repo.
 
 ## Environment variables
 
@@ -224,18 +225,5 @@ make load-fixtures
 # IDE Setup
 ## vscode
 
-1. Follow installing go + vscode [setup guide](https://marketplace.visualstudio.com/items?itemName=golang.go#getting-started).
-2. Ensure that bcda-app is found within the $GOPATH.
-```
-> echo $GOPATH
-/Users/bcda-developer/go
-```
-
-*NOTE:* You may have to manually set the $GOPATH
-
-```
-> mkdir -p $GOPATH/src/github.com/CMSgov
-> git clone git@github.com:CMSgov/bcda-app.git $GOPATH/src/github.com/CMSgov/bcda-app
-```
-
+Follow installing go + vscode [setup guide](https://marketplace.visualstudio.com/items?itemName=golang.go#getting-started).
 Additional settings found under `.vscode/settings.json` allow tests to be run within vscode.
