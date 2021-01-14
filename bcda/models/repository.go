@@ -39,6 +39,8 @@ type cclfFileRepository interface {
 
 	// CreateCCLFFile creates a CCLFFile and returns the unique ID associated with the newly created CCLF file
 	CreateCCLFFile(ctx context.Context, cclfFile CCLFFile) (uint, error)
+
+	UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error
 }
 
 // CCLFBeneficiaryRepository contains methods need to interact with CCLF Beneficiary data.

@@ -144,6 +144,28 @@ func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFil
 	return id, nil
 }
 
+func (r *Repository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
+	ub := sqlFlavor.NewUpdateBuilder().Update("cclf_files")
+	ub.Set(ub.Assign("import_status", importStatus))
+
+	query, args := ub.Build()
+
+	result, err := r.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return fmt.Errorf("failed to update file entry %d status to %s, no entry found", fileID, importStatus)
+	}
+
+	return nil
+}
+
 func (r *Repository) GetCCLFBeneficiaryMBIs(ctx context.Context, cclfFileID uint) ([]string, error) {
 	var mbis []string
 

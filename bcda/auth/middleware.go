@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
@@ -13,7 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 )
@@ -155,8 +155,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 			return
 		}
 
-		jobID := chi.URLParam(r, "jobID")
-		i, err := strconv.Atoi(jobID)
+		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")
@@ -164,13 +163,23 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 			return
 		}
 
-		db := database.GetGORMDbConnection()
-		defer database.Close(db)
+		db := database.GetDbConnection()
+		defer db.Close()
 
-		var job models.Job
-		err = db.First(&job, "id = ? and aco_id = ?", i, ad.ACOID).Error
+		repository := postgres.NewRepository(db)
+
+		job, err := repository.GetJobByID(context.Background(), uint(jobID))
 		if err != nil {
 			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")
+			responseutils.WriteError(oo, w, http.StatusNotFound)
+			return
+		}
+		
+		// ACO did not create the job
+		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
+			log.Errorf("ACO %s does not have access to job ID %d %s",
+				ad.ACOID, job.ID, job.ACOID)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return

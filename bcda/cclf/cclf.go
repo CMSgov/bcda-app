@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
@@ -148,6 +149,11 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 }
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
+	db := database.GetDbConnection()
+	defer db.Close()
+
+	repository := postgres.NewRepository(db)
+
 	importer := &cclf8Importer{
 		logger:            log.StandardLogger(),
 		maxPendingQueries: utils.GetEnvInt("STATEMENT_EXEC_COUNT", 200000),
@@ -162,7 +168,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 
 	defer func() {
 		if err != nil {
-			updateImportStatus(fileMetadata, constants.ImportFail)
+			updateImportStatus(ctx, repository, fileMetadata, constants.ImportFail)
 		}
 	}()
 
@@ -198,10 +204,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		Type:            fileMetadata.fileType,
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	err = db.Create(&cclfFile).Error
+	cclfFile.ID, err = repository.CreateCCLFFile(ctx, cclfFile)
 	if err != nil {
 		fmt.Printf("Could not create CCLF%d file record.\n", fileMetadata.cclfNum)
 		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
@@ -241,11 +244,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	sc := bufio.NewScanner(rc)
 
 	// Open transaction to encompass entire CCLF file ingest.
-	sdb, err := db.DB()
-	if err != nil {
-		return err
-	}
-	txn, err := sdb.Begin()
+	txn, err := db.Begin()
 	if err != nil {
 		return err
 	}
@@ -306,7 +305,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		}
 	}
 
-	updateImportStatus(fileMetadata, constants.ImportComplete)
+	updateImportStatus(ctx, repository, fileMetadata, constants.ImportComplete)
 	return nil
 }
 
@@ -601,16 +600,12 @@ func (m cclfFileMetadata) String() string {
 	return m.filePath
 }
 
-func updateImportStatus(m *cclfFileMetadata, status string) {
+func updateImportStatus(ctx context.Context, r models.Repository, m *cclfFileMetadata, status string) {
 	if m == nil {
 		return
 	}
-	var cclfFile models.CCLFFile
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	err := db.Model(&cclfFile).Where("id = ?", m.fileID).Update("import_status", status).Error
+	err := r.UpdateCCLFFileImportStatus(ctx, m.fileID, status)
 	if err != nil {
 		fmt.Printf("Could not update cclf file record for file: %s. \n", m)
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", m)

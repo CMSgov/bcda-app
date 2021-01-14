@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/go-chi/chi"
@@ -147,8 +148,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -156,7 +157,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 		Status:     models.JobStatusFailed,
 	}
 
-	db.Save(&j)
+	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
 
 	rctx := chi.NewRouteContext()
@@ -185,17 +186,17 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusFailed,
 	}
-
-	db.Save(&j)
+	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
+
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -228,8 +229,8 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 
 // what is this testing? always returns 404 invalid token?
 func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -237,7 +238,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 		Status:     models.JobStatusFailed,
 	}
 
-	db.Save(&j)
+	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
 
 	rctx := chi.NewRouteContext()
