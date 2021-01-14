@@ -353,8 +353,8 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 }
 
 func (s *CCLFTestSuite) TestImportRunoutCCLF() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	cmsID := "RNOUT"
 	defer func() {
@@ -388,8 +388,7 @@ func (s *CCLFTestSuite) TestImportRunoutCCLF() {
 
 			s.NoError(importCCLF8(context.Background(), metadata))
 
-			var cclfFile models.CCLFFile
-			assert.NoError(t, db.Where("name = ?", cclfName).First(&cclfFile).Error)
+			cclfFile := postgrestest.GetCCLFFilesByName(s.T(), db, cclfName)[0]
 			assert.Equal(t, tt.fileType, cclfFile.Type)
 		})
 	}
