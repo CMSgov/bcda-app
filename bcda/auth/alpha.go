@@ -92,7 +92,7 @@ func (p AlphaAuthPlugin) UpdateSystem(params []byte) ([]byte, error) {
 func (p AlphaAuthPlugin) DeleteSystem(clientID string) error {
 	delEvent := event{op: "DeleteSystem", trackingID: clientID}
 	operationStarted(delEvent)
-	aco, err := GetACOByClientID(clientID)
+	aco, err := repository.GetACOByClientID(context.Background(), clientID)
 	if err != nil {
 		delEvent.help = err.Error()
 		operationFailed(delEvent)
@@ -102,9 +102,8 @@ func (p AlphaAuthPlugin) DeleteSystem(clientID string) error {
 	aco.ClientID = ""
 	aco.AlphaSecret = ""
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	err = db.Save(&aco).Error
+	err = repository.UpdateACO(context.Background(), aco.UUID,
+		map[string]interface{}{"client_id": aco.ClientID, "alpha_secret": aco.AlphaSecret})
 	if err != nil {
 		delEvent.help = err.Error()
 		operationFailed(delEvent)
@@ -184,7 +183,7 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 		return "", fmt.Errorf("ClientID must be a valid UUID")
 	}
 
-	aco, err := GetACOByClientID(credentials.ClientID)
+	aco, err := p.Repository.GetACOByClientID(context.Background(), credentials.ClientID)
 	if err != nil {
 		tknEvent.help = err.Error()
 		operationFailed(tknEvent)

@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"context"
 	"database/sql"
 	"regexp"
 	"testing"
@@ -26,7 +27,8 @@ type AlphaAuthPluginTestSuite struct {
 	backend *auth.AlphaBackend
 	reset   func()
 
-	db *sql.DB
+	db         *sql.DB
+	repository models.Repository
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
@@ -39,6 +41,7 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 	s.backend = auth.InitAlphaBackend()
 
 	s.db = database.GetDbConnection()
+	s.repository = postgres.NewRepository(s.db)
 }
 
 func (s *AlphaAuthPluginTestSuite) TearDownSuite() {
@@ -109,15 +112,14 @@ func (s *AlphaAuthPluginTestSuite) TestDeleteSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
 	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
 	c, _ := s.p.RegisterSystem(acoUUID.String(), "", "")
-	aco, _ := auth.GetACOByClientID(c.ClientID)
+	aco, _ := s.repository.GetACOByClientID(context.Background(), c.ClientID)
 	assert.NotEmpty(s.T(), aco.ClientID)
 	assert.NotEmpty(s.T(), aco.AlphaSecret)
 
 	err := s.p.DeleteSystem(c.ClientID)
 	assert.Nil(s.T(), err)
-	aco, _ = auth.GetACOByClientID(c.ClientID)
-	assert.Empty(s.T(), aco.ClientID)
-	assert.Empty(s.T(), aco.AlphaSecret)
+	aco, _ = s.repository.GetACOByClientID(context.Background(), c.ClientID)
+	assert.Nil(s.T(), aco)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestResetSecret() {

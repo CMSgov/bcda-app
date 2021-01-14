@@ -114,6 +114,75 @@ func (_m *MockRepository) CreateSuppressionFile(ctx context.Context, suppression
 	return r0, r1
 }
 
+// GetACOByCMSID provides a mock function with given fields: ctx, cmsID
+func (_m *MockRepository) GetACOByCMSID(ctx context.Context, cmsID string) (*ACO, error) {
+	ret := _m.Called(ctx, cmsID)
+
+	var r0 *ACO
+	if rf, ok := ret.Get(0).(func(context.Context, string) *ACO); ok {
+		r0 = rf(ctx, cmsID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ACO)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, cmsID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetACOByClientID provides a mock function with given fields: ctx, clientID
+func (_m *MockRepository) GetACOByClientID(ctx context.Context, clientID string) (*ACO, error) {
+	ret := _m.Called(ctx, clientID)
+
+	var r0 *ACO
+	if rf, ok := ret.Get(0).(func(context.Context, string) *ACO); ok {
+		r0 = rf(ctx, clientID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ACO)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, clientID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetACOByUUID provides a mock function with given fields: ctx, _a1
+func (_m *MockRepository) GetACOByUUID(ctx context.Context, _a1 uuid.UUID) (*ACO, error) {
+	ret := _m.Called(ctx, _a1)
+
+	var r0 *ACO
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *ACO); ok {
+		r0 = rf(ctx, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ACO)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetCCLFBeneficiaries provides a mock function with given fields: ctx, cclfFileID, ignoredMBIs
 func (_m *MockRepository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, ignoredMBIs []string) ([]*CCLFBeneficiary, error) {
 	ret := _m.Called(ctx, cclfFileID, ignoredMBIs)
@@ -354,6 +423,20 @@ func (_m *MockRepository) UpdateJob(ctx context.Context, j Job) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, Job) error); ok {
 		r0 = rf(ctx, j)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateSuppressionFileImportStatus provides a mock function with given fields: ctx, fileID, importStatus
+func (_m *MockRepository) UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
+	ret := _m.Called(ctx, fileID, importStatus)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint, string) error); ok {
+		r0 = rf(ctx, fileID, importStatus)
 	} else {
 		r0 = ret.Error(0)
 	}

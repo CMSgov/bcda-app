@@ -125,7 +125,7 @@ func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
 }
 
 // Extract available values from SSAS token claims.
-func adFromClaims(claims *CommonClaims) (AuthData, error) {
+func adFromClaims(r models.Repository, claims *CommonClaims) (AuthData, error) {
 	var (
 		ad  AuthData
 		err error
@@ -156,8 +156,8 @@ func adFromClaims(claims *CommonClaims) (AuthData, error) {
 	}
 	ad.CMSID = xData.IDList[0]
 
-	var aco models.ACO
-	if aco, err = GetACOByCMSID(ad.CMSID); err != nil {
+	var aco *models.ACO
+	if aco, err = repository.GetACOByCMSID(context.Background(), ad.CMSID); err != nil {
 		return ad, fmt.Errorf("no aco for cmsID %s; %v", ad.CMSID, err)
 	}
 	ad.ACOID = aco.UUID.String()
@@ -180,7 +180,7 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 	if !ok {
 		return errors.New("invalid ssas claims")
 	}
-	if _, err = adFromClaims(claims); err != nil {
+	if _, err = adFromClaims(s.repository, claims); err != nil {
 		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
 		operationFailed(tknEvent)
 		return err

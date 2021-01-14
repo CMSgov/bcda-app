@@ -28,6 +28,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
+	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -252,7 +253,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				aco, err := auth.GetACOByCMSID(acoCMSID)
+				aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -463,17 +464,17 @@ func createGroup(id, name, acoID string) (string, error) {
 	}
 
 	var (
-		aco models.ACO
+		aco *models.ACO
 		err error
 	)
 
 	if match := models.IsSupportedACO(acoID); match {
-		aco, err = auth.GetACOByCMSID(acoID)
+		aco, err = r.GetACOByCMSID(context.Background(), acoID)
 		if err != nil {
 			return "", err
 		}
 	} else if match, err := regexp.MatchString("[0-9a-f]{6}-([0-9a-f]{4}-){3}[0-9a-f]{12}", acoID); err == nil && match {
-		aco, err = auth.GetACOByUUID(acoID)
+		aco, err = r.GetACOByUUID(context.Background(), uuid.Parse(acoID))
 		if err != nil {
 			return "", err
 		}
@@ -534,7 +535,7 @@ func createACO(name, cmsID string) (string, error) {
 }
 
 func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
-	aco, err := auth.GetACOByCMSID(acoCMSID)
+	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 	if err != nil {
 		return "", err
 	}
@@ -639,7 +640,8 @@ func cleanupArchive(hrThreshold int) error {
 }
 
 func setBlacklistState(cmsID string, blacklistState bool) error {
-	aco, err := auth.GetACOByCMSID(cmsID)
+	ctx := context.Background()
+	aco, err := r.GetACOByCMSID(ctx, cmsID)
 	if err != nil {
 		return err
 	}

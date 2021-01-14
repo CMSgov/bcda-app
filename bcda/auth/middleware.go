@@ -69,7 +69,7 @@ func ParseToken(next http.Handler) http.Handler {
 			// okta token
 			switch claims.Issuer {
 			case "ssas":
-				ad, _ = adFromClaims(claims)
+				ad, _ = adFromClaims(repository, claims)
 			case "okta":
 				aco, err := repository.GetACOByClientID(context.Background(), claims.ClientID)
 				if err != nil {

@@ -77,6 +77,23 @@ func (s *TokenToolsTestSuite) TestUnavailableSigner() {
 	})
 }
 
+func (s *TokenToolsTestSuite) TestTokenCreation() {
+	tokenUUID := uuid.NewRandom()
+	acoUUID := uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3")
+	issuedAt := time.Now().Unix()
+	expiresOn := time.Now().Add(time.Hour * time.Duration(72)).Unix()
+
+	tokenString, err := auth.GenerateTokenString(
+		tokenUUID.String(),
+		acoUUID.String(),
+		issuedAt,
+		expiresOn,
+	)
+
+	assert.Nil(s.T(), err)
+	assert.NotNil(s.T(), tokenString)
+}
+
 func TestTokenToolsTestSuite(t *testing.T) {
 	suite.Run(t, new(TokenToolsTestSuite))
 }
