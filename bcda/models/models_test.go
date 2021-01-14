@@ -2,30 +2,15 @@ package models
 
 import (
 	"testing"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 type ModelsTestSuite struct {
 	suite.Suite
-
-	// Re-initialized for every test
-	db *gorm.DB
-}
-
-func (s *ModelsTestSuite) SetupTest() {
-	s.db = database.GetGORMDbConnection()
-}
-
-func (s *ModelsTestSuite) TearDownTest() {
-	database.Close(s.db)
 }
 
 func TestModelsTestSuite(t *testing.T) {
@@ -67,40 +52,4 @@ func (s *ModelsTestSuite) TestGetBlueButtonID_CCLFBeneficiary() {
 	// Should be making two calls to BB for the MBI_MODE attemptsm, but this number will be four with the earlier test in this method.
 	// This is due to the fact that we are not relying on cached identifiers
 	bbc.AssertNumberOfCalls(s.T(), "GetPatientByIdentifierHash", 2)
-}
-
-
-
-func (s *ModelsTestSuite) TestCCLFFileType() {
-	noType := &CCLFFile{
-		CCLFNum:         8,
-		Name:            uuid.New(),
-		ACOCMSID:        "T9999",
-		Timestamp:       time.Now(),
-		PerformanceYear: 20,
-	}
-	withType := &CCLFFile{
-		CCLFNum:         8,
-		Name:            uuid.New(),
-		ACOCMSID:        "T9999",
-		Timestamp:       time.Now(),
-		PerformanceYear: 20,
-		Type:            FileTypeRunout,
-	}
-
-	defer func() {
-		s.db.Unscoped().Delete(noType)
-		s.db.Unscoped().Delete(withType)
-	}()
-
-	assert.NoError(s.T(), s.db.Create(noType).Error)
-	assert.NoError(s.T(), s.db.Create(withType).Error)
-
-	var result CCLFFile
-	assert.NoError(s.T(), s.db.First(&result, noType.ID).Error)
-	assert.Equal(s.T(), FileTypeDefault, result.Type)
-
-	result = CCLFFile{}
-	assert.NoError(s.T(), s.db.First(&result, withType.ID).Error)
-	assert.Equal(s.T(), withType.Type, result.Type)
 }

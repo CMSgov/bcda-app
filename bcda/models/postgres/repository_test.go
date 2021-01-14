@@ -1,4 +1,4 @@
-package postgres
+package postgres_test
 
 import (
 	"context"
@@ -15,6 +15,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"gorm.io/gorm"
@@ -103,7 +105,7 @@ func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 				assert.NoError(t, mock.ExpectationsWereMet())
 				db.Close()
 			}()
-			repository := NewRepository(db)
+			repository := postgres.NewRepository(db)
 
 			args := []driver.Value{cmsID, cclfNum, importStatus, tt.fileType}
 			if !tt.lowerBound.IsZero() {
@@ -164,7 +166,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaryMBIs() {
 				assert.NoError(t, mock.ExpectationsWereMet())
 				db.Close()
 			}()
-			repository := NewRepository(db)
+			repository := postgres.NewRepository(db)
 
 			query := mock.ExpectQuery(fmt.Sprintf("^%s$", regexp.QuoteMeta(tt.expQueryRegex))).
 				WithArgs(cclfFileID)
@@ -238,7 +240,7 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 				assert.NoError(t, mock.ExpectationsWereMet())
 				db.Close()
 			}()
-			repository := NewRepository(db)
+			repository := postgres.NewRepository(db)
 
 			var query *sqlmock.ExpectedQuery
 			if tt.ignoredMBIs == nil {
@@ -302,7 +304,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 				assert.NoError(t, mock.ExpectationsWereMet())
 				db.Close()
 			}()
-			repository := NewRepository(db)
+			repository := postgres.NewRepository(db)
 
 			// No arguments because the lookback days is embedded in the query
 			query := mock.ExpectQuery(regexp.QuoteMeta(tt.expQueryRegex)).WithArgs("", "N")
@@ -334,7 +336,7 @@ func (s *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 	db := database.GetDbConnection()
 	defer db.Close()
 
-	repository := NewRepository(db)
+	repository := postgres.NewRepository(db)
 	tests := []struct {
 		name     string
 		fileName string
@@ -349,7 +351,10 @@ func (s *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			var err error
+			var (
+				err           error
+				expectedCount int
+			)
 			for _, acoID := range tt.acoIDs {
 				cclfFile := models.CCLFFile{
 					Name:            tt.fileName,
@@ -361,10 +366,9 @@ func (s *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 				if cclfFile.ID, err = repository.CreateCCLFFile(context.Background(), cclfFile); err != nil {
 					continue
 				}
+				expectedCount++
 				assert.True(t, cclfFile.ID > 0, "ID should be set!")
-				defer func() {
-					assert.Empty(t, cclfFile.Delete())
-				}()
+				defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, cclfFile.ACOCMSID)
 			}
 
 			if tt.errMsg != "" {
@@ -372,6 +376,10 @@ func (s *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 			} else {
 				assert.NoError(t, err)
 			}
+
+			count := len(postgrestest.GetCCLFFilesByName(s.T(), db, tt.fileName))
+			assert.True(t, expectedCount > 0, "Files should've been written")
+			assert.Equal(t, expectedCount, count)
 		})
 	}
 
@@ -382,27 +390,65 @@ func (s *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 func (s *RepositoryTestSuite) TestCMSID() {
 	db := database.GetDbConnection()
 	defer db.Close()
-	r := NewRepository(db)
+	r := postgres.NewRepository(db)
 
 	cmsID := "V001"
-	cclfFile := &models.CCLFFile{CCLFNum: 1, Name: "someName", ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 20}
-	aco := &models.ACO{UUID: uuid.NewUUID(), CMSID: &cmsID, Name: "someName"}
+	cclfFile := models.CCLFFile{CCLFNum: 1, Name: "someName", ACOCMSID: cmsID, Timestamp: time.Now(), PerformanceYear: 20}
+	aco := models.ACO{UUID: uuid.NewUUID(), CMSID: &cmsID, Name: "someName"}
+	var err error
 
+	cclfFile.ID, err = r.CreateCCLFFile(context.Background(), cclfFile)
+	assert.NoError(s.T(), err)
+	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, cmsID)
 
-	a
-	assert.NoError(s.T(), s.db.Save(cclfFile).Error)
-	defer s.db.Unscoped().Delete(cclfFile)
-	assert.NoError(s.T(), s.db.Save(aco).Error)
-	defer s.db.Unscoped().Delete(aco)
+	postgrestest.CreateACO(s.T(), db, aco)
+	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
-	var actualCMSID []string
-	assert.NoError(s.T(), s.db.Model(&ACO{}).Where("id = ?", aco.ID).Pluck("cms_id", &actualCMSID).Error)
-	assert.Equal(s.T(), 1, len(actualCMSID))
-	assert.Equal(s.T(), cmsID, actualCMSID[0])
+	actualCMSID := *postgrestest.GetACOByUUID(s.T(), db, aco.UUID).CMSID
+	assert.Equal(s.T(), cmsID, actualCMSID)
 
-	assert.NoError(s.T(), s.db.Model(&CCLFFile{}).Where("id = ?", cclfFile.ID).Pluck("aco_cms_id", &actualCMSID).Error)
-	assert.Equal(s.T(), 1, len(actualCMSID))
-	assert.Equal(s.T(), cmsID, actualCMSID[0])
+	actualCMSID = postgrestest.GetCCLFFilesByName(s.T(), db, cclfFile.Name)[0].ACOCMSID
+	assert.Equal(s.T(), cmsID, actualCMSID)
+}
+
+func (s *RepositoryTestSuite) TestCCLFFileType() {
+	db := database.GetDbConnection()
+	defer db.Close()
+	r := postgres.NewRepository(db)
+
+	cmsID := "T9999"
+
+	noType := models.CCLFFile{
+		CCLFNum:         8,
+		Name:            uuid.New(),
+		ACOCMSID:        cmsID,
+		Timestamp:       time.Now(),
+		PerformanceYear: 20,
+	}
+	withType := models.CCLFFile{
+		CCLFNum:         8,
+		Name:            uuid.New(),
+		ACOCMSID:        cmsID,
+		Timestamp:       time.Now(),
+		PerformanceYear: 20,
+		Type:            models.FileTypeRunout,
+	}
+	var err error
+
+	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), db, cmsID)
+	noType.ID, err = r.CreateCCLFFile(context.Background(), noType)
+	assert.NoError(s.T(), err)
+
+	withType.ID, err = r.CreateCCLFFile(context.Background(), withType)
+	assert.NoError(s.T(), err)
+
+	result := postgrestest.GetCCLFFilesByName(s.T(), db, noType.Name)
+	assert.Equal(s.T(), 1, len(result))
+	assert.Equal(s.T(), noType.Type, result[0].Type)
+	
+	result = postgrestest.GetCCLFFilesByName(s.T(), db, withType.Name)
+	assert.Equal(s.T(), 1, len(result))
+	assert.Equal(s.T(), withType.Type, result[0].Type)
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
