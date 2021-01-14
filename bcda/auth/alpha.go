@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -10,9 +11,12 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-type AlphaAuthPlugin struct{}
+type AlphaAuthPlugin struct {
+	Repository models.Repository
+}
 
 // validates that AlphaAuthPlugin implements the interface
 var _ Provider = AlphaAuthPlugin{}
@@ -27,7 +31,7 @@ func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips 
 		return Credentials{}, errors.New(regEvent.help)
 	}
 
-	aco, err := GetACOByUUID(localID)
+	aco, err := p.Repository.GetACOByUUID(context.Background(), uuid.Parse(localID))
 	if err != nil {
 		regEvent.help = err.Error()
 		operationFailed(regEvent)
@@ -122,7 +126,7 @@ func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
 	}
 
 	// Although this should be GetACOByClientID, fixing it impacts tests that were built with the assumption is that client ID = UUID.
-	aco, err := GetACOByUUID(clientID)
+	aco, err := p.Repository.GetACOByUUID(context.Background(), uuid.Parse(clientID))
 	if err != nil {
 		genEvent.help = err.Error()
 		operationFailed(genEvent)
@@ -231,7 +235,7 @@ func (p AlphaAuthPlugin) AuthorizeAccess(tokenString string) error {
 		return err
 	}
 
-	_, err = GetACOByUUID(c.ACOID)
+	_, err = p.Repository.GetACOByUUID(context.Background(), uuid.Parse(c.ACOID))
 	if err != nil {
 		tknEvent.help = err.Error()
 		operationFailed(tknEvent)

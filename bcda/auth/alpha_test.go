@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"database/sql"
 	"regexp"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
@@ -23,6 +25,8 @@ type AlphaAuthPluginTestSuite struct {
 	p       auth.AlphaAuthPlugin
 	backend *auth.AlphaBackend
 	reset   func()
+
+	db *sql.DB
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
@@ -33,14 +37,17 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 		public()
 	}
 	s.backend = auth.InitAlphaBackend()
+
+	s.db = database.GetDbConnection()
 }
 
 func (s *AlphaAuthPluginTestSuite) TearDownSuite() {
 	s.reset()
+	s.db.Close()
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
-	s.p = auth.AlphaAuthPlugin{}
+	s.p = auth.AlphaAuthPlugin{postgres.NewRepository(s.db)}
 }
 
 func (s *AlphaAuthPluginTestSuite) BeforeTest(suiteName, testName string) {

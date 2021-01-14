@@ -9,10 +9,12 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 )
 
@@ -57,6 +59,11 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
+		db := database.GetDbConnection()
+		defer db.Close()
+
+		repository := postgres.NewRepository(db)
+
 		var ad AuthData
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
 			// okta token
@@ -64,15 +71,12 @@ func ParseToken(next http.Handler) http.Handler {
 			case "ssas":
 				ad, _ = adFromClaims(claims)
 			case "okta":
-				var aco, err = GetACOByClientID(claims.ClientID)
+				aco, err := repository.GetACOByClientID(context.Background(), claims.ClientID)
 				if err != nil {
 					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
 					next.ServeHTTP(w, r)
 					return
 				}
-
-				db := database.GetGORMDbConnection()
-				defer database.Close(db)
 
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
@@ -80,7 +84,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.Blacklisted = aco.Blacklisted
 
 			default:
-				var aco, err = GetACOByUUID(claims.ACOID)
+				aco, err := repository.GetACOByUUID(context.Background(), uuid.Parse(claims.ACOID))
 				if err != nil {
 					log.Errorf("no aco for ACO ID %s because %v", claims.ACOID, err)
 					next.ServeHTTP(w, r)

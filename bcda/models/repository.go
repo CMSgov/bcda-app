@@ -19,6 +19,12 @@ type Repository interface {
 }
 
 type acoRepository interface {
+	GetACOByUUID(ctx context.Context, uuid uuid.UUID) (*ACO, error)
+
+	GetACOByClientID(ctx context.Context, clientID string) (*ACO, error)
+
+	GetACOByCMSID(ctx context.Context, cmsID string) (*ACO, error)
+
 	// UpdateACO updates the ACO (found by the acoUUID field) with the fields and values indicated by the fieldsAndValues map.
 	// For example, to update the group_id field, the caller should supply
 	// "group_id": "new_id_value"

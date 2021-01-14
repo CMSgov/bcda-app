@@ -20,7 +20,8 @@ const (
 
 func CreateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
-	ib.Cols("uuid", "cms_id", "name", "blacklisted").Values(aco.UUID, aco.CMSID, aco.Name, aco.Blacklisted)
+	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted").
+		Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted)
 	query, args := ib.Build()
 	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
@@ -259,8 +260,8 @@ func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []models.Sup
 	var suppressions []models.Suppression
 	for rows.Next() {
 		var s models.Suppression
-		err = rows.Scan(&s.ID, &s.FileID, &s.MBI, &s.SourceCode, &s.EffectiveDt, &s.PrefIndicator, 
-			&s.SAMHSASourceCode, &s.SAMHSAEffectiveDt, &s.SAMHSAPrefIndicator, 
+		err = rows.Scan(&s.ID, &s.FileID, &s.MBI, &s.SourceCode, &s.EffectiveDt, &s.PrefIndicator,
+			&s.SAMHSASourceCode, &s.SAMHSAEffectiveDt, &s.SAMHSAPrefIndicator,
 			&s.BeneficiaryLinkKey, &s.ACOCMSID)
 		assert.NoError(t, err)
 		suppressions = append(suppressions, s)

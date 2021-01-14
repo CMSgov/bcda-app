@@ -42,6 +42,16 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 	return &Repository{tx, tx}
 }
 
+func (r *Repository) GetACOByUUID(ctx context.Context, uuid uuid.UUID) (*models.ACO, error) {
+	return r.getACO(ctx, "uuid", uuid)
+}
+func (r *Repository) GetACOByClientID(ctx context.Context, clientID string) (*models.ACO, error) {
+	return r.getACO(ctx, "client_id", clientID)
+}
+func (r *Repository) GetACOByCMSID(ctx context.Context, cmsID string) (*models.ACO, error) {
+	return r.getACO(ctx, "cms_id", cmsID)
+}
+
 func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("acos")
 	for field, value := range fieldsAndValues {
@@ -484,4 +494,30 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 	}
 
 	return jobs, nil
+}
+
+func (r *Repository) getACO(ctx context.Context, field string, value interface{}) (*models.ACO, error) {
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name",
+		"client_id", "group_id", "system_id", "alpha_secret", "public_key", "blacklisted").From("acos")
+	sb.Where(sb.Equal(field, value))
+
+	query, args := sb.Build()
+	row := r.QueryRowContext(ctx, query, args...)
+	var (
+		aco                                                              models.ACO
+		name, cmsID, clientID, alphaSecret, publicKey, groupID, systemID sql.NullString
+	)
+	err := row.Scan(&aco.ID, &aco.UUID, &cmsID, &name,
+		&clientID, &groupID, &systemID, &alphaSecret,
+		&publicKey, &aco.Blacklisted)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("no ACO record found for %s", value)
+		}
+		return nil, err
+	}
+	aco.Name, aco.ClientID, aco.AlphaSecret = name.String, clientID.String, alphaSecret.String
+	aco.PublicKey, aco.GroupID, aco.SystemID = publicKey.String, groupID.String, systemID.String
+	aco.CMSID = &cmsID.String
+	return &aco, nil
 }
