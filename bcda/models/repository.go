@@ -50,6 +50,8 @@ type suppressionRepository interface {
 
 type suppressionFileRepository interface {
 	CreateSuppressionFile(ctx context.Context, suppressionFile SuppressionFile) (uint, error)
+
+	UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error
 }
 
 type jobRepository interface {

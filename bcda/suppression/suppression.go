@@ -276,11 +276,12 @@ func importSuppressionData(metadata *suppressionFileMetadata) error {
 		}
 		return nil
 	})
+
 	if err != nil {
-		updateImportStatus(metadata, constants.ImportFail)
+		updateImportStatus(metadata.fileID, constants.ImportFail)
 		return err
 	}
-	updateImportStatus(metadata, constants.ImportComplete)
+	updateImportStatus(metadata.fileID, constants.ImportComplete)
 	return nil
 }
 
@@ -411,16 +412,14 @@ func (m suppressionFileMetadata) String() string {
 	return m.name
 }
 
-func updateImportStatus(m *suppressionFileMetadata, status string) {
-	var suppressionFile models.SuppressionFile
+func updateImportStatus(fileID uint, status string) {
+	db := database.GetDbConnection()
+	defer db.Close()
+	r := postgres.NewRepository(db)
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	err := db.Model(&suppressionFile).Where("id = ?", m.fileID).Update("import_status", status).Error
-	if err != nil {
-		fmt.Printf("Could not update suppression file record for file: %s. \n", m)
-		err = errors.Wrapf(err, "could not update suppression file record for file: %s.", m)
+	if err := r.UpdateSuppressionFileImportStatus(context.Background(), fileID, status); err != nil {
+		fmt.Printf("Could not update suppression file record for file_id: %d. \n", fileID)
+		err = errors.Wrapf(err, "could not update suppression file record for file_id: %d.", fileID)
 		log.Error(err)
 	}
 }

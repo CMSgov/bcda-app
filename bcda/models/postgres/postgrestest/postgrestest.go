@@ -83,7 +83,6 @@ func DeleteACO(t *testing.T, db *sql.DB, acoID uuid.UUID) {
 	assert.NoError(t, err)
 }
 
-
 func GetCCLFFilesByCMSID(t *testing.T, db *sql.DB, cmsID string) []models.CCLFFile {
 	cclfFiles, err := getCCLFFiles(db, "aco_cms_id", cmsID)
 	assert.NoError(t, err)
@@ -228,13 +227,47 @@ func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []model
 	return files
 }
 
+// DeleteSuppressionFileByID deletes the suppresion file associated with the given ID.
+// Since (as of 2021-01-13), we have foreign key ties to this table, we'll
+// also delete any relational ties (e.g. Suppressions)
 func DeleteSuppressionFileByID(t *testing.T, db *sql.DB, id uint) {
-	delete := sqlFlavor.NewDeleteBuilder().DeleteFrom("suppression_files")
-	delete.Where(delete.Equal("id", id))
-
-	query, args := delete.Build()
+	deleteSuppression := sqlFlavor.NewDeleteBuilder().DeleteFrom("suppressions")
+	deleteSuppression.Where(deleteSuppression.Equal("file_id", id))
+	query, args := deleteSuppression.Build()
 	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
+
+	delete := sqlFlavor.NewDeleteBuilder().DeleteFrom("suppression_files")
+	delete.Where(delete.Equal("id", id))
+	query, args = delete.Build()
+	_, err = db.Exec(query, args...)
+	assert.NoError(t, err)
+}
+
+func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []models.Suppression {
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_id", "mbi", "source_code", "effective_date", "preference_indicator",
+		"samhsa_source_code", "samhsa_effective_date", "samhsa_preference_indicator",
+		"beneficiary_link_key", "aco_cms_id").From("suppressions")
+	sb.Where(sb.Equal("file_id", fileID))
+	sb.OrderBy("id")
+
+	query, args := sb.Build()
+	rows, err := db.Query(query, args...)
+	assert.NoError(t, err)
+	defer rows.Close()
+
+	var suppressions []models.Suppression
+	for rows.Next() {
+		var s models.Suppression
+		err = rows.Scan(&s.ID, &s.FileID, &s.MBI, &s.SourceCode, &s.EffectiveDt, &s.PrefIndicator, 
+			&s.SAMHSASourceCode, &s.SAMHSAEffectiveDt, &s.SAMHSAPrefIndicator, 
+			&s.BeneficiaryLinkKey, &s.ACOCMSID)
+		assert.NoError(t, err)
+		suppressions = append(suppressions, s)
+	}
+	assert.NoError(t, rows.Err())
+
+	return suppressions
 }
 
 func getFileIDsForCMSID(db *sql.DB, cmsID string) ([]interface{}, error) {

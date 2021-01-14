@@ -272,6 +272,28 @@ func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile 
 	return id, nil
 }
 
+func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
+	ub := sqlFlavor.NewUpdateBuilder().Update("suppression_files")
+	ub.Set(ub.Assign("import_status", importStatus))
+
+	query, args := ub.Build()
+	result, err := r.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return fmt.Errorf("SuppressionFile %d not updated, no row found", fileID)
+	}
+
+	return nil
+}
+
 var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at"}
 
 func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {

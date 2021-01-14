@@ -12,13 +12,11 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 type SuppressionTestSuite struct {
@@ -55,8 +53,8 @@ func TestSuppressionTestSuite(t *testing.T) {
 
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -69,15 +67,12 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	err := importSuppressionData(metadata)
 	assert.Nil(err)
 
-	suppressionFile := models.SuppressionFile{}
-	db.First(&suppressionFile, "name = ?", metadata.name)
-	assert.NotNil(suppressionFile)
+	suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.name)[0]
 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000009", suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 	assert.Equal(constants.ImportComplete, suppressionFile.ImportStatus)
 
-	suppressions := []models.Suppression{}
-	db.Find(&suppressions, "file_id = ?", suppressionFile.ID).Order("created_at")
+	suppressions := postgrestest.GetSuppressionsByFileID(s.T(), db, suppressionFile.ID)
 	assert.Len(suppressions, 4)
 	assert.Equal("5SJ0A00AA00", suppressions[0].MBI)
 	assert.Equal("1-800", suppressions[0].SourceCode)
@@ -88,8 +83,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("8SG0A00AA00", suppressions[3].MBI)
 	assert.Equal("1-800", suppressions[3].SourceCode)
 
-	err = deleteFilesByFileID(suppressionFile.ID, db)
-	assert.Nil(err)
+	postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
 
 	// 190816 file T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390
 	fileTime, _ = time.Parse(time.RFC3339, "2019-08-16T02:41:39Z")
@@ -102,14 +96,11 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	err = importSuppressionData(metadata)
 	assert.Nil(err)
 
-	suppressionFile = models.SuppressionFile{}
-	db.First(&suppressionFile, "name = ?", metadata.name)
-	assert.NotNil(suppressionFile)
+	suppressionFile = postgrestest.GetSuppressionFileByName(s.T(), db, metadata.name)[0]
 	assert.Equal("T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241390", suppressionFile.Name)
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 
-	suppressions = []models.Suppression{}
-	db.Find(&suppressions, "file_id = ?", suppressionFile.ID).Order("id")
+	suppressions = postgrestest.GetSuppressionsByFileID(s.T(), db, suppressionFile.ID)
 	assert.Len(suppressions, 250)
 	assert.Equal("1000000019", suppressions[0].MBI)
 	assert.Equal("N", suppressions[0].PrefIndicator)
@@ -122,80 +113,47 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal("1000098787", suppressions[249].MBI)
 	assert.Equal(" ", suppressions[249].PrefIndicator)
 
-	err = deleteFilesByFileID(suppressionFile.ID, db)
-	assert.Nil(err)
+	postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
 }
 
 func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	assert := assert.New(s.T())
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
+	// Verify empty file is rejected
 	metadata := &suppressionFileMetadata{}
 	err := importSuppressionData(metadata)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "could not read file")
 
-	suppressionFile := models.SuppressionFile{}
-	db.First(&suppressionFile, "name = ?", metadata.name)
-	assert.NotNil(suppressionFile)
-	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
-	err = deleteFilesByFileID(suppressionFile.ID, db)
-	assert.Nil(err)
-
-	fp := filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011")
-	metadata = &suppressionFileMetadata{
-		timestamp:    time.Now(),
-		filePath:     fp,
-		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011",
-		deliveryDate: time.Now(),
+	tests := []struct {
+		name   string
+		expErr string
+	}{
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000011", "failed to parse the effective date '20191301' from file"},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012", "failed to parse the samhsa effective date '20191301' from file"},
+		{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013", "failed to parse beneficiary link key from file"},
 	}
-	err = importSuppressionData(metadata)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse the effective date '20191301' from file: "+fp)
 
-	suppressionFile = models.SuppressionFile{}
-	db.First(&suppressionFile, "name = ?", metadata.name)
-	assert.NotNil(suppressionFile)
-	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
-	err = deleteFilesByFileID(suppressionFile.ID, db)
-	assert.Nil(err)
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			fp := filepath.Join(s.basePath, "suppressionfile_MissingData/"+tt.name)
+			metadata = &suppressionFileMetadata{
+				timestamp:    time.Now(),
+				filePath:     fp,
+				name:         tt.name,
+				deliveryDate: time.Now(),
+			}
+			err = importSuppressionData(metadata)
+			assert.NotNil(err)
+			assert.Contains(err.Error(), fmt.Sprintf("%s: %s", tt.expErr, fp))
 
-	fp = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012")
-	metadata = &suppressionFileMetadata{
-		timestamp:    time.Now(),
-		filePath:     fp,
-		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000012",
-		deliveryDate: time.Now(),
+			suppressionFile := postgrestest.GetSuppressionFileByName(s.T(), db, metadata.name)[0]
+			assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
+			postgrestest.DeleteSuppressionFileByID(s.T(), db, suppressionFile.ID)
+		})
 	}
-	err = importSuppressionData(metadata)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse the samhsa effective date '20191301' from file: "+fp)
-
-	suppressionFile = models.SuppressionFile{}
-	db.First(&suppressionFile, "name = ?", metadata.name)
-	assert.NotNil(suppressionFile)
-	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
-	err = deleteFilesByFileID(suppressionFile.ID, db)
-	assert.Nil(err)
-
-	fp = filepath.Join(s.basePath, "suppressionfile_MissingData/T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013")
-	metadata = &suppressionFileMetadata{
-		timestamp:    time.Now(),
-		filePath:     fp,
-		name:         "T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000013",
-		deliveryDate: time.Now(),
-	}
-	err = importSuppressionData(metadata)
-	assert.NotNil(err)
-	assert.Contains(err.Error(), "failed to parse beneficiary link key from file: "+fp)
-
-	suppressionFile = models.SuppressionFile{}
-	db.First(&suppressionFile, "name = ?", metadata.name)
-	assert.NotNil(suppressionFile)
-	assert.Equal(constants.ImportFail, suppressionFile.ImportStatus)
-	err = deleteFilesByFileID(suppressionFile.ID, db)
-	assert.Nil(err)
 }
 
 func (s *SuppressionTestSuite) TestValidate() {
@@ -398,16 +356,4 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 			s.FailNow("test files did not correctly cleanup", err)
 		}
 	}
-}
-
-func deleteFilesByFileID(fileID uint, db *gorm.DB) error {
-	var files []models.SuppressionFile
-	db.Where("id = ?", fileID).Find(&files)
-	for _, suppressFile := range files {
-		err := suppressFile.Delete()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
