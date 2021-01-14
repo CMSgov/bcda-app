@@ -13,6 +13,7 @@ type Repository interface {
 	cclfFileRepository
 	cclfBeneficiaryRepository
 	suppressionRepository
+	suppressionFileRepository
 	jobRepository
 	jobKeyRepository
 }
@@ -43,6 +44,12 @@ type cclfBeneficiaryRepository interface {
 
 type suppressionRepository interface {
 	GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([]string, error)
+
+	CreateSuppression(ctx context.Context, suppression Suppression) error
+}
+
+type suppressionFileRepository interface {
+	CreateSuppressionFile(ctx context.Context, suppressionFile SuppressionFile) (uint, error)
 }
 
 type jobRepository interface {

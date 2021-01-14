@@ -207,6 +207,20 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 	return beneficiaries, nil
 }
 
+func (r *Repository) CreateSuppression(ctx context.Context, suppression models.Suppression) error {
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppressions").
+		Cols("file_id", "mbi", "source_code", "effective_date", "preference_indicator",
+			"samhsa_source_code", "samhsa_effective_date", "samhsa_preference_indicator",
+			"beneficiary_link_key", "aco_cms_id").
+		Values(suppression.FileID, suppression.MBI, suppression.SourceCode, suppression.EffectiveDt, suppression.PrefIndicator,
+			suppression.SAMHSASourceCode, suppression.SAMHSAEffectiveDt, suppression.SAMHSAPrefIndicator,
+			suppression.BeneficiaryLinkKey, suppression.ACOCMSID)
+	query, args := ib.Build()
+
+	_, err := r.ExecContext(ctx, query, args...)
+	return err
+}
+
 func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([]string, error) {
 	var suppressedMBIs []string
 
@@ -240,6 +254,22 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([
 	}
 
 	return suppressedMBIs, nil
+}
+
+func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile models.SuppressionFile) (uint, error) {
+	// User raw builder since we need to retrieve the associated ID
+	query, args := sqlbuilder.Buildf(`INSERT INTO suppression_files
+		(name, timestamp, import_status) VALUES
+		(%s, %s, %s) RETURNING id`,
+		suppressionFile.Name, suppressionFile.Timestamp, suppressionFile.ImportStatus).
+		BuildWithFlavor(sqlFlavor)
+
+	var id uint
+	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
 var jobColumns []string = []string{"id", "aco_id", "request_url", "status", "transaction_time", "job_count", "completed_job_count", "created_at", "updated_at"}

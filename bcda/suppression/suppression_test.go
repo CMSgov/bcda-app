@@ -109,7 +109,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert.Equal(fileTime.Format("010203040506"), suppressionFile.Timestamp.Format("010203040506"))
 
 	suppressions = []models.Suppression{}
-	db.Find(&suppressions, "file_id = ?", suppressionFile.ID).Order("created_at")
+	db.Find(&suppressions, "file_id = ?", suppressionFile.ID).Order("id")
 	assert.Len(suppressions, 250)
 	assert.Equal("1000000019", suppressions[0].MBI)
 	assert.Equal("N", suppressions[0].PrefIndicator)

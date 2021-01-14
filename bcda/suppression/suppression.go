@@ -3,6 +3,7 @@ package suppression
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,12 +12,12 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -214,7 +215,7 @@ func validate(metadata *suppressionFileMetadata) error {
 }
 
 func importSuppressionData(metadata *suppressionFileMetadata) error {
-	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, db *gorm.DB) error {
+	err := importSuppressionMetadata(metadata, func(fileID uint, b []byte, r models.Repository) error {
 		var (
 			mbiStart, mbiEnd                             = 0, 11
 			lKeyStart, lKeyEnd                           = 11, 21
@@ -254,7 +255,7 @@ func importSuppressionData(metadata *suppressionFileMetadata) error {
 			return err
 		}
 
-		suppression := &models.Suppression{
+		suppression := models.Suppression{
 			FileID:              fileID,
 			MBI:                 string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
 			SourceCode:          string(bytes.TrimSpace(b[sourceCdeStart:sourceCdeEnd])),
@@ -266,8 +267,8 @@ func importSuppressionData(metadata *suppressionFileMetadata) error {
 			BeneficiaryLinkKey:  lk,
 			ACOCMSID:            string(bytes.TrimSpace(b[acoIdStart:acoIdEnd])),
 		}
-		err = db.Create(suppression).Error
-		if err != nil {
+
+		if err = r.CreateSuppression(context.Background(), suppression); err != nil {
 			fmt.Println("Could not create suppression record.")
 			err = errors.Wrap(err, "could not create suppression record")
 			log.Error(err)
@@ -283,25 +284,27 @@ func importSuppressionData(metadata *suppressionFileMetadata) error {
 	return nil
 }
 
-func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc func(uint, []byte, *gorm.DB) error) error {
+func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc func(uint, []byte, models.Repository) error) error {
 	fmt.Printf("Importing suppression file %s...\n", metadata)
 	log.Infof("Importing suppression file %s...", metadata)
 
 	var (
 		headTrailStart, headTrailEnd = 0, 15
+		err                          error
 	)
 
-	suppressionMetaFile := &models.SuppressionFile{
+	suppressionMetaFile := models.SuppressionFile{
 		Name:         metadata.name,
 		Timestamp:    metadata.timestamp,
 		ImportStatus: constants.ImportInprog,
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
-	err := db.Create(&suppressionMetaFile).Error
-	if err != nil {
+	r := postgres.NewRepository(db)
+
+	if suppressionMetaFile.ID, err = r.CreateSuppressionFile(context.Background(), suppressionMetaFile); err != nil {
 		fmt.Printf("Could not create suppression file record for file: %s. \n", metadata)
 		err = errors.Wrapf(err, "could not create suppression file record for file: %s.", metadata)
 		log.Error(err)
@@ -329,7 +332,7 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 			if metaInfo == headerCode || metaInfo == trailerCode {
 				continue
 			}
-			err = importFunc(suppressionMetaFile.ID, b, db)
+			err = importFunc(suppressionMetaFile.ID, b, r)
 			if err != nil {
 				log.Error(err)
 				return err

@@ -79,6 +79,41 @@ func (_m *MockRepository) CreateJobKeys(ctx context.Context, jobKeys ...JobKey) 
 	return r0
 }
 
+// CreateSuppression provides a mock function with given fields: ctx, suppression
+func (_m *MockRepository) CreateSuppression(ctx context.Context, suppression Suppression) error {
+	ret := _m.Called(ctx, suppression)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, Suppression) error); ok {
+		r0 = rf(ctx, suppression)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// CreateSuppressionFile provides a mock function with given fields: ctx, suppressionFile
+func (_m *MockRepository) CreateSuppressionFile(ctx context.Context, suppressionFile SuppressionFile) (uint, error) {
+	ret := _m.Called(ctx, suppressionFile)
+
+	var r0 uint
+	if rf, ok := ret.Get(0).(func(context.Context, SuppressionFile) uint); ok {
+		r0 = rf(ctx, suppressionFile)
+	} else {
+		r0 = ret.Get(0).(uint)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, SuppressionFile) error); ok {
+		r1 = rf(ctx, suppressionFile)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetCCLFBeneficiaries provides a mock function with given fields: ctx, cclfFileID, ignoredMBIs
 func (_m *MockRepository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, ignoredMBIs []string) ([]*CCLFBeneficiary, error) {
 	ret := _m.Called(ctx, cclfFileID, ignoredMBIs)
