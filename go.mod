@@ -46,6 +46,7 @@ require (
 
 replace (
 	github.com/opencensus-integrations/gomongowrapper => github.com/eug48/gomongowrapper v0.0.3
+	github.com/pkg/errors => github.com/pkg/errors v0.8.0
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.3-0.20181002233221-2db35c88b92a
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
 )
