@@ -48,18 +48,25 @@ func (s *AlphaAuthPluginTestSuite) TearDownSuite() {
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
-	s.p = auth.AlphaAuthPlugin{postgres.NewRepository(s.db)}
+	s.p = auth.AlphaAuthPlugin{s.repository}
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
+
+	id := uuid.NewRandom()
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
+
+	postgrestest.CreateACO(s.T(), s.db, *aco)
+	acoUUID := aco.UUID
+
 	c, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
 	assert.NotEqual(s.T(), "", c.ClientSecret)
 	assert.Equal(s.T(), acoUUID.String(), c.ClientID)
-	aco, err := s.repository.GetACOByUUID(context.Background(), acoUUID)
+
+	aco, err = s.repository.GetACOByUUID(context.Background(), acoUUID)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), auth.Hash(aco.AlphaSecret).IsHashOf(c.ClientSecret))
 	defer postgrestest.DeleteACO(s.T(), s.db, aco.UUID)
@@ -89,14 +96,20 @@ func (s *AlphaAuthPluginTestSuite) TestUpdateSystem() {
 
 func (s *AlphaAuthPluginTestSuite) TestDeleteSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
+	id := uuid.NewRandom()
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
+
+	postgrestest.CreateACO(s.T(), s.db, *aco)
+	acoUUID := aco.UUID
+
 	c, _ := s.p.RegisterSystem(acoUUID.String(), "", "")
-	aco, _ := s.repository.GetACOByClientID(context.Background(), c.ClientID)
+	aco, err := s.repository.GetACOByClientID(context.Background(), c.ClientID)
+	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), aco.ClientID)
 	assert.NotEmpty(s.T(), aco.AlphaSecret)
 
-	err := s.p.DeleteSystem(c.ClientID)
-	assert.Nil(s.T(), err)
+	err = s.p.DeleteSystem(c.ClientID)
+	assert.NoError(s.T(), err)
 	aco, _ = s.repository.GetACOByClientID(context.Background(), c.ClientID)
 	assert.Nil(s.T(), aco)
 }
@@ -117,7 +130,11 @@ func (s *AlphaAuthPluginTestSuite) TestResetSecret() {
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
+	id := uuid.NewRandom()
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
+
+	postgrestest.CreateACO(s.T(), s.db, *aco)
+	acoUUID := aco.UUID
 	cc, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), cc)
@@ -134,7 +151,7 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	assert.Empty(s.T(), ts)
 	assert.Contains(s.T(), err.Error(), "invalid credentials")
 
-	aco, err := s.repository.GetACOByClientID(context.Background(), cc.ClientID)
+	aco, err = s.repository.GetACOByClientID(context.Background(), cc.ClientID)
 	assert.NoError(s.T(), err)
 	postgrestest.DeleteACO(s.T(), s.db, aco.UUID)
 

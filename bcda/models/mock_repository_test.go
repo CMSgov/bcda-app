@@ -16,6 +16,20 @@ type MockRepository struct {
 	mock.Mock
 }
 
+// CreateACO provides a mock function with given fields: ctx, aco
+func (_m *MockRepository) CreateACO(ctx context.Context, aco ACO) error {
+	ret := _m.Called(ctx, aco)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, ACO) error); ok {
+		r0 = rf(ctx, aco)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // CreateCCLFFile provides a mock function with given fields: ctx, cclfFile
 func (_m *MockRepository) CreateCCLFFile(ctx context.Context, cclfFile CCLFFile) (uint, error) {
 	ret := _m.Called(ctx, cclfFile)
@@ -409,6 +423,20 @@ func (_m *MockRepository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fiel
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, map[string]interface{}) error); ok {
 		r0 = rf(ctx, acoUUID, fieldsAndValues)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateCCLFFileImportStatus provides a mock function with given fields: ctx, fileID, importStatus
+func (_m *MockRepository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
+	ret := _m.Called(ctx, fileID, importStatus)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint, string) error); ok {
+		r0 = rf(ctx, fileID, importStatus)
 	} else {
 		r0 = ret.Error(0)
 	}

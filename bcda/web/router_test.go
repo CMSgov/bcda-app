@@ -10,6 +10,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -260,14 +262,17 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
 	apiRouter := NewAPIRouter()
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	p := auth.GetProvider()
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, err := models.CreateACO("TestRegisterSystem", &cmsID)
-	s.NoError(err)
-	defer db.Unscoped().Delete(&models.ACO{}, "uuid = ?", acoUUID)
+	id := uuid.NewRandom()
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
+	postgrestest.CreateACO(s.T(), db, *aco)
+	acoUUID := aco.UUID
+
+	defer postgrestest.DeleteACO(s.T(), db, acoUUID)
 	c, err := p.RegisterSystem(acoUUID.String(), "", "")
 	s.NoError(err)
 	token, err := p.MakeAccessToken(c)
@@ -288,7 +293,8 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 		for _, config := range configs {
 			for _, path := range config.paths {
 				s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blacklistValue, path), func(t *testing.T) {
-					assert.NoError(t, db.Model(&models.ACO{}).Where("uuid = ?", acoUUID).Update("blacklisted", blacklistValue).Error)
+					aco.Blacklisted = blacklistValue
+					postgrestest.UpdateACO(t, db, *aco)
 					rr := httptest.NewRecorder()
 					req, err := http.NewRequest("GET", path, nil)
 					assert.NoError(t, err)

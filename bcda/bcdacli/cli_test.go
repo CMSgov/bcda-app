@@ -320,12 +320,13 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 }
 
 func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) uint {
-	acoUUID, err := createACO("ACO "+email, "")
-	assert.Nil(s.T(), err)
+	id := uuid.NewRandom()
+	aco := models.ACO{Name: "ACO " + email, UUID: id, ClientID: id.String()}
+	postgrestest.CreateACO(s.T(), s.db, aco)
 
 	// save a job to our db
 	j := models.Job{
-		ACOID:      uuid.Parse(acoUUID),
+		ACOID:      aco.UUID,
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusArchived,
 		UpdatedAt:  modified,

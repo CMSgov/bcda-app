@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -64,21 +63,6 @@ func (j *Job) StatusMessage() string {
 	}
 
 	return string(j.Status)
-}
-
-// CreateACO creates an ACO with the provided name and CMS ID.
-func CreateACO(name string, cmsID *string) (uuid.UUID, error) {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	id := uuid.NewRandom()
-
-	// TODO: remove ClientID below when a future refactor removes the need
-	//    for every ACO to have a client_id at creation
-	aco := ACO{Name: name, CMSID: cmsID, UUID: id, ClientID: id.String()}
-	db.Create(&aco)
-
-	return aco.UUID, db.Error
 }
 
 // BlankFileName contains the naming convention for empty ndjson file
@@ -138,16 +122,6 @@ type CCLFFile struct {
 	Type            CCLFFileType `gorm:"column:type;default:0"`
 }
 
-func (cclfFile *CCLFFile) Delete() error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	err := db.Unscoped().Where("file_id = ?", cclfFile.ID).Delete(&CCLFBeneficiary{}).Error
-	if err != nil {
-		return err
-	}
-	return db.Unscoped().Delete(&cclfFile).Error
-}
-
 // "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
@@ -163,16 +137,6 @@ type SuppressionFile struct {
 	Name         string    `gorm:"not null;unique"`
 	Timestamp    time.Time `gorm:"not null"`
 	ImportStatus string    `gorm:"column:import_status"`
-}
-
-func (suppressionFile *SuppressionFile) Delete() error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	err := db.Unscoped().Where("file_id = ?", suppressionFile.ID).Delete(&Suppression{}).Error
-	if err != nil {
-		return err
-	}
-	return db.Unscoped().Delete(&suppressionFile).Error
 }
 
 type Suppression struct {

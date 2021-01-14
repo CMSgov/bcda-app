@@ -19,6 +19,8 @@ type Repository interface {
 }
 
 type acoRepository interface {
+	CreateACO(ctx context.Context, aco ACO) error
+
 	GetACOByUUID(ctx context.Context, uuid uuid.UUID) (*ACO, error)
 
 	GetACOByClientID(ctx context.Context, clientID string) (*ACO, error)

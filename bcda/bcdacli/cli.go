@@ -58,7 +58,7 @@ func setUpApp() *cli.App {
 		return nil
 	}
 	app.After = func(c *cli.Context) error {
-		db.Close()
+		// db.Close()
 		return nil
 	}
 	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
@@ -526,12 +526,16 @@ func createACO(name, cmsID string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	acoUUID, err := models.CreateACO(name, cmsIDPt)
+	id := uuid.NewRandom()
+	aco := models.ACO{Name: name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
+
+
+	err := r.CreateACO(context.Background(), aco)
 	if err != nil {
 		return "", err
 	}
 
-	return acoUUID.String(), nil
+	return aco.UUID.String(), nil
 }
 
 func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
