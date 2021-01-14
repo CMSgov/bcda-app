@@ -19,7 +19,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"gorm.io/gorm"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/suite"
@@ -445,7 +444,7 @@ func (s *RepositoryTestSuite) TestCCLFFileType() {
 	result := postgrestest.GetCCLFFilesByName(s.T(), db, noType.Name)
 	assert.Equal(s.T(), 1, len(result))
 	assert.Equal(s.T(), noType.Type, result[0].Type)
-	
+
 	result = postgrestest.GetCCLFFilesByName(s.T(), db, withType.Name)
 	assert.Equal(s.T(), 1, len(result))
 	assert.Equal(s.T(), withType.Type, result[0].Type)
@@ -454,9 +453,7 @@ func (s *RepositoryTestSuite) TestCCLFFileType() {
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
 	createTime := time.Now()
 	return &models.CCLFFile{
-		Model: gorm.Model{
-			ID: uint(rand.Int63()),
-		},
+		ID:              uint(rand.Int63()),
 		CCLFNum:         cclfNum,
 		Name:            fmt.Sprintf("CCLFFile%d", rand.Uint64()),
 		ACOCMSID:        cmsID,
@@ -469,9 +466,7 @@ func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFi
 
 func getCCLFBeneficiary() *models.CCLFBeneficiary {
 	return &models.CCLFBeneficiary{
-		Model: gorm.Model{
-			ID: uint(rand.Int63()),
-		},
+		ID:           uint(rand.Int63()),
 		FileID:       uint(rand.Uint32()),
 		MBI:          fmt.Sprintf("MBI%d", rand.Uint32()),
 		BlueButtonID: fmt.Sprintf("BlueButton%d", rand.Uint32()),

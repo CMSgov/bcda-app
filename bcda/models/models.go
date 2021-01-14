@@ -128,7 +128,7 @@ func (t CCLFFileType) String() string {
 }
 
 type CCLFFile struct {
-	gorm.Model
+	ID              uint
 	CCLFNum         int          `gorm:"not null"`
 	Name            string       `gorm:"not null;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
 	ACOCMSID        string       `gorm:"column:aco_cms_id;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
@@ -151,7 +151,7 @@ func (cclfFile *CCLFFile) Delete() error {
 // "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
-	gorm.Model
+	ID           uint
 	CCLFFile     CCLFFile `gorm:"foreignkey:file_id;association_foreignkey:id"`
 	FileID       uint     `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
 	MBI          string   `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`

@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 const (
@@ -604,14 +603,14 @@ func (s *ServiceTestSuite) TestCheckJobCompleteAndCleanup() {
 
 func getCCLFFile(id uint) *CCLFFile {
 	return &CCLFFile{
-		Model: gorm.Model{ID: id},
+		ID: id,
 	}
 }
 
 func getCCLFBeneficiary(id uint, mbi string) *CCLFBeneficiary {
 	return &CCLFBeneficiary{
-		Model: gorm.Model{ID: id},
-		MBI:   mbi,
+		ID:  id,
+		MBI: mbi,
 	}
 }
 
