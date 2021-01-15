@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 
 	"github.com/CMSgov/bcda-app/bcda/client/fhir"
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
