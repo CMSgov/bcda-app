@@ -77,13 +77,5 @@
   version = "3.9.0"
 
 [[constraint]]
-  name = "gorm.io/gorm"
-  version = "1.20.8"
-
-[[constraint]]
-  name = "gorm.io/driver/postgres"
-  version = "0.2.4"
-
-[[constraint]]
   name = "github.com/huandu/go-sqlbuilder"
   version = "1.10.0"
