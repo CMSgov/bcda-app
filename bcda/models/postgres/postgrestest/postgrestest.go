@@ -81,12 +81,39 @@ func UpdateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 }
 
 func DeleteACO(t *testing.T, db *sql.DB, acoID uuid.UUID) {
+	jobBuilder := sqlFlavor.NewDeleteBuilder().DeleteFrom("jobs")
+	jobBuilder.Where(jobBuilder.Equal("aco_id", acoID))
+	query, args := jobBuilder.Build()
+	_, err := db.Exec(query, args...)
+	assert.NoError(t, err)
+
 	builder := sqlFlavor.NewDeleteBuilder().DeleteFrom("acos")
 	builder.Where(builder.Equal("uuid", acoID))
 
-	query, args := builder.Build()
-	_, err := db.Exec(query, args...)
+	query, args = builder.Build()
+	_, err = db.Exec(query, args...)
 	assert.NoError(t, err)
+}
+
+func CreateCCLFBeneficiary(t *testing.T, db *sql.DB, bene *models.CCLFBeneficiary) error {
+	// User raw builder since we need to retrieve the associated ID
+	query, args := sqlbuilder.Buildf(`INSERT INTO cclf_beneficiaries
+		(file_id, mbi, blue_button_id) VALUES
+		(%s, %s, %s) RETURNING id`,
+		bene.FileID, bene.MBI, bene.BlueButtonID).
+		BuildWithFlavor(sqlFlavor)
+
+	if err := db.QueryRow(query, args...).Scan(&bene.ID); err != nil {
+		return err
+	}
+
+	return nil
+}
+func CreateCCLFFile(t *testing.T, db *sql.DB, cclfFile *models.CCLFFile) error {
+	r := postgres.NewRepository(db)
+	var err error
+	cclfFile.ID, err = r.CreateCCLFFile(context.Background(), *cclfFile)
+	return err
 }
 
 func GetCCLFFilesByCMSID(t *testing.T, db *sql.DB, cmsID string) []models.CCLFFile {

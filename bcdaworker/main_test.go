@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/mock"
-	"gorm.io/gorm"
 
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
@@ -24,22 +24,28 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 )
 
 type MainTestSuite struct {
 	suite.Suite
-	db      *gorm.DB
 	testACO *models.ACO
 
 	// test params
 	jobID      int
 	stagingDir string
 	cclfFile   *models.CCLFFile
+
+	db *sql.DB
+	r  repository.Repository
 }
 
 func (s *MainTestSuite) SetupSuite() {
-	s.db = database.GetGORMDbConnection()
+	s.db = database.GetDbConnection()
+	s.r = postgres.NewRepository(s.db)
 
 	cmsID := "A1B2C" // Some unique ID that should be unique to this test
 
@@ -49,9 +55,7 @@ func (s *MainTestSuite) SetupSuite() {
 		Name:  "ACO_FOR_WORKER_TEST",
 	}
 
-	if err := s.db.Save(&s.testACO).Error; err != nil {
-		s.FailNowf("Failed to add new ACO", err.Error())
-	}
+	postgrestest.CreateACO(s.T(), s.db, *s.testACO)
 
 	tempDir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -72,7 +76,7 @@ func (s *MainTestSuite) SetupTest() {
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	s.stagingDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), s.jobID)
 
-	s.NoError(s.db.Create(s.cclfFile).Error)
+	postgrestest.CreateCCLFFile(s.T(), s.db, s.cclfFile)
 	os.RemoveAll(s.stagingDir)
 
 	if err := os.MkdirAll(s.stagingDir, os.ModePerm); err != nil {
@@ -81,16 +85,14 @@ func (s *MainTestSuite) SetupTest() {
 }
 
 func (s *MainTestSuite) TearDownTest() {
-	s.db.Unscoped().Delete(&models.CCLFBeneficiary{}, "file_id = ?", s.cclfFile.ID)
-	s.db.Unscoped().Delete(s.cclfFile)
+	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, *s.testACO.CMSID)
 	os.RemoveAll(s.stagingDir)
 }
 
 func (s *MainTestSuite) TearDownSuite() {
 	testUtils.SetUnitTestKeysForAuth()
-	s.db.Unscoped().Where("aco_id = ?", s.testACO.UUID).Delete(&models.Job{})
-	s.db.Unscoped().Delete(s.testACO)
-	database.Close(s.db)
+	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
+	s.db.Close()
 	os.RemoveAll(os.Getenv("FHIR_STAGING_DIR"))
 	os.RemoveAll(os.Getenv("FHIR_PAYLOAD_DIR"))
 }
@@ -107,7 +109,7 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	for _, beneID := range []string{"a1000003701", "a1000050699"} {
 		bbc.MBI = &beneID
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneID, BlueButtonID: beneID}
-		s.db.Create(&cclfBeneficiary)
+		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime, serviceDate).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
@@ -130,7 +132,7 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
 				Since: since, TransactionTime: transactionTime, ServiceDate: serviceDate}
-			uuid, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+			uuid, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
 			if tt.expectZeroSize {
 				assert.EqualValues(t, 0, size)
 			} else {
@@ -198,12 +200,12 @@ func (s *MainTestSuite) TestWriteEmptyResourceToFile() {
 
 	bbc.MBI = &beneficiaryID
 	cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
-	s.db.Create(&cclfBeneficiary)
+	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 	cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	_, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	_, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.EqualValues(s.T(), 0, size)
 	assert.NoError(s.T(), err)
 }
@@ -226,13 +228,13 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 		beneficiaryID := beneficiaryIDs[i]
 		bbc.MBI = &beneficiaryID
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
-		s.db.Create(&cclfBeneficiary)
+		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneficiaryID))
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	fileUUID, size, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	fileUUID, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.NotEqual(s.T(), int64(0), size)
 	assert.NoError(s.T(), err)
 
@@ -266,12 +268,12 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	for i := 0; i < len(beneficiaryIDs); i++ {
 		beneficiaryID := beneficiaryIDs[i]
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneficiaryID, BlueButtonID: beneficiaryID}
-		s.db.Create(&cclfBeneficiary)
+		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: transactionTime, ACOID: s.testACO.UUID.String()}
-	_, _, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.Equal(s.T(), "number of failed requests has exceeded threshold", err.Error())
 
 	files, err := ioutil.ReadDir(s.stagingDir)
@@ -303,12 +305,12 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	for i := 0; i < len(badMBIs); i++ {
 		mbi := badMBIs[i]
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: mbi, BlueButtonID: ""}
-		s.db.Create(&cclfBeneficiary)
+		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 	}
 
 	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: cclfBeneficiaryIDs, TransactionTime: time.Now(), ACOID: s.testACO.UUID.String()}
-	_, _, err := writeBBDataToFile(context.Background(), &bbc, s.db, *s.testACO.CMSID, jobArgs)
+	_, _, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
 	assert.EqualError(s.T(), err, "number of failed requests has exceeded threshold")
 
 	files, err := ioutil.ReadDir(s.stagingDir)
@@ -331,11 +333,13 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 
 	errorFileScanner := bufio.NewScanner(bytes.NewReader(d))
 	for _, cclfBeneID := range cclfBeneficiaryIDs {
-		var cclfBeneficiary models.CCLFBeneficiary
-		s.db.First(&cclfBeneficiary, cclfBeneID)
+		beneID, err := strconv.ParseUint(cclfBeneID, 10, 64)
+		assert.NoError(s.T(), err)
+		cclfBeneficiary, err := s.r.GetCCLFBeneficiaryByID(context.Background(), uint(beneID))
+		assert.NoError(s.T(), err)
 		assert.True(s.T(), errorFileScanner.Scan())
 		var jsonObj map[string]interface{}
-		err := json.Unmarshal(errorFileScanner.Bytes(), &jsonObj)
+		err = json.Unmarshal(errorFileScanner.Bytes(), &jsonObj)
 		assert.NoError(s.T(), err)
 		assert.Equal(s.T(), "OperationOutcome", jsonObj["resourceType"])
 		issues := jsonObj["issue"].([]interface{})
@@ -381,15 +385,16 @@ func (s *MainTestSuite) TestAppendErrorToFile() {
 }
 
 func (s *MainTestSuite) TestProcessJobEOB() {
+	ctx := context.Background()
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusPending,
 		JobCount:   1,
 	}
-	s.db.Save(&j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	complete, err := j.CheckCompletedAndCleanup(s.db)
+	complete, err := checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
@@ -408,10 +413,9 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 	}
 	err = processJob(job)
 	assert.Nil(s.T(), err)
-	_, err = j.CheckCompletedAndCleanup(s.db)
+	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
-	var completedJob models.Job
-	err = s.db.First(&completedJob, "ID = ?", jobArgs.ID).Error
+	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
 	assert.Nil(s.T(), err)
 	// As this test actually connects to BB, we can't be sure it will succeed
 	assert.Contains(s.T(), []models.JobStatus{models.JobStatusFailed, models.JobStatusCompleted}, completedJob.Status)
@@ -424,9 +428,9 @@ func (s *MainTestSuite) TestProcessJob_EmptyBasePath() {
 		Status:     models.JobStatusPending,
 		JobCount:   1,
 	}
-	s.db.Save(&j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	complete, err := j.CheckCompletedAndCleanup(s.db)
+	complete, err := checkJobCompleteAndCleanup(context.Background(), s.r, j.ID)
 	assert.Nil(s.T(), err)
 	assert.False(s.T(), complete)
 
@@ -475,7 +479,8 @@ func (s *MainTestSuite) TestProcessJob_NoBBClient() {
 		Status:     "Pending",
 		JobCount:   1,
 	}
-	s.db.Save(&j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
 	qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
 		ID:             int(j.ID),
@@ -495,8 +500,6 @@ func (s *MainTestSuite) TestProcessJob_NoBBClient() {
 	os.Unsetenv("BB_CLIENT_CERT_FILE")
 
 	assert.Contains(s.T(), processJob(&qj).Error(), "could not create Blue Button client")
-
-	s.db.Unscoped().Delete(&j)
 }
 
 func (s *MainTestSuite) TestSetupQueue() {
@@ -506,16 +509,19 @@ func (s *MainTestSuite) TestSetupQueue() {
 }
 
 func (s *MainTestSuite) TestUpdateJobStats() {
-	j := models.Job{
+	j := &models.Job{
 		ACOID:             uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL:        "",
 		Status:            "",
 		JobCount:          4,
 		CompletedJobCount: 1,
 	}
-	s.db.Create(&j)
-	updateJobStats(j.ID, s.db)
-	s.db.First(&j, j.ID)
+
+	postgrestest.CreateJobs(s.T(), s.db, j)
+	updateJobStats(context.Background(), s.r, j.ID, j.CompletedJobCount+1)
+
+	j, err := s.r.GetJobByID(context.Background(), j.ID)
+	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, j.CompletedJobCount)
 }
 
@@ -558,11 +564,11 @@ func (s *MainTestSuite) TestQueueJobWithNoParent() {
 	}
 }
 
-func generateUniqueJobID(t *testing.T, db *gorm.DB, acoID uuid.UUID) int {
+func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 	j := models.Job{
 		ACOID:      acoID,
 		RequestURL: "/some/request/URL",
 	}
-	assert.NoError(t, db.Save(&j).Error)
+	postgrestest.CreateJobs(t, db, &j)
 	return int(j.ID)
 }
