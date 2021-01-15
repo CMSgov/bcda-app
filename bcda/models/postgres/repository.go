@@ -125,6 +125,7 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 	sb.OrderBy("timestamp").Desc().Limit(1)
 
 	query, args := sb.Build()
+	fmt.Printf("<<<<<<<<<<<<<<< %s %v", query, args)
 	row := r.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -20,7 +20,6 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -102,7 +101,7 @@ func processJob(j *que.Job) error {
 		}
 
 		log.Warnf("No job found for ID %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
-		return errors.Wrap(gorm.ErrRecordNotFound, "could not retrieve job from database")
+		return errors.Wrap(sql.ErrNoRows, "could not retrieve job from database")
 	}
 
 	if err != nil {

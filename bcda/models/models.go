@@ -38,24 +38,6 @@ type Job struct {
 	UpdatedAt         time.Time
 }
 
-func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
-
-	// Trivial case, no need to keep going
-	if job.Status == JobStatusCompleted {
-		return true, nil
-	}
-
-	var completedJobs int64
-	db.Model(&JobKey{}).Where("job_id = ?", job.ID).Count(&completedJobs)
-
-	if int(completedJobs) >= job.JobCount {
-
-		return true, db.Model(&job).Update("status", JobStatusCompleted).Error
-	}
-
-	return false, nil
-}
-
 func (j *Job) StatusMessage() string {
 	if j.Status == JobStatusInProgress && j.JobCount > 0 {
 		pct := float64(j.CompletedJobCount) / float64(j.JobCount) * 100

@@ -6,11 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 
@@ -82,7 +84,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
-	defer database.Close(db)
+	defer close(db)
 
 	migration1Tables := []string{"acos", "cclf_beneficiaries", "cclf_beneficiary_xrefs",
 		"cclf_files", "job_keys", "jobs", "suppression_files", "suppressions"}
@@ -257,7 +259,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
-	defer database.Close(db)
+	defer close(db)
 
 	migration1Tables := []string{"que_jobs"}
 
@@ -332,4 +334,16 @@ func (m migrator) runMigration(t *testing.T, idx string) {
 
 	assert.Contains(t, expVersion, str)
 	assert.NotContains(t, str, "dirty")
+}
+
+func close(db *gorm.DB) {
+	dbc, err := db.DB()
+	if err != nil {
+		log.Infof("failed to retrieve db connection: %v", err)
+		return
+	}
+	if err := dbc.Close(); err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		log.Infof("failed to close db connection at %s#%d because %s", file, line, err)
+	}
 }

@@ -34,7 +34,7 @@ import (
 )
 
 type Handler struct {
-	qc  *que.Client
+	qc *que.Client
 
 	Svc models.Service
 
@@ -280,7 +280,9 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			if err1 := tx.Rollback(); err1 != nil {
+				log.Warnf("Failed to rollback transaction %s", err.Error())
+			}
 			// We've already written out the HTTP response so we can return after we've rolled back the transaction
 			return
 		}
