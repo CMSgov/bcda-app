@@ -125,7 +125,6 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 	sb.OrderBy("timestamp").Desc().Limit(1)
 
 	query, args := sb.Build()
-	fmt.Printf("<<<<<<<<<<<<<<< %s %v", query, args)
 	row := r.QueryRowContext(ctx, query, args...)
 	if err := row.Scan(&cclfFile.ID, &cclfFile.Name, &cclfFile.Timestamp, &cclfFile.PerformanceYear); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -379,7 +378,6 @@ func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBoun
 	)
 
 	query, args := sb.Build()
-	fmt.Printf("QUERY %s ARGS %v\n", query, args)
 	return r.getJobs(ctx, query, args...)
 }
 
@@ -435,7 +433,6 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 	)
 	ub.Where(ub.Equal("id", j.ID))
 	query, args := ub.Build()
-	fmt.Printf("SQL: %s ARGS: %v\n", query, args)
 
 	res, err := r.ExecContext(ctx, query, args...)
 	if err != nil {

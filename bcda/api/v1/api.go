@@ -141,7 +141,6 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	case models.JobStatusCompleted:
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
-		fmt.Println(("<<<<<<<<<<<<<<<<<<<<<<<< " + job.UpdatedAt.String()))
 		if job.UpdatedAt.Add(api.GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")

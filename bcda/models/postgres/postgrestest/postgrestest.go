@@ -4,7 +4,6 @@ package postgrestest
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -185,7 +184,6 @@ func UpdateJob(t *testing.T, db *sql.DB, j models.Job) {
 
 	query, args := ub.Build()
 
-	fmt.Printf("QUERY: %s ARGS %v", query, args)
 	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
 }
