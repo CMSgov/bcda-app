@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"strconv"
 	"testing"
@@ -29,6 +30,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 )
+
+// See: https://github.com/stretchr/testify/issues/519
+var ctxMatcher = mock.MatchedBy(func(ctx context.Context) bool { return true })
 
 type MainTestSuite struct {
 	suite.Suite
@@ -559,6 +563,72 @@ func (s *MainTestSuite) TestQueueJobWithNoParent() {
 				assert.Equal(t, tt.expectedErr.Error(), err.Error())
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func (s *MainTestSuite) TestCheckJobCompleteAndCleanup() {
+	// Use multiple defers to ensure that the os.Getenv gets evaluated prior to us
+	// modifying the value.
+	defer os.Setenv("FHIR_STAGING_DIR", os.Getenv("FHIR_STAGING_DIR"))
+	defer os.Setenv("FHIR_PAYLOAD_DIR", os.Getenv("FHIR_PAYLOAD_DIR"))
+
+	staging, err := ioutil.TempDir("", "*")
+	assert.NoError(s.T(), err)
+	payload, err := ioutil.TempDir("", "*")
+	assert.NoError(s.T(), err)
+	os.Setenv("FHIR_STAGING_DIR", staging)
+	os.Setenv("FHIR_PAYLOAD_DIR", payload)
+
+	tests := []struct {
+		name      string
+		status    models.JobStatus
+		jobCount  int
+		jobKeys   int
+		completed bool
+	}{
+		{"PendingButComplete", models.JobStatusPending, 1, 1, true},
+		{"PendingNotComplete", models.JobStatusPending, 10, 1, false},
+		{"AlreadyCompleted", models.JobStatusCompleted, 1, 1, true},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			jobID := uint(rand.Uint64())
+
+			sDir := fmt.Sprintf("%s/%d", staging, jobID)
+			pDir := fmt.Sprintf("%s/%d", payload, jobID)
+
+			assert.NoError(t, os.Mkdir(sDir, os.ModePerm))
+			assert.NoError(t, os.Mkdir(pDir, os.ModePerm))
+
+			f, err := ioutil.TempFile(sDir, "")
+			assert.NoError(t, err)
+			assert.NoError(t, f.Close())
+
+			j := &models.Job{ID: jobID, Status: tt.status, JobCount: tt.jobCount}
+			repository := &repository.MockRepository{}
+			defer repository.AssertExpectations(t)
+			repository.On("GetJobByID", ctxMatcher, jobID).Return(j, nil)
+
+			// A job previously marked as completed will bypass all of these calls
+			if tt.status != models.JobStatusCompleted {
+				repository.On("GetJobKeyCount", ctxMatcher, jobID).Return(tt.jobKeys, nil)
+				if tt.completed {
+					repository.On("UpdateJobStatus", ctxMatcher, j.ID, models.JobStatusCompleted).
+						Return(nil)
+				}
+			}
+
+			completed, err := checkJobCompleteAndCleanup(context.Background(), repository, jobID)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.completed, completed)
+
+			// Completed job should've bypassed all of these calls. Therefore any data will remain.
+			if tt.completed && tt.status != models.JobStatusCompleted {
+				_, err := os.Stat(sDir)
+				assert.True(t, os.IsNotExist(err))
 			}
 		})
 	}

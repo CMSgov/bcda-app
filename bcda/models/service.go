@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -34,10 +33,6 @@ type Service interface {
 	GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
-
-	// CheckJobCompletedAndCleanup checks if a job is complete and iff it is, then the some cleanup operations are run.
-	// Returns true if the job is completed, false otherwise.
-	CheckJobCompleteAndCleanup(ctx context.Context, jobID uint) (jobComplete bool, err error)
 }
 
 const (
@@ -156,56 +151,6 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKe
 	}
 
 	return j, nonEmptyKeys, nil
-}
-
-func (s *service) CheckJobCompleteAndCleanup(ctx context.Context, jobID uint) (jobCompleted bool, err error) {
-	j, err := s.repository.GetJobByID(ctx, jobID)
-	if err != nil {
-		return false, err
-	}
-
-	if j.Status == JobStatusCompleted {
-		return true, nil
-	}
-
-	completedCount, err := s.repository.GetJobKeysCount(ctx, jobID)
-	if err != nil {
-		return false, err
-	}
-
-	if completedCount >= j.JobCount {
-		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), j.ID)
-		payload := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
-
-		files, err := ioutil.ReadDir(staging)
-		if err != nil {
-			return false, err
-		}
-
-		for _, f := range files {
-			oldPath := fmt.Sprintf("%s/%s", staging, f.Name())
-			newPath := fmt.Sprintf("%s/%s", payload, f.Name())
-			err := os.Rename(oldPath, newPath)
-			if err != nil {
-				return false, err
-			}
-		}
-
-		if err = os.Remove(staging); err != nil {
-			return false, err
-		}
-
-		j.Status = JobStatusCompleted
-		if err := s.repository.UpdateJob(ctx, *j); err != nil {
-			return false, err
-		}
-
-		// Able to mark job as completed
-		return true, nil
-	}
-
-	// We still have parts of the job that are not complete
-	return false, nil
 }
 
 func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since time.Time, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {

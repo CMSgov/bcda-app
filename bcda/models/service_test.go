@@ -4,8 +4,6 @@ import (
 	context "context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -529,73 +527,6 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				for _, bene := range tt.expBenes {
 					assert.Contains(t, subMap, strconv.FormatUint(uint64(bene.ID), 10))
 				}
-			}
-		})
-	}
-}
-
-func (s *ServiceTestSuite) TestCheckJobCompleteAndCleanup() {
-	// Use multiple defers to ensure that the os.Getenv gets evaluated prior to us
-	// modifying the value.
-	defer os.Setenv("FHIR_STAGING_DIR", os.Getenv("FHIR_STAGING_DIR"))
-	defer os.Setenv("FHIR_PAYLOAD_DIR", os.Getenv("FHIR_PAYLOAD_DIR"))
-
-	staging, err := ioutil.TempDir("", "*")
-	assert.NoError(s.T(), err)
-	payload, err := ioutil.TempDir("", "*")
-	assert.NoError(s.T(), err)
-	os.Setenv("FHIR_STAGING_DIR", staging)
-	os.Setenv("FHIR_PAYLOAD_DIR", payload)
-
-	tests := []struct {
-		name      string
-		status    JobStatus
-		jobCount  int
-		jobKeys   int
-		completed bool
-	}{
-		{"PendingButComplete", JobStatusPending, 1, 1, true},
-		{"PendingNotComplete", JobStatusPending, 10, 1, false},
-		{"AlreadyCompleted", JobStatusCompleted, 1, 1, true},
-	}
-
-	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
-			jobID := uint(rand.Uint64())
-
-			sDir := fmt.Sprintf("%s/%d", staging, jobID)
-			pDir := fmt.Sprintf("%s/%d", payload, jobID)
-
-			assert.NoError(t, os.Mkdir(sDir, os.ModePerm))
-			assert.NoError(t, os.Mkdir(pDir, os.ModePerm))
-
-			f, err := ioutil.TempFile(sDir, "")
-			assert.NoError(t, err)
-			assert.NoError(t, f.Close())
-
-			j := &Job{ID: jobID, Status: tt.status, JobCount: tt.jobCount}
-			repository := &MockRepository{}
-			defer repository.AssertExpectations(t)
-			repository.On("GetJobByID", ctxMatcher, jobID).Return(j, nil)
-
-			// A job previously marked as completed will bypass all of these calls
-			if tt.status != JobStatusCompleted {
-				repository.On("GetJobKeysCount", ctxMatcher, jobID).Return(tt.jobKeys, nil)
-				if tt.completed {
-					repository.On("UpdateJob", ctxMatcher, mock.MatchedBy(func(j Job) bool { return j.ID == jobID && j.Status == JobStatusCompleted })).
-						Return(nil)
-				}
-			}
-
-			s := &service{repository: repository}
-			completed, err := s.CheckJobCompleteAndCleanup(context.Background(), jobID)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.completed, completed)
-
-			// Completed job should've bypassed all of these calls. Therefore any data will remain.
-			if tt.completed && tt.status != JobStatusCompleted {
-				_, err := os.Stat(sDir)
-				assert.True(t, os.IsNotExist(err))
 			}
 		})
 	}
