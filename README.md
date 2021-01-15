@@ -39,7 +39,9 @@ The pre-commit hook will also ensure that any added, copied, or modified go file
 ```
 ./ops/secrets --encrypt <filename>
 ```
+## Go Modules
 
+The project uses [Go Modules](https://golang.org/ref/mod) allowing you to clone the repo outside of the `$GOPATH`. This also means that running `go get` inside the repo will add the dependency to the project, not globally.  
 ## Build / Start
 
 Build the images and start the containers:
@@ -168,7 +170,7 @@ Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the ne
 ```
 source [src-path]/bcda-app/.env.sh
 ```
-where `[src-path]` is the relative path to the bcda-app repo.
+where `[src-path]` is your relative path to the bcda-app repo.
 
 ## Environment variables
 

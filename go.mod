@@ -45,8 +45,29 @@ require (
 )
 
 replace (
+	github.com/DATA-DOG/go-sqlmock => github.com/DATA-DOG/go-sqlmock v1.4.1
+	github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.21.3
+	github.com/bgentry/que-go => github.com/bgentry/que-go v1.0.1
+	github.com/cenkalti/backoff/v4 => github.com/cenkalti/backoff/v4 v4.0.2
+	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
+	github.com/eug48/fhir => github.com/eug48/fhir v0.0.0-20200713141853-838d5f216354
+	github.com/go-chi/chi => github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
+	github.com/go-chi/render => github.com/go-chi/render v1.0.1
+	github.com/jackc/pgx => github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
+	github.com/lib/pq => github.com/lib/pq v1.9.0
+	github.com/newrelic/go-agent => github.com/newrelic/go-agent v3.9.0+incompatible
+	github.com/newrelic/go-agent/v3 => github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/opencensus-integrations/gomongowrapper => github.com/eug48/gomongowrapper v0.0.3
+	github.com/otiai10/copy => github.com/otiai10/copy v1.2.0
+	github.com/pborman/uuid => github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
 	github.com/pkg/errors => github.com/pkg/errors v0.8.0
+	github.com/samply/golang-fhir-models/fhir-models => github.com/samply/golang-fhir-models/fhir-models v0.2.0
+	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.6.0
+	github.com/soheilhy/cmux => github.com/soheilhy/cmux v0.1.4
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.3-0.20181002233221-2db35c88b92a
+	github.com/tsenart/vegeta => github.com/tsenart/vegeta v12.1.0+incompatible
+	github.com/urfave/cli => github.com/urfave/cli v1.20.1-0.20180226030253-8e01ec4cd3e2
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
+	gorm.io/driver/postgres => gorm.io/driver/postgres v0.2.4
+	gorm.io/gorm => gorm.io/gorm v1.20.8
 )
