@@ -236,10 +236,14 @@ func (r *Repository) GetCCLFBeneficiaries(ctx context.Context, cclfFileID uint, 
 	defer rows.Close()
 
 	for rows.Next() {
-		var bene models.CCLFBeneficiary
-		if err := rows.Scan(&bene.ID, &bene.FileID, &bene.MBI, &bene.BlueButtonID); err != nil {
+		var (
+			bene models.CCLFBeneficiary
+			bbID sql.NullString
+		)
+		if err := rows.Scan(&bene.ID, &bene.FileID, &bene.MBI, &bbID); err != nil {
 			return nil, err
 		}
+		bene.BlueButtonID = bbID.String
 		beneficiaries = append(beneficiaries, &bene)
 	}
 	if err = rows.Err(); err != nil {
