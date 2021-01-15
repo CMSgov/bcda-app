@@ -9,7 +9,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
 const (
@@ -51,7 +50,7 @@ func (j *Job) StatusMessage() string {
 const BlankFileName string = "blank.ndjson"
 
 type JobKey struct {
-	gorm.Model
+	ID           uint
 	JobID        uint   `gorm:"primary_key" json:"job_id"`
 	FileName     string `gorm:"type:char(127)"`
 	ResourceType string
@@ -59,7 +58,7 @@ type JobKey struct {
 
 // ACO represents an Accountable Care Organization.
 type ACO struct {
-	gorm.Model
+	ID          uint
 	UUID        uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
 	CMSID       *string   `gorm:"type:varchar(5);unique" json:"cms_id"`
 	Name        string    `json:"name"`
@@ -69,16 +68,6 @@ type ACO struct {
 	AlphaSecret string    `json:"alpha_secret"`
 	PublicKey   string    `json:"public_key"`
 	Blacklisted bool      `json:"blacklisted"`
-}
-
-type CCLFBeneficiaryXref struct {
-	gorm.Model
-	FileID        uint   `gorm:"not null"`
-	XrefIndicator string `json:"xref_indicator"`
-	CurrentNum    string `json:"current_number"`
-	PrevNum       string `json:"previous_number"`
-	PrevsEfctDt   string `json:"effective_date"`
-	PrevsObsltDt  string `json:"obsolete_date"`
 }
 
 type CCLFFileType int16
@@ -115,14 +104,14 @@ type CCLFBeneficiary struct {
 }
 
 type SuppressionFile struct {
-	gorm.Model
+	ID           uint
 	Name         string    `gorm:"not null;unique"`
 	Timestamp    time.Time `gorm:"not null"`
 	ImportStatus string    `gorm:"column:import_status"`
 }
 
 type Suppression struct {
-	gorm.Model
+	ID                  uint
 	FileID              uint      `gorm:"not null"`
 	MBI                 string    `gorm:"type:varchar(11);index:idx_suppression_mbi"`
 	SourceCode          string    `gorm:"type:varchar(5)"`

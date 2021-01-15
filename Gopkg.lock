@@ -157,22 +157,6 @@
   revision = "39bbc98d99d7b666759f84514859becf8067128f"
 
 [[projects]]
-  branch = "master"
-  digest = "1:fd97437fbb6b7dce04132cf06775bd258cce305c44add58eb55ca86c6c325160"
-  name = "github.com/jinzhu/inflection"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "04140366298a54a039076d798123ffa108fff46c"
-
-[[projects]]
-  digest = "1:3458e5dd5934a9c852e11a4ea54a07de091fdad4c36d0ac033bb90bc16b0a046"
-  name = "github.com/jinzhu/now"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "7e7333ac029d4aad7e88500a30889fcd22489425"
-  version = "v1.1.1"
-
-[[projects]]
   digest = "1:bb81097a5b62634f3e9fec1014657855610c82d19b9a40c17612e32651e35dca"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -524,30 +508,6 @@
   pruneopts = "UT"
   revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
 
-[[projects]]
-  digest = "1:cf0eeff871fb146d0a77cfb6eecc38e79f7458fe6d05726ee59654d9799711ca"
-  name = "gorm.io/driver/postgres"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "2591a12c4fdf62e81734996d0361db21fe90ae45"
-  version = "v0.2.4"
-
-[[projects]]
-  digest = "1:5051ed026b2633aab6de4ac829eb0b781ab9f92ab66370b3601dbc41feacb19d"
-  name = "gorm.io/gorm"
-  packages = [
-    ".",
-    "callbacks",
-    "clause",
-    "logger",
-    "migrator",
-    "schema",
-    "utils",
-  ]
-  pruneopts = "UT"
-  revision = "f2321ca164c0e5fd6cdcd5727152b39f2062ca6b"
-  version = "v1.20.8"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -583,9 +543,6 @@
     "github.com/tsenart/vegeta/lib/plot",
     "github.com/urfave/cli",
     "golang.org/x/crypto/pbkdf2",
-    "gorm.io/driver/postgres",
-    "gorm.io/gorm",
-    "gorm.io/gorm/callbacks",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
