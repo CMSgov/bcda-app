@@ -2,6 +2,7 @@ package bcdacli
 
 import (
 	"archive/zip"
+	"bufio"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -186,6 +188,63 @@ func setUpApp() *cli.App {
 					return err
 				}
 				fmt.Fprintf(app.Writer, "%s\n", acoUUID)
+				return nil
+			},
+		},
+		{
+			Name:     "save-public-key",
+			Category: "Authentication tools",
+			Usage:    "Upload an ACO's public key to the database",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+				cli.StringFlag{
+					Name:        "key-file",
+					Usage:       "Location of public key in PEM format",
+					Destination: &filePath,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				if acoCMSID == "" {
+					fmt.Fprintf(app.Writer, "cms-id is required\n")
+					return errors.New("cms-id is required")
+				}
+
+				if filePath == "" {
+					fmt.Fprintf(app.Writer, "key-file is required\n")
+					return errors.New("key-file is required")
+				}
+
+				aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to find ACO %s: %s\n", acoCMSID, err.Error())
+					return err
+				}
+
+				f, err := os.Open(filepath.Clean(filePath))
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to open file %s: %s\n", filePath, err.Error())
+					return err
+				}
+
+				aco.PublicKey, err = genPublicKey(bufio.NewReader(f))
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to generate public key for ACO %s: %s\n", acoCMSID, err.Error())
+					return err
+				}
+
+
+				err = r.UpdateACO(context.Background(), aco.UUID,
+					map[string]interface{}{"public_key": aco.PublicKey})
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to save public key for ACO %s: %s\n", acoCMSID, err.Error())
+					return err
+				}
+
+				fmt.Fprintf(app.Writer, "Public key saved for ACO %s\n", acoCMSID)
 				return nil
 			},
 		},
@@ -529,7 +588,6 @@ func createACO(name, cmsID string) (string, error) {
 	id := uuid.NewRandom()
 	aco := models.ACO{Name: name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
 
-
 	err := r.CreateACO(context.Background(), aco)
 	if err != nil {
 		return "", err
@@ -724,4 +782,17 @@ func cloneCCLFZip(src, dst string) error {
 	}
 
 	return nil
+}
+
+func genPublicKey(publicKey io.Reader) (string, error) {
+	k, err := ioutil.ReadAll(publicKey)
+	if err != nil {
+		return "", errors.Wrap(err, "cannot read public key")
+	}
+
+	key, err := rsautils.ReadPublicKey(string(k))
+	if err != nil || key == nil {
+		return "", errors.Wrap(err, "invalid public key")
+	}
+	return string(k), nil
 }
