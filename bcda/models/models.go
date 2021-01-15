@@ -26,8 +26,7 @@ var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgre
 type JobStatus string
 type Job struct {
 	ID                uint
-	ACO               ACO       `gorm:"foreignkey:ACOID;association_foreignkey:UUID"` // aco
-	ACOID             uuid.UUID `gorm:"type:char(36)" json:"aco_id"`
+	ACOID             uuid.UUID `json:"aco_id"`
 	RequestURL        string    `json:"request_url"` // request_url
 	Status            JobStatus `json:"status"`      // status
 	TransactionTime   time.Time // most recent data load transaction time from BFD
@@ -51,16 +50,16 @@ const BlankFileName string = "blank.ndjson"
 
 type JobKey struct {
 	ID           uint
-	JobID        uint   `gorm:"primary_key" json:"job_id"`
-	FileName     string `gorm:"type:char(127)"`
+	JobID        uint `json:"job_id"`
+	FileName     string
 	ResourceType string
 }
 
 // ACO represents an Accountable Care Organization.
 type ACO struct {
 	ID          uint
-	UUID        uuid.UUID `gorm:"primary_key;type:char(36)" json:"uuid"`
-	CMSID       *string   `gorm:"type:varchar(5);unique" json:"cms_id"`
+	UUID        uuid.UUID `json:"uuid"`
+	CMSID       *string   `json:"cms_id"`
 	Name        string    `json:"name"`
 	ClientID    string    `json:"client_id"`
 	GroupID     string    `json:"group_id"`
@@ -84,43 +83,43 @@ func (t CCLFFileType) String() string {
 
 type CCLFFile struct {
 	ID              uint
-	CCLFNum         int          `gorm:"not null"`
-	Name            string       `gorm:"not null;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
-	ACOCMSID        string       `gorm:"column:aco_cms_id;UNIQUE_INDEX:idx_cclf_files_name_aco_cms_id_key"`
-	Timestamp       time.Time    `gorm:"not null"`
-	PerformanceYear int          `gorm:"not null"`
-	ImportStatus    string       `gorm:"column:import_status"`
-	Type            CCLFFileType `gorm:"column:type;default:0"`
+	CCLFNum         int
+	Name            string
+	ACOCMSID        string
+	Timestamp       time.Time
+	PerformanceYear int
+	ImportStatus    string
+	Type            CCLFFileType
 }
 
 // "The MBI has 11 characters, like the Health Insurance Claim Number (HICN), which can have up to 11."
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
 	ID           uint
-	CCLFFile     CCLFFile `gorm:"foreignkey:file_id;association_foreignkey:id"`
-	FileID       uint     `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
-	MBI          string   `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
-	BlueButtonID string   `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
+	CCLFFile     CCLFFile
+	FileID       uint
+	MBI          string
+	BlueButtonID string
 }
 
 type SuppressionFile struct {
 	ID           uint
-	Name         string    `gorm:"not null;unique"`
-	Timestamp    time.Time `gorm:"not null"`
-	ImportStatus string    `gorm:"column:import_status"`
+	Name         string
+	Timestamp    time.Time
+	ImportStatus string
 }
 
 type Suppression struct {
 	ID                  uint
-	FileID              uint      `gorm:"not null"`
-	MBI                 string    `gorm:"type:varchar(11);index:idx_suppression_mbi"`
-	SourceCode          string    `gorm:"type:varchar(5)"`
-	EffectiveDt         time.Time `gorm:"column:effective_date"`
-	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`
-	SAMHSASourceCode    string    `gorm:"type:varchar(5)"`
-	SAMHSAEffectiveDt   time.Time `gorm:"column:samhsa_effective_date"`
-	SAMHSAPrefIndicator string    `gorm:"column:samhsa_preference_indicator;type:char(1)"`
-	ACOCMSID            string    `gorm:"column:aco_cms_id;type:char(5)"`
+	FileID              uint
+	MBI                 string
+	SourceCode          string
+	EffectiveDt         time.Time
+	PrefIndicator       string
+	SAMHSASourceCode    string
+	SAMHSAEffectiveDt   time.Time
+	SAMHSAPrefIndicator string
+	ACOCMSID            string
 	BeneficiaryLinkKey  int
 }
 
@@ -183,8 +182,6 @@ func GetBlueButtonID(bb client.APIClient, modelIdentifier, reqType string, model
 	return blueButtonID, nil
 }
 
-// This is not a persistent model so it is not necessary to include in GORM auto migrate.
-// swagger:ignore
 type JobEnqueueArgs struct {
 	ID              int
 	ACOID           string
