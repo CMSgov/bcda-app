@@ -16,6 +16,7 @@ require (
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
 	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
@@ -40,8 +41,6 @@ require (
 	google.golang.org/genproto v0.0.0-20201204160425-06b3db808446 // indirect
 	google.golang.org/grpc v1.34.0 // indirect
 	google.golang.org/grpc/examples v0.0.0-20210111180913-4cf4a98505bc // indirect
-	gorm.io/driver/postgres v0.2.4
-	gorm.io/gorm v1.20.8
 )
 
 replace (
