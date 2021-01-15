@@ -10,8 +10,6 @@ RUN go get -u github.com/derekparker/delve/cmd/dlv
 RUN go get github.com/BurntSushi/toml
 RUN go get github.com/howeyc/fsnotify
 RUN go get github.com/mattn/go-colorable
-RUN go get github.com/CMSgov/bcda-ssas-app/ssas/service/main
+RUN (cd $(mktemp -d); GO111MODULE=on go get github.com/CMSgov/bcda-ssas-app/ssas/service/main)
 
-WORKDIR /go/src/github.com/CMSgov/bcda-ssas-app/ssas
-RUN go install github.com/CMSgov/bcda-ssas-app/ssas/service/main
 CMD ["main", "--start"]
