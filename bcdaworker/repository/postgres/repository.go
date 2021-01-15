@@ -70,10 +70,15 @@ func (r *Repository) GetCCLFBeneficiaryByID(ctx context.Context, id uint) (*mode
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 
-	var bene models.CCLFBeneficiary
-	if err := row.Scan(&bene.ID, &bene.FileID, &bene.MBI, &bene.BlueButtonID); err != nil {
+	var (
+		bene models.CCLFBeneficiary
+		bbID sql.NullString
+	)
+
+	if err := row.Scan(&bene.ID, &bene.FileID, &bene.MBI, &bbID); err != nil {
 		return nil, err
 	}
+	bene.BlueButtonID = bene.BlueButtonID
 
 	return &bene, nil
 }
