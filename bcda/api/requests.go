@@ -242,7 +242,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 					w.WriteHeader(http.StatusTooManyRequests)
 				} else {
 					log.Error(err)
-					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 					responseutils.WriteError(oo, w, http.StatusInternalServerError)
 				}
 

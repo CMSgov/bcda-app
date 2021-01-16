@@ -72,27 +72,6 @@ func (_m *MockRepository) CreateJob(ctx context.Context, j Job) (uint, error) {
 	return r0, r1
 }
 
-// CreateJobKeys provides a mock function with given fields: ctx, jobKeys
-func (_m *MockRepository) CreateJobKeys(ctx context.Context, jobKeys ...JobKey) error {
-	_va := make([]interface{}, len(jobKeys))
-	for _i := range jobKeys {
-		_va[_i] = jobKeys[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, ...JobKey) error); ok {
-		r0 = rf(ctx, jobKeys...)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // CreateSuppression provides a mock function with given fields: ctx, suppression
 func (_m *MockRepository) CreateSuppression(ctx context.Context, suppression Suppression) error {
 	ret := _m.Called(ctx, suppression)
@@ -277,27 +256,6 @@ func (_m *MockRepository) GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*JobKey)
 		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
-		r1 = rf(ctx, jobID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetJobKeysCount provides a mock function with given fields: ctx, jobID
-func (_m *MockRepository) GetJobKeysCount(ctx context.Context, jobID uint) (int, error) {
-	ret := _m.Called(ctx, jobID)
-
-	var r0 int
-	if rf, ok := ret.Get(0).(func(context.Context, uint) int); ok {
-		r0 = rf(ctx, jobID)
-	} else {
-		r0 = ret.Get(0).(int)
 	}
 
 	var r1 error

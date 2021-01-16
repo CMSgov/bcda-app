@@ -1,4 +1,8 @@
 // Package postgrestest provides CRUD utilities for the postgres database.
+// These utilities allow the caller to modify the database in ways that we
+// wouldn't want to permit in the main code path.
+// To protect against usage in non-test code, all methods should accept
+// a *testing.T struct.
 package postgrestest
 
 import (
@@ -222,8 +226,14 @@ func DeleteJobByID(t *testing.T, db *sql.DB, jobID uint) {
 }
 
 func CreateJobKeys(t *testing.T, db *sql.DB, jobKeys ...models.JobKey) {
-	r := postgres.NewRepository(db)
-	err := r.CreateJobKeys(context.Background(), jobKeys...)
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
+	ib.Cols("job_id", "file_name", "resource_type")
+	for _, key := range jobKeys {
+		ib.Values(key.JobID, key.FileName, key.ResourceType)
+	}
+
+	query, args := ib.Build()
+	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
 }
 

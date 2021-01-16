@@ -125,7 +125,8 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
-		// NOTE: This is a catch and may not necessarily mean that the job was not found. So returning a StatusNotFound may be a misnomer
+		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
+		// So returning a StatusNotFound may be a misnomer
 		responseutils.WriteError(oo, w, http.StatusNotFound)
 		return
 	}

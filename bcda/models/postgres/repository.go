@@ -450,17 +450,6 @@ func (r *Repository) UpdateJob(ctx context.Context, j models.Job) error {
 
 	return nil
 }
-func (r *Repository) CreateJobKeys(ctx context.Context, jobKeys ...models.JobKey) error {
-	ib := sqlFlavor.NewInsertBuilder().InsertInto("job_keys")
-	ib.Cols("job_id", "file_name", "resource_type")
-	for _, key := range jobKeys {
-		ib.Values(key.JobID, key.FileName, key.ResourceType)
-	}
-
-	query, args := ib.Build()
-	_, err := r.ExecContext(ctx, query, args...)
-	return err
-}
 
 func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobKey, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_name", "resource_type").From("job_keys")
@@ -487,18 +476,6 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 	}
 
 	return keys, nil
-}
-
-func (r *Repository) GetJobKeysCount(ctx context.Context, jobID uint) (int, error) {
-	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("job_keys")
-	sb.Where(sb.Equal("job_id", jobID))
-
-	query, args := sb.Build()
-	var count int
-	if err := r.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
-		return -1, err
-	}
-	return count, nil
 }
 
 func (r *Repository) getJobs(ctx context.Context, query string, args ...interface{}) ([]*models.Job, error) {
