@@ -78,7 +78,7 @@ func (r *Repository) GetCCLFBeneficiaryByID(ctx context.Context, id uint) (*mode
 	if err := row.Scan(&bene.ID, &bene.FileID, &bene.MBI, &bbID); err != nil {
 		return nil, err
 	}
-	bene.BlueButtonID = bene.BlueButtonID
+	bene.BlueButtonID = bbID.String
 
 	return &bene, nil
 }
