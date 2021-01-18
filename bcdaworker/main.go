@@ -171,7 +171,7 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	updateJobStats(ctx, r, exportJob.ID, exportJob.CompletedJobCount)
+	updateJobStats(ctx, r, exportJob.ID)
 
 	log.Info("Worker finished processing job ", j.ID)
 
@@ -495,10 +495,12 @@ func getQueueJobCount() float64 {
 	return float64(count)
 }
 
-func updateJobStats(ctx context.Context, r repository.Repository, jobID uint, newCount int) {
+func updateJobStats(ctx context.Context, r repository.Repository, jobID uint) {
 	updateJobQueueCountCloudwatchMetric()
 
-	if err := r.UpdateCompletedJobCount(ctx, jobID, newCount); err != nil {
+	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
+	// CompletedJobCount is purely information and can be off.
+	if err := r.IncrementCompletedJobCount(ctx, jobID); err != nil {
 		log.Warnf("Failed to update completed job count for job %d. Will continue. %s", jobID, err.Error())
 	}
 }

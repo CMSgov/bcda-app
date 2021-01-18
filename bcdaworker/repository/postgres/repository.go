@@ -118,10 +118,24 @@ func (r *Repository) UpdateJobStatusCheckStatus(ctx context.Context, jobID uint,
 		map[string]interface{}{"status": new})
 }
 
-func (r *Repository) UpdateCompletedJobCount(ctx context.Context, jobID uint, count int) error {
-	return r.updateJob(ctx,
-		map[string]interface{}{"id": jobID},
-		map[string]interface{}{"completed_job_count": count})
+func (r *Repository) IncrementCompletedJobCount(ctx context.Context, jobID uint) error {
+	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
+	ub.Set(ub.Incr("completed_job_count")).Where(ub.Equal("id", jobID))
+
+	query, args := ub.Build()
+	res, err := r.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("job %d not updated, no job found", jobID)
+	}
+
+	return nil
 }
 
 func (r *Repository) CreateJobKey(ctx context.Context, jobKey models.JobKey) error {

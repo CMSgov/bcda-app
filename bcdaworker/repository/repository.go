@@ -32,7 +32,7 @@ type jobRepository interface {
 	// iff the Job's status field matches current.
 	UpdateJobStatusCheckStatus(ctx context.Context, jobID uint, current, new models.JobStatus) error
 
-	UpdateCompletedJobCount(ctx context.Context, jobID uint, cont int) error
+	IncrementCompletedJobCount(ctx context.Context, jobID uint) error
 }
 
 type jobKeyRepository interface {

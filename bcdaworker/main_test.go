@@ -522,11 +522,16 @@ func (s *MainTestSuite) TestUpdateJobStats() {
 	}
 
 	postgrestest.CreateJobs(s.T(), s.db, j)
-	updateJobStats(context.Background(), s.r, j.ID, j.CompletedJobCount+1)
+
+	// Simulate another que_job completing, incrementing the count again
+	j.CompletedJobCount++
+	postgrestest.UpdateJob(s.T(), s.db, *j)
+
+	updateJobStats(context.Background(), s.r, j.ID)
 
 	j, err := s.r.GetJobByID(context.Background(), j.ID)
 	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), 2, j.CompletedJobCount)
+	assert.Equal(s.T(), 3, j.CompletedJobCount)
 }
 
 func (s *MainTestSuite) TestQueueJobWithNoParent() {
