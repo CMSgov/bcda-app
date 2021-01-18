@@ -9,10 +9,5 @@
     "go.testEnvFile": "${workspaceFolder}/shared_files/decrypted/local.env",
     "go.testTimeout": "2m",
     "go.buildOnSave": "package",
-    "go.lintTool": "golangci-lint",
-    "go.lintFlags": [
-        "--fast",
-        "-E",
-        "gosec",
-    ]
+    "go.lintTool": "golangci-lint"
 }

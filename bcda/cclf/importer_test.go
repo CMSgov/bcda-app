@@ -2,9 +2,9 @@ package cclf
 
 import (
 	"context"
+	"cypto/rand"
 	"database/sql"
 	"fmt"
-	"math/rand"
 	"regexp"
 	"testing"
 
