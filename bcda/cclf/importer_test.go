@@ -78,16 +78,14 @@ func (s *ImporterTestSuite) TestCCLF8ImporterHappyPath() {
 			}
 
 			execCount := 0
-			prepare := s.mock.ExpectPrepare(regexp.QuoteMeta(`COPY "cclf_beneficiaries" ("file_id", "hicn", "mbi")`))
+			prepare := s.mock.ExpectPrepare(regexp.QuoteMeta(`COPY "cclf_beneficiaries" ("file_id", "mbi")`))
 			for _, bene := range benes {
-				hicn := string([]byte(bene.HICN)[0:11])
 				mbi := string([]byte(bene.MBI)[0:11])
 				cclfBeneficiary := models.CCLFBeneficiary{
 					FileID: fileID,
 					MBI:    mbi,
-					HICN:   hicn,
 				}
-				prepare.ExpectExec().WithArgs(bene.FileID, hicn, mbi).WillReturnResult(sqlmock.NewResult(1, 1))
+				prepare.ExpectExec().WithArgs(bene.FileID, mbi).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				err := importer.do(context.Background(), s.tx, cclfBeneficiary)
 				assert.NoError(t, err)
@@ -97,7 +95,7 @@ func (s *ImporterTestSuite) TestCCLF8ImporterHappyPath() {
 				if execCount%tt.maxPendingQueries == 0 && execCount < len(benes) {
 					prepare.ExpectExec().WithArgs().WillReturnResult(sqlmock.NewResult(1, 1))
 					prepare.WillBeClosed()
-					prepare = s.mock.ExpectPrepare(regexp.QuoteMeta(`COPY "cclf_beneficiaries" ("file_id", "hicn", "mbi")`))
+					prepare = s.mock.ExpectPrepare(regexp.QuoteMeta(`COPY "cclf_beneficiaries" ("file_id", "mbi")`))
 				}
 			}
 
@@ -146,16 +144,14 @@ func (s *ImporterTestSuite) TestCCLF8ImporterErrorPaths() {
 				maxPendingQueries: 1,
 			}
 
-			prepare := s.mock.ExpectPrepare(regexp.QuoteMeta(`COPY "cclf_beneficiaries" ("file_id", "hicn", "mbi")`))
-			hicn := string([]byte(bene.HICN)[0:11])
+			prepare := s.mock.ExpectPrepare(regexp.QuoteMeta(`COPY "cclf_beneficiaries" ("file_id", "mbi")`))
 			mbi := string([]byte(bene.MBI)[0:11])
 			cclfBeneficiary := models.CCLFBeneficiary{
 				FileID: fileID,
 				MBI:    mbi,
-				HICN:   hicn,
 			}
 
-			execWithArgs := prepare.ExpectExec().WithArgs(bene.FileID, hicn, mbi)
+			execWithArgs := prepare.ExpectExec().WithArgs(bene.FileID, mbi)
 			execNoArgs := prepare.ExpectExec().WithArgs()
 
 			switch tt.err.et {
@@ -210,8 +206,7 @@ func (s *ImporterTestSuite) TestFlushOnNoExistingStatement() {
 func getBeneficiary(fileID uint) *models.CCLFBeneficiary {
 	return &models.CCLFBeneficiary{
 		FileID: fileID,
-		// We expect 11 bytes for HICN and MBI - we'll ensure that each of the values are AT LEAST 11 bytes
-		HICN: fmt.Sprintf("HICN%07d", rand.Uint64()),
-		MBI:  fmt.Sprintf("MBI%08d", rand.Uint64()),
+		// We expect 11 bytes for MBI - we'll ensure that each of the values are AT LEAST 11 bytes
+		MBI: fmt.Sprintf("MBI%08d", rand.Uint64()),
 	}
 }

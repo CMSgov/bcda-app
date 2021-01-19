@@ -658,6 +658,16 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 		assert.Nil(s.T(), err)
 
 	}
+
+	// Add a blank ndjson file to verify its being skipped via `expectedUrls` assertion and Files length assertion
+	jobKey := models.JobKey{
+		JobID:        j.ID,
+		FileName:     models.BlankFileName,
+		ResourceType: "ExplanationOfBenefit",
+	}
+	err := s.db.Save(&jobKey).Error
+	assert.Nil(s.T(), err)
+
 	assert.Equal(s.T(), 10, len(expectedUrls))
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
@@ -680,7 +690,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
-	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
+	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
 	}

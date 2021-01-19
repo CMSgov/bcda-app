@@ -90,6 +90,9 @@ func (j *Job) StatusMessage() string {
 	return string(j.Status)
 }
 
+// BlankFileName contains the naming convention for empty ndjson file
+const BlankFileName string = "blank.ndjson"
+
 type JobKey struct {
 	gorm.Model
 	JobID        uint   `gorm:"primary_key" json:"job_id"`
@@ -245,7 +248,6 @@ type CCLFBeneficiary struct {
 	gorm.Model
 	CCLFFile     CCLFFile `gorm:"foreignkey:file_id;association_foreignkey:id"`
 	FileID       uint     `gorm:"not null;index:idx_cclf_beneficiaries_file_id"`
-	HICN         string   `gorm:"type:varchar(11);not null;index:idx_cclf_beneficiaries_hicn"`
 	MBI          string   `gorm:"type:char(11);not null;index:idx_cclf_beneficiaries_mbi"`
 	BlueButtonID string   `gorm:"type: text;index:idx_cclf_beneficiaries_bb_id"`
 }
@@ -271,7 +273,6 @@ type Suppression struct {
 	gorm.Model
 	FileID              uint      `gorm:"not null"`
 	MBI                 string    `gorm:"type:varchar(11);index:idx_suppression_mbi"`
-	HICN                string    `gorm:"type:varchar(11)"`
 	SourceCode          string    `gorm:"type:varchar(5)"`
 	EffectiveDt         time.Time `gorm:"column:effective_date"`
 	PrefIndicator       string    `gorm:"column:preference_indicator;type:char(1)"`

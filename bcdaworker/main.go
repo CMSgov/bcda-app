@@ -113,7 +113,7 @@ func processJob(j *que.Job) error {
 		return errors.Wrap(err, "could not retrieve ACO from database")
 	}
 
-	err = db.Model(&exportJob).Where("status = ?", models.JobStatusPending).Update("status", "In Progress").Error
+	err = db.Model(&exportJob).Where("status = ?", models.JobStatusPending).Update("status", models.JobStatusInProgress).Error
 	if err != nil {
 		return errors.Wrap(err, "could not update job status in database")
 	}
@@ -134,12 +134,14 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
+	// Create directory for job results.
+	// This will be used in the clean up later to move over processed files.
 	if err = createDir(payloadPath); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	fileUUID, err := writeBBDataToFile(ctx, bb, db, *aco.CMSID, jobArgs)
+	fileUUID, fileSize, err := writeBBDataToFile(ctx, bb, db, *aco.CMSID, jobArgs)
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
@@ -149,6 +151,11 @@ func processJob(j *que.Job) error {
 			return err
 		}
 	} else {
+		if fileSize == 0 {
+			log.Warn("Empty file found in request: ", fileName)
+			fileName = models.BlankFileName
+		}
+
 		err = addJobFileName(fileName, jobArgs.ResourceType, exportJob, db)
 		if err != nil {
 			log.Error(err)
@@ -178,7 +185,7 @@ func createDir(path string) error {
 	return nil
 }
 
-func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, err error) {
+func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
 	defer func() {
 		segment.End()
@@ -199,7 +206,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 			return bb.GetPatient(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
 	default:
-		return "", fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
+		return "", 0, fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
 	}
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
@@ -207,7 +214,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return "", 0, err
 	}
 
 	defer utils.CloseFileAndLogError(f)
@@ -246,14 +253,19 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 	}
 
 	if err = w.Flush(); err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	if failed {
-		return "", errors.New("number of failed requests has exceeded threshold")
+		return "", 0, errors.New("number of failed requests has exceeded threshold")
 	}
 
-	return fileUUID, nil
+	fstat, err := f.Stat()
+	if err != nil {
+		return "", 0, err
+	}
+
+	return fileUUID, fstat.Size(), nil
 }
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
