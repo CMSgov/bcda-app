@@ -1,0 +1,77 @@
+package config
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestGetEnv(t *testing.T) {
+	type args struct {
+		key string
+	}
+	tests := []struct {
+		name string
+		args args
+		want interface{}
+	}{
+        { // Test Case #1
+            "Single Value",
+            args{"TEST_HELLO"},
+            "world",
+        },
+        { // Test Case #2
+            "Multi-value separated by commas",
+            args{"TEST_LIST"},
+            "One,Two,Three,Four",
+        },
+        { // Test Case #3
+            "Path",
+            args{"TEST_SOMEPATH"},
+            "../../FAKE/PATH",
+        },
+        { // Test Case #4
+            "Number",
+            args{"TEST_NUM"},
+            "1234",
+        },
+        { // Test Case #5
+            "Boolean",
+            args{"TEST_BOOL"},
+            "true",
+        },
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetEnv(tt.args.key); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetEnv() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetEnv(t *testing.T) {
+    type args struct {
+        protect interface{}
+        key     string
+        value   string
+    }
+    tests := []struct {
+        name string
+        args args
+        want interface{}
+    }{
+        {
+            "Change configuration",
+            args{testing.T{}, "TEST_HELLO", "HI!!!"},
+            "HI!!!",
+        },
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            SetEnv(tt.args.protect, tt.args.key, tt.args.value)
+            if got := GetEnv(tt.args.key); !reflect.DeepEqual(got, tt.want) {
+                t.Errorf("GetEnv() = %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
