@@ -25,10 +25,8 @@ func NewAPIRouter() http.Handler {
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), SecurityHeader, ConnectionClose)
 
 	// Serve up the swagger ui folder
-	// TODO (BCDA-4109) - Remove serving v1 specific artifacts
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
-	FileServer(r, "/swagger", http.Dir("./swaggerui"))
-
+	
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
