@@ -39,7 +39,7 @@ type Handler struct {
 	Svc models.Service
 
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
-	// TODO (ADD_JIRA_TICKET): Remove this reference once we've captured all of the necessary
+	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
 	// logic into a service method.
 	r  models.Repository
 	db *sql.DB
@@ -232,7 +232,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		if err != nil {
 			err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		}
 		if len(pendingAndInProgressJobs) > 0 {
@@ -271,7 +271,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	if err != nil {
 		err = errors.Wrap(err, "failed to start transaction")
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}

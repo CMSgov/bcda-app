@@ -83,18 +83,15 @@ func UpdateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 	assert.EqualValues(t, 1, count)
 }
 
+// DeleteACO also removes data from any foreign key relations (jobs) before deleting the ACO.
 func DeleteACO(t *testing.T, db *sql.DB, acoID uuid.UUID) {
-	jobBuilder := sqlFlavor.NewDeleteBuilder().DeleteFrom("jobs")
-	jobBuilder.Where(jobBuilder.Equal("aco_id", acoID))
-	query, args := jobBuilder.Build()
-	_, err := db.Exec(query, args...)
-	assert.NoError(t, err)
-
+	DeleteJobsByACOID(t, db, acoID)
+	
 	builder := sqlFlavor.NewDeleteBuilder().DeleteFrom("acos")
 	builder.Where(builder.Equal("uuid", acoID))
 
-	query, args = builder.Build()
-	_, err = db.Exec(query, args...)
+	query, args := builder.Build()
+	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
 }
 

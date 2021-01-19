@@ -59,6 +59,8 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
+		// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
+		// logic into a service method.
 		db := database.GetDbConnection()
 		defer db.Close()
 
@@ -175,7 +177,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
 		}
-		
+
 		// ACO did not create the job
 		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 			log.Errorf("ACO %s does not have access to job ID %d %s",

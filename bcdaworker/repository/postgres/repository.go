@@ -100,6 +100,9 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 	j.TransactionTime, j.CreatedAt, j.UpdatedAt = transactionTime.Time, createdAt.Time, updatedAt.Time
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrJobNotFound
+		}
 		return nil, err
 	}
 

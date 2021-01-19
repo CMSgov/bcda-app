@@ -57,7 +57,6 @@ func (s *RequestsTestSuite) SetupTest() {
 }
 
 func (s *RequestsTestSuite) TearDownSuite() {
-	postgrestest.DeleteJobsByACOID(s.T(), s.db, s.acoID)
 	postgrestest.DeleteACO(s.T(), s.db, s.acoID)
 	s.db.Close()
 }

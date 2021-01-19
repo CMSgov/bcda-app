@@ -60,8 +60,7 @@ func setUpApp() *cli.App {
 		return nil
 	}
 	app.After = func(c *cli.Context) error {
-		// db.Close()
-		return nil
+		return db.Close()
 	}
 	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
 	var httpPort, httpsPort int

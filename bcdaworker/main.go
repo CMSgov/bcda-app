@@ -89,7 +89,7 @@ func processJob(j *que.Job) error {
 	}
 
 	exportJob, err := r.GetJobByID(ctx, uint(jobArgs.ID))
-	if goerrors.Is(err, sql.ErrNoRows) {
+	if goerrors.Is(err, repository.ErrJobNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
 		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
@@ -101,7 +101,7 @@ func processJob(j *que.Job) error {
 		}
 
 		log.Warnf("No job found for ID %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
-		return errors.Wrap(sql.ErrNoRows, "could not retrieve job from database")
+		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
 	}
 
 	if err != nil {

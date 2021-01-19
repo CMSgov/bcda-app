@@ -41,4 +41,7 @@ type jobKeyRepository interface {
 	GetJobKeyCount(ctx context.Context, jobID uint) (int, error)
 }
 
-var ErrJobNotUpdated = errors.New("job was not updated, no match found")
+var (
+	ErrJobNotUpdated = errors.New("job was not updated, no match found")
+	ErrJobNotFound   = errors.New("no job found for given id")
+)
