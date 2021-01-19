@@ -542,7 +542,7 @@ func (s *MainTestSuite) TestQueueJobWithNoParent() {
 		errorCount  int32
 		expectedErr error
 	}{
-		{"RetriesRemaining", int32(retryCount) - 1, errors.New("could not retrieve job from database: sql: no rows in result set")},
+		{"RetriesRemaining", int32(retryCount) - 1, errors.New("could not retrieve job from database: no job found for given id")},
 		{"RetriesExhausted", int32(retryCount), nil},
 	}
 
