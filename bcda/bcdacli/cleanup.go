@@ -50,12 +50,7 @@ func archiveExpiring(maxDate time.Time) error {
 	return lastJobError
 }
 
-func cleanupArchive(maxDate time.Time, archiveDir string) error {
-	return cleanup(maxDate, models.JobStatusArchived, models.JobStatusExpired,
-		os.Getenv("FHIR_ARCHIVE_DIR"))
-}
-
-func cleanup(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
+func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
 		time.Time{}, maxDate, currentStatus)
 	if err != nil {
