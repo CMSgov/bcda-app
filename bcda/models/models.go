@@ -23,7 +23,7 @@ const (
 )
 
 var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress,
-	JobStatusCompleted, JobStatusArchived, JobStatusExpired, JobStatusFailed}
+	JobStatusCompleted, JobStatusArchived, JobStatusExpired, JobStatusFailed, JobStatusFailedExpired}
 
 type JobStatus string
 type Job struct {
