@@ -6,8 +6,7 @@ bcdaworker/bcdaworker
 bcdaworker/debug
 test_results/*
 .idea
-bcda/swaggerui/swagger.json
-bcda/swaggerui/openapi.json
+bcda/swaggerui
 bcdaworker/data/*
 bcdaworker/archive/*
 bcdaworker/tmpdata/*

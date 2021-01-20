@@ -1,9 +1,9 @@
 FROM swaggerapi/swagger-converter:v1.0.2
 
-COPY bcda/swaggerui swaggerui
-COPY ops/swagger_to_openapi.sh .
-RUN chmod u+x swagger_to_openapi.sh
 RUN apk update
 RUN apk add curl jq
+
+COPY ops/swagger_to_openapi.sh .
+RUN chmod u+x swagger_to_openapi.sh
 
 CMD ["./swagger_to_openapi.sh"]
