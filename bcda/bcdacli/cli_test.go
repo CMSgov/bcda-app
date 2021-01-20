@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -440,37 +441,51 @@ func (s *CLITestSuite) TestCleanupFailed() {
 	modified := time.Now().Add(-(time.Hour * (threshold + 1)))
 	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_PAYLOAD_DIR"))
 	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+	// Job is old enough, but does not match the status
+	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, os.Getenv("FHIR_PAYLOAD_DIR"))
 
 	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusFailed, os.Getenv("FHIR_PAYLOAD_DIR"))
 	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
 
-	defer func() {
-		os.Remove(beforePayload.Name())
-		os.Remove(beforeStaging.Name())
-		os.Remove(afterPayload.Name())
-		os.Remove(afterStaging.Name())
+	// Check that we can clean up jobs that do not have data
+	noDataID, noData := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+	dir, _ := path.Split(noData.Name())
+	os.RemoveAll(dir)
+	assertFileNotExists(s.T(), noData.Name())
 
-		beforePayload.Close()
-		beforeStaging.Close()
-		afterPayload.Close()
-		afterStaging.Close()
+	shouldExist := []*os.File{afterPayload, afterStaging, completed}
+	shouldNotExist := []*os.File{beforePayload, beforeStaging, noData}
+
+	defer func() {
+		for _, f := range append(shouldExist, shouldNotExist...) {
+			os.Remove(f.Name())
+			f.Close()
+		}
 	}()
 
 	err := s.testApp.Run([]string{"bcda", "cleanup-failed", "--threshold", strconv.Itoa(threshold)})
 	assert.NoError(s.T(), err)
+
 	assert.Equal(s.T(), models.JobStatusFailedExpired,
 		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
 	assert.Equal(s.T(), models.JobStatusFailedExpired,
+		postgrestest.GetJobByID(s.T(), s.db, noDataID).Status)
+	assert.Equal(s.T(), models.JobStatusFailedExpired,
 		postgrestest.GetJobByID(s.T(), s.db, beforeStagingJobID).Status)
+
 	assert.Equal(s.T(), models.JobStatusFailed,
 		postgrestest.GetJobByID(s.T(), s.db, afterPayloadJobID).Status)
 	assert.Equal(s.T(), models.JobStatusFailed,
 		postgrestest.GetJobByID(s.T(), s.db, afterStagingJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCompleted,
+		postgrestest.GetJobByID(s.T(), s.db, completedJobID).Status)
 
-	assertFileNotExists(s.T(), beforePayload.Name())
-	assertFileNotExists(s.T(), beforeStaging.Name())
-	assert.FileExists(s.T(), afterPayload.Name())
-	assert.FileExists(s.T(), afterStaging.Name())
+	for _, f := range shouldExist {
+		assert.FileExists(s.T(), f.Name())
+	}
+	for _, f := range shouldNotExist {
+		assertFileNotExists(s.T(), f.Name())
+	}
 }
 
 func (s *CLITestSuite) TestRevokeToken() {

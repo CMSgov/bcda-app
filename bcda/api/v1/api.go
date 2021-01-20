@@ -133,7 +133,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 	switch job.Status {
 
-	case models.JobStatusFailed:
+	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 	case models.JobStatusPending, models.JobStatusInProgress:
