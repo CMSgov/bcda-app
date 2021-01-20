@@ -96,7 +96,6 @@ type CCLFFile struct {
 // https://www.cms.gov/Medicare/New-Medicare-Card/Understanding-the-MBI-with-Format.pdf
 type CCLFBeneficiary struct {
 	ID           uint
-	CCLFFile     CCLFFile
 	FileID       uint
 	MBI          string
 	BlueButtonID string

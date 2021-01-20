@@ -156,6 +156,7 @@ func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFil
 func (r *Repository) UpdateCCLFFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("cclf_files")
 	ub.Set(ub.Assign("import_status", importStatus))
+	ub.Where(ub.Equal("id", fileID))
 
 	query, args := ub.Build()
 
@@ -320,6 +321,7 @@ func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile 
 func (r *Repository) UpdateSuppressionFileImportStatus(ctx context.Context, fileID uint, importStatus string) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("suppression_files")
 	ub.Set(ub.Assign("import_status", importStatus))
+	ub.Where(ub.Equal("id", fileID))
 
 	query, args := ub.Build()
 	result, err := r.ExecContext(ctx, query, args...)

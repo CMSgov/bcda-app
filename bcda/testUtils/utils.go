@@ -28,6 +28,13 @@ func RandomHexID() string {
 	return fmt.Sprintf("%x", b)
 }
 
+// RandomMBI returns an 11 character string that represents an MBI
+func RandomMBI(t *testing.T) string {
+	b, err := someRandomBytes(6)
+	assert.NoError(t, err)
+	return fmt.Sprintf("%x", b)[0:11]
+}
+
 func someRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)

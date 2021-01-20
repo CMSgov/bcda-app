@@ -36,26 +36,26 @@ func CreateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 }
 
 func GetACOByUUID(t *testing.T, db *sql.DB, uuid uuid.UUID) models.ACO {
-	sb := sqlFlavor.NewSelectBuilder().Select("uuid", "cms_id", "name", "blacklisted").
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name", "blacklisted").
 		From("acos")
 	sb.Where(sb.Equal("uuid", uuid)).Limit(1)
 	query, args := sb.Build()
 
 	var aco models.ACO
-	err := db.QueryRow(query, args...).Scan(&aco.UUID, &aco.CMSID, &aco.Name, &aco.Blacklisted)
+	err := db.QueryRow(query, args...).Scan(&aco.ID, &aco.UUID, &aco.CMSID, &aco.Name, &aco.Blacklisted)
 	assert.NoError(t, err)
 
 	return aco
 }
 
 func GetACOByCMSID(t *testing.T, db *sql.DB, cmsID string) models.ACO {
-	sb := sqlFlavor.NewSelectBuilder().Select("uuid", "cms_id", "name").
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name").
 		From("acos")
 	sb.Where(sb.Equal("cms_id", cmsID)).Limit(1)
 	query, args := sb.Build()
 
 	var aco models.ACO
-	err := db.QueryRow(query, args...).Scan(&aco.UUID, &aco.CMSID, &aco.Name)
+	err := db.QueryRow(query, args...).Scan(&aco.ID, &aco.UUID, &aco.CMSID, &aco.Name)
 	assert.NoError(t, err)
 
 	return aco
