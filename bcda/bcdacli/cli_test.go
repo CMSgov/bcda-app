@@ -444,7 +444,7 @@ func (s *CLITestSuite) TestCleanArchive() {
 	// condition: bad threshold value
 	args = []string{"bcda", "cleanup-archive", "--threshold", "abcde"}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "strconv.Atoi: parsing \"abcde\": invalid syntax")
+	assert.EqualError(err, "invalid value \"abcde\" for flag -threshold: parse error")
 
 	// condition: before < Threshold < after <= now
 	// a file created before the Threshold should be deleted; one created after should not

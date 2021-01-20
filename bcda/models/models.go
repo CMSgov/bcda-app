@@ -18,6 +18,8 @@ const (
 	JobStatusArchived   JobStatus = "Archived"
 	JobStatusExpired    JobStatus = "Expired"
 	JobStatusFailed     JobStatus = "Failed"
+	// JobStatusFailedExpired represents on job that failed whose data has been cleaned up
+	JobStatusFailedExpired JobStatus = "FailedExpired"
 )
 
 var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress,

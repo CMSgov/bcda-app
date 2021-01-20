@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -62,7 +61,8 @@ func setUpApp() *cli.App {
 	app.After = func(c *cli.Context) error {
 		return db.Close()
 	}
-	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
+	var thresholdHr int
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -235,7 +235,6 @@ func setUpApp() *cli.App {
 					return err
 				}
 
-
 				err = r.UpdateACO(context.Background(), aco.UUID,
 					map[string]interface{}{"public_key": aco.PublicKey})
 				if err != nil {
@@ -331,20 +330,17 @@ func setUpApp() *cli.App {
 			Category: "Cleanup",
 			Usage:    "Update job statuses and move files to an inaccessible location",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				cli.IntFlag{
 					Name:        "threshold",
-					Value:       "24",
+					Value:       24,
 					Usage:       "How long files should wait in archive before deletion",
 					EnvVar:      "ARCHIVE_THRESHOLD_HR",
-					Destination: &threshold,
+					Destination: &thresholdHr,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				th, err := strconv.Atoi(threshold)
-				if err != nil {
-					return err
-				}
-				return archiveExpiring(th)
+				cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
+				return archiveExpiring(cutoff)
 			},
 		},
 		{
@@ -352,18 +348,33 @@ func setUpApp() *cli.App {
 			Category: "Cleanup",
 			Usage:    "Remove job directory and files from archive and update job status to Expired",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				cli.IntFlag{
 					Name:        "threshold",
 					Usage:       "How long files should wait in archive before deletion",
-					Destination: &threshold,
+					Destination: &thresholdHr,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				th, err := strconv.Atoi(threshold)
-				if err != nil {
-					return err
-				}
-				return cleanupArchive(th)
+				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
+				return cleanup(cutoff, models.JobStatusArchived, models.JobStatusExpired,
+					os.Getenv("FHIR_ARCHIVE_DIR"))
+			},
+		},
+		{
+			Name:     "cleanup-failed",
+			Category: "Cleanup",
+			Usage:    "Remove job directory and files from archive and update job status to Expired",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "threshold",
+					Usage:       "How long files should wait in archive before deletion",
+					Destination: &thresholdHr,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
+				return cleanup(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired,
+					os.Getenv("FHIR_STAGING_DIR"), os.Getenv("FHIR_PAYLOAD_DIR"))
 			},
 		},
 		{
@@ -618,86 +629,6 @@ func revokeAccessToken(accessToken string) error {
 	}
 
 	return auth.GetProvider().RevokeAccessToken(accessToken)
-}
-
-func archiveExpiring(hrThreshold int) error {
-	log.Info("Archiving expiring job files...")
-
-	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
-	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
-		time.Time{}, maxDate, models.JobStatusCompleted)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	var lastJobError error
-	for _, j := range jobs {
-		id := j.ID
-		jobPayloadDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-		_, err = os.Stat(jobPayloadDir)
-		jobPayloadDirExist := err == nil
-		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
-
-		if jobPayloadDirExist {
-			err = os.Rename(jobPayloadDir, jobArchiveDir)
-			if err != nil {
-				log.Error(err)
-				lastJobError = err
-				continue
-			}
-		}
-
-		j.Status = models.JobStatusArchived
-		err = r.UpdateJob(context.Background(), *j)
-		if err != nil {
-			log.Error(err)
-			lastJobError = err
-		}
-	}
-
-	return lastJobError
-}
-
-func cleanupArchive(hrThreshold int) error {
-	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
-
-	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
-		time.Time{}, maxDate, models.JobStatusArchived)
-	if err != nil {
-		return err
-	}
-
-	if len(jobs) == 0 {
-		log.Info("No archived job files to clean")
-		return nil
-	}
-
-	for _, job := range jobs {
-		id := int(job.ID)
-		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
-
-		err = os.RemoveAll(jobArchiveDir)
-		if err != nil {
-			e := fmt.Sprintf("Unable to remove %s because %s", jobArchiveDir, err)
-			log.Error(e)
-			continue
-		}
-
-		job.Status = models.JobStatusExpired
-		err = r.UpdateJob(context.Background(), *job)
-		if err != nil {
-			return err
-		}
-
-		log.WithFields(log.Fields{
-			"job_began":     job.CreatedAt,
-			"files_removed": time.Now(),
-			"job_id":        job.ID,
-		}).Info("Files cleaned from archive and job status set to Expired")
-	}
-
-	return nil
 }
 
 func setBlacklistState(cmsID string, blacklistState bool) error {
