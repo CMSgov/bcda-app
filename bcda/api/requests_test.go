@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -66,11 +65,11 @@ func (s *RequestsTestSuite) TearDownSuite() {
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
-	os.Setenv("BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
+	configuration.SetEnv(&testing.T{}, "BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
 }
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
-	os.Setenv("BCDA_ENABLE_RUNOUT", "true")
+	configuration.SetEnv(&testing.T{}, "BCDA_ENABLE_RUNOUT", "true")
 	qj := []*que.Job{&que.Job{Type: "ProcessJob"}, &que.Job{Type: "ProcessJob"}}
 	tests := []struct {
 		name string
@@ -114,7 +113,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 }
 
 func (s *RequestsTestSuite) TestRunoutDisabled() {
-	os.Setenv("BCDA_ENABLE_RUNOUT", "false")
+	configuration.SetEnv(&testing.T{}, "BCDA_ENABLE_RUNOUT", "false")
 	req := s.genGroupRequest("runout")
 	w := httptest.NewRecorder()
 	h := &Handler{}
@@ -246,8 +245,8 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	// Switch over to validate the 429 behavior
 	dt := "DEPLOYMENT_TARGET"
 	target := configuration.GetEnv(dt)
-	defer os.Setenv(dt, target)
-	os.Setenv(dt, "prod")
+	defer configuration.SetEnv(&testing.T{}, dt, target)
+	configuration.SetEnv(&testing.T{}, dt, "prod")
 
 	var aco models.ACO
 	s.NoError(s.db.First(&aco, "uuid = ?", s.acoID).Error)

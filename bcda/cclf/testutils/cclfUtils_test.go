@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -23,11 +22,11 @@ func (s *CCLFUtilTestSuite) SetupSuite() {
 }
 
 func (s *CCLFUtilTestSuite) SetupTest() {
-	os.Setenv("CCLF_REF_DATE", "D181201")
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "D181201")
 }
 
 func (s *CCLFUtilTestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", origDate)
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", origDate)
 }
 
 func TestCCLFTestSuite(t *testing.T) {
@@ -36,7 +35,7 @@ func TestCCLFTestSuite(t *testing.T) {
 
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
-	os.Setenv("CCLF_REF_DATE", "D190617")
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "D190617")
 	err := ImportCCLFPackage("NOTREAL", "test", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for ACO size")
 }

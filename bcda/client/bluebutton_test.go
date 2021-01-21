@@ -49,11 +49,11 @@ var (
 )
 
 func (s *BBTestSuite) SetupSuite() {
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
-	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
-	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
-	os.Setenv("BB_TIMEOUT_MS", "2000")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
+	configuration.SetEnv(&testing.T{}, "BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	configuration.SetEnv(&testing.T{}, "BB_TIMEOUT_MS", "2000")
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
@@ -86,7 +86,7 @@ func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
 /* Tests for creating client and other functions that don't make requests */
 func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	origCertFile := configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	defer os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
+	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", origCertFile)
 
 	assert := assert.New(s.T())
 
@@ -95,7 +95,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	os.Setenv("BB_CLIENT_CERT_FILE", "foo.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "foo.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
@@ -103,16 +103,16 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 	origCertFile := configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	defer os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
+	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", origCertFile)
 
 	assert := assert.New(s.T())
 
-	os.Setenv("BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
-	os.Setenv("BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
@@ -120,7 +120,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
 
 func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	origKeyFile := configuration.GetEnv("BB_CLIENT_KEY_FILE")
-	defer os.Setenv("BB_CLIENT_KEY_FILE", origKeyFile)
+	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", origKeyFile)
 
 	assert := assert.New(s.T())
 
@@ -129,7 +129,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	os.Setenv("BB_CLIENT_KEY_FILE", "foo.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "foo.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
@@ -137,16 +137,16 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
 	origKeyFile := configuration.GetEnv("BB_CLIENT_KEY_FILE")
-	defer os.Setenv("BB_CLIENT_KEY_FILE", origKeyFile)
+	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", origKeyFile)
 
 	assert := assert.New(s.T())
 
-	os.Setenv("BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
-	os.Setenv("BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
@@ -156,8 +156,8 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 	origCAFile := configuration.GetEnv("BB_CLIENT_CA_FILE")
 	origCheckCert := configuration.GetEnv("BB_CHECK_CERT")
 	defer func() {
-		os.Setenv("BB_CLIENT_CA_FILE", origCAFile)
-		os.Setenv("BB_CHECK_CERT", origCheckCert)
+		configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", origCAFile)
+		configuration.SetEnv(&testing.T{}, "BB_CHECK_CERT", origCheckCert)
 	}()
 
 	assert := assert.New(s.T())
@@ -168,7 +168,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
-	os.Setenv("BB_CLIENT_CA_FILE", "foo.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "foo.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
@@ -178,19 +178,19 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 	origCAFile := configuration.GetEnv("BB_CLIENT_CA_FILE")
 	origCheckCert := configuration.GetEnv("BB_CHECK_CERT")
 	defer func() {
-		os.Setenv("BB_CLIENT_CA_FILE", origCAFile)
-		os.Setenv("BB_CHECK_CERT", origCheckCert)
+		configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", origCAFile)
+		configuration.SetEnv(&testing.T{}, "BB_CHECK_CERT", origCheckCert)
 	}()
 
 	assert := assert.New(s.T())
 
-	os.Setenv("BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
 	os.Unsetenv("BB_CHECK_CERT")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
-	os.Setenv("BB_CLIENT_CA_FILE", "../static/badPublic.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "../static/badPublic.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")

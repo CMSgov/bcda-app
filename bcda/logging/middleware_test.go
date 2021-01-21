@@ -57,10 +57,10 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	defer os.Remove(logFile.Name())
 
 	defer func(path string) {
-		os.Setenv("BCDA_REQUEST_LOG", path)
+		configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", path)
 	}(configuration.GetEnv("BCDA_REQUEST_LOG"))
 
-	os.Setenv("BCDA_REQUEST_LOG", logFile.Name())
+	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", logFile.Name())
 
 	server := httptest.NewTLSServer(s.CreateRouter())
 	client := server.Client()
@@ -111,7 +111,7 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 
 func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
 	reqLogPathOrig := configuration.GetEnv("BCDA_REQUEST_LOG")
-	os.Setenv("BCDA_REQUEST_LOG", "")
+	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", "")
 	server := httptest.NewServer(s.CreateRouter())
 	client := server.Client()
 
@@ -127,12 +127,12 @@ func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
 	assert.Equal(s.T(), 200, resp.StatusCode)
 
 	server.Close()
-	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
+	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
 func (s *LoggingMiddlewareTestSuite) TestPanic() {
 	reqLogPathOrig := configuration.GetEnv("BCDA_REQUEST_LOG")
-	os.Setenv("BCDA_REQUEST_LOG", "bcda-req-test.log")
+	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", "bcda-req-test.log")
 
 	server := httptest.NewTLSServer(s.CreateRouter())
 	client := server.Client()
@@ -188,7 +188,7 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 
 	server.Close()
 	os.Remove("bcda-req-test.log")
-	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
+	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
 func (s *LoggingMiddlewareTestSuite) TestRedact() {

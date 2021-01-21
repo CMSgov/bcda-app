@@ -522,7 +522,7 @@ func (s *MainTestSuite) TestUpdateJobStats() {
 
 func (s *MainTestSuite) TestQueueJobWithNoParent() {
 	retryCount := 10
-	os.Setenv("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", strconv.Itoa(retryCount))
+	configuration.SetEnv(&testing.T{}, "BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", strconv.Itoa(retryCount))
 	tests := []struct {
 		name        string
 		errorCount  int32

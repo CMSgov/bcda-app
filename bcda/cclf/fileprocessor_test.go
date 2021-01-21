@@ -36,7 +36,7 @@ func (s *FileProcessorTestSuite) SetupTest() {
 
 func (s *FileProcessorTestSuite) SetupSuite() {
 	s.cclfRefDate = configuration.GetEnv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
 		log.Fatal(err)
@@ -50,7 +50,7 @@ func (s *FileProcessorTestSuite) TearDownTest() {
 }
 
 func (s *FileProcessorTestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", s.cclfRefDate)
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", s.cclfRefDate)
 	os.RemoveAll(s.pendingDeletionDir)
 }
 
@@ -310,8 +310,8 @@ func TestMultipleFileTypes(t *testing.T) {
 	assert.NoError(t, err)
 	// Hard code the reference date to ensure to ensure we do not reject any CCLF files because they are too old.
 	cclfRefDate := configuration.GetEnv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", "201201")
-	defer os.Setenv("CCLF_REF_DATE", cclfRefDate)
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "201201")
+	defer configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", cclfRefDate)
 	defer os.RemoveAll(dir)
 
 	// Create various CCLF files that have unique perfYear:fileType

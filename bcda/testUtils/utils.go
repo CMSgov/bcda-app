@@ -52,7 +52,7 @@ func RandomBase64(n int) string {
 }
 
 func setEnv(why, key, value string) {
-	if err := os.Setenv(key, value); err != nil {
+	if err := configuration.SetEnv(&testing.T{}, key, value); err != nil {
 		log.Printf("Error %s env value %s to %s\n", why, key, value)
 	}
 }
@@ -99,7 +99,7 @@ func MakeDirToDelete(s suite.Suite, filePath string) {
 // SetPendingDeletionDir sets the PENDING_DELETION_DIR to the supplied "path" and ensures
 // that the directory is created
 func SetPendingDeletionDir(s suite.Suite, path string) {
-	err := os.Setenv("PENDING_DELETION_DIR", path)
+	err := configuration.SetEnv(&testing.T{}, "PENDING_DELETION_DIR", path)
 	if err != nil {
 		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
 	}

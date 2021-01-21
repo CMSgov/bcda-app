@@ -51,7 +51,7 @@ func (s *CLITestSuite) SetupSuite() {
 	testUtils.SetUnitTestKeysForAuth()
 	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
 	origDate = configuration.GetEnv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", "181125")
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "181125")
 
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -70,7 +70,7 @@ func (s *CLITestSuite) TearDownTest() {
 }
 
 func (s *CLITestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", origDate)
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", origDate)
 	os.RemoveAll(s.pendingDeletionDir)
 }
 
@@ -80,8 +80,8 @@ func TestCLITestSuite(t *testing.T) {
 
 func (s *CLITestSuite) TestGetEnvInt() {
 	const DEFAULT_VALUE = 200
-	os.Setenv("TEST_ENV_STRING", "blah")
-	os.Setenv("TEST_ENV_INT", "232")
+	configuration.SetEnv(&testing.T{}, "TEST_ENV_STRING", "blah")
+	configuration.SetEnv(&testing.T{}, "TEST_ENV_INT", "232")
 
 	assert.Equal(s.T(), 232, utils.GetEnvInt("TEST_ENV_INT", DEFAULT_VALUE))
 	assert.Equal(s.T(), DEFAULT_VALUE, utils.GetEnvInt("TEST_ENV_STRING", DEFAULT_VALUE))
@@ -252,8 +252,8 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	db.Save(&j)
 	assert.NotNil(j.ID)
 
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	configuration.SetEnv(&testing.T{}, "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	configuration.SetEnv(&testing.T{}, "FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 	id := int(j.ID)
 	assert.NotNil(id)
 
@@ -362,8 +362,8 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	db.Save(&j)
 	assert.NotNil(s.T(), j.ID)
 
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	configuration.SetEnv(&testing.T{}, "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	configuration.SetEnv(&testing.T{}, "FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 	id := int(j.ID)
 	assert.NotNil(s.T(), id)
 
@@ -462,7 +462,7 @@ func (s *CLITestSuite) TestCleanArchive() {
 	args := []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	configuration.SetEnv(&testing.T{}, "FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 
 	// condition: no jobs exist
 	args = []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
@@ -583,12 +583,12 @@ func (s *CLITestSuite) TestCreateGroup() {
 	server := httptest.NewServer(router)
 
 	origSSASURL := configuration.GetEnv("SSAS_URL")
-	os.Setenv("SSAS_URL", server.URL)
-	defer os.Setenv("SSAS_URL", origSSASURL)
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	defer configuration.SetEnv(&testing.T{}, "SSAS_URL", origSSASURL)
 
 	origSSASUseTLS := configuration.GetEnv("SSAS_USE_TLS")
-	os.Setenv("SSAS_USE_TLS", "false")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
+	defer configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", origSSASUseTLS)
 
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -762,7 +762,7 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
-	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
+	configuration.SetEnv(&testing.T{}, "TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
 	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "flag provided but not defined: -envvar")

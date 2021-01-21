@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -41,17 +40,17 @@ type APITestSuite struct {
 
 func (s *APITestSuite) SetupSuite() {
 	origDate := configuration.GetEnv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
-	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
+	configuration.SetEnv(&testing.T{}, "BB_REQUEST_RETRY_INTERVAL_MS", "10")
 	origBBCert := configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	origBBKey := configuration.GetEnv("BB_CLIENT_KEY_FILE")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 
 	s.cleanup = func() {
-		os.Setenv("CCLF_REF_DATE", origDate)
-		os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
-		os.Setenv("BB_CLIENT_KEY_FILE", origBBKey)
+		configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", origDate)
+		configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", origBBCert)
+		configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", origBBKey)
 	}
 
 	s.db = database.GetGORMDbConnection()

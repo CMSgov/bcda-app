@@ -43,17 +43,17 @@ func (s *SSASClientTestSuite) SetupTest() {
 }
 
 func (s *SSASClientTestSuite) TearDownTest() {
-	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
-	os.Setenv("SSAS_URL", origSSASURL)
-	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
-	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
-	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
-	os.Setenv("BCDA_CA_FILE", origBCDACAFile)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", origSSASUseTLS)
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", origSSASURL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", origPublicURL)
+	configuration.SetEnv(&testing.T{}, "BCDA_SSAS_CLIENT_ID", origSSASClientID)
+	configuration.SetEnv(&testing.T{}, "BCDA_SSAS_SECRET", origSSASSecret)
+	configuration.SetEnv(&testing.T{}, "BCDA_CA_FILE", origBCDACAFile)
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
-	os.Setenv("SSAS_USE_TLS", "false")
-	os.Setenv("SSAS_URL", "http://ssas-url")
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", "http://ssas-url")
 
 	client, err := authclient.NewSSASClient()
 	assert.Nil(s.T(), err)
@@ -62,9 +62,9 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalse() {
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrue() {
-	os.Setenv("SSAS_USE_TLS", "true")
-	os.Setenv("SSAS_URL", "https://ssas-url")
-	os.Setenv("BCDA_CA_FILE", "../../../shared_files/bcda.ca.pem")
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "true")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", "https://ssas-url")
+	configuration.SetEnv(&testing.T{}, "BCDA_CA_FILE", "../../../shared_files/bcda.ca.pem")
 
 	client, err := authclient.NewSSASClient()
 	assert.Nil(s.T(), err)
@@ -73,8 +73,8 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrue() {
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_NoCertFile() {
-	os.Setenv("SSAS_USE_TLS", "true")
-	os.Setenv("SSAS_URL", "http://ssas-url")
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "true")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", "http://ssas-url")
 	os.Unsetenv("BCDA_CA_FILE")
 
 	client, err := authclient.NewSSASClient()
@@ -94,7 +94,7 @@ func (s *SSASClientTestSuite) TestNewSSASClient_NoURL() {
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 	os.Unsetenv("SSAS_URL")
 
 	client, err := authclient.NewSSASClient()
@@ -114,8 +114,8 @@ func (s *SSASClientTestSuite) TestCreateGroup() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -141,8 +141,8 @@ func (s *SSASClientTestSuite) TestCreateSystem() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -169,8 +169,8 @@ func (s *SSASClientTestSuite) TestGetPublicKey() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -193,9 +193,9 @@ func (s *SSASClientTestSuite) TestResetCredentials() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -218,9 +218,9 @@ func (s *SSASClientTestSuite) TestDeleteCredentials() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -238,9 +238,9 @@ func (s *SSASClientTestSuite) TestRevokeAccessToken() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -262,9 +262,9 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -290,9 +290,9 @@ func (s *SSASClientTestSuite) TestGetVersionPassing() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -314,9 +314,9 @@ func (s *SSASClientTestSuite) TestGetVersionFailing() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {
@@ -359,11 +359,11 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
-	os.Setenv("BCDA_SSAS_CLIENT_ID", "happy")
-	os.Setenv("BCDA_SSAS_SECRET", "customer")
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
+	configuration.SetEnv(&testing.T{}, "BCDA_SSAS_CLIENT_ID", "happy")
+	configuration.SetEnv(&testing.T{}, "BCDA_SSAS_SECRET", "customer")
 
 	client, err := authclient.NewSSASClient()
 	if err != nil {

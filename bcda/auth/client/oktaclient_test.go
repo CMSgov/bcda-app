@@ -43,15 +43,15 @@ func (s *OTestSuite) TestConfig() {
 	require.NotNil(s.T(), err)
 	assert.Regexp(s.T(), regexp.MustCompile("(OKTA_[A-Z_]*=, ){2}(OKTA_CLIENT_TOKEN=)"), err)
 
-	os.Setenv("OKTA_CLIENT_TOKEN", originalOktaToken)
+	configuration.SetEnv(&testing.T{}, "OKTA_CLIENT_TOKEN", originalOktaToken)
 
 	err = config()
 	assert.NotNil(s.T(), err)
 	assert.Regexp(s.T(), regexp.MustCompile("(OKTA_[A-Z_]*=, ){2}(OKTA_CLIENT_TOKEN=\\[Redacted\\])"), err)
 
-	os.Setenv("OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
-	os.Setenv("OKTA_OAUTH_SERVER_ID", originalOktaServerID)
-	os.Setenv("OKTA_CLIENT_TOKEN", originalOktaToken)
+	configuration.SetEnv(&testing.T{}, "OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
+	configuration.SetEnv(&testing.T{}, "OKTA_OAUTH_SERVER_ID", originalOktaServerID)
+	configuration.SetEnv(&testing.T{}, "OKTA_CLIENT_TOKEN", originalOktaToken)
 
 	err = config()
 	assert.Nil(s.T(), err)

@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -337,16 +336,16 @@ OwIDAQAB
 	server := httptest.NewServer(router)
 
 	origAuthProvider := configuration.GetEnv("BCDA_AUTH_PROVIDER")
-	os.Setenv("BCDA_AUTH_PROVIDER", "ssas")
-	defer os.Setenv("BCDA_AUTH_PROVIDER", origAuthProvider)
+	configuration.SetEnv(&testing.T{}, "BCDA_AUTH_PROVIDER", "ssas")
+	defer configuration.SetEnv(&testing.T{}, "BCDA_AUTH_PROVIDER", origAuthProvider)
 
 	origSSASURL := configuration.GetEnv("SSAS_URL")
-	os.Setenv("SSAS_URL", server.URL)
-	defer os.Setenv("SSAS_URL", origSSASURL)
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	defer configuration.SetEnv(&testing.T{}, "SSAS_URL", origSSASURL)
 
 	origSSASUseTLS := configuration.GetEnv("SSAS_USE_TLS")
-	os.Setenv("SSAS_USE_TLS", "false")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
+	defer configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", origSSASUseTLS)
 
 	cmsID := "A0001"
 	aco := ACO{Name: "Public key from SSAS ACO", CMSID: &cmsID, UUID: uuid.NewRandom(), ClientID: "100"}

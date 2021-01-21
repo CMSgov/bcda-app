@@ -1,7 +1,6 @@
 package auth_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -33,12 +32,12 @@ func (s *TokenToolsTestSuite) SetupSuite() {
 }
 
 func (s *TokenToolsTestSuite) TearDownSuite() {
-	os.Setenv("JWT_EXPIRATION_DELTA", s.originalEnvValue)
+	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", s.originalEnvValue)
 	s.reset()
 }
 
 func (s *TokenToolsTestSuite) AfterTest() {
-	os.Setenv("JWT_EXPIRATION_DELTA", "60")
+	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", "60")
 }
 
 func (s *TokenToolsTestSuite) TestTokenDurationDefault() {
@@ -49,7 +48,7 @@ func (s *TokenToolsTestSuite) TestTokenDurationDefault() {
 func (s *TokenToolsTestSuite) TestTokenDurationOverride() {
 	assert.NotEmpty(s.T(), auth.TokenTTL)
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
-	os.Setenv("JWT_EXPIRATION_DELTA", "5")
+	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", "5")
 	auth.SetTokenDuration()
 	assert.Equal(s.T(), 5*time.Minute, auth.TokenTTL)
 }
@@ -57,7 +56,7 @@ func (s *TokenToolsTestSuite) TestTokenDurationOverride() {
 func (s *TokenToolsTestSuite) TestTokenDurationEmptyOverride() {
 	assert.NotEmpty(s.T(), auth.TokenTTL)
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
-	os.Setenv("JWT_EXPIRATION_DELTA", "")
+	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", "")
 	auth.SetTokenDuration()
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
 }

@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
@@ -60,9 +59,9 @@ func (s *SSASMiddlewareTestSuite) SetupSuite() {
 
 func (s *SSASMiddlewareTestSuite) TearDownSuite() {
 	s.server.Close()
-	os.Setenv("SSAS_URL", originalSSASURL)
-	os.Setenv("SSAS_PUBLIC_URL", originalPublicSSASURL)
-	os.Setenv("SSAS_USE_TLS", originalSSASUseTLS)
+	configuration.SetEnv(&testing.T{}, "SSAS_URL", originalSSASURL)
+	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", originalPublicSSASURL)
+	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", originalSSASUseTLS)
 
 	fmt.Println("restoring to", originalProvider)
 	auth.SetProvider(originalProvider)

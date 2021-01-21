@@ -59,18 +59,18 @@ var origBBKey string
 func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
 	origDate = configuration.GetEnv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
-	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
+	configuration.SetEnv(&testing.T{}, "BB_REQUEST_RETRY_INTERVAL_MS", "10")
 	origBBCert = configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	origBBKey = configuration.GetEnv("BB_CLIENT_KEY_FILE")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 }
 
 func (s *APITestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", origDate)
-	os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
-	os.Setenv("BB_CLIENT_KEY_FILE", origBBKey)
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", origDate)
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", origBBCert)
+	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", origBBKey)
 	s.reset()
 }
 
@@ -288,9 +288,9 @@ func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *
 
 func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 	orig := configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	defer os.Setenv("BB_CLIENT_CERT_FILE", orig)
+	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", orig)
 
-	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
+	err := configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "blah")
 	assert.Nil(s.T(), err)
 
 	acoID := acoUnderTest
@@ -318,7 +318,7 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
-	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
+	err := configuration.SetEnv(&testing.T{}, "DEPLOYMENT_TARGET", "prod")
 	assert.Nil(s.T(), err)
 	acoID := acoUnderTest
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -437,7 +437,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
-	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
+	err := configuration.SetEnv(&testing.T{}, "DEPLOYMENT_TARGET", "prod")
 	assert.Nil(s.T(), err)
 	acoID := acoUnderTest
 	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
@@ -863,7 +863,7 @@ func (s *APITestSuite) TestJobStatusArchived() {
 }
 
 func (s *APITestSuite) TestServeData() {
-	os.Setenv("FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
+	configuration.SetEnv(&testing.T{}, "FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
 
 	tests := []struct {
 		name    string
@@ -986,8 +986,8 @@ func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
 		fmt.Println("FATAL (NO-OP)")
 	}
 	dbURL := configuration.GetEnv("DATABASE_URL")
-	defer os.Setenv("DATABASE_URL", dbURL)
-	os.Setenv("DATABASE_URL", "not-a-database")
+	defer configuration.SetEnv(&testing.T{}, "DATABASE_URL", dbURL)
+	configuration.SetEnv(&testing.T{}, "DATABASE_URL", "not-a-database")
 	req, err := http.NewRequest("GET", "/_health", nil)
 	assert.Nil(s.T(), err)
 	handler := http.HandlerFunc(HealthCheck)

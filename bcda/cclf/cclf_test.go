@@ -39,7 +39,7 @@ type CCLFTestSuite struct {
 }
 
 func (s *CCLFTestSuite) SetupTest() {
-	os.Setenv("CCLF_REF_DATE", "181201")
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "181201")
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
@@ -56,7 +56,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", s.origDate)
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", s.origDate)
 	os.RemoveAll(s.pendingDeletionDir)
 }
 
@@ -73,7 +73,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 	// This order is computed from values inserted in the database
 	var aco1, aco2, aco3 = "A9989", "A9988", "A0001"
 
-	os.Setenv("CCLF_REF_DATE", "181201")
+	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "181201")
 
 	assert := assert.New(s.T())
 
