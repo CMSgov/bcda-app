@@ -353,8 +353,11 @@ func (r *Repository) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...m
 	sb.Select(jobColumns...)
 	sb.From("jobs").Where(
 		sb.Equal("aco_id", acoID),
-		sb.In("status", s...),
 	)
+
+	if len(s) > 0 {
+		sb.Where(sb.In("status", s...))
+	}
 
 	query, args := sb.Build()
 	return r.getJobs(ctx, query, args...)
@@ -375,9 +378,9 @@ func (r *Repository) GetJobsByUpdateTimeAndStatus(ctx context.Context, lowerBoun
 		sb.Where(sb.LessEqualThan("updated_at", upperBound))
 	}
 
-	sb.From("jobs").Where(
-		sb.In("status", s...),
-	)
+	if len(s) > 0 {
+		sb.Where(sb.In("status", s...))
+	}
 
 	query, args := sb.Build()
 	return r.getJobs(ctx, query, args...)

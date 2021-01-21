@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -584,23 +585,25 @@ func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 
 // TestSuppressionFilesMethods validates the CRUD operations associated with the suppression_files table
 func (r *RepositoryTestSuite) TestSuppressionFileMethods() {
+	// Account for time precision in postgres
+	now := time.Now().Round(time.Millisecond)
 	var err error
 	ctx := context.Background()
 	assert := r.Assert()
 
 	inProgress := models.SuppressionFile{
 		Name:         uuid.New(),
-		Timestamp:    time.Now(),
+		Timestamp:    now,
 		ImportStatus: constants.ImportInprog,
 	}
 	failed := models.SuppressionFile{
 		Name:         uuid.New(),
-		Timestamp:    time.Now(),
+		Timestamp:    now,
 		ImportStatus: constants.ImportFail,
 	}
 	other := models.SuppressionFile{
 		Name:         uuid.New(),
-		Timestamp:    time.Now(),
+		Timestamp:    now,
 		ImportStatus: "Other",
 	}
 
@@ -617,6 +620,144 @@ func (r *RepositoryTestSuite) TestSuppressionFileMethods() {
 	assertEqualSuppressionFile(assert, inProgress, postgrestest.GetSuppressionFileByName(r.T(), r.db, inProgress.Name)[0])
 	assertEqualSuppressionFile(assert, failed, postgrestest.GetSuppressionFileByName(r.T(), r.db, failed.Name)[0])
 	assertEqualSuppressionFile(assert, other, postgrestest.GetSuppressionFileByName(r.T(), r.db, other.Name)[0])
+
+	// Negative cases
+	assert.EqualError(r.repository.UpdateSuppressionFileImportStatus(ctx, 0, "SomeOtherStatus"), "SuppressionFile 0 not updated, no row found")
+}
+
+// TestJobsMethods validates the CRUD operations associated with the jobs table
+func (r *RepositoryTestSuite) TestJobsMethods() {
+	var err error
+	ctx := context.Background()
+	assert := r.Assert()
+
+	reqURL := "http://bcda.cms.gov/is/the/best"
+
+	cmsID := testUtils.RandomHexID()[0:4]
+	aco := models.ACO{UUID: uuid.NewRandom(), Name: uuid.New(), CMSID: &cmsID}
+	postgrestest.CreateACO(r.T(), r.db, aco)
+
+	defer postgrestest.DeleteACO(r.T(), r.db, aco.UUID)
+
+	failed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusFailed, JobCount: 10, CompletedJobCount: 20}
+	pending := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusPending, JobCount: 30, CompletedJobCount: 40}
+	completed := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusCompleted, JobCount: 40, CompletedJobCount: 60}
+
+	failed.ID, err = r.repository.CreateJob(ctx, failed)
+	assert.NoError(err)
+	pending.ID, err = r.repository.CreateJob(ctx, pending)
+	assert.NoError(err)
+	completed.ID, err = r.repository.CreateJob(ctx, completed)
+	assert.NoError(err)
+
+	jobs, err := r.repository.GetJobs(ctx, aco.UUID)
+
+	// Used to track certain range queries
+	var earliestTime, latestTime time.Time
+
+	// Since updatedAt and createdAt are computed fields e.g. not set on the model, we'll make sure
+	// postgres set it as expected
+	for _, j := range jobs {
+		assert.False(j.CreatedAt.IsZero())
+		assert.False(j.UpdatedAt.IsZero())
+
+		if earliestTime.IsZero() || !earliestTime.Before(j.UpdatedAt) {
+			earliestTime = j.UpdatedAt
+		}
+		if latestTime.IsZero() || !latestTime.After(j.UpdatedAt) {
+			latestTime = j.UpdatedAt
+		}
+	}
+
+	assert.NoError(err)
+	assert.Len(jobs, 3)
+	assertContainsJobID(assert, jobs, failed.ID)
+	assertContainsJobID(assert, jobs, completed.ID)
+	assertContainsJobID(assert, jobs, pending.ID)
+
+	jobs, err = r.repository.GetJobs(ctx, aco.UUID, models.JobStatusFailed)
+	assert.NoError(err)
+	assert.Len(jobs, 1)
+	assertContainsJobID(assert, jobs, failed.ID)
+
+	// Since other jobs could've been created and we don't limit by UUID
+	// we can't guarantee counts
+	jobs, err = r.repository.GetJobsByUpdateTimeAndStatus(ctx, earliestTime, latestTime)
+	assert.NoError(err)
+	assertContainsJobID(assert, jobs, failed.ID)
+	assertContainsJobID(assert, jobs, completed.ID)
+	assertContainsJobID(assert, jobs, pending.ID)
+
+	jobs, err = r.repository.GetJobsByUpdateTimeAndStatus(ctx, earliestTime, latestTime, models.JobStatusFailed)
+	assert.NoError(err)
+	assertContainsJobID(assert, jobs, failed.ID)
+	assertDoesNotContainsJobID(assert, jobs, completed.ID)
+	assertDoesNotContainsJobID(assert, jobs, pending.ID)
+
+	// All jobs were created before this timebound.
+	jobs, err = r.repository.GetJobsByUpdateTimeAndStatus(ctx, latestTime.Add(1*time.Minute), time.Time{})
+	assert.NoError(err)
+	assertDoesNotContainsJobID(assert, jobs, failed.ID)
+	assertDoesNotContainsJobID(assert, jobs, completed.ID)
+	assertDoesNotContainsJobID(assert, jobs, pending.ID)
+
+	// All jobs were created after this timebound.
+	jobs, err = r.repository.GetJobsByUpdateTimeAndStatus(ctx, time.Time{}, earliestTime.Add(-1*time.Minute))
+	assert.NoError(err)
+	assertDoesNotContainsJobID(assert, jobs, failed.ID)
+	assertDoesNotContainsJobID(assert, jobs, completed.ID)
+	assertDoesNotContainsJobID(assert, jobs, pending.ID)
+
+	// Account for time precision in postgres
+	failed.TransactionTime = time.Now().Round(time.Millisecond)
+	failed.JobCount = failed.JobCount + 1
+	failed.CompletedJobCount = failed.CompletedJobCount + 1
+	failed.Status = models.JobStatusArchived
+	assert.NoError(r.repository.UpdateJob(ctx, failed))
+
+	newFailed, err := r.repository.GetJobByID(ctx, failed.ID)
+	assert.NoError(err)
+	assert.True(newFailed.UpdatedAt.After(failed.UpdatedAt))
+	assert.Equal(failed.TransactionTime.UTC(), newFailed.TransactionTime.UTC())
+	assert.Equal(failed.Status, newFailed.Status)
+	assert.Equal(failed.JobCount, newFailed.JobCount)
+	assert.Equal(failed.CompletedJobCount, newFailed.CompletedJobCount)
+
+	// Verify that we did not modify other job
+	newCompleted, err := r.repository.GetJobByID(ctx, completed.ID)
+	assert.NoError(err)
+	assert.Equal(models.JobStatusCompleted, newCompleted.Status)
+	assert.True(newFailed.UpdatedAt.After(newCompleted.UpdatedAt))
+
+	// Negative cases
+	notExists := models.Job{ACOID: aco.UUID, RequestURL: reqURL, Status: models.JobStatusCompleted}
+	assert.EqualError(r.repository.UpdateJob(ctx, notExists), "expected to affect 1 row, affected 0")
+}
+
+// TestJobKeysMethods validates the CRUD operations associated with the job_keys table
+func (r *RepositoryTestSuite) TestJobKeyMethods() {
+	ctx := context.Background()
+	assert := r.Assert()
+
+	jobID := uint(rand.Int31())
+	jk1 := models.JobKey{JobID: jobID, FileName: uuid.New()}
+	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: uint(rand.Int31()), FileName: uuid.New()}
+
+	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
+
+	// Since we have other job keys that exist, we cannot guarantee length
+	keys, err := r.repository.GetJobKeys(ctx, jobID)
+	assert.NoError(err)
+	assertContainsFile(assert, keys, jk1.FileName)
+	assertContainsFile(assert, keys, jk2.FileName)
+	assertDoesNotContainsFile(assert, keys, jk3.FileName)
+
+	otherKeys, err := r.repository.GetJobKeys(ctx, jk3.JobID)
+	assert.NoError(err)
+	assertContainsFile(assert, otherKeys, jk3.FileName)
+	assertDoesNotContainsFile(assert, otherKeys, jk1.FileName)
+	assertDoesNotContainsFile(assert, otherKeys, jk2.FileName)
 }
 
 // TestCMSID verifies that we can store and retrieve the CMS_ID as expected
@@ -678,6 +819,7 @@ func (r *RepositoryTestSuite) TestCCLFFileType() {
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
+	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)
 	return &models.CCLFFile{
 		ID:              uint(rand.Int63()),
@@ -714,4 +856,44 @@ func assertEqualSuppressionFile(assert *assert.Assertions, expected, actual mode
 	actual.Timestamp = actual.Timestamp.UTC()
 
 	assert.Equal(expected, actual)
+}
+
+func assertContainsJobID(assert *assert.Assertions, jobs []*models.Job, jobID uint) {
+	var jobIDs []uint
+	for _, job := range jobs {
+		jobIDs = append(jobIDs, job.ID)
+	}
+
+	assert.Contains(jobIDs, jobID)
+}
+
+func assertDoesNotContainsJobID(assert *assert.Assertions, jobs []*models.Job, jobID uint) {
+	jobIDs := make(map[uint]struct{})
+	for _, job := range jobs {
+		jobIDs[job.ID] = struct{}{}
+	}
+
+	_, contains := jobIDs[jobID]
+	assert.False(contains, "JobIDs %v should not include %d", jobIDs, jobID)
+}
+
+func assertContainsFile(assert *assert.Assertions, jobKeys []*models.JobKey, fileName string) {
+	var fileNames []string
+	for _, jobKey := range jobKeys {
+		// need to use trimSpace because the jobKey#fileName can be padded with extra characters
+		fileNames = append(fileNames, strings.TrimSpace(jobKey.FileName))
+	}
+
+	assert.Contains(fileNames, fileName)
+}
+
+func assertDoesNotContainsFile(assert *assert.Assertions, jobKeys []*models.JobKey, fileName string) {
+	fileNames := make(map[string]struct{})
+	for _, jobKey := range jobKeys {
+		// need to use trimSpace because the jobKey#fileName can be padded with extra characters
+		fileNames[strings.TrimSpace(jobKey.FileName)] = struct{}{}
+	}
+
+	_, contains := fileNames[fileName]
+	assert.False(contains, "File names %v should not include %d", fileNames, fileName)
 }
