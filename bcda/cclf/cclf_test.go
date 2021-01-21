@@ -25,6 +25,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type CCLFTestSuite struct {
@@ -44,7 +45,7 @@ func (s *CCLFTestSuite) SetupTest() {
 }
 
 func (s *CCLFTestSuite) SetupSuite() {
-	s.origDate = os.Getenv("CCLF_REF_DATE")
+	s.origDate = configuration.GetEnv("CCLF_REF_DATE")
 
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -300,9 +301,9 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	err := cleanUpCCLF(context.Background(), cclfmap)
 	assert.Nil(err)
 
-	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
+	files, err := ioutil.ReadDir(configuration.GetEnv("PENDING_DELETION_DIR"))
 	if err != nil {
-		s.FailNow("failed to read directory: %s", os.Getenv("PENDING_DELETION_DIR"), err)
+		s.FailNow("failed to read directory: %s", configuration.GetEnv("PENDING_DELETION_DIR"), err)
 	}
 	for _, file := range files {
 		assert.NotEqual("T.BCD.ACO.ZC0Y18.D181120.T0001000", file.Name())

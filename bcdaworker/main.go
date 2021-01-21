@@ -29,6 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 var (
@@ -39,7 +40,7 @@ func init() {
 	createWorkerDirs()
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
+	filePath := configuration.GetEnv("BCDA_WORKER_ERROR_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
@@ -51,7 +52,7 @@ func init() {
 }
 
 func createWorkerDirs() {
-	staging := os.Getenv("FHIR_STAGING_DIR")
+	staging := configuration.GetEnv("FHIR_STAGING_DIR")
 	err := os.MkdirAll(staging, 0744)
 	if err != nil {
 		log.Fatal(err)
@@ -126,8 +127,8 @@ func processJob(j *que.Job) error {
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
-	stagingPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	payloadPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
+	stagingPath := fmt.Sprintf("%s/%s", configuration.GetEnv("FHIR_STAGING_DIR"), jobID)
+	payloadPath := fmt.Sprintf("%s/%s", configuration.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
 	if err = createDir(stagingPath); err != nil {
 		log.Error(err)
@@ -209,7 +210,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 		return "", 0, fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
 	}
 
-	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	dataDir := configuration.GetEnv("FHIR_STAGING_DIR")
 	fileUUID = uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
@@ -288,7 +289,7 @@ func getBeneficiary(cclfBeneID string, bb client.APIClient, db *gorm.DB) (models
 }
 
 func getFailureThreshold() float64 {
-	exportFailPctStr := os.Getenv("EXPORT_FAIL_PCT")
+	exportFailPctStr := configuration.GetEnv("EXPORT_FAIL_PCT")
 	exportFailPct, err := strconv.Atoi(exportFailPctStr)
 	if err != nil {
 		exportFailPct = 50
@@ -308,7 +309,7 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
-	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	dataDir := configuration.GetEnv("FHIR_STAGING_DIR")
 	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
 	/* #nosec -- opening file defined by variable */
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -389,7 +390,7 @@ func waitForSig() {
 }
 
 func setupQueue() *pgx.ConnPool {
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	queueDatabaseURL := configuration.GetEnv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -416,7 +417,7 @@ func setupQueue() *pgx.ConnPool {
 }
 
 func getQueueJobCount() float64 {
-	databaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	databaseURL := configuration.GetEnv("QUEUE_DATABASE_URL")
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Error(err)
@@ -459,7 +460,7 @@ func addJobFileName(fileName, resourceType string, exportJob models.Job, db *gor
 func updateJobQueueCountCloudwatchMetric() {
 
 	// Update the Cloudwatch Metric for job queue count
-	env := os.Getenv("DEPLOYMENT_TARGET")
+	env := configuration.GetEnv("DEPLOYMENT_TARGET")
 	if env != "" {
 		sampler, err := metrics.NewSampler("BCDA", "Count")
 		if err != nil {
@@ -489,7 +490,7 @@ func main() {
 	workerPool := setupQueue()
 	defer workerPool.Close()
 
-	if hInt, err := strconv.Atoi(os.Getenv("WORKER_HEALTH_INT_SEC")); err == nil {
+	if hInt, err := strconv.Atoi(configuration.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {
 		healthLogger := NewHealthLogger()
 		ticker := time.NewTicker(time.Duration(hInt) * time.Second)
 		quit := make(chan struct{})

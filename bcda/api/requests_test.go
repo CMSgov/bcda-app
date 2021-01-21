@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
+    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/mock"
@@ -55,7 +56,7 @@ func (s *RequestsTestSuite) SetupSuite() {
 }
 
 func (s *RequestsTestSuite) SetupTest() {
-	s.runoutEnabledEnvVar = os.Getenv("BCDA_ENABLE_RUNOUT")
+	s.runoutEnabledEnvVar = configuration.GetEnv("BCDA_ENABLE_RUNOUT")
 }
 
 func (s *RequestsTestSuite) TearDownSuite() {
@@ -244,7 +245,7 @@ func (s *RequestsTestSuite) TestCheck429() {
 func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	// Switch over to validate the 429 behavior
 	dt := "DEPLOYMENT_TARGET"
-	target := os.Getenv(dt)
+	target := configuration.GetEnv(dt)
 	defer os.Setenv(dt, target)
 	os.Setenv(dt, "prod")
 

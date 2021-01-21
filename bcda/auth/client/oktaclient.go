@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -62,9 +64,9 @@ func init() {
 
 // separate from init for testing
 func config() error {
-	oktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
-	oktaServerID = os.Getenv("OKTA_OAUTH_SERVER_ID")
-	oktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
+	oktaBaseUrl = configuration.GetEnv("OKTA_CLIENT_ORGURL")
+	oktaServerID = configuration.GetEnv("OKTA_OAUTH_SERVER_ID")
+	oktaToken := configuration.GetEnv("OKTA_CLIENT_TOKEN")
 
 	at := oktaToken
 	if at != "" {

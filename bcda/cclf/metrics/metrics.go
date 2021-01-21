@@ -3,10 +3,10 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 	log "github.com/sirupsen/logrus"
@@ -76,13 +76,13 @@ func fromContext(ctx context.Context) Timer {
 
 func GetTimer() Timer {
 
-	target := os.Getenv("DEPLOYMENT_TARGET")
+	target := configuration.GetEnv("DEPLOYMENT_TARGET")
 	if target == "" {
 		target = "local"
 	}
 	app, err := newrelic.NewApplication(
 		newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
-		newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
+		newrelic.ConfigLicense(configuration.GetEnv("NEW_RELIC_LICENSE_KEY")),
 		newrelic.ConfigEnabled(true),
 		func(cfg *newrelic.Config) {
 			cfg.HighSecurity = true

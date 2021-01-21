@@ -18,6 +18,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
@@ -38,12 +40,12 @@ type APITestSuite struct {
 }
 
 func (s *APITestSuite) SetupSuite() {
-	origDate := os.Getenv("CCLF_REF_DATE")
+	origDate := configuration.GetEnv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
 	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
-	origBBCert := os.Getenv("BB_CLIENT_CERT_FILE")
+	origBBCert := configuration.GetEnv("BB_CLIENT_CERT_FILE")
 	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	origBBKey := os.Getenv("BB_CLIENT_KEY_FILE")
+	origBBKey := configuration.GetEnv("BB_CLIENT_KEY_FILE")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 
 	s.cleanup = func() {

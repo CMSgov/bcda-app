@@ -11,6 +11,8 @@ import (
 	"os"
 	"testing"
 
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -236,7 +238,7 @@ func TestServiceMuxTestSuite(t *testing.T) {
 }
 
 func getOrigVars() (origTLSCert, origTLSKey, origHTTPOnly string) {
-	return os.Getenv("BCDA_TLS_CERT"), os.Getenv("BCDA_TLS_KEY"), os.Getenv("HTTP_ONLY")
+	return configuration.GetEnv("BCDA_TLS_CERT"), configuration.GetEnv("BCDA_TLS_KEY"), configuration.GetEnv("HTTP_ONLY")
 }
 
 func resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly string) {

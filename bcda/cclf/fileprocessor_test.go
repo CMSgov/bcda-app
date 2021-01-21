@@ -15,6 +15,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,7 +35,7 @@ func (s *FileProcessorTestSuite) SetupTest() {
 }
 
 func (s *FileProcessorTestSuite) SetupSuite() {
-	s.cclfRefDate = os.Getenv("CCLF_REF_DATE")
+	s.cclfRefDate = configuration.GetEnv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", "181201") // Needed to allow our static CCLF files to continue to be processed
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -307,7 +309,7 @@ func TestMultipleFileTypes(t *testing.T) {
 	dir, err := ioutil.TempDir("", "*")
 	assert.NoError(t, err)
 	// Hard code the reference date to ensure to ensure we do not reject any CCLF files because they are too old.
-	cclfRefDate := os.Getenv("CCLF_REF_DATE")
+	cclfRefDate := configuration.GetEnv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", "201201")
 	defer os.Setenv("CCLF_REF_DATE", cclfRefDate)
 	defer os.RemoveAll(dir)

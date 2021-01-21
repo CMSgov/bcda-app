@@ -13,13 +13,14 @@ package config
 import (
 	"os"
 	"testing"
-	"time"
+    "time"
 
 	"github.com/spf13/viper"
 )
 
 // Global variable made available to any other package importing this package
 var envVars viper.Viper
+const testmode bool = true
 
 // Implementing a state machine tracking how things are going in this package
 const (
@@ -28,7 +29,7 @@ const (
 	noconfigfound uint8 = 2
 )
 
-var state uint8 = configgood // if config found and loaded, value not changed
+var State uint8 = configgood // if config found and loaded, value not changed
 
 /*
    This is the private helper function that sets up viper. This function is
@@ -63,7 +64,7 @@ func setup(dir string) *viper.Viper {
 
 	// If viper cannot read the configuration file...
 	if err != nil {
-		state = configbad
+		State = configbad
 	}
 
 	return v
@@ -80,9 +81,18 @@ func init() {
 
 	// Possible config locations. If there are more places to look, add here:
 	var locationSlice = []string{
-		"../shared_files/decrypted", // TEST DEV Location
-		".",                         // This will be the location on PROD, which is currently not set
+        // TEST DEV Location
+        "/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted",
+        // This will be the location on PROD, which is currently not set
+        // So for now, it will wait 30 seconds and just default to os calls
+		".",
 	}
+
+    // TEST MODE
+    if testmode {
+        State = configbad
+        return
+    }
 
 	// Iterate through the possible locations
 	for i, v := range locationSlice {
@@ -94,8 +104,8 @@ func init() {
 		}
 
 		// Exhausted the for loop, config file not found :/
-		if i == len(locationSlice) {
-			state = noconfigfound
+		if i == len(locationSlice) - 1 {
+			State = noconfigfound
 		}
 	}
 
@@ -125,27 +135,26 @@ func fileexistattempt(maxattempt uint8, v string, i int) bool {
 
 	// Wait 10 seconds before retrying... This probably isn't the fanciest way and may
 	// need to be revamp in the future.
-	time.Sleep(time.Second * 10) // POSSIBLE REVAMP NEEDED WHEN GOING TO PROD
+    time.Sleep(time.Second * 10) // POSSIBLE REVAMP NEEDED WHEN GOING TO PROD
 
 	// Attempt to see if file exists maxattempt times recursively
 	return fileexistattempt(maxattempt-1, v, i)
 }
 
 // A public function that acts like a Getter
-func GetEnv(key string) interface{} {
+func GetEnv(key string) string {
 
 	// If the configuration file is good, use the config file
-	if state == configgood {
+	if State == configgood {
 
-		var value = envVars.Get(key)
+		var value = envVars.GetString(key)
 
 		// Even if the config file is load, if the key doesn't exist in config
 		// try the EV
-		if value == nil {
+		if value == "" {
 			value = os.Getenv(key)
 		}
 
-		// If the key value does not exist, it currently return a blank ""
 		return value
 	}
 
@@ -157,20 +166,25 @@ func GetEnv(key string) interface{} {
 // A public function that acts like a Setter. This function should only be used
 // in testing. Protect parameter is an interface, but it's really a testing
 // T struct. Any other type entered for protect will panic.
-func SetEnv(protect interface{}, key string, value string) {
+func SetEnv(protect interface{}, key string, value string) error {
+
+    var err error
 
 	// Check if the protect type is Testing T struct
-	if _, ok := protect.(testing.T); ok {
+	if _, ok := protect.(*testing.T); ok {
 		// If config is good, change the config in memory
-		if state == configgood {
+		if State == configgood {
 			envVars.Set(key, value) // This doesn't return anything...
+            err = nil
 		} else {
 			// Config is bad, change the EV
-			var _ = os.Setenv(key, value)
+			err = os.Setenv(key, value)
 		}
 	} else {
 		// Not a testing T struct, most likely not in testing... PANIC!
 		panic("You cannot use SetEnv function outside testing!")
 	}
+
+    return err
 
 }

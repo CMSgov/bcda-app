@@ -21,6 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type cclfFileMetadata struct {
@@ -531,7 +532,7 @@ func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclf
 					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
 					log.Infof("Cleaning up file %s", cclf.filePath)
 					folderName := filepath.Base(cclf.filePath)
-					newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), folderName)
+					newpath := fmt.Sprintf("%s/%s", configuration.GetEnv("PENDING_DELETION_DIR"), folderName)
 					if !cclf.imported {
 						// check the timestamp on the failed files
 						elapsed := time.Since(cclf.deliveryDate).Hours()

@@ -17,6 +17,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 var (
@@ -33,12 +34,12 @@ type SSASClientTestSuite struct {
 }
 
 func (s *SSASClientTestSuite) SetupTest() {
-	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
-	origSSASURL = os.Getenv("SSAS_URL")
-	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
-	origBCDACAFile = os.Getenv("BCDA_CA_FILE")
-	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
-	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
+	origSSASUseTLS = configuration.GetEnv("SSAS_USE_TLS")
+	origSSASURL = configuration.GetEnv("SSAS_URL")
+	origPublicURL = configuration.GetEnv("SSAS_PUBLIC_URL")
+	origBCDACAFile = configuration.GetEnv("BCDA_CA_FILE")
+	origSSASClientID = configuration.GetEnv("BCDA_SSAS_CLIENT_ID")
+	origSSASSecret = configuration.GetEnv("BCDA_SSAS_SECRET")
 }
 
 func (s *SSASClientTestSuite) TearDownTest() {

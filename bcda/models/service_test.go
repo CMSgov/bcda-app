@@ -10,12 +10,11 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/pborman/uuid"
-
 	"github.com/stretchr/testify/mock"
-
 	"github.com/stretchr/testify/assert"
-
 	"github.com/stretchr/testify/suite"
 	"gorm.io/gorm"
 )
@@ -127,7 +126,7 @@ func TestServiceTestSuite(t *testing.T) {
 }
 
 func (s *ServiceTestSuite) SetupTest() {
-	s.priorityACOsEnvVar = os.Getenv("PRIORITY_ACO_REG_EX")
+	s.priorityACOsEnvVar = configuration.GetEnv("PRIORITY_ACO_REG_EX")
 }
 
 func (s *ServiceTestSuite) TearDownTest() {

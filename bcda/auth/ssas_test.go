@@ -16,6 +16,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
@@ -45,13 +46,13 @@ type SSASPluginTestSuite struct {
 
 func (s *SSASPluginTestSuite) SetupSuite() {
 	// original values must be saved before we run any tests that might change them
-	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
-	origSSASURL = os.Getenv("SSAS_URL")
-	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
-	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
-	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
-	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
-	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
+	origSSASUseTLS = configuration.GetEnv("SSAS_USE_TLS")
+	origSSASURL = configuration.GetEnv("SSAS_URL")
+	origPublicURL = configuration.GetEnv("SSAS_PUBLIC_URL")
+	origSSASClientKeyFile = configuration.GetEnv("SSAS_CLIENT_KEY_FILE")
+	origSSASClientCertFile = configuration.GetEnv("SSAS_CLIENT_CERT_FILE")
+	origSSASClientID = configuration.GetEnv("BCDA_SSAS_CLIENT_ID")
+	origSSASSecret = configuration.GetEnv("BCDA_SSAS_SECRET")
 }
 
 func (s *SSASPluginTestSuite) SetupTest() {
@@ -293,7 +294,7 @@ func MockSSASServer(tokenString string) {
 		}
 
 		var answer = make(map[string]bool)
-		if clientId == os.Getenv("BCDA_SSAS_CLIENT_ID") && secret == os.Getenv("BCDA_SSAS_SECRET") {
+		if clientId == configuration.GetEnv("BCDA_SSAS_CLIENT_ID") && secret == configuration.GetEnv("BCDA_SSAS_SECRET") {
 			answer["active"] = true
 		} else {
 			answer["active"] = false

@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 var (
@@ -48,9 +49,9 @@ func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
 func (s *SSASMiddlewareTestSuite) SetupSuite() {
 	s.server = httptest.NewServer(s.createRouter())
 
-	originalSSASURL = os.Getenv("SSAS_URL")
-	originalPublicSSASURL = os.Getenv("SSAS_PUBLIC_URL")
-	originalSSASUseTLS = os.Getenv("SSAS_USE_TLS")
+	originalSSASURL = configuration.GetEnv("SSAS_URL")
+	originalPublicSSASURL = configuration.GetEnv("SSAS_PUBLIC_URL")
+	originalSSASUseTLS = configuration.GetEnv("SSAS_USE_TLS")
 
 	originalProvider = auth.GetProviderName()
 	auth.SetProvider("ssas")

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+    
+    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -29,7 +31,7 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	}
 
 	// get the real database URL
-	actualDatabaseURL := os.Getenv("DATABASE_URL")
+	actualDatabaseURL := configuration.GetEnv("DATABASE_URL")
 
 	// set the database URL to a bogus value to test negative scenarios
 	os.Setenv("DATABASE_URL", "fake_db_url")

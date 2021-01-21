@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
@@ -12,6 +11,8 @@ import (
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -93,7 +94,7 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 
 	dt := time.Now()
 	useCors := true
-	bbServer := os.Getenv("BB_SERVER_LOCATION")
+	bbServer := configuration.GetEnv("BB_SERVER_LOCATION")
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {

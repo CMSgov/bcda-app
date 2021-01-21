@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +60,7 @@ func setEnv(why, key, value string) {
 // SetAndRestoreEnvKey replaces the current value of the env var key,
 // returning a function which can be used to restore the original value
 func SetAndRestoreEnvKey(key, value string) func() {
-	originalValue := os.Getenv(key)
+	originalValue := configuration.GetEnv(key)
 	setEnv("setting", key, value)
 	return func() {
 		setEnv("restoring", key, originalValue)
@@ -101,7 +103,7 @@ func SetPendingDeletionDir(s suite.Suite, path string) {
 	if err != nil {
 		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
 	}
-	cclfDeletion := os.Getenv("PENDING_DELETION_DIR")
+	cclfDeletion := configuration.GetEnv("PENDING_DELETION_DIR")
 	err = os.MkdirAll(cclfDeletion, 0744)
 	if err != nil {
 		s.FailNow("failed to create the pending deletion directory, %s", err.Error())

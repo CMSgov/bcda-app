@@ -3,7 +3,6 @@ package migrations
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -20,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+    configuration "github.com/CMSgov/bcda-app/config"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -44,7 +44,7 @@ func (s *MigrationTestSuite) SetupSuite() {
 
 	s.db = database.GetDbConnection()
 
-	databaseURL := os.Getenv("DATABASE_URL")
+	databaseURL := configuration.GetEnv("DATABASE_URL")
 	s.bcdaDB = fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())
 	s.bcdaQueueDB = fmt.Sprintf("migrate_test_bcda_queue_%d", time.Now().Nanosecond())
 	s.bcdaDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", s.bcdaDB))

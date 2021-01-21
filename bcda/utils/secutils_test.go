@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
+
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type SecutilsTestSuite struct {
@@ -14,12 +16,12 @@ type SecutilsTestSuite struct {
 
 //
 //func (s *SecutilsTestSuite) SetupTest() {
-//	publicKeyFile := os.Getenv("ATO_PUBLIC_KEY_FILE")
-//	privateKeyFile := os.Getenv("ATO_PRIVATE_KEY_FILE")
+//	publicKeyFile := configuration.GetEnv("ATO_PUBLIC_KEY_FILE")
+//	privateKeyFile := configuration.GetEnv("ATO_PRIVATE_KEY_FILE")
 //}
 
 func (s *SecutilsTestSuite) TestOpenPrivateKeyFile() {
-	atoPrivateKeyFile, err := os.Open(os.Getenv("ATO_PRIVATE_KEY_FILE"))
+	atoPrivateKeyFile, err := os.Open(configuration.GetEnv("ATO_PRIVATE_KEY_FILE"))
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +30,7 @@ func (s *SecutilsTestSuite) TestOpenPrivateKeyFile() {
 }
 
 func (s *SecutilsTestSuite) TestOpenPublicKeyFile() {
-	atoPublicKeyFile, err := os.Open(os.Getenv("ATO_PUBLIC_KEY_FILE"))
+	atoPublicKeyFile, err := os.Open(configuration.GetEnv("ATO_PUBLIC_KEY_FILE"))
 	if err != nil {
 		fmt.Println("failed to open file")
 		panic(err)

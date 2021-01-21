@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"time"
 
@@ -12,6 +11,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -316,7 +317,7 @@ func getJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 // Checks to see if an ACO is priority ACO based on a regex pattern provided by an
 // environment variable.
 func isPriorityACO(acoID string) bool {
-	if priorityACOPattern := os.Getenv("PRIORITY_ACO_REG_EX"); priorityACOPattern != "" {
+	if priorityACOPattern := configuration.GetEnv("PRIORITY_ACO_REG_EX"); priorityACOPattern != "" {
 		var priorityACORegex = regexp.MustCompile(priorityACOPattern)
 		if priorityACORegex.MatchString(acoID) {
 			return true

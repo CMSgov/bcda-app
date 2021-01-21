@@ -13,6 +13,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -172,7 +175,7 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 
 func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	// Set the V2 endpoints to be off and restart the router so the test router has the correct configuration
-	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	v2Active := configuration.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "false")
 	s.apiRouter = NewAPIRouter()
@@ -187,7 +190,7 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 
 func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	// Set the V2 endpoints to be on and restart the router so the test router has the correct configuration
-	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	v2Active := configuration.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
 	s.apiRouter = NewAPIRouter()
@@ -240,7 +243,7 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 // TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
 func (s *RouterTestSuite) TestBlacklistedACO() {
 	// Use a new router to ensure that v2 endpoints are active
-	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	v2Active := configuration.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
 	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
 	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
 	apiRouter := NewAPIRouter()

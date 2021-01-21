@@ -11,6 +11,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type TokenToolsTestSuite struct {
@@ -21,7 +22,7 @@ type TokenToolsTestSuite struct {
 }
 
 func (s *TokenToolsTestSuite) SetupSuite() {
-	s.originalEnvValue = os.Getenv("JWT_EXPIRATION_DELTA")
+	s.originalEnvValue = configuration.GetEnv("JWT_EXPIRATION_DELTA")
 	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
 	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
 	s.reset = func() {

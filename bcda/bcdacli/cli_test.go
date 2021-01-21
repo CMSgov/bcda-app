@@ -21,6 +21,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -48,7 +50,7 @@ func (s *CLITestSuite) SetupSuite() {
 	}
 	testUtils.SetUnitTestKeysForAuth()
 	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
-	origDate = os.Getenv("CCLF_REF_DATE")
+	origDate = configuration.GetEnv("CCLF_REF_DATE")
 	os.Setenv("CCLF_REF_DATE", "181125")
 
 	dir, err := ioutil.TempDir("", "*")
@@ -255,8 +257,8 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	id := int(j.ID)
 	assert.NotNil(id)
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-	newpath := os.Getenv("FHIR_ARCHIVE_DIR")
+	path := fmt.Sprintf("%s/%d/", configuration.GetEnv("FHIR_PAYLOAD_DIR"), id)
+	newpath := configuration.GetEnv("FHIR_ARCHIVE_DIR")
 
 	if _, err = os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
@@ -285,7 +287,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.Nil(err)
 
 	// check that the file has moved to the archive location
-	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+	expPath := fmt.Sprintf("%s/%d/fake.ndjson", configuration.GetEnv("FHIR_ARCHIVE_DIR"), id)
 	_, err = ioutil.ReadFile(expPath)
 	if err != nil {
 		s.T().Error(err)
@@ -299,7 +301,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.Equal(models.JobStatusArchived, testjob.Status)
 
 	// clean up
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(configuration.GetEnv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
@@ -342,7 +344,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
 	assert.Equal(models.JobStatusArchived, testjob.Status)
 
 	// clean up
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(configuration.GetEnv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
@@ -365,7 +367,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	id := int(j.ID)
 	assert.NotNil(s.T(), id)
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+	path := fmt.Sprintf("%s/%d/", configuration.GetEnv("FHIR_PAYLOAD_DIR"), id)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
@@ -386,7 +388,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	assert.Nil(s.T(), err)
 
 	// check that the file has not moved to the archive location
-	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", configuration.GetEnv("FHIR_PAYLOAD_DIR"), id)
 	_, err = ioutil.ReadFile(dataPath)
 	if err != nil {
 		s.T().Error(err)
@@ -431,7 +433,7 @@ func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, acce
 	// directory structure is FHIR_ARCHIVE_DIR/<JobId>/<datafile>.ndjson
 	// for reference, see main.archiveExpiring() and its companion tests above
 	jobId := setupArchivedJob(s, email, modified)
-	path := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), jobId)
+	path := fmt.Sprintf("%s/%d", configuration.GetEnv("FHIR_ARCHIVE_DIR"), jobId)
 
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		s.T().Error(err)
@@ -511,7 +513,7 @@ func (s *CLITestSuite) TestCleanArchive() {
 	assert.Equal(models.JobStatusArchived, afterJob.Status)
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(configuration.GetEnv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestRevokeToken() {
@@ -580,11 +582,11 @@ func (s *CLITestSuite) TestCreateGroup() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
+	origSSASURL := configuration.GetEnv("SSAS_URL")
 	os.Setenv("SSAS_URL", server.URL)
 	defer os.Setenv("SSAS_URL", origSSASURL)
 
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	origSSASUseTLS := configuration.GetEnv("SSAS_USE_TLS")
 	os.Setenv("SSAS_USE_TLS", "false")
 	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 

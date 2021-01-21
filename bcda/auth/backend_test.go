@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type BackendTestSuite struct {
@@ -153,7 +154,7 @@ func (s *BackendTestSuite) TestPrivateKey() {
 	privateKey := s.AuthBackend.PrivateKey
 	assert.NotNil(s.T(), privateKey)
 	// get the real Key File location
-	actualPrivateKeyFile := os.Getenv("JWT_PRIVATE_KEY_FILE")
+	actualPrivateKeyFile := configuration.GetEnv("JWT_PRIVATE_KEY_FILE")
 	defer func() { os.Setenv("JWT_PRIVATE_KEY_FILE", actualPrivateKeyFile) }()
 
 	// set the Private Key File to a bogus value to test negative scenarios
@@ -174,7 +175,7 @@ func (s *BackendTestSuite) TestPublicKey() {
 	privateKey := s.AuthBackend.PublicKey
 	assert.NotNil(s.T(), privateKey)
 	// get the real Key File location
-	actualPublicKeyFile := os.Getenv("JWT_PUBLIC_KEY_FILE")
+	actualPublicKeyFile := configuration.GetEnv("JWT_PUBLIC_KEY_FILE")
 	defer func() { os.Setenv("JWT_PUBLIC_KEY_FILE", actualPublicKeyFile) }()
 
 	// set the Private Key File to a bogus value to test negative scenarios

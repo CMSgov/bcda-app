@@ -18,6 +18,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -334,15 +336,15 @@ OwIDAQAB
 	})
 	server := httptest.NewServer(router)
 
-	origAuthProvider := os.Getenv("BCDA_AUTH_PROVIDER")
+	origAuthProvider := configuration.GetEnv("BCDA_AUTH_PROVIDER")
 	os.Setenv("BCDA_AUTH_PROVIDER", "ssas")
 	defer os.Setenv("BCDA_AUTH_PROVIDER", origAuthProvider)
 
-	origSSASURL := os.Getenv("SSAS_URL")
+	origSSASURL := configuration.GetEnv("SSAS_URL")
 	os.Setenv("SSAS_URL", server.URL)
 	defer os.Setenv("SSAS_URL", origSSASURL)
 
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	origSSASUseTLS := configuration.GetEnv("SSAS_USE_TLS")
 	os.Setenv("SSAS_USE_TLS", "false")
 	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 

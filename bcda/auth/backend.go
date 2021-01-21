@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 var (
@@ -140,7 +141,7 @@ func getPrivateKey() *rsa.PrivateKey {
 
 // panics if file is not found, corrupted, or otherwise unreadable
 func getPublicKey() *rsa.PublicKey {
-	publicKeyFile, err := os.Open(os.Getenv("JWT_PUBLIC_KEY_FILE"))
+	publicKeyFile, err := os.Open(configuration.GetEnv("JWT_PUBLIC_KEY_FILE"))
 	if err != nil {
 		serviceHalted(event{help: err.Error()})
 		panic(err)

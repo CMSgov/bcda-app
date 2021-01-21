@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -18,7 +19,7 @@ type CCLFUtilTestSuite struct {
 var origDate string
 
 func (s *CCLFUtilTestSuite) SetupSuite() {
-	origDate = os.Getenv("CCLF_REF_DATE")
+	origDate = configuration.GetEnv("CCLF_REF_DATE")
 }
 
 func (s *CCLFUtilTestSuite) SetupTest() {

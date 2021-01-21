@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"testing"
 
+    configuration "github.com/CMSgov/bcda-app/config"
+
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,9 +31,9 @@ func (s *OTestSuite) SetupTest() {
 }
 
 func (s *OTestSuite) TestConfig() {
-	originalOktaBaseUrl := os.Getenv("OKTA_CLIENT_ORGURL")
-	originalOktaServerID := os.Getenv("OKTA_OAUTH_SERVER_ID")
-	originalOktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
+	originalOktaBaseUrl := configuration.GetEnv("OKTA_CLIENT_ORGURL")
+	originalOktaServerID := configuration.GetEnv("OKTA_OAUTH_SERVER_ID")
+	originalOktaToken := configuration.GetEnv("OKTA_CLIENT_TOKEN")
 
 	os.Unsetenv("OKTA_CLIENT_ORGURL")
 	os.Unsetenv("OKTA_OAUTH_SERVER_ID")
@@ -77,8 +79,8 @@ func (s *OTestSuite) TestAddClientApplication() {
 }
 
 func (s *OTestSuite) TestRequestAccessToken() {
-	clientID := os.Getenv("OKTA_CLIENT_ID")
-	clientSecret := os.Getenv("OKTA_CLIENT_SECRET")
+	clientID := configuration.GetEnv("OKTA_CLIENT_ID")
+	clientSecret := configuration.GetEnv("OKTA_CLIENT_SECRET")
 
 	assert.NotEmpty(s.T(), clientID, "Test requires OKTA_CLIENT_ID")
 	assert.NotEmpty(s.T(), clientSecret, "Test requires OKTA_CLIENT_SECRET")
