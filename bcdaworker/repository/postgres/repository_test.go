@@ -123,6 +123,7 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	assert.NoError(r.repository.IncrementCompletedJobCount(ctx, failed.ID))
 	afterUpdate, err = r.repository.GetJobByID(ctx, failed.ID)
 	assert.NoError(err)
+	assert.True(afterUpdate.UpdatedAt.After(failed.UpdatedAt))
 	assert.Equal(afterUpdate.CompletedJobCount, failed.CompletedJobCount+1)
 
 	// After all of these updates, the completed job should remain untouched
