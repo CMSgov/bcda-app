@@ -36,7 +36,7 @@ func init() {
 /*
 	swagger:route GET /api/v1/Patient/$export bulkData bulkPatientRequest
 
-	Start data export for all supported resource types
+	Start FHIR STU3 data export for all supported resource types
 
 	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
 
@@ -60,7 +60,7 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 /*
 	swagger:route GET /api/v1/Group/{groupId}/$export bulkData bulkGroupRequest
 
-    Start data export (for the specified group identifier) for all supported resource types
+    Start FHIR STU3 data export (for the specified group identifier) for all supported resource types
 
 	Initiates a job to collect data from the Blue Button API for your ACO. The supported Group identifiers are `all` and `runout`.
 
@@ -86,7 +86,7 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/jobs/{jobId} bulkData jobStatus
+	swagger:route GET /api/v1/jobs/{jobId} job jobStatus
 
 	Get job status
 
@@ -216,7 +216,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 /*
-	swagger:route GET /data/{jobId}/{filename} bulkData serveData
+	swagger:route GET /data/{jobId}/{filename} job serveData
 
 	Get data file
 

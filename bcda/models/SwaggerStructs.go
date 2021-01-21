@@ -108,7 +108,7 @@ type MetadataResponse struct {
 // File of newline-delimited JSON FHIR objects
 // swagger:response FileNDJSON
 type FileNDJSON struct {
-	// Optional header defining encoding type used
+	// Header defining encoding type used
 	// enum: gzip
 	ContentEncoding string `json:"Content-Encoding"`
 	// in: body
@@ -148,22 +148,33 @@ type ServeDataRequestHeaders struct {
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest
 type ResourceTypeParam struct {
-	// (Optional) Resource types requested
+	// Resource types requested
 	// in: query
 	// style: form
 	// explode: false
 	ResourceType []string `json:"_type"`
 }
 
-// swagger:parameters bulkPatientRequest bulkGroupRequest
+// swagger:parameters bulkPatientRequestV2 bulkGroupRequestV2
+type ResourceTypeParamV2 struct {
+	// Resource types requested
+	// in: query
+	// style: form
+	// explode: false
+	// required: true
+	// items.enum: Coverage,Patient
+	ResourceType []string `json:"_type"`
+}
+
+// swagger:parameters bulkPatientRequest bulkGroupRequest bulkPatientRequestV2 bulkGroupRequestV2
 type SinceParam struct {
-	// (Optional) Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR Instant datatype (i.e., `2020-02-13T08:00:00.000-05:00`)
+	// Only include resource versions that were created at or after the given instant in time.  Format of string must align with the FHIR Instant datatype (i.e., `2020-02-13T08:00:00.000-05:00`)
 	// in: query
 	// required: false
 	DateTime string `json:"_since"`
 }
 
-// swagger:parameters bulkPatientRequest bulkGroupRequest
+// swagger:parameters bulkPatientRequest bulkGroupRequest bulkPatientRequestV2 bulkGroupRequestV2
 type BulkRequestHeaders struct {
 	// required: true
 	// in: header
@@ -174,7 +185,7 @@ type BulkRequestHeaders struct {
 // A BulkGroupRequest parameter model.
 //
 // This is used for operations that want the groupID of a group in the path
-// swagger:parameters bulkGroupRequest
+// swagger:parameters bulkGroupRequest bulkGroupRequestV2
 type GroupIDParam struct {
 	// ID of group export
 	// in: path

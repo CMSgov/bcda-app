@@ -123,7 +123,8 @@ func (r *Repository) UpdateJobStatusCheckStatus(ctx context.Context, jobID uint,
 
 func (r *Repository) IncrementCompletedJobCount(ctx context.Context, jobID uint) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
-	ub.Set(ub.Incr("completed_job_count")).Where(ub.Equal("id", jobID))
+	ub.Set(ub.Incr("completed_job_count"), ub.Assign("updated_at", sqlbuilder.Raw("NOW()"))).
+		Where(ub.Equal("id", jobID))
 
 	query, args := ub.Build()
 	res, err := r.ExecContext(ctx, query, args...)
@@ -165,6 +166,7 @@ func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error
 
 func (r *Repository) updateJob(ctx context.Context, clauses map[string]interface{}, fieldAndValues map[string]interface{}) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
+	ub.Set(ub.Assign("updated_at", sqlbuilder.Raw("NOW()")))
 	for field, value := range fieldAndValues {
 		ub.SetMore(ub.Assign(field, value))
 	}

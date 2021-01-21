@@ -8,6 +8,7 @@ package postgrestest
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -36,26 +37,26 @@ func CreateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 }
 
 func GetACOByUUID(t *testing.T, db *sql.DB, uuid uuid.UUID) models.ACO {
-	sb := sqlFlavor.NewSelectBuilder().Select("uuid", "cms_id", "name", "blacklisted").
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name", "blacklisted").
 		From("acos")
 	sb.Where(sb.Equal("uuid", uuid)).Limit(1)
 	query, args := sb.Build()
 
 	var aco models.ACO
-	err := db.QueryRow(query, args...).Scan(&aco.UUID, &aco.CMSID, &aco.Name, &aco.Blacklisted)
+	err := db.QueryRow(query, args...).Scan(&aco.ID, &aco.UUID, &aco.CMSID, &aco.Name, &aco.Blacklisted)
 	assert.NoError(t, err)
 
 	return aco
 }
 
 func GetACOByCMSID(t *testing.T, db *sql.DB, cmsID string) models.ACO {
-	sb := sqlFlavor.NewSelectBuilder().Select("uuid", "cms_id", "name").
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name").
 		From("acos")
 	sb.Where(sb.Equal("cms_id", cmsID)).Limit(1)
 	query, args := sb.Build()
 
 	var aco models.ACO
-	err := db.QueryRow(query, args...).Scan(&aco.UUID, &aco.CMSID, &aco.Name)
+	err := db.QueryRow(query, args...).Scan(&aco.ID, &aco.UUID, &aco.CMSID, &aco.Name)
 	assert.NoError(t, err)
 
 	return aco
@@ -96,12 +97,12 @@ func DeleteACO(t *testing.T, db *sql.DB, acoID uuid.UUID) {
 }
 
 func CreateCCLFBeneficiary(t *testing.T, db *sql.DB, bene *models.CCLFBeneficiary) {
-	// User raw builder since we need to retrieve the associated ID
-	query, args := sqlbuilder.Buildf(`INSERT INTO cclf_beneficiaries
-		(file_id, mbi, blue_button_id) VALUES
-		(%s, %s, %s) RETURNING id`,
-		bene.FileID, bene.MBI, bene.BlueButtonID).
-		BuildWithFlavor(sqlFlavor)
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("cclf_beneficiaries")
+	ib.Cols("file_id", "mbi", "blue_button_id").
+		Values(bene.FileID, bene.MBI, bene.BlueButtonID)
+	query, args := ib.Build()
+	// Append the RETURNING id to retrieve the auto-generated ID value associated with the bene
+	query = fmt.Sprintf("%s RETURNING id", query)
 
 	err := db.QueryRow(query, args...).Scan(&bene.ID)
 	assert.NoError(t, err)
@@ -230,6 +231,19 @@ func CreateJobKeys(t *testing.T, db *sql.DB, jobKeys ...models.JobKey) {
 	}
 
 	query, args := ib.Build()
+	_, err := db.Exec(query, args...)
+	assert.NoError(t, err)
+}
+
+func DeleteJobKeysByJobIDs(t *testing.T, db *sql.DB, jobIDs ...uint) {
+	ids := make([]interface{}, len(jobIDs))
+	for i, id := range jobIDs {
+		ids[i] = id
+	}
+
+	builder := sqlFlavor.NewDeleteBuilder().DeleteFrom("job_keys")
+	builder.Where(builder.In("job_id", ids...))
+	query, args := builder.Build()
 	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
 }
