@@ -275,7 +275,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
-	// Use a transaction backed respoitory to ensure all of our upserts are encapsulated into a single transaction
+	// Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
 	rtx := postgres.NewRepositoryTx(tx)
 
 	defer func() {
