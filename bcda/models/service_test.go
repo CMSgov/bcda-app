@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -61,9 +60,9 @@ func TestSupportedACOs(t *testing.T) {
 
 func TestGetMaxBeneCount(t *testing.T) {
 	defer func() {
-		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
-		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_PATIENT")
-		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+		configuration.UnsetEnv(&testing.T{}, "BCDA_FHIR_MAX_RECORDS_EOB")
+		configuration.UnsetEnv(&testing.T{}, "BCDA_FHIR_MAX_RECORDS_PATIENT")
+		configuration.UnsetEnv(&testing.T{}, "BCDA_FHIR_MAX_RECORDS_COVERAGE")
 	}()
 
 	getEnvVar := func(resourceType string) string {
@@ -80,7 +79,7 @@ func TestGetMaxBeneCount(t *testing.T) {
 	}
 
 	clearer := func(resourceType string, val int) {
-		os.Unsetenv(getEnvVar(resourceType))
+		configuration.UnsetEnv(&testing.T{}, getEnvVar(resourceType))
 	}
 	setter := func(resourceType string, val int) {
 		configuration.SetEnv(&testing.T{}, getEnvVar(resourceType), strconv.Itoa(val))

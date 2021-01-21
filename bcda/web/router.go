@@ -2,7 +2,6 @@ package web
 
 import (
 	"net/http"
-	"os"
 	"strings"
 
 	v1 "github.com/CMSgov/bcda-app/bcda/api/v1"

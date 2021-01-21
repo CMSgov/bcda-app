@@ -433,7 +433,7 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
 	s.db.Unscoped().Delete(&lastRequestJob)
 
-	os.Unsetenv("DEPLOYMENT_TARGET")
+	configuration.UnsetEnv(&testing.T{} ,"DEPLOYMENT_TARGET")
 }
 
 func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
@@ -473,7 +473,7 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	s.rr = httptest.NewRecorder()
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	os.Unsetenv("DEPLOYMENT_TARGET")
+	configuration.UnsetEnv(&testing.T{}, "DEPLOYMENT_TARGET")
 }
 
 func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string, func(http.ResponseWriter, *http.Request), *http.Request) {

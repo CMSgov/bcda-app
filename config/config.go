@@ -2,12 +2,12 @@ package config
 
 /*
    This is a package that wraps the viper, a package designed to handle config
-   files, and operationizes for the BCDA app.
+   files, for the BCDA app.
 
    Assumptions:
    1. The configuration file is a env file
-   2. The configuration file, once it is made variable to the application, will
-   stay immutable during the uptime of the application
+   2. The configuration file, once it is made available to the application,
+   will stay immutable during the uptime of the application (exception is test)
 */
 
 import (
@@ -20,7 +20,7 @@ import (
 
 // Global variable made available to any other package importing this package
 var envVars viper.Viper
-const testmode bool = true
+const testmode bool = false
 
 // Implementing a state machine tracking how things are going in this package
 const (
@@ -28,7 +28,7 @@ const (
 	configbad     uint8 = 1
 	noconfigfound uint8 = 2
 )
-
+// State is a public variable for diagnostic purposes.
 var State uint8 = configgood // if config found and loaded, value not changed
 
 /*
@@ -123,7 +123,7 @@ func fileexistattempt(maxattempt uint8, v string, i int) bool {
 		return true
 	}
 
-	// If test / dev, just make one attempt and report false if the top block fail
+	// If test / dev, just make one attempt and report false if the top block fails
 	if i == 0 {
 		return false
 	}
@@ -150,16 +150,32 @@ func GetEnv(key string) string {
 		var value = envVars.GetString(key)
 
 		// Even if the config file is load, if the key doesn't exist in config
-		// try the EV
-		if value == "" {
-			value = os.Getenv(key)
-		}
+		// try the environment. This technically makes the application mutable 
+        // and same as before. But put this here for now b/c there are environ
+        // variables that are not in config.
+        if value == "" {
+            // Copy it over to config to prevent additional OS calls.
+            // Remember to delete both config mem and environ var when unsetenv!
+            value = os.Getenv(key)
+            os.Setenv(key, value)
+        }
 
 		return value
 	}
 
-	// Config file not good, so default to EV
-	return os.Getenv(key) // boo!
+    // Config file not good, so default to environment... boo >:(
+	return os.Getenv(key)
+
+}
+
+// A public function that wraps GenEnv and returns a bool if string is not empty
+func LookupEnv(key string) (string, bool) {
+    
+    if String := GetEnv(key); String != "" {
+        return String, true
+    }
+
+    return "", false
 
 }
 
@@ -175,7 +191,6 @@ func SetEnv(protect interface{}, key string, value string) error {
 		// If config is good, change the config in memory
 		if State == configgood {
 			envVars.Set(key, value) // This doesn't return anything...
-            err = nil
 		} else {
 			// Config is bad, change the EV
 			err = os.Setenv(key, value)
@@ -187,4 +202,28 @@ func SetEnv(protect interface{}, key string, value string) error {
 
     return err
 
+}
+
+// A public function that unsets a variable. This function should also only be
+// used in testing.
+func UnsetEnv(protect interface{}, key string) error {
+    var err error
+
+	// Check if the protect type is Testing T struct
+	if _, ok := protect.(*testing.T); ok {
+		// If config is good, change the config in memory
+		if State == configgood {
+            // Why? See line 152
+			err = os.Unsetenv(key)
+            envVars.Set(key, "")
+		} else {
+			// Config is bad, change the EV
+			err = os.Unsetenv(key)
+		}
+	} else {
+		// Not a testing T struct, most likely not in testing... PANIC!
+		panic("You cannot use UnsetEnv function outside testing!")
+	}
+
+    return err
 }

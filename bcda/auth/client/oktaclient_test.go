@@ -9,7 +9,6 @@ package client
 import (
 	"crypto/rand"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -35,9 +34,9 @@ func (s *OTestSuite) TestConfig() {
 	originalOktaServerID := configuration.GetEnv("OKTA_OAUTH_SERVER_ID")
 	originalOktaToken := configuration.GetEnv("OKTA_CLIENT_TOKEN")
 
-	os.Unsetenv("OKTA_CLIENT_ORGURL")
-	os.Unsetenv("OKTA_OAUTH_SERVER_ID")
-	os.Unsetenv("OKTA_CLIENT_TOKEN")
+	configuration.UnsetEnv(&testing.T{}, "OKTA_CLIENT_ORGURL")
+	configuration.UnsetEnv(&testing.T{}, "OKTA_OAUTH_SERVER_ID")
+	configuration.UnsetEnv(&testing.T{}, "OKTA_CLIENT_TOKEN")
 
 	err := config()
 	require.NotNil(s.T(), err)

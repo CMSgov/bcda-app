@@ -493,7 +493,7 @@ func (s *MainTestSuite) TestProcessJob_NoBBClient() {
 
 	origBBCert := configuration.GetEnv("BB_CLIENT_CERT_FILE")
 	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", origBBCert)
-	os.Unsetenv("BB_CLIENT_CERT_FILE")
+	configuration.UnsetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE")
 
 	assert.Contains(s.T(), processJob(&qj).Error(), "could not create Blue Button client")
 

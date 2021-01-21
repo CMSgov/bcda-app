@@ -60,16 +60,41 @@ func TestSetEnv(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-        {
-            "Change Value",
-            args{t, "TEST_SOMEPATH", "../somepath"},
-            false,
-        },
+		{
+			"Change Value",
+			args{t, "TEST_SOMEPATH", "../somepath"},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := SetEnv(tt.args.protect, tt.args.key, tt.args.value); (err != nil) != tt.wantErr {
 				t.Errorf("SetEnv() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUnsetEnv(t *testing.T) {
+	type args struct {
+		protect interface{}
+		key     string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			"Change Value",
+			args{t, "TEST_SOMEPATH"},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := UnsetEnv(tt.args.protect, tt.args.key); (err != nil) != tt.wantErr {
+				t.Errorf("UnsetEnv() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

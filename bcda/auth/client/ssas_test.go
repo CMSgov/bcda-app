@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/go-chi/chi"
@@ -75,7 +74,7 @@ func (s *SSASClientTestSuite) TestNewSSASClient_TLSTrue() {
 func (s *SSASClientTestSuite) TestNewSSASClient_NoCertFile() {
 	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "true")
 	configuration.SetEnv(&testing.T{}, "SSAS_URL", "http://ssas-url")
-	os.Unsetenv("BCDA_CA_FILE")
+	configuration.UnsetEnv(&testing.T{}, "BCDA_CA_FILE")
 
 	client, err := authclient.NewSSASClient()
 	assert.NotNil(s.T(), err)
@@ -84,8 +83,8 @@ func (s *SSASClientTestSuite) TestNewSSASClient_NoCertFile() {
 }
 
 func (s *SSASClientTestSuite) TestNewSSASClient_NoURL() {
-	os.Unsetenv("SSAS_USE_TLS")
-	os.Unsetenv("SSAS_URL")
+	configuration.UnsetEnv(&testing.T{}, "SSAS_USE_TLS")
+	configuration.UnsetEnv(&testing.T{}, "SSAS_URL")
 
 	client, err := authclient.NewSSASClient()
 	assert.NotNil(s.T(), err)
@@ -95,7 +94,7 @@ func (s *SSASClientTestSuite) TestNewSSASClient_NoURL() {
 
 func (s *SSASClientTestSuite) TestNewSSASClient_TLSFalseNoURL() {
 	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
-	os.Unsetenv("SSAS_URL")
+	configuration.UnsetEnv(&testing.T{}, "SSAS_URL")
 
 	client, err := authclient.NewSSASClient()
 	assert.NotNil(s.T(), err)

@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -67,7 +66,7 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 	res := s.getAPIRoute("/")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	err = os.Unsetenv("DEPLOYMENT_TARGET")
+	err = configuration.UnsetEnv(&testing.T{}, "DEPLOYMENT_TARGET")
 	if err != nil {
 		s.FailNow("err in setting env var", err)
 	}
@@ -99,7 +98,7 @@ func (s *RouterTestSuite) TestVersionRoute() {
 }
 
 func (s *RouterTestSuite) TestGroupEndpointDisabled() {
-	err := os.Unsetenv("BCDA_ENABLE_NEW_GROUP")
+	err := configuration.UnsetEnv(&testing.T{}, "BCDA_ENABLE_NEW_GROUP")
 	assert.Nil(s.T(), err)
 	res := s.getAPIRoute("/api/v1/Groups/new/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)

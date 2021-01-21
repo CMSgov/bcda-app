@@ -90,7 +90,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
 
 	assert := assert.New(s.T())
 
-	os.Unsetenv("BB_CLIENT_CERT_FILE")
+	configuration.UnsetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
@@ -124,7 +124,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
 
 	assert := assert.New(s.T())
 
-	os.Unsetenv("BB_CLIENT_KEY_FILE")
+	configuration.UnsetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
@@ -162,8 +162,8 @@ func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
 
 	assert := assert.New(s.T())
 
-	os.Unsetenv("BB_CLIENT_CA_FILE")
-	os.Unsetenv("BB_CHECK_CERT")
+	configuration.UnsetEnv(&testing.T{}, "BB_CLIENT_CA_FILE")
+	configuration.UnsetEnv(&testing.T{}, "BB_CHECK_CERT")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
@@ -185,7 +185,7 @@ func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
 	assert := assert.New(s.T())
 
 	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
-	os.Unsetenv("BB_CHECK_CERT")
+	configuration.UnsetEnv(&testing.T{}, "BB_CHECK_CERT")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")

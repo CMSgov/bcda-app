@@ -45,7 +45,7 @@ func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 
-	filePath, success := os.LookupEnv("BCDA_OKTA_LOG")
+	filePath, success := configuration.LookupEnv("BCDA_OKTA_LOG")
 	if success {
 		/* #nosec -- 0640 permissions required for Splunk ingestion */
 		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)

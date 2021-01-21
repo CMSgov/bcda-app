@@ -122,7 +122,7 @@ func (backend *AlphaBackend) ResetAlphaBackend() {
 // They accesses external resources and so may panic and bubble up an error if the file is not present or not readable.
 func getPrivateKey() *rsa.PrivateKey {
 
-	fileName, ok := os.LookupEnv("JWT_PRIVATE_KEY_FILE")
+	fileName, ok := configuration.LookupEnv("JWT_PRIVATE_KEY_FILE")
 	if !ok {
 		serviceHalted(event{help: "no value in JWT_PRIVATE_KEY_FILE"})
 		panic(errors.New("no value in JWT_PRIVATE_KEY_FILE"))

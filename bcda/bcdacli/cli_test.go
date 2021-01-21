@@ -458,7 +458,7 @@ func (s *CLITestSuite) TestCleanArchive() {
 	assert := assert.New(s.T())
 
 	// condition: FHIR_ARCHIVE_DIR doesn't exist
-	os.Unsetenv("FHIR_ARCHIVE_DIR")
+	configuration.UnsetEnv(&testing.T{}, "FHIR_ARCHIVE_DIR")
 	args := []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
