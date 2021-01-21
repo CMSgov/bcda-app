@@ -1,11 +1,15 @@
 package auth
 
 import (
+	"context"
 	"crypto/rsa"
 	"errors"
 	"fmt"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
@@ -30,7 +34,8 @@ type OktaBackend interface {
 }
 
 type OktaAuthPlugin struct {
-	backend OktaBackend // interface, not a concrete type, so no *
+	backend    OktaBackend // interface, not a concrete type, so no *
+	repository models.Repository
 }
 
 // validates that OktaAuthPlugin implements the interface
@@ -38,7 +43,8 @@ var _ Provider = OktaAuthPlugin{}
 
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
 func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
-	return OktaAuthPlugin{backend}
+	return OktaAuthPlugin{backend,
+		postgres.NewRepository(database.GetDbConnection())}
 }
 
 func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
@@ -139,7 +145,7 @@ func (o OktaAuthPlugin) AuthorizeAccess(tokenString string) error {
 	// keep an in-memory cache of tokens we have revoked and check that
 	// use the introspection endpoint okta provides (expensive network call)
 
-	_, err = GetACOByClientID(c.ClientID)
+	_, err = o.repository.GetACOByClientID(context.Background(), c.ClientID)
 	if err != nil {
 		return fmt.Errorf("invalid cid claim; %s", err)
 	}

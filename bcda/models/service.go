@@ -1,10 +1,12 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/bgentry/que-go"
@@ -28,11 +30,9 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	cclfBeneficiaryService
-}
+	GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
 
-type cclfBeneficiaryService interface {
-	GetQueJobs(cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
+	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
 }
 
 const (
@@ -82,14 +82,14 @@ type runoutParameters struct {
 	cutoffDuration time.Duration
 }
 
-func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error) {
+func (s *service) GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error) {
 	fileType := FileTypeDefault
 	switch reqType {
 	case Runout:
 		fileType = FileTypeRunout
 		fallthrough
 	case DefaultRequest:
-		beneficiaries, err := s.getBeneficiaries(cmsID, fileType)
+		beneficiaries, err := s.getBeneficiaries(ctx, cmsID, fileType)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +101,7 @@ func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, sin
 		}
 		queJobs = append(queJobs, jobs...)
 	case RetrieveNewBeneHistData:
-		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(cmsID, since)
+		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(ctx, cmsID, since)
 		if err != nil {
 			return nil, err
 		}
@@ -124,6 +124,33 @@ func (s *service) GetQueJobs(cmsID string, job *Job, resourceTypes []string, sin
 	}
 
 	return queJobs, nil
+}
+
+func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error) {
+	j, err := s.repository.GetJobByID(ctx, jobID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// No need to look up job keys if the
+	if j.Status != JobStatusCompleted {
+		return j, nil, nil
+	}
+
+	keys, err := s.repository.GetJobKeys(ctx, jobID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nonEmptyKeys := make([]*JobKey, 0, len(keys))
+	for i, key := range keys {
+		if strings.TrimSpace(key.FileName) == BlankFileName {
+			continue
+		}
+		nonEmptyKeys = append(nonEmptyKeys, keys[i])
+	}
+
+	return j, nonEmptyKeys, nil
 }
 
 func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since time.Time, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {
@@ -180,7 +207,7 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 	return jobs, nil
 }
 
-func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error) {
+func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, cmsID string, since time.Time) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error) {
 
 	var (
 		cutoffTime time.Time
@@ -190,7 +217,7 @@ func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	}
 
-	cclfFileNew, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, FileTypeDefault)
+	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", cmsID, err.Error())
 	}
@@ -198,14 +225,14 @@ func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		return nil, nil, CCLFNotFoundError{8, cmsID, FileTypeDefault, cutoffTime}
 	}
 
-	cclfFileOld, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault)
+	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", cmsID, err.Error())
 	}
 
 	if cclfFileOld == nil {
 		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", cmsID, since)
-		newBeneficiaries, err = s.getBenesByFileID(cclfFileNew.ID)
+		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -215,13 +242,13 @@ func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 		return newBeneficiaries, nil, nil
 	}
 
-	oldMBIs, err := s.repository.GetCCLFBeneficiaryMBIs(cclfFileOld.ID)
+	oldMBIs, err := s.repository.GetCCLFBeneficiaryMBIs(ctx, cclfFileOld.ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retreive MBIs for cmsID %s cclfFileID %d %s", cmsID, cclfFileOld.ID, err.Error())
+		return nil, nil, fmt.Errorf("failed to retrieve MBIs for cmsID %s cclfFileID %d %s", cmsID, cclfFileOld.ID, err.Error())
 	}
 
 	// Retrieve all of the benes associated with this CCLF file.
-	benes, err := s.getBenesByFileID(cclfFileNew.ID)
+	benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -245,7 +272,7 @@ func (s *service) getNewAndExistingBeneficiaries(cmsID string, since time.Time) 
 	return newBeneficiaries, beneficiaries, nil
 }
 
-func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLFBeneficiary, error) {
+func (s *service) getBeneficiaries(ctx context.Context, cmsID string, fileType CCLFFileType) ([]*CCLFBeneficiary, error) {
 	var (
 		cutoffTime time.Time
 	)
@@ -256,7 +283,7 @@ func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLF
 		cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
 	}
 
-	cclfFile, err := s.repository.GetLatestCCLFFile(cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, fileType)
+	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, fileType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
 			cmsID, fileType, err.Error())
@@ -265,7 +292,7 @@ func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLF
 		return nil, CCLFNotFoundError{8, cmsID, fileType, cutoffTime}
 	}
 
-	benes, err := s.getBenesByFileID(cclfFile.ID)
+	benes, err := s.getBenesByFileID(ctx, cclfFile.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -277,19 +304,19 @@ func (s *service) getBeneficiaries(cmsID string, fileType CCLFFileType) ([]*CCLF
 	return benes, nil
 }
 
-func (s *service) getBenesByFileID(cclfFileID uint) ([]*CCLFBeneficiary, error) {
+func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint) ([]*CCLFBeneficiary, error) {
 	var (
 		ignoredMBIs []string
 		err         error
 	)
 	if !s.sp.includeSuppressedBeneficiaries {
-		ignoredMBIs, err = s.repository.GetSuppressedMBIs(s.sp.lookbackDays)
+		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
 		}
 	}
 
-	benes, err := s.repository.GetCCLFBeneficiaries(cclfFileID, ignoredMBIs)
+	benes, err := s.repository.GetCCLFBeneficiaries(ctx, cclfFileID, ignoredMBIs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get beneficiaries %s", err.Error())
 	}
