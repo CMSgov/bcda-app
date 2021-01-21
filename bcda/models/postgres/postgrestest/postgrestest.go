@@ -234,6 +234,19 @@ func CreateJobKeys(t *testing.T, db *sql.DB, jobKeys ...models.JobKey) {
 	assert.NoError(t, err)
 }
 
+func DeleteJobKeysByJobIDs(t *testing.T, db *sql.DB, jobIDs ...uint) {
+	ids := make([]interface{}, len(jobIDs))
+	for i, id := range jobIDs {
+		ids[i] = id
+	}
+
+	builder := sqlFlavor.NewDeleteBuilder().DeleteFrom("job_keys")
+	builder.Where(builder.In("job_id", ids...))
+	query, args := builder.Build()
+	_, err := db.Exec(query, args...)
+	assert.NoError(t, err)
+}
+
 func GetSuppressionFileByName(t *testing.T, db *sql.DB, names ...string) []models.SuppressionFile {
 	nameArgs := make([]interface{}, len(names))
 	for i, name := range names {

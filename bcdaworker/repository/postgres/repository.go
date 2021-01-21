@@ -165,6 +165,7 @@ func (r *Repository) GetJobKeyCount(ctx context.Context, jobID uint) (int, error
 
 func (r *Repository) updateJob(ctx context.Context, clauses map[string]interface{}, fieldAndValues map[string]interface{}) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
+	ub.Set(ub.Assign("updated_at", sqlbuilder.Raw("NOW()")))
 	for field, value := range fieldAndValues {
 		ub.SetMore(ub.Assign(field, value))
 	}
