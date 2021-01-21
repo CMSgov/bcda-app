@@ -460,7 +460,7 @@ func (r *RepositoryTestSuite) TestCCLFFilesMethods() {
 	cclfFileSuccess := *getCCLFFile(8, cmsID, "Success", models.FileTypeDefault)
 	cclfFileSuccessOld := *getCCLFFile(8, cmsID, "Success", models.FileTypeDefault)
 	cclfFileSuccessOld.Timestamp = cclfFileFailed.Timestamp.Add(-24 * time.Hour)
-	cclfFileOther := *getCCLFFile(6, cmsID, "Other", models.FileTypeDefault)
+	cclfFileOther := *getCCLFFile(6, cmsID, "Other", models.FileTypeRunout)
 
 	defer postgrestest.DeleteCCLFFilesByCMSID(r.T(), r.db, cmsID)
 

@@ -21,6 +21,7 @@ services:
       - "15432:5432"
     volumes:
       - ./db/testing/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
+    # Pass a flag so we'll log all queries executed on the test db.
     command: ["postgres", "-c", "log_statement=all"]
   postman_test:
     build:

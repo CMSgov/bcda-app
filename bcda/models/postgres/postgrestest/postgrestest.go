@@ -8,6 +8,7 @@ package postgrestest
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -96,12 +97,12 @@ func DeleteACO(t *testing.T, db *sql.DB, acoID uuid.UUID) {
 }
 
 func CreateCCLFBeneficiary(t *testing.T, db *sql.DB, bene *models.CCLFBeneficiary) {
-	// User raw builder since we need to retrieve the associated ID
-	query, args := sqlbuilder.Buildf(`INSERT INTO cclf_beneficiaries
-		(file_id, mbi, blue_button_id) VALUES
-		(%s, %s, %s) RETURNING id`,
-		bene.FileID, bene.MBI, bene.BlueButtonID).
-		BuildWithFlavor(sqlFlavor)
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("cclf_beneficiaries")
+	ib.Cols("file_id", "mbi", "blue_button_id").
+		Values(bene.FileID, bene.MBI, bene.BlueButtonID)
+	query, args := ib.Build()
+	// Append the RETURNING id to retrieve the auto-generated ID value associated with the bene
+	query = fmt.Sprintf("%s RETURNING id", query)
 
 	err := db.QueryRow(query, args...).Scan(&bene.ID)
 	assert.NoError(t, err)

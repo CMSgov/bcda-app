@@ -87,14 +87,6 @@ func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAnd
 }
 
 func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
-
-	const (
-		queryNoTime     = "aco_cms_id = ? AND cclf_num = ? AND import_status = ? AND type = ?"
-		queryLower      = queryNoTime + " AND timestamp >= ?"
-		queryUpper      = queryNoTime + " AND timestamp <= ?"
-		queryLowerUpper = queryNoTime + " AND timestamp >= ? AND timestamp <= ?"
-	)
-
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("id", "name", "timestamp", "performance_year")
 	sb.From("cclf_files")
@@ -137,13 +129,13 @@ func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNu
 }
 
 func (r *Repository) CreateCCLFFile(ctx context.Context, cclfFile models.CCLFFile) (uint, error) {
-	query, args := sqlbuilder.Buildf(`INSERT INTO cclf_files
-		(cclf_num, name, aco_cms_id, timestamp, performance_year, 
-			import_status, type) VALUES
-		(%s, %s, %s, %s, %s, %s, %s) RETURNING id`,
-		cclfFile.CCLFNum, cclfFile.Name, cclfFile.ACOCMSID, cclfFile.Timestamp, cclfFile.PerformanceYear,
-		cclfFile.ImportStatus, cclfFile.Type).
-		BuildWithFlavor(sqlFlavor)
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("cclf_files")
+	ib.Cols("cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type").
+		Values(cclfFile.CCLFNum, cclfFile.Name, cclfFile.ACOCMSID, cclfFile.Timestamp, cclfFile.PerformanceYear,
+			cclfFile.ImportStatus, cclfFile.Type)
+	query, args := ib.Build()
+	// Append the RETURNING id to retrieve the auto-generated ID value associated with the CCLF File
+	query = fmt.Sprintf("%s RETURNING id", query)
 
 	var id uint
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
@@ -303,13 +295,12 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([
 }
 
 func (r *Repository) CreateSuppressionFile(ctx context.Context, suppressionFile models.SuppressionFile) (uint, error) {
-	// User raw builder since we need to retrieve the associated ID
-	query, args := sqlbuilder.Buildf(`INSERT INTO suppression_files
-		(name, timestamp, import_status) VALUES
-		(%s, %s, %s) RETURNING id`,
-		suppressionFile.Name, suppressionFile.Timestamp, suppressionFile.ImportStatus).
-		BuildWithFlavor(sqlFlavor)
-
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("suppression_files")
+	ib.Cols("name", "timestamp", "import_status").
+		Values(suppressionFile.Name, suppressionFile.Timestamp, suppressionFile.ImportStatus)
+	query, args := ib.Build()
+	// Append the RETURNING id to retrieve the auto-generated ID value associated with the suppression file
+	query = fmt.Sprintf("%s RETURNING id", query)
 	var id uint
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
 		return 0, err
@@ -411,11 +402,17 @@ func (r *Repository) GetJobByID(ctx context.Context, jobID uint) (*models.Job, e
 
 func (r *Repository) CreateJob(ctx context.Context, j models.Job) (uint, error) {
 	// User raw builder since we need to retrieve the associated ID
-	query, args := sqlbuilder.Buildf(`INSERT INTO jobs 
-		(aco_id, request_url, status, transaction_time, job_count, completed_job_count, created_at, updated_at) VALUES
-		(%s, %s, %s, %s, %s, %s, NOW(), NOW()) RETURNING id`,
-		j.ACOID, j.RequestURL, j.Status, j.TransactionTime, j.JobCount, j.CompletedJobCount).
-		BuildWithFlavor(sqlFlavor)
+	ib := sqlFlavor.NewInsertBuilder().InsertInto("jobs")
+	ib.Cols("aco_id", "request_url", "status",
+		"transaction_time", "job_count", "completed_job_count",
+		"created_at", "updated_at").
+		Values(j.ACOID, j.RequestURL, j.Status,
+			j.TransactionTime, j.JobCount, j.CompletedJobCount,
+			sqlbuilder.Raw("NOW()"), sqlbuilder.Raw("NOW()"))
+
+	query, args := ib.Build()
+	// Append the RETURNING id to retrieve the auto-generated ID value associated with the Job
+	query = fmt.Sprintf("%s RETURNING id", query)
 
 	var id uint
 	if err := r.QueryRowContext(ctx, query, args...).Scan(&id); err != nil {
