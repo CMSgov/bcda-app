@@ -21,7 +21,6 @@ services:
       - "15432:5432"
     volumes:
       - ./db/testing/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
-    command: ["postgres", "-c", "log_statement=all"]
   postman_test:
     build:
       context: .
