@@ -26,7 +26,7 @@ func NewAPIRouter() http.Handler {
 
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
-	
+
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
@@ -35,6 +35,7 @@ func NewAPIRouter() http.Handler {
 		r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
 		r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
+		r.Delete(m.WrapHandler("/jobs/{jobID}", v1.DeleteJob))
 		r.Get(m.WrapHandler("/metadata", v1.Metadata))
 	})
 
