@@ -29,6 +29,7 @@ const (
 	JobStatusArchived   JobStatus = "Archived"
 	JobStatusExpired    JobStatus = "Expired"
 	JobStatusFailed     JobStatus = "Failed"
+	JobStatusCancelled  JobStatus = "Cancelled"
 )
 
 type JobStatus string

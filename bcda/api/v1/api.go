@@ -213,14 +213,14 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 /*
-	swagger:route DELETE /api/v1/jobs/{jobId} job DeleteJob
+	swagger:route DELETE /api/v1/jobs/{jobId} job deleteJob
 
-	Delete job status
+	Cancel a job
 
-	Deletes a current running job.
+	Cancels a currently running job.
 
 	Produces:
-	- application/fhir+json
+	- application/json
 
 	Schemes: http, https
 
@@ -228,11 +228,22 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 		bearer_token:
 
 	Responses:
-		200: completedJobResponse
+		202: jobStatusResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		404: notFoundResponse
 		500: errorResponse
 */
 func DeleteJob(w http.ResponseWriter, r *http.Request) {
+	jobID := chi.URLParam(r, "jobID")
+	jsonData, err := json.Marshal(jobID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	_, err = w.Write([]byte(jsonData))
 	w.WriteHeader(http.StatusAccepted)
+	// COMPLETED,FAILED,ARCHIVED,EXPIRED,CANCELLED -> 400 Bad Request
+	// Job doesn't exist -> 404 Not Found
 }
 
 /*
