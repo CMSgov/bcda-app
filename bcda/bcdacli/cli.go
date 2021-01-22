@@ -61,8 +61,12 @@ func setUpApp() *cli.App {
 	app.After = func(c *cli.Context) error {
 		return db.Close()
 	}
+<<<<<<< HEAD
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
 	var thresholdHr int
+=======
+	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
+>>>>>>> origin
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -235,6 +239,10 @@ func setUpApp() *cli.App {
 					return err
 				}
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin
 				err = r.UpdateACO(context.Background(), aco.UUID,
 					map[string]interface{}{"public_key": aco.PublicKey})
 				if err != nil {
@@ -631,6 +639,89 @@ func revokeAccessToken(accessToken string) error {
 	return auth.GetProvider().RevokeAccessToken(accessToken)
 }
 
+<<<<<<< HEAD
+=======
+func archiveExpiring(hrThreshold int) error {
+	log.Info("Archiving expiring job files...")
+
+	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+		time.Time{}, maxDate, models.JobStatusCompleted)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	var lastJobError error
+	for _, j := range jobs {
+		id := j.ID
+		jobPayloadDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+		_, err = os.Stat(jobPayloadDir)
+		jobPayloadDirExist := err == nil
+		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+
+		if jobPayloadDirExist {
+			err = os.Rename(jobPayloadDir, jobArchiveDir)
+			if err != nil {
+				log.Error(err)
+				lastJobError = err
+				continue
+			}
+		}
+
+		j.Status = models.JobStatusArchived
+		err = r.UpdateJob(context.Background(), *j)
+		if err != nil {
+			log.Error(err)
+			lastJobError = err
+		}
+	}
+
+	return lastJobError
+}
+
+func cleanupArchive(hrThreshold int) error {
+	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
+
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+		time.Time{}, maxDate, models.JobStatusArchived)
+	if err != nil {
+		return err
+	}
+
+	if len(jobs) == 0 {
+		log.Info("No archived job files to clean")
+		return nil
+	}
+
+	for _, job := range jobs {
+		id := int(job.ID)
+		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+
+		err = os.RemoveAll(jobArchiveDir)
+		if err != nil {
+			e := fmt.Sprintf("Unable to remove %s because %s", jobArchiveDir, err)
+			log.Error(e)
+			continue
+		}
+
+		job.Status = models.JobStatusExpired
+		err = r.UpdateJob(context.Background(), *job)
+		if err != nil {
+			return err
+		}
+
+		log.WithFields(log.Fields{
+			"job_began":     job.CreatedAt,
+			"files_removed": time.Now(),
+			"job_id":        job.ID,
+		}).Info("Files cleaned from archive and job status set to Expired")
+	}
+
+	return nil
+}
+
+>>>>>>> origin
 func setBlacklistState(cmsID string, blacklistState bool) error {
 	ctx := context.Background()
 	aco, err := r.GetACOByCMSID(ctx, cmsID)
