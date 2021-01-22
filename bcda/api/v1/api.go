@@ -224,6 +224,29 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 /*
+	swagger:route DELETE /api/v1/jobs/{jobId} job DeleteJob
+
+	Delete job status
+
+	Deletes a current running job.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		200: completedJobResponse
+		500: errorResponse
+*/
+func DeleteJob(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusAccepted)
+}
+
+/*
 	swagger:route GET /data/{jobId}/{filename} job serveData
 
 	Get data file
