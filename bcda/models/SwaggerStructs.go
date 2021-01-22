@@ -121,7 +121,7 @@ type NDJSON string
 // A JobStatus parameter model.
 //
 // This is used for operations that want the ID of a job in the path
-// swagger:parameters jobStatus serveData
+// swagger:parameters jobStatus serveData deleteJob
 type JobIDParam struct {
 	// ID of data export job
 	//
