@@ -6,13 +6,15 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 )
 
@@ -57,22 +59,26 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
+		// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
+		// logic into a service method.
+		db := database.GetDbConnection()
+		defer db.Close()
+
+		repository := postgres.NewRepository(db)
+
 		var ad AuthData
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
 			// okta token
 			switch claims.Issuer {
 			case "ssas":
-				ad, _ = adFromClaims(claims)
+				ad, _ = adFromClaims(repository, claims)
 			case "okta":
-				var aco, err = GetACOByClientID(claims.ClientID)
+				aco, err := repository.GetACOByClientID(context.Background(), claims.ClientID)
 				if err != nil {
 					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
 					next.ServeHTTP(w, r)
 					return
 				}
-
-				db := database.GetGORMDbConnection()
-				defer database.Close(db)
 
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
@@ -80,7 +86,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.Blacklisted = aco.Blacklisted
 
 			default:
-				var aco, err = GetACOByUUID(claims.ACOID)
+				aco, err := repository.GetACOByUUID(context.Background(), uuid.Parse(claims.ACOID))
 				if err != nil {
 					log.Errorf("no aco for ACO ID %s because %v", claims.ACOID, err)
 					next.ServeHTTP(w, r)
@@ -151,8 +157,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 			return
 		}
 
-		jobID := chi.URLParam(r, "jobID")
-		i, err := strconv.Atoi(jobID)
+		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")
@@ -160,13 +165,23 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 			return
 		}
 
-		db := database.GetGORMDbConnection()
-		defer database.Close(db)
+		db := database.GetDbConnection()
+		defer db.Close()
 
-		var job models.Job
-		err = db.First(&job, "id = ? and aco_id = ?", i, ad.ACOID).Error
+		repository := postgres.NewRepository(db)
+
+		job, err := repository.GetJobByID(context.Background(), uint(jobID))
 		if err != nil {
 			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")
+			responseutils.WriteError(oo, w, http.StatusNotFound)
+			return
+		}
+
+		// ACO did not create the job
+		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
+			log.Errorf("ACO %s does not have access to job ID %d %s",
+				ad.ACOID, job.ID, job.ACOID)
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Not_found, "")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return

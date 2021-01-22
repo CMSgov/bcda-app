@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/go-chi/chi"
@@ -146,9 +147,9 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 	assert.Equal(s.T(), 401, resp.StatusCode)
 }
 
-func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -156,46 +157,65 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithWrongACO() {
 		Status:     models.JobStatusFailed,
 	}
 
-	db.Save(&j)
+	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
 
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", jobID)
-
-	req, err := http.NewRequest("GET", s.server.URL, nil)
-	if err != nil {
-		log.Fatal(err)
+	tests := []struct {
+		name  string
+		jobID string
+		ACOID string
+	}{
+		{"Invalid JobID", "someNonNumericInput", j.ACOID.String()},
+		{"Mismatching JobID", "0", j.ACOID.String()},
+		{"Mismatching ACOID", jobID, uuid.New()},
 	}
 
 	handler := auth.RequireTokenJobMatch(mockHandler)
 
-	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
-	tokenString, err := auth.TokenStringWithIDs(tokenID, acoID)
-	assert.Nil(s.T(), err)
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			s.rr = httptest.NewRecorder()
 
-	token, err := auth.GetProvider().VerifyToken(tokenString)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), token)
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("jobID", tt.jobID)
 
-	ctx := req.Context()
-	// ctx = context.WithValue(ctx, auth.TokenContextKey, token)
-	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+			req, err := http.NewRequest("GET", s.server.URL, nil)
+			assert.NoError(t, err)
+
+			tokenID := uuid.New()
+			tokenString, err := auth.TokenStringWithIDs(tokenID, tt.ACOID)
+			assert.NoError(t, err)
+
+			token, err := auth.GetProvider().VerifyToken(tokenString)
+			assert.NoError(t, err)
+			assert.NotNil(t, token)
+
+			ctx := context.WithValue(req.Context(), auth.TokenContextKey, token)
+			ad := auth.AuthData{
+				ACOID:   tt.ACOID,
+				TokenID: tokenID,
+			}
+			ctx = context.WithValue(ctx, auth.AuthDataContextKey, ad)
+
+			req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, rctx))
+			handler.ServeHTTP(s.rr, req)
+			assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
+		})
+	}
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusFailed,
 	}
-
-	db.Save(&j)
+	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
+
 	req, err := http.NewRequest("GET", s.server.URL, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -226,10 +246,11 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	assert.Equal(s.T(), 200, s.rr.Code)
 }
 
-// what is this testing? always returns 404 invalid token?
+// TestRequireTokenACOMatchInvalidToken validates that we return a 404
+// If the caller does not supply the auth data
 func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -237,7 +258,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 		Status:     models.JobStatusFailed,
 	}
 
-	db.Save(&j)
+	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
 
 	rctx := chi.NewRouteContext()

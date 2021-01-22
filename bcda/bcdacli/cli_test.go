@@ -3,6 +3,7 @@ package bcdacli
 import (
 	"archive/zip"
 	"bytes"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -19,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/go-chi/chi"
@@ -27,7 +29,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/urfave/cli"
-	"gorm.io/gorm"
 )
 
 var origDate string
@@ -37,6 +38,8 @@ type CLITestSuite struct {
 	testApp            *cli.App
 	expectedSizes      map[string]int
 	pendingDeletionDir string
+
+	db *sql.DB
 }
 
 func (s *CLITestSuite) SetupSuite() {
@@ -57,6 +60,8 @@ func (s *CLITestSuite) SetupSuite() {
 	}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
+
+	s.db = database.GetDbConnection()
 }
 
 func (s *CLITestSuite) SetupTest() {
@@ -70,6 +75,7 @@ func (s *CLITestSuite) TearDownTest() {
 func (s *CLITestSuite) TearDownSuite() {
 	os.Setenv("CCLF_REF_DATE", origDate)
 	os.RemoveAll(s.pendingDeletionDir)
+	s.db.Close()
 }
 
 func TestCLITestSuite(t *testing.T) {
@@ -92,26 +98,21 @@ func (s *CLITestSuite) TestSetup() {
 	assert.Equal(s.T(), app.Name, Name)
 	assert.Equal(s.T(), app.Usage, Usage)
 }
-
 func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 	assert := assert.New(s.T())
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	cmsID := "A9901"
-	_, err := models.CreateACO("Public Key Test ACO", &cmsID)
-	assert.Nil(err)
-	aco, err := auth.GetACOByCMSID(cmsID)
-	assert.Nil(err)
-	defer db.Delete(&aco)
+	u := uuid.NewRandom()
+	aco := models.ACO{Name: "Public Key Test ACO", UUID: u, ClientID: u.String(), CMSID: &cmsID}
+	postgrestest.CreateACO(s.T(), s.db, aco)
+	defer postgrestest.DeleteACO(s.T(), s.db, aco.UUID)
 
 	// Unexpected flag
 	args := []string{"bcda", "save-public-key", "--abcd", "efg"}
-	err = s.testApp.Run(args)
+	err := s.testApp.Run(args)
 	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 	buf.Reset()
@@ -143,8 +144,8 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	// Invalid key
 	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_private.pem"}
 	err = s.testApp.Run(args)
-	assert.Contains(err.Error(), fmt.Sprintf("invalid public key for ACO %s: unable to parse public key: asn1: structure error: tags don't match", aco.UUID))
-	assert.Contains(buf.String(), "Unable to save public key for ACO")
+	assert.Contains(err.Error(), "invalid public key: unable to parse public key: asn1: structure error: tags don't match")
+	assert.Contains(buf.String(), "Unable to generate public key for ACO")
 
 	// Success
 	args = []string{"bcda", "save-public-key", "--cms-id", "A9901", "--key-file", "../../shared_files/ATO_public.pem"}
@@ -155,15 +156,16 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 
 func (s *CLITestSuite) TestGenerateClientCredentials() {
 	assert := assert.New(s.T())
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
 	cmsID := "A8880"
 	for _, ips := range [][]string{nil, []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
 		[]string{testUtils.GetRandomIPV4Address(s.T())}, []string{}} {
 		s.SetupTest()
+
+		aco := postgrestest.GetACOByCMSID(s.T(), s.db, cmsID)
 		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
-		assert.NoError(db.Model(&models.ACO{}).Where("cms_id = ?", cmsID).Update("alpha_secret", "").Error)
+		aco.AlphaSecret = ""
+		postgrestest.UpdateACO(s.T(), s.db, aco)
 
 		buf := new(bytes.Buffer)
 		s.testApp.Writer = buf
@@ -224,11 +226,6 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 }
 
 func (s *CLITestSuite) TestArchiveExpiring() {
-
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	assert := assert.New(s.T())
 
 	// condition: no jobs exist
@@ -242,20 +239,15 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusCompleted,
-		Model: gorm.Model{
-			CreatedAt: t,
-			UpdatedAt: t,
-		},
+		CreatedAt:  t,
+		UpdatedAt:  t,
 	}
-	db.Save(&j)
-	assert.NotNil(j.ID)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
 	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
-	id := int(j.ID)
-	assert.NotNil(id)
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
 	newpath := os.Getenv("FHIR_ARCHIVE_DIR")
 
 	if _, err = os.Stat(path); os.IsNotExist(err) {
@@ -285,29 +277,23 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.Nil(err)
 
 	// check that the file has moved to the archive location
-	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), j.ID)
 	_, err = ioutil.ReadFile(expPath)
 	if err != nil {
 		s.T().Error(err)
 	}
 	assert.FileExists(expPath, "File not Found")
 
-	var testjob models.Job
-	db.First(&testjob, "id = ?", j.ID)
+	testJob := postgrestest.GetJobByID(s.T(), s.db, j.ID)
 
 	// check the status of the job
-	assert.Equal(models.JobStatusArchived, testjob.Status)
+	assert.Equal(models.JobStatusArchived, testJob.Status)
 
 	// clean up
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
-
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	assert := assert.New(s.T())
 
 	// condition: no jobs exist
@@ -321,13 +307,10 @@ func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusCompleted,
-		Model: gorm.Model{
-			CreatedAt: t,
-			UpdatedAt: t,
-		},
+		CreatedAt:  t,
+		UpdatedAt:  t,
 	}
-	db.Save(&j)
-	assert.NotNil(j.ID)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	// condition: normal execution
 	// execute the test case from CLI
@@ -335,38 +318,28 @@ func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 
-	var testjob models.Job
-	db.First(&testjob, "id = ?", j.ID)
+	testJob := postgrestest.GetJobByID(s.T(), s.db, j.ID)
 
 	// check the status of the job
-	assert.Equal(models.JobStatusArchived, testjob.Status)
+	assert.Equal(models.JobStatusArchived, testJob.Status)
 
 	// clean up
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
-
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	// save a job to our db
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusCompleted,
 	}
-	db.Save(&j)
-	assert.NotNil(s.T(), j.ID)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
 	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
-	id := int(j.ID)
-	assert.NotNil(s.T(), id)
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), id)
-
+	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
@@ -386,48 +359,39 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	assert.Nil(s.T(), err)
 
 	// check that the file has not moved to the archive location
-	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
 	_, err = ioutil.ReadFile(dataPath)
 	if err != nil {
 		s.T().Error(err)
 	}
 	assert.FileExists(s.T(), dataPath, "File not Found")
 
-	var testjob models.Job
-	db.First(&testjob, "id = ?", j.ID)
-
+	testJob := postgrestest.GetJobByID(s.T(), s.db, j.ID)
 	// check the status of the job
-	assert.Equal(s.T(), models.JobStatusCompleted, testjob.Status)
+	assert.Equal(s.T(), models.JobStatusCompleted, testJob.Status)
 
 	// clean up
 	os.Remove(dataPath)
 }
 
-func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) int {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	acoUUID, err := createACO("ACO "+email, "")
-	assert.Nil(s.T(), err)
+func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) uint {
+	id := uuid.NewRandom()
+	aco := models.ACO{Name: "ACO " + email, UUID: id, ClientID: id.String()}
+	postgrestest.CreateACO(s.T(), s.db, aco)
 
 	// save a job to our db
 	j := models.Job{
-		ACOID:      uuid.Parse(acoUUID),
+		ACOID:      aco.UUID,
 		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
 		Status:     models.JobStatusArchived,
+		UpdatedAt:  modified,
 	}
-	db.Save(&j)
-	db.Exec("UPDATE jobs SET updated_at=? WHERE id = ?", modified.Format("2006-01-02 15:04:05"), j.ID)
-	db.First(&j, "id = ?", j.ID)
-	assert.Nil(s.T(), err)
-	assert.NotNil(s.T(), j.ID)
-	// compare times using formatted strings to avoid differences (like nano seconds) that we don't care about
-	assert.Equal(s.T(), modified.Format("2006-01-02 15:04:05"), j.UpdatedAt.Format("2006-01-02 15:04:05"), "UpdatedAt should match %v", modified)
 
-	return int(j.ID)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	return j.ID
 }
 
-func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, accessed time.Time) (int, *os.File) {
+func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, accessed time.Time) (uint, *os.File) {
 	// directory structure is FHIR_ARCHIVE_DIR/<JobId>/<datafile>.ndjson
 	// for reference, see main.archiveExpiring() and its companion tests above
 	jobId := setupArchivedJob(s, email, modified)
@@ -497,17 +461,12 @@ func (s *CLITestSuite) TestCleanArchive() {
 		assert.True(os.IsNotExist(err), "%s should have been removed", before.Name())
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var beforeJob models.Job
-	db.First(&beforeJob, "id = ?", beforeJobID)
+	beforeJob := postgrestest.GetJobByID(s.T(), s.db, beforeJobID)
 	assert.Equal(models.JobStatusExpired, beforeJob.Status)
 
 	assert.FileExists(after.Name(), "%s not found; it should have been", after.Name())
 
-	var afterJob models.Job
-	db.First(&afterJob, "id = ?", afterJobID)
+	afterJob := postgrestest.GetJobByID(s.T(), s.db, afterJobID)
 	assert.Equal(models.JobStatusArchived, afterJob.Status)
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
@@ -622,10 +581,6 @@ func (s *CLITestSuite) TestCreateGroup_InvalidACOID() {
 }
 
 func (s *CLITestSuite) TestCreateACO() {
-	// init
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -638,10 +593,10 @@ func (s *CLITestSuite) TestCreateACO() {
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
-	acoUUID := strings.TrimSpace(buf.String())
-	var testACO models.ACO
-	db.First(&testACO, "Name=?", ACOName)
-	assert.Equal(testACO.UUID.String(), acoUUID)
+	acoUUID := uuid.Parse(strings.TrimSpace(buf.String()))
+
+	testACO := postgrestest.GetACOByUUID(s.T(), s.db, acoUUID)
+	assert.Equal(ACOName, testACO.Name)
 	buf.Reset()
 
 	ACO2Name := "Unit Test ACO 2"
@@ -650,11 +605,11 @@ func (s *CLITestSuite) TestCreateACO() {
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.NotNil(buf)
-	acoUUID = strings.TrimSpace(buf.String())
-	var testACO2 models.ACO
-	db.First(&testACO2, "Name=?", ACO2Name)
-	assert.Equal(testACO2.UUID.String(), acoUUID)
-	assert.Equal(*testACO2.CMSID, aco2ID)
+	acoUUID = uuid.Parse(strings.TrimSpace(buf.String()))
+
+	testACO2 := postgrestest.GetACOByUUID(s.T(), s.db, acoUUID)
+	assert.Equal(ACO2Name, testACO2.Name)
+	assert.Equal(aco2ID, *testACO2.CMSID)
 	buf.Reset()
 
 	// Negative tests
@@ -700,15 +655,8 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	targetACO := "A0002"
 	assert := assert.New(s.T())
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	var existingCCLFFiles []models.CCLFFile
-	db.Where("aco_cms_id = ?", targetACO).Find(&existingCCLFFiles)
-	for _, cclfFile := range existingCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
+	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
+	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, targetACO)
 
 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
 	buf := new(bytes.Buffer)
@@ -726,12 +674,6 @@ func (s *CLITestSuite) TestImportCCLFDirectory() {
 	assert.Contains(buf.String(), "Skipped 1 files.")
 
 	buf.Reset()
-
-	db.Where("aco_cms_id = ?", targetACO).Find(&existingCCLFFiles)
-	for _, cclfFile := range existingCCLFFiles {
-		err := cclfFile.Delete()
-		assert.Nil(err)
-	}
 }
 
 func (s *CLITestSuite) TestDeleteDirectoryContents() {
@@ -772,9 +714,6 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	assert := assert.New(s.T())
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
@@ -789,20 +728,18 @@ func (s *CLITestSuite) TestImportSuppressionDirectory() {
 	assert.Contains(buf.String(), "Files failed: 0")
 	assert.Contains(buf.String(), "Files skipped: 0")
 
-	fs := []models.SuppressionFile{}
-	db.Where("name in (?)", []string{"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010", "T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391"}).Find(&fs)
+	fs := postgrestest.GetSuppressionFileByName(s.T(), s.db,
+		"T#EFT.ON.ACO.NGD1800.DPRF.D181120.T1000010",
+		"T#EFT.ON.ACO.NGD1800.DPRF.D190816.T0241391")
+
 	assert.Len(fs, 2)
 	for _, f := range fs {
-		err := f.Delete()
-		assert.Nil(err)
+		postgrestest.DeleteSuppressionFileByID(s.T(), s.db, f.ID)
 	}
 }
 
 func (s *CLITestSuite) TestImportSuppressionDirectory_Skipped() {
 	assert := assert.New(s.T())
-
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -822,9 +759,6 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Skipped() {
 func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 	assert := assert.New(s.T())
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
 
@@ -841,29 +775,29 @@ func (s *CLITestSuite) TestImportSuppressionDirectory_Failed() {
 }
 
 func (s *CLITestSuite) TestBlacklistACO() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	blacklistedCMSID := testUtils.RandomHexID()[0:4]
 	notBlacklistedCMSID := testUtils.RandomHexID()[0:4]
 	notFoundCMSID := testUtils.RandomHexID()[0:4]
 
 	blacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &blacklistedCMSID, Blacklisted: true}
 	notBlacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notBlacklistedCMSID, Blacklisted: false}
+
 	defer func() {
-		db.Unscoped().Delete(&blacklistedACO)
-		db.Unscoped().Delete(&notBlacklistedACO)
+		postgrestest.DeleteACO(s.T(), s.db, blacklistedACO.UUID)
+		postgrestest.DeleteACO(s.T(), s.db, notBlacklistedACO.UUID)
 	}()
 
-	s.NoError(db.Create(&blacklistedACO).Error)
-	s.NoError(db.Create(&notBlacklistedACO).Error)
+	postgrestest.CreateACO(s.T(), s.db, blacklistedACO)
+	postgrestest.CreateACO(s.T(), s.db, notBlacklistedACO)
+
 	s.NoError(s.testApp.Run([]string{"bcda", "unblacklist-aco", "--cms-id", blacklistedCMSID}))
 	s.NoError(s.testApp.Run([]string{"bcda", "blacklist-aco", "--cms-id", notBlacklistedCMSID}))
+
 	s.Error(s.testApp.Run([]string{"bcda", "unblacklist-aco", "--cms-id", notFoundCMSID}))
 	s.Error(s.testApp.Run([]string{"bcda", "blacklist-aco", "--cms-id", notFoundCMSID}))
 
-	s.True(db.First(&blacklistedACO).Error == nil && !blacklistedACO.Blacklisted)
-	s.True(db.First(&notBlacklistedACO).Error == nil && notBlacklistedACO.Blacklisted)
+	s.False(postgrestest.GetACOByUUID(s.T(), s.db, blacklistedACO.UUID).Blacklisted)
+	s.True(postgrestest.GetACOByUUID(s.T(), s.db, notBlacklistedACO.UUID).Blacklisted)
 }
 
 func getRandomPort(t *testing.T) int {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -18,13 +19,13 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 type RequestsTestSuite struct {
@@ -32,7 +33,7 @@ type RequestsTestSuite struct {
 
 	runoutEnabledEnvVar string
 
-	db *gorm.DB
+	db *sql.DB
 
 	acoID uuid.UUID
 }
@@ -42,16 +43,13 @@ func TestRequestsTestSuite(t *testing.T) {
 }
 
 func (s *RequestsTestSuite) SetupSuite() {
-	s.db = database.GetGORMDbConnection()
+	s.db = database.GetDbConnection()
 
 	// Create an ACO for us to test with
 	s.acoID = uuid.NewUUID()
 	cmsID := "ZYXWV"
 
-	aco := &models.ACO{UUID: s.acoID, CMSID: &cmsID}
-	if err := s.db.Create(aco).Error; err != nil {
-		s.FailNow(err.Error())
-	}
+	postgrestest.CreateACO(s.T(), s.db, models.ACO{UUID: s.acoID, CMSID: &cmsID})
 }
 
 func (s *RequestsTestSuite) SetupTest() {
@@ -59,9 +57,8 @@ func (s *RequestsTestSuite) SetupTest() {
 }
 
 func (s *RequestsTestSuite) TearDownSuite() {
-	s.NoError(s.db.Unscoped().Delete(&models.Job{}, "aco_id = ?", s.acoID).Error)
-	s.NoError(s.db.Unscoped().Delete(&models.ACO{}, "uuid = ?", s.acoID).Error)
-	database.Close(s.db)
+	postgrestest.DeleteACO(s.T(), s.db, s.acoID)
+	s.db.Close()
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
@@ -70,7 +67,7 @@ func (s *RequestsTestSuite) TearDownTest() {
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
 	os.Setenv("BCDA_ENABLE_RUNOUT", "true")
-	qj := []*que.Job{&que.Job{Type: "ProcessJob"}, &que.Job{Type: "ProcessJob"}}
+	qj := []*que.Job{{Type: "ProcessJob"}, {Type: "ProcessJob"}}
 	tests := []struct {
 		name string
 
@@ -90,9 +87,9 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				jobs = qj
 			}
 
-			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
 			h := NewHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir")
-			h.svc = mockSvc
+			h.Svc = mockSvc
 
 			req := s.genGroupRequest("runout")
 			w := httptest.NewRecorder()
@@ -208,9 +205,9 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 }
 
 func (s *RequestsTestSuite) TestCheck429() {
-	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now()}}
-	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now().Add(-2 * GetJobTimeout())}}
-	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: models.JobStatusInProgress, Model: gorm.Model{CreatedAt: time.Now()}}
+	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
+	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now().Add(-2 * GetJobTimeout())}
+	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
 	tests := []struct {
 		name        string
 		job         models.Job
@@ -227,7 +224,7 @@ func (s *RequestsTestSuite) TestCheck429() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			res, err := check429([]models.Job{tt.job}, []string{"Patient"}, tt.version)
+			res, err := check429([]*models.Job{&tt.job}, []string{"Patient"}, tt.version)
 			if tt.passesCheck {
 				assert.NotNil(t, res)
 				assert.NoError(t, err)
@@ -248,19 +245,19 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	defer os.Setenv(dt, target)
 	os.Setenv(dt, "prod")
 
-	var aco models.ACO
-	s.NoError(s.db.First(&aco, "uuid = ?", s.acoID).Error)
-
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
+	postgrestest.CreateJobs(s.T(), s.db,
+		&models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: models.JobStatusFailed},
+		&models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: models.JobStatusExpired},
+		&models.Job{ACOID: aco.UUID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: models.JobStatusCompleted},
+	)
 	// Create jobs that githave an unsupported path
-	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/Coverage/$export", Status: models.JobStatusFailed}).Error)
-	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/ExplanationOfBenefit/$export", Status: models.JobStatusExpired}).Error)
-	s.NoError(s.db.Create(&models.Job{ACOID: s.acoID, RequestURL: "https://api.bcda.cms.gov/api/v1/SomeCoolUnsupportedResource/$export", Status: models.JobStatusCompleted}).Error)
 
 	resources := []string{"ExplanationOfBenefit", "Coverage", "Patient"}
 	mockSvc := &models.MockService{}
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	h := NewHandler(resources, "/v1/fhir")
-	h.svc = mockSvc
+	h.Svc = mockSvc
 
 	req := s.genGroupRequest("all")
 	w := httptest.NewRecorder()
@@ -275,8 +272,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string) *http.Request {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("groupId", groupID)
 
-	var aco models.ACO
-	s.db.First(&aco, "uuid = ?", s.acoID)
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))

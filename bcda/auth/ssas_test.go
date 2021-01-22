@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +16,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
 	"github.com/dgrijalva/jwt-go"
@@ -41,6 +44,9 @@ var testACOUUID = "dd0a19eb-c614-46c7-9ec0-95bbae959f37"
 type SSASPluginTestSuite struct {
 	suite.Suite
 	p SSASPlugin
+
+	db *sql.DB
+	r  models.Repository
 }
 
 func (s *SSASPluginTestSuite) SetupSuite() {
@@ -52,17 +58,18 @@ func (s *SSASPluginTestSuite) SetupSuite() {
 	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
 	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
 	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
+
+	s.db = database.GetDbConnection()
+	s.r = postgres.NewRepository(s.db)
 }
 
 func (s *SSASPluginTestSuite) SetupTest() {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	db.Create(&models.ACO{
-		UUID:     uuid.Parse(testACOUUID),
-		Name:     "SSAS Plugin Test ACO",
-		ClientID: testACOUUID,
-	})
+	postgrestest.CreateACO(s.T(), s.db,
+		models.ACO{
+			UUID:     uuid.Parse(testACOUUID),
+			Name:     "SSAS Plugin Test ACO",
+			ClientID: testACOUUID,
+		})
 }
 
 func (s *SSASPluginTestSuite) TearDownTest() {
@@ -74,10 +81,12 @@ func (s *SSASPluginTestSuite) TearDownTest() {
 	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
 	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
-	db.Unscoped().Delete(models.ACO{}, "uuid = ?", testACOUUID)
+	postgrestest.DeleteACO(s.T(), s.db, uuid.Parse(testACOUUID))
+}
+
+func (s *SSASPluginTestSuite) TearDownSuite() {
+	s.db.Close()
 }
 
 func (s *SSASPluginTestSuite) TestRegisterSystem() {
@@ -119,7 +128,7 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	if err != nil {
 		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
-	s.p = SSASPlugin{client: c}
+	s.p = SSASPlugin{client: c, repository: s.r}
 
 	validResp := `{ "system_id": "1", "client_id": "fake-client-id", "client_secret": "fake-secret", "client_name": "fake-name" }`
 	tests := []struct {
@@ -171,7 +180,7 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	if err != nil {
 		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
-	s.p = SSASPlugin{client: c}
+	s.p = SSASPlugin{client: c, repository: s.r}
 
 	creds, err := s.p.ResetSecret(testACOUUID)
 	assert.Nil(s.T(), err)
@@ -189,7 +198,7 @@ func (s *SSASPluginTestSuite) TestMakeAccessToken() {
 	if err != nil {
 		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
-	s.p = SSASPlugin{client: c}
+	s.p = SSASPlugin{client: c, repository: s.r}
 
 	ts, err := s.p.MakeAccessToken(Credentials{ClientID: "mock-client", ClientSecret: "mock-secret"})
 	assert.Nil(s.T(), err)
@@ -237,7 +246,7 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 	if err != nil {
 		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
-	s.p = SSASPlugin{client: c}
+	s.p = SSASPlugin{client: c, repository: s.r}
 
 	err = s.p.RevokeAccessToken("i.am.not.a.token")
 	assert.Nil(s.T(), err)
@@ -251,7 +260,7 @@ func (s *SSASPluginTestSuite) TestAuthorizeAccess() {
 
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, "no client for SSAS; ", err)
-	s.p = SSASPlugin{client: c}
+	s.p = SSASPlugin{client: c, repository: s.r}
 	err = s.p.AuthorizeAccess(ts)
 	require.Nil(s.T(), err)
 }
@@ -265,7 +274,7 @@ func (s *SSASPluginTestSuite) TestVerifyToken() {
 	c, err := client.NewSSASClient()
 	require.NotNil(s.T(), c, "no client for SSAS; ")
 	require.Nil(s.T(), err, "unexpected error; ", err)
-	s.p = SSASPlugin{client: c}
+	s.p = SSASPlugin{client: c, repository: s.r}
 
 	t, err := s.p.VerifyToken(ts)
 	assert.NotEmpty(s.T(), t)

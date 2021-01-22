@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,37 +12,40 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/bgentry/que-go"
 	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
-	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 
-	api "github.com/CMSgov/bcda-app/bcda/api"
+	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 const (
 	expiryHeaderFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
-	acoUnderTest       = constants.SmallACOUUID
+)
+
+var (
+	acoUnderTest = uuid.Parse(constants.SmallACOUUID)
 )
 
 type APITestSuite struct {
 	suite.Suite
 	rr    *httptest.ResponseRecorder
-	db    *gorm.DB
+	db    *sql.DB
 	reset func()
 }
 
@@ -74,12 +78,13 @@ func (s *APITestSuite) TearDownSuite() {
 }
 
 func (s *APITestSuite) SetupTest() {
-	s.db = database.GetGORMDbConnection()
+	s.db = database.GetDbConnection()
 	s.rr = httptest.NewRecorder()
 }
 
 func (s *APITestSuite) TearDownTest() {
-	database.Close(s.db)
+	postgrestest.DeleteJobsByACOID(s.T(), s.db, acoUnderTest)
+	s.db.Close()
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
@@ -191,9 +196,6 @@ func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
 
 func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 	acoID := acoUnderTest
-	err := s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
-	assert.Nil(s.T(), err)
-
 	requestParams := RequestParams{resourceType: "ExplanationOfBenefit", since: since}
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 	ad := s.makeContextValues(acoID)
@@ -203,14 +205,11 @@ func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
 	handler.ServeHTTP(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-
-	s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
 }
 
 func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) {
-	acoID := "A40404F7-1EF2-485A-9B71-40FE7ACDCBC2"
-	jobCount, err := s.getJobCount(acoID)
-	assert.NoError(s.T(), err)
+	acoID := uuid.Parse("A40404F7-1EF2-485A-9B71-40FE7ACDCBC2")
+	jobCount := s.getJobCount(acoID)
 
 	// Since we should've failed somewhere in the bulk request, we should not have
 	// have a job count change.
@@ -250,10 +249,6 @@ func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 	acoID := acoUnderTest
 
-	defer func() {
-		s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
-	}()
-
 	requestParams := RequestParams{resourceType: "Patient", since: since}
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 
@@ -268,10 +263,6 @@ func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
 
 func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *APITestSuite) {
 	acoID := acoUnderTest
-
-	defer func() {
-		s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{})
-	}()
 
 	requestParams.resourceType = "Coverage"
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
@@ -294,15 +285,11 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 
 	acoID := acoUnderTest
 
-	jobCount, err := s.getJobCount(acoID)
-	assert.NoError(s.T(), err)
+	jobCount := s.getJobCount(acoID)
 
 	// Since we should've failed somewhere in the bulk request, we should not have
 	// have a job count change.
 	defer s.verifyJobCount(acoID, jobCount)
-
-	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
-	assert.Nil(s.T(), err)
 
 	requestParams := RequestParams{resourceType: "Patient"}
 	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
@@ -318,161 +305,103 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 
 func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
+	defer os.Unsetenv("DEPLOYMENT_TARGET")
 	assert.Nil(s.T(), err)
 	acoID := acoUnderTest
-	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
-	assert.Nil(s.T(), err)
 
 	firstRequestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
 	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, firstRequestParams)
 
 	j := models.Job{
-		ACOID:      uuid.Parse(acoID),
+		ACOID:      acoID,
 		RequestURL: requestUrl,
 		Status:     models.JobStatusInProgress,
 		JobCount:   1,
 	}
-	s.db.Save(&j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-	pool := makeConnPool(s)
-	defer pool.Close()
 
-	// serve job
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+	tests := []struct {
+		status        models.JobStatus
+		expStatusCode int
+	}{
+		{models.JobStatusPending, http.StatusTooManyRequests},
+		{models.JobStatusInProgress, http.StatusTooManyRequests},
+		{models.JobStatusCompleted, http.StatusAccepted},
+		{models.JobStatusArchived, http.StatusAccepted},
+		{models.JobStatusExpired, http.StatusAccepted},
+		{models.JobStatusFailed, http.StatusAccepted},
+	}
+	assert.Equal(s.T(), len(models.AllJobStatuses), len(tests), "Not all models.JobStatus tested.")
 
-	// change status to Pending and serve job
-	var job models.Job
-	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusPending).Error)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+	exp := regexp.MustCompile(`\/api\/v1\/jobs\/(\d+)`)
+	for _, tt := range tests {
+		s.T().Run(string(tt.status), func(t *testing.T) {
+			j.Status = tt.status
+			postgrestest.UpdateJob(s.T(), s.db, j)
 
-	// change status to Completed and serve job
-	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusCompleted).Error)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	var lastRequestJob models.Job
-	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
-	s.db.Unscoped().Delete(&lastRequestJob)
+			rr := httptest.NewRecorder()
+			handlerFunc(rr, req)
 
-	// change status to Failed and serve job
-	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusFailed).Error)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	lastRequestJob = models.Job{}
-	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
-	s.db.Unscoped().Delete(&lastRequestJob)
-
-	// change status to Archived
-	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusArchived).Error)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	lastRequestJob = models.Job{}
-	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
-	s.db.Unscoped().Delete(&lastRequestJob)
-
-	// change status to Expired
-	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("status", models.JobStatusExpired).Error)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	lastRequestJob = models.Job{}
-	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
-	s.db.Unscoped().Delete(&lastRequestJob)
+			assert.Equal(t, tt.expStatusCode, rr.Code)
+			// If we've created a job, we need to make sure it's removed to not affect other tests
+			if rr.Code == http.StatusAccepted {
+				jobID, err := strconv.ParseUint(exp.FindStringSubmatch(rr.Header().Get("Content-Location"))[1], 10, 64)
+				assert.NoError(t, err)
+				postgrestest.DeleteJobByID(t, s.db, uint(jobID))
+			}
+		})
+	}
 
 	// different aco same endpoint
-	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Updates(models.Job{ACOID: uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), Status: models.JobStatusInProgress}).Error)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	lastRequestJob = models.Job{}
-	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
-	s.db.Unscoped().Delete(&lastRequestJob)
-
-	// same aco different endpoint
-	handler = http.HandlerFunc(handlerFunc)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-
-	secondRequestParams := RequestParams{resourceType: "Patient"}
-	_, handlerFunc, req = bulkRequestHelper(endpoint, secondRequestParams)
-	ad = s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-	handler = http.HandlerFunc(handlerFunc)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-
-	// do another patient call behind this one
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
-
-	lastRequestJob = models.Job{}
-	s.db.Where("aco_id = ?", acoID).Last(&lastRequestJob)
-	s.db.Unscoped().Delete(&lastRequestJob)
-
-	os.Unsetenv("DEPLOYMENT_TARGET")
+	j.ACOID, j.Status = uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), models.JobStatusInProgress
+	postgrestest.UpdateJob(s.T(), s.db, j)
+	rr := httptest.NewRecorder()
+	handlerFunc(rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
+	jobID, err := strconv.ParseUint(exp.FindStringSubmatch(rr.Header().Get("Content-Location"))[1], 10, 64)
+	assert.NoError(s.T(), err)
+	postgrestest.DeleteJobByID(s.T(), s.db, uint(jobID))
 }
 
 func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
+	defer os.Unsetenv("DEPLOYMENT_TARGET")
 	assert.Nil(s.T(), err)
 	acoID := acoUnderTest
-	err = s.db.Unscoped().Where("aco_id = ?", acoID).Delete(models.Job{}).Error
-	assert.Nil(s.T(), err)
 
 	requestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
 	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
 
 	j := models.Job{
-		ACOID:      uuid.Parse(acoID),
+		ACOID:      acoID,
 		RequestURL: requestUrl,
 		Status:     models.JobStatusInProgress,
 		JobCount:   1,
 	}
-	s.db.Save(&j)
+
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	ad := s.makeContextValues(acoID)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-	pool := makeConnPool(s)
-	defer pool.Close()
 
 	// serve job
 	handler := http.HandlerFunc(handlerFunc)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusTooManyRequests, s.rr.Code)
+	rr := httptest.NewRecorder()
 
-	// change created_at timestamp
-	var job models.Job
-	err = s.db.Find(&job, "id = ?", j.ID).Error
-	assert.Nil(s.T(), err)
-	assert.Nil(s.T(), s.db.Model(&job).Update("created_at", job.CreatedAt.Add(-api.GetJobTimeout())).Error)
-	s.rr = httptest.NewRecorder()
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	os.Unsetenv("DEPLOYMENT_TARGET")
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusTooManyRequests, rr.Code)
+
+	// change created_at timestamp so that the job is considered expired.
+	// Use an offset to account for any clock skew
+	j.CreatedAt = j.CreatedAt.Add(-(api.GetJobTimeout() + time.Second))
+	postgrestest.UpdateJob(s.T(), s.db, j)
+
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 }
 
 func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
@@ -507,190 +436,109 @@ func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string
 	return requestUrl.Path, handlerFunc, req
 }
 
-func (s *APITestSuite) TestJobStatusInvalidJobID() {
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", "test"), nil)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", "test")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
+func (s *APITestSuite) TestJobStatusBadInputs() {
+	tests := []struct {
+		name          string
+		jobID         string
+		expStatusCode int
+		expErrCode    string
+	}{
+		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
+		{"DoesNotExist", "0", 404, responseutils.DbErr},
 	}
 
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", tt.jobID), nil)
+			rr := httptest.NewRecorder()
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("jobID", tt.jobID)
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+			ad := s.makeContextValues(acoUnderTest)
+			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+
+			JobStatus(rr, req)
+
+			var respOO fhirmodels.OperationOutcome
+			err := json.Unmarshal(rr.Body.Bytes(), &respOO)
+			assert.NoError(t, err)
+
+			assert.Equal(t, responseutils.Error, respOO.Issue[0].Severity)
+			assert.Equal(t, responseutils.Exception, respOO.Issue[0].Code)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code)
+		})
+	}
 }
 
-func (s *APITestSuite) TestJobStatusJobDoesNotExist() {
-	jobID := "1234"
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%s", jobID), nil)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", jobID)
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
+func (s *APITestSuite) TestJobStatusNotComplete() {
+	tests := []struct {
+		status        models.JobStatus
+		expStatusCode int
+	}{
+		{models.JobStatusPending, http.StatusAccepted},
+		{models.JobStatusInProgress, http.StatusAccepted},
+		{models.JobStatusFailed, http.StatusInternalServerError},
+		{models.JobStatusExpired, http.StatusGone},
+		{models.JobStatusArchived, http.StatusGone},
 	}
 
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.DbErr, respOO.Issue[0].Details.Coding[0].Code)
-}
+	for _, tt := range tests {
+		s.T().Run(string(tt.status), func(t *testing.T) {
+			j := models.Job{
+				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+				RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+				Status:     tt.status,
+			}
+			postgrestest.CreateJobs(t, s.db, &j)
+			defer postgrestest.DeleteJobByID(t, s.db, j.ID)
 
-func (s *APITestSuite) TestJobStatusPending() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     models.JobStatusPending,
-		JobCount:   1,
+			req := s.createJobStatusRequest(acoUnderTest, j.ID)
+			rr := httptest.NewRecorder()
+
+			JobStatus(rr, req)
+			assert.Equal(t, tt.expStatusCode, rr.Code)
+			if rr.Code == http.StatusAccepted {
+				assert.Contains(t, rr.Header().Get("X-Progress"), tt.status)
+				assert.Equal(t, "", rr.Header().Get("Expires"))
+			} else if rr.Code == http.StatusInternalServerError {
+				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
+			} else if rr.Code == http.StatusGone {
+				assertExpiryEquals(t, j.CreatedAt.Add(api.GetJobTimeout()), rr.Header().Get("Expires"))
+			}
+		})
 	}
-	s.db.Save(&j)
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	assert.Nil(s.T(), err)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), string(models.JobStatusPending), s.rr.Header().Get("X-Progress"))
-	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
-}
-
-func (s *APITestSuite) TestJobStatusInProgress() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     models.JobStatusInProgress,
-		JobCount:   1,
-	}
-	s.db.Save(&j)
-
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), "In Progress (0%)", s.rr.Header().Get("X-Progress"))
-	assert.Equal(s.T(), "", s.rr.Header().Get("Expires"))
-
-	s.db.Unscoped().Delete(&j)
-}
-
-func (s *APITestSuite) TestJobStatusFailed() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     models.JobStatusFailed,
-	}
-
-	s.db.Save(&j)
-
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	s.db.Unscoped().Delete(&j)
 }
 
 // https://stackoverflow.com/questions/34585957/postgresql-9-3-how-to-insert-upper-case-uuid-into-table
 func (s *APITestSuite) TestJobStatusCompleted() {
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      acoUnderTest,
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     models.JobStatusCompleted,
 	}
-	s.db.Save(&j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	var expectedUrls []string
-
 	for i := 1; i <= 10; i++ {
 		fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
 		expectedurl := fmt.Sprintf("%s/%s/%s", "http://example.com/data", fmt.Sprint(j.ID), fileName)
 		expectedUrls = append(expectedUrls, expectedurl)
-		jobKey := models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"}
-		err := s.db.Save(&jobKey).Error
-		assert.Nil(s.T(), err)
-
+		postgrestest.CreateJobKeys(s.T(), s.db,
+			models.JobKey{JobID: j.ID, FileName: fileName, ResourceType: "ExplanationOfBenefit"})
 	}
 
-	// Add a blank ndjson file to verify its being skipped via `expectedUrls` assertion and Files length assertion
-	jobKey := models.JobKey{
-		JobID:        j.ID,
-		FileName:     models.BlankFileName,
-		ResourceType: "ExplanationOfBenefit",
-	}
-	err := s.db.Save(&jobKey).Error
-	assert.Nil(s.T(), err)
-
-	assert.Equal(s.T(), 10, len(expectedUrls))
-
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	req.TLS = &tls.ConnectionState{}
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
+	req := s.createJobStatusRequest(acoUnderTest, j.ID)
+	JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
-	err = json.Unmarshal(s.rr.Body.Bytes(), &rb)
+	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
 	if err != nil {
 		s.T().Error(err)
 	}
@@ -712,33 +560,23 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 
 	}
 	assert.Empty(s.T(), rb.Errors)
-	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      acoUnderTest,
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     models.JobStatusCompleted,
 	}
-	s.db.Save(&j)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+
 	fileName := fmt.Sprintf("%s.ndjson", uuid.NewRandom().String())
 	jobKey := models.JobKey{
 		JobID:        j.ID,
 		FileName:     fileName,
 		ResourceType: "ExplanationOfBenefit",
 	}
-	s.db.Save(&jobKey)
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	req.TLS = &tls.ConnectionState{}
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	postgrestest.CreateJobKeys(s.T(), s.db, jobKey)
 
 	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
 	if _, err := os.Stat(f); os.IsNotExist(err) {
@@ -755,7 +593,8 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 		s.T().Error(err)
 	}
 
-	handler.ServeHTTP(s.rr, req)
+	req := s.createJobStatusRequest(acoUnderTest, j.ID)
+	JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
@@ -776,89 +615,26 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	assert.Equal(s.T(), "OperationOutcome", rb.Errors[0].Type)
 	assert.Equal(s.T(), errorurl, rb.Errors[0].URL)
 
-	s.db.Unscoped().Delete(&j)
 	os.Remove(errFilePath)
 }
 
-func (s *APITestSuite) TestJobStatusExpired() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     models.JobStatusExpired,
-	}
-
-	s.db.Save(&j)
-
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
-}
-
-// THis job is old, but has not yet been marked as expired.
+// This job is old, but has not yet been marked as expired.
 func (s *APITestSuite) TestJobStatusNotExpired() {
 	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		ACOID:      acoUnderTest,
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     models.JobStatusCompleted,
 	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	// s.db.Save(&j)
-	j.UpdatedAt = time.Now().Add(-api.GetJobTimeout()).Add(-api.GetJobTimeout())
-	s.db.Save(&j)
+	j.UpdatedAt = time.Now().Add(-(api.GetJobTimeout() + time.Second))
+	postgrestest.UpdateJob(s.T(), s.db, j)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
+	req := s.createJobStatusRequest(acoUnderTest, j.ID)
+	JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.UpdatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
-}
-
-func (s *APITestSuite) TestJobStatusArchived() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
-		Status:     models.JobStatusArchived,
-	}
-
-	s.db.Save(&j)
-
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-
-	handler := http.HandlerFunc(JobStatus)
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues("DBBD1CE1-AE24-435C-807D-ED45953077D3")
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.Suite, j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
-	s.db.Unscoped().Delete(&j)
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 }
 
 func (s *APITestSuite) TestServeData() {
@@ -945,28 +721,17 @@ func (s *APITestSuite) TestGetVersion() {
 
 func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	j := models.Job{
-		ACOID:      uuid.Parse("dbbd1ce1-ae24-435c-807d-ed45953077d3"),
+		ACOID:      acoUnderTest,
 		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
 		Status:     models.JobStatusPending,
 	}
-	s.db.Save(&j)
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", j.ID), nil)
-	assert.Nil(s.T(), err)
+	postgrestest.CreateJobs(s.T(), s.db, &j)
 
 	handler := auth.RequireTokenJobMatch(http.HandlerFunc(JobStatus))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("jobID", fmt.Sprint(j.ID))
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	ad := s.makeContextValues(constants.SmallACOUUID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	req := s.createJobStatusRequest(uuid.Parse(constants.LargeACOUUID), j.ID)
 
 	handler.ServeHTTP(s.rr, req)
-
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
-
-	s.db.Unscoped().Delete(&j)
 }
 
 func (s *APITestSuite) TestHealthCheck() {
@@ -1060,54 +825,42 @@ func (s *APITestSuite) TestAuthInfoOkta() {
 	auth.SetProvider(originalProvider)
 }
 
-func (s *APITestSuite) verifyJobCount(acoID string, expectedJobCount int64) {
-	count, err := s.getJobCount(acoID)
-	assert.NoError(s.T(), err)
+func (s *APITestSuite) verifyJobCount(acoID uuid.UUID, expectedJobCount int) {
+	count := s.getJobCount(acoID)
 	assert.Equal(s.T(), expectedJobCount, count)
 }
 
-func (s *APITestSuite) getJobCount(acoID string) (int64, error) {
-	var count int64
-	err := s.db.Model(&models.Job{}).Where("aco_id = ?", acoID).Count(&count).Error
-	return count, err
+func (s *APITestSuite) getJobCount(acoID uuid.UUID) int {
+	jobs := postgrestest.GetJobsByACOID(s.T(), s.db, acoID)
+	return len(jobs)
 }
 
-func (s *APITestSuite) makeContextValues(acoID string) (data auth.AuthData) {
-	var aco models.ACO
-	s.db.First(&aco, "uuid = ?", acoID)
-	return auth.AuthData{ACOID: acoID, CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
+func (s *APITestSuite) makeContextValues(acoID uuid.UUID) (data auth.AuthData) {
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoID)
+	return auth.AuthData{ACOID: aco.UUID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
+}
+
+func (s *APITestSuite) createJobStatusRequest(acoID uuid.UUID, jobID uint) *http.Request {
+	req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/jobs/%d", jobID), nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", fmt.Sprint(jobID))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	ad := s.makeContextValues(acoID)
+	return req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 }
 
 func TestAPITestSuite(t *testing.T) {
 	suite.Run(t, new(APITestSuite))
 }
 
-func makeConnPool(s *APITestSuite) *pgx.ConnPool {
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		s.T().Error(err)
-	}
-
-	return pgxpool
-}
-
 // Compare expiry header against the expected time value.
 // There seems to be some slight difference in precision here,
 // so we'll compare up to seconds
-func assertExpiryEquals(s suite.Suite, expectedTime time.Time, expiry string) {
+func assertExpiryEquals(t *testing.T, expectedTime time.Time, expiry string) {
 	expiryTime, err := time.Parse(expiryHeaderFormat, expiry)
 	if err != nil {
-		s.FailNow("Failed to parse %s to time.Time %s", expiry, err)
+		t.Fatalf("Failed to parse %s to time.Time %s", expiry, err)
 	}
 
-	assert.Equal(s.T(), time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
+	assert.Equal(t, time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
 }

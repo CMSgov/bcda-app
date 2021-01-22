@@ -9,6 +9,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 )
 
 const (
@@ -18,11 +21,14 @@ const (
 )
 
 var providerName = Alpha
+var repository models.Repository
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
 	SetProvider(strings.ToLower(os.Getenv(`BCDA_AUTH_PROVIDER`)))
+
+	repository = postgres.NewRepository(database.GetDbConnection())
 }
 
 func SetProvider(name string) {
@@ -48,7 +54,7 @@ func GetProviderName() string {
 func GetProvider() Provider {
 	switch providerName {
 	case Alpha:
-		return AlphaAuthPlugin{}
+		return AlphaAuthPlugin{repository}
 	case Okta:
 		return NewOktaAuthPlugin(client.NewOktaClient())
 	case SSAS:
@@ -56,7 +62,7 @@ func GetProvider() Provider {
 		if err != nil {
 			log.Fatalf("no client for SSAS; %s", err.Error())
 		}
-		return SSASPlugin{client: c}
+		return SSASPlugin{client: c, repository: repository}
 	default:
 		return AlphaAuthPlugin{}
 	}
