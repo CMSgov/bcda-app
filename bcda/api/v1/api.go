@@ -231,22 +231,44 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 		bearer_token:
 
 	Responses:
-		202: jobStatusResponse
+		202: deleteJobResponse
 		400: badRequestResponse
 		401: invalidCredentials
 		404: notFoundResponse
 		500: errorResponse
 */
 func DeleteJob(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobID")
-	jsonData, err := json.Marshal(jobID)
+	jobIDStr := chi.URLParam(r, "jobID")
+
+	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		err = errors.Wrap(err, "cannot convert jobID to uint")
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
 	}
-	_, err = w.Write([]byte(jsonData))
-	w.WriteHeader(http.StatusAccepted)
-	// COMPLETED,FAILED,ARCHIVED,EXPIRED,CANCELLED -> 400 Bad Request
-	// Job doesn't exist -> 404 Not Found
+
+	job, _, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
+	if err != nil {
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
+		// So returning a StatusNotFound may be a misnomer
+		responseutils.WriteError(oo, w, http.StatusNotFound)
+		return
+	}
+
+	switch job.Status {
+	case models.JobStatusCompleted, models.JobStatusFailed, models.JobStatusArchived, models.JobStatusExpired, models.JobStatusCancelled:
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+	case models.JobStatusPending, models.JobStatusInProgress:
+		// Delete job here
+		w.Header().Set("Deleted", job.StatusMessage())
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
 }
 
 /*
@@ -268,7 +290,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 		200: FileNDJSON
 		400: badRequestResponse
 		401: invalidCredentials
-        404: notFoundResponse
+    404: notFoundResponse
 		500: errorResponse
 */
 func ServeData(w http.ResponseWriter, r *http.Request) {

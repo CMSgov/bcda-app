@@ -78,6 +78,13 @@ type JobStatusResponse struct {
 	XProgress string `json:"X-Progress"`
 }
 
+// The job has been deleted.
+// swagger:response deleteJobResponse
+type deleteJobResponse struct {
+	// Confirmation of the job deletion process
+	Deleted string `json:"Deleted"`
+}
+
 // JSON object containing a version field
 // swagger:response VersionResponse
 type VersionResponse struct {
