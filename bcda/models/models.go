@@ -18,10 +18,11 @@ const (
 	JobStatusArchived   JobStatus = "Archived"
 	JobStatusExpired    JobStatus = "Expired"
 	JobStatusFailed     JobStatus = "Failed"
+	JobStatusCancelled  JobStatus = "Cancelled"
 )
 
 var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress,
-	JobStatusCompleted, JobStatusArchived, JobStatusExpired, JobStatusFailed}
+	JobStatusCompleted, JobStatusArchived, JobStatusExpired, JobStatusFailed, JobStatusCancelled}
 
 type JobStatus string
 type Job struct {
