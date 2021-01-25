@@ -356,7 +356,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
+				cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
 				return cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired,
 					os.Getenv("FHIR_ARCHIVE_DIR"))
 			},
