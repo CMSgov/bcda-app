@@ -638,6 +638,80 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	assertExpiryEquals(s.T(), j.UpdatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
 }
 
+func (s *APITestSuite) TestDeleteJobBadInputs() {
+	tests := []struct {
+		name          string
+		jobID         string
+		expStatusCode int
+		expErrCode    string
+	}{
+		{"InvalidJobID", "abcd", 400, responseutils.RequestErr},
+		{"DoesNotExist", "0", 404, responseutils.DbErr},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/jobs/%s", tt.jobID), nil)
+			rr := httptest.NewRecorder()
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("jobID", tt.jobID)
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+			ad := s.makeContextValues(acoUnderTest)
+			req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+
+			JobStatus(rr, req)
+
+			var respOO fhirmodels.OperationOutcome
+			err := json.Unmarshal(rr.Body.Bytes(), &respOO)
+			assert.NoError(t, err)
+
+			assert.Equal(t, responseutils.Error, respOO.Issue[0].Severity)
+			assert.Equal(t, responseutils.Exception, respOO.Issue[0].Code)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code)
+		})
+	}
+}
+
+func (s *APITestSuite) TestDeleteJob() {
+	tests := []struct {
+		status        models.JobStatus
+		expStatusCode int
+	}{
+		{models.JobStatusPending, http.StatusAccepted},
+		{models.JobStatusInProgress, http.StatusAccepted},
+		{models.JobStatusFailed, http.StatusInternalServerError},
+		{models.JobStatusExpired, http.StatusInternalServerError},
+		{models.JobStatusArchived, http.StatusInternalServerError},
+		{models.JobStatusCompleted, http.StatusInternalServerError},
+		{models.JobStatusCancelled, http.StatusInternalServerError},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(string(tt.status), func(t *testing.T) {
+			j := models.Job{
+				ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+				RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+				Status:     tt.status,
+			}
+			postgrestest.CreateJobs(t, s.db, &j)
+			defer postgrestest.DeleteJobByID(t, s.db, j.ID)
+
+			req := s.createJobStatusRequest(acoUnderTest, j.ID)
+			rr := httptest.NewRecorder()
+
+			DeleteJob(rr, req)
+			assert.Equal(t, tt.expStatusCode, rr.Code)
+			if rr.Code == http.StatusAccepted {
+				assert.Contains(t, rr.Header().Get("Deleted"), tt.status)
+				assert.Equal(t, "", rr.Header().Get("Expires"))
+			} else if rr.Code == http.StatusInternalServerError {
+				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
+			}
+		})
+	}
+}
+
 func (s *APITestSuite) TestServeData() {
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
 

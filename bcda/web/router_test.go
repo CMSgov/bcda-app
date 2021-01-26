@@ -40,6 +40,13 @@ func (s *RouterTestSuite) getAPIRoute(route string) *http.Response {
 	return rr.Result()
 }
 
+func (s *RouterTestSuite) deleteAPIRoute(route string) *http.Response {
+	req := httptest.NewRequest("DELETE", route, nil)
+	rr := httptest.NewRecorder()
+	s.apiRouter.ServeHTTP(rr, req)
+	return rr.Result()
+}
+
 func (s *RouterTestSuite) getDataRoute(route string) *http.Response {
 	req := httptest.NewRequest("GET", route, nil)
 	rr := httptest.NewRecorder()
@@ -207,6 +214,11 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 
 func (s *RouterTestSuite) TestJobStatusRoute() {
 	res := s.getAPIRoute("/api/v1/jobs/1")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestDeleteJobRoute() {
+	res := s.deleteAPIRoute("/api/v1/jobs/1")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
