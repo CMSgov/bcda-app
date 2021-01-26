@@ -24,7 +24,7 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/newrelic/go-agent v3.9.0+incompatible
 	github.com/newrelic/go-agent/v3 v3.9.0
-	github.com/otiai10/copy v1.2.0
+	github.com/otiai10/copy v1.4.2
 	github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
 	github.com/pkg/errors v0.8.1
 	github.com/samply/golang-fhir-models/fhir-models v0.2.0
@@ -44,7 +44,6 @@ require (
 )
 
 replace (
-	// github.com/DATA-DOG/go-sqlmock => github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.21.3
 	github.com/bgentry/que-go => github.com/bgentry/que-go v1.0.1
 	github.com/cenkalti/backoff/v4 => github.com/cenkalti/backoff/v4 v4.0.2
@@ -57,7 +56,6 @@ replace (
 	github.com/newrelic/go-agent => github.com/newrelic/go-agent v3.9.0+incompatible
 	github.com/newrelic/go-agent/v3 => github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/opencensus-integrations/gomongowrapper => github.com/eug48/gomongowrapper v0.0.3
-	github.com/otiai10/copy => github.com/otiai10/copy v1.2.0
 	github.com/pborman/uuid => github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
 	github.com/pkg/errors => github.com/pkg/errors v0.8.0
 	github.com/samply/golang-fhir-models/fhir-models => github.com/samply/golang-fhir-models/fhir-models v0.2.0
