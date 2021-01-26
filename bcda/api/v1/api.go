@@ -290,7 +290,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 		200: FileNDJSON
 		400: badRequestResponse
 		401: invalidCredentials
-    404: notFoundResponse
+		404: notFoundResponse
 		500: errorResponse
 */
 func ServeData(w http.ResponseWriter, r *http.Request) {
