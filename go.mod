@@ -3,7 +3,7 @@ module github.com/CMSgov/bcda-app
 go 1.15
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.4.1
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/aws/aws-sdk-go v1.21.3
 	github.com/bgentry/que-go v1.0.1
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
@@ -44,7 +44,7 @@ require (
 )
 
 replace (
-	github.com/DATA-DOG/go-sqlmock => github.com/DATA-DOG/go-sqlmock v1.4.1
+	// github.com/DATA-DOG/go-sqlmock => github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.21.3
 	github.com/bgentry/que-go => github.com/bgentry/que-go v1.0.1
 	github.com/cenkalti/backoff/v4 => github.com/cenkalti/backoff/v4 v4.0.2
