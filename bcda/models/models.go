@@ -18,12 +18,12 @@ const (
 	JobStatusArchived   JobStatus = "Archived"
 	JobStatusExpired    JobStatus = "Expired"
 	JobStatusFailed     JobStatus = "Failed"
-	// JobStatusFailedExpired represents on job that failed whose data has been cleaned up
-	JobStatusFailedExpired JobStatus = "FailedExpired"
+	JobStatusCancelled  JobStatus = "Cancelled"
+  JobStatusFailedExpired JobStatus = "FailedExpired" 	// JobStatusFailedExpired represents on job that failed whose data has been cleaned up
 )
 
-var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress,
-	JobStatusCompleted, JobStatusArchived, JobStatusExpired, JobStatusFailed, JobStatusFailedExpired}
+var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress, JobStatusCompleted, 
+	JobStatusArchived, JobStatusExpired, JobStatusFailed, JobStatusCancelled, JobStatusFailedExpired}
 
 type JobStatus string
 type Job struct {
