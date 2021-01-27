@@ -380,7 +380,6 @@ func (r *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 				defer postgrestest.DeleteCCLFFilesByCMSID(r.T(), r.db, cclfFile.ACOCMSID)
 			}
 
-			// TODO: With BCDA-4128, switch this over to ErrorContains.
 			if tt.errMsg != "" {
 				assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
@@ -437,7 +436,6 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	assert.EqualError(err, "no ACO record found for "+aco.ClientID)
 	assert.Nil(res)
 
-	// TODO: With BCDA-4128, switch this over to ErrorContains.
 	assert.Contains(
 		r.repository.UpdateACO(ctx, aco.UUID,
 			map[string]interface{}{"some_unknown_column": uuid.New()}).Error(),
@@ -446,7 +444,6 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 		r.repository.UpdateACO(ctx, uuid.Parse(aco.ClientID),
 			map[string]interface{}{"blacklisted": true}),
 		fmt.Sprintf("ACO %s not updated, no row found", aco.ClientID))
-	// TODO: With BCDA-4128, switch this over to ErrorContains.
 	assert.Contains(r.repository.CreateACO(ctx, aco).Error(), "duplicate key value violates unique constraint \"acos_cms_id_key\"")
 }
 
@@ -500,7 +497,6 @@ func (r *RepositoryTestSuite) TestCCLFFilesMethods() {
 
 	// Negative tests
 	_, err = r.repository.CreateCCLFFile(ctx, cclfFileSuccess)
-	// TODO: With BCDA-4128, switch this over to ErrorContains.
 	assert.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_cclf_files_name_aco_cms_id_key\"")
 	assert.EqualError(r.repository.UpdateCCLFFileImportStatus(ctx, 0, "Other3"), "failed to update file entry 0 status to Other3, no entry found")
 	_, err = r.repository.GetLatestCCLFFile(ctx, testUtils.RandomHexID(), -1, "", time.Time{}, time.Time{}, models.FileTypeDefault)

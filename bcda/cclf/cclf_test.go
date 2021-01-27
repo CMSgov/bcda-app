@@ -224,7 +224,6 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	}
 	err = importCCLF8(context.Background(), metadata)
 	// This error indicates that we did not supply enough characters for the MBI
-	// TODO: With BCDA-4128, switch this over to ErrorContains.
 	assert.Contains(err.Error(), "invalid byte sequence for encoding \"UTF8\": 0x00")
 }
 
