@@ -399,6 +399,8 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 	defer db.Close()
 
 	priorityACOs := getPriorityACOs(db)
+	// Ensure there are no duplicate ACOs by wrapping it in Dedup()
+	priorityACOs = utils.Dedup(priorityACOs)
 	for _, acoID := range priorityACOs {
 		acoID = strings.TrimSpace(acoID)
 		if cclfMap[acoID] != nil {
@@ -412,8 +414,7 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 		}
 	}
 
-    // Ensure there are no duplicate ACOs by wrapping it in Dedup()
-	return utils.Dedup(acoOrder)
+	return acoOrder
 }
 
 func getPriorityACOs(db *sql.DB) []string {
