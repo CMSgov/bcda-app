@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/jackc/pgx/pgtype"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,6 +39,9 @@ func TestValues(t *testing.T) {
 	values, err := importer.Values()
 	assert.NoError(t, err)
 	assert.Len(t, values, 2)
+
+	assert.EqualValues(t, importer.cclfFileID, values[0].(*pgtype.Int4).Int)
+	assert.EqualValues(t, mbi, values[1].(*pgtype.BPChar).String)
 }
 
 func TestErr(t *testing.T) {
