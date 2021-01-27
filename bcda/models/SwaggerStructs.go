@@ -81,8 +81,6 @@ type JobStatusResponse struct {
 // The job has been deleted.
 // swagger:response deleteJobResponse
 type DeleteJobResponse struct {
-	// Confirmation of the job deletion process
-	Deleted string `json:"deleted"`
 }
 
 // JSON object containing a version field

@@ -680,11 +680,11 @@ func (s *APITestSuite) TestDeleteJob() {
 	}{
 		{models.JobStatusPending, http.StatusAccepted},
 		{models.JobStatusInProgress, http.StatusAccepted},
-		{models.JobStatusFailed, http.StatusInternalServerError},
-		{models.JobStatusExpired, http.StatusInternalServerError},
-		{models.JobStatusArchived, http.StatusInternalServerError},
-		{models.JobStatusCompleted, http.StatusInternalServerError},
-		{models.JobStatusCancelled, http.StatusInternalServerError},
+		{models.JobStatusFailed, http.StatusGone},
+		{models.JobStatusExpired, http.StatusGone},
+		{models.JobStatusArchived, http.StatusGone},
+		{models.JobStatusCompleted, http.StatusGone},
+		{models.JobStatusCancelled, http.StatusGone},
 	}
 
 	for _, tt := range tests {
@@ -702,11 +702,8 @@ func (s *APITestSuite) TestDeleteJob() {
 
 			DeleteJob(rr, req)
 			assert.Equal(t, tt.expStatusCode, rr.Code)
-			if rr.Code == http.StatusAccepted {
-				assert.Contains(t, rr.Header().Get("Deleted"), tt.status)
-				assert.Equal(t, "", rr.Header().Get("Expires"))
-			} else if rr.Code == http.StatusInternalServerError {
-				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
+			if rr.Code == http.StatusGone {
+				assert.Contains(t, rr.Body.String(), "Unable to cancel jobs not currently in progress or pending.")
 			}
 		})
 	}
