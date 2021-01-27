@@ -57,7 +57,7 @@ func (importer *cclf8Importer) Next() bool {
 
 func (importer *cclf8Importer) Values() ([]interface{}, error) {
 
-	close := metrics.NewChild(importer.ctx, "importCCLF8-readlines")
+	close := metrics.NewChild(importer.ctx, "importCCLF8-benecreate")
 	defer close()
 
 	// Use Int4 because we store file_id as an integer
