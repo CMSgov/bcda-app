@@ -243,6 +243,18 @@ func (s *CCLFTestSuite) TestOrderACOs() {
 	assert.Equal(s.T(), "A8765", acoOrder[1])
 	assert.Regexp(s.T(), "A1111|A0246", acoOrder[2])
 	assert.Regexp(s.T(), "A1111|A0246", acoOrder[3])
+
+    // Check for no duplicates
+    var dupcheck = make(map[string]bool, 4)
+    for _, v := range acoOrder {
+        // Loop through the acoOrder and place then into mwp with a value of true
+        // If there are no duplicates, dupcheck[v] should not return true
+        if !dupcheck[v] {
+            dupcheck[v] = true
+        } else {
+            assert.Fail(s.T(), "There was a duplicate found in the acoOrder.")
+        }
+    }
 }
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {

@@ -412,7 +412,8 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 		}
 	}
 
-	return acoOrder
+    // Ensure there are no duplicate ACOs by wrapping it in Dedup()
+	return utils.Dedup(acoOrder)
 }
 
 func getPriorityACOs(db *sql.DB) []string {

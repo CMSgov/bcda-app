@@ -79,3 +79,25 @@ func CloseFileAndLogError(f *os.File) {
 		logrus.Error(ferr)
 	}
 }
+
+// This is function that takes a string slice and removes any duplicates
+func Dedup(slice []string) []string {
+	// Get the length of the slice
+	var n = len(slice)
+
+	// Use the length to allocate memory once for new slice and map
+	var newslice = make([]string, 0, n)
+	var dupcheck = make(map[string]bool, n)
+
+	for _, v := range slice {
+		// If false, we have not encountered the string before
+		// If it is true, do nothing
+		if !dupcheck[v] {
+			// Not a duplicate
+			dupcheck[v] = true
+			newslice = append(newslice, v)
+		}
+	}
+
+	return newslice
+}
