@@ -186,6 +186,6 @@ documentation:
 	docker-compose up -d --build openapi
 
 credentials:
-	# Use aco=<ACO_CMS_ID> to generate a local set of credentials for the ACO.
-	# For example: make credentials aco=A9994
-	docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(aco)'|tail -n2
+	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
+	# For example: ACO_CMS_ID=A9993 make credentials 
+	docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
