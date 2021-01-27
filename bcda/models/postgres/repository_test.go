@@ -355,7 +355,7 @@ func (r *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 		{"Different ACO ID", uuid.New(), []string{"ACO1", "ACO2"},
 			""},
 		{"Duplicate ACO ID", uuid.New(), []string{"ACO3", "ACO3"},
-			`pq: duplicate key value violates unique constraint "idx_cclf_files_name_aco_cms_id_key"`},
+			`duplicate key value violates unique constraint "idx_cclf_files_name_aco_cms_id_key"`},
 	}
 
 	for _, tt := range tests {
@@ -380,8 +380,9 @@ func (r *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 				defer postgrestest.DeleteCCLFFilesByCMSID(r.T(), r.db, cclfFile.ACOCMSID)
 			}
 
+			// TODO: With BCDA-4128, switch this over to ErrorContains.
 			if tt.errMsg != "" {
-				assert.EqualError(t, err, tt.errMsg)
+				assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -436,16 +437,17 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	assert.EqualError(err, "no ACO record found for "+aco.ClientID)
 	assert.Nil(res)
 
-	assert.EqualError(
+	// TODO: With BCDA-4128, switch this over to ErrorContains.
+	assert.Contains(
 		r.repository.UpdateACO(ctx, aco.UUID,
-			map[string]interface{}{"some_unknown_column": uuid.New()}),
-		"pq: column \"some_unknown_column\" of relation \"acos\" does not exist")
+			map[string]interface{}{"some_unknown_column": uuid.New()}).Error(),
+		"column \"some_unknown_column\" of relation \"acos\" does not exist")
 	assert.EqualError(
 		r.repository.UpdateACO(ctx, uuid.Parse(aco.ClientID),
 			map[string]interface{}{"blacklisted": true}),
 		fmt.Sprintf("ACO %s not updated, no row found", aco.ClientID))
-
-	assert.EqualError(r.repository.CreateACO(ctx, aco), "pq: duplicate key value violates unique constraint \"acos_cms_id_key\"")
+	// TODO: With BCDA-4128, switch this over to ErrorContains.
+	assert.Contains(r.repository.CreateACO(ctx, aco).Error(), "duplicate key value violates unique constraint \"acos_cms_id_key\"")
 }
 
 // TestCCLFFilesMethods validates the CRUD operations associated with the cclf_files table
@@ -498,7 +500,8 @@ func (r *RepositoryTestSuite) TestCCLFFilesMethods() {
 
 	// Negative tests
 	_, err = r.repository.CreateCCLFFile(ctx, cclfFileSuccess)
-	assert.EqualError(err, "pq: duplicate key value violates unique constraint \"idx_cclf_files_name_aco_cms_id_key\"")
+	// TODO: With BCDA-4128, switch this over to ErrorContains.
+	assert.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_cclf_files_name_aco_cms_id_key\"")
 	assert.EqualError(r.repository.UpdateCCLFFileImportStatus(ctx, 0, "Other3"), "failed to update file entry 0 status to Other3, no entry found")
 	_, err = r.repository.GetLatestCCLFFile(ctx, testUtils.RandomHexID(), -1, "", time.Time{}, time.Time{}, models.FileTypeDefault)
 	assert.NoError(err)
