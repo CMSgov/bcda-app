@@ -20,7 +20,7 @@ require (
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
-	github.com/lib/pq v1.9.0
+	github.com/lib/pq v1.9.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/newrelic/go-agent v3.9.0+incompatible
 	github.com/newrelic/go-agent/v3 v3.9.0
