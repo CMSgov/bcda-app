@@ -333,6 +333,8 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 		{models.JobStatusArchived, http.StatusAccepted},
 		{models.JobStatusExpired, http.StatusAccepted},
 		{models.JobStatusFailed, http.StatusAccepted},
+		{models.JobStatusCancelled, http.StatusAccepted},
+		{models.JobStatusFailedExpired, http.StatusAccepted},
 	}
 	assert.Equal(s.T(), len(models.AllJobStatuses), len(tests), "Not all models.JobStatus tested.")
 
@@ -479,8 +481,10 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 		{models.JobStatusPending, http.StatusAccepted},
 		{models.JobStatusInProgress, http.StatusAccepted},
 		{models.JobStatusFailed, http.StatusInternalServerError},
+		{models.JobStatusFailedExpired, http.StatusInternalServerError},
 		{models.JobStatusExpired, http.StatusGone},
 		{models.JobStatusArchived, http.StatusGone},
+		{models.JobStatusCancelled, http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
