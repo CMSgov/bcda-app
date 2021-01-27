@@ -20,6 +20,8 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/stretchr/testify/suite"
+
+	_ "github.com/jackc/pgx/stdlib"
 )
 
 const sqlFlavor = sqlbuilder.PostgreSQL
@@ -79,7 +81,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		migrationPath: "./bcda/",
 		dbURL:         s.bcdaDBURL,
 	}
-	db, err := sql.Open("postgres", s.bcdaDBURL)
+	db, err := sql.Open("pgx", s.bcdaDBURL)
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
@@ -220,7 +222,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 		migrationPath: "./bcda_queue/",
 		dbURL:         s.bcdaQueueDBURL,
 	}
-	db, err := sql.Open("postgres", s.bcdaQueueDBURL)
+	db, err := sql.Open("pgx", s.bcdaQueueDBURL)
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
