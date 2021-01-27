@@ -231,7 +231,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	Cancels a currently running job.
 
 	Produces:
-	- application/json
+	- application/fhir+json
 
 	Schemes: http, https
 
@@ -243,6 +243,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 		400: badRequestResponse
 		401: invalidCredentials
 		404: notFoundResponse
+		410: goneResponse
 		500: errorResponse
 */
 func DeleteJob(w http.ResponseWriter, r *http.Request) {
@@ -269,11 +270,10 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	switch job.Status {
 	case models.JobStatusCompleted, models.JobStatusFailed, models.JobStatusArchived, models.JobStatusExpired, models.JobStatusCancelled:
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "Unable to cancel jobs not currently in progress or pending.")
+		responseutils.WriteError(oo, w, http.StatusGone)
 	case models.JobStatusPending, models.JobStatusInProgress:
 		// Delete job here
-		w.Header().Set("Deleted", job.StatusMessage())
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
