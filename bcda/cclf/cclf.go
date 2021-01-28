@@ -400,7 +400,7 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 
 	priorityACOs := getPriorityACOs(db)
 	// Ensure there are no duplicate ACOs by wrapping it in Dedup()
-    priorityACOs = utils.Dedup(priorityACOs)
+	priorityACOs = utils.Dedup(priorityACOs)
 	for _, acoID := range priorityACOs {
 		acoID = strings.TrimSpace(acoID)
 		if cclfMap[acoID] != nil {
@@ -419,11 +419,11 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 
 func getPriorityACOs(db *sql.DB) []string {
 	const query = `
-	SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
-	FROM systems s JOIN groups g ON s.group_id=g.group_id 
-	WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
-	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
-	`
+    SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
+    FROM systems s JOIN groups g ON s.group_id=g.group_id 
+    WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
+    s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
+    `
 
 	rows, err := db.Query(query)
 	if err != nil {
