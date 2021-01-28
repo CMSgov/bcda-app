@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -33,8 +34,15 @@ import (
 )
 
 type Handler struct {
-	qc  *que.Client
-	svc models.Service
+	qc *que.Client
+
+	Svc models.Service
+
+	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
+	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
+	// logic into a service method.
+	r  models.Repository
+	db *sql.DB
 
 	supportedResources map[string]struct{}
 
@@ -46,14 +54,10 @@ func NewHandler(resources []string, basePath string) *Handler {
 
 	h := &Handler{}
 
-	db := database.GetGORMDbConnection()
-	dbc, err := db.DB()
-	if err != nil {
-		log.Fatalf("Failed to retrieve database connection. Err: %v", err)
-	}
-	dbc.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	dbc.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	dbc.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
+	db := database.GetDbConnection()
+	db.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
+	db.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
+	db.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 
 	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -73,7 +77,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 	// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
 	// This implementation is based off of the "fix" that is present in v4
 	// (see: https://github.com/jackc/pgx/blob/v4.10.0/pgxpool/pool.go#L333)
-	// Use the same approach to validate the connection associated with the gorm client
+	// Use the same approach to validate the connection associated with the sql.DB
 
 	// If we implement a cleanup function on the handler,
 	// consider using context.WithCancel() to give us a hook to stop the goroutine
@@ -97,7 +101,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 				}
 				pgxpool.Release(c)
 
-				c1, err := dbc.Conn(ctx)
+				c1, err := db.Conn(ctx)
 				if err != nil {
 					log.Warnf("Failed to acquire connection %s", err.Error())
 					continue
@@ -125,7 +129,8 @@ func NewHandler(resources []string, basePath string) *Handler {
 	}
 
 	repository := postgres.NewRepository(db)
-	h.svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
+	h.db, h.r = db, repository
+	h.Svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
 		runoutCutoffDuration, runoutClaimThruDate,
 		basePath)
 
@@ -186,6 +191,9 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
+	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
+	ctx := context.Background()
+
 	var (
 		ad      auth.AuthData
 		version string
@@ -212,18 +220,21 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		return
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	acoID := ad.ACOID
+	acoID := uuid.Parse(ad.ACOID)
 
-	var pendingAndInProgressJobs []models.Job
 	// If we really do find this record with the below matching criteria then this particular ACO has already made
 	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
 	if os.Getenv("DEPLOYMENT_TARGET") == "prod" {
-		db.Where("aco_id = ? AND status IN (?, ?)", acoID, "In Progress", "Pending").Find(&pendingAndInProgressJobs)
+		pendingAndInProgressJobs, err := h.r.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
+		if err != nil {
+			err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		}
 		if len(pendingAndInProgressJobs) > 0 {
 			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
 				if _, ok := err.(duplicateTypeError); ok {
@@ -248,18 +259,30 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 
 	newJob := models.Job{
-		ACOID:      uuid.Parse(acoID),
+		ACOID:      acoID,
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
-		Status:     "Pending",
+		Status:     models.JobStatusPending,
 	}
 
 	// Need to create job in transaction instead of the very end of the process because we need
 	// the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
 	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
-	tx := db.Begin()
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		err = errors.Wrap(err, "failed to start transaction")
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+	// Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
+	rtx := postgres.NewRepositoryTx(tx)
+
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			if err1 := tx.Rollback(); err1 != nil {
+				log.Warnf("Failed to rollback transaction %s", err.Error())
+			}
 			// We've already written out the HTTP response so we can return after we've rolled back the transaction
 			return
 		}
@@ -274,7 +297,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		//
 		// This does introduce an error scenario where we have queuejobs but no parent job.
 		// We've added logic into the worker to handle this situation.
-		if err = tx.Commit().Error; err != nil {
+		if err = tx.Commit(); err != nil {
 			log.Error(err.Error())
 			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -286,7 +309,8 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		w.WriteHeader(http.StatusAccepted)
 	}()
 
-	if err = tx.Save(&newJob).Error; err != nil {
+	newJob.ID, err = rtx.CreateJob(ctx, newJob)
+	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -294,7 +318,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
-	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID, "", time.Now())
+	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
@@ -315,7 +339,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 
 	var queJobs []*que.Job
-	queJobs, err = h.svc.GetQueJobs(ad.CMSID, &newJob, resourceTypes, since, reqType)
+	queJobs, err = h.Svc.GetQueJobs(ctx, ad.CMSID, &newJob, resourceTypes, since, reqType)
 	if err != nil {
 		log.Error(err)
 		respCode := http.StatusInternalServerError
@@ -329,7 +353,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	newJob.JobCount = len(queJobs)
 
 	// We've now computed all of the fields necessary to populate a fully defined job
-	if err = tx.Save(&newJob).Error; err != nil {
+	if err = rtx.UpdateJob(ctx, newJob); err != nil {
 		log.Error(err.Error())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -428,7 +452,7 @@ func (e duplicateTypeError) Error() string {
 
 // check429 verifies that we do not have a duplicate resource type request based on the supplied in-progress/pending jobs.
 // Returns the unworkedTypes (if any)
-func check429(pendingAndInProgressJobs []models.Job, types []string, version string) ([]string, error) {
+func check429(pendingAndInProgressJobs []*models.Job, types []string, version string) ([]string, error) {
 	var unworkedTypes []string
 
 	for _, t := range types {

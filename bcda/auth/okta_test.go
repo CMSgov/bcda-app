@@ -1,19 +1,16 @@
 package auth
 
 import (
-	"errors"
-	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 const KnownFixtureACO = "DBBD1CE1-AE24-435C-807D-ED45953077D3"
@@ -26,22 +23,13 @@ type OktaAuthPluginTestSuite struct {
 }
 
 func (s *OktaAuthPluginTestSuite) SetupSuite() {
-	db := database.GetGORMDbConnection()
+	db := database.GetDbConnection()
+	defer db.Close()
 
-	defer func() {
-		database.Close(db)
-	}()
+	aco := postgrestest.GetACOByUUID(s.T(), db, uuid.Parse(KnownFixtureACO))
 
-	var aco models.ACO
-	err := db.First(&aco, "UUID = ?", uuid.Parse(KnownFixtureACO)).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		assert.NotNil(s.T(), fmt.Errorf("Unable to find ACO %s", KnownFixtureACO))
-		return
-	}
 	aco.ClientID = KnownClientID
-	if err := db.Save(aco).Error; err != nil {
-		assert.FailNow(s.T(), "Unable to update fixture ACO for Okta tests")
-	}
+	postgrestest.UpdateACO(s.T(), db, aco)
 }
 
 func (s *OktaAuthPluginTestSuite) SetupTest() {

@@ -25,12 +25,8 @@ func NewAPIRouter() http.Handler {
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), SecurityHeader, ConnectionClose)
 
 	// Serve up the swagger ui folder
-	swagger_path := "./swaggerui"
-	if _, err := os.Stat(swagger_path); os.IsNotExist(err) {
-		swagger_path = "../swaggerui"
-	}
-	FileServer(r, "/api/v1/swagger", http.Dir(swagger_path))
-
+	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
+	
 	if os.Getenv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
@@ -43,6 +39,7 @@ func NewAPIRouter() http.Handler {
 	})
 
 	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", true) {
+		FileServer(r, "/api/v2/swagger", http.Dir("./swaggerui/v2"))
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
 			r.With(append(commonAuth, ValidateBulkRequestHeaders)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))

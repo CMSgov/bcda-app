@@ -1,6 +1,8 @@
 package auth_test
 
 import (
+	"context"
+	"database/sql"
 	"regexp"
 	"testing"
 	"time"
@@ -8,21 +10,23 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
-
-var connections = make(map[string]*gorm.DB)
 
 type AlphaAuthPluginTestSuite struct {
 	suite.Suite
 	p       auth.AlphaAuthPlugin
 	backend *auth.AlphaBackend
 	reset   func()
+
+	db         *sql.DB
+	repository models.Repository
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupSuite() {
@@ -33,47 +37,39 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 		public()
 	}
 	s.backend = auth.InitAlphaBackend()
+
+	s.db = database.GetDbConnection()
+	s.repository = postgres.NewRepository(s.db)
 }
 
 func (s *AlphaAuthPluginTestSuite) TearDownSuite() {
 	s.reset()
+	s.db.Close()
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
-	s.p = auth.AlphaAuthPlugin{}
-}
-
-func (s *AlphaAuthPluginTestSuite) BeforeTest(suiteName, testName string) {
-	connections[testName] = database.GetGORMDbConnection()
-}
-
-func (s *AlphaAuthPluginTestSuite) AfterTest(suiteName, testName string) {
-	c, ok := connections[testName]
-	if !ok {
-		s.FailNow("WTF? no db connection for %s", testName)
-	}
-	gc, err := c.DB()
-	if err != nil {
-		s.FailNow("error retrieving db connection: %s", err)
-	}
-	if err := gc.Close(); err != nil {
-		s.FailNow("error closing db connection for %s because %s", testName, err)
-	}
+	s.p = auth.AlphaAuthPlugin{s.repository}
 }
 
 func (s *AlphaAuthPluginTestSuite) TestRegisterSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
+
+	id := uuid.NewRandom()
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
+
+	postgrestest.CreateACO(s.T(), s.db, *aco)
+	acoUUID := aco.UUID
+
 	c, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), c)
 	assert.NotEqual(s.T(), "", c.ClientSecret)
 	assert.Equal(s.T(), acoUUID.String(), c.ClientID)
-	var aco models.ACO
-	aco.UUID = acoUUID
-	connections["TestRegisterSystem"].Find(&aco, "UUID = ?", acoUUID)
+
+	aco, err = s.repository.GetACOByUUID(context.Background(), acoUUID)
+	assert.NoError(s.T(), err)
 	assert.True(s.T(), auth.Hash(aco.AlphaSecret).IsHashOf(c.ClientSecret))
-	defer connections["TestRegisterSystem"].Delete(&aco)
+	defer postgrestest.DeleteACO(s.T(), s.db, aco.UUID)
 
 	c, err = s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.NotNil(s.T(), err)
@@ -100,17 +96,22 @@ func (s *AlphaAuthPluginTestSuite) TestUpdateSystem() {
 
 func (s *AlphaAuthPluginTestSuite) TestDeleteSystem() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestRegisterSystem", &cmsID)
+	id := uuid.NewRandom()
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
+
+	postgrestest.CreateACO(s.T(), s.db, *aco)
+	acoUUID := aco.UUID
+
 	c, _ := s.p.RegisterSystem(acoUUID.String(), "", "")
-	aco, _ := auth.GetACOByClientID(c.ClientID)
+	aco, err := s.repository.GetACOByClientID(context.Background(), c.ClientID)
+	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), aco.ClientID)
 	assert.NotEmpty(s.T(), aco.AlphaSecret)
 
-	err := s.p.DeleteSystem(c.ClientID)
-	assert.Nil(s.T(), err)
-	aco, _ = auth.GetACOByClientID(c.ClientID)
-	assert.Empty(s.T(), aco.ClientID)
-	assert.Empty(s.T(), aco.AlphaSecret)
+	err = s.p.DeleteSystem(c.ClientID)
+	assert.NoError(s.T(), err)
+	aco, _ = s.repository.GetACOByClientID(context.Background(), c.ClientID)
+	assert.Nil(s.T(), aco)
 }
 
 func (s *AlphaAuthPluginTestSuite) TestResetSecret() {
@@ -129,7 +130,11 @@ func (s *AlphaAuthPluginTestSuite) TestResetSecret() {
 
 func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	cmsID := testUtils.RandomHexID()[0:4]
-	acoUUID, _ := models.CreateACO("TestAccessToken", &cmsID)
+	id := uuid.NewRandom()
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
+
+	postgrestest.CreateACO(s.T(), s.db, *aco)
+	acoUUID := aco.UUID
 	cc, err := s.p.RegisterSystem(acoUUID.String(), "", "")
 	assert.Nil(s.T(), err)
 	assert.NotNil(s.T(), cc)
@@ -145,7 +150,10 @@ func (s *AlphaAuthPluginTestSuite) TestAccessToken() {
 	assert.NotNil(s.T(), err)
 	assert.Empty(s.T(), ts)
 	assert.Contains(s.T(), err.Error(), "invalid credentials")
-	connections["TestAccessToken"].Where("client_id = ?", cc.ClientID).Delete(&models.ACO{})
+
+	aco, err = s.repository.GetACOByClientID(context.Background(), cc.ClientID)
+	assert.NoError(s.T(), err)
+	postgrestest.DeleteACO(s.T(), s.db, aco.UUID)
 
 	ts, err = s.p.MakeAccessToken(auth.Credentials{})
 	assert.NotNil(s.T(), err)
