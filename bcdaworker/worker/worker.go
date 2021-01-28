@@ -31,16 +31,14 @@ type Worker interface {
 
 type worker struct {
 	r repository.Repository
-
-	clients map[string]client.APIClient
 }
 
+// DefaultWorker is a singleton reference that will be used for all job actions.
 var DefaultWorker Worker
 
 func init() {
 	DefaultWorker = &worker{
-		r:       postgres.NewRepository(database.GetDbConnection()),
-		clients: make(map[string]client.APIClient),
+		r: postgres.NewRepository(database.GetDbConnection()),
 	}
 }
 
@@ -76,15 +74,11 @@ func (w worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.J
 		return errors.Wrap(err, "could not update job status in database")
 	}
 
-	bb, found := w.clients[jobArgs.BBBasePath]
-	if !found {
-		bb, err = client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
-		if err != nil {
-			err = errors.Wrap(err, "could not create Blue Button client")
-			log.Error(err)
-			return err
-		}
-		w.clients[jobArgs.BBBasePath] = bb
+	bb, err := client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
+	if err != nil {
+		err = errors.Wrap(err, "could not create Blue Button client")
+		log.Error(err)
+		return err
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
@@ -143,9 +137,7 @@ func (w worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.J
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
-	defer func() {
-		segment.End()
-	}()
+	defer endSegment(segment)
 
 	var bundleFunc func(bbID string) (*fhirmodels.Bundle, error)
 	switch jobArgs.ResourceType {
@@ -263,9 +255,7 @@ func getFailureThreshold() float64 {
 
 func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
-	defer func() {
-		segment.End()
-	}()
+	defer endSegment(segment)
 
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
@@ -292,9 +282,7 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	segment := getSegment(ctx, "fhirBundleToResourceNDJSON")
-	defer func() {
-		segment.End()
-	}()
+	defer endSegment(segment)
 
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
@@ -371,6 +359,12 @@ func getSegment(ctx context.Context, name string) newrelic.Segment {
 		segment.StartTime = txn.StartSegmentNow()
 	}
 	return segment
+}
+
+func endSegment(segment newrelic.Segment) {
+	if err := segment.End(); err != nil {
+		log.Warnf("Failed to end segment %s", err)
+	}
 }
 
 func createDir(path string) error {

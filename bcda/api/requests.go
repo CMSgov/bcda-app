@@ -31,11 +31,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 )
 
 type Handler struct {
-	jobEnqueuer queueing.Enqueuer
 	qc *que.Client
 
 	Svc models.Service

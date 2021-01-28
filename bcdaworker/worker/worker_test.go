@@ -472,7 +472,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
 		ResourceType:   "Patient",
-		BBBasePath:     uuid.New(),
+		BBBasePath:     "/v1/fhir",
 	}
 
 	origBBCert := os.Getenv("BB_CLIENT_CERT_FILE")
