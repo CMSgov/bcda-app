@@ -1,13 +1,16 @@
 package queueing
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
+	log "github.com/sirupsen/logrus"
 )
 
 type Enqueuer interface {
@@ -27,6 +30,9 @@ func NewEnqueuer(queueDatabaseURL string) Enqueuer {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Ensure that the connections are valid. Needed until we move to pgx v4
+	database.StartHealthCheck(context.Background(), pool, 10*time.Second)
 
 	return queEnqueuer{que.NewClient(pool)}
 }

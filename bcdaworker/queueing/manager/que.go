@@ -7,7 +7,9 @@ import (
 	goerrors "errors"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -28,8 +30,13 @@ const (
 type queue struct {
 	workers *que.WorkerPool
 	pool    *pgx.ConnPool
+
+	healthCheckCancel context.CancelFunc
 }
 
+// StartQue creates a que-go client and begins listening for items
+// It returns immediately since all of the associated workers are started
+// in separate goroutines.
 func StartQue(queueDatabaseURL string, numWorkers int) *queue {
 	cfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -44,6 +51,10 @@ func StartQue(queueDatabaseURL string, numWorkers int) *queue {
 		log.Fatal(err)
 	}
 
+	// Ensure that the connections are valid. Needed until we move to pgx v4
+	ctx, cancel := context.WithCancel(context.Background())
+	database.StartHealthCheck(ctx, pool, 10*time.Second)
+
 	qc := que.NewClient(pool)
 	wm := que.WorkMap{
 		QUE_PROCESS_JOB: processJob,
@@ -53,7 +64,14 @@ func StartQue(queueDatabaseURL string, numWorkers int) *queue {
 
 	workers.Start()
 
-	return &queue{workers, pool}
+	return &queue{workers, pool, cancel}
+}
+
+// StopQue cleans up any resources created
+func (q *queue) StopQue() {
+	q.healthCheckCancel()
+	q.workers.Shutdown()
+	q.pool.Close()
 }
 
 func processJob(job *que.Job) error {

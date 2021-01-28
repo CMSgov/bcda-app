@@ -1,11 +1,15 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -49,6 +53,26 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 
 	// assert that Ping() does not return an error
 	assert.Nil(suite.T(), suite.db.Ping(), "Error connecting to sql database")
+}
+
+// TestHealthCheck verifies that we are able to start the health check
+// and the checks do not cause a panic by waiting some amount of time
+// to ensure that health checks are being executed.
+func (suite *ConnectionTestSuite) TestHealthCheck() {
+	cfg, err := pgx.ParseURI(os.Getenv("DATABASE_URL"))
+	assert.NoError(suite.T(), err)
+
+	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig: cfg,
+	})
+	assert.NoError(suite.T(), err)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	StartHealthCheck(ctx, pool, time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 }
 
 func TestConnectionTestSuite(t *testing.T) {
