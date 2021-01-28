@@ -19,7 +19,7 @@ func (s *CommonTestSuite) TestDedup() {
 	var result = Dedup(sampleSlice)
 
 	// Iterate through the results, and only encounter "two" once
-	// If counter is 1 after the for loopp, good... anything else, not good
+	// If counter is 1 after the for loop, good... anything else, not good
 	var counter = 0
 
 	for _, v := range result {
@@ -29,6 +29,12 @@ func (s *CommonTestSuite) TestDedup() {
 	}
 
 	assert.Equal(s.T(), counter, 1)
+	// Ensure "one", "two", "thre" all exists
+	assert.Contains(s.T(), result, "one")
+	assert.Contains(s.T(), result, "two")
+	assert.Contains(s.T(), result, "three")
+	// Ensure no additional string was added to the slice
+	assert.Len(s.T(), result, 3)
 }
 
 func TestCommonTestSuite(t *testing.T) {

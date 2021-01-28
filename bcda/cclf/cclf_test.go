@@ -237,7 +237,7 @@ func (s *CCLFTestSuite) TestOrderACOs() {
 
 	acoOrder := orderACOs(cclfMap)
 
-	// A4321 duplicate as been added to test table groups as of 27 JAN 2021 to
+	// A4321 duplicate has been added to test table groups as of 27 JAN 2021 to
 	// bolster testing for duplicates. Since a failure in removal of duplicate A4321
 	// pushed the index by one, check for A1111 and A0246 no longer hardcoded.
 	n := len(acoOrder) - 1

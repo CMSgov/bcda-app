@@ -95,7 +95,6 @@ func Dedup(slice []string) []string {
 
 	// Use the length to allocate memory once for new slice and map
 	var newSlice = make([]string, 0, n)
-	// Empty structs do no occupty space
 	var dupcheck = make(map[string]bool, n)
 
 	for _, v := range slice {
