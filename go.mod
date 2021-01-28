@@ -33,7 +33,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.7.0
 	github.com/tsenart/go-tsz v0.0.0-20180814235614-0bd30b3df1c3 // indirect
 	github.com/tsenart/vegeta v12.1.0+incompatible
 	github.com/urfave/cli v1.20.1-0.20180226030253-8e01ec4cd3e2
@@ -61,7 +61,6 @@ replace (
 	github.com/samply/golang-fhir-models/fhir-models => github.com/samply/golang-fhir-models/fhir-models v0.2.0
 	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux => github.com/soheilhy/cmux v0.1.4
-	github.com/stretchr/testify => github.com/stretchr/testify v1.2.3-0.20181002233221-2db35c88b92a
 	github.com/tsenart/vegeta => github.com/tsenart/vegeta v12.1.0+incompatible
 	github.com/urfave/cli => github.com/urfave/cli v1.20.1-0.20180226030253-8e01ec4cd3e2
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
