@@ -400,7 +400,7 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 
 	priorityACOs := getPriorityACOs(db)
 	// Ensure there are no duplicate ACOs by wrapping it in Dedup()
-    //priorityACOs = utils.Dedup(priorityACOs)
+    priorityACOs = utils.Dedup(priorityACOs)
 	for _, acoID := range priorityACOs {
 		acoID = strings.TrimSpace(acoID)
 		if cclfMap[acoID] != nil {
