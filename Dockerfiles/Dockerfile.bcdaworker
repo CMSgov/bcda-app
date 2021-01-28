@@ -1,16 +1,16 @@
-FROM golang:1.15-buster
+FROM golang:1.15-alpine3.12
 
-# RUN apk update upgrade
-# RUN apk add git
+RUN apk update upgrade
+RUN apk add git
 
 RUN go get -u github.com/derekparker/delve/cmd/dlv
 RUN go get github.com/BurntSushi/toml
 RUN go get github.com/howeyc/fsnotify
 RUN go get github.com/mattn/go-colorable
-RUN go get -u github.com/xo/usql
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
+
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 RUN go install
 CMD ["bcdaworker"]
