@@ -1,4 +1,4 @@
-package quego
+package manager
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	goerrors "errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -16,55 +15,45 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/log/logrusadapter"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	QUE_PROCESS_JOB = "ProcessJob"
+)
+
+// queue is responsible for retrieving jobs using the que client and
+// transforming and delegating that work to the underlying worker
 type queue struct {
 	workers *que.WorkerPool
 	pool    *pgx.ConnPool
 }
 
-func Start(queueURL string, numWorkers int) *queue {
-	pgxcfg, err := pgx.ParseURI(queueURL)
+func StartQue(queueDatabaseURL string, numWorkers int) *queue {
+	cfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
-	pgxcfg.LogLevel = pgx.LogLevelDebug
-	pgxcfg.Logger = logrusadapter.NewLogger(logrus.StandardLogger())
-	fmt.Printf("%+v\n%s\n", pgxcfg, queueURL)
 
-	var pgxpool *pgx.ConnPool
-	for i := 0; i < 10; i++ {
-		cfg := pgx.ConnPoolConfig{
-			ConnConfig:   pgxcfg,
-			AfterConnect: que.PrepareStatements,
-		}
-		cfg.LogLevel = pgx.LogLevelDebug
-		cfg.Logger = logrusadapter.NewLogger(logrus.StandardLogger())
-		pgxpool, err = pgx.NewConnPool(cfg)
-		if err != nil {
-			log.Error(err)
-
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		break
+	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig:   cfg,
+		AfterConnect: que.PrepareStatements,
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	qc := que.NewClient(pgxpool)
+	qc := que.NewClient(pool)
 	wm := que.WorkMap{
-		"ProcessJob": processJob,
+		QUE_PROCESS_JOB: processJob,
 	}
 
-	workerPoolSize := utils.GetEnvInt("WORKER_POOL_SIZE", numWorkers)
-	workers := que.NewWorkerPool(qc, wm, workerPoolSize)
+	workers := que.NewWorkerPool(qc, wm, numWorkers)
 
 	workers.Start()
 
-	return &queue{workers, pgxpool}
+	return &queue{workers, pool}
 }
 
 func processJob(job *que.Job) error {
