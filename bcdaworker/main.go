@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/bcdaworker/queue/quego"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing/quego"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -7,6 +7,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/metrics"
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -15,7 +16,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/log/logrusadapter"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,13 +32,26 @@ func Start(queueURL string, numWorkers int) *queue {
 	if err != nil {
 		log.Fatal(err)
 	}
+	pgxcfg.LogLevel = pgx.LogLevelDebug
+	pgxcfg.Logger = logrusadapter.NewLogger(logrus.StandardLogger())
+	fmt.Printf("%+v\n%s\n", pgxcfg, queueURL)
 
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		log.Fatal(err)
+	var pgxpool *pgx.ConnPool
+	for i := 0; i < 10; i++ {
+		cfg := pgx.ConnPoolConfig{
+			ConnConfig:   pgxcfg,
+			AfterConnect: que.PrepareStatements,
+		}
+		cfg.LogLevel = pgx.LogLevelDebug
+		cfg.Logger = logrusadapter.NewLogger(logrus.StandardLogger())
+		pgxpool, err = pgx.NewConnPool(cfg)
+		if err != nil {
+			log.Error(err)
+
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		break
 	}
 
 	qc := que.NewClient(pgxpool)
