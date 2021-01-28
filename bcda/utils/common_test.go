@@ -18,18 +18,7 @@ func (s *CommonTestSuite) TestDedup() {
 	// Results should not have 2 "two"s
 	var result = Dedup(sampleSlice)
 
-	// Iterate through the results, and only encounter "two" once
-	// If counter is 1 after the for loop, good... anything else, not good
-	var counter = 0
-
-	for _, v := range result {
-		if v == "two" {
-			counter++
-		}
-	}
-
-	assert.Equal(s.T(), counter, 1)
-	// Ensure "one", "two", "thre" all exists
+	// Ensure "one", "two", "three" all exists
 	assert.Contains(s.T(), result, "one")
 	assert.Contains(s.T(), result, "two")
 	assert.Contains(s.T(), result, "three")
