@@ -79,3 +79,33 @@ func CloseFileAndLogError(f *os.File) {
 		logrus.Error(ferr)
 	}
 }
+
+// Dedup is function that takes a string slice and removes any duplicates.
+func Dedup(slice []string) []string {
+
+	/*
+	   While fast, hash map can be memory heavy. If the input data is very large (~100K)
+	   and lower memory usage is a requirement, make changes to this function.
+	   1. Work with reference of string slice instead of copy
+	   2. Don't use map... maybe use merge sort deletion
+	*/
+
+	// Get the length of the slice
+	var n = len(slice)
+
+	// Use the length to allocate memory once for new slice and map
+	var newSlice = make([]string, 0, n)
+	var dupcheck = make(map[string]bool, n)
+
+	for _, v := range slice {
+		// If false, we have not encountered the string before
+		// If it is true, do nothing
+		if !dupcheck[v] {
+			// Not a duplicate
+			dupcheck[v] = true
+			newSlice = append(newSlice, v)
+		}
+	}
+
+	return newSlice
+}
