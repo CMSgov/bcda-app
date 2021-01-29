@@ -53,6 +53,7 @@ func TestProcessJob(t *testing.T) {
 
 	queueURL := os.Getenv("QUEUE_DATABASE_URL")
 	q := StartQue(log, queueURL, 1)
+	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
 	// Since the jobArgs does not have any beneIDs, the job should complete almost immediately
 	jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: cmsID, BBBasePath: uuid.New()}
@@ -60,9 +61,10 @@ func TestProcessJob(t *testing.T) {
 	enqueuer := queueing.NewEnqueuer(queueURL)
 	assert.NoError(t, enqueuer.AddJob(jobArgs, 1))
 
+	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case <-time.After(10 * time.Second):
+		case <-timeout:
 			t.Fatal("Job not completed in alloted time.")
 			return
 		default:

@@ -88,7 +88,9 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queu
 // StopQue cleans up any resources created
 func (q *queue) StopQue() {
 	q.healthCheckCancel()
-	q.queDB.Close()
+	if err := q.queDB.Close(); err != nil {
+		q.log.Warnf("Failed to close connection to queue database %s", err)
+	}
 	q.quePool.Shutdown()
 	q.pool.Close()
 }
