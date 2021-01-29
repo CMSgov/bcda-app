@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/log/logrusadapter"
+	"github.com/jackc/pgx/stdlib"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,14 +18,29 @@ var LogFatal = log.Fatal
 
 func GetDbConnection() *sql.DB {
 	databaseURL := os.Getenv("DATABASE_URL")
-	db, err := sql.Open("postgres", databaseURL)
+	dc := stdlib.DriverConfig{
+		ConnConfig: pgx.ConnConfig{
+			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),
+			LogLevel: pgx.LogLevelError,
+		},
+		AfterConnect: func(c *pgx.Conn) error {
+			// Can be used to ensure temp tables, indexes, etc. exist
+			return nil
+		},
+	}
+
+	stdlib.RegisterDriverConfig(&dc)
+
+	db, err := sql.Open("pgx", dc.ConnectionString(databaseURL))
 	if err != nil {
 		LogFatal(err)
 	}
+
 	pingErr := db.Ping()
 	if pingErr != nil {
 		LogFatal(pingErr)
 	}
+
 	return db
 }
 
