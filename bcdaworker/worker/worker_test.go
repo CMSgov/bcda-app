@@ -42,11 +42,13 @@ type WorkerTestSuite struct {
 
 	db *sql.DB
 	r  repository.Repository
+	w  Worker
 }
 
 func (s *WorkerTestSuite) SetupSuite() {
 	s.db = database.GetDbConnection()
 	s.r = postgres.NewRepository(s.db)
+	s.w = NewWorker(s.db)
 
 	cmsID := "A1B2C" // Some unique ID that should be unique to this test
 
@@ -407,7 +409,7 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 		BBBasePath:     "/v1/fhir",
 	}
 
-	err = DefaultWorker.ProcessJob(ctx, j, jobArgs)
+	err = s.w.ProcessJob(ctx, j, jobArgs)
 	assert.Nil(s.T(), err)
 	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
@@ -437,7 +439,7 @@ func (s *WorkerTestSuite) TestProcessJob_EmptyBasePath() {
 		ResourceType:   "ExplanationOfBenefit",
 	}
 
-	j1, err := DefaultWorker.ValidateJob(context.Background(), jobArgs)
+	j1, err := s.w.ValidateJob(context.Background(), jobArgs)
 	assert.EqualError(s.T(), err, "empty BBBasePath: Must be set")
 	assert.Nil(s.T(), j1)
 
@@ -452,7 +454,7 @@ func (s *WorkerTestSuite) TestQueueJobWithNoParent() {
 		BBBasePath:     "/v1/fhir",
 	}
 
-	j, err := DefaultWorker.ValidateJob(context.Background(), jobArgs)
+	j, err := s.w.ValidateJob(context.Background(), jobArgs)
 	assert.EqualError(s.T(), err, "parent job not found")
 	assert.Nil(s.T(), j)
 }
@@ -479,7 +481,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	defer os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
 	os.Unsetenv("BB_CLIENT_CERT_FILE")
 
-	assert.Contains(s.T(), DefaultWorker.ProcessJob(context.Background(), j, jobArgs).Error(), "could not create Blue Button client")
+	assert.Contains(s.T(), s.w.ProcessJob(context.Background(), j, jobArgs).Error(), "could not create Blue Button client")
 }
 
 func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {

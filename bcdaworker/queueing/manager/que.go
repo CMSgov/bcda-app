@@ -28,22 +28,27 @@ const (
 // queue is responsible for retrieving jobs using the que client and
 // transforming and delegating that work to the underlying worker
 type queue struct {
-	workers *que.WorkerPool
-	pool    *pgx.ConnPool
-
+	quePool           *que.WorkerPool
+	pool              *pgx.ConnPool
 	healthCheckCancel context.CancelFunc
+
+	worker worker.Worker
 }
 
 // StartQue creates a que-go client and begins listening for items
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
 func StartQue(queueDatabaseURL string, numWorkers int) *queue {
+	// Allocate the queue in advance to supply the correct
+	// in the workmap
+	q := &queue{worker: worker.NewWorker(database.GetDbConnection())}
+
 	cfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+	q.pool, err = pgx.NewConnPool(pgx.ConnPoolConfig{
 		ConnConfig:   cfg,
 		AfterConnect: que.PrepareStatements,
 	})
@@ -53,28 +58,29 @@ func StartQue(queueDatabaseURL string, numWorkers int) *queue {
 
 	// Ensure that the connections are valid. Needed until we move to pgx v4
 	ctx, cancel := context.WithCancel(context.Background())
-	database.StartHealthCheck(ctx, pool, 10*time.Second)
+	q.healthCheckCancel = cancel
+	database.StartHealthCheck(ctx, q.pool, 10*time.Second)
 
-	qc := que.NewClient(pool)
+	qc := que.NewClient(q.pool)
 	wm := que.WorkMap{
-		QUE_PROCESS_JOB: processJob,
+		QUE_PROCESS_JOB: q.processJob,
 	}
 
-	workers := que.NewWorkerPool(qc, wm, numWorkers)
+	q.quePool = que.NewWorkerPool(qc, wm, numWorkers)
 
-	workers.Start()
+	q.quePool.Start()
 
-	return &queue{workers, pool, cancel}
+	return q
 }
 
 // StopQue cleans up any resources created
 func (q *queue) StopQue() {
 	q.healthCheckCancel()
-	q.workers.Shutdown()
+	q.quePool.Shutdown()
 	q.pool.Close()
 }
 
-func processJob(job *que.Job) error {
+func (q *queue) processJob(job *que.Job) error {
 	ctx := context.Background()
 	defer updateJobQueueCountCloudwatchMetric()
 
@@ -85,7 +91,7 @@ func processJob(job *que.Job) error {
 		return nil
 	}
 
-	exportJob, err := worker.DefaultWorker.ValidateJob(ctx, jobArgs)
+	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
 		return nil
@@ -109,7 +115,7 @@ func processJob(job *que.Job) error {
 		return err
 	}
 
-	return worker.DefaultWorker.ProcessJob(ctx, *exportJob, jobArgs)
+	return q.worker.ProcessJob(ctx, *exportJob, jobArgs)
 }
 
 func getQueueJobCount() float64 {

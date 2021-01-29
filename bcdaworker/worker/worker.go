@@ -3,6 +3,7 @@ package worker
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
@@ -11,7 +12,6 @@ import (
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -33,16 +33,11 @@ type worker struct {
 	r repository.Repository
 }
 
-// DefaultWorker is a singleton reference that will be used for all job actions.
-var DefaultWorker Worker
-
-func init() {
-	DefaultWorker = &worker{
-		r: postgres.NewRepository(database.GetDbConnection()),
-	}
+func NewWorker(db *sql.DB) Worker {
+	return &worker{postgres.NewRepository(db)}
 }
 
-func (w worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
+func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs) (*models.Job, error) {
 	if len(jobArgs.BBBasePath) == 0 {
 		return nil, ErrNoBasePathSet
 	}
@@ -61,7 +56,7 @@ func (w worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs) 
 	return exportJob, nil
 }
 
-func (w worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error {
+func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error {
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve ACO from database")
