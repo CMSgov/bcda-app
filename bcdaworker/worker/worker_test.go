@@ -547,6 +547,50 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 	}
 }
 
+func (s *WorkerTestSuite) TestValidateJob() {
+	ctx := context.Background()
+	r := &repository.MockRepository{}
+	w := &worker{r}
+
+	noBasePath := models.JobEnqueueArgs{ID: int(rand.Int31())}
+	jobNotFound := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	dbErr := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	jobCancelled := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	validJob := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobNotFound.ID)).Return(nil, repository.ErrJobNotFound)
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(dbErr.ID)).Return(nil, fmt.Errorf("some db error"))
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobCancelled.ID)).
+		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusCancelled}, nil)
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(validJob.ID)).
+		Return(&models.Job{ID: uint(validJob.ID), Status: models.JobStatusPending}, nil)
+
+	defer func() {
+		r.AssertExpectations(s.T())
+		// Shouldn't be called because we already determined the job is invalid
+		r.AssertNotCalled(s.T(), "GetJobByID", testUtils.CtxMatcher, uint(noBasePath.ID))
+	}()
+
+	j, err := w.ValidateJob(ctx, noBasePath)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrNoBasePathSet.Error())
+
+	j, err = w.ValidateJob(ctx, jobNotFound)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrParentJobNotFound.Error())
+
+	j, err = w.ValidateJob(ctx, dbErr)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), "some db error")
+
+	j, err = w.ValidateJob(ctx, jobCancelled)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrParentJobCancelled.Error())
+
+	j, err = w.ValidateJob(ctx, validJob)
+	assert.NoError(s.T(), err)
+	assert.EqualValues(s.T(), validJob.ID, j.ID)
+}
+
 func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 	j := models.Job{
 		ACOID:      acoID,
