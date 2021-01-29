@@ -26,6 +26,7 @@ func TestQueEnqueuer(t *testing.T) {
 	jobArgs := models.JobEnqueueArgs{ID: int(rand.Int31()), ACOID: uuid.New()}
 	assert.NoError(t, enqueuer.AddJob(jobArgs, priority))
 
+	// Verify that we've inserted the que_job as expected
 	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("COUNT(1)").From("que_jobs")
 	sb.Where(sb.Equal("CAST (args ->> 'ID' AS INTEGER)", jobArgs.ID), sb.Equal("args ->> 'ACOID'", jobArgs.ACOID),
 		sb.Equal("priority", priority))
@@ -36,6 +37,7 @@ func TestQueEnqueuer(t *testing.T) {
 	assert.NoError(t, row.Scan(&count))
 	assert.Equal(t, 1, count)
 
+	// Cleanup the que data
 	delete := sqlbuilder.PostgreSQL.NewDeleteBuilder().DeleteFrom("que_jobs")
 	delete.Where(delete.Equal("CAST (args ->> 'ID' AS INTEGER)", jobArgs.ID), delete.Equal("args ->> 'ACOID'", jobArgs.ACOID),
 		delete.Equal("priority", priority))
