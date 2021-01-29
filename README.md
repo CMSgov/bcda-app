@@ -125,14 +125,12 @@ The updated `dump.pgdata` should be committed with the other associated changes.
 
 ### Auto-generating mock implementations
 
-Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md).
+Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md).  Mockery uses interfaces to generate the mocks.  In the example below, the Repository interface in `repository.go` will be used to generate the mocks.
 
 Example:
 ```sh
-mockery --name Repository --testonly --inpackage --case snake
+mockery --name Repository --inpackage --case snake
 ```
-
-Will generate a mock implementation for the Repository interface.
 
 ## Use the application
 
