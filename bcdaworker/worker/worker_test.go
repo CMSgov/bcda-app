@@ -411,49 +411,11 @@ func (s *WorkerTestSuite) TestProcessJobEOB() {
 	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
+	fmt.Printf("%+v", completedJob)
 	assert.Nil(s.T(), err)
 	// As this test actually connects to BB, we can't be sure it will succeed
 	assert.Contains(s.T(), []models.JobStatus{models.JobStatusFailed, models.JobStatusCompleted}, completedJob.Status)
-}
-
-func (s *WorkerTestSuite) TestProcessJob_EmptyBasePath() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     models.JobStatusPending,
-		JobCount:   1,
-	}
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	complete, err := checkJobCompleteAndCleanup(context.Background(), s.r, j.ID)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), complete)
-
-	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
-		ACOID:          j.ACOID.String(),
-		BeneficiaryIDs: []string{"10000", "11000"},
-		ResourceType:   "ExplanationOfBenefit",
-	}
-
-	j1, err := s.w.ValidateJob(context.Background(), jobArgs)
-	assert.EqualError(s.T(), err, "empty BBBasePath: Must be set")
-	assert.Nil(s.T(), j1)
-
-}
-
-func (s *WorkerTestSuite) TestQueueJobWithNoParent() {
-	jobArgs := models.JobEnqueueArgs{
-		ID:             99999999,
-		ACOID:          "00000000-0000-0000-0000-000000000000",
-		BeneficiaryIDs: []string{},
-		ResourceType:   "Patient",
-		BBBasePath:     "/v1/fhir",
-	}
-
-	j, err := s.w.ValidateJob(context.Background(), jobArgs)
-	assert.EqualError(s.T(), err, "parent job not found")
-	assert.Nil(s.T(), j)
+	assert.Equal(s.T(), 1, completedJob.CompletedJobCount)
 }
 
 func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
