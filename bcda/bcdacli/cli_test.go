@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -39,6 +40,8 @@ type CLITestSuite struct {
 	expectedSizes      map[string]int
 	pendingDeletionDir string
 
+	testACO models.ACO
+
 	db *sql.DB
 }
 
@@ -62,6 +65,10 @@ func (s *CLITestSuite) SetupSuite() {
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 
 	s.db = database.GetDbConnection()
+
+	id := uuid.NewRandom()
+	s.testACO = models.ACO{Name: id.String(), UUID: id, ClientID: id.String()}
+	postgrestest.CreateACO(s.T(), s.db, s.testACO)
 }
 
 func (s *CLITestSuite) SetupTest() {
@@ -75,6 +82,7 @@ func (s *CLITestSuite) TearDownTest() {
 func (s *CLITestSuite) TearDownSuite() {
 	os.Setenv("CCLF_REF_DATE", origDate)
 	os.RemoveAll(s.pendingDeletionDir)
+	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	s.db.Close()
 }
 
@@ -374,44 +382,6 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	os.Remove(dataPath)
 }
 
-func setupArchivedJob(s *CLITestSuite, email string, modified time.Time) uint {
-	id := uuid.NewRandom()
-	aco := models.ACO{Name: "ACO " + email, UUID: id, ClientID: id.String()}
-	postgrestest.CreateACO(s.T(), s.db, aco)
-
-	// save a job to our db
-	j := models.Job{
-		ACOID:      aco.UUID,
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     models.JobStatusArchived,
-		UpdatedAt:  modified,
-	}
-
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-	return j.ID
-}
-
-func setupJobArchiveFile(s *CLITestSuite, email string, modified time.Time, accessed time.Time) (uint, *os.File) {
-	// directory structure is FHIR_ARCHIVE_DIR/<JobId>/<datafile>.ndjson
-	// for reference, see main.archiveExpiring() and its companion tests above
-	jobId := setupArchivedJob(s, email, modified)
-	path := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), jobId)
-
-	if err := os.MkdirAll(path, os.ModePerm); err != nil {
-		s.T().Error(err)
-	}
-	jobFile, err := os.Create(fmt.Sprintf("%s/%s", path, "fake.ndjson"))
-	if err != nil {
-		s.T().Error(err)
-	}
-	defer jobFile.Close()
-
-	if err := os.Chtimes(jobFile.Name(), accessed, modified); err != nil {
-		s.T().Error(err)
-	}
-	return jobId, jobFile
-}
-
 func (s *CLITestSuite) TestCleanArchive() {
 	// init
 	const Threshold = 30
@@ -433,18 +403,17 @@ func (s *CLITestSuite) TestCleanArchive() {
 
 	// create a file that was last modified before the Threshold, but accessed after it
 	modified := now.Add(-(time.Hour * (Threshold + 1)))
-	accessed := now.Add(-(time.Hour * (Threshold - 1)))
-	beforeJobID, before := setupJobArchiveFile(s, "before@test.com", modified, accessed)
+	beforeJobID, before := s.setupJobFile(modified, models.JobStatusArchived, os.Getenv("FHIR_ARCHIVE_DIR"))
 	defer before.Close()
 
 	// create a file that is clearly after the threshold (unless the threshold is 0)
-	afterJobID, after := setupJobArchiveFile(s, "after@test.com", now, now)
+	afterJobID, after := s.setupJobFile(now, models.JobStatusArchived, os.Getenv("FHIR_ARCHIVE_DIR"))
 	defer after.Close()
 
 	// condition: bad threshold value
 	args = []string{"bcda", "cleanup-archive", "--threshold", "abcde"}
 	err = s.testApp.Run(args)
-	assert.EqualError(err, "strconv.Atoi: parsing \"abcde\": invalid syntax")
+	assert.EqualError(err, "invalid value \"abcde\" for flag -threshold: parse error")
 
 	// condition: before < Threshold < after <= now
 	// a file created before the Threshold should be deleted; one created after should not
@@ -453,13 +422,7 @@ func (s *CLITestSuite) TestCleanArchive() {
 	err = s.testApp.Run(args)
 	assert.Nil(err)
 
-	_, err = os.Stat(before.Name())
-
-	if err == nil {
-		assert.Fail("%s was not removed; it should have been", before.Name())
-	} else {
-		assert.True(os.IsNotExist(err), "%s should have been removed", before.Name())
-	}
+	assertFileNotExists(s.T(), before.Name())
 
 	beforeJob := postgrestest.GetJobByID(s.T(), s.db, beforeJobID)
 	assert.Equal(models.JobStatusExpired, beforeJob.Status)
@@ -471,6 +434,58 @@ func (s *CLITestSuite) TestCleanArchive() {
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
 	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+}
+
+func (s *CLITestSuite) TestCleanupFailed() {
+	const threshold = 30
+	modified := time.Now().Add(-(time.Hour * (threshold + 1)))
+	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_PAYLOAD_DIR"))
+	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+	// Job is old enough, but does not match the status
+	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, os.Getenv("FHIR_PAYLOAD_DIR"))
+
+	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusFailed, os.Getenv("FHIR_PAYLOAD_DIR"))
+	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+
+	// Check that we can clean up jobs that do not have data
+	noDataID, noData := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+	dir, _ := path.Split(noData.Name())
+	os.RemoveAll(dir)
+	assertFileNotExists(s.T(), noData.Name())
+
+	shouldExist := []*os.File{afterPayload, afterStaging, completed}
+	shouldNotExist := []*os.File{beforePayload, beforeStaging, noData}
+
+	defer func() {
+		for _, f := range append(shouldExist, shouldNotExist...) {
+			os.Remove(f.Name())
+			f.Close()
+		}
+	}()
+
+	err := s.testApp.Run([]string{"bcda", "cleanup-failed", "--threshold", strconv.Itoa(threshold)})
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), models.JobStatusFailedExpired,
+		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
+	assert.Equal(s.T(), models.JobStatusFailedExpired,
+		postgrestest.GetJobByID(s.T(), s.db, noDataID).Status)
+	assert.Equal(s.T(), models.JobStatusFailedExpired,
+		postgrestest.GetJobByID(s.T(), s.db, beforeStagingJobID).Status)
+
+	assert.Equal(s.T(), models.JobStatusFailed,
+		postgrestest.GetJobByID(s.T(), s.db, afterPayloadJobID).Status)
+	assert.Equal(s.T(), models.JobStatusFailed,
+		postgrestest.GetJobByID(s.T(), s.db, afterStagingJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCompleted,
+		postgrestest.GetJobByID(s.T(), s.db, completedJobID).Status)
+
+	for _, f := range shouldExist {
+		assert.FileExists(s.T(), f.Name())
+	}
+	for _, f := range shouldNotExist {
+		assertFileNotExists(s.T(), f.Name())
+	}
 }
 
 func (s *CLITestSuite) TestRevokeToken() {
@@ -904,6 +919,30 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	}
 }
 
+func (s *CLITestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
+	j := models.Job{
+		ACOID:      s.testACO.UUID,
+		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
+		Status:     status,
+		UpdatedAt:  modified,
+	}
+
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+
+	path := fmt.Sprintf("%s/%d", rootPath, j.ID)
+
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		s.T().Error(err)
+	}
+	jobFile, err := os.Create(fmt.Sprintf("%s/%s", path, "fake.ndjson"))
+	if err != nil {
+		s.T().Error(err)
+	}
+	defer jobFile.Close()
+
+	return j.ID, jobFile
+}
+
 func createTestZipFile(zFile string, cclfFiles ...string) error {
 	zf, err := os.Create(zFile)
 	if err != nil {
@@ -931,4 +970,9 @@ func getFileCount(t *testing.T, path string) int {
 	f, err := ioutil.ReadDir(path)
 	assert.NoError(t, err)
 	return len(f)
+}
+
+func assertFileNotExists(t *testing.T, path string) {
+	_, err := os.Stat(path)
+	assert.True(t, os.IsNotExist(err), "file %s should not be found", path)
 }

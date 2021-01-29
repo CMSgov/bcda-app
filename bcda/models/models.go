@@ -12,17 +12,18 @@ import (
 )
 
 const (
-	JobStatusPending    JobStatus = "Pending"
-	JobStatusInProgress JobStatus = "In Progress"
-	JobStatusCompleted  JobStatus = "Completed"
-	JobStatusArchived   JobStatus = "Archived"
-	JobStatusExpired    JobStatus = "Expired"
-	JobStatusFailed     JobStatus = "Failed"
-	JobStatusCancelled  JobStatus = "Cancelled"
+	JobStatusPending       JobStatus = "Pending"
+	JobStatusInProgress    JobStatus = "In Progress"
+	JobStatusCompleted     JobStatus = "Completed"
+	JobStatusArchived      JobStatus = "Archived"
+	JobStatusExpired       JobStatus = "Expired"
+	JobStatusFailed        JobStatus = "Failed"
+	JobStatusCancelled     JobStatus = "Cancelled"
+	JobStatusFailedExpired JobStatus = "FailedExpired" // JobStatusFailedExpired represents on job that failed whose data has been cleaned up
 )
 
-var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress,
-	JobStatusCompleted, JobStatusArchived, JobStatusExpired, JobStatusFailed, JobStatusCancelled}
+var AllJobStatuses []JobStatus = []JobStatus{JobStatusPending, JobStatusInProgress, JobStatusCompleted,
+	JobStatusArchived, JobStatusExpired, JobStatusFailed, JobStatusCancelled, JobStatusFailedExpired}
 
 type JobStatus string
 type Job struct {

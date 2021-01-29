@@ -16,6 +16,7 @@ import (
 
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/stdlib"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -474,7 +475,7 @@ func setupQueue() *pgx.ConnPool {
 
 func getQueueJobCount() float64 {
 	databaseURL := os.Getenv("QUEUE_DATABASE_URL")
-	db, err := sql.Open("postgres", databaseURL)
+	db, err := sql.Open("pgx", databaseURL)
 	if err != nil {
 		log.Error(err)
 	}

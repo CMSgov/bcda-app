@@ -133,7 +133,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 	switch job.Status {
 
-	case models.JobStatusFailed:
+	case models.JobStatusFailed, models.JobStatusFailedExpired:
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 	case models.JobStatusPending, models.JobStatusInProgress:
@@ -203,6 +203,9 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
 		responseutils.WriteError(oo, w, http.StatusGone)
+	case models.JobStatusCancelled:
+		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Not_found, responseutils.Deleted, "Job has been cancelled.")
+		responseutils.WriteError(oo, w, http.StatusNotFound)
 	}
 }
 
