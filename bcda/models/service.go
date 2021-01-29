@@ -33,6 +33,7 @@ type Service interface {
 	GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
+	CancelJob(ctx context.Context, jobID uint) (uint, error)
 }
 
 const (
@@ -151,6 +152,27 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKe
 	}
 
 	return j, nonEmptyKeys, nil
+}
+
+func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
+	// Get the job by id.
+	job, err := s.repository.GetJobByID(ctx, jobID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Check if the job is pending or in progress.
+	if job.Status == JobStatusPending || job.Status == JobStatusInProgress {
+		job.Status = JobStatusCancelled
+		err = s.repository.UpdateJob(ctx, *job)
+		if err != nil {
+			return 0, err
+		}
+		return jobID, nil
+	}
+
+	// Return 0, nil to indicate attempt to cancel a non-cancellable job.
+	return 0, nil
 }
 
 func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since time.Time, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {

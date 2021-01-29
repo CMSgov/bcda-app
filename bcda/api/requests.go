@@ -37,7 +37,7 @@ import (
 type Handler struct {
 	qc *que.Client
 
-	Svc models.Service // add Delete in service
+	Svc models.Service
 
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary

@@ -504,7 +504,7 @@
 			"response": []
 		},
 		{
-			"name": "Delete job status, no token",
+			"name": "Delete job, no token",
 			"event": [
 				{
 					"listen": "test",
@@ -869,6 +869,56 @@
 							"key": "_type",
 							"value": "ExplanationOfBenefit"
 						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete job, valid token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json",
+						"disabled": true
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "{{eobJobUrl}}",
+					"host": [
+						"{{eobJobUrl}}"
 					]
 				}
 			},
