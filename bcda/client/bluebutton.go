@@ -22,7 +22,6 @@ import (
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/pkg/errors"
 
@@ -49,7 +48,7 @@ type BlueButtonConfig struct {
 // NewConfig generates a new BlueButtonConfig using various environment variables.
 func NewConfig(basePath string) BlueButtonConfig {
 	return BlueButtonConfig{
-		BBServer:   configuration.GetEnv("BB_SERVER_LOCATION"),
+		BBServer:   os.Getenv("BB_SERVER_LOCATION"),
 		BBBasePath: basePath,
 	}
 }
@@ -78,7 +77,7 @@ func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 	logger.SetReportCaller(true)
-	filePath := configuration.GetEnv("BCDA_BB_LOG")
+	filePath := os.Getenv("BCDA_BB_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
@@ -91,8 +90,8 @@ func init() {
 }
 
 func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
-	certFile := configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	keyFile := configuration.GetEnv("BB_CLIENT_KEY_FILE")
+	certFile := os.Getenv("BB_CLIENT_CERT_FILE")
+	keyFile := os.Getenv("BB_CLIENT_KEY_FILE")
 	pageSize := utils.GetEnvInt("BB_CLIENT_PAGE_SIZE", 0)
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
@@ -101,8 +100,8 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
 
-	if strings.ToLower(configuration.GetEnv("BB_CHECK_CERT")) != "false" {
-		caFile := configuration.GetEnv("BB_CLIENT_CA_FILE")
+	if strings.ToLower(os.Getenv("BB_CHECK_CERT")) != "false" {
+		caFile := os.Getenv("BB_CLIENT_CA_FILE")
 		caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not read CA file")
@@ -126,7 +125,7 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 		DisableCompression: false,
 	}
 	var timeout int
-	if timeout, err = strconv.Atoi(configuration.GetEnv("BB_TIMEOUT_MS")); err != nil {
+	if timeout, err = strconv.Atoi(os.Getenv("BB_TIMEOUT_MS")); err != nil {
 		logger.Info("Could not get Blue Button timeout from environment variable; using default value of 500.")
 		timeout = 500
 	}
@@ -366,7 +365,7 @@ func GetDefaultParams() (params url.Values) {
 }
 
 func HashIdentifier(toHash string) (hashedValue string) {
-	blueButtonPepper := configuration.GetEnv("BB_HASH_PEPPER")
+	blueButtonPepper := os.Getenv("BB_HASH_PEPPER")
 	blueButtonIter := utils.GetEnvInt("BB_HASH_ITER", 1000)
 
 	pepper, err := hex.DecodeString(blueButtonPepper)

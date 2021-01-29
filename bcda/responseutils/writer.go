@@ -3,10 +3,10 @@ package responseutils
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	fhirmodels "github.com/eug48/fhir/models"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
@@ -30,7 +30,7 @@ func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, cod
 
 func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodels.CapabilityStatement {
 	usecors := true
-	bbServer := configuration.GetEnv("BB_SERVER_LOCATION")
+	bbServer := os.Getenv("BB_SERVER_LOCATION")
 	statement := &fhirmodels.CapabilityStatement{
 		Status:       "active",
 		Date:         &fhirmodels.FHIRDateTime{Time: reldate, Precision: fhirmodels.Date},

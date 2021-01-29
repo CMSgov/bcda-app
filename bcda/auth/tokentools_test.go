@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type TokenToolsTestSuite struct {
@@ -21,7 +21,7 @@ type TokenToolsTestSuite struct {
 }
 
 func (s *TokenToolsTestSuite) SetupSuite() {
-	s.originalEnvValue = configuration.GetEnv("JWT_EXPIRATION_DELTA")
+	s.originalEnvValue = os.Getenv("JWT_EXPIRATION_DELTA")
 	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
 	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
 	s.reset = func() {
@@ -32,12 +32,12 @@ func (s *TokenToolsTestSuite) SetupSuite() {
 }
 
 func (s *TokenToolsTestSuite) TearDownSuite() {
-	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", s.originalEnvValue)
+	os.Setenv("JWT_EXPIRATION_DELTA", s.originalEnvValue)
 	s.reset()
 }
 
 func (s *TokenToolsTestSuite) AfterTest() {
-	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", "60")
+	os.Setenv("JWT_EXPIRATION_DELTA", "60")
 }
 
 func (s *TokenToolsTestSuite) TestTokenDurationDefault() {
@@ -48,7 +48,7 @@ func (s *TokenToolsTestSuite) TestTokenDurationDefault() {
 func (s *TokenToolsTestSuite) TestTokenDurationOverride() {
 	assert.NotEmpty(s.T(), auth.TokenTTL)
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
-	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", "5")
+	os.Setenv("JWT_EXPIRATION_DELTA", "5")
 	auth.SetTokenDuration()
 	assert.Equal(s.T(), 5*time.Minute, auth.TokenTTL)
 }
@@ -56,7 +56,7 @@ func (s *TokenToolsTestSuite) TestTokenDurationOverride() {
 func (s *TokenToolsTestSuite) TestTokenDurationEmptyOverride() {
 	assert.NotEmpty(s.T(), auth.TokenTTL)
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
-	configuration.SetEnv(&testing.T{}, "JWT_EXPIRATION_DELTA", "")
+	os.Setenv("JWT_EXPIRATION_DELTA", "")
 	auth.SetTokenDuration()
 	assert.Equal(s.T(), time.Hour, auth.TokenTTL)
 }

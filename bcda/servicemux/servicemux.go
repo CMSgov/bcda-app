@@ -7,11 +7,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-
-    configuration "github.com/CMSgov/bcda-app/config"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
@@ -20,7 +19,7 @@ import (
 var keepAliveInterval int = 60
 
 func init() {
-	interval := configuration.GetEnv("SERVICE_MUX_KEEP_ALIVE_INTERVAL")
+	interval := os.Getenv("SERVICE_MUX_KEEP_ALIVE_INTERVAL")
 	if interval != "" {
 		interval, err := strconv.Atoi(interval)
 		if err != nil {
@@ -91,11 +90,11 @@ func (sm *ServiceMux) AddServer(s *http.Server, m string) {
 }
 
 func (sm *ServiceMux) Serve() {
-	tlsCertPath := configuration.GetEnv("BCDA_TLS_CERT")
-	tlsKeyPath := configuration.GetEnv("BCDA_TLS_KEY")
+	tlsCertPath := os.Getenv("BCDA_TLS_CERT")
+	tlsKeyPath := os.Getenv("BCDA_TLS_KEY")
 
 	// If HTTP_ONLY is not set or has any value except true, assume HTTPS
-	if configuration.GetEnv("HTTP_ONLY") == "true" {
+	if os.Getenv("HTTP_ONLY") == "true" {
 		sm.serveHTTP()
 	} else if tlsCertPath != "" && tlsKeyPath != "" {
 		sm.serveHTTPS(tlsCertPath, tlsKeyPath)

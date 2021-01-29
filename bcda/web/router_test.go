@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -12,9 +13,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-
-    configuration "github.com/CMSgov/bcda-app/config"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -27,7 +25,7 @@ type RouterTestSuite struct {
 }
 
 func (s *RouterTestSuite) SetupTest() {
-	configuration.SetEnv(&testing.T{}, "DEBUG", "true")
+	os.Setenv("DEBUG", "true")
 	s.apiRouter = NewAPIRouter()
 	s.dataRouter = NewDataRouter()
 }
@@ -57,7 +55,7 @@ func (s *RouterTestSuite) TestUGRoute() {
 }
 
 func (s *RouterTestSuite) TestDefaultProdRoute() {
-	err := configuration.SetEnv(&testing.T{}, "DEPLOYMENT_TARGET", "prod")
+	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
 	if err != nil {
 		s.FailNow("err in setting env var", err)
 	}
@@ -66,7 +64,7 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 	res := s.getAPIRoute("/")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	err = configuration.UnsetEnv(&testing.T{}, "DEPLOYMENT_TARGET")
+	err = os.Unsetenv("DEPLOYMENT_TARGET")
 	if err != nil {
 		s.FailNow("err in setting env var", err)
 	}
@@ -98,11 +96,11 @@ func (s *RouterTestSuite) TestVersionRoute() {
 }
 
 func (s *RouterTestSuite) TestGroupEndpointDisabled() {
-	err := configuration.UnsetEnv(&testing.T{}, "BCDA_ENABLE_NEW_GROUP")
+	err := os.Unsetenv("BCDA_ENABLE_NEW_GROUP")
 	assert.Nil(s.T(), err)
 	res := s.getAPIRoute("/api/v1/Groups/new/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-	err = configuration.SetEnv(&testing.T{}, "BCDA_ENABLE_GROUP", "true")
+	err = os.Setenv("BCDA_ENABLE_GROUP", "true")
 	assert.Nil(s.T(), err)
 }
 
@@ -174,9 +172,9 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 
 func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	// Set the V2 endpoints to be off and restart the router so the test router has the correct configuration
-	v2Active := configuration.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer configuration.SetEnv(&testing.T{}, "VERSION_2_ENDPOINT_ACTIVE", v2Active)
-	configuration.SetEnv(&testing.T{}, "VERSION_2_ENDPOINT_ACTIVE", "false")
+	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "false")
 	s.apiRouter = NewAPIRouter()
 
 	res := s.getAPIRoute("/api/v2/Patient/$export")
@@ -189,9 +187,9 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 
 func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	// Set the V2 endpoints to be on and restart the router so the test router has the correct configuration
-	v2Active := configuration.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer configuration.SetEnv(&testing.T{}, "VERSION_2_ENDPOINT_ACTIVE", v2Active)
-	configuration.SetEnv(&testing.T{}, "VERSION_2_ENDPOINT_ACTIVE", "true")
+	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
 	s.apiRouter = NewAPIRouter()
 
 	res := s.getAPIRoute("/api/v2/Patient/$export")
@@ -242,9 +240,9 @@ func (s *RouterTestSuite) TestHTTPServerRedirect() {
 // TestBlacklistedACOs ensures that we return 403 FORBIDDEN when a call is made from a blacklisted ACO.
 func (s *RouterTestSuite) TestBlacklistedACO() {
 	// Use a new router to ensure that v2 endpoints are active
-	v2Active := configuration.GetEnv("VERSION_2_ENDPOINT_ACTIVE")
-	defer configuration.SetEnv(&testing.T{}, "VERSION_2_ENDPOINT_ACTIVE", v2Active)
-	configuration.SetEnv(&testing.T{}, "VERSION_2_ENDPOINT_ACTIVE", "true")
+	v2Active := os.Getenv("VERSION_2_ENDPOINT_ACTIVE")
+	defer os.Setenv("VERSION_2_ENDPOINT_ACTIVE", v2Active)
+	os.Setenv("VERSION_2_ENDPOINT_ACTIVE", "true")
 	apiRouter := NewAPIRouter()
 
 	db := database.GetGORMDbConnection()

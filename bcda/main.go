@@ -41,13 +41,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
-    configuration "github.com/CMSgov/bcda-app/config"
-
 	log "github.com/sirupsen/logrus"
 )
 
 func init() {
-	isEtlMode := configuration.GetEnv("BCDA_ETL_MODE")
+	isEtlMode := os.Getenv("BCDA_ETL_MODE")
 	if isEtlMode != "true" {
 		createAPIDirs()
 	} else {
@@ -56,7 +54,7 @@ func init() {
 
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	filePath := configuration.GetEnv("BCDA_ERROR_LOG")
+	filePath := os.Getenv("BCDA_ERROR_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
@@ -78,7 +76,7 @@ func init() {
 }
 
 func createAPIDirs() {
-	archive := configuration.GetEnv("FHIR_ARCHIVE_DIR")
+	archive := os.Getenv("FHIR_ARCHIVE_DIR")
 	err := os.MkdirAll(archive, 0744)
 	if err != nil {
 		log.Fatal(err)
@@ -86,7 +84,7 @@ func createAPIDirs() {
 }
 
 func createETLDirs() {
-	pendingDeletionPath := configuration.GetEnv("PENDING_DELETION_DIR")
+	pendingDeletionPath := os.Getenv("PENDING_DELETION_DIR")
 	err := os.MkdirAll(pendingDeletionPath, 0744)
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "Could not create CCLF file pending deletion directory"))

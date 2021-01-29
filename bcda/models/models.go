@@ -16,8 +16,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-    configuration "github.com/CMSgov/bcda-app/config"
-
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -57,8 +55,8 @@ func (job *Job) CheckCompletedAndCleanup(db *gorm.DB) (bool, error) {
 
 	if int(completedJobs) >= job.JobCount {
 
-		staging := fmt.Sprintf("%s/%d", configuration.GetEnv("FHIR_STAGING_DIR"), job.ID)
-		payload := fmt.Sprintf("%s/%d", configuration.GetEnv("FHIR_PAYLOAD_DIR"), job.ID)
+		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), job.ID)
+		payload := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), job.ID)
 
 		files, err := ioutil.ReadDir(staging)
 		if err != nil {
@@ -129,7 +127,7 @@ type CCLFBeneficiaryXref struct {
 // GetPublicKey returns the ACO's public key.
 func (aco *ACO) GetPublicKey() (*rsa.PublicKey, error) {
 	var key string
-	if strings.ToLower(configuration.GetEnv("BCDA_AUTH_PROVIDER")) == "ssas" {
+	if strings.ToLower(os.Getenv("BCDA_AUTH_PROVIDER")) == "ssas" {
 		ssas, err := authclient.NewSSASClient()
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot retrieve public key for ACO "+aco.UUID.String())
@@ -179,8 +177,8 @@ func (aco *ACO) SavePublicKey(publicKey io.Reader) error {
 // This key is not meant to protect anything and both halves will be made available publicly
 func GetATOPublicKey() *rsa.PublicKey {
 	fmt.Println("Looking for a key at:")
-	fmt.Println(configuration.GetEnv("ATO_PUBLIC_KEY_FILE"))
-	atoPublicKeyFile, err := os.Open(configuration.GetEnv("ATO_PUBLIC_KEY_FILE"))
+	fmt.Println(os.Getenv("ATO_PUBLIC_KEY_FILE"))
+	atoPublicKeyFile, err := os.Open(os.Getenv("ATO_PUBLIC_KEY_FILE"))
 	if err != nil {
 		fmt.Println("failed to open file")
 		panic(err)
@@ -189,7 +187,7 @@ func GetATOPublicKey() *rsa.PublicKey {
 }
 
 func GetATOPrivateKey() *rsa.PrivateKey {
-	atoPrivateKeyFile, err := os.Open(configuration.GetEnv("ATO_PRIVATE_KEY_FILE"))
+	atoPrivateKeyFile, err := os.Open(os.Getenv("ATO_PRIVATE_KEY_FILE"))
 	if err != nil {
 		panic(err)
 	}

@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type SuppressionTestSuite struct {
@@ -386,9 +385,9 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	err := cleanupSuppression(suppresslist)
 	assert.Nil(err)
 
-	files, err := ioutil.ReadDir(configuration.GetEnv("PENDING_DELETION_DIR"))
+	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
 	if err != nil {
-		s.FailNow("failed to read directory: %s", configuration.GetEnv("PENDING_DELETION_DIR"), err)
+		s.FailNow("failed to read directory: %s", os.Getenv("PENDING_DELETION_DIR"), err)
 	}
 
 	for _, file := range files {

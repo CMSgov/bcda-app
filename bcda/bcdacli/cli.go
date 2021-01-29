@@ -26,8 +26,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
-    configuration "github.com/CMSgov/bcda-app/config"
-
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -613,10 +611,10 @@ func archiveExpiring(hrThreshold int) error {
 	var lastJobError error
 	for _, j := range jobs {
 		id := j.ID
-		jobPayloadDir := fmt.Sprintf("%s/%d", configuration.GetEnv("FHIR_PAYLOAD_DIR"), id)
+		jobPayloadDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
 		_, err = os.Stat(jobPayloadDir)
 		jobPayloadDirExist := err == nil
-		jobArchiveDir := fmt.Sprintf("%s/%d", configuration.GetEnv("FHIR_ARCHIVE_DIR"), id)
+		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
 		if jobPayloadDirExist {
 			err = os.Rename(jobPayloadDir, jobArchiveDir)
@@ -656,7 +654,7 @@ func cleanupArchive(hrThreshold int) error {
 
 	for _, job := range jobs {
 		id := int(job.ID)
-		jobArchiveDir := fmt.Sprintf("%s/%d", configuration.GetEnv("FHIR_ARCHIVE_DIR"), id)
+		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
 
 		err = os.RemoveAll(jobArchiveDir)
 		if err != nil {

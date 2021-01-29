@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
@@ -16,7 +17,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 var (
@@ -48,9 +48,9 @@ func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
 func (s *SSASMiddlewareTestSuite) SetupSuite() {
 	s.server = httptest.NewServer(s.createRouter())
 
-	originalSSASURL = configuration.GetEnv("SSAS_URL")
-	originalPublicSSASURL = configuration.GetEnv("SSAS_PUBLIC_URL")
-	originalSSASUseTLS = configuration.GetEnv("SSAS_USE_TLS")
+	originalSSASURL = os.Getenv("SSAS_URL")
+	originalPublicSSASURL = os.Getenv("SSAS_PUBLIC_URL")
+	originalSSASUseTLS = os.Getenv("SSAS_USE_TLS")
 
 	originalProvider = auth.GetProviderName()
 	auth.SetProvider("ssas")
@@ -59,9 +59,9 @@ func (s *SSASMiddlewareTestSuite) SetupSuite() {
 
 func (s *SSASMiddlewareTestSuite) TearDownSuite() {
 	s.server.Close()
-	configuration.SetEnv(&testing.T{}, "SSAS_URL", originalSSASURL)
-	configuration.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", originalPublicSSASURL)
-	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", originalSSASUseTLS)
+	os.Setenv("SSAS_URL", originalSSASURL)
+	os.Setenv("SSAS_PUBLIC_URL", originalPublicSSASURL)
+	os.Setenv("SSAS_USE_TLS", originalSSASUseTLS)
 
 	fmt.Println("restoring to", originalProvider)
 	auth.SetProvider(originalProvider)

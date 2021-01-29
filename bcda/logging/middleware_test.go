@@ -20,7 +20,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type LoggingMiddlewareTestSuite struct {
@@ -57,10 +56,10 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 	defer os.Remove(logFile.Name())
 
 	defer func(path string) {
-		configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", path)
-	}(configuration.GetEnv("BCDA_REQUEST_LOG"))
+		os.Setenv("BCDA_REQUEST_LOG", path)
+	}(os.Getenv("BCDA_REQUEST_LOG"))
 
-	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", logFile.Name())
+	os.Setenv("BCDA_REQUEST_LOG", logFile.Name())
 
 	server := httptest.NewTLSServer(s.CreateRouter())
 	client := server.Client()
@@ -110,8 +109,8 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 }
 
 func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
-	reqLogPathOrig := configuration.GetEnv("BCDA_REQUEST_LOG")
-	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", "")
+	reqLogPathOrig := os.Getenv("BCDA_REQUEST_LOG")
+	os.Setenv("BCDA_REQUEST_LOG", "")
 	server := httptest.NewServer(s.CreateRouter())
 	client := server.Client()
 
@@ -127,12 +126,12 @@ func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
 	assert.Equal(s.T(), 200, resp.StatusCode)
 
 	server.Close()
-	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", reqLogPathOrig)
+	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
 func (s *LoggingMiddlewareTestSuite) TestPanic() {
-	reqLogPathOrig := configuration.GetEnv("BCDA_REQUEST_LOG")
-	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", "bcda-req-test.log")
+	reqLogPathOrig := os.Getenv("BCDA_REQUEST_LOG")
+	os.Setenv("BCDA_REQUEST_LOG", "bcda-req-test.log")
 
 	server := httptest.NewTLSServer(s.CreateRouter())
 	client := server.Client()
@@ -149,7 +148,7 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 
 	server.Close()
 
-	logFile, err := os.OpenFile(configuration.GetEnv("BCDA_REQUEST_LOG"), os.O_RDONLY, os.ModePerm)
+	logFile, err := os.OpenFile(os.Getenv("BCDA_REQUEST_LOG"), os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		s.Fail("File read error")
 	}
@@ -188,7 +187,7 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 
 	server.Close()
 	os.Remove("bcda-req-test.log")
-	configuration.SetEnv(&testing.T{}, "BCDA_REQUEST_LOG", reqLogPathOrig)
+	os.Setenv("BCDA_REQUEST_LOG", reqLogPathOrig)
 }
 
 func (s *LoggingMiddlewareTestSuite) TestRedact() {

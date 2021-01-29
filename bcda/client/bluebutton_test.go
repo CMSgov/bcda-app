@@ -15,7 +15,6 @@ import (
 	"time"
 
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
-    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/pborman/uuid"
@@ -49,11 +48,11 @@ var (
 )
 
 func (s *BBTestSuite) SetupSuite() {
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
-	configuration.SetEnv(&testing.T{}, "BB_REQUEST_RETRY_INTERVAL_MS", "10")
-	configuration.SetEnv(&testing.T{}, "BB_TIMEOUT_MS", "2000")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
+	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
+	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	os.Setenv("BB_TIMEOUT_MS", "2000")
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
@@ -85,112 +84,112 @@ func (s *BBRequestTestSuite) BeforeTest(suiteName, testName string) {
 
 /* Tests for creating client and other functions that don't make requests */
 func (s *BBTestSuite) TestNewBlueButtonClientNoCertFile() {
-	origCertFile := configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", origCertFile)
+	origCertFile := os.Getenv("BB_CLIENT_CERT_FILE")
+	defer os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
 
 	assert := assert.New(s.T())
 
-	configuration.UnsetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE")
+	os.Unsetenv("BB_CLIENT_CERT_FILE")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "foo.pem")
+	os.Setenv("BB_CLIENT_CERT_FILE", "foo.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidCertFile() {
-	origCertFile := configuration.GetEnv("BB_CLIENT_CERT_FILE")
-	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", origCertFile)
+	origCertFile := os.Getenv("BB_CLIENT_CERT_FILE")
+	defer os.Setenv("BB_CLIENT_CERT_FILE", origCertFile)
 
 	assert := assert.New(s.T())
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../static/emptyFile.pem")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
+	os.Setenv("BB_CLIENT_CERT_FILE", "../static/badPublic.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in certificate input")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientNoKeyFile() {
-	origKeyFile := configuration.GetEnv("BB_CLIENT_KEY_FILE")
-	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", origKeyFile)
+	origKeyFile := os.Getenv("BB_CLIENT_KEY_FILE")
+	defer os.Setenv("BB_CLIENT_KEY_FILE", origKeyFile)
 
 	assert := assert.New(s.T())
 
-	configuration.UnsetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE")
+	os.Unsetenv("BB_CLIENT_KEY_FILE")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open : no such file or directory")
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "foo.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "foo.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: open foo.pem: no such file or directory")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidKeyFile() {
-	origKeyFile := configuration.GetEnv("BB_CLIENT_KEY_FILE")
-	defer configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", origKeyFile)
+	origKeyFile := os.Getenv("BB_CLIENT_KEY_FILE")
+	defer os.Setenv("BB_CLIENT_KEY_FILE", origKeyFile)
 
 	assert := assert.New(s.T())
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../static/emptyFile.pem")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
+	os.Setenv("BB_CLIENT_KEY_FILE", "../static/badPublic.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not load Blue Button keypair: tls: failed to find any PEM data in key input")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientNoCAFile() {
-	origCAFile := configuration.GetEnv("BB_CLIENT_CA_FILE")
-	origCheckCert := configuration.GetEnv("BB_CHECK_CERT")
+	origCAFile := os.Getenv("BB_CLIENT_CA_FILE")
+	origCheckCert := os.Getenv("BB_CHECK_CERT")
 	defer func() {
-		configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", origCAFile)
-		configuration.SetEnv(&testing.T{}, "BB_CHECK_CERT", origCheckCert)
+		os.Setenv("BB_CLIENT_CA_FILE", origCAFile)
+		os.Setenv("BB_CHECK_CERT", origCheckCert)
 	}()
 
 	assert := assert.New(s.T())
 
-	configuration.UnsetEnv(&testing.T{}, "BB_CLIENT_CA_FILE")
-	configuration.UnsetEnv(&testing.T{}, "BB_CHECK_CERT")
+	os.Unsetenv("BB_CLIENT_CA_FILE")
+	os.Unsetenv("BB_CHECK_CERT")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: read .: is a directory")
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "foo.pem")
+	os.Setenv("BB_CLIENT_CA_FILE", "foo.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not read CA file: open foo.pem: no such file or directory")
 }
 
 func (s *BBTestSuite) TestNewBlueButtonClientInvalidCAFile() {
-	origCAFile := configuration.GetEnv("BB_CLIENT_CA_FILE")
-	origCheckCert := configuration.GetEnv("BB_CHECK_CERT")
+	origCAFile := os.Getenv("BB_CLIENT_CA_FILE")
+	origCheckCert := os.Getenv("BB_CHECK_CERT")
 	defer func() {
-		configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", origCAFile)
-		configuration.SetEnv(&testing.T{}, "BB_CHECK_CERT", origCheckCert)
+		os.Setenv("BB_CLIENT_CA_FILE", origCAFile)
+		os.Setenv("BB_CHECK_CERT", origCheckCert)
 	}()
 
 	assert := assert.New(s.T())
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
-	configuration.UnsetEnv(&testing.T{}, "BB_CHECK_CERT")
+	os.Setenv("BB_CLIENT_CA_FILE", "../static/emptyFile.pem")
+	os.Unsetenv("BB_CHECK_CERT")
 	bbc, err := client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
 
-	configuration.SetEnv(&testing.T{}, "BB_CLIENT_CA_FILE", "../static/badPublic.pem")
+	os.Setenv("BB_CLIENT_CA_FILE", "../static/badPublic.pem")
 	bbc, err = client.NewBlueButtonClient(client.NewConfig(""))
 	assert.Nil(bbc)
 	assert.EqualError(err, "could not append CA certificate(s)")
@@ -264,11 +263,11 @@ func (s *BBRequestTestSuite) TestGetPatientByIdentifierHash() {
 
 // Sample values from https://confluence.cms.gov/pages/viewpage.action?spaceKey=BB&title=Getting+Started+with+Blue+Button+2.0%27s+Backend#space-menu-link-content
 func (s *BBTestSuite) TestHashIdentifier() {
-	assert.NotZero(s.T(), configuration.GetEnv("BB_HASH_PEPPER"))
+	assert.NotZero(s.T(), os.Getenv("BB_HASH_PEPPER"))
 	HICN := "1000067585"
 	HICNHash := client.HashIdentifier(HICN)
 	// This test will only be valid for this pepper.  If it is different in different environments we will need different checks
-	if configuration.GetEnv("BB_HASH_PEPPER") == "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9" {
+	if os.Getenv("BB_HASH_PEPPER") == "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9" {
 		assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", HICNHash)
 	}
 	HICN = "123456789"
@@ -277,7 +276,7 @@ func (s *BBTestSuite) TestHashIdentifier() {
 
 	MBI := "1000067585"
 	MBIHash := client.HashIdentifier(MBI)
-	if configuration.GetEnv("BB_HASH_PEPPER") == "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9" {
+	if os.Getenv("BB_HASH_PEPPER") == "b8ebdcc47fdd852b8b0201835c6273a9177806e84f2d9dc4f7ecaff08681e86d74195c6aef2db06d3d44c9d0b8f93c3e6c43d90724b605ac12585b9ab5ee9c3f00d5c0d284e6b8e49d502415c601c28930637b58fdca72476e31c22ad0f24ecd761020d6a4bcd471f0db421d21983c0def1b66a49a230f85f93097e9a9a8e0a4f4f0add775213cbf9ecfc1a6024cb021bd1ed5f4981a4498f294cca51d3939dfd9e6a1045350ddde7b6d791b4d3b884ee890d4c401ef97b46d1e57d40efe5737248dd0c4cec29c23c787231c4346cab9bb973f140a32abaa0a2bd5c0b91162f8d2a7c9d3347aafc76adbbd90ec5bfe617a3584e94bc31047e3bb6850477219a9" {
 		assert.Equal(s.T(), "b67baee938a551f06605ecc521cc329530df4e088e5a2d84bbdcc047d70faff4", MBIHash)
 	}
 	MBI = "123456789"

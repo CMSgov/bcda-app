@@ -2,10 +2,10 @@ package testutils
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -18,15 +18,15 @@ type CCLFUtilTestSuite struct {
 var origDate string
 
 func (s *CCLFUtilTestSuite) SetupSuite() {
-	origDate = configuration.GetEnv("CCLF_REF_DATE")
+	origDate = os.Getenv("CCLF_REF_DATE")
 }
 
 func (s *CCLFUtilTestSuite) SetupTest() {
-	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "D181201")
+	os.Setenv("CCLF_REF_DATE", "D181201")
 }
 
 func (s *CCLFUtilTestSuite) TearDownSuite() {
-	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", origDate)
+	os.Setenv("CCLF_REF_DATE", origDate)
 }
 
 func TestCCLFTestSuite(t *testing.T) {
@@ -35,7 +35,7 @@ func TestCCLFTestSuite(t *testing.T) {
 
 func (s *CCLFUtilTestSuite) TestImportInvalidSizeACO() {
 	assert := assert.New(s.T())
-	configuration.SetEnv(&testing.T{}, "CCLF_REF_DATE", "D190617")
+	os.Setenv("CCLF_REF_DATE", "D190617")
 	err := ImportCCLFPackage("NOTREAL", "test", models.FileTypeDefault)
 	assert.EqualError(err, "invalid argument for ACO size")
 }

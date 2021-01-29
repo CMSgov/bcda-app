@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,8 +18,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-    configuration "github.com/CMSgov/bcda-app/config"
-
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -335,17 +334,17 @@ OwIDAQAB
 	})
 	server := httptest.NewServer(router)
 
-	origAuthProvider := configuration.GetEnv("BCDA_AUTH_PROVIDER")
-	configuration.SetEnv(&testing.T{}, "BCDA_AUTH_PROVIDER", "ssas")
-	defer configuration.SetEnv(&testing.T{}, "BCDA_AUTH_PROVIDER", origAuthProvider)
+	origAuthProvider := os.Getenv("BCDA_AUTH_PROVIDER")
+	os.Setenv("BCDA_AUTH_PROVIDER", "ssas")
+	defer os.Setenv("BCDA_AUTH_PROVIDER", origAuthProvider)
 
-	origSSASURL := configuration.GetEnv("SSAS_URL")
-	configuration.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
-	defer configuration.SetEnv(&testing.T{}, "SSAS_URL", origSSASURL)
+	origSSASURL := os.Getenv("SSAS_URL")
+	os.Setenv("SSAS_URL", server.URL)
+	defer os.Setenv("SSAS_URL", origSSASURL)
 
-	origSSASUseTLS := configuration.GetEnv("SSAS_USE_TLS")
-	configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
-	defer configuration.SetEnv(&testing.T{}, "SSAS_USE_TLS", origSSASUseTLS)
+	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
+	os.Setenv("SSAS_USE_TLS", "false")
+	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
 
 	cmsID := "A0001"
 	aco := ACO{Name: "Public key from SSAS ACO", CMSID: &cmsID, UUID: uuid.NewRandom(), ClientID: "100"}

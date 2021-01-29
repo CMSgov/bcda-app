@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -19,7 +20,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
-    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/mock"
@@ -55,7 +55,7 @@ func (s *RequestsTestSuite) SetupSuite() {
 }
 
 func (s *RequestsTestSuite) SetupTest() {
-	s.runoutEnabledEnvVar = configuration.GetEnv("BCDA_ENABLE_RUNOUT")
+	s.runoutEnabledEnvVar = os.Getenv("BCDA_ENABLE_RUNOUT")
 }
 
 func (s *RequestsTestSuite) TearDownSuite() {
@@ -65,11 +65,11 @@ func (s *RequestsTestSuite) TearDownSuite() {
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
-	configuration.SetEnv(&testing.T{}, "BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
+	os.Setenv("BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
 }
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
-	configuration.SetEnv(&testing.T{}, "BCDA_ENABLE_RUNOUT", "true")
+	os.Setenv("BCDA_ENABLE_RUNOUT", "true")
 	qj := []*que.Job{&que.Job{Type: "ProcessJob"}, &que.Job{Type: "ProcessJob"}}
 	tests := []struct {
 		name string
@@ -113,7 +113,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 }
 
 func (s *RequestsTestSuite) TestRunoutDisabled() {
-	configuration.SetEnv(&testing.T{}, "BCDA_ENABLE_RUNOUT", "false")
+	os.Setenv("BCDA_ENABLE_RUNOUT", "false")
 	req := s.genGroupRequest("runout")
 	w := httptest.NewRecorder()
 	h := &Handler{}
@@ -244,9 +244,9 @@ func (s *RequestsTestSuite) TestCheck429() {
 func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	// Switch over to validate the 429 behavior
 	dt := "DEPLOYMENT_TARGET"
-	target := configuration.GetEnv(dt)
-	defer configuration.SetEnv(&testing.T{}, dt, target)
-	configuration.SetEnv(&testing.T{}, dt, "prod")
+	target := os.Getenv(dt)
+	defer os.Setenv(dt, target)
+	os.Setenv(dt, "prod")
 
 	var aco models.ACO
 	s.NoError(s.db.First(&aco, "uuid = ?", s.acoID).Error)

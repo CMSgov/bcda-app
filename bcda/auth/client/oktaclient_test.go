@@ -9,10 +9,9 @@ package client
 import (
 	"crypto/rand"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
-
-    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -30,27 +29,27 @@ func (s *OTestSuite) SetupTest() {
 }
 
 func (s *OTestSuite) TestConfig() {
-	originalOktaBaseUrl := configuration.GetEnv("OKTA_CLIENT_ORGURL")
-	originalOktaServerID := configuration.GetEnv("OKTA_OAUTH_SERVER_ID")
-	originalOktaToken := configuration.GetEnv("OKTA_CLIENT_TOKEN")
+	originalOktaBaseUrl := os.Getenv("OKTA_CLIENT_ORGURL")
+	originalOktaServerID := os.Getenv("OKTA_OAUTH_SERVER_ID")
+	originalOktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
 
-	configuration.UnsetEnv(&testing.T{}, "OKTA_CLIENT_ORGURL")
-	configuration.UnsetEnv(&testing.T{}, "OKTA_OAUTH_SERVER_ID")
-	configuration.UnsetEnv(&testing.T{}, "OKTA_CLIENT_TOKEN")
+	os.Unsetenv("OKTA_CLIENT_ORGURL")
+	os.Unsetenv("OKTA_OAUTH_SERVER_ID")
+	os.Unsetenv("OKTA_CLIENT_TOKEN")
 
 	err := config()
 	require.NotNil(s.T(), err)
 	assert.Regexp(s.T(), regexp.MustCompile("(OKTA_[A-Z_]*=, ){2}(OKTA_CLIENT_TOKEN=)"), err)
 
-	configuration.SetEnv(&testing.T{}, "OKTA_CLIENT_TOKEN", originalOktaToken)
+	os.Setenv("OKTA_CLIENT_TOKEN", originalOktaToken)
 
 	err = config()
 	assert.NotNil(s.T(), err)
 	assert.Regexp(s.T(), regexp.MustCompile("(OKTA_[A-Z_]*=, ){2}(OKTA_CLIENT_TOKEN=\\[Redacted\\])"), err)
 
-	configuration.SetEnv(&testing.T{}, "OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
-	configuration.SetEnv(&testing.T{}, "OKTA_OAUTH_SERVER_ID", originalOktaServerID)
-	configuration.SetEnv(&testing.T{}, "OKTA_CLIENT_TOKEN", originalOktaToken)
+	os.Setenv("OKTA_CLIENT_ORGURL", originalOktaBaseUrl)
+	os.Setenv("OKTA_OAUTH_SERVER_ID", originalOktaServerID)
+	os.Setenv("OKTA_CLIENT_TOKEN", originalOktaToken)
 
 	err = config()
 	assert.Nil(s.T(), err)
@@ -78,8 +77,8 @@ func (s *OTestSuite) TestAddClientApplication() {
 }
 
 func (s *OTestSuite) TestRequestAccessToken() {
-	clientID := configuration.GetEnv("OKTA_CLIENT_ID")
-	clientSecret := configuration.GetEnv("OKTA_CLIENT_SECRET")
+	clientID := os.Getenv("OKTA_CLIENT_ID")
+	clientSecret := os.Getenv("OKTA_CLIENT_SECRET")
 
 	assert.NotEmpty(s.T(), clientID, "Test requires OKTA_CLIENT_ID")
 	assert.NotEmpty(s.T(), clientSecret, "Test requires OKTA_CLIENT_SECRET")

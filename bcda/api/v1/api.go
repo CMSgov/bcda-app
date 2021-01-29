@@ -23,7 +23,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 var h *api.Handler
@@ -172,7 +171,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 			// error files
 			errFileName := strings.Split(jobKey.FileName, ".")[0]
-			errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", configuration.GetEnv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
+			errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
 			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
 				errFI := api.FileItem{
 					Type: "OperationOutcome",
@@ -236,7 +235,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 		500: errorResponse
 */
 func ServeData(w http.ResponseWriter, r *http.Request) {
-	dataDir := configuration.GetEnv("FHIR_PAYLOAD_DIR")
+	dataDir := os.Getenv("FHIR_PAYLOAD_DIR")
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
 	w.Header().Set("Content-Type", "application/fhir+ndjson")

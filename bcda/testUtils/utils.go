@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"testing"
 
-    configuration "github.com/CMSgov/bcda-app/config"
-
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +50,7 @@ func RandomBase64(n int) string {
 }
 
 func setEnv(why, key, value string) {
-	if err := configuration.SetEnv(&testing.T{}, key, value); err != nil {
+	if err := os.Setenv(key, value); err != nil {
 		log.Printf("Error %s env value %s to %s\n", why, key, value)
 	}
 }
@@ -60,7 +58,7 @@ func setEnv(why, key, value string) {
 // SetAndRestoreEnvKey replaces the current value of the env var key,
 // returning a function which can be used to restore the original value
 func SetAndRestoreEnvKey(key, value string) func() {
-	originalValue := configuration.GetEnv(key)
+	originalValue := os.Getenv(key)
 	setEnv("setting", key, value)
 	return func() {
 		setEnv("restoring", key, originalValue)
@@ -99,11 +97,11 @@ func MakeDirToDelete(s suite.Suite, filePath string) {
 // SetPendingDeletionDir sets the PENDING_DELETION_DIR to the supplied "path" and ensures
 // that the directory is created
 func SetPendingDeletionDir(s suite.Suite, path string) {
-	err := configuration.SetEnv(&testing.T{}, "PENDING_DELETION_DIR", path)
+	err := os.Setenv("PENDING_DELETION_DIR", path)
 	if err != nil {
 		s.FailNow("failed to set the PENDING_DELETION_DIR env variable,", err)
 	}
-	cclfDeletion := configuration.GetEnv("PENDING_DELETION_DIR")
+	cclfDeletion := os.Getenv("PENDING_DELETION_DIR")
 	err = os.MkdirAll(cclfDeletion, 0744)
 	if err != nil {
 		s.FailNow("failed to create the pending deletion directory, %s", err.Error())

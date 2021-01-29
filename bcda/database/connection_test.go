@@ -3,9 +3,8 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"testing"
-    
-    configuration "github.com/CMSgov/bcda-app/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -30,10 +29,10 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	}
 
 	// get the real database URL
-	actualDatabaseURL := configuration.GetEnv("DATABASE_URL")
+	actualDatabaseURL := os.Getenv("DATABASE_URL")
 
 	// set the database URL to a bogus value to test negative scenarios
-	configuration.SetEnv(&testing.T{}, "DATABASE_URL", "fake_db_url")
+	os.Setenv("DATABASE_URL", "fake_db_url")
 
 	// attempt to open DB connection swith the bogus DB string
 	suite.db = GetDbConnection()
@@ -49,7 +48,7 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	Close(suite.gormdb)
 
 	// set the database URL back to the real value to test the positive scenarios
-	configuration.SetEnv(&testing.T{}, "DATABASE_URL", actualDatabaseURL)
+	os.Setenv("DATABASE_URL", actualDatabaseURL)
 
 	suite.db = GetDbConnection()
 	defer suite.db.Close()

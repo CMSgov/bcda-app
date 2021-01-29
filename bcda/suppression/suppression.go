@@ -20,7 +20,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 type suppressionFileMetadata struct {
@@ -109,7 +108,7 @@ func getSuppressionFileMetadata(suppresslist *[]*suppressionFileMetadata, skippe
 
 			deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72))
 			if metadata.deliveryDate.Add(deleteThreshold).Before(time.Now()) {
-				newpath := fmt.Sprintf("%s/%s", configuration.GetEnv("PENDING_DELETION_DIR"), info.Name())
+				newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), info.Name())
 				err = os.Rename(metadata.filePath, newpath)
 				if err != nil {
 					fmt.Printf("Error moving unknown file %s to pending deletion dir.\n", metadata)
@@ -354,7 +353,7 @@ func cleanupSuppression(suppresslist []*suppressionFileMetadata) error {
 	for _, suppressionFile := range suppresslist {
 		fmt.Printf("Cleaning up file %s.\n", suppressionFile)
 		log.Infof("Cleaning up file %s", suppressionFile)
-		newpath := fmt.Sprintf("%s/%s", configuration.GetEnv("PENDING_DELETION_DIR"), suppressionFile.name)
+		newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), suppressionFile.name)
 		if !suppressionFile.imported {
 			// check the timestamp on the failed files
 			elapsed := time.Since(suppressionFile.deliveryDate).Hours()

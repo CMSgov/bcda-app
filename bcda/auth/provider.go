@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-    configuration "github.com/CMSgov/bcda-app/config"
 )
 
 const (
@@ -22,7 +22,7 @@ var providerName = Alpha
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	SetProvider(strings.ToLower(configuration.GetEnv(`BCDA_AUTH_PROVIDER`)))
+	SetProvider(strings.ToLower(os.Getenv(`BCDA_AUTH_PROVIDER`)))
 }
 
 func SetProvider(name string) {
