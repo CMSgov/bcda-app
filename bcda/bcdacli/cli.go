@@ -3,6 +3,8 @@ package bcdacli
 import (
 	"archive/zip"
 	"bufio"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,15 +19,18 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
 	"github.com/CMSgov/bcda-app/bcda/cclf"
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
+	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -34,6 +39,11 @@ import (
 // App Name and usage.  Edit them here to prevent breaking tests
 const Name = "bcda"
 const Usage = "Beneficiary Claims Data API CLI"
+
+var (
+	db *sql.DB
+	r  models.Repository
+)
 
 func GetApp() *cli.App {
 	return setUpApp()
@@ -44,7 +54,16 @@ func setUpApp() *cli.App {
 	app.Name = Name
 	app.Usage = Usage
 	app.Version = constants.Version
-	var acoName, acoCMSID, acoID, accessToken, threshold, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
+	app.Before = func(c *cli.Context) error {
+		db = database.GetDbConnection()
+		r = postgres.NewRepository(db)
+		return nil
+	}
+	app.After = func(c *cli.Context) error {
+		return db.Close()
+	}
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
+	var thresholdHr int
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
 		{
@@ -199,7 +218,7 @@ func setUpApp() *cli.App {
 					return errors.New("key-file is required")
 				}
 
-				aco, err := auth.GetACOByCMSID(acoCMSID)
+				aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 				if err != nil {
 					fmt.Fprintf(app.Writer, "Unable to find ACO %s: %s\n", acoCMSID, err.Error())
 					return err
@@ -210,9 +229,15 @@ func setUpApp() *cli.App {
 					fmt.Fprintf(app.Writer, "Unable to open file %s: %s\n", filePath, err.Error())
 					return err
 				}
-				reader := bufio.NewReader(f)
 
-				err = aco.SavePublicKey(reader)
+				aco.PublicKey, err = genPublicKey(bufio.NewReader(f))
+				if err != nil {
+					fmt.Fprintf(app.Writer, "Unable to generate public key for ACO %s: %s\n", acoCMSID, err.Error())
+					return err
+				}
+
+				err = r.UpdateACO(context.Background(), aco.UUID,
+					map[string]interface{}{"public_key": aco.PublicKey})
 				if err != nil {
 					fmt.Fprintf(app.Writer, "Unable to save public key for ACO %s: %s\n", acoCMSID, err.Error())
 					return err
@@ -286,7 +311,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				aco, err := auth.GetACOByCMSID(acoCMSID)
+				aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 				if err != nil {
 					return err
 				}
@@ -306,20 +331,17 @@ func setUpApp() *cli.App {
 			Category: "Cleanup",
 			Usage:    "Update job statuses and move files to an inaccessible location",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				cli.IntFlag{
 					Name:        "threshold",
-					Value:       "24",
+					Value:       24,
 					Usage:       "How long files should wait in archive before deletion",
 					EnvVar:      "ARCHIVE_THRESHOLD_HR",
-					Destination: &threshold,
+					Destination: &thresholdHr,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				th, err := strconv.Atoi(threshold)
-				if err != nil {
-					return err
-				}
-				return archiveExpiring(th)
+				cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
+				return archiveExpiring(cutoff)
 			},
 		},
 		{
@@ -327,18 +349,33 @@ func setUpApp() *cli.App {
 			Category: "Cleanup",
 			Usage:    "Remove job directory and files from archive and update job status to Expired",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				cli.IntFlag{
 					Name:        "threshold",
 					Usage:       "How long files should wait in archive before deletion",
-					Destination: &threshold,
+					Destination: &thresholdHr,
 				},
 			},
 			Action: func(c *cli.Context) error {
-				th, err := strconv.Atoi(threshold)
-				if err != nil {
-					return err
-				}
-				return cleanupArchive(th)
+				cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
+				return cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired,
+					os.Getenv("FHIR_ARCHIVE_DIR"))
+			},
+		},
+		{
+			Name:     "cleanup-failed",
+			Category: "Cleanup",
+			Usage:    "Remove job directory and files from archive and update job status to Expired",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "threshold",
+					Usage:       "How long files should wait in archive before deletion",
+					Destination: &thresholdHr,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
+				return cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired,
+					os.Getenv("FHIR_STAGING_DIR"), os.Getenv("FHIR_PAYLOAD_DIR"))
 			},
 		},
 		{
@@ -497,17 +534,17 @@ func createGroup(id, name, acoID string) (string, error) {
 	}
 
 	var (
-		aco models.ACO
+		aco *models.ACO
 		err error
 	)
 
 	if match := models.IsSupportedACO(acoID); match {
-		aco, err = auth.GetACOByCMSID(acoID)
+		aco, err = r.GetACOByCMSID(context.Background(), acoID)
 		if err != nil {
 			return "", err
 		}
 	} else if match, err := regexp.MatchString("[0-9a-f]{6}-([0-9a-f]{4}-){3}[0-9a-f]{12}", acoID); err == nil && match {
-		aco, err = auth.GetACOByUUID(acoID)
+		aco, err = r.GetACOByUUID(context.Background(), uuid.Parse(acoID))
 		if err != nil {
 			return "", err
 		}
@@ -535,10 +572,8 @@ func createGroup(id, name, acoID string) (string, error) {
 	if aco.UUID != nil {
 		aco.GroupID = ssasID
 
-		db := database.GetGORMDbConnection()
-		defer database.Close(db)
-
-		err = db.Save(&aco).Error
+		err := r.UpdateACO(context.Background(), aco.UUID,
+			map[string]interface{}{"group_id": ssasID})
 		if err != nil {
 			return ssasID, errors.Wrapf(err, "group %s was created, but ACO could not be updated", ssasID)
 		}
@@ -561,16 +596,19 @@ func createACO(name, cmsID string) (string, error) {
 		cmsIDPt = &cmsID
 	}
 
-	acoUUID, err := models.CreateACO(name, cmsIDPt)
+	id := uuid.NewRandom()
+	aco := models.ACO{Name: name, CMSID: cmsIDPt, UUID: id, ClientID: id.String()}
+
+	err := r.CreateACO(context.Background(), aco)
 	if err != nil {
 		return "", err
 	}
 
-	return acoUUID.String(), nil
+	return aco.UUID.String(), nil
 }
 
 func generateClientCredentials(acoCMSID string, ips []string) (string, error) {
-	aco, err := auth.GetACOByCMSID(acoCMSID)
+	aco, err := r.GetACOByCMSID(context.Background(), acoCMSID)
 	if err != nil {
 		return "", err
 	}
@@ -594,15 +632,11 @@ func revokeAccessToken(accessToken string) error {
 	return auth.GetProvider().RevokeAccessToken(accessToken)
 }
 
-func archiveExpiring(hrThreshold int) error {
+func archiveExpiring(maxDate time.Time) error {
 	log.Info("Archiving expiring job files...")
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 
-	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
-
-	var jobs []models.Job
-	err := db.Find(&jobs, "status = ? AND updated_at <= ?", models.JobStatusCompleted, maxDate).Error
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+		time.Time{}, maxDate, models.JobStatusCompleted)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -625,7 +659,8 @@ func archiveExpiring(hrThreshold int) error {
 			}
 		}
 
-		err = db.Model(j).Update("status", models.JobStatusArchived).Error
+		j.Status = models.JobStatusArchived
+		err = r.UpdateJob(context.Background(), *j)
 		if err != nil {
 			log.Error(err)
 			lastJobError = err
@@ -635,59 +670,60 @@ func archiveExpiring(hrThreshold int) error {
 	return lastJobError
 }
 
-func cleanupArchive(hrThreshold int) error {
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	maxDate := time.Now().Add(-(time.Hour * time.Duration(hrThreshold)))
-
-	var jobs []models.Job
-	err := db.Find(&jobs, "status = ? AND updated_at <= ?", models.JobStatusArchived, maxDate).Error
+func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, rootDirsToClean ...string) error {
+	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
+		time.Time{}, maxDate, currentStatus)
 	if err != nil {
 		return err
 	}
 
 	if len(jobs) == 0 {
-		log.Info("No archived job files to clean")
+		log.Infof("No %s job files to clean", currentStatus)
 		return nil
 	}
 
 	for _, job := range jobs {
-		id := int(job.ID)
-		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
-
-		err = os.RemoveAll(jobArchiveDir)
-		if err != nil {
-			e := fmt.Sprintf("Unable to remove %s because %s", jobArchiveDir, err)
-			log.Error(e)
+		if err := cleanupJobData(job.ID, rootDirsToClean...); err != nil {
+			log.Errorf("Unable to cleanup directories %s", err)
 			continue
 		}
 
-		job.Status = models.JobStatusExpired
-		err = db.Save(job).Error
+		job.Status = newStatus
+		err = r.UpdateJob(context.Background(), *job)
 		if err != nil {
-			return err
+			log.Errorf("Failed to update job status to %s %s", newStatus, err)
+			continue
 		}
 
 		log.WithFields(log.Fields{
 			"job_began":     job.CreatedAt,
 			"files_removed": time.Now(),
 			"job_id":        job.ID,
-		}).Info("Files cleaned from archive and job status set to Expired")
+		}).Infof("Files cleaned from %s and job status set to %s", rootDirsToClean, newStatus)
+	}
+
+	return nil
+}
+
+func cleanupJobData(jobID uint, rootDirs ...string) error {
+	for _, rootDirToClean := range rootDirs {
+		dir := filepath.Join(rootDirToClean, strconv.FormatUint(uint64(jobID), 10))
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("unable to remove %s because %s", dir, err)
+		}
 	}
 
 	return nil
 }
 
 func setBlacklistState(cmsID string, blacklistState bool) error {
-	aco, err := auth.GetACOByCMSID(cmsID)
+	ctx := context.Background()
+	aco, err := r.GetACOByCMSID(ctx, cmsID)
 	if err != nil {
 		return err
 	}
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	return db.Model(&aco).Update("blacklisted", blacklistState).Error
+	return r.UpdateACO(context.Background(), aco.UUID,
+		map[string]interface{}{"blacklisted": blacklistState})
 }
 
 // CCLF file name pattern and regex
@@ -761,4 +797,17 @@ func cloneCCLFZip(src, dst string) error {
 	}
 
 	return nil
+}
+
+func genPublicKey(publicKey io.Reader) (string, error) {
+	k, err := ioutil.ReadAll(publicKey)
+	if err != nil {
+		return "", errors.Wrap(err, "cannot read public key")
+	}
+
+	key, err := rsautils.ReadPublicKey(string(k))
+	if err != nil || key == nil {
+		return "", errors.Wrap(err, "invalid public key")
+	}
+	return string(k), nil
 }

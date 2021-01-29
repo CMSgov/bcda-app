@@ -5,9 +5,10 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/lib/pq"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/log/logrusadapter"
+	"github.com/jackc/pgx/stdlib"
+	"github.com/sirupsen/logrus"
 )
 
 // Variable substitution to support testing.
@@ -15,22 +16,28 @@ var LogFatal = log.Fatal
 
 func GetDbConnection() *sql.DB {
 	databaseURL := os.Getenv("DATABASE_URL")
-	db, err := sql.Open("postgres", databaseURL)
+	dc := stdlib.DriverConfig{
+		ConnConfig: pgx.ConnConfig{
+			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),
+			LogLevel: pgx.LogLevelError,
+		},
+		AfterConnect: func(c *pgx.Conn) error {
+			// Can be used to ensure temp tables, indexes, etc. exist
+			return nil
+		},
+	}
+
+	stdlib.RegisterDriverConfig(&dc)
+
+	db, err := sql.Open("pgx", dc.ConnectionString(databaseURL))
 	if err != nil {
 		LogFatal(err)
 	}
+
 	pingErr := db.Ping()
 	if pingErr != nil {
 		LogFatal(pingErr)
 	}
-	return db
-}
 
-func GetGORMDbConnection() *gorm.DB {
-	databaseURL := os.Getenv("DATABASE_URL")
-	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
-	if err != nil {
-		LogFatal(err)
-	}
 	return db
 }

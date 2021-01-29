@@ -10,18 +10,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/stretchr/testify/suite"
+
+	_ "github.com/jackc/pgx/stdlib"
 )
+
+const sqlFlavor = sqlbuilder.PostgreSQL
 
 // These tests relies on migrate tool being installed
 // See: https://github.com/golang-migrate/migrate/tree/v4.13.0/cmd/migrate
@@ -78,11 +81,11 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		migrationPath: "./bcda/",
 		dbURL:         s.bcdaDBURL,
 	}
-	db, err := gorm.Open(postgres.Open(s.bcdaDBURL), &gorm.Config{})
+	db, err := sql.Open("pgx", s.bcdaDBURL)
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
-	defer database.Close(db)
+	defer db.Close()
 
 	migration1Tables := []string{"acos", "cclf_beneficiaries", "cclf_beneficiary_xrefs",
 		"cclf_files", "job_keys", "jobs", "suppression_files", "suppressions"}
@@ -97,7 +100,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "1")
 				for _, table := range migration1Tables {
-					assert.True(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should exist", table))
+					assertTableExists(t, true, db, table)
 				}
 			},
 		},
@@ -120,116 +123,82 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 					PerformanceYear: 20,
 					Type:            models.FileTypeRunout,
 				}
+				postgrestest.CreateCCLFFile(t, db, noType)
+				postgrestest.CreateCCLFFile(t, db, withType)
 
-				assert.NoError(t, db.Create(noType).Error)
-				assert.NoError(t, db.Create(withType).Error)
-
-				var result models.CCLFFile
-				assert.NoError(t, db.First(&result, noType.ID).Error)
-				assert.Equal(t, models.FileTypeDefault, result.Type)
-
-				result = models.CCLFFile{}
-				assert.NoError(t, db.First(&result, withType.ID).Error)
-				assert.Equal(t, withType.Type, result.Type)
+				assert.Equal(t, noType.Type, postgrestest.GetCCLFFilesByName(t, db, noType.Name)[0].Type)
+				assert.Equal(t, withType.Type, postgrestest.GetCCLFFilesByName(t, db, withType.Name)[0].Type)
 			},
 		},
 		{
 			"Add blacklisted column to acos",
 			func(t *testing.T) {
 				// Verify that existing ACOs have blacklisted equal to false
-				beforeMigration := &models.ACO{
+				beforeMigration := models.ACO{
 					UUID:        uuid.NewUUID(),
 					Name:        uuid.New(),
 					Blacklisted: true,
 				}
-				assert.NoError(t, db.Select("uuid", "name").Create(beforeMigration).Error)
+				// Need to manually build the insert query since the column does not exist yet.
+				ib := sqlFlavor.NewInsertBuilder().InsertInto("acos").
+					Cols("uuid", "name").Values(beforeMigration.UUID, beforeMigration.Name)
+				query, args := ib.Build()
+				_, err := db.Exec(query, args...)
+				assert.NoError(t, err)
 
 				migrator.runMigration(t, "3")
-				blacklisted := &models.ACO{
+				blacklisted := models.ACO{
 					UUID:        uuid.NewUUID(),
 					Name:        uuid.New(),
 					Blacklisted: true,
 				}
-				notBlacklisted := &models.ACO{
+				notBlacklisted := models.ACO{
 					UUID:        uuid.NewUUID(),
 					Name:        uuid.New(),
 					Blacklisted: false,
 				}
-				notSet := &models.ACO{
+				notSet := models.ACO{
 					UUID: uuid.NewUUID(),
 					Name: uuid.New(),
 				}
+				postgrestest.CreateACO(t, db, blacklisted)
+				postgrestest.CreateACO(t, db, notBlacklisted)
+				postgrestest.CreateACO(t, db, notSet)
 
-				assert.NoError(t, db.Create(blacklisted).Error)
-				assert.NoError(t, db.Create(notBlacklisted).Error)
-				assert.NoError(t, db.Create(notSet).Error)
-
-				var result models.ACO
-				assert.NoError(t, db.First(&result, blacklisted.ID).Error)
-				assert.True(t, result.Blacklisted)
-
-				result = models.ACO{}
-				assert.NoError(t, db.First(&result, notBlacklisted.ID).Error)
-				assert.False(t, result.Blacklisted)
-
-				result = models.ACO{}
-				assert.NoError(t, db.First(&result, notSet.ID).Error)
-				assert.False(t, result.Blacklisted)
-
-				result = models.ACO{}
-				assert.NoError(t, db.First(&result, beforeMigration.ID).Error)
-				assert.False(t, result.Blacklisted)
+				assert.True(t, postgrestest.GetACOByUUID(t, db, blacklisted.UUID).Blacklisted)
+				assert.False(t, postgrestest.GetACOByUUID(t, db, notBlacklisted.UUID).Blacklisted)
+				assert.False(t, postgrestest.GetACOByUUID(t, db, notSet.UUID).Blacklisted)
+				assert.False(t, postgrestest.GetACOByUUID(t, db, beforeMigration.UUID).Blacklisted)
 			},
 		},
 		{
 			"Remove HICN column from cclf_beneficiaries and suppressions",
 			func(t *testing.T) {
-				assert.True(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+				assertColumnExists(t, true, db, "cclf_beneficiaries", "hicn")
 				migrator.runMigration(t, "4")
-				assert.False(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+				assertColumnExists(t, false, db, "cclf_beneficiaries", "hicn")
 			},
 		},
 		{
 			"Add HICN column to cclf_beneficiaries and suppressions",
 			func(t *testing.T) {
-				assert.False(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+				assertColumnExists(t, false, db, "cclf_beneficiaries", "hicn")
 				migrator.runMigration(t, "3")
-				assert.True(t, db.Migrator().HasColumn(&models.CCLFBeneficiary{}, "hicn"))
+				assertColumnExists(t, true, db, "cclf_beneficiaries", "hicn")
 			},
 		},
 		{
 			"Remove blacklisted column from acos",
 			func(t *testing.T) {
 				migrator.runMigration(t, "2")
-
-				blacklisted := &models.ACO{
-					UUID:        uuid.NewUUID(),
-					Name:        uuid.New(),
-					Blacklisted: true,
-				}
-
-				err := db.Create(blacklisted).Error
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "column \"blacklisted\" of relation \"acos\" does not exist")
+				assertColumnExists(t, false, db, "acos", "blacklisted")
 			},
 		},
 		{
 			"Remove type column from cclf_files",
 			func(t *testing.T) {
 				migrator.runMigration(t, "1")
-
-				withType := &models.CCLFFile{
-					CCLFNum:         8,
-					Name:            "CCLFFile_with_type_no_column",
-					ACOCMSID:        "T9999",
-					Timestamp:       time.Now(),
-					PerformanceYear: 20,
-					Type:            models.FileTypeRunout,
-				}
-
-				err := db.Create(withType).Error
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "column \"type\" of relation \"cclf_files\" does not exist")
+				assertColumnExists(t, false, db, "cclf_files", "type")
 			},
 		},
 		{
@@ -237,7 +206,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "0")
 				for _, table := range migration1Tables {
-					assert.False(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should not exist", table))
+					assertTableExists(t, false, db, table)
 				}
 			},
 		},
@@ -253,11 +222,11 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 		migrationPath: "./bcda_queue/",
 		dbURL:         s.bcdaQueueDBURL,
 	}
-	db, err := gorm.Open(postgres.Open(s.bcdaQueueDBURL), &gorm.Config{})
+	db, err := sql.Open("pgx", s.bcdaQueueDBURL)
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to open postgres connection", err.Error())
 	}
-	defer database.Close(db)
+	defer db.Close()
 
 	migration1Tables := []string{"que_jobs"}
 
@@ -271,7 +240,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "1")
 				for _, table := range migration1Tables {
-					assert.True(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should exist", table))
+					assertTableExists(t, true, db, table)
 				}
 			},
 		},
@@ -280,7 +249,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 			func(t *testing.T) {
 				migrator.runMigration(t, "0")
 				for _, table := range migration1Tables {
-					assert.False(t, db.Migrator().HasTable(table), fmt.Sprintf("Table %s should not exist", table))
+					assertTableExists(t, false, db, table)
 				}
 			},
 		},
@@ -332,4 +301,32 @@ func (m migrator) runMigration(t *testing.T, idx string) {
 
 	assert.Contains(t, expVersion, str)
 	assert.NotContains(t, str, "dirty")
+}
+
+func assertColumnExists(t *testing.T, shouldExist bool, db *sql.DB, tableName, columnName string) {
+	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("information_schema.columns ")
+	sb.Where(sb.Equal("table_name", tableName), sb.Equal("column_name", columnName))
+	query, args := sb.Build()
+	var count int
+	assert.NoError(t, db.QueryRow(query, args...).Scan(&count))
+
+	var expected int
+	if shouldExist {
+		expected = 1
+	}
+	assert.Equal(t, expected, count)
+}
+
+func assertTableExists(t *testing.T, shouldExist bool, db *sql.DB, tableName string) {
+	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("information_schema.tables ")
+	sb.Where(sb.Equal("table_name", tableName))
+	query, args := sb.Build()
+	var count int
+	assert.NoError(t, db.QueryRow(query, args...).Scan(&count))
+
+	var expected int
+	if shouldExist {
+		expected = 1
+	}
+	assert.Equal(t, expected, count)
 }

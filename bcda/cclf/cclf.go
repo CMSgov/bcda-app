@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,14 +13,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 )
 
@@ -148,10 +150,10 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 }
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
-	importer := &cclf8Importer{
-		logger:            log.StandardLogger(),
-		maxPendingQueries: utils.GetEnvInt("STATEMENT_EXEC_COUNT", 200000),
-	}
+	db := database.GetDbConnection()
+	defer db.Close()
+
+	repository := postgres.NewRepository(db)
 
 	if fileMetadata == nil {
 		err = errors.New("CCLF file not found")
@@ -162,7 +164,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 
 	defer func() {
 		if err != nil {
-			updateImportStatus(fileMetadata, constants.ImportFail)
+			updateImportStatus(ctx, repository, fileMetadata, constants.ImportFail)
 		}
 	}()
 
@@ -198,10 +200,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		Type:            fileMetadata.fileType,
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	err = db.Create(&cclfFile).Error
+	cclfFile.ID, err = repository.CreateCCLFFile(ctx, cclfFile)
 	if err != nil {
 		fmt.Printf("Could not create CCLF%d file record.\n", fileMetadata.cclfNum)
 		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
@@ -211,8 +210,6 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 
 	fileMetadata.fileID = cclfFile.ID
 
-	importStatusInterval := utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000)
-	importedCount := 0
 	var rawFile *zip.File
 
 	for _, f := range r.File {
@@ -241,72 +238,22 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	sc := bufio.NewScanner(rc)
 
 	// Open transaction to encompass entire CCLF file ingest.
-	sdb, err := db.DB()
+	conn, err := stdlib.AcquireConn(db)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to acquire connection")
 	}
-	txn, err := sdb.Begin()
+
+	importedCount, err := CopyFrom(ctx, conn, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000))
 	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == nil {
-			err = importer.flush(ctx)
-		}
-
-		if err != nil {
-			// We want to preserve the original err that caused us to rollback
-			if err1 := txn.Rollback(); err1 != nil {
-				log.Errorf("Failed to rollback transaction %s", err1.Error())
-			}
-			return
-		}
-
-		if err = txn.Commit(); err == nil {
-			successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
-			fmt.Println(successMsg)
-			log.Infof(successMsg)
-		}
-	}()
-
-	var importedMBI = make(map[string]struct{})
-
-	for sc.Scan() {
-		close := metrics.NewChild(ctx, fmt.Sprintf("importCCLF%d-readlines", cclfFile.CCLFNum))
-		b := sc.Bytes()
-		close()
-
-		if len(bytes.TrimSpace(b)) == 0 {
-			continue
-		}
-
-		const (
-			mbiStart, mbiEnd = 0, 11
-		)
-		cclfBeneficiary := models.CCLFBeneficiary{
-			FileID: cclfFile.ID,
-			MBI:    string(bytes.TrimSpace(b[mbiStart:mbiEnd])),
-		}
-		// Filtering for duplicate benes in CCLF file
-		if _, ok := importedMBI[cclfBeneficiary.MBI]; ok {
-			continue
-		}
-
-		importedMBI[cclfBeneficiary.MBI] = struct{}{}
-
-		err = importer.do(ctx, txn, cclfBeneficiary)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-
-		importedCount++
-		if importedCount%importStatusInterval == 0 {
-			fmt.Printf("CCLF%d records imported: %d\n", fileMetadata.cclfNum, importedCount)
-		}
+		return errors.Wrap(err, "failed to copy data to beneficiaries table")
 	}
 
-	updateImportStatus(fileMetadata, constants.ImportComplete)
+	updateImportStatus(ctx, repository, fileMetadata, constants.ImportComplete)
+
+	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
+	fmt.Println(successMsg)
+	log.Infof(successMsg)
+
 	return nil
 }
 
@@ -362,8 +309,8 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 					failure++
 				} else {
 					if err = importCCLF8(ctx, cclf8); err != nil {
-						fmt.Printf("Failed to import CCLF8 file: %s.\n", cclf8)
-						log.Errorf("Failed to import CCLF8 file: %s ", cclf8)
+						fmt.Printf("Failed to import CCLF8 file: %s %s.\n", cclf8, err)
+						log.Errorf("Failed to import CCLF8 file: %s %s", cclf8, err)
 						failure++
 					} else {
 						cclf8.imported = true
@@ -396,10 +343,12 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string {
 	var acoOrder []string
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
 
 	priorityACOs := getPriorityACOs(db)
+	// Ensure there are no duplicate ACOs by wrapping it in Dedup()
+	priorityACOs = utils.Dedup(priorityACOs)
 	for _, acoID := range priorityACOs {
 		acoID = strings.TrimSpace(acoID)
 		if cclfMap[acoID] != nil {
@@ -416,16 +365,32 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 	return acoOrder
 }
 
-func getPriorityACOs(db *gorm.DB) []string {
+func getPriorityACOs(db *sql.DB) []string {
 	const query = `
-	SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
-	FROM systems s JOIN groups g ON s.group_id=g.group_id 
-	WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
-	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
-	`
+    SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
+    FROM systems s JOIN groups g ON s.group_id=g.group_id 
+    WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
+    s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
+    `
+
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
+		return nil
+	}
+	defer rows.Close()
 
 	var acoIDs []string
-	if err := db.Raw(query).Scan(&acoIDs).Error; err != nil {
+	for rows.Next() {
+		var acoID string
+		if err := rows.Scan(&acoID); err != nil {
+			log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
+			return nil
+		}
+		acoIDs = append(acoIDs, acoID)
+	}
+
+	if err := rows.Err(); err != nil {
 		log.Warnf("Failed to query for active ACOs %s. No ACOs are prioritized.", err.Error())
 		return nil
 	}
@@ -585,16 +550,12 @@ func (m cclfFileMetadata) String() string {
 	return m.filePath
 }
 
-func updateImportStatus(m *cclfFileMetadata, status string) {
+func updateImportStatus(ctx context.Context, r models.Repository, m *cclfFileMetadata, status string) {
 	if m == nil {
 		return
 	}
-	var cclfFile models.CCLFFile
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	err := db.Model(&cclfFile).Where("id = ?", m.fileID).Update("import_status", status).Error
+	err := r.UpdateCCLFFileImportStatus(ctx, m.fileID, status)
 	if err != nil {
 		fmt.Printf("Could not update cclf file record for file: %s. \n", m)
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", m)

@@ -2,6 +2,7 @@ package v2_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,13 +18,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 const (
@@ -32,7 +32,7 @@ const (
 
 type APITestSuite struct {
 	suite.Suite
-	db *gorm.DB
+	db *sql.DB
 
 	cleanup func()
 }
@@ -52,12 +52,12 @@ func (s *APITestSuite) SetupSuite() {
 		os.Setenv("BB_CLIENT_KEY_FILE", origBBKey)
 	}
 
-	s.db = database.GetGORMDbConnection()
+	s.db = database.GetDbConnection()
 }
 
 func (s *APITestSuite) TearDownSuite() {
 	s.cleanup()
-	database.Close(s.db)
+	s.db.Close()
 }
 
 func TestAPITestSuite(t *testing.T) {
@@ -174,7 +174,6 @@ func (s *APITestSuite) TestResourceTypes() {
 }
 
 func (s *APITestSuite) getAuthData() (data auth.AuthData) {
-	var aco models.ACO
-	s.db.First(&aco, "uuid = ?", acoUnderTest)
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, uuid.Parse(acoUnderTest))
 	return auth.AuthData{ACOID: acoUnderTest, CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 }
