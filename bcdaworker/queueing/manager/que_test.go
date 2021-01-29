@@ -3,6 +3,7 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"regexp"
@@ -30,6 +31,12 @@ var logHook = test.NewLocal(log)
 // TestProcessJob acts as an end-to-end verification of the process.
 // It uses the postgres/que-go backed implementations
 func TestProcessJob(t *testing.T) {
+	// Reset our environment once we've finished with the test
+	defer func(payload, staging string) {
+		os.Setenv("FHIR_PAYLOAD_DIR", payload)
+		os.Setenv("FHIR_STAGING_DIR", staging)
+	}(os.Getenv("FHIR_PAYLOAD_DIR"), os.Getenv("FHIR_STAGING_DIR"))
+
 	defer func(cert, key, ca string) {
 		os.Setenv("BB_CLIENT_CERT_FILE", cert)
 		os.Setenv("BB_CLIENT_KEY_FILE", key)
@@ -39,6 +46,14 @@ func TestProcessJob(t *testing.T) {
 	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 	os.Setenv("BB_CLIENT_CA_FILE", "../../../shared_files/localhost.crt")
+
+	// Ensure we do not clutter our working directory with any data
+	tempDir, err := ioutil.TempDir("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	os.Setenv("FHIR_PAYLOAD_DIR", tempDir)
+	os.Setenv("FHIR_STAGING_DIR", tempDir)
 
 	db := database.GetDbConnection()
 	defer db.Close()

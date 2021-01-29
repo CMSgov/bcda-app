@@ -91,8 +91,8 @@ func (q *queue) StopQue() {
 	if err := q.queDB.Close(); err != nil {
 		q.log.Warnf("Failed to close connection to queue database %s", err)
 	}
-	q.quePool.Shutdown()
 	q.pool.Close()
+	q.quePool.Shutdown()
 }
 
 func (q *queue) processJob(job *que.Job) error {
