@@ -7,10 +7,13 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	QUE_PROCESS_JOB = "ProcessJob"
 )
 
 type Enqueuer interface {
@@ -48,7 +51,7 @@ func (q queEnqueuer) AddJob(job models.JobEnqueueArgs, priority int) error {
 	}
 
 	j := &que.Job{
-		Type:     manager.QUE_PROCESS_JOB,
+		Type:     QUE_PROCESS_JOB,
 		Args:     args,
 		Priority: int16(priority),
 	}

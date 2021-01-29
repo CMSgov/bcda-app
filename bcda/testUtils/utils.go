@@ -1,6 +1,7 @@
 package testUtils
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -12,8 +13,13 @@ import (
 
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
+
+// CtxMatcher allow us to validate that the caller supplied a context.Context argument
+// See: https://github.com/stretchr/testify/issues/519
+var CtxMatcher = mock.MatchedBy(func(ctx context.Context) bool { return true })
 
 // PrintSeparator prints a line of stars to stdout
 func PrintSeparator() {

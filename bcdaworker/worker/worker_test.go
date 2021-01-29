@@ -28,9 +28,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// See: https://github.com/stretchr/testify/issues/519
-var ctxMatcher = mock.MatchedBy(func(ctx context.Context) bool { return true })
-
 type WorkerTestSuite struct {
 	suite.Suite
 	testACO *models.ACO
@@ -526,13 +523,13 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 			j := &models.Job{ID: jobID, Status: tt.status, JobCount: tt.jobCount}
 			repository := &repository.MockRepository{}
 			defer repository.AssertExpectations(t)
-			repository.On("GetJobByID", ctxMatcher, jobID).Return(j, nil)
+			repository.On("GetJobByID", testUtils.CtxMatcher, jobID).Return(j, nil)
 
 			// A job previously marked as completed will bypass all of these calls
 			if tt.status != models.JobStatusCompleted {
-				repository.On("GetJobKeyCount", ctxMatcher, jobID).Return(tt.jobKeys, nil)
+				repository.On("GetJobKeyCount", testUtils.CtxMatcher, jobID).Return(tt.jobKeys, nil)
 				if tt.completed {
-					repository.On("UpdateJobStatus", ctxMatcher, j.ID, models.JobStatusCompleted).
+					repository.On("UpdateJobStatus", testUtils.CtxMatcher, j.ID, models.JobStatusCompleted).
 						Return(nil)
 				}
 			}

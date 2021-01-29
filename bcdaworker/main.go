@@ -10,6 +10,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -71,7 +72,7 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	queue := manager.StartQue(os.Getenv("QUEUE_DATABASE_URL"), utils.GetEnvInt("WORKER_POOL_SIZE", 2))
+	queue := manager.StartQue(logrus.StandardLogger(), os.Getenv("QUEUE_DATABASE_URL"), utils.GetEnvInt("WORKER_POOL_SIZE", 2))
 	defer queue.StopQue()
 
 	if hInt, err := strconv.Atoi(os.Getenv("WORKER_HEALTH_INT_SEC")); err == nil {
