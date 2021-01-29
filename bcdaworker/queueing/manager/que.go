@@ -41,7 +41,7 @@ type queue struct {
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
 func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queue {
-	db, err := sql.Open("postgres", queueDatabaseURL)
+	db, err := sql.Open("pgx", queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}

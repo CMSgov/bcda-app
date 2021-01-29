@@ -21,7 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/stretchr/testify/suite"
 
-	_ "github.com/jackc/pgx/stdlib"
+	_ "github.com/jackc/pgx"
 )
 
 const sqlFlavor = sqlbuilder.PostgreSQL

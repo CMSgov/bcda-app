@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
-	_ "github.com/jackc/pgx/stdlib"
+	_ "github.com/jackc/pgx"
 
 	log "github.com/sirupsen/logrus"
 )
