@@ -250,24 +250,19 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job, _, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
+	updatedJobID, err := h.Svc.CancelJob(context.Background(), uint(jobID))
 	if err != nil {
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
-		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
-		// So returning a StatusNotFound may be a misnomer
-		responseutils.WriteError(oo, w, http.StatusNotFound)
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
 
-	switch job.Status {
-	case models.JobStatusCompleted, models.JobStatusFailed, models.JobStatusArchived, models.JobStatusExpired, models.JobStatusCancelled:
+	if updatedJobID == uint(jobID) {
+		w.WriteHeader(http.StatusAccepted)
+	} else {
 		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "Unable to cancel jobs not currently in progress or pending.")
 		responseutils.WriteError(oo, w, http.StatusGone)
-	case models.JobStatusPending, models.JobStatusInProgress:
-		// Delete job here
-		w.WriteHeader(http.StatusAccepted)
-		return
 	}
 }
 
