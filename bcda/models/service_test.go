@@ -528,6 +528,61 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 }
 
+func (s *ServiceTestSuite) TestCancelJob() {
+	// create table
+	ctx := context.Background()
+	tests := []struct {
+		status JobStatus
+	}{
+		{JobStatusPending},
+		{JobStatusInProgress},
+	}
+
+	// iterate tests
+	for _, tt := range tests {
+		s.T().Run(string(tt.status), func(t *testing.T) {
+			repository := &MockRepository{}
+			repository.On("GetJobByID", ctxMatcher, mock.Anything).Return(Job{Status: tt.status}, nil)
+			repository.On("UpdateJob", ctxMatcher, mock.Anything).Return(nil)
+			s := &service{}
+			s.repository = repository
+			cancelledJobID, err := s.CancelJob(ctx, 1)
+			assert.NoError(t, err)
+			assert.Equal(t, cancelledJobID, 1)
+		})
+	}
+}
+
+func (s *ServiceTestSuite) TestCancelNonCancellableJob() {
+	// create table
+	tests := []struct {
+		status JobStatus
+	}{
+		{JobStatusFailed},
+		{JobStatusExpired},
+		{JobStatusArchived},
+		{JobStatusCompleted},
+		{JobStatusCancelled},
+		{JobStatusFailedExpired},
+	}
+
+	// iterate tests
+	for _, tt := range tests {
+		s.T().Run(string(tt.status), func(t *testing.T) {
+			// create job
+			// repository.CreateJob
+			// set status
+			// repository.UpdateJob
+
+			// attempt to cancel job
+			// service.CancelJob(ctx, JobID)
+
+			// assert
+			// assert return is 0, nil
+		})
+	}
+}
+
 func getCCLFFile(id uint) *CCLFFile {
 	return &CCLFFile{
 		ID: id,
