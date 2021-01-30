@@ -2,16 +2,16 @@ package health
 
 import (
 	"database/sql"
-	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
-	_ "github.com/jackc/pgx/stdlib"
+    "github.com/CMSgov/bcda-app/conf"
 
+	_ "github.com/jackc/pgx/stdlib"
 	log "github.com/sirupsen/logrus"
 )
 
 func IsDatabaseOK() bool {
-	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	db, err := sql.Open("pgx", conf.GetEnv("DATABASE_URL"))
 	if err != nil {
 		log.Error("Health check: database connection error: ", err.Error())
 		return false

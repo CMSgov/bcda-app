@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+    "github.com/CMSgov/bcda-app/conf"
 )
 
 // https://github.com/go-chi/chi/blob/master/_examples/logging/main.go
@@ -21,7 +22,7 @@ func NewStructuredLogger() func(next http.Handler) http.Handler {
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 	logger.SetReportCaller(true)
-	filePath := os.Getenv("BCDA_REQUEST_LOG")
+	filePath := conf.GetEnv("BCDA_REQUEST_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)

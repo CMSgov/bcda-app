@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+    "github.com/CMSgov/bcda-app/conf"
+
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -43,7 +45,7 @@ func init() {
 	logger = logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 
-	filePath, success := os.LookupEnv("BCDA_OKTA_LOG")
+	filePath, success := conf.LookupEnv("BCDA_OKTA_LOG")
 	if success {
 		/* #nosec -- 0640 permissions required for Splunk ingestion */
 		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
@@ -62,9 +64,9 @@ func init() {
 
 // separate from init for testing
 func config() error {
-	oktaBaseUrl = os.Getenv("OKTA_CLIENT_ORGURL")
-	oktaServerID = os.Getenv("OKTA_OAUTH_SERVER_ID")
-	oktaToken := os.Getenv("OKTA_CLIENT_TOKEN")
+	oktaBaseUrl = conf.GetEnv("OKTA_CLIENT_ORGURL")
+	oktaServerID = conf.GetEnv("OKTA_OAUTH_SERVER_ID")
+	oktaToken := conf.GetEnv("OKTA_CLIENT_TOKEN")
 
 	at := oktaToken
 	if at != "" {

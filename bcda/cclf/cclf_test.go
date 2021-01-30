@@ -28,6 +28,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+    "github.com/CMSgov/bcda-app/conf"
 )
 
 type CCLFTestSuite struct {
@@ -43,13 +44,13 @@ type CCLFTestSuite struct {
 }
 
 func (s *CCLFTestSuite) SetupTest() {
-	os.Setenv("CCLF_REF_DATE", "181201")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 
 	s.basePath, s.cleanup = testUtils.CopyToTemporaryDirectory(s.T(), "../../shared_files/")
 }
 
 func (s *CCLFTestSuite) SetupSuite() {
-	s.origDate = os.Getenv("CCLF_REF_DATE")
+	s.origDate = conf.GetEnv("CCLF_REF_DATE")
 
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -62,7 +63,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", s.origDate)
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
 	os.RemoveAll(s.pendingDeletionDir)
 	s.db.Close()
 }
@@ -80,7 +81,7 @@ func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
 	// This order is computed from values inserted in the database
 	var aco1, aco2, aco3 = "A9989", "A9988", "A0001"
 
-	os.Setenv("CCLF_REF_DATE", "181201")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
 
 	assert := assert.New(s.T())
 
@@ -315,9 +316,9 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	err := cleanUpCCLF(context.Background(), cclfmap)
 	assert.Nil(err)
 
-	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
+	files, err := ioutil.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
 	if err != nil {
-		s.FailNow("failed to read directory: %s", os.Getenv("PENDING_DELETION_DIR"), err)
+		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
 	}
 	for _, file := range files {
 		assert.NotEqual("T.BCD.ACO.ZC0Y18.D181120.T0001000", file.Name())

@@ -25,7 +25,7 @@ func init() {
 	logger.Formatter = &logrus.JSONFormatter{}
 	logger.Formatter.(*logrus.JSONFormatter).TimestampFormat = time.RFC3339Nano
 
-	filePath, success := os.LookupEnv("AUTH_LOG")
+	filePath, success := conf.LookupEnv("AUTH_LOG")
 	if success {
 		/* #nosec -- 0640 permissions required for Splunk ingestion */
 		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -20,9 +19,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+    "github.com/CMSgov/bcda-app/conf"
+
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
-
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -53,7 +53,7 @@ func (s *RequestsTestSuite) SetupSuite() {
 }
 
 func (s *RequestsTestSuite) SetupTest() {
-	s.runoutEnabledEnvVar = os.Getenv("BCDA_ENABLE_RUNOUT")
+	s.runoutEnabledEnvVar = conf.GetEnv("BCDA_ENABLE_RUNOUT")
 }
 
 func (s *RequestsTestSuite) TearDownSuite() {
@@ -62,11 +62,11 @@ func (s *RequestsTestSuite) TearDownSuite() {
 }
 
 func (s *RequestsTestSuite) TearDownTest() {
-	os.Setenv("BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
+	conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", s.runoutEnabledEnvVar)
 }
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
-	os.Setenv("BCDA_ENABLE_RUNOUT", "true")
+	conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "true")
 	qj := []*que.Job{{Type: "ProcessJob"}, {Type: "ProcessJob"}}
 	tests := []struct {
 		name string
@@ -110,7 +110,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 }
 
 func (s *RequestsTestSuite) TestRunoutDisabled() {
-	os.Setenv("BCDA_ENABLE_RUNOUT", "false")
+	conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "false")
 	req := s.genGroupRequest("runout")
 	w := httptest.NewRecorder()
 	h := &Handler{}
@@ -241,9 +241,9 @@ func (s *RequestsTestSuite) TestCheck429() {
 func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	// Switch over to validate the 429 behavior
 	dt := "DEPLOYMENT_TARGET"
-	target := os.Getenv(dt)
-	defer os.Setenv(dt, target)
-	os.Setenv(dt, "prod")
+	target := conf.GetEnv(dt)
+	defer conf.SetEnv(s.T(), dt, target)
+	conf.SetEnv(s.T(), dt, "prod")
 
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	postgrestest.CreateJobs(s.T(), s.db,

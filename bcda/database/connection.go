@@ -3,7 +3,8 @@ package database
 import (
 	"database/sql"
 	"log"
-	"os"
+
+    "github.com/CMSgov/bcda-app/conf"
 
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
@@ -15,7 +16,7 @@ import (
 var LogFatal = log.Fatal
 
 func GetDbConnection() *sql.DB {
-	databaseURL := os.Getenv("DATABASE_URL")
+	databaseURL := conf.GetEnv("DATABASE_URL")
 	dc := stdlib.DriverConfig{
 		ConnConfig: pgx.ConnConfig{
 			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),

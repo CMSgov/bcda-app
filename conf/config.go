@@ -1,4 +1,4 @@
-package config
+package conf
 
 /*
    This is a package that wraps the viper, a package designed to handle config
@@ -20,7 +20,7 @@ import (
 
 // Global variable made available to any other package importing this package
 var envVars viper.Viper
-const testmode bool = false
+const testmode bool = true
 
 // Implementing a state machine tracking how things are going in this package
 const (
@@ -98,7 +98,7 @@ func init() {
 	for i, v := range locationSlice {
 
 		// If the file exists
-		if success := fileexistattempt(3, v, i); success {
+		if success := fileExistAttempt(3, v, i); success {
 			envVars = *setup(v)
 			break
 		}
@@ -116,7 +116,7 @@ func init() {
    starting before the EVs are available, panicing and restarting over and over.
    It's not perfect, and this function should be improved in the future.
 */
-func fileexistattempt(maxattempt uint8, v string, i int) bool {
+func fileExistAttempt(maxattempt uint8, v string, i int) bool {
 
 	// Check if the configuration file exists
 	if _, err := os.Stat(v + "/local.env"); err == nil {
@@ -138,7 +138,7 @@ func fileexistattempt(maxattempt uint8, v string, i int) bool {
     time.Sleep(time.Second * 10) // POSSIBLE REVAMP NEEDED WHEN GOING TO PROD
 
 	// Attempt to see if file exists maxattempt times recursively
-	return fileexistattempt(maxattempt-1, v, i)
+	return fileExistAttempt(maxattempt-1, v, i)
 }
 
 // A public function that acts like a Getter
@@ -182,23 +182,17 @@ func LookupEnv(key string) (string, bool) {
 // A public function that acts like a Setter. This function should only be used
 // in testing. Protect parameter is an interface, but it's really a testing
 // T struct. Any other type entered for protect will panic.
-func SetEnv(protect interface{}, key string, value string) error {
+func SetEnv(protect *testing.T, key string, value string) error {
 
     var err error
 
-	// Check if the protect type is Testing T struct
-	if _, ok := protect.(*testing.T); ok {
-		// If config is good, change the config in memory
-		if State == configgood {
-			envVars.Set(key, value) // This doesn't return anything...
-		} else {
-			// Config is bad, change the EV
-			err = os.Setenv(key, value)
-		}
-	} else {
-		// Not a testing T struct, most likely not in testing... PANIC!
-		panic("You cannot use SetEnv function outside testing!")
-	}
+    // If config is good, change the config in memory
+    if State == configgood {
+        envVars.Set(key, value) // This doesn't return anything...
+    } else {
+        // Config is bad, change the EV
+        err = os.Setenv(key, value)
+    }
 
     return err
 
@@ -206,24 +200,18 @@ func SetEnv(protect interface{}, key string, value string) error {
 
 // A public function that unsets a variable. This function should also only be
 // used in testing.
-func UnsetEnv(protect interface{}, key string) error {
+func UnsetEnv(protect *testing.T, key string) error {
     var err error
 
-	// Check if the protect type is Testing T struct
-	if _, ok := protect.(*testing.T); ok {
-		// If config is good, change the config in memory
-		if State == configgood {
-            // Why? See line 152
-			err = os.Unsetenv(key)
-            envVars.Set(key, "")
-		} else {
-			// Config is bad, change the EV
-			err = os.Unsetenv(key)
-		}
-	} else {
-		// Not a testing T struct, most likely not in testing... PANIC!
-		panic("You cannot use UnsetEnv function outside testing!")
-	}
+    // If config is good, change the config in memory
+    if State == configgood {
+        // Why? See line 152
+        err = os.Unsetenv(key)
+        envVars.Set(key, "")
+    } else {
+        // Config is bad, change the EV
+        err = os.Unsetenv(key)
+    }
 
     return err
 }

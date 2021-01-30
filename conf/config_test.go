@@ -1,8 +1,10 @@
-package config
+package conf
 
 import (
 	"reflect"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 func TestGetEnv(t *testing.T) {
@@ -51,7 +53,7 @@ func TestGetEnv(t *testing.T) {
 
 func TestSetEnv(t *testing.T) {
 	type args struct {
-		protect interface{}
+		protect *testing.T
 		key     string
 		value   string
 	}
@@ -77,7 +79,7 @@ func TestSetEnv(t *testing.T) {
 
 func TestUnsetEnv(t *testing.T) {
 	type args struct {
-		protect interface{}
+		protect *testing.T
 		key     string
 	}
 	tests := []struct {

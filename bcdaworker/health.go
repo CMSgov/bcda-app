@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/health"
+    "github.com/CMSgov/bcda-app/conf"
+
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -12,7 +14,7 @@ func NewHealthLogger() *HealthLogger {
 	l := HealthLogger{logrus.New()}
 	l.Logger.Formatter = &logrus.JSONFormatter{}
 	l.Logger.SetReportCaller(true)
-	filePath := os.Getenv("WORKER_HEALTH_LOG")
+	filePath := conf.GetEnv("WORKER_HEALTH_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)

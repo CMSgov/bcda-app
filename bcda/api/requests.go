@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    "github.com/CMSgov/bcda-app/conf"
 )
 
 type Handler struct {
@@ -59,7 +59,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 	db.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
 	db.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	queueDatabaseURL := conf.GetEnv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -227,7 +227,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
 	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
 	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	if os.Getenv("DEPLOYMENT_TARGET") == "prod" {
+	if conf.GetEnv("DEPLOYMENT_TARGET") == "prod" {
 		pendingAndInProgressJobs, err := h.r.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
 		if err != nil {
 			err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")

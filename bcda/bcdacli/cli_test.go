@@ -24,6 +24,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+    "github.com/CMSgov/bcda-app/conf"
+
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -54,8 +56,8 @@ func (s *CLITestSuite) SetupSuite() {
 	}
 	testUtils.SetUnitTestKeysForAuth()
 	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
-	origDate = os.Getenv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", "181125")
+	origDate = conf.GetEnv("CCLF_REF_DATE")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181125")
 
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -80,7 +82,7 @@ func (s *CLITestSuite) TearDownTest() {
 }
 
 func (s *CLITestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", origDate)
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
 	os.RemoveAll(s.pendingDeletionDir)
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	s.db.Close()
@@ -92,8 +94,8 @@ func TestCLITestSuite(t *testing.T) {
 
 func (s *CLITestSuite) TestGetEnvInt() {
 	const DEFAULT_VALUE = 200
-	os.Setenv("TEST_ENV_STRING", "blah")
-	os.Setenv("TEST_ENV_INT", "232")
+	conf.SetEnv(s.T(), "TEST_ENV_STRING", "blah")
+	conf.SetEnv(s.T(), "TEST_ENV_INT", "232")
 
 	assert.Equal(s.T(), 232, utils.GetEnvInt("TEST_ENV_INT", DEFAULT_VALUE))
 	assert.Equal(s.T(), DEFAULT_VALUE, utils.GetEnvInt("TEST_ENV_STRING", DEFAULT_VALUE))
@@ -252,11 +254,11 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
-	newpath := os.Getenv("FHIR_ARCHIVE_DIR")
+	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
+	newpath := conf.GetEnv("FHIR_ARCHIVE_DIR")
 
 	if _, err = os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
@@ -285,7 +287,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.Nil(err)
 
 	// check that the file has moved to the archive location
-	expPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_ARCHIVE_DIR"), j.ID)
+	expPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_ARCHIVE_DIR"), j.ID)
 	_, err = ioutil.ReadFile(expPath)
 	if err != nil {
 		s.T().Error(err)
@@ -298,7 +300,7 @@ func (s *CLITestSuite) TestArchiveExpiring() {
 	assert.Equal(models.JobStatusArchived, testJob.Status)
 
 	// clean up
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(conf.GetEnv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
@@ -332,7 +334,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithoutPayloadDir() {
 	assert.Equal(models.JobStatusArchived, testJob.Status)
 
 	// clean up
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(conf.GetEnv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
@@ -344,10 +346,10 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	os.Setenv("FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../bcdaworker/data/test")
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 
-	path := fmt.Sprintf("%s/%d/", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
+	path := fmt.Sprintf("%s/%d/", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
@@ -367,7 +369,7 @@ func (s *CLITestSuite) TestArchiveExpiringWithThreshold() {
 	assert.Nil(s.T(), err)
 
 	// check that the file has not moved to the archive location
-	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
+	dataPath := fmt.Sprintf("%s/%d/fake.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 	_, err = ioutil.ReadFile(dataPath)
 	if err != nil {
 		s.T().Error(err)
@@ -390,11 +392,11 @@ func (s *CLITestSuite) TestCleanArchive() {
 	assert := assert.New(s.T())
 
 	// condition: FHIR_ARCHIVE_DIR doesn't exist
-	os.Unsetenv("FHIR_ARCHIVE_DIR")
+	conf.UnsetEnv(s.T(), "FHIR_ARCHIVE_DIR")
 	args := []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
-	os.Setenv("FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
+	conf.SetEnv(s.T(), "FHIR_ARCHIVE_DIR", "../bcdaworker/data/test/archive")
 
 	// condition: no jobs exist
 	args = []string{"bcda", "cleanup-archive", "--threshold", strconv.Itoa(Threshold)}
@@ -403,11 +405,11 @@ func (s *CLITestSuite) TestCleanArchive() {
 
 	// create a file that was last modified before the Threshold, but accessed after it
 	modified := now.Add(-(time.Hour * (Threshold + 1)))
-	beforeJobID, before := s.setupJobFile(modified, models.JobStatusArchived, os.Getenv("FHIR_ARCHIVE_DIR"))
+	beforeJobID, before := s.setupJobFile(modified, models.JobStatusArchived, conf.GetEnv("FHIR_ARCHIVE_DIR"))
 	defer before.Close()
 
 	// create a file that is clearly after the threshold (unless the threshold is 0)
-	afterJobID, after := s.setupJobFile(now, models.JobStatusArchived, os.Getenv("FHIR_ARCHIVE_DIR"))
+	afterJobID, after := s.setupJobFile(now, models.JobStatusArchived, conf.GetEnv("FHIR_ARCHIVE_DIR"))
 	defer after.Close()
 
 	// condition: bad threshold value
@@ -433,22 +435,22 @@ func (s *CLITestSuite) TestCleanArchive() {
 	assert.Equal(models.JobStatusArchived, afterJob.Status)
 
 	// I think this is an application directory and should always exist, but that doesn't seem to be the norm
-	os.RemoveAll(os.Getenv("FHIR_ARCHIVE_DIR"))
+	os.RemoveAll(conf.GetEnv("FHIR_ARCHIVE_DIR"))
 }
 
 func (s *CLITestSuite) TestCleanupFailed() {
 	const threshold = 30
 	modified := time.Now().Add(-(time.Hour * (threshold + 1)))
-	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_PAYLOAD_DIR"))
-	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusFailed, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusFailed, conf.GetEnv("FHIR_STAGING_DIR"))
 	// Job is old enough, but does not match the status
-	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, os.Getenv("FHIR_PAYLOAD_DIR"))
+	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, conf.GetEnv("FHIR_PAYLOAD_DIR"))
 
-	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusFailed, os.Getenv("FHIR_PAYLOAD_DIR"))
-	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusFailed, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusFailed, conf.GetEnv("FHIR_STAGING_DIR"))
 
 	// Check that we can clean up jobs that do not have data
-	noDataID, noData := s.setupJobFile(modified, models.JobStatusFailed, os.Getenv("FHIR_STAGING_DIR"))
+	noDataID, noData := s.setupJobFile(modified, models.JobStatusFailed, conf.GetEnv("FHIR_STAGING_DIR"))
 	dir, _ := path.Split(noData.Name())
 	os.RemoveAll(dir)
 	assertFileNotExists(s.T(), noData.Name())
@@ -554,13 +556,13 @@ func (s *CLITestSuite) TestCreateGroup() {
 	})
 	server := httptest.NewServer(router)
 
-	origSSASURL := os.Getenv("SSAS_URL")
-	os.Setenv("SSAS_URL", server.URL)
-	defer os.Setenv("SSAS_URL", origSSASURL)
+	origSSASURL := conf.GetEnv("SSAS_URL")
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	defer conf.SetEnv(s.T(), "SSAS_URL", origSSASURL)
 
-	origSSASUseTLS := os.Getenv("SSAS_USE_TLS")
-	os.Setenv("SSAS_USE_TLS", "false")
-	defer os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
+	origSSASUseTLS := conf.GetEnv("SSAS_USE_TLS")
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
+	defer conf.SetEnv(s.T(), "SSAS_USE_TLS", origSSASUseTLS)
 
 	buf := new(bytes.Buffer)
 	s.testApp.Writer = buf
@@ -717,7 +719,7 @@ func (s *CLITestSuite) TestDeleteDirectoryContents() {
 	assert.NotContains(buf.String(), "Successfully Deleted")
 	buf.Reset()
 
-	os.Setenv("TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
+	conf.SetEnv(s.T(), "TESTDELETEDIRECTORY", "NOT/A/REAL/DIRECTORY")
 	args = []string{"bcda", "delete-dir-contents", "--envvar", "TESTDELETEDIRECTORY"}
 	err = s.testApp.Run(args)
 	assert.EqualError(err, "flag provided but not defined: -envvar")
