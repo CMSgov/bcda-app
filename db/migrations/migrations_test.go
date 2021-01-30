@@ -76,6 +76,15 @@ func TestMigrationTestSuite(t *testing.T) {
 	suite.Run(t, new(MigrationTestSuite))
 }
 
+var migration5Tables = []interface{}{
+	"acos",
+	"cclf_beneficiaries",
+	"cclf_files",
+	"job_keys",
+	"suppressions",
+	"suppression_files",
+}
+
 func (s *MigrationTestSuite) TestBCDAMigration() {
 	migrator := migrator{
 		migrationPath: "./bcda/",
@@ -177,6 +186,21 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertColumnExists(t, true, db, "cclf_beneficiaries", "hicn")
 				migrator.runMigration(t, "4")
 				assertColumnExists(t, false, db, "cclf_beneficiaries", "hicn")
+			},
+		},
+		{
+			"Add default now() timestamp to created_at columns",
+			func(t *testing.T) {
+				migrator.runMigration(t, "5")
+				assertColumnDefaultValue(t, db, "created_at", "now()", migration5Tables)
+			},
+		},
+		{
+			"Remove default now() timestamp to created_at columns",
+			func(t *testing.T) {
+				assertColumnDefaultValue(t, db, "created_at", "now()", migration5Tables)
+				migrator.runMigration(t, "4")
+				assertColumnDefaultValue(t, db, "created_at", "", migration5Tables)
 			},
 		},
 		{
@@ -329,4 +353,25 @@ func assertTableExists(t *testing.T, shouldExist bool, db *sql.DB, tableName str
 		expected = 1
 	}
 	assert.Equal(t, expected, count)
+}
+
+func assertColumnDefaultValue(t *testing.T, db *sql.DB, columnName, expectedDefault string, tables []interface{}) {
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("table_name", "column_default").
+		From("information_schema.columns").
+		Where(
+			sb.NotIn("table_schema", "information_schema", "pg_catalog"), // Ignore postgres internal schemas
+			sb.Equal("column_name", columnName),                          // Filter desired column
+			sb.In("table_name", tables...),                               // Only check specific tables
+		)
+
+	query, args := sb.Build()
+	rows, _ := db.Query(query, args...)
+	defer rows.Close()
+
+	for rows.Next() {
+		var tableName, actualDefault string
+		rows.Scan(&tableName, &actualDefault)
+		assert.Equal(t, expectedDefault, actualDefault, "%s default value is %s; actual value should be %s", tableName, actualDefault, expectedDefault)
+	}
 }
