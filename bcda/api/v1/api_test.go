@@ -688,6 +688,7 @@ func (s *APITestSuite) TestDeleteJob() {
 		{models.JobStatusArchived, http.StatusGone},
 		{models.JobStatusCompleted, http.StatusGone},
 		{models.JobStatusCancelled, http.StatusGone},
+		{models.JobStatusFailedExpired, http.StatusGone},
 	}
 
 	for _, tt := range tests {

@@ -33,6 +33,7 @@ type Service interface {
 	GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
+
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 }
 
