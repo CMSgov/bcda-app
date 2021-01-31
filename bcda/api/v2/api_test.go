@@ -18,7 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"

@@ -30,7 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 type Handler struct {

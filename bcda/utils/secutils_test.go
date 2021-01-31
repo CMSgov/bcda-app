@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 type SecutilsTestSuite struct {

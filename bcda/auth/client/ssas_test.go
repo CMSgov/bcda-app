@@ -16,7 +16,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 var (

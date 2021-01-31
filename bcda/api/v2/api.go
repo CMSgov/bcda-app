@@ -11,7 +11,7 @@ import (
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	log "github.com/sirupsen/logrus"
 )

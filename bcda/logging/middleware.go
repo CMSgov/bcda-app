@@ -13,7 +13,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 // https://github.com/go-chi/chi/blob/master/_examples/logging/main.go

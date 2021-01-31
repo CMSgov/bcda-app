@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
-    "github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/bcda/client"
+	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"

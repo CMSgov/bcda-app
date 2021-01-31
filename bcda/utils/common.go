@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strconv"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/sirupsen/logrus"
 )

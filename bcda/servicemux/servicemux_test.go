@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

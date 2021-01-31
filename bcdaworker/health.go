@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/CMSgov/bcda-app/bcda/health"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"

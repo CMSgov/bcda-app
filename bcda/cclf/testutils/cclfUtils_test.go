@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

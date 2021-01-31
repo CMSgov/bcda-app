@@ -15,7 +15,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 var (

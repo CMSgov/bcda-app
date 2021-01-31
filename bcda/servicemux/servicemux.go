@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
@@ -111,8 +111,8 @@ func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 	}
 
 	sm.TLSConfig = tls.Config{
-		Certificates: []tls.Certificate{certificate},
-		Rand:         rand.Reader,
+		Certificates:             []tls.Certificate{certificate},
+		Rand:                     rand.Reader,
 		PreferServerCipherSuites: true,
 		CurvePreferences: []tls.CurveID{
 			tls.CurveP256,

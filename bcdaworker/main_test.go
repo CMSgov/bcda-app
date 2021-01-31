@@ -29,7 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 // See: https://github.com/stretchr/testify/issues/519

@@ -41,7 +41,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -98,7 +98,7 @@ func main() {
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err)
-		// Since the logs may be routed to a file, 
+		// Since the logs may be routed to a file,
 		// ensure that the error makes it at least once to stdout
 		fmt.Printf("Error occurred while executing command %s\n", err)
 	}

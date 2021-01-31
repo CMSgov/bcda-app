@@ -10,7 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/go-chi/chi"
 )
@@ -27,7 +27,7 @@ func NewAPIRouter() http.Handler {
 
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
-	
+
 	if conf.GetEnv("DEPLOYMENT_TARGET") != "prod" {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)

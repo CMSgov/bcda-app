@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 	log "github.com/sirupsen/logrus"

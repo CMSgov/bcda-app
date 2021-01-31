@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

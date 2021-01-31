@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"log"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"

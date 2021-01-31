@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -62,9 +62,9 @@ func TestSupportedACOs(t *testing.T) {
 
 func TestGetMaxBeneCount(t *testing.T) {
 	defer func() {
-		conf.UnsetEnv(t , "BCDA_FHIR_MAX_RECORDS_EOB")
-		conf.UnsetEnv(t , "BCDA_FHIR_MAX_RECORDS_PATIENT")
-		conf.UnsetEnv(t , "BCDA_FHIR_MAX_RECORDS_COVERAGE")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_EOB")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_PATIENT")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_COVERAGE")
 	}()
 
 	getEnvVar := func(resourceType string) string {
@@ -81,7 +81,7 @@ func TestGetMaxBeneCount(t *testing.T) {
 	}
 
 	clearer := func(resourceType string, val int) {
-		conf.UnsetEnv(t , getEnvVar(resourceType))
+		conf.UnsetEnv(t, getEnvVar(resourceType))
 	}
 	setter := func(resourceType string, val int) {
 		conf.SetEnv(t, getEnvVar(resourceType), strconv.Itoa(val))

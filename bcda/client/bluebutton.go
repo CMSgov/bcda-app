@@ -22,7 +22,7 @@ import (
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pkg/errors"
 

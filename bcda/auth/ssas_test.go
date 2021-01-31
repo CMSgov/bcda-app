@@ -18,7 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
@@ -80,7 +80,6 @@ func (s *SSASPluginTestSuite) TearDownTest() {
 	conf.SetEnv(s.T(), "SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
 	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", origSSASClientID)
 	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", origSSASSecret)
-
 
 	postgrestest.DeleteACO(s.T(), s.db, uuid.Parse(testACOUUID))
 }

@@ -186,42 +186,42 @@ func TestLookupEnv(t *testing.T) {
 		want  string
 		want1 bool
 	}{
-        {
-            "Query a variable that exists in local.env but has not value",
-            args{"TEST_EMPTY"},
-            "",
-            true,
-        },
-        {
-            "Query a variable that does not exist",
-            args{"TEST_DOESNOTEXIST"},
-            "",
-            false,
-        },
-        {
-            "Query a variable that exists but was unset",
-            args{"TEST_CHANGE"},
-            "",
-            true,
-        },
-        {
-            "Query a variable that only exist as environment var and not conf",
-            args{"TEST_EVONLY"},
-            "",
-            true,
-        },
+		{
+			"Query a variable that exists in local.env but has not value",
+			args{"TEST_EMPTY"},
+			"",
+			true,
+		},
+		{
+			"Query a variable that does not exist",
+			args{"TEST_DOESNOTEXIST"},
+			"",
+			false,
+		},
+		{
+			"Query a variable that exists but was unset",
+			args{"TEST_CHANGE"},
+			"",
+			true,
+		},
+		{
+			"Query a variable that only exist as environment var and not conf",
+			args{"TEST_EVONLY"},
+			"",
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-            if tt.args.key == "TEST_CHANGE" {
-                // For this test, unset
-                var _ = UnsetEnv(t, tt.args.key)
-            }
+			if tt.args.key == "TEST_CHANGE" {
+				// For this test, unset
+				var _ = UnsetEnv(t, tt.args.key)
+			}
 
-            if tt.args.key ==  "TEST_EVONLY" {
-                os.Setenv("TEST_EVONLY","")
-            }
+			if tt.args.key == "TEST_EVONLY" {
+				os.Setenv("TEST_EVONLY", "")
+			}
 
 			got, got1 := LookupEnv(tt.args.key)
 			if got != tt.want {

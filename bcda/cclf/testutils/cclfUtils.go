@@ -118,7 +118,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 		err = errors.New("did not import 2 files")
 		return err
 	}
-	
+
 	return
 }
 

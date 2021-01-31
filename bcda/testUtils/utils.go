@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"

@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-    "github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
