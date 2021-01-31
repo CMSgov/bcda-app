@@ -4,6 +4,8 @@ import (
 	"os"
 	"time"
 
+    "github.com/CMSgov/bcda-app/conf"
+
 	"github.com/sirupsen/logrus"
 )
 

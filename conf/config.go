@@ -2,7 +2,15 @@ package conf
 
 /*
    This is a package that wraps the viper, a package designed to handle config
-   files, for the BCDA app.
+   files, for the BCDA app. This package will go through three different stages.
+
+   1. Local env looks primarily at conf package for variables, but will also look
+   in the environment for any variables it is not tracking. PROD/TEST/DEV will
+   only look in the environment. (WE ARE HERE NOW)
+
+   2. Local env will only look at conf package. PROD/TEST/DEV will look at both.
+
+   3. All env will look at the conf package.
 
    Assumptions:
    1. The configuration file is a env file
@@ -13,181 +21,146 @@ package conf
 import (
 	"os"
 	"testing"
-    "time"
 
 	"github.com/spf13/viper"
 )
 
-// Global variable made available to any other package importing this package
+// Private global variable:
+
+// An instance of the viper struct containing the conf information. Only made
+// accessible through public functions GetEnv, SetEnv, etc.
 var envVars viper.Viper
-const testmode bool = true
 
 // Implementing a state machine tracking how things are going in this package
+// This state machine should go away when in stage 3.
 const (
-	configgood    uint8 = 0
-	configbad     uint8 = 1
-	noconfigfound uint8 = 2
+    configgood    uint8 = 0
+    configbad     uint8 = 1
+    noconfigfound uint8 = 2
 )
-// State is a public variable for diagnostic purposes.
-var State uint8 = configgood // if config found and loaded, value not changed
+var state uint8 = configgood // if config fie found and loaded, doesn't changed
 
 /*
-   This is the private helper function that sets up viper. This function is
-   called by the "Start" function below once, and it should be inlined by the
-   compiler, so no expense of an extra function call:
-   https://medium.com/@felipedutratine/does-golang-inline-functions-b41ee2d743fa
+    This is the private helper function that sets up viper. This function is
+    called by the init() function once during initialization of the package.
 */
 func setup(dir string) *viper.Viper {
 
-	/*  TIP:
-	    The viper package allocates the Viper struct as "var v" during the import
-	    of the package. The line below is actually a function that calls a method
-	    using "var v".
+    // Viper setup
+    var v = viper.New()
+    v.SetConfigName("local")
+    v.SetConfigType("env")
+    v.AddConfigPath(dir)
+    // Viper is lazy, do the read and parse of the config file
+    var err = v.ReadInConfig()
 
-	    viper.SetConfigFile("yaml")
+    // If viper cannot read the configuration file...
+    if err != nil {
+        state = configbad
+    }
 
-	    However, we want the Viper struct to be unreachable after the
-	    values from the yaml file is retrieved, so the GC can clean it up after.
-	*/
-
-	// Print statement for diagnostic purposes only... to see the viper struct
-	// instantiated once. Comment out for production.
-	//println("Creating the viper struct!")
-
-	// Viper setup
-	var v = viper.New()
-	v.SetConfigName("local")
-	v.SetConfigType("env")
-	v.AddConfigPath(dir)
-	// Viper is lazy, do the read and parse of the env now
-	var err = v.ReadInConfig()
-
-	// If viper cannot read the configuration file...
-	if err != nil {
-		State = configbad
-	}
-
-	return v
+    return v
 
 }
 
 /*
-   init:
-   When the packages is imported, try a couple of locations to find the local.env
-   configuration file. If the configuration file is not found, which is the case
-   with PROD, it will default the previous behavior of calling os.Getenv.
+    init:
+    First thing to run when this package is loaded by the binary.
+    Even if multiple packages import conf, this will be called and ran ONLY once.
 */
 func init() {
 
-	// Possible config locations. If there are more places to look, add here:
-	var locationSlice = []string{
-        // TEST DEV Location
+    // Possible config file locations: local and PROD/DEV/TEST respectfully.
+    var locationSlice = [2]string{
         "/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted",
-        // This will be the location on PROD, which is currently not set
-        // So for now, it will wait 30 seconds and just default to os calls
-		".",
-	}
-
-    // TEST MODE
-    if testmode {
-        State = configbad
-        return
+        "/go/src/github.com/CMSgov/DoesNotExistYet", // This is a placeholder for now
     }
 
-	// Iterate through the possible locations
-	for i, v := range locationSlice {
-
-		// If the file exists
-		if success := fileExistAttempt(3, v, i); success {
-			envVars = *setup(v)
-			break
-		}
-
-		// Exhausted the for loop, config file not found :/
-		if i == len(locationSlice) - 1 {
-			State = noconfigfound
-		}
-	}
-
+    if success, loc := findEnv(locationSlice[:]); success {
+        // A config file found, set up viper using that location
+        envVars = *setup(loc)
+    } else {
+        // Checked both locations, no config file found
+        state = noconfigfound
+    }
 }
-
 /*
-   This is a helper function to help address the issue with the aco-api application
-   starting before the EVs are available, panicing and restarting over and over.
-   It's not perfect, and this function should be improved in the future.
+    findEnv is a helper function that will determine what environment the application
+    is running in: local or PROD/TEST/DEV. Each environment should have a distinct
+    path where the configuration file is located. First it check the local path,
+    then the PROD/DEV/TEST. If both not found, defaults to just using env vars.
 */
-func fileExistAttempt(maxattempt uint8, v string, i int) bool {
+func findEnv(location []string) (bool, string) {
 
-	// Check if the configuration file exists
-	if _, err := os.Stat(v + "/local.env"); err == nil {
-		return true
-	}
+    // Check if the configuration file exists
+    if _, err := os.Stat(location[0] + "/local.env"); err == nil {
+        return true, location[0]
+    }
 
-	// If test / dev, just make one attempt and report false if the top block fails
-	if i == 0 {
-		return false
-	}
+    // Base case: checked both locations and no configurations found
+    if len(location) == 1 {
+        return false, ""
+    }
 
-	// Base case for prod configuration... if already done three times, stop
-	if maxattempt == 1 {
-		return false
-	}
-
-	// Wait 10 seconds before retrying... This probably isn't the fanciest way and may
-	// need to be revamp in the future.
-    time.Sleep(time.Second * 10) // POSSIBLE REVAMP NEEDED WHEN GOING TO PROD
-
-	// Attempt to see if file exists maxattempt times recursively
-	return fileExistAttempt(maxattempt-1, v, i)
+    // Check the next index of slice location
+    return findEnv(location[1:])
 }
 
-// A public function that acts like a Getter
+// GetEnv() is a public function that retrieves value stored in conf. If it does not exist
+// "" empty string is returned.
 func GetEnv(key string) string {
 
-	// If the configuration file is good, use the config file
-	if State == configgood {
+    // If the configuration file is good, use the config file
+    if state == configgood {
 
-		var value = envVars.GetString(key)
+        var value = envVars.GetString(key)
 
-		// Even if the config file is load, if the key doesn't exist in config
-		// try the environment. This technically makes the application mutable 
-        // and same as before. But put this here for now b/c there are environ
-        // variables that are not in config.
+        // Even if the config file is load, if the key doesn't exist in conf,
+        // try the environment. This technically makes the application mutable 
+        // and same as before. See doc-string at top of file to see why.
         if value == "" {
-            // Copy it over to config to prevent additional OS calls.
-            // Remember to delete both config mem and environ var when unsetenv!
+            // Copy it over to conf to prevent additional OS calls.
+            // Remember to delete both from conf and environment var when UnsetEnv() called!
             value = os.Getenv(key)
-            os.Setenv(key, value)
+            test := &testing.T{}
+            var _ = SetEnv(test, key, value)
         }
 
-		return value
-	}
+        return value
+    }
 
     // Config file not good, so default to environment... boo >:(
-	return os.Getenv(key)
+    return os.Getenv(key)
 
 }
 
-// A public function that wraps GenEnv and returns a bool if string is not empty
+// LookupEnv is a public function that acts augments os.LookupEnv to look in viper struct first
 func LookupEnv(key string) (string, bool) {
-    
-    if String := GetEnv(key); String != "" {
-        return String, true
+
+    if value := envVars.Get(key); value != nil {
+        return value.(string), true
+    } else {
+        if v, exist := os.LookupEnv(key); exist {
+            // bring value over to conf
+            test := &testing.T{}
+            var _ = SetEnv(test, key, v)
+            return v, true
+        }
     }
 
     return "", false
 
 }
 
-// A public function that acts like a Setter. This function should only be used
-// in testing. Protect parameter is an interface, but it's really a testing
-// T struct. Any other type entered for protect will panic.
+// SetEnv is a public function that adds key values into conf. This function should only be used
+// either in this package itself or testing. Protect parameter is type *testing.T, and is there
+// to ensure developers knowingly use it in the appropriate scope.
 func SetEnv(protect *testing.T, key string, value string) error {
 
     var err error
 
     // If config is good, change the config in memory
-    if State == configgood {
+    if state == configgood {
         envVars.Set(key, value) // This doesn't return anything...
     } else {
         // Config is bad, change the EV
@@ -198,18 +171,18 @@ func SetEnv(protect *testing.T, key string, value string) error {
 
 }
 
-// A public function that unsets a variable. This function should also only be
-// used in testing.
+// UnsetEnv is a public function that "unsets" a variable. Like SetEnv, this should only be used
+// either in this package itself or testing.
 func UnsetEnv(protect *testing.T, key string) error {
     var err error
 
-    // If config is good, change the config in memory
-    if State == configgood {
-        // Why? See line 152
+    // If config is good, change the conf in memory
+    if state == configgood {
+        // Why unset the environment variable too? See line 152.
         err = os.Unsetenv(key)
         envVars.Set(key, "")
     } else {
-        // Config is bad, change the EV
+        // Config is bad, change the environment variable.
         err = os.Unsetenv(key)
     }
 
