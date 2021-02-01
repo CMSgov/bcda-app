@@ -45,5 +45,5 @@ jobs:
       continue-on-error: false
       with:
         image: bcda-snyk
-        args: --file=Dockerfiles/Dockerfile.package --severity-threshold=high
+        args: --file=Dockerfiles/Dockerfile.package -file=Dockerfiles/Dockerfile.tests -file=Dockerfiles/Dockerfile.bdt --severity-threshold=high
 
