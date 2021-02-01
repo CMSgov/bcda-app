@@ -116,6 +116,7 @@ func GetEnv(key string) string {
 	if state == configgood {
 
 		var value = envVars.GetString(key)
+        var b bool
 
 		// Even if the config file is load, if the key doesn't exist in conf,
 		// try the environment. This technically makes the application mutable
@@ -123,9 +124,14 @@ func GetEnv(key string) string {
 		if value == "" {
 			// Copy it over to conf to prevent additional OS calls.
 			// Remember to delete both from conf and environment var when UnsetEnv() called!
-			value = os.Getenv(key)
-			test := &testing.T{}
-			var _ = SetEnv(test, key, value)
+			value, b = os.LookupEnv(key)
+
+            // Ensure the variables does exist before copy
+            if b {
+                test := &testing.T{}
+                var _ = SetEnv(test, key, value)
+            }
+
 		}
 
 		return value
@@ -139,20 +145,25 @@ func GetEnv(key string) string {
 // LookupEnv is a public function that acts augments os.LookupEnv to look in viper struct first
 func LookupEnv(key string) (string, bool) {
 
-	// If the key value exists in conf...
-	if value := envVars.Get(key); value != nil {
-		return value.(string), true
-	} else {
-		// If it does not exist in conf, check os
-		if v, exist := os.LookupEnv(key); exist {
-			// bring value over to conf
-			test := &testing.T{}
-			var _ = SetEnv(test, key, v)
-			return v, true
-		}
-	}
 
-	return "", false
+    if state == configgood {
+        // If the key value exists in conf...
+        if value := envVars.Get(key); value != nil && value != "" {
+            return value.(string), true
+        } else {
+            // If it does not exist in conf, check os
+            if v, exist := os.LookupEnv(key); exist {
+                // bring value over to conf
+                test := &testing.T{}
+                var _ = SetEnv(test, key, v)
+                return v, exist
+            }
+        }
+
+        return "", false
+    }
+    
+    return os.LookupEnv(key)
 
 }
 
@@ -182,13 +193,12 @@ func UnsetEnv(protect *testing.T, key string) error {
 
 	// If config is good, change the conf in memory
 	if state == configgood {
-		// Why unset the environment variable too? See line 152.
-		err = os.Unsetenv(key)
 		envVars.Set(key, "")
-	} else {
-		// Config is bad, change the environment variable.
-		err = os.Unsetenv(key)
-	}
+	} 
+
+    // Why unset the environment variable too? See line 152.
+    err = os.Unsetenv(key)
 
 	return err
+
 }

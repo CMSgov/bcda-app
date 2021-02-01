@@ -72,8 +72,7 @@ func TestSetEnv(t *testing.T) {
 			if err := SetEnv(tt.args.protect, tt.args.key, tt.args.value); (err != nil) != tt.wantErr {
 				t.Errorf("SetEnv() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			val := GetEnv(tt.args.key)
-			if val != tt.args.value {
+			if val := GetEnv(tt.args.key); val != tt.args.value {
 				t.Errorf("New value entered (%v) into conf does not match value provided.", tt.args.value)
 			}
 		})
@@ -91,19 +90,18 @@ func TestUnsetEnv(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			"Change Value",
-			args{t, "TEST_SOMEPATH"},
+			"Remove Value",
+			args{t, "TEST_HELLO"},
 			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := UnsetEnv(tt.args.protect, tt.args.key); (err != nil) != tt.wantErr {
-				t.Errorf("UnsetEnv() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("UnsetEnv() error = %v, wantErr %v, %v", err, tt.wantErr, state)
 			}
-			val := GetEnv(tt.args.key)
-			if val != "" {
-				t.Errorf("UnsetEnv did not clear the key from conf.")
+			if val := GetEnv(tt.args.key); val != "" {
+				t.Errorf("UnsetEnv did not clear the key from conf. Value is %v", val)
 			}
 		})
 	}
@@ -187,7 +185,7 @@ func TestLookupEnv(t *testing.T) {
 		want1 bool
 	}{
 		{
-			"Query a variable that exists in local.env but has not value",
+			"Query a variable that exists in local.env but does not have value",
 			args{"TEST_EMPTY"},
 			"",
 			true,
@@ -202,7 +200,7 @@ func TestLookupEnv(t *testing.T) {
 			"Query a variable that exists but was unset",
 			args{"TEST_CHANGE"},
 			"",
-			true,
+			false,
 		},
 		{
 			"Query a variable that only exist as environment var and not conf",
