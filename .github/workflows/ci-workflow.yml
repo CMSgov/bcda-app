@@ -32,9 +32,18 @@ jobs:
     steps:
     - name: "Checkout code"
       uses: actions/checkout@v2
-    - name: "Run Snyk"
+    - name: "Run Snyk - Golang"
       uses: snyk/actions/golang@master
       continue-on-error: false
       with:
         command: test
         args: --severity-threshold=high
+    - name: Build Docker Image
+      run: docker build -t bcda-app/snyk
+    - name: "Run Snyk - Docker"
+      uses: snyk/actions/docker@master
+      continue-on-error: false
+      with:
+        image: bcda-app/snyk
+        args: --file=/Dockerfiles/Dockerfile.package
+
