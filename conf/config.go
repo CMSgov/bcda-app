@@ -30,6 +30,8 @@ import (
 // An instance of the viper struct containing the conf information. Only made
 // accessible through public functions GetEnv, SetEnv, etc.
 var envVars viper.Viper
+var defaultmode = true
+var t = &testing.T{}
 
 // Implementing a state machine tracking how things are going in this package
 // This state machine should go away when in stage 3.
@@ -84,6 +86,10 @@ func init() {
 		// Checked both locations, no config file found
 		state = noconfigfound
 	}
+
+	if defaultmode {
+		state = noconfigfound
+	}
 }
 
 /*
@@ -115,26 +121,18 @@ func GetEnv(key string) string {
 	// If the configuration file is good, use the config file
 	if state == configgood {
 
-		var value = envVars.GetString(key)
+		if value := envVars.GetString(key); value != "" {
+			return value
+		} else {
+			// if it is blank, check evir variables
+			if v, exist := os.LookupEnv(key); exist {
+				var _ = SetEnv(t, key, v)
+				return v
+			}
 
-		// Even if the config file is load, if the key doesn't exist in conf,
-		// try the environment. This technically makes the application mutable
-		// and same as before. See doc-string at top of file to see why.
-		if value == "" {
-			// Copy it over to conf to prevent additional OS calls.
-			// Remember to delete both from conf and environment var when UnsetEnv() called!
-            var b bool
-			value, b = os.LookupEnv(key)
+			return value
+		}
 
-            // Ensure the variables does exist before copy
-            if b {
-                test := &testing.T{}
-                var _ = SetEnv(test, key, value)
-            }
-
-        }
-
-		return value
 	}
 
 	// Config file not good, so default to environment... boo >:(
@@ -145,25 +143,20 @@ func GetEnv(key string) string {
 // LookupEnv is a public function that acts augments os.LookupEnv to look in viper struct first
 func LookupEnv(key string) (string, bool) {
 
-     
-    if state == configgood {
-        // If the key value exists in conf...
-        if value := envVars.Get(key); value != nil && value != "" {
-            return value.(string), true
-        } else {
-            // If it does not exist in conf, check os
-            if v, exist := os.LookupEnv(key); exist {
-                // bring value over to conf
-                test := &testing.T{}
-                var _ = SetEnv(test, key, v)
-                return v, exist
-            }
-        }
+	if state == configgood {
+		if value := envVars.GetString(key); value != "" {
+			return value, true
+		} else {
+			if v, exist := os.LookupEnv(key); exist {
+				var _ = SetEnv(t, key, v)
+				return v, exist
+			} else {
+				return v, exist
+			}
+		}
+	}
 
-        return "", false
-    }
-    
-    return os.LookupEnv(key)
+	return os.LookupEnv(key)
 
 }
 
@@ -178,9 +171,9 @@ func SetEnv(protect *testing.T, key string, value string) error {
 	if state == configgood {
 		envVars.Set(key, value) // This doesn't return anything...
 	} else {
-        // Config is bad, change the EV
-        err = os.Setenv(key, value)
-    }
+		// Config is bad, change the EV
+		err = os.Setenv(key, value)
+	}
 
 	return err
 
@@ -194,10 +187,10 @@ func UnsetEnv(protect *testing.T, key string) error {
 	// If config is good, change the conf in memory
 	if state == configgood {
 		envVars.Set(key, "")
-	} 
+	}
 
-    // Why unset the environment variable too? See line 152.
-    err = os.Unsetenv(key)
+	// Why unset the environment variable too? Because GetEnv would copy and report wrong value.
+	err = os.Unsetenv(key)
 
 	return err
 

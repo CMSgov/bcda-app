@@ -103,8 +103,8 @@ func TestUnsetEnv(t *testing.T) {
 			if val := GetEnv(tt.args.key); val != "" {
 				t.Errorf("UnsetEnv did not clear the key from conf. Value is %v", val)
 			}
-            if val := os.Getenv(tt.args.key); val != "" {
-				t.Errorf("UnsetEnv did not clear the key from conf. Value is %v", val)
+			if val := os.Getenv(tt.args.key); val != "" {
+				t.Errorf("UnsetEnv did not clear the key from EV. Value is %v", val)
 			}
 		})
 	}
