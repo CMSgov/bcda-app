@@ -534,8 +534,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 func (s *ServiceTestSuite) TestCancelJob() {
 	ctx := context.Background()
-	err1 := fmt.Errorf("GetJobByID: Synthetic error for testing.")
-	err2 := fmt.Errorf("UpdateJob: Synthetic error for testing.")
+	synthErr := fmt.Errorf("Synthetic error for testing.")
 	tests := []struct {
 		status           JobStatus
 		cancellableJobID uint
@@ -553,8 +552,8 @@ func (s *ServiceTestSuite) TestCancelJob() {
 		{JobStatusCompleted, 123456, 0, nil, nil},
 		{JobStatusCancelled, 123456, 0, nil, nil},
 		{JobStatusFailedExpired, 123456, 0, nil, nil},
-		{JobStatusInProgress, 123456, 123456, err1, nil}, // error occurred on GetJobByID
-		{JobStatusInProgress, 123456, 123456, nil, err2}, // error occurred on UpdateJob
+		{JobStatusInProgress, 123456, 123456, synthErr, nil}, // error occurred on GetJobByID
+		{JobStatusInProgress, 123456, 123456, nil, synthErr}, // error occurred on UpdateJob
 	}
 
 	for _, tt := range tests {
