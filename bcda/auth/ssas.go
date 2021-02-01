@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -10,13 +11,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
 // SSASPlugin is an implementation of Provider that uses the SSAS API.
 type SSASPlugin struct {
-	client *client.SSASClient
+	client     *client.SSASClient
+	repository models.Repository
 }
 
 // validates that SSASPlugin implements the interface
@@ -25,7 +26,7 @@ var _ Provider = SSASPlugin{}
 // RegisterSystemWithIPs adds a software client for the ACO identified by localID.
 func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
 	creds := Credentials{}
-	aco, err := GetACOByUUID(localID)
+	aco, err := s.repository.GetACOByUUID(context.Background(), uuid.Parse(localID))
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to create system")
 	}
@@ -48,13 +49,11 @@ func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...st
 		return creds, errors.Wrap(err, "failed to unmarshal response json")
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
 	aco.ClientID = creds.ClientID
 	aco.SystemID = creds.SystemID
 
-	if err = db.Save(&aco).Error; err != nil {
+	if err = s.repository.UpdateACO(context.Background(), aco.UUID,
+		map[string]interface{}{"client_id": aco.ClientID, "system_id": aco.SystemID}); err != nil {
 		return creds, errors.Wrapf(err, "could not update ACO %s with client and system IDs", *aco.CMSID)
 	}
 
@@ -80,10 +79,7 @@ func (s SSASPlugin) GetVersion() (string, error) {
 func (s SSASPlugin) ResetSecret(clientID string) (Credentials, error) {
 	creds := Credentials{}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-
-	aco, err := GetACOByClientID(clientID)
+	aco, err := s.repository.GetACOByClientID(context.Background(), clientID)
 	if err != nil {
 		return creds, err
 	}
@@ -129,7 +125,7 @@ func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
 }
 
 // Extract available values from SSAS token claims.
-func adFromClaims(claims *CommonClaims) (AuthData, error) {
+func adFromClaims(r models.Repository, claims *CommonClaims) (AuthData, error) {
 	var (
 		ad  AuthData
 		err error
@@ -160,8 +156,8 @@ func adFromClaims(claims *CommonClaims) (AuthData, error) {
 	}
 	ad.CMSID = xData.IDList[0]
 
-	var aco models.ACO
-	if aco, err = GetACOByCMSID(ad.CMSID); err != nil {
+	var aco *models.ACO
+	if aco, err = repository.GetACOByCMSID(context.Background(), ad.CMSID); err != nil {
 		return ad, fmt.Errorf("no aco for cmsID %s; %v", ad.CMSID, err)
 	}
 	ad.ACOID = aco.UUID.String()
@@ -184,7 +180,7 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 	if !ok {
 		return errors.New("invalid ssas claims")
 	}
-	if _, err = adFromClaims(claims); err != nil {
+	if _, err = adFromClaims(s.repository, claims); err != nil {
 		tknEvent.help = fmt.Sprintf("failed getting AuthData; %s", err.Error())
 		operationFailed(tknEvent)
 		return err

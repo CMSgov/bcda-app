@@ -1,6 +1,8 @@
 package auth_test
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,12 +11,13 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -30,7 +33,8 @@ type TokenResponse struct {
 type AuthAPITestSuite struct {
 	suite.Suite
 	rr      *httptest.ResponseRecorder
-	db      *gorm.DB
+	db      *sql.DB
+	r       models.Repository
 	backend *auth.AlphaBackend
 	reset   func()
 }
@@ -43,27 +47,28 @@ func (s *AuthAPITestSuite) SetupSuite() {
 		public()
 	}
 	s.backend = auth.InitAlphaBackend()
+
+	s.db = database.GetDbConnection()
+	s.r = postgres.NewRepository(s.db)
 }
 
 func (s *AuthAPITestSuite) TearDownSuite() {
 	s.reset()
+	s.db.Close()
 }
 
 func (s *AuthAPITestSuite) SetupTest() {
-	s.db = database.GetGORMDbConnection()
 	s.rr = httptest.NewRecorder()
 }
 
-func (s *AuthAPITestSuite) TearDownTest() {
-	database.Close(s.db)
-}
-
 func (s *AuthAPITestSuite) TestAuthToken() {
-	var aco models.ACO
-	err := s.db.Where("uuid = ?", constants.DevACOUUID).First(&aco).Error
-	assert.Nil(s.T(), err)
+	ctx := context.Background()
+	aco, err := s.r.GetACOByUUID(ctx, uuid.Parse(constants.DevACOUUID))
+	assert.NoError(s.T(), err)
+
 	aco.AlphaSecret = ""
-	s.db.Save(&aco)
+	assert.NoError(s.T(), s.r.UpdateACO(ctx, aco.UUID,
+		map[string]interface{}{"alpha_secret": ""}))
 
 	// Missing authorization header
 	req := httptest.NewRequest("POST", "/auth/token", nil)
@@ -110,11 +115,14 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 
 func (s *AuthAPITestSuite) TestWelcome() {
 	// Setup
-	var aco models.ACO
-	err := s.db.Where("uuid = ?", constants.DevACOUUID).First(&aco).Error
-	assert.Nil(s.T(), err)
+	ctx := context.Background()
+	aco, err := s.r.GetACOByUUID(ctx, uuid.Parse(constants.DevACOUUID))
+	assert.NoError(s.T(), err)
+
 	aco.AlphaSecret = ""
-	s.db.Save(&aco)
+	assert.NoError(s.T(), s.r.UpdateACO(ctx, aco.UUID,
+		map[string]interface{}{"alpha_secret": ""}))
+
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
 	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", "")

@@ -1,19 +1,30 @@
 FROM golang:1.15-alpine3.12
 
+ARG swaggerVersion=3.38.0
+# Ensure swaggerVersion is available in the CMD
+ENV swaggerVersion ${swaggerVersion}
 RUN apk update upgrade
 RUN apk add git build-base gcc
 
-RUN go get -u github.com/golang/dep/cmd/dep
 RUN go get -u github.com/go-swagger/go-swagger/cmd/swagger
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
-COPY . .
-
-RUN dep ensure
+# Download swagger UI and update references to our swagger.json files
+RUN wget --directory-prefix=/tmp https://github.com/swagger-api/swagger-ui/archive/v${swaggerVersion}.zip
+RUN unzip /tmp/v${swaggerVersion}.zip -d /tmp && \
+    sed -i 's/https:\/\/petstore.swagger.io\/v2\/swagger.json/.\/swagger.json/g' /tmp/swagger-ui-${swaggerVersion}/dist/index.html && \
+    sed -i 's/\(url: "\.\/swagger\.json",\)/\1tagsSorter:\"alpha\",/g' /tmp/swagger-ui-${swaggerVersion}/dist/index.html
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 
-# TODO (BCDA-3776) - Re-enable generation of v2 endpoints once publically available.
-CMD ["swagger", "generate", "spec", "-i", "swaggerui/tags.yml", "-o", "swaggerui/swagger.json", "-m", \
-    "--exclude-tag", "metadataV2",  "--exclude-tag", "bulkDataV2"]
+# Since the UI references a single swagger spec, we need to include the swagger UI for V1 API.
+# The full spec (v1 + v2) is created at the root of swaggerui to allow us to continue to build a complete OpenAPI file
+# TODO (BCDA-4109) - Remove generating the swagger UI specific to v1 API
+CMD mkdir -p swaggerui/v2 && \
+    mkdir -p swaggerui/v1 && \
+    cp -r /tmp/swagger-ui-${swaggerVersion}/dist/* swaggerui/v1/ && \
+    cp -r /tmp/swagger-ui-${swaggerVersion}/dist/* swaggerui/v2/ && \
+    swagger generate spec -o swaggerui/v1/swagger.json -m --include-tag metadata --include-tag bulkData --include-tag auth --include-tag job && \
+    swagger generate spec -o swaggerui/v2/swagger.json -m --include-tag metadataV2 --include-tag bulkDataV2 --include-tag auth --include-tag job && \
+    swagger generate spec -o swaggerui/swagger.json -m

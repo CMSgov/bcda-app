@@ -6,16 +6,18 @@ RUN apk add git openssl
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
 
-RUN go get -u github.com/golang/dep/cmd/dep
 RUN go get -u github.com/derekparker/delve/cmd/dlv
 RUN go get github.com/BurntSushi/toml
 RUN go get github.com/howeyc/fsnotify
 RUN go get github.com/mattn/go-colorable
-RUN go get github.com/CMSgov/bcda-ssas-app/ssas/service/main
+# Clone bcda-ssas-app over running "go get" since we have issue determining
+# the path where the bcda-ssas-app is placed.
+# We need to run main --start at a particular location in order to guarantee that
+# the config files are placed in the expected spot
+RUN git clone https://github.com/CMSgov/bcda-ssas-app.git
+WORKDIR /go/bcda-ssas-app
+RUN go install ./ssas/service/main
+# Make sure we are in the directory to ensure the config files are resolved as expected
+WORKDIR /go/bcda-ssas-app/ssas
 
-WORKDIR /go/src/github.com/CMSgov/bcda-app/
-COPY vendor/github.com/pressly/fresh vendor/github.com/pressly/fresh
-RUN go install ./vendor/github.com/pressly/fresh
-
-WORKDIR /go/src/github.com/CMSgov/bcda-ssas-app/ssas
-CMD ["fresh", "-o", "ssas-service", "-p", "./service/main", "-r", "--start"]
+CMD ["main", "--start"]

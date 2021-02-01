@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"strconv"
@@ -19,7 +20,6 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -29,6 +29,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 )
 
 var (
@@ -69,8 +71,9 @@ func processJob(j *que.Job) error {
 	// Update the Cloudwatch Metric for job queue count
 	updateJobQueueCountCloudwatchMetric()
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
+	db := database.GetDbConnection()
+	defer db.Close()
+	r := postgres.NewRepository(db)
 
 	jobArgs := models.JobEnqueueArgs{}
 	err := json.Unmarshal(j.Args, &jobArgs)
@@ -85,10 +88,8 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
-	var exportJob models.Job
-	result := db.First(&exportJob, "ID = ?", jobArgs.ID)
-
-	if goerrors.Is(result.Error, gorm.ErrRecordNotFound) {
+	exportJob, err := r.GetJobByID(ctx, uint(jobArgs.ID))
+	if goerrors.Is(err, repository.ErrJobNotFound) {
 		// Based on the current backoff delay (j.ErrorCount^4 + 3 seconds), this should've given
 		// us plenty of headroom to ensure that the parent job will never be found.
 		maxNotFoundRetries := int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
@@ -100,21 +101,22 @@ func processJob(j *que.Job) error {
 		}
 
 		log.Warnf("No job found for ID %d acoID: %s. Will retry.", jobArgs.ID, jobArgs.ACOID)
-		return errors.Wrap(gorm.ErrRecordNotFound, "could not retrieve job from database")
+		return errors.Wrap(repository.ErrJobNotFound, "could not retrieve job from database")
 	}
 
-	if result.Error != nil {
-		return errors.Wrap(result.Error, "could not retrieve job from database")
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve job from database")
 	}
 
-	var aco models.ACO
-	err = db.First(&aco, "uuid = ?", exportJob.ACOID).Error
+	aco, err := r.GetACOByUUID(ctx, exportJob.ACOID)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve ACO from database")
 	}
 
-	err = db.Model(&exportJob).Where("status = ?", "Pending").Update("status", "In Progress").Error
-	if err != nil {
+	err = r.UpdateJobStatusCheckStatus(ctx, exportJob.ID, models.JobStatusPending, models.JobStatusInProgress)
+	if goerrors.Is(err, repository.ErrJobNotUpdated) {
+		log.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
+	} else if err != nil {
 		return errors.Wrap(err, "could not update job status in database")
 	}
 
@@ -134,35 +136,42 @@ func processJob(j *que.Job) error {
 		return err
 	}
 
+	// Create directory for job results.
+	// This will be used in the clean up later to move over processed files.
 	if err = createDir(payloadPath); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	fileUUID, err := writeBBDataToFile(ctx, bb, db, *aco.CMSID, jobArgs)
+	fileUUID, fileSize, err := writeBBDataToFile(ctx, r, bb, *aco.CMSID, jobArgs)
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
-		err = db.Model(&exportJob).Update("status", "Failed").Error
+		err = r.UpdateJobStatus(ctx, exportJob.ID, models.JobStatusFailed)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = addJobFileName(fileName, jobArgs.ResourceType, exportJob, db)
+		if fileSize == 0 {
+			log.Warn("Empty file found in request: ", fileName)
+			fileName = models.BlankFileName
+		}
+
+		err = addJobFileName(ctx, r, fileName, jobArgs.ResourceType, *exportJob)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
-	_, err = exportJob.CheckCompletedAndCleanup(db)
+	_, err = checkJobCompleteAndCleanup(ctx, r, exportJob.ID)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	updateJobStats(exportJob.ID, db)
+	updateJobStats(ctx, r, exportJob.ID)
 
 	log.Info("Worker finished processing job ", j.ID)
 
@@ -178,7 +187,8 @@ func createDir(path string) error {
 	return nil
 }
 
-func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, err error) {
+func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
+	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
 	defer func() {
 		segment.End()
@@ -199,7 +209,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 			return bb.GetPatient(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
 	default:
-		return "", fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
+		return "", 0, fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
 	}
 
 	dataDir := os.Getenv("FHIR_STAGING_DIR")
@@ -207,7 +217,7 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return "", 0, err
 	}
 
 	defer utils.CloseFileAndLogError(f)
@@ -220,7 +230,12 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
 		errMsg, err := func() (string, error) {
-			bene, err := getBeneficiary(beneID, bb, db)
+			id, err := strconv.ParseUint(beneID, 10, 64)
+			if err != nil {
+				return fmt.Sprintf("Error failed to convert %s to uint", beneID), err
+			}
+
+			bene, err := getBeneficiary(ctx, r, uint(id), bb)
 			if err != nil {
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), err
 			}
@@ -246,29 +261,34 @@ func writeBBDataToFile(ctx context.Context, bb client.APIClient, db *gorm.DB, cm
 	}
 
 	if err = w.Flush(); err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	if failed {
-		return "", errors.New("number of failed requests has exceeded threshold")
+		return "", 0, errors.New("number of failed requests has exceeded threshold")
 	}
 
-	return fileUUID, nil
+	fstat, err := f.Stat()
+	if err != nil {
+		return "", 0, err
+	}
+
+	return fileUUID, fstat.Size(), nil
 }
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
-func getBeneficiary(cclfBeneID string, bb client.APIClient, db *gorm.DB) (models.CCLFBeneficiary, error) {
+func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient) (models.CCLFBeneficiary, error) {
 
-	var cclfBeneficiary models.CCLFBeneficiary
-	db.First(&cclfBeneficiary, cclfBeneID)
+	bene, err := r.GetCCLFBeneficiaryByID(ctx, beneID)
+	if err != nil {
+		return models.CCLFBeneficiary{}, err
+	}
+
+	cclfBeneficiary := *bene
+
 	bbID, err := cclfBeneficiary.GetBlueButtonID(bb)
 	if err != nil {
 		return cclfBeneficiary, err
-	}
-
-	// Update the value in the DB only if necessary
-	if cclfBeneficiary.BlueButtonID != bbID {
-		db.Model(&cclfBeneficiary).Update("blue_button_id", bbID)
 	}
 
 	cclfBeneficiary.BlueButtonID = bbID
@@ -341,6 +361,55 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 			appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		}
 	}
+}
+
+func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jobID uint) (jobCompleted bool, err error) {
+	j, err := r.GetJobByID(ctx, jobID)
+	if err != nil {
+		return false, err
+	}
+
+	if j.Status == models.JobStatusCompleted {
+		return true, nil
+	}
+
+	completedCount, err := r.GetJobKeyCount(ctx, jobID)
+	if err != nil {
+		return false, err
+	}
+
+	if completedCount >= j.JobCount {
+		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), j.ID)
+		payload := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
+
+		files, err := ioutil.ReadDir(staging)
+		if err != nil {
+			return false, err
+		}
+
+		for _, f := range files {
+			oldPath := fmt.Sprintf("%s/%s", staging, f.Name())
+			newPath := fmt.Sprintf("%s/%s", payload, f.Name())
+			err := os.Rename(oldPath, newPath)
+			if err != nil {
+				return false, err
+			}
+		}
+
+		if err = os.Remove(staging); err != nil {
+			return false, err
+		}
+
+		if err := r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted); err != nil {
+			return false, err
+		}
+
+		// Able to mark job as completed
+		return true, nil
+	}
+
+	// We still have parts of the job that are not complete
+	return false, nil
 }
 
 func waitForSig() {
@@ -426,18 +495,18 @@ func getQueueJobCount() float64 {
 	return float64(count)
 }
 
-func updateJobStats(jID uint, db *gorm.DB) {
+func updateJobStats(ctx context.Context, r repository.Repository, jobID uint) {
 	updateJobQueueCountCloudwatchMetric()
 
-	var j models.Job
-	if err := db.First(&j, jID).Error; err == nil {
-		db.Model(&j).Update("completed_job_count", j.CompletedJobCount+1)
+	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
+	// CompletedJobCount is purely information and can be off.
+	if err := r.IncrementCompletedJobCount(ctx, jobID); err != nil {
+		log.Warnf("Failed to update completed job count for job %d. Will continue. %s", jobID, err.Error())
 	}
 }
 
-func addJobFileName(fileName, resourceType string, exportJob models.Job, db *gorm.DB) error {
-	err := db.Create(&models.JobKey{JobID: exportJob.ID, FileName: fileName, ResourceType: resourceType}).Error
-	if err != nil {
+func addJobFileName(ctx context.Context, r repository.Repository, fileName, resourceType string, exportJob models.Job) error {
+	if err := r.CreateJobKey(ctx, models.JobKey{JobID: exportJob.ID, FileName: fileName, ResourceType: resourceType}); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -454,7 +523,7 @@ func updateJobQueueCountCloudwatchMetric() {
 			fmt.Println("Warning: failed to create new metric sampler...")
 		} else {
 			err := sampler.PutSample("JobQueueCount", getQueueJobCount(), []metrics.Dimension{
-				metrics.Dimension{Name: "Environment", Value: env},
+				{Name: "Environment", Value: env},
 			})
 			if err != nil {
 				log.Error(err)

@@ -6,7 +6,6 @@ RUN apk add git openssl
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
 
-RUN go get -u github.com/golang/dep/cmd/dep
 RUN go get -u github.com/derekparker/delve/cmd/dlv
 RUN go get github.com/BurntSushi/toml
 RUN go get github.com/howeyc/fsnotify
@@ -14,8 +13,7 @@ RUN go get github.com/mattn/go-colorable
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
-RUN go install ./vendor/github.com/pressly/fresh
-RUN dep ensure
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
-CMD ["fresh", "-r", "start-api"]
+RUN go install
+CMD ["bcda", "start-api"]

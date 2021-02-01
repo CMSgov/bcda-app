@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -9,15 +10,18 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pborman/uuid"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
 )
 
-type AlphaAuthPlugin struct{}
+type AlphaAuthPlugin struct {
+	Repository models.Repository
+}
 
 // validates that AlphaAuthPlugin implements the interface
 var _ Provider = AlphaAuthPlugin{}
 
 func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {
+	ctx := context.Background()
 	regEvent := event{op: "RegisterSystem", trackingID: localID}
 	operationStarted(regEvent)
 	if localID == "" {
@@ -27,7 +31,7 @@ func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips 
 		return Credentials{}, errors.New(regEvent.help)
 	}
 
-	aco, err := GetACOByUUID(localID)
+	aco, err := p.Repository.GetACOByUUID(ctx, uuid.Parse(localID))
 	if err != nil {
 		regEvent.help = err.Error()
 		operationFailed(regEvent)
@@ -55,11 +59,11 @@ func (p AlphaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips 
 		return Credentials{}, err
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 	aco.ClientID = localID
 	aco.AlphaSecret = hashedSecret.String()
-	err = db.Save(&aco).Error
+
+	err = p.Repository.UpdateACO(ctx, aco.UUID,
+		map[string]interface{}{"client_id": aco.ClientID, "alpha_secret": aco.AlphaSecret})
 	if err != nil {
 		regEvent.help = err.Error()
 		operationFailed(regEvent)
@@ -86,9 +90,10 @@ func (p AlphaAuthPlugin) UpdateSystem(params []byte) ([]byte, error) {
 }
 
 func (p AlphaAuthPlugin) DeleteSystem(clientID string) error {
+	ctx := context.Background()
 	delEvent := event{op: "DeleteSystem", trackingID: clientID}
 	operationStarted(delEvent)
-	aco, err := GetACOByClientID(clientID)
+	aco, err := repository.GetACOByClientID(ctx, clientID)
 	if err != nil {
 		delEvent.help = err.Error()
 		operationFailed(delEvent)
@@ -98,9 +103,8 @@ func (p AlphaAuthPlugin) DeleteSystem(clientID string) error {
 	aco.ClientID = ""
 	aco.AlphaSecret = ""
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
-	err = db.Save(&aco).Error
+	err = repository.UpdateACO(ctx, aco.UUID,
+		map[string]interface{}{"client_id": aco.ClientID, "alpha_secret": aco.AlphaSecret})
 	if err != nil {
 		delEvent.help = err.Error()
 		operationFailed(delEvent)
@@ -112,6 +116,7 @@ func (p AlphaAuthPlugin) DeleteSystem(clientID string) error {
 }
 
 func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
+	ctx := context.Background()
 	genEvent := event{op: "ResetSecret", trackingID: clientID}
 	operationStarted(genEvent)
 
@@ -122,7 +127,7 @@ func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
 	}
 
 	// Although this should be GetACOByClientID, fixing it impacts tests that were built with the assumption is that client ID = UUID.
-	aco, err := GetACOByUUID(clientID)
+	aco, err := p.Repository.GetACOByUUID(ctx, uuid.Parse(clientID))
 	if err != nil {
 		genEvent.help = err.Error()
 		operationFailed(genEvent)
@@ -143,10 +148,9 @@ func (p AlphaAuthPlugin) ResetSecret(clientID string) (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	db := database.GetGORMDbConnection()
-	defer database.Close(db)
 	aco.AlphaSecret = hashedSecret.String()
-	err = db.Save(&aco).Error
+	err = p.Repository.UpdateACO(ctx, aco.UUID,
+		map[string]interface{}{"alpha_secret": aco.AlphaSecret})
 	if err != nil {
 		genEvent.help = err.Error()
 		operationFailed(genEvent)
@@ -180,7 +184,7 @@ func (p AlphaAuthPlugin) MakeAccessToken(credentials Credentials) (string, error
 		return "", fmt.Errorf("ClientID must be a valid UUID")
 	}
 
-	aco, err := GetACOByClientID(credentials.ClientID)
+	aco, err := p.Repository.GetACOByClientID(context.Background(), credentials.ClientID)
 	if err != nil {
 		tknEvent.help = err.Error()
 		operationFailed(tknEvent)
@@ -231,7 +235,7 @@ func (p AlphaAuthPlugin) AuthorizeAccess(tokenString string) error {
 		return err
 	}
 
-	_, err = GetACOByUUID(c.ACOID)
+	_, err = p.Repository.GetACOByUUID(context.Background(), uuid.Parse(c.ACOID))
 	if err != nil {
 		tknEvent.help = err.Error()
 		operationFailed(tknEvent)

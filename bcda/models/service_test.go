@@ -1,6 +1,7 @@
 package models
 
 import (
+	context "context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 const (
@@ -26,6 +26,8 @@ const (
 
 var (
 	defaultRunoutClaimThru = time.Date(time.Now().Year()-1, time.December, 31, 23, 59, 59, 999999, time.UTC)
+	// See: https://github.com/stretchr/testify/issues/519
+	ctxMatcher = mock.MatchedBy(func(ctx context.Context) bool { return true })
 )
 
 func TestSupportedACOs(t *testing.T) {
@@ -146,7 +148,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(1),
 			getCCLFFile(2),
 			func(serv *service) error {
-				_, _, err := serv.getNewAndExistingBeneficiaries("cmsID", time.Now())
+				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), "cmsID", time.Now())
 				return err
 			},
 		},
@@ -155,7 +157,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(3),
 			nil,
 			func(serv *service) error {
-				_, err := serv.getBeneficiaries("cmsID", FileTypeDefault)
+				_, err := serv.getBeneficiaries(context.Background(), "cmsID", FileTypeDefault)
 				return err
 			},
 		},
@@ -166,20 +168,20 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			lookbackDays := int(8)
 			sp := suppressionParameters{true, lookbackDays}
 			repository := &MockRepository{}
-			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, FileTypeDefault).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), FileTypeDefault).Return(tt.cclfFileOld, nil)
+			repository.On("GetLatestCCLFFile", ctxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, FileTypeDefault).Return(tt.cclfFileNew, nil)
+			repository.On("GetLatestCCLFFile", ctxMatcher, mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), FileTypeDefault).Return(tt.cclfFileOld, nil)
 			if tt.cclfFileOld != nil {
-				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return([]string{"1", "2", "3"}, nil)
+				repository.On("GetCCLFBeneficiaryMBIs", ctxMatcher, tt.cclfFileOld.ID).Return([]string{"1", "2", "3"}, nil)
 			}
 
 			var suppressedMBIs []string
-			repository.On("GetCCLFBeneficiaries", tt.cclfFileNew.ID, suppressedMBIs).Return([]*CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
+			repository.On("GetCCLFBeneficiaries", ctxMatcher, tt.cclfFileNew.ID, suppressedMBIs).Return([]*CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
 			serviceInstance := &service{repository: repository, sp: sp, stdCutoffDuration: 1 * time.Hour}
 
 			err := tt.funcUnderTest(serviceInstance)
 			assert.NoError(t, err)
 
-			repository.AssertNotCalled(t, "GetSuppressedMBIs", lookbackDays)
+			repository.AssertNotCalled(t, "GetSuppressedMBIs", ctxMatcher, lookbackDays)
 		})
 	}
 }
@@ -268,7 +270,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 				}
 			}
 
-			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete,
+			repository.On("GetLatestCCLFFile", ctxMatcher, cmsID, fileNum, constants.ImportComplete,
 				// Verify our cutoffTime is bsed on our provided duration
 				mock.MatchedBy(func(t time.Time) bool {
 					// Since we're using time.Now() within the service call, we can't compare directly.
@@ -277,19 +279,19 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 				}),
 				time.Time{},
 				FileTypeDefault).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault).Return(tt.cclfFileOld, nil)
+			repository.On("GetLatestCCLFFile", ctxMatcher, cmsID, fileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault).Return(tt.cclfFileOld, nil)
 
 			if tt.cclfFileOld != nil {
-				repository.On("GetCCLFBeneficiaryMBIs", tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
+				repository.On("GetCCLFBeneficiaryMBIs", ctxMatcher, tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
 			}
 			suppressedMBI := "suppressedMBI"
 			if tt.cclfFileNew != nil {
-				repository.On("GetCCLFBeneficiaries", tt.cclfFileNew.ID, []string{suppressedMBI}).Return(benes, nil)
+				repository.On("GetCCLFBeneficiaries", ctxMatcher, tt.cclfFileNew.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
-			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
+			repository.On("GetSuppressedMBIs", ctxMatcher, lookbackDays).Return([]string{suppressedMBI}, nil)
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
-			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries("cmsID", since)
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(), "cmsID", since)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -363,7 +365,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 					beneID++
 				}
 			}
-			repository.On("GetLatestCCLFFile", cmsID, fileNum, constants.ImportComplete,
+			repository.On("GetLatestCCLFFile", ctxMatcher, cmsID, fileNum, constants.ImportComplete,
 				// Verify our cutoffTime is based on our provided duration
 				mock.MatchedBy(func(t time.Time) bool {
 					// Since we're using time.Now() within the service call, we can't compare directly.
@@ -380,13 +382,13 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
 
 			suppressedMBI := "suppressedMBI"
-			repository.On("GetSuppressedMBIs", lookbackDays).Return([]string{suppressedMBI}, nil)
+			repository.On("GetSuppressedMBIs", ctxMatcher, lookbackDays).Return([]string{suppressedMBI}, nil)
 			if tt.cclfFile != nil {
-				repository.On("GetCCLFBeneficiaries", tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
+				repository.On("GetCCLFBeneficiaries", ctxMatcher, tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
-			benes, err := serviceInstance.getBeneficiaries("cmsID", tt.fileType)
+			benes, err := serviceInstance.getBeneficiaries(context.Background(), "cmsID", tt.fileType)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -460,13 +462,13 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			repository := &MockRepository{}
-			repository.On("GetLatestCCLFFile", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
-			repository.On("GetSuppressedMBIs", mock.Anything).Return(nil, nil)
-			repository.On("GetCCLFBeneficiaries", mock.Anything, mock.Anything).Return(tt.expBenes, nil)
+			repository.On("GetLatestCCLFFile", ctxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+			repository.On("GetSuppressedMBIs", ctxMatcher, mock.Anything).Return(nil, nil)
+			repository.On("GetCCLFBeneficiaries", ctxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
-			repository.On("GetCCLFBeneficiaryMBIs", mock.Anything).Return(benes1MBI, nil)
+			repository.On("GetCCLFBeneficiaryMBIs", ctxMatcher, mock.Anything).Return(benes1MBI, nil)
 			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, defaultRunoutClaimThru, basePath)
-			queJobs, err := serviceInstance.GetQueJobs(tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
+			queJobs, err := serviceInstance.GetQueJobs(context.Background(), tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
@@ -532,14 +534,14 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 func getCCLFFile(id uint) *CCLFFile {
 	return &CCLFFile{
-		Model: gorm.Model{ID: id},
+		ID: id,
 	}
 }
 
 func getCCLFBeneficiary(id uint, mbi string) *CCLFBeneficiary {
 	return &CCLFBeneficiary{
-		Model: gorm.Model{ID: id},
-		MBI:   mbi,
+		ID:  id,
+		MBI: mbi,
 	}
 }
 
