@@ -40,9 +40,9 @@ jobs:
         args: --severity-threshold=high
     - name: Build Docker Images
       run: |
-        docker build -f Dockerfiles/Dockerfile.package -t bcda-package
-        docker build -f Dockerfiles/Dockerfile.bdt -t bcda-bdt
-        docker build -f Dockerfiles/Dockerfile.tests -t bcda-tests
+        docker build -f Dockerfiles/Dockerfile.package -t bcda-package .
+        docker build -f Dockerfiles/Dockerfile.bdt -t bcda-bdt .
+        docker build -f Dockerfiles/Dockerfile.tests -t bcda-tests .
     - name: "Run Snyk - Docker/Package"
       uses: snyk/actions/docker@master
       continue-on-error: true
