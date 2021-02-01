@@ -114,26 +114,40 @@ func findEnv(location []string) (bool, string) {
 	return findEnv(location[1:])
 }
 
+//func exceptionList(key string) bool {
+    //var exceptions = [5]string{"OKTA_CLIENT_TOKEN", "BCDA_AUTH_PROVIDER", "OKTA_OAUTH_SERVER_ID", "CLIENT_ID", "CLIENT_SECRET"}
+    //for _, v := range exceptions {
+        //if key == v {
+            //return true
+        //}
+    //}
+
+    //return false
+//}
+
 // GetEnv() is a public function that retrieves value stored in conf. If it does not exist
 // "" empty string is returned.
 func GetEnv(key string) string {
 
-	// If the configuration file is good, use the config file
-	if state == configgood {
+    //if except := exceptionList(key); except {
+        //return os.Getenv(key)
+    //}
 
-		if value := envVars.GetString(key); value != "" {
-			return value
-		} else {
-			// if it is blank, check evir variables
-			if v, exist := os.LookupEnv(key); exist {
-				var _ = SetEnv(t, key, v)
-				return v
-			}
+   // // If the configuration file is good, use the config file
+    if state == configgood {
 
-			return value
-		}
+        if value := envVars.GetString(key); value != "" {
+            return value
+        } else {
+            // if it is blank, check evir variables
+            v, exist := os.LookupEnv(key)
+            if exist {
+                var _ = SetEnv(t, key, v)
+            }
+            return v
+        }
 
-	}
+    }
 
 	// Config file not good, so default to environment... boo >:(
 	return os.Getenv(key)
@@ -143,18 +157,21 @@ func GetEnv(key string) string {
 // LookupEnv is a public function that acts augments os.LookupEnv to look in viper struct first
 func LookupEnv(key string) (string, bool) {
 
-	if state == configgood {
-		if value := envVars.GetString(key); value != "" {
-			return value, true
-		} else {
-			if v, exist := os.LookupEnv(key); exist {
-				var _ = SetEnv(t, key, v)
-				return v, exist
-			} else {
-				return v, exist
-			}
-		}
-	}
+    //if except := exceptionList(key); except {
+        //return os.LookupEnv(key)
+    //}
+
+    if state == configgood {
+        if value := envVars.GetString(key); value != "" {
+            return value, true
+        } else {
+            v, exist := os.LookupEnv(key)
+            if exist {
+                var _ = SetEnv(t, key, v)
+            } 
+            return v, exist
+        }
+    }
 
 	return os.LookupEnv(key)
 
