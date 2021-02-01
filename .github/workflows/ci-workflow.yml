@@ -38,12 +38,27 @@ jobs:
       with:
         command: test
         args: --severity-threshold=high
-    - name: Build Docker Image
-      run: docker build -f Dockerfiles/Dockerfile.package -t bcda-snyk .
+    - name: Build Docker Images
+      run: |
+        docker build -f Dockerfiles/Dockerfile.package -t bcda-package
+        docker build -f Dockerfiles/Dockerfile.bdt -t bcda-bdt
+        docker build -f Dockerfiles/Dockerfile.tests -t bcda-tests
     - name: "Run Snyk - Docker"
       uses: snyk/actions/docker@master
       continue-on-error: true
       with:
-        image: bcda-snyk
-        args: --file=Dockerfiles/Dockerfile.package -file=Dockerfiles/Dockerfile.tests -file=Dockerfiles/Dockerfile.bdt --severity-threshold=high
+        image: bcda-package
+        args: --file=Dockerfiles/Dockerfile.package --severity-threshold=high
+    - name: "Run Snyk - Docker"
+      uses: snyk/actions/docker@master
+      continue-on-error: true
+      with:
+        image: bcda-bdt
+        args: -file=Dockerfiles/Dockerfile.bdt --severity-threshold=high
+    - name: "Run Snyk - Docker"
+      uses: snyk/actions/docker@master
+      continue-on-error: true
+      with:
+        image: bcda-tests
+        args: --file=Dockerfiles/Dockerfile.tests --severity-threshold=high
 
