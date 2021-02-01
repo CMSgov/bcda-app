@@ -42,7 +42,7 @@ jobs:
       run: docker build -f Dockerfiles/Dockerfile.package -t bcda-snyk .
     - name: "Run Snyk - Docker"
       uses: snyk/actions/docker@master
-      continue-on-error: false
+      continue-on-error: true
       with:
         image: bcda-snyk
         args: --file=Dockerfiles/Dockerfile.package -file=Dockerfiles/Dockerfile.tests -file=Dockerfiles/Dockerfile.bdt --severity-threshold=high
