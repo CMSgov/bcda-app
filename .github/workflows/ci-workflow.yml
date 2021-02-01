@@ -43,19 +43,19 @@ jobs:
         docker build -f Dockerfiles/Dockerfile.package -t bcda-package
         docker build -f Dockerfiles/Dockerfile.bdt -t bcda-bdt
         docker build -f Dockerfiles/Dockerfile.tests -t bcda-tests
-    - name: "Run Snyk - Docker"
+    - name: "Run Snyk - Docker/Package"
       uses: snyk/actions/docker@master
       continue-on-error: true
       with:
         image: bcda-package
         args: --file=Dockerfiles/Dockerfile.package --severity-threshold=high
-    - name: "Run Snyk - Docker"
+    - name: "Run Snyk - Docker/BDT"
       uses: snyk/actions/docker@master
       continue-on-error: true
       with:
         image: bcda-bdt
         args: -file=Dockerfiles/Dockerfile.bdt --severity-threshold=high
-    - name: "Run Snyk - Docker"
+    - name: "Run Snyk - Docker/Tests"
       uses: snyk/actions/docker@master
       continue-on-error: true
       with:
