@@ -132,12 +132,6 @@ func GetEnv(key string) string {
                 var _ = SetEnv(test, key, value)
             }
 
-        } else {
-            if osval := os.Getenv(key); osval != value {
-                test := &testing.T{}
-                var _ = SetEnv(test, key, osval)
-                return osval
-            }
         }
 
 		return value
@@ -183,10 +177,10 @@ func SetEnv(protect *testing.T, key string, value string) error {
 	// If config is good, change the config in memory
 	if state == configgood {
 		envVars.Set(key, value) // This doesn't return anything...
-	}
-
-    // Config is bad, change the EV
-    err = os.Setenv(key, value)
+	} else {
+        // Config is bad, change the EV
+        err = os.Setenv(key, value)
+    }
 
 	return err
 
