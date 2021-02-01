@@ -366,12 +366,14 @@ func assertColumnDefaultValue(t *testing.T, db *sql.DB, columnName, expectedDefa
 		)
 
 	query, args := sb.Build()
-	rows, _ := db.Query(query, args...)
+	rows, err := db.Query(query, args...)
+	assert.NoError(t, err)
 	defer rows.Close()
 
 	for rows.Next() {
-		var tableName, actualDefault string
-		rows.Scan(&tableName, &actualDefault)
-		assert.Equal(t, expectedDefault, actualDefault, "%s default value is %s; actual value should be %s", tableName, actualDefault, expectedDefault)
+		var tableName string
+		var actualDefault sql.NullString
+		assert.NoError(t, rows.Scan(&tableName, &actualDefault))
+		assert.Equal(t, expectedDefault, actualDefault.String, "%s default value is %s; actual value should be %s", tableName, actualDefault.String, expectedDefault)
 	}
 }
