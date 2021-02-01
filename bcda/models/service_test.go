@@ -529,56 +529,44 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 }
 
 func (s *ServiceTestSuite) TestCancelJob() {
-	// create table
 	ctx := context.Background()
+	err1 := fmt.Errorf("GetJobByID: Synthetic error for testing.")
+	err2 := fmt.Errorf("UpdateJob: Synthetic error for testing.")
 	tests := []struct {
-		status JobStatus
+		status           JobStatus
+		cancellableJobID uint
+		resultJobID      uint
+		getJobError      error
+		updateJobError   error
 	}{
-		{JobStatusPending},
-		{JobStatusInProgress},
+		{JobStatusPending, 123456, 123456, nil, nil},
+		{JobStatusInProgress, 123456, 123456, nil, nil},
+		{JobStatusInProgress, 123456, 123456, nil, nil},
+		{JobStatusInProgress, 123456, 123456, nil, nil},
+		{JobStatusFailed, 123456, 0, nil, nil},
+		{JobStatusExpired, 123456, 0, nil, nil},
+		{JobStatusArchived, 123456, 0, nil, nil},
+		{JobStatusCompleted, 123456, 0, nil, nil},
+		{JobStatusCancelled, 123456, 0, nil, nil},
+		{JobStatusFailedExpired, 123456, 0, nil, nil},
+		{JobStatusInProgress, 123456, 123456, err1, nil}, // error occurred on GetJobByID
+		{JobStatusInProgress, 123456, 123456, nil, err2}, // error occurred on UpdateJob
 	}
 
-	// iterate tests
 	for _, tt := range tests {
 		s.T().Run(string(tt.status), func(t *testing.T) {
 			repository := &MockRepository{}
-			repository.On("GetJobByID", ctxMatcher, mock.Anything).Return(Job{Status: tt.status}, nil)
-			repository.On("UpdateJob", ctxMatcher, mock.Anything).Return(nil)
+			repository.On("GetJobByID", ctxMatcher, mock.Anything).Return(&Job{Status: tt.status}, tt.getJobError)
+			repository.On("UpdateJob", ctxMatcher, mock.Anything).Return(tt.updateJobError)
 			s := &service{}
 			s.repository = repository
-			cancelledJobID, err := s.CancelJob(ctx, 1)
-			assert.NoError(t, err)
-			assert.Equal(t, cancelledJobID, 1)
-		})
-	}
-}
-
-func (s *ServiceTestSuite) TestCancelNonCancellableJob() {
-	// create table
-	tests := []struct {
-		status JobStatus
-	}{
-		{JobStatusFailed},
-		{JobStatusExpired},
-		{JobStatusArchived},
-		{JobStatusCompleted},
-		{JobStatusCancelled},
-		{JobStatusFailedExpired},
-	}
-
-	// iterate tests
-	for _, tt := range tests {
-		s.T().Run(string(tt.status), func(t *testing.T) {
-			// create job
-			// repository.CreateJob
-			// set status
-			// repository.UpdateJob
-
-			// attempt to cancel job
-			// service.CancelJob(ctx, JobID)
-
-			// assert
-			// assert return is 0, nil
+			cancelledJobID, err := s.CancelJob(ctx, tt.cancellableJobID)
+			if err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, cancelledJobID, tt.resultJobID)
+			}
 		})
 	}
 }
