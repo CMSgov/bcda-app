@@ -37,4 +37,4 @@ jobs:
       continue-on-error: false
       with:
         command: test
-        args: --severity-threshold=high --all-projects -p
+        args: --severity-threshold=high
