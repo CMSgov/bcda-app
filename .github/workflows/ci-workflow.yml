@@ -39,7 +39,7 @@ jobs:
         command: test
         args: --severity-threshold=high
     - name: Build Docker Image
-      run: docker build -t bcda-app/snyk
+      run: docker build -t bcda-app/snyk .
     - name: "Run Snyk - Docker"
       uses: snyk/actions/docker@master
       continue-on-error: false
