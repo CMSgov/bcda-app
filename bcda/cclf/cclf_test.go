@@ -224,25 +224,44 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	}
 	err = importCCLF8(context.Background(), metadata)
 	// This error indicates that we did not supply enough characters for the MBI
-	assert.EqualError(err, "pq: invalid byte sequence for encoding \"UTF8\": 0x00")
+	assert.Contains(err.Error(), "invalid byte sequence for encoding \"UTF8\": 0x00")
 }
 
 func (s *CCLFTestSuite) TestOrderACOs() {
 	var cclfMap = map[string]map[metadataKey][]*cclfFileMetadata{
 		"A1111": map[metadataKey][]*cclfFileMetadata{},
-		"A8765": map[metadataKey][]*cclfFileMetadata{},
+		"A4321": map[metadataKey][]*cclfFileMetadata{},
 		"A3456": map[metadataKey][]*cclfFileMetadata{},
 		"A0246": map[metadataKey][]*cclfFileMetadata{},
 	}
 
 	acoOrder := orderACOs(cclfMap)
 
+	// A4321 duplicate has been added to test table groups as of 27 JAN 2021 to
+	// bolster testing for duplicates. Since a failure in removal of duplicate A4321
+	// pushed the index by one, check for A1111 and A0246 no longer hardcoded.
+	n := len(acoOrder) - 1
+
 	// A3456 and A8765 have been added to the database == prioritized over the other two
-	assert.Len(s.T(), acoOrder, 4)
 	assert.Equal(s.T(), "A3456", acoOrder[0])
-	assert.Equal(s.T(), "A8765", acoOrder[1])
-	assert.Regexp(s.T(), "A1111|A0246", acoOrder[2])
-	assert.Regexp(s.T(), "A1111|A0246", acoOrder[3])
+	assert.Equal(s.T(), "A4321", acoOrder[1])
+	assert.Regexp(s.T(), "A1111|A0246", acoOrder[n-1]) // second to last in index
+	assert.Regexp(s.T(), "A1111|A0246", acoOrder[n])   // last in index
+
+	// Check for no duplicates
+	var dupcheck = make(map[string]bool, 4)
+	for _, v := range acoOrder {
+		// Loop through the acoOrder and place then into map with a value of true
+		// If there are no duplicates, dupcheck[v] should not return true
+		if !dupcheck[v] {
+			dupcheck[v] = true
+		} else {
+			assert.Fail(s.T(), "There was a duplicate found in the acoOrder.")
+		}
+	}
+
+	// Check for increase in number of ACOs not attributed to duplicates
+	assert.Len(s.T(), acoOrder, 4)
 }
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {
