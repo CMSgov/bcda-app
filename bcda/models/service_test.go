@@ -540,8 +540,6 @@ func (s *ServiceTestSuite) TestCancelJob() {
 	}{
 		{JobStatusPending, 123456, 123456, nil, nil},
 		{JobStatusInProgress, 123456, 123456, nil, nil},
-		{JobStatusInProgress, 123456, 123456, nil, nil},
-		{JobStatusInProgress, 123456, 123456, nil, nil},
 		{JobStatusFailed, 123456, 0, nil, nil},
 		{JobStatusExpired, 123456, 0, nil, nil},
 		{JobStatusArchived, 123456, 0, nil, nil},
