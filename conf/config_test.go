@@ -114,18 +114,18 @@ func Test_setup(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want uint8
+		want string
 	}{
 		{
 			"See if Viper sets up correctly",
 			args{"/go/src/github.com/CMSgov/bcda-app/conf/test"},
-			configgood,
+			"true",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var _ = setup(tt.args.dir)
-			if !reflect.DeepEqual(state, tt.want) {
+			var v = setup(tt.args.dir)
+			if !reflect.DeepEqual(v.Get("TEST").(string), tt.want) {
 				t.Errorf("setup() = %v, want %v", state, tt.want)
 			}
 		})

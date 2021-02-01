@@ -116,7 +116,6 @@ func GetEnv(key string) string {
 	if state == configgood {
 
 		var value = envVars.GetString(key)
-        var b bool
 
 		// Even if the config file is load, if the key doesn't exist in conf,
 		// try the environment. This technically makes the application mutable
@@ -124,6 +123,7 @@ func GetEnv(key string) string {
 		if value == "" {
 			// Copy it over to conf to prevent additional OS calls.
 			// Remember to delete both from conf and environment var when UnsetEnv() called!
+            var b bool
 			value, b = os.LookupEnv(key)
 
             // Ensure the variables does exist before copy
@@ -132,7 +132,13 @@ func GetEnv(key string) string {
                 var _ = SetEnv(test, key, value)
             }
 
-		}
+        } else {
+            if osval := os.Getenv(key); osval != value {
+                test := &testing.T{}
+                var _ = SetEnv(test, key, osval)
+                return osval
+            }
+        }
 
 		return value
 	}
@@ -145,7 +151,7 @@ func GetEnv(key string) string {
 // LookupEnv is a public function that acts augments os.LookupEnv to look in viper struct first
 func LookupEnv(key string) (string, bool) {
 
-
+     
     if state == configgood {
         // If the key value exists in conf...
         if value := envVars.Get(key); value != nil && value != "" {
@@ -177,10 +183,10 @@ func SetEnv(protect *testing.T, key string, value string) error {
 	// If config is good, change the config in memory
 	if state == configgood {
 		envVars.Set(key, value) // This doesn't return anything...
-	} else {
-		// Config is bad, change the EV
-		err = os.Setenv(key, value)
 	}
+
+    // Config is bad, change the EV
+    err = os.Setenv(key, value)
 
 	return err
 
