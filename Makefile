@@ -144,8 +144,7 @@ docker-build:
 
 docker-bootstrap:
 	$(MAKE) docker-build
-	docker-compose up --build documentation
-	docker-compose up --exit-code-from openapi openapi
+	$(MAKE) documentation
 	docker-compose up -d
 	sleep 40
 	$(MAKE) load-fixtures
@@ -181,9 +180,8 @@ bdt:
 .PHONY: api-shell debug-api debug-worker docker-bootstrap docker-build lint load-fixtures load-fixtures-ssas load-synthetic-cclf-data load-synthetic-suppression-data package performance-test postman release smoke-test test unit-test worker-shell bdt unit-test-db unit-test-db-snapshot
 
 documentation:
-	# Rebuilds the swagger documentation when the local is currently running.
 	docker-compose up --build documentation
-	docker-compose up -d --build openapi
+	docker-compose up --exit-code-from openapi openapi
 
 credentials:
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
