@@ -114,40 +114,31 @@ func findEnv(location []string) (bool, string) {
 	return findEnv(location[1:])
 }
 
-//func exceptionList(key string) bool {
-    //var exceptions = [5]string{"OKTA_CLIENT_TOKEN", "BCDA_AUTH_PROVIDER", "OKTA_OAUTH_SERVER_ID", "CLIENT_ID", "CLIENT_SECRET"}
-    //for _, v := range exceptions {
-        //if key == v {
-            //return true
-        //}
-    //}
-
-    //return false
-//}
-
 // GetEnv() is a public function that retrieves value stored in conf. If it does not exist
 // "" empty string is returned.
 func GetEnv(key string) string {
 
-    //if except := exceptionList(key); except {
-        //return os.Getenv(key)
-    //}
+	// If the configuration file is good, use the config file
+	if state == configgood {
 
-   // // If the configuration file is good, use the config file
-    if state == configgood {
+		if value := envVars.GetString(key); value != "" {
+			// The environment variables change during local test @ runtime.
+			// This logic is also in LookupEnv.
+			if val, b := os.LookupEnv(key); val != value && b {
+				var _ = SetEnv(t, key, val)
+				return val
+			}
+			return value
+		} else {
+			// if it is blank, check environment variables.
+			v, exist := os.LookupEnv(key)
+			if exist {
+				var _ = SetEnv(t, key, v)
+			}
+			return v
+		}
 
-        if value := envVars.GetString(key); value != "" {
-            return value
-        } else {
-            // if it is blank, check evir variables
-            v, exist := os.LookupEnv(key)
-            if exist {
-                var _ = SetEnv(t, key, v)
-            }
-            return v
-        }
-
-    }
+	}
 
 	// Config file not good, so default to environment... boo >:(
 	return os.Getenv(key)
@@ -157,21 +148,21 @@ func GetEnv(key string) string {
 // LookupEnv is a public function that acts augments os.LookupEnv to look in viper struct first
 func LookupEnv(key string) (string, bool) {
 
-    //if except := exceptionList(key); except {
-        //return os.LookupEnv(key)
-    //}
-
-    if state == configgood {
-        if value := envVars.GetString(key); value != "" {
-            return value, true
-        } else {
-            v, exist := os.LookupEnv(key)
-            if exist {
-                var _ = SetEnv(t, key, v)
-            } 
-            return v, exist
-        }
-    }
+	if state == configgood {
+		if value := envVars.GetString(key); value != "" {
+			if val, b := os.LookupEnv(key); val != value && b {
+				var _ = SetEnv(t, key, val)
+				return val, b
+			}
+			return value, true
+		} else {
+			v, exist := os.LookupEnv(key)
+			if exist {
+				var _ = SetEnv(t, key, v)
+			}
+			return v, exist
+		}
+	}
 
 	return os.LookupEnv(key)
 
@@ -203,7 +194,7 @@ func UnsetEnv(protect *testing.T, key string) error {
 
 	// If config is good, change the conf in memory
 	if state == configgood {
-		envVars.Set(key, "")
+		envVars.Set(key, nil)
 	}
 
 	// Why unset the environment variable too? Because GetEnv would copy and report wrong value.
