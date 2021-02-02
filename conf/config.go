@@ -13,9 +13,9 @@ package conf
    3. All env will look at the conf package.
 
    Assumptions:
-   1. The configuration file is a env file
-   2. The configuration file, once it is made available to the application,
-   will stay immutable during the uptime of the application (exception is test)
+   1. The configuration file is a env file (can be changed if needed).
+   2. The configuration variables, once it has been ingested by the conf package,
+   will stay immutable during the uptime of the application (exception is test).
 */
 
 import (
@@ -27,13 +27,11 @@ import (
 
 // Private global variable:
 
-// An instance of the viper struct containing the conf information. Only made
-// accessible through public functions GetEnv, SetEnv, etc.
+// An instance of the viper struct containing the config information. Only made
+// accessible through public functions: GetEnv, SetEnv, etc.
 var envVars viper.Viper
-var defaultmode = true
-var t = &testing.T{}
 
-// Implementing a state machine tracking how things are going in this package
+// Implementing a state machine that tracks the status of the config ingestion.
 // This state machine should go away when in stage 3.
 const (
 	configgood    uint8 = 0
@@ -41,11 +39,12 @@ const (
 	noconfigfound uint8 = 2
 )
 
-var state uint8 = configgood // if config fie found and loaded, doesn't changed
+// if config file found and loaded, doesn't changed
+var state uint8 = configgood
 
 /*
    This is the private helper function that sets up viper. This function is
-   called by the init() function once during initialization of the package.
+   called by the init() function only once during initialization of the package.
 */
 func setup(dir string) *viper.Viper {
 
@@ -87,16 +86,13 @@ func init() {
 		state = noconfigfound
 	}
 
-	if defaultmode {
-		state = noconfigfound
-	}
 }
 
 /*
    findEnv is a helper function that will determine what environment the application
    is running in: local or PROD/TEST/DEV. Each environment should have a distinct
    path where the configuration file is located. First it check the local path,
-   then the PROD/DEV/TEST. If both not found, defaults to just using env vars.
+   then the PROD/DEV/TEST. If both not found, defaults to just using environment vars.
 */
 func findEnv(location []string) (bool, string) {
 
@@ -114,51 +110,43 @@ func findEnv(location []string) (bool, string) {
 	return findEnv(location[1:])
 }
 
-// GetEnv() is a public function that retrieves value stored in conf. If it does not exist
-// "" empty string is returned.
+// GetEnv() is a public function that retrieves values stored in conf. If it does not
+// exist, an empty string (i.e., "") is returned.
 func GetEnv(key string) string {
 
-	// If the configuration file is good, use the config file
+	// If the config file is loaded and ingested correctly, use the config file.
 	if state == configgood {
 
 		if value := envVars.GetString(key); value != "" {
-			// The environment variables change during local test @ runtime.
-			// This logic is also in LookupEnv.
-			if val, b := os.LookupEnv(key); val != value && b {
-				var _ = SetEnv(t, key, val)
-				return val
-			}
 			return value
 		} else {
-			// if it is blank, check environment variables.
+			// if it is blank, check environment variables. Just in case there are
+			// variables that started off empty and is now available. Once made available,
+			// that variable is immutable for the rest of the runtime.
 			v, exist := os.LookupEnv(key)
 			if exist {
-				var _ = SetEnv(t, key, v)
+				var _ = SetEnv(&testing.T{}, key, v)
 			}
 			return v
 		}
 
 	}
 
-	// Config file not good, so default to environment... boo >:(
+	// Config file not good, so default to environment variables.
 	return os.Getenv(key)
 
 }
 
-// LookupEnv is a public function that acts augments os.LookupEnv to look in viper struct first
+// LookupEnv is a public function, like GetEnv, designed to replace os.LookupEnv() in code-base.
 func LookupEnv(key string) (string, bool) {
 
 	if state == configgood {
 		if value := envVars.GetString(key); value != "" {
-			if val, b := os.LookupEnv(key); val != value && b {
-				var _ = SetEnv(t, key, val)
-				return val, b
-			}
 			return value, true
 		} else {
 			v, exist := os.LookupEnv(key)
 			if exist {
-				var _ = SetEnv(t, key, v)
+				var _ = SetEnv(&testing.T{}, key, v)
 			}
 			return v, exist
 		}
@@ -169,8 +157,8 @@ func LookupEnv(key string) (string, bool) {
 }
 
 // SetEnv is a public function that adds key values into conf. This function should only be used
-// either in this package itself or testing. Protect parameter is type *testing.T, and is there
-// to ensure developers knowingly use it in the appropriate scope.
+// either in this package itself or testing. Protect parameter is type *testing.T, and it's there
+// to ensure developers knowingly use it in the appropriate circumstances.
 func SetEnv(protect *testing.T, key string, value string) error {
 
 	var err error
@@ -194,10 +182,10 @@ func UnsetEnv(protect *testing.T, key string) error {
 
 	// If config is good, change the conf in memory
 	if state == configgood {
-		envVars.Set(key, nil)
+		envVars.Set(key, "")
 	}
 
-	// Why unset the environment variable too? Because GetEnv would copy and report wrong value.
+	// Unset environment variable too, because GetEnv would copy it back over when it should not.
 	err = os.Unsetenv(key)
 
 	return err
