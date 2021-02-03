@@ -446,7 +446,7 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 }
 
 func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
-	// Use multiple defers to ensure that the os.Getenv gets evaluated prior to us
+	// Use multiple defers to ensure that the conf.GetEnv gets evaluated prior to us
 	// modifying the value.
 	defer conf.SetEnv(s.T(), "FHIR_STAGING_DIR", conf.GetEnv("FHIR_STAGING_DIR"))
 	defer conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", conf.GetEnv("FHIR_PAYLOAD_DIR"))

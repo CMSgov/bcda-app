@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"testing"
 	"time"
 
@@ -61,7 +60,7 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 // and the checks do not cause a panic by waiting some amount of time
 // to ensure that health checks are being executed.
 func (suite *ConnectionTestSuite) TestHealthCheck() {
-	cfg, err := pgx.ParseURI(os.Getenv("DATABASE_URL"))
+	cfg, err := pgx.ParseURI(conf.GetEnv("DATABASE_URL"))
 	assert.NoError(suite.T(), err)
 
 	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{

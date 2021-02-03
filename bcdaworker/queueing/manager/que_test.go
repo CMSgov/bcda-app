@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -33,27 +33,27 @@ var logHook = test.NewLocal(log)
 func TestProcessJob(t *testing.T) {
 	// Reset our environment once we've finished with the test
 	defer func(payload, staging string) {
-		os.Setenv("FHIR_PAYLOAD_DIR", payload)
-		os.Setenv("FHIR_STAGING_DIR", staging)
-	}(os.Getenv("FHIR_PAYLOAD_DIR"), os.Getenv("FHIR_STAGING_DIR"))
+		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)
+		conf.SetEnv(t, "FHIR_STAGING_DIR", staging)
+	}(conf.GetEnv("FHIR_PAYLOAD_DIR"), conf.GetEnv("FHIR_STAGING_DIR"))
 
 	defer func(cert, key, ca string) {
-		os.Setenv("BB_CLIENT_CERT_FILE", cert)
-		os.Setenv("BB_CLIENT_KEY_FILE", key)
-		os.Setenv("BB_CLIENT_CA_FILE", ca)
-	}(os.Getenv("BB_CLIENT_CERT_FILE"), os.Getenv("BB_CLIENT_KEY_FILE"), os.Getenv("BB_CLIENT_CA_FILE"))
+		conf.SetEnv(t, "BB_CLIENT_CERT_FILE", cert)
+		conf.SetEnv(t, "BB_CLIENT_KEY_FILE", key)
+		conf.SetEnv(t, "BB_CLIENT_CA_FILE", ca)
+	}(conf.GetEnv("BB_CLIENT_CERT_FILE"), conf.GetEnv("BB_CLIENT_KEY_FILE"), conf.GetEnv("BB_CLIENT_CA_FILE"))
 
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
-	os.Setenv("BB_CLIENT_CA_FILE", "../../../shared_files/localhost.crt")
+	conf.SetEnv(t, "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	conf.SetEnv(t, "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
+	conf.SetEnv(t, "BB_CLIENT_CA_FILE", "../../../shared_files/localhost.crt")
 
 	// Ensure we do not clutter our working directory with any data
 	tempDir, err := ioutil.TempDir("", "*")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	os.Setenv("FHIR_PAYLOAD_DIR", tempDir)
-	os.Setenv("FHIR_STAGING_DIR", tempDir)
+	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir)
+	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir)
 
 	db := database.GetDbConnection()
 	defer db.Close()
@@ -66,7 +66,7 @@ func TestProcessJob(t *testing.T) {
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
 
-	queueURL := os.Getenv("QUEUE_DATABASE_URL")
+	queueURL := conf.GetEnv("QUEUE_DATABASE_URL")
 	q := StartQue(log, queueURL, 1)
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()

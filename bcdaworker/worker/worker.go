@@ -18,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
+	"github.com/CMSgov/bcda-app/conf"
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -77,8 +78,8 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
-	stagingPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	payloadPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
+	stagingPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
+	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
 	if err = createDir(stagingPath); err != nil {
 		log.Error(err)
@@ -152,7 +153,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		return "", 0, fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
 	}
 
-	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	fileUUID = uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
@@ -236,7 +237,7 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 }
 
 func getFailureThreshold() float64 {
-	exportFailPctStr := os.Getenv("EXPORT_FAIL_PCT")
+	exportFailPctStr := conf.GetEnv("EXPORT_FAIL_PCT")
 	exportFailPct, err := strconv.Atoi(exportFailPctStr)
 	if err != nil {
 		exportFailPct = 50
@@ -254,7 +255,7 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
-	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
 	/* #nosec -- opening file defined by variable */
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -315,8 +316,8 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	}
 
 	if completedCount >= j.JobCount {
-		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), j.ID)
-		payload := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
+		staging := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), j.ID)
+		payload := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 
 		files, err := ioutil.ReadDir(staging)
 		if err != nil {

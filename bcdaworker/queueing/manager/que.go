@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -16,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
@@ -52,7 +52,7 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queu
 		worker:        worker.NewWorker(database.GetDbConnection()),
 		log:           log,
 		queDB:         db,
-		cloudWatchEnv: os.Getenv("DEPLOYMENT_TARGET"),
+		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
 	}
 
 	cfg, err := pgx.ParseURI(queueDatabaseURL)
