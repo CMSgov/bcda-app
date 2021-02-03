@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	fhirmodels "github.com/eug48/fhir/models"
+	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

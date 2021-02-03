@@ -8,11 +8,22 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	fhirmodels "github.com/eug48/fhir/models"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	fhirmodels2 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
 func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
 	fhirmodels.DisableOperationOutcomeDiagnosticsFileLine()
 	oo := fhirmodels.CreateOpOutcome(severity, code, detailsCode, detailsDisplay)
+
+	oo1 := fhirmodels2.OperationOutcome{
+		Issue: []*fhirmodels2.OperationOutcome_Issue{
+			&fhirmodels2.OperationOutcome_Issue{
+				Severity: &fhircodes.IssueSeverityCode{Value: issueSeverity(severity)},
+				Code:     code,
+			},
+		},
+	}
 	return oo
 }
 
