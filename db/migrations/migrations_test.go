@@ -3,6 +3,7 @@ package migrations
 import (
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
@@ -196,6 +197,80 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			},
 		},
 		{
+			"Add default now() timestamp to updated_at columns",
+			func(t *testing.T) {
+				migrator.runMigration(t, "6")
+				assertColumnDefaultValue(t, db, "updated_at", "now()", migration5Tables)
+
+				type tables struct {
+					tableName string
+					fields    map[string]interface{}
+				}
+
+				// Setup tables to test with fields that cant be Null
+				testTables := []tables{
+					{
+						"acos",
+						map[string]interface{}{
+							"uuid": uuid.NewUUID(),
+							"name": uuid.New(),
+						},
+					},
+					{
+						"cclf_beneficiaries",
+						map[string]interface{}{
+							"file_id": rand.Intn(10),
+							"mbi":     "test1234",
+						},
+					},
+					{
+						"cclf_files",
+						map[string]interface{}{
+							"cclf_num":         rand.Intn(10),
+							"name":             uuid.New(),
+							"timestamp":        time.Now(),
+							"performance_year": rand.Intn(4),
+						},
+					},
+					{
+						"job_keys",
+						map[string]interface{}{
+							"file_name": uuid.New(), // This is not required but we need a unique identifier to identify the row
+						},
+					},
+					{
+						"suppressions",
+						map[string]interface{}{
+							"file_id": rand.Intn(25),
+						},
+					},
+					{
+						"suppression_files",
+						map[string]interface{}{
+							"name":      uuid.New(),
+							"timestamp": time.Now(),
+						},
+					},
+				}
+
+				var createdAt, updatedAt time.Time
+				for _, v := range testTables {
+					createdAt, updatedAt = createTestRow(t, db, v.tableName, v.fields)
+					assert.Equal(t, createdAt, updatedAt) // Created and Updated at will be same value on create
+					createdAt, updatedAt = updateTestRow(t, db, v.tableName, v.fields)
+					assert.True(t, updatedAt.After(createdAt))  // Updated at will be more recent than Created at after update
+					deleteTestRow(t, db, v.tableName, v.fields) // Due to migrations further down, some test rows NEED to be deleted
+				}
+			},
+		},
+		{
+			"Remove default now() timestamp to updated_at columns",
+			func(t *testing.T) {
+				migrator.runMigration(t, "5")
+				assertColumnDefaultValue(t, db, "updated_at", "", migration5Tables)
+			},
+		},
+		{
 			"Remove default now() timestamp to created_at columns",
 			func(t *testing.T) {
 				assertColumnDefaultValue(t, db, "created_at", "now()", migration5Tables)
@@ -376,4 +451,62 @@ func assertColumnDefaultValue(t *testing.T, db *sql.DB, columnName, expectedDefa
 		assert.NoError(t, rows.Scan(&tableName, &actualDefault))
 		assert.Equal(t, expectedDefault, actualDefault.String, "%s default value is %s; actual value should be %s", tableName, actualDefault.String, expectedDefault)
 	}
+}
+
+func createTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string]interface{}) (createdAt, updatedAt time.Time) {
+	ib := sqlFlavor.NewInsertBuilder()
+	ib.InsertInto(tableName)
+
+	columns := []string{}
+	values := []interface{}{}
+	for k, v := range fields {
+		columns = append(columns, k)
+		values = append(values, v)
+	}
+
+	ib.Cols(columns...)
+	ib.Values(values...)
+
+	query, args := ib.Build()
+	query = fmt.Sprintf("%s RETURNING created_at, updated_at", query) // Force created_at and updated_at to be returned
+	err := db.QueryRow(query, args...).Scan(&createdAt, &updatedAt)
+	assert.NoError(t, err)
+
+	return
+}
+
+func updateTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string]interface{}) (createdAt, updatedAt time.Time) {
+	ub := sqlFlavor.NewUpdateBuilder()
+	ub.Update(tableName)
+
+	for k, v := range fields {
+		ub.SetMore(
+			ub.Assign(k, v),
+		)
+		ub.Where(
+			ub.Equal(k, v),
+		)
+	}
+
+	query, args := ub.Build()
+	query = fmt.Sprintf("%s RETURNING created_at, updated_at", query) // Force created_at and updated_at to be returned
+	err := db.QueryRow(query, args...).Scan(&createdAt, &updatedAt)
+	assert.NoError(t, err)
+
+	return
+}
+
+func deleteTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string]interface{}) {
+	delb := sqlFlavor.NewDeleteBuilder()
+	delb.DeleteFrom(tableName)
+
+	for k, v := range fields {
+		delb.Where(
+			delb.Equal(k, v),
+		)
+	}
+
+	query, args := delb.Build()
+	_, err := db.Exec(query, args...)
+	assert.NoError(t, err)
 }
