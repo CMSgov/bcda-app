@@ -11,12 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/bgentry/que-go"
 	log "github.com/sirupsen/logrus"
-)
-
-var (
-	qc *que.Client
 )
 
 func init() {
