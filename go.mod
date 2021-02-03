@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/aws/aws-sdk-go v1.21.3
+	github.com/aws/aws-sdk-go v1.28.8
 	github.com/bgentry/que-go v1.0.1
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/cenkalti/backoff/v4 v4.0.2
@@ -16,6 +16,7 @@ require (
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
 	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f // indirect
 	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
@@ -25,8 +26,8 @@ require (
 	github.com/newrelic/go-agent v3.9.0+incompatible
 	github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/otiai10/copy v1.4.2
-	github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
-	github.com/pkg/errors v0.8.1
+	github.com/pborman/uuid v1.2.0
+	github.com/pkg/errors v0.9.1
 	github.com/samply/golang-fhir-models/fhir-models v0.2.0
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
