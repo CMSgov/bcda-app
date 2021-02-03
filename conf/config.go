@@ -33,14 +33,16 @@ var envVars viper.Viper
 
 // Implementing a state machine that tracks the status of the config ingestion.
 // This state machine should go away when in stage 3.
+type configStatus uint8
+
 const (
-	configgood    uint8 = 0
-	configbad     uint8 = 1
-	noconfigfound uint8 = 2
+	configGood    configStatus = 0
+	configBad     configStatus = 1
+	noConfigFound configStatus = 2
 )
 
 // if config file found and loaded, doesn't changed
-var state uint8 = configgood
+var state configStatus = configGood
 
 /*
    This is the private helper function that sets up viper. This function is
@@ -58,7 +60,7 @@ func setup(dir string) *viper.Viper {
 
 	// If viper cannot read the configuration file...
 	if err != nil {
-		state = configbad
+		state = configBad
 	}
 
 	return v
@@ -73,9 +75,9 @@ func setup(dir string) *viper.Viper {
 func init() {
 
 	// Possible config file locations: local and PROD/DEV/TEST respectfully.
-	var locationSlice = [2]string{
+	var locationSlice = []string{
 		"/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted",
-		"/go/src/github.com/CMSgov/DoesNotExistYet", // This is a placeholder for now
+		// Placeholder for configuration location for TEST/DEV/PROD once available.
 	}
 
 	if success, loc := findEnv(locationSlice[:]); success {
@@ -83,7 +85,7 @@ func init() {
 		envVars = *setup(loc)
 	} else {
 		// Checked both locations, no config file found
-		state = noconfigfound
+		state = noConfigFound
 	}
 
 }
@@ -96,18 +98,15 @@ func init() {
 */
 func findEnv(location []string) (bool, string) {
 
-	// Check if the configuration file exists
-	if _, err := os.Stat(location[0] + "/local.env"); err == nil {
-		return true, location[0]
+	for _, el := range location {
+		// Check if the configuration file exists
+		if _, err := os.Stat(el + "/local.env"); err == nil {
+			return true, el
+		}
 	}
 
-	// Base case: checked both locations and no configurations found
-	if len(location) == 1 {
-		return false, ""
-	}
+	return false, ""
 
-	// Check the next index of slice location
-	return findEnv(location[1:])
 }
 
 // GetEnv() is a public function that retrieves values stored in conf. If it does not
@@ -115,7 +114,7 @@ func findEnv(location []string) (bool, string) {
 func GetEnv(key string) string {
 
 	// If the config file is loaded and ingested correctly, use the config file.
-	if state == configgood {
+	if state == configGood {
 
 		if value := envVars.GetString(key); value != "" {
 			return value
@@ -140,7 +139,7 @@ func GetEnv(key string) string {
 // LookupEnv is a public function, like GetEnv, designed to replace os.LookupEnv() in code-base.
 func LookupEnv(key string) (string, bool) {
 
-	if state == configgood {
+	if state == configGood {
 		if value := envVars.GetString(key); value != "" {
 			return value, true
 		} else {
@@ -164,7 +163,7 @@ func SetEnv(protect *testing.T, key string, value string) error {
 	var err error
 
 	// If config is good, change the config in memory
-	if state == configgood {
+	if state == configGood {
 		envVars.Set(key, value) // This doesn't return anything...
 	} else {
 		// Config is bad, change the EV
@@ -181,7 +180,7 @@ func UnsetEnv(protect *testing.T, key string) error {
 	var err error
 
 	// If config is good, change the conf in memory
-	if state == configgood {
+	if state == configGood {
 		envVars.Set(key, "")
 	}
 
