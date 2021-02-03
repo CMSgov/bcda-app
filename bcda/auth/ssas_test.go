@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
@@ -51,13 +51,13 @@ type SSASPluginTestSuite struct {
 
 func (s *SSASPluginTestSuite) SetupSuite() {
 	// original values must be saved before we run any tests that might change them
-	origSSASUseTLS = os.Getenv("SSAS_USE_TLS")
-	origSSASURL = os.Getenv("SSAS_URL")
-	origPublicURL = os.Getenv("SSAS_PUBLIC_URL")
-	origSSASClientKeyFile = os.Getenv("SSAS_CLIENT_KEY_FILE")
-	origSSASClientCertFile = os.Getenv("SSAS_CLIENT_CERT_FILE")
-	origSSASClientID = os.Getenv("BCDA_SSAS_CLIENT_ID")
-	origSSASSecret = os.Getenv("BCDA_SSAS_SECRET")
+	origSSASUseTLS = conf.GetEnv("SSAS_USE_TLS")
+	origSSASURL = conf.GetEnv("SSAS_URL")
+	origPublicURL = conf.GetEnv("SSAS_PUBLIC_URL")
+	origSSASClientKeyFile = conf.GetEnv("SSAS_CLIENT_KEY_FILE")
+	origSSASClientCertFile = conf.GetEnv("SSAS_CLIENT_CERT_FILE")
+	origSSASClientID = conf.GetEnv("BCDA_SSAS_CLIENT_ID")
+	origSSASSecret = conf.GetEnv("BCDA_SSAS_SECRET")
 
 	s.db = database.GetDbConnection()
 	s.r = postgres.NewRepository(s.db)
@@ -73,14 +73,13 @@ func (s *SSASPluginTestSuite) SetupTest() {
 }
 
 func (s *SSASPluginTestSuite) TearDownTest() {
-	os.Setenv("SSAS_USE_TLS", origSSASUseTLS)
-	os.Setenv("SSAS_URL", origSSASURL)
-	os.Setenv("SSAS_PUBLIC_URL", origPublicURL)
-	os.Setenv("SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
-	os.Setenv("SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
-	os.Setenv("BCDA_SSAS_CLIENT_ID", origSSASClientID)
-	os.Setenv("BCDA_SSAS_SECRET", origSSASSecret)
-
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", origSSASUseTLS)
+	conf.SetEnv(s.T(), "SSAS_URL", origSSASURL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", origPublicURL)
+	conf.SetEnv(s.T(), "SSAS_CLIENT_KEY_FILE", origSSASClientKeyFile)
+	conf.SetEnv(s.T(), "SSAS_CLIENT_CERT_FILE", origSSASClientCertFile)
+	conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", origSSASClientID)
+	conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", origSSASSecret)
 
 	postgrestest.DeleteACO(s.T(), s.db, uuid.Parse(testACOUUID))
 }
@@ -120,9 +119,9 @@ func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
@@ -172,9 +171,9 @@ func (s *SSASPluginTestSuite) TestResetSecret() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
@@ -238,9 +237,9 @@ func (s *SSASPluginTestSuite) TestRevokeAccessToken() {
 	})
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
 
 	c, err := client.NewSSASClient()
 	if err != nil {
@@ -291,8 +290,8 @@ func TestSSASPluginSuite(t *testing.T) {
 }
 
 func MockSSASServer(tokenString string) {
-	os.Setenv("BCDA_SSAS_CLIENT_ID", "bcda")
-	os.Setenv("BCDA_SSAS_SECRET", "api")
+	conf.SetEnv(&testing.T{}, "BCDA_SSAS_CLIENT_ID", "bcda")
+	conf.SetEnv(&testing.T{}, "BCDA_SSAS_SECRET", "api")
 	router := chi.NewRouter()
 	router.Post("/introspect", func(w http.ResponseWriter, r *http.Request) {
 		clientId, secret, ok := r.BasicAuth()
@@ -302,7 +301,7 @@ func MockSSASServer(tokenString string) {
 		}
 
 		var answer = make(map[string]bool)
-		if clientId == os.Getenv("BCDA_SSAS_CLIENT_ID") && secret == os.Getenv("BCDA_SSAS_SECRET") {
+		if clientId == conf.GetEnv("BCDA_SSAS_CLIENT_ID") && secret == conf.GetEnv("BCDA_SSAS_SECRET") {
 			answer["active"] = true
 		} else {
 			answer["active"] = false
@@ -324,9 +323,9 @@ func MockSSASServer(tokenString string) {
 
 	server := httptest.NewServer(router)
 
-	os.Setenv("SSAS_URL", server.URL)
-	os.Setenv("SSAS_PUBLIC_URL", server.URL)
-	os.Setenv("SSAS_USE_TLS", "false")
+	conf.SetEnv(&testing.T{}, "SSAS_URL", server.URL)
+	conf.SetEnv(&testing.T{}, "SSAS_PUBLIC_URL", server.URL)
+	conf.SetEnv(&testing.T{}, "SSAS_USE_TLS", "false")
 }
 
 func MockSSASToken() (*jwt.Token, string, error) {

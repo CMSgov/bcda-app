@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -343,9 +344,9 @@ func (s *SuppressionTestSuite) TestCleanupSuppression() {
 	err := cleanupSuppression(suppresslist)
 	assert.Nil(err)
 
-	files, err := ioutil.ReadDir(os.Getenv("PENDING_DELETION_DIR"))
+	files, err := ioutil.ReadDir(conf.GetEnv("PENDING_DELETION_DIR"))
 	if err != nil {
-		s.FailNow("failed to read directory: %s", os.Getenv("PENDING_DELETION_DIR"), err)
+		s.FailNow("failed to read directory: %s", conf.GetEnv("PENDING_DELETION_DIR"), err)
 	}
 
 	for _, file := range files {

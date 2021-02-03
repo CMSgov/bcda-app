@@ -11,6 +11,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/conf"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -57,9 +59,9 @@ func (s *ServiceMuxTestSuite) TestServeNoCert() {
 
 	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
-	os.Setenv("BCDA_TLS_CERT", "")
-	os.Setenv("BCDA_TLS_KEY", "test.key")
-	os.Setenv("HTTP_ONLY", "")
+	conf.SetEnv(s.T(), "BCDA_TLS_CERT", "")
+	conf.SetEnv(s.T(), "BCDA_TLS_KEY", "test.key")
+	conf.SetEnv(s.T(), "HTTP_ONLY", "")
 
 	sm := &ServiceMux{}
 	assert.Panics(s.T(), sm.Serve)
@@ -70,9 +72,9 @@ func (s *ServiceMuxTestSuite) TestServeNoKey() {
 
 	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
-	os.Setenv("BCDA_TLS_CERT", "test.crt")
-	os.Setenv("BCDA_TLS_KEY", "")
-	os.Setenv("HTTP_ONLY", "")
+	conf.SetEnv(s.T(), "BCDA_TLS_CERT", "test.crt")
+	conf.SetEnv(s.T(), "BCDA_TLS_KEY", "")
+	conf.SetEnv(s.T(), "HTTP_ONLY", "")
 
 	sm := &ServiceMux{}
 	assert.Panics(s.T(), sm.Serve)
@@ -102,9 +104,9 @@ func (s *ServiceMuxTestSuite) TestServeHTTPS() {
 
 		defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
-		os.Setenv("BCDA_TLS_CERT", "../../shared_files/localhost.crt")
-		os.Setenv("BCDA_TLS_KEY", "../../shared_files/localhost.key")
-		os.Setenv("HTTP_ONLY", "false")
+		conf.SetEnv(s.T(), "BCDA_TLS_CERT", "../../shared_files/localhost.crt")
+		conf.SetEnv(s.T(), "BCDA_TLS_KEY", "../../shared_files/localhost.key")
+		conf.SetEnv(s.T(), "HTTP_ONLY", "false")
 
 		sm.Serve()
 	}()
@@ -143,9 +145,9 @@ func (s *ServiceMuxTestSuite) TestServeHTTPSBadKeypair() {
 
 	defer resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 
-	os.Setenv("BCDA_TLS_CERT", "foo.crt")
-	os.Setenv("BCDA_TLS_KEY", "foo.key")
-	os.Setenv("HTTP_ONLY", "false")
+	conf.SetEnv(s.T(), "BCDA_TLS_CERT", "foo.crt")
+	conf.SetEnv(s.T(), "BCDA_TLS_KEY", "foo.key")
+	conf.SetEnv(s.T(), "HTTP_ONLY", "false")
 
 	assert.Panics(s.T(), sm.Serve)
 }
@@ -168,9 +170,9 @@ func (s *ServiceMuxTestSuite) TestServeHTTP() {
 			resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 		}()
 
-		os.Setenv("BCDA_TLS_CERT", "")
-		os.Setenv("BCDA_TLS_KEY", "")
-		os.Setenv("HTTP_ONLY", "true")
+		conf.SetEnv(s.T(), "BCDA_TLS_CERT", "")
+		conf.SetEnv(s.T(), "BCDA_TLS_KEY", "")
+		conf.SetEnv(s.T(), "HTTP_ONLY", "true")
 
 		sm.Serve()
 	}()
@@ -206,9 +208,9 @@ func (s *ServiceMuxTestSuite) TestServeHTTPEmptyPath() {
 			resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly)
 		}()
 
-		os.Setenv("BCDA_TLS_CERT", "")
-		os.Setenv("BCDA_TLS_KEY", "")
-		os.Setenv("HTTP_ONLY", "true")
+		conf.SetEnv(s.T(), "BCDA_TLS_CERT", "")
+		conf.SetEnv(s.T(), "BCDA_TLS_KEY", "")
+		conf.SetEnv(s.T(), "HTTP_ONLY", "true")
 
 		sm.Serve()
 	}()
@@ -236,13 +238,13 @@ func TestServiceMuxTestSuite(t *testing.T) {
 }
 
 func getOrigVars() (origTLSCert, origTLSKey, origHTTPOnly string) {
-	return os.Getenv("BCDA_TLS_CERT"), os.Getenv("BCDA_TLS_KEY"), os.Getenv("HTTP_ONLY")
+	return conf.GetEnv("BCDA_TLS_CERT"), conf.GetEnv("BCDA_TLS_KEY"), conf.GetEnv("HTTP_ONLY")
 }
 
 func resetOrigVars(origTLSCert, origTLSKey, origHTTPOnly string) {
-	os.Setenv("BCDA_TLS_CERT", origTLSCert)
-	os.Setenv("BCDA_TLS_KEY", origTLSKey)
-	os.Setenv("HTTP_ONLY", origHTTPOnly)
+	conf.SetEnv(&testing.T{}, "BCDA_TLS_CERT", origTLSCert)
+	conf.SetEnv(&testing.T{}, "BCDA_TLS_KEY", origTLSKey)
+	conf.SetEnv(&testing.T{}, "HTTP_ONLY", origHTTPOnly)
 }
 
 type config struct {

@@ -6,13 +6,15 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/CMSgov/bcda-app/conf"
+
 	"github.com/sirupsen/logrus"
 )
 
 // FromEnv always returns a string that is either a non-empty value from the environment variable named by key or
 // the string otherwise
 func FromEnv(key, otherwise string) string {
-	s := os.Getenv(key)
+	s := conf.GetEnv(key)
 	if s == "" {
 		logrus.Infof(`No %s value; using %s instead.`, key, otherwise)
 		return otherwise
@@ -21,7 +23,7 @@ func FromEnv(key, otherwise string) string {
 }
 
 func GetEnvInt(varName string, defaultVal int) int {
-	v := os.Getenv(varName)
+	v := conf.GetEnv(varName)
 	if v != "" {
 		i, err := strconv.Atoi(v)
 		if err == nil {
@@ -32,7 +34,7 @@ func GetEnvInt(varName string, defaultVal int) int {
 }
 
 func GetEnvBool(varName string, defaultVal bool) bool {
-	v := os.Getenv(varName)
+	v := conf.GetEnv(varName)
 	if v != "" {
 		b, err := strconv.ParseBool(v)
 		if err == nil {

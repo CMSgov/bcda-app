@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"os"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 const (
@@ -26,7 +26,7 @@ var repository models.Repository
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	SetProvider(strings.ToLower(os.Getenv(`BCDA_AUTH_PROVIDER`)))
+	SetProvider(strings.ToLower(conf.GetEnv(`BCDA_AUTH_PROVIDER`)))
 
 	repository = postgres.NewRepository(database.GetDbConnection())
 }

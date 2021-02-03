@@ -3,7 +3,8 @@ package monitoring
 import (
 	"fmt"
 	"net/http"
-	"os"
+
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 	log "github.com/sirupsen/logrus"
@@ -33,13 +34,13 @@ func (a apm) End(txn *newrelic.Transaction) {
 
 func GetMonitor() *apm {
 	if a == nil {
-		target := os.Getenv("DEPLOYMENT_TARGET")
+		target := conf.GetEnv("DEPLOYMENT_TARGET")
 		if target == "" {
 			target = "local"
 		}
 		app, err := newrelic.NewApplication(
 			newrelic.ConfigAppName(fmt.Sprintf("BCDA-%s", target)),
-			newrelic.ConfigLicense(os.Getenv("NEW_RELIC_LICENSE_KEY")),
+			newrelic.ConfigLicense(conf.GetEnv("NEW_RELIC_LICENSE_KEY")),
 			newrelic.ConfigEnabled(true),
 			func(cfg *newrelic.Config) {
 				cfg.HighSecurity = true
