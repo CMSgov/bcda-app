@@ -23,3 +23,7 @@
       * Ex: `migrate create -ext sql -dir db/migrations/bcda_queue -seq initial_schema`
     * Update the *.up.sql and *.down.sql files with schema changes. Be sure to perform these changes in a transaction `BEGIN;...COMMIT;`
     * Add tests for both scripts in `migrations_test.go`
+* A Note on creating new tables
+    * We use the `created_at` and `updated_at` rows for auditing purposes. They are separated and not included in our Go models. When creating new tables, these columns should
+    be added in and should default to `now()`. Furthermore, `updated_at` for the new table should be assigned the trigger `trigger_set_timestamp()` so that the column will
+    update the row automatically to the current time. You can find examples of this in the migration files.
