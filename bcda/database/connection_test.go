@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/jackc/pgx"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -31,10 +33,10 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	}
 
 	// get the real database URL
-	actualDatabaseURL := os.Getenv("DATABASE_URL")
+	actualDatabaseURL := conf.GetEnv("DATABASE_URL")
 
 	// set the database URL to a bogus value to test negative scenarios
-	os.Setenv("DATABASE_URL", "fake_db_url")
+	conf.SetEnv(suite.T(), "DATABASE_URL", "fake_db_url")
 
 	// attempt to open DB connection swith the bogus DB string
 	suite.db = GetDbConnection()
@@ -46,7 +48,7 @@ func (suite *ConnectionTestSuite) TestDbConnections() {
 	suite.db.Close()
 
 	// set the database URL back to the real value to test the positive scenarios
-	os.Setenv("DATABASE_URL", actualDatabaseURL)
+	conf.SetEnv(suite.T(), "DATABASE_URL", actualDatabaseURL)
 
 	suite.db = GetDbConnection()
 	defer suite.db.Close()

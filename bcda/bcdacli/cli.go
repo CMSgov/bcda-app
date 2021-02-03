@@ -30,6 +30,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
+	"github.com/CMSgov/bcda-app/conf"
+
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -358,7 +360,7 @@ func setUpApp() *cli.App {
 			Action: func(c *cli.Context) error {
 				cutoff := time.Now().Add(-time.Hour * time.Duration(thresholdHr))
 				return cleanupJob(cutoff, models.JobStatusArchived, models.JobStatusExpired,
-					os.Getenv("FHIR_ARCHIVE_DIR"))
+					conf.GetEnv("FHIR_ARCHIVE_DIR"))
 			},
 		},
 		{
@@ -375,7 +377,7 @@ func setUpApp() *cli.App {
 			Action: func(c *cli.Context) error {
 				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
 				return cleanupJob(cutoff, models.JobStatusFailed, models.JobStatusFailedExpired,
-					os.Getenv("FHIR_STAGING_DIR"), os.Getenv("FHIR_PAYLOAD_DIR"))
+					conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("FHIR_PAYLOAD_DIR"))
 			},
 		},
 		{
@@ -645,10 +647,10 @@ func archiveExpiring(maxDate time.Time) error {
 	var lastJobError error
 	for _, j := range jobs {
 		id := j.ID
-		jobPayloadDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), id)
+		jobPayloadDir := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), id)
 		_, err = os.Stat(jobPayloadDir)
 		jobPayloadDirExist := err == nil
-		jobArchiveDir := fmt.Sprintf("%s/%d", os.Getenv("FHIR_ARCHIVE_DIR"), id)
+		jobArchiveDir := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_ARCHIVE_DIR"), id)
 
 		if jobPayloadDirExist {
 			err = os.Rename(jobPayloadDir, jobArchiveDir)

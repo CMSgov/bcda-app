@@ -21,6 +21,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
+	"github.com/CMSgov/bcda-app/conf"
+
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -62,6 +64,7 @@ func (s *WorkerTestSuite) SetupSuite() {
 		s.FailNow(err.Error())
 	}
 
+<<<<<<< HEAD:bcdaworker/worker/worker_test.go
 	os.Setenv("FHIR_PAYLOAD_DIR", tempDir)
 	os.Setenv("FHIR_STAGING_DIR", tempDir)
 	os.Setenv("BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
@@ -69,12 +72,21 @@ func (s *WorkerTestSuite) SetupSuite() {
 	os.Setenv("BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 	os.Setenv("ATO_PUBLIC_KEY_FILE", "../../shared_files/ATO_public.pem")
 	os.Setenv("ATO_PRIVATE_KEY_FILE", "../../shared_files/ATO_private.pem")
+=======
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", tempDir)
+	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", tempDir)
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../shared_files/decrypted/bfd-dev-test-cert.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../shared_files/decrypted/bfd-dev-test-key.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
+	conf.SetEnv(s.T(), "ATO_PUBLIC_KEY_FILE", "../shared_files/ATO_public.pem")
+	conf.SetEnv(s.T(), "ATO_PRIVATE_KEY_FILE", "../shared_files/ATO_private.pem")
+>>>>>>> master:bcdaworker/main_test.go
 }
 
 func (s *WorkerTestSuite) SetupTest() {
 	s.jobID = generateUniqueJobID(s.T(), s.db, s.testACO.UUID)
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
-	s.stagingDir = fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), s.jobID)
+	s.stagingDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID)
 
 	postgrestest.CreateCCLFFile(s.T(), s.db, s.cclfFile)
 	os.RemoveAll(s.stagingDir)
@@ -93,8 +105,8 @@ func (s *WorkerTestSuite) TearDownSuite() {
 	testUtils.SetUnitTestKeysForAuth()
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	s.db.Close()
-	os.RemoveAll(os.Getenv("FHIR_STAGING_DIR"))
-	os.RemoveAll(os.Getenv("FHIR_PAYLOAD_DIR"))
+	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
+	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
 }
 
 func TestWorkerTestSuite(t *testing.T) {
@@ -157,7 +169,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 			assert.Len(t, files, 1)
 
 			for _, f := range files {
-				filePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, f.Name())
+				filePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, f.Name())
 				file, err := os.Open(filePath)
 				if err != nil {
 					s.FailNow(err.Error())
@@ -210,10 +222,17 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	assert.NoError(s.T(), err)
 }
 
+<<<<<<< HEAD:bcdaworker/worker/worker_test.go
 func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "70")
+=======
+func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
+	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
+	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "70")
+>>>>>>> master:bcdaworker/main_test.go
 	transactionTime := time.Now()
 
 	bbc := testUtils.BlueButtonClient{}
@@ -238,7 +257,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	assert.NotEqual(s.T(), int64(0), size)
 	assert.NoError(s.T(), err)
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), s.jobID, fileUUID)
+	errorFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, fileUUID)
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -248,10 +267,17 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	bbc.AssertExpectations(s.T())
 }
 
+<<<<<<< HEAD:bcdaworker/worker/worker_test.go
 func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "60")
+=======
+func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
+	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
+	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
+>>>>>>> master:bcdaworker/main_test.go
 	transactionTime := time.Now()
 
 	bbc := testUtils.BlueButtonClient{}
@@ -280,7 +306,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
@@ -292,10 +318,17 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2])
 }
 
+<<<<<<< HEAD:bcdaworker/worker/worker_test.go
 func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
 	os.Setenv("EXPORT_FAIL_PCT", "51")
+=======
+func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
+	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
+	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "51")
+>>>>>>> master:bcdaworker/main_test.go
 
 	bbc := testUtils.BlueButtonClient{}
 	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for MBI"))
@@ -317,7 +350,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, len(files))
 
-	dataFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, files[1].Name())
+	dataFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[1].Name())
 	d, err := ioutil.ReadFile(dataFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -325,7 +358,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	// Should be empty
 	s.Empty(d)
 
-	errorFilePath := fmt.Sprintf("%s/%d/%s", os.Getenv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
+	errorFilePath := fmt.Sprintf("%s/%d/%s", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, files[0].Name())
 	d, err = ioutil.ReadFile(errorFilePath)
 	if err != nil {
 		s.FailNow(err.Error())
@@ -353,27 +386,33 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	bbc.AssertExpectations(s.T())
 }
 
+<<<<<<< HEAD:bcdaworker/worker/worker_test.go
 func (s *WorkerTestSuite) TestGetFailureThreshold() {
 	origFailPct := os.Getenv("EXPORT_FAIL_PCT")
 	defer os.Setenv("EXPORT_FAIL_PCT", origFailPct)
+=======
+func (s *MainTestSuite) TestGetFailureThreshold() {
+	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
+	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
+>>>>>>> master:bcdaworker/main_test.go
 
-	os.Setenv("EXPORT_FAIL_PCT", "60")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
 	assert.Equal(s.T(), 60.0, getFailureThreshold())
 
-	os.Setenv("EXPORT_FAIL_PCT", "-1")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "-1")
 	assert.Equal(s.T(), 0.0, getFailureThreshold())
 
-	os.Setenv("EXPORT_FAIL_PCT", "500")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "500")
 	assert.Equal(s.T(), 100.0, getFailureThreshold())
 
-	os.Setenv("EXPORT_FAIL_PCT", "zero")
+	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "zero")
 	assert.Equal(s.T(), 50.0, getFailureThreshold())
 }
 
 func (s *WorkerTestSuite) TestAppendErrorToFile() {
 	appendErrorToFile(context.Background(), s.testACO.UUID.String(), "", "", "", s.jobID)
 
-	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", os.Getenv("FHIR_STAGING_DIR"), s.jobID, s.testACO.UUID)
+	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, s.testACO.UUID)
 	fData, err := ioutil.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 
@@ -436,25 +475,100 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 		BBBasePath:     "/v1/fhir",
 	}
 
-	origBBCert := os.Getenv("BB_CLIENT_CERT_FILE")
-	defer os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
-	os.Unsetenv("BB_CLIENT_CERT_FILE")
+	origBBCert := conf.GetEnv("BB_CLIENT_CERT_FILE")
+	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
+	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
 
+<<<<<<< HEAD:bcdaworker/worker/worker_test.go
 	assert.Contains(s.T(), s.w.ProcessJob(context.Background(), j, jobArgs).Error(), "could not create Blue Button client")
 }
 
 func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 	// Use multiple defers to ensure that the os.Getenv gets evaluated prior to us
+=======
+	assert.Contains(s.T(), processJob(&qj).Error(), "could not create Blue Button client")
+}
+
+func (s *MainTestSuite) TestSetupQueue() {
+	setupQueue()
+	conf.SetEnv(s.T(), "WORKER_POOL_SIZE", "7")
+	setupQueue()
+}
+
+func (s *MainTestSuite) TestUpdateJobStats() {
+	j := &models.Job{
+		ACOID:             uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		RequestURL:        "",
+		Status:            "",
+		JobCount:          4,
+		CompletedJobCount: 1,
+	}
+
+	postgrestest.CreateJobs(s.T(), s.db, j)
+
+	// Simulate another que_job completing, incrementing the count again
+	j.CompletedJobCount++
+	postgrestest.UpdateJob(s.T(), s.db, *j)
+
+	updateJobStats(context.Background(), s.r, j.ID)
+
+	j, err := s.r.GetJobByID(context.Background(), j.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 3, j.CompletedJobCount)
+}
+
+func (s *MainTestSuite) TestQueueJobWithNoParent() {
+	retryCount := 10
+	conf.SetEnv(s.T(), "BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", strconv.Itoa(retryCount))
+	tests := []struct {
+		name        string
+		errorCount  int32
+		expectedErr error
+	}{
+		{"RetriesRemaining", int32(retryCount) - 1, errors.New("could not retrieve job from database: no job found for given id")},
+		{"RetriesExhausted", int32(retryCount), nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
+				ID:             99999999, // JobID is not found in the db
+				ACOID:          "00000000-0000-0000-0000-000000000000",
+				BeneficiaryIDs: []string{},
+				ResourceType:   "Patient",
+				BBBasePath:     "/v1/fhir",
+			})
+
+			qj := &que.Job{
+				Type:       "ProcessJob",
+				Args:       qjArgs,
+				Priority:   1,
+				ErrorCount: tt.errorCount,
+			}
+
+			err := processJob(qj)
+			if tt.expectedErr != nil {
+				assert.Equal(t, tt.expectedErr.Error(), err.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func (s *MainTestSuite) TestCheckJobCompleteAndCleanup() {
+	// Use multiple defers to ensure that the conf.GetEnv gets evaluated prior to us
+>>>>>>> master:bcdaworker/main_test.go
 	// modifying the value.
-	defer os.Setenv("FHIR_STAGING_DIR", os.Getenv("FHIR_STAGING_DIR"))
-	defer os.Setenv("FHIR_PAYLOAD_DIR", os.Getenv("FHIR_PAYLOAD_DIR"))
+	defer conf.SetEnv(s.T(), "FHIR_STAGING_DIR", conf.GetEnv("FHIR_STAGING_DIR"))
+	defer conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", conf.GetEnv("FHIR_PAYLOAD_DIR"))
 
 	staging, err := ioutil.TempDir("", "*")
 	assert.NoError(s.T(), err)
 	payload, err := ioutil.TempDir("", "*")
 	assert.NoError(s.T(), err)
-	os.Setenv("FHIR_STAGING_DIR", staging)
-	os.Setenv("FHIR_PAYLOAD_DIR", payload)
+	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", staging)
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", payload)
 
 	tests := []struct {
 		name      string

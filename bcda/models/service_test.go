@@ -4,7 +4,6 @@ import (
 	context "context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,12 +11,10 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/pborman/uuid"
-
-	"github.com/stretchr/testify/mock"
-
 	"github.com/stretchr/testify/assert"
-
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -63,9 +60,9 @@ func TestSupportedACOs(t *testing.T) {
 
 func TestGetMaxBeneCount(t *testing.T) {
 	defer func() {
-		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_EOB")
-		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_PATIENT")
-		os.Unsetenv("BCDA_FHIR_MAX_RECORDS_COVERAGE")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_EOB")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_PATIENT")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_COVERAGE")
 	}()
 
 	getEnvVar := func(resourceType string) string {
@@ -82,10 +79,10 @@ func TestGetMaxBeneCount(t *testing.T) {
 	}
 
 	clearer := func(resourceType string, val int) {
-		os.Unsetenv(getEnvVar(resourceType))
+		conf.UnsetEnv(t, getEnvVar(resourceType))
 	}
 	setter := func(resourceType string, val int) {
-		os.Setenv(getEnvVar(resourceType), strconv.Itoa(val))
+		conf.SetEnv(t, getEnvVar(resourceType), strconv.Itoa(val))
 	}
 
 	tests := []struct {
@@ -128,11 +125,11 @@ func TestServiceTestSuite(t *testing.T) {
 }
 
 func (s *ServiceTestSuite) SetupTest() {
-	s.priorityACOsEnvVar = os.Getenv("PRIORITY_ACO_REG_EX")
+	s.priorityACOsEnvVar = conf.GetEnv("PRIORITY_ACO_REG_EX")
 }
 
 func (s *ServiceTestSuite) TearDownTest() {
-	os.Setenv("PRIORITY_ACO_REG_EX", s.priorityACOsEnvVar)
+	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", s.priorityACOsEnvVar)
 }
 
 func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
@@ -407,7 +404,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 func (s *ServiceTestSuite) TestGetQueJobs() {
 
 	defaultACOID, priorityACOID := "SOME_ACO_ID", "PRIORITY_ACO_ID"
-	os.Setenv("PRIORITY_ACO_REG_EX", priorityACOID)
+	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
 	benes1, benes2 := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20)
 	allBenes := [][]*CCLFBeneficiary{benes1, benes2}
