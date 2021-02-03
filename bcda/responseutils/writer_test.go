@@ -26,7 +26,7 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
-	var oo *fhirmodels.OperationOutcome = CreateOpOutcome(Error, Exception, RequestErr, "TestCreateOpOutcome")
+	oo := CreateOpOutcome(Error, Exception, RequestErr, "TestCreateOpOutcome")
 	assert.Equal(s.T(), Error, oo.Issue[0].Severity)
 	assert.Equal(s.T(), Exception, oo.Issue[0].Code)
 	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Coding[0].Display)
@@ -35,7 +35,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
-	var oo *fhirmodels.OperationOutcome = CreateOpOutcome(Error, Exception, RequestErr, "TestCreateOpOutcome")
+	oo := CreateOpOutcome(Error, Exception, RequestErr, "TestCreateOpOutcome")
 	WriteError(oo, s.rr, http.StatusAccepted)
 	var respOO fhirmodels.OperationOutcome
 	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
@@ -68,7 +68,7 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateCapabilityStatement() {
 func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 	relversion := "r1"
 	baseurl := "bcda.cms.gov"
-	var cs *fhirmodels.CapabilityStatement = CreateCapabilityStatement(time.Now(), relversion, baseurl)
+	cs := CreateCapabilityStatement(time.Now(), relversion, baseurl)
 	WriteCapabilityStatement(cs, s.rr)
 	var respCS fhirmodels.CapabilityStatement
 	err := json.Unmarshal(s.rr.Body.Bytes(), &respCS)
