@@ -4,8 +4,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
+
+	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -18,7 +19,7 @@ type AuthRouterTestSuite struct {
 }
 
 func (s *AuthRouterTestSuite) SetupTest() {
-	os.Setenv("DEBUG", "true")
+	conf.SetEnv(s.T(), "DEBUG", "true")
 	s.authRouter = NewAuthRouter()
 }
 

@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/conf"
+
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
@@ -172,7 +173,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	}
 
 	maxFileDays := utils.GetEnvInt("CCLF_MAX_AGE", 45)
-	refDateString := os.Getenv("CCLF_REF_DATE")
+	refDateString := conf.GetEnv("CCLF_REF_DATE")
 	refDate, err := time.Parse("060102", refDateString)
 	if err != nil {
 		refDate = time.Now()
@@ -215,7 +216,7 @@ func checkDeliveryDate(folderPath string, deliveryDate time.Time) error {
 	deleteThreshold := time.Hour * time.Duration(utils.GetEnvInt("BCDA_ETL_FILE_ARCHIVE_THRESHOLD_HR", 72))
 	if deliveryDate.Add(deleteThreshold).Before(time.Now()) {
 		folderName := filepath.Base(folderPath)
-		newpath := fmt.Sprintf("%s/%s", os.Getenv("PENDING_DELETION_DIR"), folderName)
+		newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 		err := os.Rename(folderPath, newpath)
 		if err != nil {
 			return err

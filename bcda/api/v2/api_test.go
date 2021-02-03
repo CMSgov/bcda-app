@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +18,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/conf"
+
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
@@ -38,18 +39,18 @@ type APITestSuite struct {
 }
 
 func (s *APITestSuite) SetupSuite() {
-	origDate := os.Getenv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
-	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
-	origBBCert := os.Getenv("BB_CLIENT_CERT_FILE")
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	origBBKey := os.Getenv("BB_CLIENT_KEY_FILE")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
+	origDate := conf.GetEnv("CCLF_REF_DATE")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
+	conf.SetEnv(s.T(), "BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	origBBCert := conf.GetEnv("BB_CLIENT_CERT_FILE")
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	origBBKey := conf.GetEnv("BB_CLIENT_KEY_FILE")
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 
 	s.cleanup = func() {
-		os.Setenv("CCLF_REF_DATE", origDate)
-		os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
-		os.Setenv("BB_CLIENT_KEY_FILE", origBBKey)
+		conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
+		conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
+		conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", origBBKey)
 	}
 
 	s.db = database.GetDbConnection()
