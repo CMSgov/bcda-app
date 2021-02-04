@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	goerrors "errors"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -80,3 +81,8 @@ type jobRepository interface {
 type jobKeyRepository interface {
 	GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error)
 }
+
+var (
+	ErrJobNotCancelled   = goerrors.New("Job was not cancelled due to internal server error.")
+	ErrJobNotCancellable = goerrors.New("Job was not cancelled because it is not Pending or In Progress")
+)

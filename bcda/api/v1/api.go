@@ -258,20 +258,21 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedJobID, err := h.Svc.CancelJob(context.Background(), uint(jobID))
+	_, err = h.Svc.CancelJob(context.Background(), uint(jobID))
 	if err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
+		switch err {
+		case models.ErrJobNotCancellable:
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, err.Error())
+			responseutils.WriteError(oo, w, http.StatusGone)
+			return
+		default:
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, err.Error())
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
 	}
-
-	if updatedJobID == uint(jobID) {
-		w.WriteHeader(http.StatusAccepted)
-	} else {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "Unable to cancel jobs not currently in progress or pending.")
-		responseutils.WriteError(oo, w, http.StatusGone)
-	}
+	w.WriteHeader(http.StatusAccepted)
 }
 
 /*
