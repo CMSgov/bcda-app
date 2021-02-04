@@ -15,7 +15,6 @@ require (
 	github.com/eug48/fhir v0.0.0-20200713141853-838d5f216354
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
-	github.com/golang/protobuf v1.4.3
 	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f
 	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
@@ -29,7 +28,6 @@ require (
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/samply/golang-fhir-models/fhir-models v0.2.0
-	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux v0.1.4
