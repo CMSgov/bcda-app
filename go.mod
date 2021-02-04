@@ -46,7 +46,6 @@ replace (
 	github.com/bgentry/que-go => github.com/bgentry/que-go v1.0.1
 	github.com/cenkalti/backoff/v4 => github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
-	github.com/eug48/fhir => github.com/eug48/fhir v0.0.0-20200713141853-838d5f216354
 	github.com/go-chi/chi => github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render => github.com/go-chi/render v1.0.1
 	github.com/jackc/pgx => github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
@@ -56,7 +55,6 @@ replace (
 	github.com/opencensus-integrations/gomongowrapper => github.com/eug48/gomongowrapper v0.0.3
 	github.com/pborman/uuid => github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
 	github.com/pkg/errors => github.com/pkg/errors v0.8.0
-	github.com/samply/golang-fhir-models/fhir-models => github.com/samply/golang-fhir-models/fhir-models v0.2.0
 	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux => github.com/soheilhy/cmux v0.1.4
 	github.com/tsenart/vegeta => github.com/tsenart/vegeta v12.1.0+incompatible
