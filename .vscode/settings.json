@@ -11,6 +11,7 @@
     "go.buildOnSave": "package",
     "go.lintTool": "golangci-lint",
     "go.lintFlags": [
-        "--fast"
+        "--fast",
+        "--exclude=\"(conf\\.(Un)?[S,s]etEnv)\"",
     ]
 }
