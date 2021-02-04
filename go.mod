@@ -26,7 +26,6 @@ require (
 	github.com/otiai10/copy v1.4.2
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
-	github.com/samply/golang-fhir-models/fhir-models v0.2.0
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux v0.1.4
