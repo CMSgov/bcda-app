@@ -12,7 +12,6 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
-	github.com/eug48/fhir v0.0.0-20200713141853-838d5f216354
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
 	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f
