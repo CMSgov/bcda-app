@@ -119,12 +119,11 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 							Extension: []*fhirdatatypes.Extension{
 								{
 									Url: &fhirdatatypes.Uri{Value: "token"},
-									// FIXME: It's given us an unmarshalling error :/
-									// Value: &fhirdatatypes.Extension_ValueX{
-									// 	Choice: &fhirdatatypes.Extension_ValueX_Uri{
-									// 		Uri: &fhirdatatypes.Uri{Value: baseurl + "/auth/token"},
-									// 	},
-									// },
+									Value: &fhirdatatypes.Extension_ValueX{
+										Choice: &fhirdatatypes.Extension_ValueX_Uri{
+											Uri: &fhirdatatypes.Uri{Value: baseurl + "/auth/token"},
+										},
+									},
 								},
 							},
 						},
@@ -138,7 +137,6 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 						Code: &fhircodes.SystemRestfulInteractionCode{Value: fhircodes.SystemRestfulInteractionCode_SEARCH_SYSTEM},
 					},
 				},
-				// FIXME: Unmarshalling error :(
 				Operation: []*fhirmodels2.CapabilityStatement_Rest_Operation{
 					{
 						Name: &fhirdatatypes.String{Value: "patient-export"},
@@ -168,7 +166,7 @@ func WriteCapabilityStatement(statement *fhirmodels2.CapabilityStatement, w http
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	resource := &fhirmodels2.ContainedResource{
 		OneofResource: &fhirmodels2.ContainedResource_CapabilityStatement{statement},
 	}
