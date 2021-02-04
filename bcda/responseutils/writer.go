@@ -33,13 +33,13 @@ func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmo
 
 	return &fhirmodels2.OperationOutcome{
 		Issue: []*fhirmodels2.OperationOutcome_Issue{
-			&fhirmodels2.OperationOutcome_Issue{
+			{
 				// FIXME - take in severity and code as args
 				Severity: &fhircodes.IssueSeverityCode{Value: fhircodes.IssueSeverityCode_ERROR},
 				Code:     &fhircodes.IssueTypeCode{Value: fhircodes.IssueTypeCode_EXCEPTION},
 				Details: &fhirdatatypes.CodeableConcept{
 					Coding: []*fhirdatatypes.Coding{
-						&fhirdatatypes.Coding{
+						{
 							Code: &fhirdatatypes.Code{Value: detailsCode},
 							System: &fhirdatatypes.Uri{
 								Value: "http://hl7.org/fhir/ValueSet/operation-outcome",
@@ -56,7 +56,7 @@ func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmo
 
 func WriteError(outcome *fhirmodels2.OperationOutcome, w http.ResponseWriter, code int) {
 	resource := &fhirmodels2.ContainedResource{
-		OneofResource: &fhirmodels2.ContainedResource_OperationOutcome{outcome},
+		OneofResource: &fhirmodels2.ContainedResource_OperationOutcome{OperationOutcome: outcome},
 	}
 	outcomeJSON, err := marshaller.Marshal(resource)
 	if err != nil {
@@ -71,13 +71,6 @@ func WriteError(outcome *fhirmodels2.OperationOutcome, w http.ResponseWriter, co
 }
 
 func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodels2.CapabilityStatement {
-	// fhirmodels.CapabilityStatementRestOperationComponent{
-
-	// }
-	// &fhirmodels.Reference{
-	// 	Reference: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
-	// }
-	usecors := true
 	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
 	statement := &fhirmodels2.CapabilityStatement{
 		Status: &fhircodes.PublicationStatusCode{Value: fhircodes.PublicationStatusCode_ACTIVE},
@@ -89,8 +82,8 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 		Publisher: &fhirdatatypes.String{Value: "Centers for Medicare & Medicaid Services"},
 		Kind:      &fhircodes.CapabilityStatementKindCode{Value: fhircodes.CapabilityStatementKindCode_INSTANCE},
 		Instantiates: []*fhirdatatypes.Uri{
-			&fhirdatatypes.Uri{Value: bbServer + "/baseDstu3/metadata/"},
-			&fhirdatatypes.Uri{Value: "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
+			{Value: bbServer + "/baseDstu3/metadata/"},
+			{Value: "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
 		},
 		Software: &fhirmodels2.CapabilityStatement_Software{
 			Name:    &fhirdatatypes.String{Value: "Beneficiary Claims Data API"},
@@ -108,14 +101,14 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 		FhirVersion:   &fhirdatatypes.Id{Value: "3.0.1"},
 		AcceptUnknown: &fhircodes.UnknownContentCodeCode{Value: fhircodes.UnknownContentCodeCode_EXTENSIONS},
 		Format: []*fhirdatatypes.MimeTypeCode{
-			&fhirdatatypes.MimeTypeCode{Value: "application/json"},
-			&fhirdatatypes.MimeTypeCode{Value: "application/fhir+json"},
+			{Value: "application/json"},
+			{Value: "application/fhir+json"},
 		},
 		Rest: []*fhirmodels2.CapabilityStatement_Rest{
 			{
 				Mode: &fhircodes.RestfulCapabilityModeCode{Value: fhircodes.RestfulCapabilityModeCode_SERVER},
 				Security: &fhirmodels2.CapabilityStatement_Rest_Security{
-					Cors: &fhirdatatypes.Boolean{Value: usecors},
+					Cors: &fhirdatatypes.Boolean{Value: true},
 					Service: []*fhirdatatypes.CodeableConcept{
 						{
 							Coding: []*fhirdatatypes.Coding{
@@ -177,7 +170,7 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 }
 func WriteCapabilityStatement(statement *fhirmodels2.CapabilityStatement, w http.ResponseWriter) {
 	resource := &fhirmodels2.ContainedResource{
-		OneofResource: &fhirmodels2.ContainedResource_CapabilityStatement{statement},
+		OneofResource: &fhirmodels2.ContainedResource_CapabilityStatement{CapabilityStatement: statement},
 	}
 	statementJSON, err := marshaller.Marshal(resource)
 	if err != nil {
