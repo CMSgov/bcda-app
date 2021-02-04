@@ -1,8 +1,8 @@
 package responseutils
 
 import (
-	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,6 +14,17 @@ import (
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels2 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
+
+var marshaller *jsonformat.Marshaller
+
+func init() {
+	var err error
+
+	marshaller, err = jsonformat.NewPrettyMarshaller(jsonformat.STU3)
+	if err != nil {
+		log.Fatalf("Failed to create marshaller %s", err)
+	}
+}
 
 func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmodels2.OperationOutcome {
 	fhirmodels.DisableOperationOutcomeDiagnosticsFileLine()
@@ -43,15 +54,18 @@ func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmo
 }
 
 func WriteError(outcome *fhirmodels2.OperationOutcome, w http.ResponseWriter, code int) {
-	outcomeJSON, err := json.Marshal(outcome)
+	resource := &fhirmodels2.ContainedResource{
+		OneofResource: &fhirmodels2.ContainedResource_OperationOutcome{outcome},
+	}
+	outcomeJSON, err := marshaller.Marshal(resource)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_, err = w.Write(outcomeJSON)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -161,12 +175,6 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 	return statement
 }
 func WriteCapabilityStatement(statement *fhirmodels2.CapabilityStatement, w http.ResponseWriter) {
-	marshaller, err := jsonformat.NewPrettyMarshaller(jsonformat.STU3)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	resource := &fhirmodels2.ContainedResource{
 		OneofResource: &fhirmodels2.ContainedResource_CapabilityStatement{statement},
 	}
