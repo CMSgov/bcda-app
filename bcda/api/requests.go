@@ -17,7 +17,8 @@ import (
 	"time"
 
 	"github.com/bgentry/que-go"
-	fhirmodels "github.com/eug48/fhir/models"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
@@ -176,7 +177,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		fallthrough
 	default:
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid group ID")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Invalid group ID")
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
@@ -202,12 +203,12 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 
 	if version, err = getVersion(r.URL); err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, err.Error())
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 	}
 
 	if ad, err = readAuthData(r); err != nil {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.TokenErr, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.TokenErr, "")
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
 		return
 	}
@@ -215,7 +216,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -232,7 +233,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		if err != nil {
 			err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		}
 		if len(pendingAndInProgressJobs) > 0 {
@@ -242,7 +243,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 					w.WriteHeader(http.StatusTooManyRequests)
 				} else {
 					log.Error(err)
-					oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
 					responseutils.WriteError(oo, w, http.StatusInternalServerError)
 				}
 
@@ -271,7 +272,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	if err != nil {
 		err = errors.Wrap(err, "failed to start transaction")
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -299,7 +300,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		// We've added logic into the worker to handle this situation.
 		if err = tx.Commit(); err != nil {
 			log.Error(err.Error())
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
@@ -312,7 +313,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -321,7 +322,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -333,7 +334,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		since, err = time.Parse(time.RFC3339Nano, params[0])
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		}
 	}
@@ -346,7 +347,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		if _, ok := errors.Cause(err).(models.CCLFNotFoundError); ok && reqType == models.Runout {
 			respCode = http.StatusNotFound
 		}
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, err.Error())
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, err.Error())
 		responseutils.WriteError(oo, w, respCode)
 		return
 	}
@@ -355,7 +356,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// We've now computed all of the fields necessary to populate a fully defined job
 	if err = rtx.UpdateJob(ctx, newJob); err != nil {
 		log.Error(err.Error())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -366,7 +367,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	for _, j := range queJobs {
 		if err = h.qc.Enqueue(j); err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
@@ -386,7 +387,7 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 				resourceMap[p] = true
 				resourceTypes = append(resourceTypes, p)
 			} else {
-				oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Repeated resource type")
+				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Repeated resource type")
 				return nil, oo
 			}
 		}
@@ -397,7 +398,7 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 
 	for _, resourceType := range resourceTypes {
 		if _, ok := h.supportedResources[resourceType]; !ok {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr,
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
 				fmt.Sprintf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources))
 			return nil, oo
 		}
@@ -408,10 +409,10 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 	if ok {
 		sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
 			return nil, oo
 		} else if sinceDate.After(time.Now()) {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
 			return nil, oo
 		}
 	}
@@ -420,7 +421,7 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 	params, ok = r.URL.Query()["_outputFormat"]
 	if ok {
 		if params[0] != "ndjson" && params[0] != "application/fhir+ndjson" && params[0] != "application/ndjson" {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson")
 			return nil, oo
 		}
 	}
@@ -428,7 +429,7 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 	// we do not support "_elements" parameter
 	_, ok = r.URL.Query()["_elements"]
 	if ok {
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
 		return nil, oo
 	}
 
@@ -436,7 +437,7 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 	// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
 	for key := range r.URL.Query() {
 		if strings.HasPrefix(key, "?") {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
 			return nil, oo
 		}
 	}

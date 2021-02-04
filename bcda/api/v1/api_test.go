@@ -18,7 +18,8 @@ import (
 	"testing"
 	"time"
 
-	fhirmodels "github.com/eug48/fhir/models"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -242,8 +243,8 @@ func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
 		s.T().Error(err)
 	}
 
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity)
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code)
 	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Code)
 }
 
@@ -467,8 +468,8 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 			err := json.Unmarshal(rr.Body.Bytes(), &respOO)
 			assert.NoError(t, err)
 
-			assert.Equal(t, responseutils.Error, respOO.Issue[0].Severity)
-			assert.Equal(t, responseutils.Exception, respOO.Issue[0].Code)
+			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity)
+			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code)
 			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code)
 		})
 	}

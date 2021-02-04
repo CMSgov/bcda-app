@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/bgentry/que-go"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -376,7 +377,9 @@ func (s *MainTestSuite) TestGetFailureThreshold() {
 }
 
 func (s *MainTestSuite) TestAppendErrorToFile() {
-	appendErrorToFile(context.Background(), s.testACO.UUID.String(), "", "", "", s.jobID)
+	appendErrorToFile(context.Background(), s.testACO.UUID.String(),
+		fhircodes.IssueTypeCode_CODE_INVALID,
+		"", "", s.jobID)
 
 	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, s.testACO.UUID)
 	fData, err := ioutil.ReadFile(filePath)

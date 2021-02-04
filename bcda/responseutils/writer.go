@@ -20,23 +20,23 @@ var marshaller *jsonformat.Marshaller
 func init() {
 	var err error
 
+	// NOTE: Since we were using STU3 data models, we create a STU3 marshaller
+	// We can specify different jsonformat.Version to return R4.
 	marshaller, err = jsonformat.NewPrettyMarshaller(jsonformat.STU3)
 	if err != nil {
 		log.Fatalf("Failed to create marshaller %s", err)
 	}
 }
 
-func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmodels2.OperationOutcome {
-	fhirmodels.DisableOperationOutcomeDiagnosticsFileLine()
-	oo := fhirmodels.CreateOpOutcome(severity, code, detailsCode, detailsDisplay)
-	fmt.Println(oo)
+func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
+	detailsCode, detailsDisplay string) *fhirmodels2.OperationOutcome {
 
 	return &fhirmodels2.OperationOutcome{
 		Issue: []*fhirmodels2.OperationOutcome_Issue{
 			{
 				// FIXME - take in severity and code as args
-				Severity: &fhircodes.IssueSeverityCode{Value: fhircodes.IssueSeverityCode_ERROR},
-				Code:     &fhircodes.IssueTypeCode{Value: fhircodes.IssueTypeCode_EXCEPTION},
+				Severity: &fhircodes.IssueSeverityCode{Value: severity},
+				Code:     &fhircodes.IssueTypeCode{Value: code},
 				Details: &fhirdatatypes.CodeableConcept{
 					Coding: []*fhirdatatypes.Coding{
 						{

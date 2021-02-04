@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/fhir/go/jsonformat"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -30,16 +31,16 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
-	oo := CreateOpOutcome(Error, Exception, RequestErr, "TestCreateOpOutcome")
-	assert.Equal(s.T(), Error, oo.Issue[0].Severity.Value.String())
-	assert.Equal(s.T(), Exception, oo.Issue[0].Code.Value.String())
+	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, RequestErr, "TestCreateOpOutcome")
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value.String())
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, oo.Issue[0].Code.Value.String())
 	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Coding[0].Display.Value)
 	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Text.Value)
 	assert.Equal(s.T(), RequestErr, oo.Issue[0].Details.Coding[0].Code.Value)
 }
 
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
-	oo := CreateOpOutcome(Error, Exception, RequestErr, "TestCreateOpOutcome")
+	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, RequestErr, "TestCreateOpOutcome")
 	WriteError(oo, s.rr, http.StatusAccepted)
 
 	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
@@ -48,9 +49,9 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 	respOO := cr.GetOperationOutcome()
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), Error, respOO.Issue[0].Severity.Value.String())
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value.String())
 	assert.Equal(s.T(), oo.Issue[0].Severity, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), Exception, respOO.Issue[0].Code.Value.String())
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value.String())
 	assert.Equal(s.T(), oo.Issue[0].Code, respOO.Issue[0].Code)
 	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Details.Coding[0].Display.Value)
 	assert.Equal(s.T(), oo.Issue[0].Details.Coding[0].Display, respOO.Issue[0].Details.Coding[0].Display)
