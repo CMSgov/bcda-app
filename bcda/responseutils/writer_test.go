@@ -2,11 +2,13 @@ package responseutils
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/google/fhir/go/jsonformat"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -70,11 +72,16 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 	baseurl := "bcda.cms.gov"
 	cs := CreateCapabilityStatement(time.Now(), relversion, baseurl)
 	WriteCapabilityStatement(cs, s.rr)
-	var respCS fhirmodels.CapabilityStatement
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respCS)
-	if err != nil {
-		s.T().Error(err)
-	}
+	var respCS *fhirmodels.CapabilityStatement
+
+	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+	assert.NoError(s.T(), err)
+	res, err := unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	cr := res.(*fhirmodels.ContainedResource)
+	respCS = cr.GetCapabilityStatement()
+
+	assert.NoError(s.T(), err)
+
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
 	assert.Equal(s.T(), relversion, respCS.Software.Version.Value)
 	assert.Equal(s.T(), cs.Software.Version, respCS.Software.Version)

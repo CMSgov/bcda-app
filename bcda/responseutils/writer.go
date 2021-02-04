@@ -9,6 +9,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	fhirmodels "github.com/eug48/fhir/models"
+	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels2 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
@@ -55,6 +56,12 @@ func WriteError(outcome *fhirmodels2.OperationOutcome, w http.ResponseWriter, co
 }
 
 func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodels2.CapabilityStatement {
+	// fhirmodels.CapabilityStatementRestOperationComponent{
+
+	// }
+	// &fhirmodels.Reference{
+	// 	Reference: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
+	// }
 	usecors := true
 	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
 	statement := &fhirmodels2.CapabilityStatement{
@@ -135,15 +142,19 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 				Operation: []*fhirmodels2.CapabilityStatement_Rest_Operation{
 					{
 						Name: &fhirdatatypes.String{Value: "patient-export"},
-						// Definition: &fhirdatatypes.Reference{
-						// 	Reference: &fhirdatatypes.Reference_PatientId{},
-						// },
+						Definition: &fhirdatatypes.Reference{
+							Reference: &fhirdatatypes.Reference_Uri{
+								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+							},
+						},
 					},
 					{
 						Name: &fhirdatatypes.String{Value: "group-export"},
-						// Definition: &fhirdatatypes.Reference{
-						// 	Reference: &fhirdatatypes.Reference_GroupId{},
-						// },
+						Definition: &fhirdatatypes.Reference{
+							Reference: &fhirdatatypes.Reference_Uri{
+								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+							},
+						},
 					},
 				},
 			},
@@ -152,14 +163,26 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 	return statement
 }
 func WriteCapabilityStatement(statement *fhirmodels2.CapabilityStatement, w http.ResponseWriter) {
-	statementJSON, err := json.Marshal(statement)
+	marshaller, err := jsonformat.NewPrettyMarshaller(jsonformat.STU3)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	
+	resource := &fhirmodels2.ContainedResource{
+		OneofResource: &fhirmodels2.ContainedResource_CapabilityStatement{statement},
+	}
+	statementJSON, err := marshaller.Marshal(resource)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(statementJSON)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
