@@ -1,7 +1,6 @@
 package responseutils
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,11 +14,15 @@ import (
 
 type ResponseUtilsWriterTestSuite struct {
 	suite.Suite
-	rr *httptest.ResponseRecorder
+	rr           *httptest.ResponseRecorder
+	unmarshaller *jsonformat.Unmarshaller
 }
 
 func (s *ResponseUtilsWriterTestSuite) SetupTest() {
+	var err error
 	s.rr = httptest.NewRecorder()
+	s.unmarshaller, err = jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+	assert.NoError(s.T(), err)
 }
 
 func TestResponseUtilsWriterTestSuite(t *testing.T) {
@@ -38,11 +41,12 @@ func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 	oo := CreateOpOutcome(Error, Exception, RequestErr, "TestCreateOpOutcome")
 	WriteError(oo, s.rr, http.StatusAccepted)
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
+
+	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	assert.NoError(s.T(), err)
+	cr := res.(*fhirmodels.ContainedResource)
+	respOO := cr.GetOperationOutcome()
+
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
 	assert.Equal(s.T(), Error, respOO.Issue[0].Severity.Value.String())
 	assert.Equal(s.T(), oo.Issue[0].Severity, respOO.Issue[0].Severity)
@@ -73,9 +77,7 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteCapabilityStatement() {
 	WriteCapabilityStatement(cs, s.rr)
 	var respCS *fhirmodels.CapabilityStatement
 
-	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
-	assert.NoError(s.T(), err)
-	res, err := unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
 	cr := res.(*fhirmodels.ContainedResource)
 	respCS = cr.GetCapabilityStatement()
 

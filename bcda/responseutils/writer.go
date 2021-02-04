@@ -34,8 +34,9 @@ func CreateOpOutcome(severity, code, detailsCode, detailsDisplay string) *fhirmo
 	return &fhirmodels2.OperationOutcome{
 		Issue: []*fhirmodels2.OperationOutcome_Issue{
 			&fhirmodels2.OperationOutcome_Issue{
-				Severity: &fhircodes.IssueSeverityCode{},
-				Code:     &fhircodes.IssueTypeCode{},
+				// FIXME - take in severity and code as args
+				Severity: &fhircodes.IssueSeverityCode{Value: fhircodes.IssueSeverityCode_ERROR},
+				Code:     &fhircodes.IssueTypeCode{Value: fhircodes.IssueTypeCode_EXCEPTION},
 				Details: &fhirdatatypes.CodeableConcept{
 					Coding: []*fhirdatatypes.Coding{
 						&fhirdatatypes.Coding{
