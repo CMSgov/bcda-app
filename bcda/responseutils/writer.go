@@ -33,7 +33,6 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 	return &fhirmodels.OperationOutcome{
 		Issue: []*fhirmodels.OperationOutcome_Issue{
 			{
-				// FIXME - take in severity and code as args
 				Severity: &fhircodes.IssueSeverityCode{Value: severity},
 				Code:     &fhircodes.IssueTypeCode{Value: code},
 				Details: &fhirdatatypes.CodeableConcept{

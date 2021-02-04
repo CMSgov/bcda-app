@@ -105,8 +105,6 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		200: MetadataResponse
 */
 func Metadata(w http.ResponseWriter, r *http.Request) {
-	const dateFormat = "2006-01-02"
-
 	dt := time.Now()
 	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
 
