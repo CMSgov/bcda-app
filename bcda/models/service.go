@@ -167,13 +167,13 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 		job.Status = JobStatusCancelled
 		err = s.repository.UpdateJob(ctx, *job)
 		if err != nil {
-			return 0, err
+			return 0, ErrJobNotCancelled
 		}
 		return jobID, nil
 	}
 
 	// Return 0, nil to indicate attempt to cancel a non-cancellable job.
-	return 0, nil
+	return 0, ErrJobNotCancellable
 }
 
 func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since time.Time, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {
