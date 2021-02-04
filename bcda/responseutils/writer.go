@@ -112,11 +112,12 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 							Extension: []*fhirdatatypes.Extension{
 								{
 									Url: &fhirdatatypes.Uri{Value: "token"},
-									Value: &fhirdatatypes.Extension_ValueX{
-										Choice: &fhirdatatypes.Extension_ValueX_Uri{
-											Uri: &fhirdatatypes.Uri{Value: baseurl + "/auth/token"},
-										},
-									},
+									// FIXME: It's given us an unmarshalling error :/
+									// Value: &fhirdatatypes.Extension_ValueX{
+									// 	Choice: &fhirdatatypes.Extension_ValueX_Uri{
+									// 		Uri: &fhirdatatypes.Uri{Value: baseurl + "/auth/token"},
+									// 	},
+									// },
 								},
 							},
 						},
@@ -130,18 +131,19 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 						Code: &fhircodes.SystemRestfulInteractionCode{Value: fhircodes.SystemRestfulInteractionCode_SEARCH_SYSTEM},
 					},
 				},
+				// FIXME: Unmarshalling error :(
 				Operation: []*fhirmodels2.CapabilityStatement_Rest_Operation{
 					{
 						Name: &fhirdatatypes.String{Value: "patient-export"},
-						Definition: &fhirdatatypes.Reference{
-							Reference: &fhirdatatypes.Reference_PatientId{},
-						},
+						// Definition: &fhirdatatypes.Reference{
+						// 	Reference: &fhirdatatypes.Reference_PatientId{},
+						// },
 					},
 					{
 						Name: &fhirdatatypes.String{Value: "group-export"},
-						Definition: &fhirdatatypes.Reference{
-							Reference: &fhirdatatypes.Reference_GroupId{},
-						},
+						// Definition: &fhirdatatypes.Reference{
+						// 	Reference: &fhirdatatypes.Reference_GroupId{},
+						// },
 					},
 				},
 			},
