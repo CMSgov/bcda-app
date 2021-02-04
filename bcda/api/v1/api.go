@@ -144,7 +144,8 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(api.GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Deleted, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		}
@@ -186,14 +187,16 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
@@ -201,10 +204,12 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	case models.JobStatusArchived, models.JobStatusExpired:
 		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Deleted, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+			responseutils.NotFoundErr, "")
 		responseutils.WriteError(oo, w, http.StatusGone)
 	case models.JobStatusCancelled:
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND, responseutils.Deleted, "Job has been cancelled.")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND,
+			responseutils.NotFoundErr, "Job has been cancelled.")
 		responseutils.WriteError(oo, w, http.StatusNotFound)
 	}
 }

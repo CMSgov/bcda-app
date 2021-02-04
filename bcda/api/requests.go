@@ -203,8 +203,9 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 
 	if version, err = getVersion(r.URL); err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, err.Error())
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+			responseutils.RequestErr, err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
 	}
 
 	if ad, err = readAuthData(r); err != nil {
@@ -216,7 +217,8 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+			responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -233,7 +235,8 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		if err != nil {
 			err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		}
 		if len(pendingAndInProgressJobs) > 0 {
@@ -243,7 +246,8 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 					w.WriteHeader(http.StatusTooManyRequests)
 				} else {
 					log.Error(err)
-					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
+					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+						responseutils.InternalErr, "")
 					responseutils.WriteError(oo, w, http.StatusInternalServerError)
 				}
 
@@ -272,7 +276,8 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	if err != nil {
 		err = errors.Wrap(err, "failed to start transaction")
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+			responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -334,8 +339,9 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		since, err = time.Parse(time.RFC3339Nano, params[0])
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.RequestErr, err.Error())
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
 		}
 	}
 
@@ -343,11 +349,19 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	queJobs, err = h.Svc.GetQueJobs(ctx, ad.CMSID, &newJob, resourceTypes, since, reqType)
 	if err != nil {
 		log.Error(err)
-		respCode := http.StatusInternalServerError
+		var (
+			oo       *fhirmodels.OperationOutcome
+			respCode int
+		)
 		if _, ok := errors.Cause(err).(models.CCLFNotFoundError); ok && reqType == models.Runout {
+			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.NotFoundErr, err.Error())
 			respCode = http.StatusNotFound
+		} else {
+			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, err.Error())
+			respCode = http.StatusInternalServerError
 		}
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, err.Error())
 		responseutils.WriteError(oo, w, respCode)
 		return
 	}
@@ -367,7 +381,8 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	for _, j := range queJobs {
 		if err = h.qc.Enqueue(j); err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
