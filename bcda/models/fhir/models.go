@@ -8,7 +8,7 @@ type Resource struct {
 	ResourceType string `json:"resourceType"`
 	ID           string `json:"id"`
 	Meta         struct {
-		LastUpdated time.Time  `json:"lastUpdated"`
+		LastUpdated time.Time `json:"lastUpdated"`
 	} `json:"meta"`
 	Total uint `json:"total"`
 }

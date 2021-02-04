@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/conf"
+
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -35,7 +37,7 @@ func init() {
 	ssasLogger = logrus.New()
 	ssasLogger.Formatter = &logrus.JSONFormatter{}
 	ssasLogger.SetReportCaller(true)
-	filePath := os.Getenv("BCDA_SSAS_LOG")
+	filePath := conf.GetEnv("BCDA_SSAS_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filepath.Clean(filePath), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
@@ -53,7 +55,7 @@ func NewSSASClient() (*SSASClient, error) {
 		transport = &http.Transport{}
 		err       error
 	)
-	if os.Getenv("SSAS_USE_TLS") == "true" {
+	if conf.GetEnv("SSAS_USE_TLS") == "true" {
 		transport, err = tlsTransport()
 		if err != nil {
 			return nil, errors.Wrap(err, "SSAS client could not be created")
@@ -61,12 +63,12 @@ func NewSSASClient() (*SSASClient, error) {
 	}
 
 	var timeout int
-	if timeout, err = strconv.Atoi(os.Getenv("SSAS_TIMEOUT_MS")); err != nil {
+	if timeout, err = strconv.Atoi(conf.GetEnv("SSAS_TIMEOUT_MS")); err != nil {
 		ssasLogger.Info("Could not get SSAS timeout from environment variable; using default value of 500.")
 		timeout = 500
 	}
 
-	ssasURL := os.Getenv("SSAS_URL")
+	ssasURL := conf.GetEnv("SSAS_URL")
 	if ssasURL == "" {
 		return nil, errors.New("SSAS client could not be created: no URL provided")
 	}
@@ -77,7 +79,7 @@ func NewSSASClient() (*SSASClient, error) {
 }
 
 func tlsTransport() (*http.Transport, error) {
-	caFile := os.Getenv("BCDA_CA_FILE")
+	caFile := conf.GetEnv("BCDA_CA_FILE")
 	caCert, err := ioutil.ReadFile(filepath.Clean(caFile))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not read CA file")
@@ -301,7 +303,7 @@ func (c *SSASClient) RevokeAccessToken(tokenID string) error {
 
 // GetToken POSTs to the public SSAS /token endpoint to get an access token for a BCDA client
 func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
-	public := os.Getenv("SSAS_PUBLIC_URL")
+	public := conf.GetEnv("SSAS_PUBLIC_URL")
 	url := fmt.Sprintf("%s/token", public)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
@@ -331,7 +333,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 // VerifyPublicToken verifies that the tokenString presented was issued by the public server. It does so using
 // the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
 func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
-	public := os.Getenv("SSAS_PUBLIC_URL")
+	public := conf.GetEnv("SSAS_PUBLIC_URL")
 	url := fmt.Sprintf("%s/introspect", public)
 	body, err := json.Marshal(struct {
 		Token string `json:"token"`
@@ -344,8 +346,8 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 		return nil, errors.Wrap(err, "bad request structure")
 	}
 
-	clientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
-	secret := os.Getenv("BCDA_SSAS_SECRET")
+	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
+	secret := conf.GetEnv("BCDA_SSAS_SECRET")
 	if clientID == "" || secret == "" {
 		return nil, errors.New("missing clientID or secret")
 	}
@@ -371,8 +373,8 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 }
 
 func (c *SSASClient) setAuthHeader(req *http.Request) error {
-	clientID := os.Getenv("BCDA_SSAS_CLIENT_ID")
-	secret := os.Getenv("BCDA_SSAS_SECRET")
+	clientID := conf.GetEnv("BCDA_SSAS_CLIENT_ID")
+	secret := conf.GetEnv("BCDA_SSAS_SECRET")
 	if clientID == "" || secret == "" {
 		return errors.New("missing clientID or secret")
 	}

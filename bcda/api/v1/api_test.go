@@ -32,6 +32,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 const (
@@ -61,19 +62,19 @@ var origBBKey string
 
 func (s *APITestSuite) SetupSuite() {
 	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
-	origDate = os.Getenv("CCLF_REF_DATE")
-	os.Setenv("CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
-	os.Setenv("BB_REQUEST_RETRY_INTERVAL_MS", "10")
-	origBBCert = os.Getenv("BB_CLIENT_CERT_FILE")
-	os.Setenv("BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	origBBKey = os.Getenv("BB_CLIENT_KEY_FILE")
-	os.Setenv("BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
+	origDate = conf.GetEnv("CCLF_REF_DATE")
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
+	conf.SetEnv(s.T(), "BB_REQUEST_RETRY_INTERVAL_MS", "10")
+	origBBCert = conf.GetEnv("BB_CLIENT_CERT_FILE")
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	origBBKey = conf.GetEnv("BB_CLIENT_KEY_FILE")
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 }
 
 func (s *APITestSuite) TearDownSuite() {
-	os.Setenv("CCLF_REF_DATE", origDate)
-	os.Setenv("BB_CLIENT_CERT_FILE", origBBCert)
-	os.Setenv("BB_CLIENT_KEY_FILE", origBBKey)
+	conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", origBBKey)
 	s.reset()
 }
 
@@ -277,10 +278,10 @@ func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *
 }
 
 func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
-	orig := os.Getenv("BB_CLIENT_CERT_FILE")
-	defer os.Setenv("BB_CLIENT_CERT_FILE", orig)
+	orig := conf.GetEnv("BB_CLIENT_CERT_FILE")
+	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", orig)
 
-	err := os.Setenv("BB_CLIENT_CERT_FILE", "blah")
+	err := conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "blah")
 	assert.Nil(s.T(), err)
 
 	acoID := acoUnderTest
@@ -304,8 +305,8 @@ func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
-	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
-	defer os.Unsetenv("DEPLOYMENT_TARGET")
+	err := conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", "prod")
+	defer conf.UnsetEnv(s.T(), "DEPLOYMENT_TARGET")
 	assert.Nil(s.T(), err)
 	acoID := acoUnderTest
 
@@ -369,8 +370,8 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 }
 
 func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
-	err := os.Setenv("DEPLOYMENT_TARGET", "prod")
-	defer os.Unsetenv("DEPLOYMENT_TARGET")
+	err := conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", "prod")
+	defer conf.UnsetEnv(s.T(), "DEPLOYMENT_TARGET")
 	assert.Nil(s.T(), err)
 	acoID := acoUnderTest
 
@@ -582,7 +583,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	}
 	postgrestest.CreateJobKeys(s.T(), s.db, jobKey)
 
-	f := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
+	f := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID))
 	if _, err := os.Stat(f); os.IsNotExist(err) {
 		err = os.MkdirAll(f, os.ModePerm)
 		if err != nil {
@@ -591,7 +592,7 @@ func (s *APITestSuite) TestJobStatusCompletedErrorFileExists() {
 	}
 
 	errFileName := strings.Split(jobKey.FileName, ".")[0]
-	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", os.Getenv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
+	errFilePath := fmt.Sprintf("%s/%s/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), fmt.Sprint(j.ID), errFileName)
 	_, err := os.Create(errFilePath)
 	if err != nil {
 		s.T().Error(err)
@@ -714,7 +715,7 @@ func (s *APITestSuite) TestDeleteJob() {
 }
 
 func (s *APITestSuite) TestServeData() {
-	os.Setenv("FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
+	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", "../../../bcdaworker/data/test")
 
 	tests := []struct {
 		name    string
@@ -825,9 +826,9 @@ func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
 	database.LogFatal = func(args ...interface{}) {
 		fmt.Println("FATAL (NO-OP)")
 	}
-	dbURL := os.Getenv("DATABASE_URL")
-	defer os.Setenv("DATABASE_URL", dbURL)
-	os.Setenv("DATABASE_URL", "not-a-database")
+	dbURL := conf.GetEnv("DATABASE_URL")
+	defer conf.SetEnv(s.T(), "DATABASE_URL", dbURL)
+	conf.SetEnv(s.T(), "DATABASE_URL", "not-a-database")
 	req, err := http.NewRequest("GET", "/_health", nil)
 	assert.Nil(s.T(), err)
 	handler := http.HandlerFunc(HealthCheck)

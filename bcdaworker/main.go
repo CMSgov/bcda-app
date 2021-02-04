@@ -32,6 +32,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
+	"github.com/CMSgov/bcda-app/conf"
 )
 
 var (
@@ -42,7 +43,7 @@ func init() {
 	createWorkerDirs()
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	filePath := os.Getenv("BCDA_WORKER_ERROR_LOG")
+	filePath := conf.GetEnv("BCDA_WORKER_ERROR_LOG")
 
 	/* #nosec -- 0640 permissions required for Splunk ingestion */
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
@@ -54,7 +55,7 @@ func init() {
 }
 
 func createWorkerDirs() {
-	staging := os.Getenv("FHIR_STAGING_DIR")
+	staging := conf.GetEnv("FHIR_STAGING_DIR")
 	err := os.MkdirAll(staging, 0744)
 	if err != nil {
 		log.Fatal(err)
@@ -129,8 +130,8 @@ func processJob(j *que.Job) error {
 	}
 
 	jobID := strconv.Itoa(jobArgs.ID)
-	stagingPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_STAGING_DIR"), jobID)
-	payloadPath := fmt.Sprintf("%s/%s", os.Getenv("FHIR_PAYLOAD_DIR"), jobID)
+	stagingPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_STAGING_DIR"), jobID)
+	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
 	if err = createDir(stagingPath); err != nil {
 		log.Error(err)
@@ -213,7 +214,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		return "", 0, fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
 	}
 
-	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	fileUUID = uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
@@ -297,7 +298,7 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 }
 
 func getFailureThreshold() float64 {
-	exportFailPctStr := os.Getenv("EXPORT_FAIL_PCT")
+	exportFailPctStr := conf.GetEnv("EXPORT_FAIL_PCT")
 	exportFailPct, err := strconv.Atoi(exportFailPctStr)
 	if err != nil {
 		exportFailPct = 50
@@ -317,7 +318,7 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 
 	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
 
-	dataDir := os.Getenv("FHIR_STAGING_DIR")
+	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
 	/* #nosec -- opening file defined by variable */
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -380,8 +381,8 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	}
 
 	if completedCount >= j.JobCount {
-		staging := fmt.Sprintf("%s/%d", os.Getenv("FHIR_STAGING_DIR"), j.ID)
-		payload := fmt.Sprintf("%s/%d", os.Getenv("FHIR_PAYLOAD_DIR"), j.ID)
+		staging := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), j.ID)
+		payload := fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_PAYLOAD_DIR"), j.ID)
 
 		files, err := ioutil.ReadDir(staging)
 		if err != nil {
@@ -447,7 +448,7 @@ func waitForSig() {
 }
 
 func setupQueue() *pgx.ConnPool {
-	queueDatabaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	queueDatabaseURL := conf.GetEnv("QUEUE_DATABASE_URL")
 	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -474,7 +475,7 @@ func setupQueue() *pgx.ConnPool {
 }
 
 func getQueueJobCount() float64 {
-	databaseURL := os.Getenv("QUEUE_DATABASE_URL")
+	databaseURL := conf.GetEnv("QUEUE_DATABASE_URL")
 	db, err := sql.Open("pgx", databaseURL)
 	if err != nil {
 		log.Error(err)
@@ -517,7 +518,7 @@ func addJobFileName(ctx context.Context, r repository.Repository, fileName, reso
 func updateJobQueueCountCloudwatchMetric() {
 
 	// Update the Cloudwatch Metric for job queue count
-	env := os.Getenv("DEPLOYMENT_TARGET")
+	env := conf.GetEnv("DEPLOYMENT_TARGET")
 	if env != "" {
 		sampler, err := metrics.NewSampler("BCDA", "Count")
 		if err != nil {
@@ -547,7 +548,7 @@ func main() {
 	workerPool := setupQueue()
 	defer workerPool.Close()
 
-	if hInt, err := strconv.Atoi(os.Getenv("WORKER_HEALTH_INT_SEC")); err == nil {
+	if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {
 		healthLogger := NewHealthLogger()
 		ticker := time.NewTicker(time.Duration(hInt) * time.Second)
 		quit := make(chan struct{})
