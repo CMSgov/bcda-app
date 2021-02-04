@@ -312,7 +312,7 @@ func getFailureThreshold() float64 {
 	return float64(exportFailPct)
 }
 
-func appendErrorToFile(ctx context.Context, fileUUID string, 
+func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
@@ -332,13 +332,11 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	}
 
 	defer utils.CloseFileAndLogError(f)
-
-	ooBytes, err := json.Marshal(oo)
-	if err != nil {
+	if _, err := responseutils.WriteOperationOutcome(f, oo); err != nil {
 		log.Error(err)
 	}
-
-	if _, err = f.WriteString(string(ooBytes) + "\n"); err != nil {
+	// Separate any subsequent error entries
+	if _, err := f.WriteString("\n"); err != nil {
 		log.Error(err)
 	}
 }

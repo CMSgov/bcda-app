@@ -1,6 +1,7 @@
 package responseutils
 
 import (
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -18,9 +19,9 @@ var marshaller *jsonformat.Marshaller
 func init() {
 	var err error
 
-	// NOTE: Since we were using STU3 data models, we create a STU3 marshaller
-	// We can specify different jsonformat.Version to return R4.
-	marshaller, err = jsonformat.NewPrettyMarshaller(jsonformat.STU3)
+	// Ensure that we write the serialized FHIR resources as a single line.
+	// Needed to comply with the NDJSON format that we are using.
+	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.STU3)
 	if err != nil {
 		log.Fatalf("Failed to create marshaller %s", err)
 	}
@@ -53,19 +54,24 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 }
 
 func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, err := WriteOperationOutcome(w, outcome)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func WriteOperationOutcome(w io.Writer, outcome *fhirmodels.OperationOutcome) (int, error) {
 	resource := &fhirmodels.ContainedResource{
 		OneofResource: &fhirmodels.ContainedResource_OperationOutcome{OperationOutcome: outcome},
 	}
 	outcomeJSON, err := marshaller.Marshal(resource)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return -1, err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, err = w.Write(outcomeJSON)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+
+	return w.Write(outcomeJSON)
 }
 
 func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodels.CapabilityStatement {

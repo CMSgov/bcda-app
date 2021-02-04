@@ -32,8 +32,8 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, RequestErr, "TestCreateOpOutcome")
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value.String())
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, oo.Issue[0].Code.Value.String())
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value)
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, oo.Issue[0].Code.Value)
 	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Coding[0].Display.Value)
 	assert.Equal(s.T(), "TestCreateOpOutcome", oo.Issue[0].Details.Text.Value)
 	assert.Equal(s.T(), RequestErr, oo.Issue[0].Details.Coding[0].Code.Value)
@@ -49,9 +49,9 @@ func (s *ResponseUtilsWriterTestSuite) TestWriteError() {
 	respOO := cr.GetOperationOutcome()
 
 	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value.String())
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
 	assert.Equal(s.T(), oo.Issue[0].Severity, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value.String())
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
 	assert.Equal(s.T(), oo.Issue[0].Code, respOO.Issue[0].Code)
 	assert.Equal(s.T(), "TestCreateOpOutcome", respOO.Issue[0].Details.Coding[0].Display.Value)
 	assert.Equal(s.T(), oo.Issue[0].Details.Coding[0].Display, respOO.Issue[0].Details.Coding[0].Display)

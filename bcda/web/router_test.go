@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -84,7 +85,9 @@ func (s *RouterTestSuite) TestMetadataRoute() {
 	bytes, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	assert.Nil(s.T(), err)
-	assert.Contains(s.T(), string(bytes), `"resourceType":"CapabilityStatement"`)
+	var obj map[string]interface{}
+	assert.NoError(s.T(), json.Unmarshal(bytes, &obj))
+	assert.Equal(s.T(), "CapabilityStatement", obj["resourceType"].(string))
 }
 
 func (s *RouterTestSuite) TestHealthRoute() {

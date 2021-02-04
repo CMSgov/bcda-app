@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -250,7 +251,12 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}}]}
 {"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
-	assert.Equal(s.T(), ooResp+"\n", string(fData))
+
+	// Since our error file ends with a new line character, we need
+	// to remove it in order so split OperationOutcome responses by newline character
+	fData = fData[:len(fData)-1]
+	assertEqualErrorFiles(s.T(), ooResp, string(fData))
+
 	bbc.AssertExpectations(s.T())
 }
 
@@ -292,7 +298,12 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 
 	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}}]}
 {"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
-	assert.Equal(s.T(), ooResp+"\n", string(fData))
+
+	// Since our error file ends with a new line character, we need
+	// to remove it in order so split OperationOutcome responses by newline character
+	fData = fData[:len(fData)-1]
+	assertEqualErrorFiles(s.T(), ooResp, string(fData))
+
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
 	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2])
@@ -385,9 +396,16 @@ func (s *MainTestSuite) TestAppendErrorToFile() {
 	fData, err := ioutil.ReadFile(filePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := `{"resourceType":"OperationOutcome","issue":[{"severity":"error"}]}`
-
-	assert.Equal(s.T(), ooResp+"\n", string(fData))
+	type oo struct {
+		ResourceType string `json:"resourceType"`
+		Issues       []struct {
+			Severity string `json:"severity"`
+		} `json:"issue"`
+	}
+	var obj oo
+	assert.NoError(s.T(), json.Unmarshal(fData, &obj))
+	assert.Equal(s.T(), "OperationOutcome", obj.ResourceType)
+	assert.Equal(s.T(), "error", obj.Issues[0].Severity)
 
 	os.Remove(filePath)
 }
@@ -650,4 +668,26 @@ func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 	}
 	postgrestest.CreateJobs(t, db, &j)
 	return int(j.ID)
+}
+
+func assertEqualErrorFiles(t *testing.T, expected, actual string) {
+	// Since we have multiple OperationOutcome responses to handle
+	// we need to split them and deserialize them individually.
+	// By placing them in a map[string]interface{} we can ensure equality
+	// even if the order of the JSON fields are different.
+	var expectedOO, actualOO []map[string]interface{}
+	for _, part := range strings.Split(expected, "\n") {
+		var obj map[string]interface{}
+		fmt.Println(part)
+		assert.NoError(t, json.Unmarshal([]byte(part), &obj))
+		expectedOO = append(expectedOO, obj)
+	}
+
+	for _, part := range strings.Split(actual, "\n") {
+		var obj map[string]interface{}
+		assert.NoError(t, json.Unmarshal([]byte(part), &obj))
+		actualOO = append(actualOO, obj)
+	}
+
+	assert.Equal(t, expectedOO, actualOO)
 }
