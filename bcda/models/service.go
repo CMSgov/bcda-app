@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -156,7 +157,7 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKe
 }
 
 func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
-	// Get the job by id.
+	// Assumes the job exists and retrieves the job by ID
 	job, err := s.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return 0, err
@@ -172,7 +173,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 		return jobID, nil
 	}
 
-	// Return 0, nil to indicate attempt to cancel a non-cancellable job.
+	// Return 0, ErrJobNotCancellable when attempting to cancel a non-cancellable job.
 	return 0, ErrJobNotCancellable
 }
 
@@ -428,3 +429,8 @@ func (e CCLFNotFoundError) Error() string {
 	return fmt.Sprintf("no CCLF%d file found for cmsID %s fileType %d cutoffTime %s",
 		e.FileNumber, e.CMSID, e.FileType, e.CutoffTime.String())
 }
+
+var (
+	ErrJobNotCancelled   = goerrors.New("Job was not cancelled due to internal server error.")
+	ErrJobNotCancellable = goerrors.New("Job was not cancelled because it is not Pending or In Progress")
+)
