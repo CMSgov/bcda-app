@@ -1,4 +1,4 @@
-package main
+package worker
 
 import (
 	"bufio"
@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -14,13 +13,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/mock"
-
-	"github.com/bgentry/que-go"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -30,12 +22,15 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+
+	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
-// See: https://github.com/stretchr/testify/issues/519
-var ctxMatcher = mock.MatchedBy(func(ctx context.Context) bool { return true })
-
-type MainTestSuite struct {
+type WorkerTestSuite struct {
 	suite.Suite
 	testACO *models.ACO
 
@@ -46,11 +41,13 @@ type MainTestSuite struct {
 
 	db *sql.DB
 	r  repository.Repository
+	w  Worker
 }
 
-func (s *MainTestSuite) SetupSuite() {
+func (s *WorkerTestSuite) SetupSuite() {
 	s.db = database.GetDbConnection()
 	s.r = postgres.NewRepository(s.db)
+	s.w = NewWorker(s.db)
 
 	cmsID := "A1B2C" // Some unique ID that should be unique to this test
 
@@ -69,14 +66,14 @@ func (s *MainTestSuite) SetupSuite() {
 
 	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", tempDir)
 	conf.SetEnv(s.T(), "FHIR_STAGING_DIR", tempDir)
-	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../shared_files/decrypted/bfd-dev-test-cert.pem")
-	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../shared_files/decrypted/bfd-dev-test-key.pem")
-	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../shared_files/localhost.crt")
-	conf.SetEnv(s.T(), "ATO_PUBLIC_KEY_FILE", "../shared_files/ATO_public.pem")
-	conf.SetEnv(s.T(), "ATO_PRIVATE_KEY_FILE", "../shared_files/ATO_private.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
+	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
+	conf.SetEnv(s.T(), "ATO_PUBLIC_KEY_FILE", "../../shared_files/ATO_public.pem")
+	conf.SetEnv(s.T(), "ATO_PRIVATE_KEY_FILE", "../../shared_files/ATO_private.pem")
 }
 
-func (s *MainTestSuite) SetupTest() {
+func (s *WorkerTestSuite) SetupTest() {
 	s.jobID = generateUniqueJobID(s.T(), s.db, s.testACO.UUID)
 	s.cclfFile = &models.CCLFFile{CCLFNum: 8, ACOCMSID: *s.testACO.CMSID, Timestamp: time.Now(), PerformanceYear: 19, Name: uuid.New()}
 	s.stagingDir = fmt.Sprintf("%s/%d", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID)
@@ -89,12 +86,12 @@ func (s *MainTestSuite) SetupTest() {
 	}
 }
 
-func (s *MainTestSuite) TearDownTest() {
+func (s *WorkerTestSuite) TearDownTest() {
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, *s.testACO.CMSID)
 	os.RemoveAll(s.stagingDir)
 }
 
-func (s *MainTestSuite) TearDownSuite() {
+func (s *WorkerTestSuite) TearDownSuite() {
 	testUtils.SetUnitTestKeysForAuth()
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	s.db.Close()
@@ -102,11 +99,11 @@ func (s *MainTestSuite) TearDownSuite() {
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
 }
 
-func TestMainTestSuite(t *testing.T) {
-	suite.Run(t, new(MainTestSuite))
+func TestWorkerTestSuite(t *testing.T) {
+	suite.Run(t, new(WorkerTestSuite))
 }
 
-func (s *MainTestSuite) TestWriteResourceToFile() {
+func (s *WorkerTestSuite) TestWriteResourceToFile() {
 	bbc := testUtils.BlueButtonClient{}
 	since, transactionTime, serviceDate := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now(), time.Now().Add(-180*24*time.Hour)
 
@@ -194,7 +191,7 @@ func (s *MainTestSuite) TestWriteResourceToFile() {
 	bbc.AssertExpectations(s.T())
 }
 
-func (s *MainTestSuite) TestWriteEmptyResourceToFile() {
+func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	transactionTime := time.Now()
 
 	bbc := testUtils.BlueButtonClient{}
@@ -215,7 +212,7 @@ func (s *MainTestSuite) TestWriteEmptyResourceToFile() {
 	assert.NoError(s.T(), err)
 }
 
-func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
+func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "70")
@@ -253,7 +250,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold() 
 	bbc.AssertExpectations(s.T())
 }
 
-func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
+func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
@@ -297,7 +294,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold() 
 	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2])
 }
 
-func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
+func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "51")
@@ -358,7 +355,7 @@ func (s *MainTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	bbc.AssertExpectations(s.T())
 }
 
-func (s *MainTestSuite) TestGetFailureThreshold() {
+func (s *WorkerTestSuite) TestGetFailureThreshold() {
 	origFailPct := conf.GetEnv("EXPORT_FAIL_PCT")
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
 
@@ -375,7 +372,7 @@ func (s *MainTestSuite) TestGetFailureThreshold() {
 	assert.Equal(s.T(), 50.0, getFailureThreshold())
 }
 
-func (s *MainTestSuite) TestAppendErrorToFile() {
+func (s *WorkerTestSuite) TestAppendErrorToFile() {
 	appendErrorToFile(context.Background(), s.testACO.UUID.String(), "", "", "", s.jobID)
 
 	filePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_STAGING_DIR"), s.jobID, s.testACO.UUID)
@@ -389,7 +386,7 @@ func (s *MainTestSuite) TestAppendErrorToFile() {
 	os.Remove(filePath)
 }
 
-func (s *MainTestSuite) TestProcessJobEOB() {
+func (s *WorkerTestSuite) TestProcessJobEOB() {
 	ctx := context.Background()
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -410,74 +407,20 @@ func (s *MainTestSuite) TestProcessJobEOB() {
 		ResourceType:   "ExplanationOfBenefit",
 		BBBasePath:     "/v1/fhir",
 	}
-	args, _ := json.Marshal(jobArgs)
 
-	job := &que.Job{
-		Type: "ProcessJob",
-		Args: args,
-	}
-	err = processJob(job)
+	err = s.w.ProcessJob(ctx, j, jobArgs)
 	assert.Nil(s.T(), err)
 	_, err = checkJobCompleteAndCleanup(ctx, s.r, j.ID)
 	assert.Nil(s.T(), err)
 	completedJob, err := s.r.GetJobByID(context.Background(), j.ID)
+	fmt.Printf("%+v", completedJob)
 	assert.Nil(s.T(), err)
 	// As this test actually connects to BB, we can't be sure it will succeed
 	assert.Contains(s.T(), []models.JobStatus{models.JobStatusFailed, models.JobStatusCompleted}, completedJob.Status)
+	assert.Equal(s.T(), 1, completedJob.CompletedJobCount)
 }
 
-func (s *MainTestSuite) TestProcessJob_EmptyBasePath() {
-	j := models.Job{
-		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL: "/api/v1/ExplanationOfBenefit/$export",
-		Status:     models.JobStatusPending,
-		JobCount:   1,
-	}
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	complete, err := checkJobCompleteAndCleanup(context.Background(), s.r, j.ID)
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), complete)
-
-	jobArgs := models.JobEnqueueArgs{
-		ID:             int(j.ID),
-		ACOID:          j.ACOID.String(),
-		BeneficiaryIDs: []string{"10000", "11000"},
-		ResourceType:   "ExplanationOfBenefit",
-	}
-	args, _ := json.Marshal(jobArgs)
-
-	job := &que.Job{
-		Type: "ProcessJob",
-		Args: args,
-	}
-	err = processJob(job)
-	assert.EqualError(s.T(), err, "empty BBBasePath: Must be set")
-}
-
-func (s *MainTestSuite) TestProcessJob_InvalidArgs() {
-	j := que.Job{Args: []byte("{ this is not valid JSON }")}
-	assert.EqualError(s.T(), processJob(&j), "invalid character 't' looking for beginning of object key string")
-}
-
-func (s *MainTestSuite) TestProcessJob_InvalidJobID() {
-	qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
-		ID:             99999999,
-		ACOID:          "00000000-0000-0000-0000-000000000000",
-		BeneficiaryIDs: []string{},
-		ResourceType:   "Patient",
-		BBBasePath:     "/v1/fhir",
-	})
-
-	qj := que.Job{
-		Type: "ProcessJob",
-		Args: qjArgs,
-	}
-
-	assert.Contains(s.T(), processJob(&qj).Error(), "could not retrieve job from database")
-}
-
-func (s *MainTestSuite) TestProcessJob_NoBBClient() {
+func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
 		RequestURL: "/api/v1/Patient/$export",
@@ -487,94 +430,22 @@ func (s *MainTestSuite) TestProcessJob_NoBBClient() {
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
 
-	qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
+	jobArgs := models.JobEnqueueArgs{
 		ID:             int(j.ID),
 		ACOID:          j.ACOID.String(),
 		BeneficiaryIDs: []string{},
 		ResourceType:   "Patient",
 		BBBasePath:     "/v1/fhir",
-	})
-
-	qj := que.Job{
-		Type: "ProcessJob",
-		Args: qjArgs,
 	}
 
 	origBBCert := conf.GetEnv("BB_CLIENT_CERT_FILE")
 	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 	conf.UnsetEnv(s.T(), "BB_CLIENT_CERT_FILE")
 
-	assert.Contains(s.T(), processJob(&qj).Error(), "could not create Blue Button client")
+	assert.Contains(s.T(), s.w.ProcessJob(context.Background(), j, jobArgs).Error(), "could not create Blue Button client")
 }
 
-func (s *MainTestSuite) TestSetupQueue() {
-	setupQueue()
-	conf.SetEnv(s.T(), "WORKER_POOL_SIZE", "7")
-	setupQueue()
-}
-
-func (s *MainTestSuite) TestUpdateJobStats() {
-	j := &models.Job{
-		ACOID:             uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
-		RequestURL:        "",
-		Status:            "",
-		JobCount:          4,
-		CompletedJobCount: 1,
-	}
-
-	postgrestest.CreateJobs(s.T(), s.db, j)
-
-	// Simulate another que_job completing, incrementing the count again
-	j.CompletedJobCount++
-	postgrestest.UpdateJob(s.T(), s.db, *j)
-
-	updateJobStats(context.Background(), s.r, j.ID)
-
-	j, err := s.r.GetJobByID(context.Background(), j.ID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), 3, j.CompletedJobCount)
-}
-
-func (s *MainTestSuite) TestQueueJobWithNoParent() {
-	retryCount := 10
-	conf.SetEnv(s.T(), "BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", strconv.Itoa(retryCount))
-	tests := []struct {
-		name        string
-		errorCount  int32
-		expectedErr error
-	}{
-		{"RetriesRemaining", int32(retryCount) - 1, errors.New("could not retrieve job from database: no job found for given id")},
-		{"RetriesExhausted", int32(retryCount), nil},
-	}
-
-	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
-			qjArgs, _ := json.Marshal(models.JobEnqueueArgs{
-				ID:             99999999, // JobID is not found in the db
-				ACOID:          "00000000-0000-0000-0000-000000000000",
-				BeneficiaryIDs: []string{},
-				ResourceType:   "Patient",
-				BBBasePath:     "/v1/fhir",
-			})
-
-			qj := &que.Job{
-				Type:       "ProcessJob",
-				Args:       qjArgs,
-				Priority:   1,
-				ErrorCount: tt.errorCount,
-			}
-
-			err := processJob(qj)
-			if tt.expectedErr != nil {
-				assert.Equal(t, tt.expectedErr.Error(), err.Error())
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
-func (s *MainTestSuite) TestCheckJobCompleteAndCleanup() {
+func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 	// Use multiple defers to ensure that the conf.GetEnv gets evaluated prior to us
 	// modifying the value.
 	defer conf.SetEnv(s.T(), "FHIR_STAGING_DIR", conf.GetEnv("FHIR_STAGING_DIR"))
@@ -616,13 +487,13 @@ func (s *MainTestSuite) TestCheckJobCompleteAndCleanup() {
 			j := &models.Job{ID: jobID, Status: tt.status, JobCount: tt.jobCount}
 			repository := &repository.MockRepository{}
 			defer repository.AssertExpectations(t)
-			repository.On("GetJobByID", ctxMatcher, jobID).Return(j, nil)
+			repository.On("GetJobByID", testUtils.CtxMatcher, jobID).Return(j, nil)
 
 			// A job previously marked as completed will bypass all of these calls
 			if tt.status != models.JobStatusCompleted {
-				repository.On("GetJobKeyCount", ctxMatcher, jobID).Return(tt.jobKeys, nil)
+				repository.On("GetJobKeyCount", testUtils.CtxMatcher, jobID).Return(tt.jobKeys, nil)
 				if tt.completed {
-					repository.On("UpdateJobStatus", ctxMatcher, j.ID, models.JobStatusCompleted).
+					repository.On("UpdateJobStatus", testUtils.CtxMatcher, j.ID, models.JobStatusCompleted).
 						Return(nil)
 				}
 			}
@@ -638,6 +509,50 @@ func (s *MainTestSuite) TestCheckJobCompleteAndCleanup() {
 			}
 		})
 	}
+}
+
+func (s *WorkerTestSuite) TestValidateJob() {
+	ctx := context.Background()
+	r := &repository.MockRepository{}
+	w := &worker{r}
+
+	noBasePath := models.JobEnqueueArgs{ID: int(rand.Int31())}
+	jobNotFound := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	dbErr := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	jobCancelled := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	validJob := models.JobEnqueueArgs{ID: int(rand.Int31()), BBBasePath: uuid.New()}
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobNotFound.ID)).Return(nil, repository.ErrJobNotFound)
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(dbErr.ID)).Return(nil, fmt.Errorf("some db error"))
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(jobCancelled.ID)).
+		Return(&models.Job{ID: uint(jobCancelled.ID), Status: models.JobStatusCancelled}, nil)
+	r.On("GetJobByID", testUtils.CtxMatcher, uint(validJob.ID)).
+		Return(&models.Job{ID: uint(validJob.ID), Status: models.JobStatusPending}, nil)
+
+	defer func() {
+		r.AssertExpectations(s.T())
+		// Shouldn't be called because we already determined the job is invalid
+		r.AssertNotCalled(s.T(), "GetJobByID", testUtils.CtxMatcher, uint(noBasePath.ID))
+	}()
+
+	j, err := w.ValidateJob(ctx, noBasePath)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrNoBasePathSet.Error())
+
+	j, err = w.ValidateJob(ctx, jobNotFound)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrParentJobNotFound.Error())
+
+	j, err = w.ValidateJob(ctx, dbErr)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), "some db error")
+
+	j, err = w.ValidateJob(ctx, jobCancelled)
+	assert.Nil(s.T(), j)
+	assert.Contains(s.T(), err.Error(), ErrParentJobCancelled.Error())
+
+	j, err = w.ValidateJob(ctx, validJob)
+	assert.NoError(s.T(), err)
+	assert.EqualValues(s.T(), validJob.ID, j.ID)
 }
 
 func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
