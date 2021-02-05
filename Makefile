@@ -18,7 +18,7 @@ lint:
 	$(eval CACHE := $(shell go env GOCACHE))
 	docker-compose -f docker-compose.test.yml build tests
 	docker-compose -f docker-compose.test.yml run \
-	-v $(CACHE):/cache/go -e GOCACHE=/cache/go -e GOLANGCI_LINT_CACHE=/cache/go -v ${GOPATH}/pkg:/go/pkg \
+	-v $(CACHE):/cache/go -e GOCACHE=/cache/go -e GOLANGCI_LINT_CACHE=/cache/go \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
