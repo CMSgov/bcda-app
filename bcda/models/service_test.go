@@ -553,8 +553,8 @@ func (s *ServiceTestSuite) TestCancelJob() {
 	for _, tt := range tests {
 		s.T().Run(string(tt.status), func(t *testing.T) {
 			repository := &MockRepository{}
-			repository.On("GetJobByID", ctxMatcher, mock.Anything).Return(&Job{Status: tt.status}, tt.getJobError)
-			repository.On("UpdateJob", ctxMatcher, mock.Anything).Return(tt.updateJobError)
+			repository.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(&Job{Status: tt.status}, tt.getJobError)
+			repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(tt.updateJobError)
 			s := &service{}
 			s.repository = repository
 			cancelledJobID, err := s.CancelJob(ctx, tt.cancellableJobID)
