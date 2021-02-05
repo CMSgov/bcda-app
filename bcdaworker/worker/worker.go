@@ -251,8 +251,8 @@ func getFailureThreshold() float64 {
 	return float64(exportFailPct)
 }
 
-func appendErrorToFile(ctx context.Context, fileUUID string, 
-	code fhircodes.IssueTypeCode_Value, 
+func appendErrorToFile(ctx context.Context, fileUUID string,
+	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
 	defer endSegment(segment)
@@ -292,14 +292,14 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		// This is unlikely to happen because we just unmarshalled this data a few lines above.
 		if err != nil {
 			log.Error(err)
-			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION, 
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			continue
 		}
 		_, err = w.WriteString(string(entryJSON) + "\n")
 		if err != nil {
 			log.Error(err)
-			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION, 
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		}
 	}
