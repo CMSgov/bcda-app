@@ -1,7 +1,7 @@
 package models
 
 import (
-	fhirmodels "github.com/eug48/fhir/models"
+	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
 // BulkRequestResponse is the return from a request to initiate a bulk data collection process

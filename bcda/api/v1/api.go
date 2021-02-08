@@ -6,21 +6,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
-
-	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/pkg/errors"
-
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	api "github.com/CMSgov/bcda-app/bcda/api"
+	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -117,7 +116,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.RequestErr, err.Error())
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
@@ -125,7 +124,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	job, jobKeys, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.DbErr, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
 		// So returning a StatusNotFound may be a misnomer
 		responseutils.WriteError(oo, w, http.StatusNotFound)
@@ -135,7 +134,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	switch job.Status {
 
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 	case models.JobStatusPending, models.JobStatusInProgress:
 		w.Header().Set("X-Progress", job.StatusMessage())
@@ -145,7 +144,8 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(api.GetJobTimeout()).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		}
@@ -187,14 +187,16 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Processing, "")
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
@@ -202,10 +204,12 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	case models.JobStatusArchived, models.JobStatusExpired:
 		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.Deleted, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+			responseutils.NotFoundErr, "")
 		responseutils.WriteError(oo, w, http.StatusGone)
 	case models.JobStatusCancelled:
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Not_found, responseutils.Deleted, "Job has been cancelled.")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND,
+			responseutils.NotFoundErr, "Job has been cancelled.")
 		responseutils.WriteError(oo, w, http.StatusNotFound)
 	}
 }
@@ -315,7 +319,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}
@@ -324,7 +328,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(respBytes)
 	if err != nil {
 		log.Error(err)
-		oo := responseutils.CreateOpOutcome(responseutils.Error, responseutils.Exception, responseutils.InternalErr, "")
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
 	}

@@ -19,6 +19,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -191,7 +193,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		if err != nil {
 			log.Error(err)
 			errorCount++
-			appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.BbErr, errMsg, jobArgs.ID)
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION, responseutils.BbErr, errMsg, jobArgs.ID)
 		}
 
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
@@ -249,11 +251,13 @@ func getFailureThreshold() float64 {
 	return float64(exportFailPct)
 }
 
-func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, detailsDisplay string, jobID int) {
+func appendErrorToFile(ctx context.Context, fileUUID string,
+	code fhircodes.IssueTypeCode_Value,
+	detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
 	defer endSegment(segment)
 
-	oo := responseutils.CreateOpOutcome(responseutils.Error, code, detailsCode, detailsDisplay)
+	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
 	dataDir := conf.GetEnv("FHIR_STAGING_DIR")
 	fileName := fmt.Sprintf("%s/%d/%s-error.ndjson", dataDir, jobID, fileUUID)
@@ -265,13 +269,12 @@ func appendErrorToFile(ctx context.Context, fileUUID, code, detailsCode, details
 	}
 
 	defer utils.CloseFileAndLogError(f)
-
-	ooBytes, err := json.Marshal(oo)
-	if err != nil {
+	if _, err := responseutils.WriteOperationOutcome(f, oo); err != nil {
 		log.Error(err)
 	}
 
-	if _, err = f.WriteString(string(ooBytes) + "\n"); err != nil {
+	// Separate any subsequent error entries
+	if _, err := f.WriteString("\n"); err != nil {
 		log.Error(err)
 	}
 }
@@ -289,13 +292,15 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		// This is unlikely to happen because we just unmarshalled this data a few lines above.
 		if err != nil {
 			log.Error(err)
-			appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			continue
 		}
 		_, err = w.WriteString(string(entryJSON) + "\n")
 		if err != nil {
 			log.Error(err)
-			appendErrorToFile(ctx, fileUUID, responseutils.Exception, responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
+			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		}
 	}
 }
