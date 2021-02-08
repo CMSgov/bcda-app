@@ -18,8 +18,10 @@ import (
 	"testing"
 	"time"
 
-	fhirmodels "github.com/eug48/fhir/models"
 	"github.com/go-chi/chi"
+	"github.com/google/fhir/go/jsonformat"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -236,15 +238,11 @@ func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
 
 	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
 
-	var respOO fhirmodels.OperationOutcome
-	err := json.Unmarshal(s.rr.Body.Bytes(), &respOO)
-	if err != nil {
-		s.T().Error(err)
-	}
+	respOO := getOperationOutcome(s.T(), s.rr.Body.Bytes())
 
-	assert.Equal(s.T(), responseutils.Error, respOO.Issue[0].Severity)
-	assert.Equal(s.T(), responseutils.Exception, respOO.Issue[0].Code)
-	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Code)
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Code.Value)
 }
 
 func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
@@ -463,13 +461,11 @@ func (s *APITestSuite) TestJobStatusBadInputs() {
 
 			JobStatus(rr, req)
 
-			var respOO fhirmodels.OperationOutcome
-			err := json.Unmarshal(rr.Body.Bytes(), &respOO)
-			assert.NoError(t, err)
+			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
-			assert.Equal(t, responseutils.Error, respOO.Issue[0].Severity)
-			assert.Equal(t, responseutils.Exception, respOO.Issue[0].Code)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code)
+			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
 		})
 	}
 }
@@ -940,4 +936,12 @@ func assertExpiryEquals(t *testing.T, expectedTime time.Time, expiry string) {
 	}
 
 	assert.Equal(t, time.Duration(0), expectedTime.Round(time.Second).Sub(expiryTime.Round(time.Second)))
+}
+
+func getOperationOutcome(t *testing.T, data []byte) *fhirmodels.OperationOutcome {
+	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+	assert.NoError(t, err)
+	container, err := unmarshaller.Unmarshal(data)
+	assert.NoError(t, err)
+	return container.(*fhirmodels.ContainedResource).GetOperationOutcome()
 }

@@ -9,4 +9,5 @@ const (
 	InternalErr     = "Internal Error"
 	RequestErr      = "Request Error"
 	UnauthorizedErr = "Unauthorized Error"
+	NotFoundErr     = "Not Found Error"
 )

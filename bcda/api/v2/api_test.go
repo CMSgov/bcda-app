@@ -3,7 +3,6 @@ package v2_test
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,8 +20,10 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/go-chi/chi"
+	"github.com/google/fhir/go/jsonformat"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
+	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
 	"github.com/pborman/uuid"
-	"github.com/samply/golang-fhir-models/fhir-models/fhir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -69,6 +70,9 @@ func (s *APITestSuite) TestMetadataResponse() {
 	ts := httptest.NewServer(http.HandlerFunc(v2.Metadata))
 	defer ts.Close()
 
+	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
+	assert.NoError(s.T(), err)
+
 	res, err := http.Get(ts.URL)
 	assert.NoError(s.T(), err)
 
@@ -78,51 +82,45 @@ func (s *APITestSuite) TestMetadataResponse() {
 	resp, err := ioutil.ReadAll(res.Body)
 	assert.NoError(s.T(), err)
 
-	cs, err := fhir.UnmarshalCapabilityStatement(resp)
+	resource, err := unmarshaller.Unmarshal(resp)
 	assert.NoError(s.T(), err)
+	cs := resource.(*fhirresources.ContainedResource).GetCapabilityStatement()
 
 	// Expecting an R4 response so we'll evaluate some fields to reflect that
-	assert.Equal(s.T(), fhir.FHIRVersion4_0_1, cs.FhirVersion)
+	assert.Equal(s.T(), fhircodes.FHIRVersionCode_V_4_0_1, cs.FhirVersion.Value)
 	assert.Equal(s.T(), 1, len(cs.Rest))
 	assert.Equal(s.T(), 2, len(cs.Rest[0].Resource))
 	assert.Len(s.T(), cs.Instantiates, 2)
-	assert.Contains(s.T(), cs.Instantiates[0], "/v2/fhir/metadata/")
+	assert.Contains(s.T(), cs.Instantiates[0].Value, "/v2/fhir/metadata")
 	resourceData := []struct {
-		rt           fhir.ResourceType
+		rt           fhircodes.ResourceTypeCode_Value
 		opName       string
 		opDefinition string
 	}{
-		{fhir.ResourceTypePatient, "patient-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
-		{fhir.ResourceTypeGroup, "group-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
+		{fhircodes.ResourceTypeCode_PATIENT, "patient-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
+		{fhircodes.ResourceTypeCode_GROUP, "group-export", "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
 	}
 
 	for _, rd := range resourceData {
-		var rr *fhir.CapabilityStatementRestResource
 		for _, r := range cs.Rest[0].Resource {
-			if r.Type == rd.rt {
-				rr = &r
+			if r.Type.Value == rd.rt {
+				assert.NotNil(s.T(), r)
+				assert.Equal(s.T(), 1, len(r.Operation))
+				assert.Equal(s.T(), rd.opName, r.Operation[0].Name.Value)
+				assert.Equal(s.T(), rd.opDefinition, r.Operation[0].Definition.Value)
 				break
 			}
 		}
-		assert.NotNil(s.T(), rr)
-		assert.Equal(s.T(), 1, len(rr.Operation))
-		assert.Equal(s.T(), rd.opName, rr.Operation[0].Name)
-		assert.Equal(s.T(), rd.opDefinition, rr.Operation[0].Definition)
 	}
 
-	// Need to validate our security.extensions manually since the extension
-	// field does not have support for polymorphic types
-	// See: https://github.com/samply/golang-fhir-models/issues/1
-	var obj map[string]interface{}
-	err = json.Unmarshal(resp, &obj)
-	assert.NoError(s.T(), err)
+	extensions := cs.Rest[0].Security.Extension
+	assert.Len(s.T(), extensions, 1)
+	assert.Equal(s.T(), "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris", extensions[0].Url.Value)
 
-	targetExtension := obj["rest"].([]interface{})[0].(map[string]interface{})["security"].(map[string]interface{})["extension"].([]interface{})[0].(map[string]interface{})
-	subExtension := targetExtension["extension"].([]interface{})[0].(map[string]interface{})
-
-	assert.Equal(s.T(), "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris", targetExtension["url"])
-	assert.Equal(s.T(), "token", subExtension["url"])
-	assert.Equal(s.T(), ts.URL, subExtension["valueUri"])
+	subExtensions := extensions[0].Extension
+	assert.Len(s.T(), subExtensions, 1)
+	assert.Equal(s.T(), "token", subExtensions[0].Url.Value)
+	assert.Equal(s.T(), ts.URL+"/auth/token", subExtensions[0].GetValue().GetUri().Value)
 
 }
 
