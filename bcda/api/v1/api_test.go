@@ -662,13 +662,11 @@ func (s *APITestSuite) TestDeleteJobBadInputs() {
 
 			JobStatus(rr, req)
 
-			var respOO fhirmodels.OperationOutcome
-			err := json.Unmarshal(rr.Body.Bytes(), &respOO)
-			assert.NoError(t, err)
+			respOO := getOperationOutcome(t, rr.Body.Bytes())
 
-			assert.Equal(t, responseutils.Error, respOO.Issue[0].Severity)
-			assert.Equal(t, responseutils.Exception, respOO.Issue[0].Code)
-			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code)
+			assert.Equal(t, fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+			assert.Equal(t, fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+			assert.Equal(t, tt.expErrCode, respOO.Issue[0].Details.Coding[0].Code.Value)
 		})
 	}
 }
