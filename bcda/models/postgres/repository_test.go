@@ -398,7 +398,7 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	assert := r.Assert()
 
 	termination := &models.Termination{
-		BlacklistType:       models.BlacklistedVoluntary,
+		BlacklistType:       models.Voluntary,
 		AttributionStrategy: models.AttributionHistorical,
 		OptOutStrategy:      models.OptOutLatest,
 		ClaimsStrategy:      models.ClaimsHistorical,
