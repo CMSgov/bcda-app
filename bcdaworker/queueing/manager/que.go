@@ -30,9 +30,10 @@ type queue struct {
 	pool              *pgx.ConnPool
 	healthCheckCancel context.CancelFunc
 
-	worker worker.Worker
-	log    *logrus.Logger
-	queDB  *sql.DB
+	worker     worker.Worker
+	repository repository.Repository
+	log        *logrus.Logger
+	queDB      *sql.DB
 
 	cloudWatchEnv string
 }
@@ -95,9 +96,22 @@ func (q *queue) StopQue() {
 	q.quePool.Shutdown()
 }
 
-func (q *queue) processJob(job *que.Job) error {
+func (q *queue) isParentJobCancelled(jobID uint) (bool, error) {
 	ctx := context.Background()
+
+	job, err := q.repository.GetJobByID(ctx, jobID)
+	if err != nil {
+		return false, err
+	}
+
+	return (job.Status == models.JobStatusCancelled), nil
+}
+
+func (q *queue) processJob(job *que.Job) error {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	defer q.updateJobQueueCountCloudwatchMetric()
+	defer cancel()
 
 	var jobArgs models.JobEnqueueArgs
 	err := json.Unmarshal(job.Args, &jobArgs)
@@ -106,6 +120,26 @@ func (q *queue) processJob(job *que.Job) error {
 		q.log.Warnf("Failed to deserialize job.Args '%s' %s. Removing queuejob from que.", job.Args, err)
 		return nil
 	}
+
+	// start a goroutine that will check the status of the parent job
+	// and run until either the parent job is found as cancelled
+	// or the current queue job is completed
+	go func() {
+		for {
+			select {
+			case <-time.After(15 * time.Second):
+				ID := uint(jobArgs.ID)
+				parentCancelled, _ := q.isParentJobCancelled(ID)
+				if parentCancelled {
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				// the queuejob has been processed, stop this goroutine and move on
+				return
+			}
+		}
+	}()
 
 	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
