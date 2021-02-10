@@ -397,15 +397,31 @@ func (r *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 func (r *RepositoryTestSuite) TestACOMethods() {
 	assert := r.Assert()
 
+	termination := &models.Termination{
+		BlacklistType:       models.BlacklistedVoluntary,
+		AttributionStrategy: models.AttributionHistorical,
+		OptOutStrategy:      models.OptOutLatest,
+		ClaimsStrategy:      models.ClaimsHistorical,
+	}
+
 	ctx := context.Background()
 	cmsID := testUtils.RandomHexID()[0:4]
+	terminatedCMSID := testUtils.RandomHexID()[0:4]
 	aco := models.ACO{UUID: uuid.NewRandom(), Name: uuid.New(), ClientID: uuid.New(), CMSID: &cmsID}
-	assert.NoError(r.repository.CreateACO(ctx, aco))
+	terminatedACO := models.ACO{UUID: uuid.NewRandom(), Name: uuid.New(), ClientID: uuid.New(), CMSID: &terminatedCMSID,
+		TerminationDetails: termination}
 
-	defer postgrestest.DeleteACO(r.T(), r.db, aco.UUID)
+	assert.NoError(r.repository.CreateACO(ctx, aco))
+	assert.NoError(r.repository.CreateACO(ctx, terminatedACO))
+
+	defer func() {
+		postgrestest.DeleteACO(r.T(), r.db, aco.UUID)
+		postgrestest.DeleteACO(r.T(), r.db, terminatedACO.UUID)
+	}()
 
 	// Load the ID to allow us to compare entire ACO entities
 	aco.ID = postgrestest.GetACOByCMSID(r.T(), r.db, cmsID).ID
+	terminatedACO.ID = postgrestest.GetACOByCMSID(r.T(), r.db, terminatedCMSID).ID
 
 	aco.Blacklisted = true
 	assert.NoError(r.repository.UpdateACO(ctx, aco.UUID,
@@ -422,6 +438,18 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	res, err = r.repository.GetACOByUUID(ctx, aco.UUID)
 	assert.NoError(err)
 	assert.Equal(aco, *res)
+
+	res, err = r.repository.GetACOByCMSID(ctx, terminatedCMSID)
+	assert.NoError(err)
+	assert.Equal(terminatedACO, *res)
+
+	res, err = r.repository.GetACOByClientID(ctx, terminatedACO.ClientID)
+	assert.NoError(err)
+	assert.Equal(terminatedACO, *res)
+
+	res, err = r.repository.GetACOByUUID(ctx, terminatedACO.UUID)
+	assert.NoError(err)
+	assert.Equal(terminatedACO, *res)
 
 	// Negative cases
 	res, err = r.repository.GetACOByCMSID(ctx, aco.UUID.String())

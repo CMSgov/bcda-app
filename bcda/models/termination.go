@@ -32,6 +32,6 @@ const (
 type Claims uint8
 
 const (
-	ClaimsHistorical OptOut = iota
+	ClaimsHistorical Claims = iota
 	ClaimsLatest
 )

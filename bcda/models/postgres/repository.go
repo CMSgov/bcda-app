@@ -44,8 +44,10 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
-	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted").
-		Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted)
+	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted",
+		"termination_details").
+		Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted,
+			termination{aco.TerminationDetails})
 	query, args := ib.Build()
 	_, err := r.ExecContext(ctx, query, args...)
 	return err
@@ -510,18 +512,20 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 
 func (r *Repository) getACO(ctx context.Context, field string, value interface{}) (*models.ACO, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name",
-		"client_id", "group_id", "system_id", "alpha_secret", "public_key", "blacklisted").From("acos")
+		"client_id", "group_id", "system_id", "alpha_secret", "public_key",
+		"blacklisted", "termination_details").From("acos")
 	sb.Where(sb.Equal(field, value))
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 	var (
 		aco                                                              models.ACO
+		termination                                                      termination
 		name, cmsID, clientID, alphaSecret, publicKey, groupID, systemID sql.NullString
 	)
 	err := row.Scan(&aco.ID, &aco.UUID, &cmsID, &name,
 		&clientID, &groupID, &systemID, &alphaSecret,
-		&publicKey, &aco.Blacklisted)
+		&publicKey, &aco.Blacklisted, &termination)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no ACO record found for %s", value)
@@ -531,5 +535,6 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	aco.Name, aco.ClientID, aco.AlphaSecret = name.String, clientID.String, alphaSecret.String
 	aco.PublicKey, aco.GroupID, aco.SystemID = publicKey.String, groupID.String, systemID.String
 	aco.CMSID = &cmsID.String
+	aco.TerminationDetails = termination.Termination
 	return &aco, nil
 }
