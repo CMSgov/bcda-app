@@ -24,9 +24,9 @@ func (t termination) Value() (driver.Value, error) {
 }
 
 // Scan JSON decodes the provided src into the termination type.
-// It handles NULL values.
 func (t *termination) Scan(src interface{}) error {
-	// Should be able to handle NULL value
+	// Since the termination field is optional (i.e. can be null)
+	// we need to ensure that we do not panic when the field is unset.
 	if src == nil {
 		return nil
 	}
