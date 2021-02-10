@@ -86,16 +86,6 @@ var migration5Tables = []interface{}{
 	"suppression_files",
 }
 
-var migration7Tables = []string{
-	"acos",
-	"cclf_beneficiaries",
-	"cclf_files",
-	"job_keys",
-	"jobs",
-	"suppressions",
-	"suppression_files",
-}
-
 func (s *MigrationTestSuite) TestBCDAMigration() {
 	migrator := migrator{
 		migrationPath: "./bcda/",
@@ -109,6 +99,9 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 
 	migration1Tables := []string{"acos", "cclf_beneficiaries", "cclf_beneficiary_xrefs",
 		"cclf_files", "job_keys", "jobs", "suppression_files", "suppressions"}
+
+	migration7Tables := []string{"acos", "cclf_beneficiaries", "cclf_files",
+		"job_keys", "jobs", "suppressions", "suppression_files"}
 
 	// Tests should begin with "up" migrations, in order, followed by "down" migrations in reverse order
 	tests := []struct {
