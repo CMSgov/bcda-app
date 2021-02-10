@@ -67,7 +67,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
-		// could also occur if job was marked as cancelled (addressed)
+		// could also occur if job was marked as cancelled
 		log.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		return errors.Wrap(err, "could not update job status in database")
