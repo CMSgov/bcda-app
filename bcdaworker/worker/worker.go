@@ -65,6 +65,10 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return errors.Wrap(err, "could not retrieve ACO from database")
 	}
 
+	// maybe use this approach to prevent cxl'd job from being marked as failed
+	// pending -> inProgress -> completed/failed
+	// pending -> failed -> inProgress -> completed (without this safety check)
+	// only mark a job as failed if job is inProgress (not cancelled)
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
 		log.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
@@ -99,7 +103,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
-	if err != nil {
+	if err != nil { // possible to set a cxl'd status to failed
 		err = w.r.UpdateJobStatus(ctx, job.ID, models.JobStatusFailed)
 		if err != nil {
 			return err
@@ -172,6 +176,15 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
+		// ctx.Err returns a non-nil error if the parent job was cancelled;
+		// if we continue to write the data from this job, the result may
+		// update the parent job as "failed" *after* it was marked as cancelled
+		// if the parent job was cancelled, check here and don't
+		// continue with this job
+		if ctx.Err() != nil {
+			return "", 0, ctx.Err()
+		}
+
 		errMsg, err := func() (string, error) {
 			id, err := strconv.ParseUint(beneID, 10, 64)
 			if err != nil {
@@ -182,6 +195,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			if err != nil {
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), err
 			}
+			// bundleFunc makes request to BFD
 			b, err := bundleFunc(bene.BlueButtonID)
 			if err != nil {
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), err
@@ -195,7 +209,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			errorCount++
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION, responseutils.BbErr, errMsg, jobArgs.ID)
 		}
-
+		// if ctx.err not nil, set fail to true - not able to succesfully process
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
 			failed = true
