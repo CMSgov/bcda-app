@@ -65,12 +65,9 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		return errors.Wrap(err, "could not retrieve ACO from database")
 	}
 
-	// maybe use this approach to prevent cxl'd job from being marked as failed
-	// pending -> inProgress -> completed/failed
-	// pending -> failed -> inProgress -> completed (without this safety check)
-	// only mark a job as failed if job is inProgress (not cancelled)
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
+		// could also occur if job was marked as cancelled (addressed)
 		log.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		return errors.Wrap(err, "could not update job status in database")
@@ -103,8 +100,9 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	fileName := fileUUID + ".ndjson"
 
 	// This is only run AFTER completion of all the collection
-	if err != nil { // possible to set a cxl'd status to failed
-		err = w.r.UpdateJobStatus(ctx, job.ID, models.JobStatusFailed)
+	if err != nil {
+		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
+		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
 		if err != nil {
 			return err
 		}
@@ -176,13 +174,10 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
-		// ctx.Err returns a non-nil error if the parent job was cancelled;
-		// if we continue to write the data from this job, the result may
-		// update the parent job as "failed" *after* it was marked as cancelled
-		// if the parent job was cancelled, check here and don't
-		// continue with this job
+		// if the parent job was cancelled, stop processing beneIDs and fail the queuejob
 		if ctx.Err() != nil {
-			return "", 0, ctx.Err()
+			failed = true
+			break
 		}
 
 		errMsg, err := func() (string, error) {
@@ -209,7 +204,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			errorCount++
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION, responseutils.BbErr, errMsg, jobArgs.ID)
 		}
-		// if ctx.err not nil, set fail to true - not able to succesfully process
+
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
 		if failPct >= failThreshold {
 			failed = true
@@ -222,6 +217,9 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 
 	if failed {
+		if ctx.Err() == context.Canceled {
+			return "", 0, errors.New(fmt.Sprintf("Parent job %d was cancelled", jobArgs.ID))
+		}
 		return "", 0, errors.New("number of failed requests has exceeded threshold")
 	}
 

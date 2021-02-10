@@ -96,17 +96,6 @@ func (q *queue) StopQue() {
 	q.quePool.Shutdown()
 }
 
-func (q *queue) isParentJobCancelled(jobID uint) (bool, error) {
-	ctx := context.Background()
-
-	job, err := q.repository.GetJobByID(ctx, jobID)
-	if err != nil {
-		return false, err
-	}
-
-	return (job.Status == models.JobStatusCancelled), nil
-}
-
 func (q *queue) processJob(job *que.Job) error {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -121,15 +110,13 @@ func (q *queue) processJob(job *que.Job) error {
 		return nil
 	}
 
-	// start a goroutine that will check the status of the parent job
-	// and run until either the parent job is found as cancelled
-	// or the current queue job is completed
+	// start a goroutine that will periodically check the status of the parent job
 	go func() {
 		for {
 			select {
 			case <-time.After(15 * time.Second):
-				ID := uint(jobArgs.ID)
-				parentCancelled, _ := q.isParentJobCancelled(ID)
+				parentCancelled, _ := q.isParentJobCancelled(jobArgs.ID)
+				// parent job is cancelled, cancel this queuejob
 				if parentCancelled {
 					cancel()
 					return
@@ -172,6 +159,17 @@ func (q *queue) processJob(job *que.Job) error {
 	}
 
 	return nil
+}
+
+func (q *queue) isParentJobCancelled(jobID int) (bool, error) {
+	ctx := context.Background()
+
+	job, err := q.repository.GetJobByID(ctx, uint(jobID))
+	if err != nil {
+		return false, err
+	}
+
+	return (job.Status == models.JobStatusCancelled), nil
 }
 
 func (q *queue) updateJobQueueCountCloudwatchMetric() {
