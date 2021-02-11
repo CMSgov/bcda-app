@@ -466,6 +466,37 @@ func (s *WorkerTestSuite) TestProcessJob_NoBBClient() {
 	assert.Contains(s.T(), s.w.ProcessJob(context.Background(), j, jobArgs).Error(), "could not create Blue Button client")
 }
 
+func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
+	ctx := context.Background()
+	j := models.Job{
+		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
+		RequestURL: "/api/v1/Patient/$export",
+		Status:     models.JobStatusCancelled,
+		JobCount:   1,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+
+	complete, err := checkJobCompleteAndCleanup(ctx, s.r, j.ID)
+	// no jobs should be completed since status has always been cancelled
+	assert.Nil(s.T(), err)
+	assert.False(s.T(), complete)
+
+	jobArgs := models.JobEnqueueArgs{
+		ID:             int(j.ID),
+		ACOID:          j.ACOID.String(),
+		BeneficiaryIDs: []string{"10000", "11000"},
+		ResourceType:   "ExplanationOfBenefit",
+		BBBasePath:     "/v1/fhir",
+	}
+
+	processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
+	completedJob, _ := s.r.GetJobByID(context.Background(), j.ID)
+
+	// cancelled parent job status should not update after failed queujob
+	assert.Contains(s.T(), processJobErr.Error(), "job was not updated, no match found")
+	assert.Equal(s.T(), models.JobStatusCancelled, completedJob.Status)
+}
+
 func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 	// Use multiple defers to ensure that the conf.GetEnv gets evaluated prior to us
 	// modifying the value.
