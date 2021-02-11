@@ -60,15 +60,15 @@ type JobKey struct {
 // ACO represents an Accountable Care Organization.
 type ACO struct {
 	ID                 uint
-	UUID               uuid.UUID `json:"uuid"`
-	CMSID              *string   `json:"cms_id"`
-	Name               string    `json:"name"`
-	ClientID           string    `json:"client_id"`
-	GroupID            string    `json:"group_id"`
-	SystemID           string    `json:"system_id"`
-	AlphaSecret        string    `json:"alpha_secret"`
-	PublicKey          string    `json:"public_key"`
-	Blacklisted        bool      `json:"blacklisted"`
+	UUID               uuid.UUID    `json:"uuid"`
+	CMSID              *string      `json:"cms_id"`
+	Name               string       `json:"name"`
+	ClientID           string       `json:"client_id"`
+	GroupID            string       `json:"group_id"`
+	SystemID           string       `json:"system_id"`
+	AlphaSecret        string       `json:"alpha_secret"`
+	PublicKey          string       `json:"public_key"`
+	Blacklisted        bool         `json:"blacklisted"`
 	TerminationDetails *Termination `json:"termination"`
 }
 

@@ -45,9 +45,9 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
 	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted",
-		"termination_details").
-		Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted,
-			termination{aco.TerminationDetails})
+		"termination_details")
+	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted,
+		termination{aco.TerminationDetails})
 	query, args := ib.Build()
 	_, err := r.ExecContext(ctx, query, args...)
 	return err
