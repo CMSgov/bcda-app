@@ -23,7 +23,10 @@ import (
 	_ "github.com/jackc/pgx"
 )
 
-const sqlFlavor = sqlbuilder.PostgreSQL
+const (
+	sqlFlavor = sqlbuilder.PostgreSQL
+	nullValue = "NULL"
+)
 
 // These tests relies on migrate tool being installed
 // See: https://github.com/golang-migrate/migrate/tree/v4.13.0/cmd/migrate
@@ -224,6 +227,21 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				for _, table := range migration7Tables {
 					assertColumnExists(t, false, db, table, "deleted_at")
 				}
+			},
+		},
+		{
+			"Add termination_details column to acos",
+			func(t *testing.T) {
+				migrator.runMigration(t, "8")
+				assertColumnExists(t, true, db, "acos", "termination_details")
+				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
+			},
+		},
+		{
+			"Remove termination_details column to acos",
+			func(t *testing.T) {
+				migrator.runMigration(t, "7")
+				assertColumnExists(t, false, db, "acos", "termination_details")
 			},
 		},
 		{
@@ -428,6 +446,13 @@ func assertColumnDefaultValue(t *testing.T, db *sql.DB, columnName, expectedDefa
 		var tableName string
 		var actualDefault sql.NullString
 		assert.NoError(t, rows.Scan(&tableName, &actualDefault))
+		// A default value of NULL is written as a NULL string field
+		// So we need to check NullString to ensure it was set to a null value
+		if expectedDefault == nullValue {
+			assert.False(t, actualDefault.Valid, "%s default value is supposed to be null. Actual value is %s",
+				tableName, actualDefault.String)
+			continue
+		}
 		assert.Equal(t, expectedDefault, actualDefault.String, "%s default value is %s; actual value should be %s", tableName, actualDefault.String, expectedDefault)
 	}
 }
@@ -479,7 +504,7 @@ func updateTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string
 func cleanData(t *testing.T, db *sql.DB) {
 	sb := sqlFlavor.NewSelectBuilder()
 	sb.Select("table_name").From("information_schema.tables").Where(
-		sb.NotLike("table_name", "%schema_migrations%"),
+		sb.NotLike("table_name", "%schema_migrations%"), // Ensure we skip the tables related to migration
 		sb.Equal("table_schema", "public"))
 	query, args := sb.Build()
 	rows, err := db.Query(query, args...)
@@ -492,19 +517,4 @@ func cleanData(t *testing.T, db *sql.DB) {
 		_, err := db.Exec(fmt.Sprintf("TRUNCATE %s CASCADE", tableName))
 		assert.NoError(t, err)
 	}
-}
-
-func deleteTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string]interface{}) {
-	delb := sqlFlavor.NewDeleteBuilder()
-	delb.DeleteFrom(tableName)
-
-	for k, v := range fields {
-		delb.Where(
-			delb.Equal(k, v),
-		)
-	}
-
-	query, args := delb.Build()
-	_, err := db.Exec(query, args...)
-	assert.NoError(t, err)
 }

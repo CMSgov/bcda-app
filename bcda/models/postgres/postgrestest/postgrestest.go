@@ -42,25 +42,20 @@ func GetACOByCMSID(t *testing.T, db *sql.DB, cmsID string) models.ACO {
 }
 
 func UpdateACO(t *testing.T, db *sql.DB, aco models.ACO) {
-	ub := sqlFlavor.NewUpdateBuilder().Update("acos")
-	ub.Set(
-		ub.Assign("cms_id", aco.CMSID),
-		ub.Assign("name", aco.Name),
-		ub.Assign("client_id", aco.ClientID),
-		ub.Assign("group_id", aco.GroupID),
-		ub.Assign("system_id", aco.SystemID),
-		ub.Assign("alpha_secret", aco.AlphaSecret),
-		ub.Assign("public_key", aco.PublicKey),
-		ub.Assign("blacklisted", aco.Blacklisted),
-	).Where(ub.Equal("uuid", aco.UUID))
-
-	query, args := ub.Build()
-	result, err := db.Exec(query, args...)
-	assert.NoError(t, err)
-
-	count, err := result.RowsAffected()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, count)
+	r := postgres.NewRepository(db)
+	// This should capture ALL fields present in the ACO model
+	fieldsAndValues := map[string]interface{}{
+		"cms_id": aco.CMSID,
+		"name": aco.Name,
+		"client_id": aco.ClientID,
+		"group_id": aco.GroupID,
+		"system_id": aco.SystemID,
+		"alpha_secret": aco.AlphaSecret,
+		"public_key": aco.PublicKey,
+		"blacklisted": aco.Blacklisted,
+		"termination_details": aco.TerminationDetails,
+	}
+	assert.NoError(t, r.UpdateACO(context.Background(), aco.UUID, fieldsAndValues))
 }
 
 // DeleteACO also removes data from any foreign key relations (jobs) before deleting the ACO.
