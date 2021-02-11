@@ -34,5 +34,5 @@ func (t *termination) Scan(src interface{}) error {
 	if !ok {
 		return fmt.Errorf("could not convert %v to []byte", src)
 	}
-	return json.Unmarshal(b, &t.Termination)
+	return json.Unmarshal(b, &t)
 }
