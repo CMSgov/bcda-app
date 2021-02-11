@@ -174,7 +174,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
-		// if the parent job was cancelled, stop processing beneIDs and fail the queuejob
+		// if the parent job was cancelled, stop processing beneIDs and fail the job
 		if ctx.Err() != nil {
 			failed = true
 			break
@@ -190,7 +190,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			if err != nil {
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), err
 			}
-			// bundleFunc makes request to BFD
+
 			b, err := bundleFunc(bene.BlueButtonID)
 			if err != nil {
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), err
