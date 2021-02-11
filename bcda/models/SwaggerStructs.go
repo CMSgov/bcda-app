@@ -213,6 +213,10 @@ type MissingCredentials struct{}
 // swagger:response invalidCredentials
 type InvalidCredentials struct{}
 
+// Credentials not found
+// swagger:response credentialsNotFound
+type CredentialsNotFound struct{}
+
 // Server error
 // swagger:response serverError
 type ServerError struct{}

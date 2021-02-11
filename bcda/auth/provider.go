@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -118,4 +119,14 @@ type Provider interface {
 
 	// GetVersion gets the version of the provider
 	GetVersion() (string, error)
+}
+
+// ProviderError defines HTTP status codes as well as an error message from providers.
+type ProviderError struct {
+	Code    int
+	Message string
+}
+
+func (pe *ProviderError) Error() string {
+	return fmt.Sprintf("An error was returned from the authentication provider; %d - %s", pe.Code, pe.Message)
 }

@@ -24,6 +24,7 @@ import (
 		200: tokenResponse
 		400: missingCredentials
 		401: invalidCredentials
+		404: credentialsNotFound
 		500: serverError
 */
 func GetAuthToken(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +36,22 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 
 	token, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
+		if pe, ok := err.(*ProviderError); ok {
+			switch pe.Code {
+			case 400:
+				http.Error(w, pe.Error(), http.StatusBadRequest)
+				return
+			case 401:
+				http.Error(w, pe.Error(), http.StatusUnauthorized)
+				return
+			case 404:
+				http.Error(w, pe.Error(), http.StatusNotFound)
+				return
+			case 500:
+				http.Error(w, pe.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
