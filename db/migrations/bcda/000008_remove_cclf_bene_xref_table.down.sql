@@ -33,3 +33,13 @@ COMMIT;
 BEGIN;
 ALTER TABLE ONLY public.cclf_beneficiary_xrefs ALTER COLUMN id SET DEFAULT nextval('public.cclf_beneficiary_xrefs_id_seq'::regclass);
 COMMIT;
+
+-- Name: cclf_beneficiary_xrefs cclf_beneficiary_xrefs_pkey; Type: CONSTRAINT; Schema: public; 
+BEGIN;
+ALTER TABLE ONLY public.cclf_beneficiary_xrefs ADD CONSTRAINT cclf_beneficiary_xrefs_pkey PRIMARY KEY (id);
+COMMIT;
+
+-- Name: idx_cclf_beneficiary_xrefs_deleted_at; Type: INDEX; Schema: public; 
+BEGIN;
+CREATE INDEX IF NOT EXISTS idx_cclf_beneficiary_xrefs_deleted_at ON public.cclf_beneficiary_xrefs USING btree (deleted_at);
+COMMIT;
