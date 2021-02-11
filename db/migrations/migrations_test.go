@@ -13,8 +13,6 @@ import (
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/pborman/uuid"
 
-	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/stretchr/testify/assert"
@@ -121,67 +119,16 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Add type column to cclf_files",
 			func(t *testing.T) {
 				migrator.runMigration(t, "2")
-				noType := &models.CCLFFile{
-					CCLFNum:         8,
-					Name:            "CCLFFile_no_type",
-					ACOCMSID:        "T9999",
-					Timestamp:       time.Now(),
-					PerformanceYear: 20,
-				}
-				withType := &models.CCLFFile{
-					CCLFNum:         8,
-					Name:            "CCLFFile_with_type",
-					ACOCMSID:        "T9999",
-					Timestamp:       time.Now(),
-					PerformanceYear: 20,
-					Type:            models.FileTypeRunout,
-				}
-				postgrestest.CreateCCLFFile(t, db, noType)
-				postgrestest.CreateCCLFFile(t, db, withType)
-
-				assert.Equal(t, noType.Type, postgrestest.GetCCLFFilesByName(t, db, noType.Name)[0].Type)
-				assert.Equal(t, withType.Type, postgrestest.GetCCLFFilesByName(t, db, withType.Name)[0].Type)
+				assertColumnExists(t, true, db, "cclf_files", "type")
+				assertColumnDefaultValue(t, db, "type", "0", []interface{}{"cclf_files"})
 			},
 		},
 		{
 			"Add blacklisted column to acos",
 			func(t *testing.T) {
-				// Verify that existing ACOs have blacklisted equal to false
-				beforeMigration := models.ACO{
-					UUID:        uuid.NewUUID(),
-					Name:        uuid.New(),
-					Blacklisted: true,
-				}
-				// Need to manually build the insert query since the column does not exist yet.
-				ib := sqlFlavor.NewInsertBuilder().InsertInto("acos").
-					Cols("uuid", "name").Values(beforeMigration.UUID, beforeMigration.Name)
-				query, args := ib.Build()
-				_, err := db.Exec(query, args...)
-				assert.NoError(t, err)
-
 				migrator.runMigration(t, "3")
-				blacklisted := models.ACO{
-					UUID:        uuid.NewUUID(),
-					Name:        uuid.New(),
-					Blacklisted: true,
-				}
-				notBlacklisted := models.ACO{
-					UUID:        uuid.NewUUID(),
-					Name:        uuid.New(),
-					Blacklisted: false,
-				}
-				notSet := models.ACO{
-					UUID: uuid.NewUUID(),
-					Name: uuid.New(),
-				}
-				postgrestest.CreateACO(t, db, blacklisted)
-				postgrestest.CreateACO(t, db, notBlacklisted)
-				postgrestest.CreateACO(t, db, notSet)
-
-				assert.True(t, postgrestest.GetACOByUUID(t, db, blacklisted.UUID).Blacklisted)
-				assert.False(t, postgrestest.GetACOByUUID(t, db, notBlacklisted.UUID).Blacklisted)
-				assert.False(t, postgrestest.GetACOByUUID(t, db, notSet.UUID).Blacklisted)
-				assert.False(t, postgrestest.GetACOByUUID(t, db, beforeMigration.UUID).Blacklisted)
+				assertColumnExists(t, true, db, "acos", "blacklisted")
+				assertColumnDefaultValue(t, db, "blacklisted", "false", []interface{}{"acos"})
 			},
 		},
 		{
@@ -220,19 +167,21 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 						},
 					},
 					{
-						"cclf_beneficiaries",
-						map[string]interface{}{
-							"file_id": rand.Intn(10),
-							"mbi":     "test1234",
-						},
-					},
-					{
 						"cclf_files",
 						map[string]interface{}{
 							"cclf_num":         rand.Intn(10),
 							"name":             uuid.New(),
 							"timestamp":        time.Now(),
 							"performance_year": rand.Intn(4),
+						},
+					},
+					// cclf_beneficiaries must be written AFTER cclf_files to ensure
+					// we satisfy the foreign key constraint
+					{
+						"cclf_beneficiaries",
+						map[string]interface{}{
+							"file_id": 1, // Set this to 1 to ensure that we reference the cclf_file created above
+							"mbi":     "test1234",
 						},
 					},
 					{
@@ -261,8 +210,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 					createdAt, updatedAt = createTestRow(t, db, v.tableName, v.fields)
 					assert.Equal(t, createdAt, updatedAt) // Created and Updated at will be same value on create
 					createdAt, updatedAt = updateTestRow(t, db, v.tableName, v.fields)
-					assert.True(t, updatedAt.After(createdAt))  // Updated at will be more recent than Created at after update
-					deleteTestRow(t, db, v.tableName, v.fields) // Due to migrations further down, some test rows NEED to be deleted
+					assert.True(t, updatedAt.After(createdAt)) // Updated at will be more recent than Created at after update
 				}
 			},
 		},
@@ -340,6 +288,8 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, tt.tFunc)
+		// Ensure each test runs with a clean state
+		cleanData(s.T(), db)
 	}
 }
 
@@ -383,6 +333,8 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, tt.tFunc)
+		// Ensure each test runs with a clean state
+		cleanData(s.T(), db)
 	}
 }
 
@@ -521,6 +473,25 @@ func updateTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string
 	assert.NoError(t, err)
 
 	return
+}
+
+// cleanData removes all the non migration related tables
+func cleanData(t *testing.T, db *sql.DB) {
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("table_name").From("information_schema.tables").Where(
+		sb.NotLike("table_name", "%schema_migrations%"),
+		sb.Equal("table_schema", "public"))
+	query, args := sb.Build()
+	rows, err := db.Query(query, args...)
+	assert.NoError(t, err)
+	defer rows.Close()
+	for rows.Next() {
+		var tableName string
+		assert.NoError(t, rows.Scan(&tableName))
+		// Use TRUNCATE ... CASCADE to ensure that all foreign data is removed.
+		_, err := db.Exec(fmt.Sprintf("TRUNCATE %s CASCADE", tableName))
+		assert.NoError(t, err)
+	}
 }
 
 func deleteTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string]interface{}) {

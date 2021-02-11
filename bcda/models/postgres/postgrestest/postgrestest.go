@@ -23,17 +23,8 @@ const (
 )
 
 func CreateACO(t *testing.T, db *sql.DB, aco models.ACO) {
-	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
-	if aco.CMSID != nil {
-		ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted").
-			Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted)
-	} else {
-		ib.Cols("uuid", "client_id", "name", "blacklisted").
-			Values(aco.UUID, aco.ClientID, aco.Name, aco.Blacklisted)
-	}
-	query, args := ib.Build()
-	_, err := db.Exec(query, args...)
-	assert.NoError(t, err)
+	r := postgres.NewRepository(db)
+	assert.NoError(t, r.CreateACO(context.Background(), aco))
 }
 
 func GetACOByUUID(t *testing.T, db *sql.DB, uuid uuid.UUID) models.ACO {
