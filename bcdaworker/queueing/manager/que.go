@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
@@ -49,8 +50,10 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queu
 
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
+	mainDB := database.GetDbConnection()
 	q := &queue{
-		worker:        worker.NewWorker(database.GetDbConnection()),
+		worker:        worker.NewWorker(mainDB),
+		repository:    postgres.NewRepository(mainDB),
 		log:           log,
 		queDB:         db,
 		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
