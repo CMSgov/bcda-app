@@ -528,6 +528,46 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 }
 
+func (s *ServiceTestSuite) TestCancelJob() {
+	ctx := context.Background()
+	synthErr := fmt.Errorf("Synthetic error for testing.")
+	tests := []struct {
+		status           JobStatus
+		cancellableJobID uint
+		resultJobID      uint
+		getJobError      error
+		updateJobError   error
+	}{
+		{JobStatusPending, 123456, 123456, nil, nil},
+		{JobStatusInProgress, 123456, 123456, nil, nil},
+		{JobStatusFailed, 123456, 0, nil, nil},
+		{JobStatusExpired, 123456, 0, nil, nil},
+		{JobStatusArchived, 123456, 0, nil, nil},
+		{JobStatusCompleted, 123456, 0, nil, nil},
+		{JobStatusCancelled, 123456, 0, nil, nil},
+		{JobStatusFailedExpired, 123456, 0, nil, nil},
+		{JobStatusInProgress, 123456, 123456, synthErr, nil}, // error occurred on GetJobByID
+		{JobStatusInProgress, 123456, 123456, nil, synthErr}, // error occurred on UpdateJob
+	}
+
+	for _, tt := range tests {
+		s.T().Run(string(tt.status), func(t *testing.T) {
+			repository := &MockRepository{}
+			repository.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(&Job{Status: tt.status}, tt.getJobError)
+			repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(tt.updateJobError)
+			s := &service{}
+			s.repository = repository
+			cancelledJobID, err := s.CancelJob(ctx, tt.cancellableJobID)
+			if err != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, cancelledJobID, tt.resultJobID)
+			}
+		})
+	}
+}
+
 func getCCLFFile(id uint) *CCLFFile {
 	return &CCLFFile{
 		ID: id,

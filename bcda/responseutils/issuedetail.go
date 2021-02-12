@@ -10,4 +10,5 @@ const (
 	RequestErr      = "Request Error"
 	UnauthorizedErr = "Unauthorized Error"
 	NotFoundErr     = "Not Found Error"
+	DeletedErr      = "Deleted Error"
 )
