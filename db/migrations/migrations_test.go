@@ -100,6 +100,9 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 	migration1Tables := []string{"acos", "cclf_beneficiaries", "cclf_beneficiary_xrefs",
 		"cclf_files", "job_keys", "jobs", "suppression_files", "suppressions"}
 
+	migration7Tables := []string{"acos", "cclf_beneficiaries", "cclf_files",
+		"job_keys", "jobs", "suppressions", "suppression_files"}
+
 	// Tests should begin with "up" migrations, in order, followed by "down" migrations in reverse order
 	tests := []struct {
 		name  string
@@ -260,6 +263,30 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 					createdAt, updatedAt = updateTestRow(t, db, v.tableName, v.fields)
 					assert.True(t, updatedAt.After(createdAt))  // Updated at will be more recent than Created at after update
 					deleteTestRow(t, db, v.tableName, v.fields) // Due to migrations further down, some test rows NEED to be deleted
+				}
+			},
+		},
+		{
+			"Remove deleted_at columns from database tables",
+			func(t *testing.T) {
+				for _, table := range migration7Tables {
+					assertColumnExists(t, true, db, table, "deleted_at")
+				}
+				migrator.runMigration(t, "7")
+				for _, table := range migration7Tables {
+					assertColumnExists(t, false, db, table, "deleted_at")
+				}
+			},
+		},
+		{
+			"Add deleted_at columns to database tables",
+			func(t *testing.T) {
+				for _, table := range migration7Tables {
+					assertColumnExists(t, false, db, table, "deleted_at")
+				}
+				migrator.runMigration(t, "6")
+				for _, table := range migration7Tables {
+					assertColumnExists(t, true, db, table, "deleted_at")
 				}
 			},
 		},
