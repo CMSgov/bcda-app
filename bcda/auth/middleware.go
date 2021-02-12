@@ -14,6 +14,7 @@ import (
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
+	autherrors "github.com/CMSgov/bcda-app/bcda/auth/errors"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
@@ -118,7 +119,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			err := GetProvider().AuthorizeAccess(token.Raw)
 			if err != nil {
 				log.Error(err)
-				if pe, ok := err.(*ProviderError); ok {
+				if pe, ok := err.(*autherrors.ProviderError); ok {
 					switch pe.Code {
 					case 400:
 						http.Error(w, pe.Error(), http.StatusBadRequest)

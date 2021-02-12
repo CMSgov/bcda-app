@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
+	autherrors "github.com/CMSgov/bcda-app/bcda/auth/errors"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pkg/errors"
@@ -320,7 +320,7 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &auth.ProviderError{Code: resp.StatusCode, Message: "token request failed;"}
+		return nil, &autherrors.ProviderError{Code: resp.StatusCode, Message: resp.Status}
 	}
 
 	var t = TokenResponse{}
