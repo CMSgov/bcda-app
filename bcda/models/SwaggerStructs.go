@@ -78,6 +78,11 @@ type JobStatusResponse struct {
 	XProgress string `json:"X-Progress"`
 }
 
+// The job has been deleted.
+// swagger:response deleteJobResponse
+type DeleteJobResponse struct {
+}
+
 // JSON object containing a version field
 // swagger:response VersionResponse
 type VersionResponse struct {
@@ -121,7 +126,7 @@ type NDJSON string
 // A JobStatus parameter model.
 //
 // This is used for operations that want the ID of a job in the path
-// swagger:parameters jobStatus serveData
+// swagger:parameters jobStatus serveData deleteJob
 type JobIDParam struct {
 	// ID of data export job
 	//

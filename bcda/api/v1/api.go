@@ -224,6 +224,58 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 /*
+	swagger:route DELETE /api/v1/jobs/{jobId} job deleteJob
+
+	Cancel a job
+
+	Cancels a currently running job.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: deleteJobResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		404: notFoundResponse
+		410: goneResponse
+		500: errorResponse
+*/
+func DeleteJob(w http.ResponseWriter, r *http.Request) {
+	jobIDStr := chi.URLParam(r, "jobID")
+
+	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
+	if err != nil {
+		err = errors.Wrap(err, "cannot convert jobID to uint")
+		log.Error(err)
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
+	_, err = h.Svc.CancelJob(context.Background(), uint(jobID))
+	if err != nil {
+		switch err {
+		case models.ErrJobNotCancellable:
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DeletedErr, err.Error())
+			responseutils.WriteError(oo, w, http.StatusGone)
+			return
+		default:
+			log.Error(err)
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, err.Error())
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+/*
 	swagger:route GET /data/{jobId}/{filename} job serveData
 
 	Get data file
@@ -242,7 +294,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 		200: FileNDJSON
 		400: badRequestResponse
 		401: invalidCredentials
-        404: notFoundResponse
+		404: notFoundResponse
 		500: errorResponse
 */
 func ServeData(w http.ResponseWriter, r *http.Request) {

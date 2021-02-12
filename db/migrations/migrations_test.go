@@ -230,9 +230,17 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			},
 		},
 		{
+			"Drop cclf_beneficiary_xrefs table",
+			func(t *testing.T) {
+				assertTableExists(t, true, db, "cclf_beneficiary_xrefs")
+				migrator.runMigration(t, "8")
+				assertTableExists(t, false, db, "cclf_beneficiary_xrefs")
+			},
+		},
+		{
 			"Add termination_details column to acos",
 			func(t *testing.T) {
-				migrator.runMigration(t, "8")
+				migrator.runMigration(t, "9")
 				assertColumnExists(t, true, db, "acos", "termination_details")
 				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
 			},
@@ -240,8 +248,16 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Remove termination_details column to acos",
 			func(t *testing.T) {
-				migrator.runMigration(t, "7")
+				migrator.runMigration(t, "8")
 				assertColumnExists(t, false, db, "acos", "termination_details")
+			},
+		},
+		{
+			"Create cclf_beneficiary_xrefs table",
+			func(t *testing.T) {
+				assertTableExists(t, false, db, "cclf_beneficiary_xrefs")
+				migrator.runMigration(t, "7")
+				assertTableExists(t, true, db, "cclf_beneficiary_xrefs")
 			},
 		},
 		{

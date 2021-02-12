@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -33,6 +34,8 @@ type Service interface {
 	GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
+
+	CancelJob(ctx context.Context, jobID uint) (uint, error)
 }
 
 const (
@@ -151,6 +154,27 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKe
 	}
 
 	return j, nonEmptyKeys, nil
+}
+
+func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
+	// Assumes the job exists and retrieves the job by ID
+	job, err := s.repository.GetJobByID(ctx, jobID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Check if the job is pending or in progress.
+	if job.Status == JobStatusPending || job.Status == JobStatusInProgress {
+		job.Status = JobStatusCancelled
+		err = s.repository.UpdateJob(ctx, *job)
+		if err != nil {
+			return 0, ErrJobNotCancelled
+		}
+		return jobID, nil
+	}
+
+	// Return 0, ErrJobNotCancellable when attempting to cancel a non-cancellable job.
+	return 0, ErrJobNotCancellable
 }
 
 func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since time.Time, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {
@@ -405,3 +429,8 @@ func (e CCLFNotFoundError) Error() string {
 	return fmt.Sprintf("no CCLF%d file found for cmsID %s fileType %d cutoffTime %s",
 		e.FileNumber, e.CMSID, e.FileType, e.CutoffTime.String())
 }
+
+var (
+	ErrJobNotCancelled   = goerrors.New("Job was not cancelled due to internal server error.")
+	ErrJobNotCancellable = goerrors.New("Job was not cancelled because it is not Pending or In Progress")
+)
