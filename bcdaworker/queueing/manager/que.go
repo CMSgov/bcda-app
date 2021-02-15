@@ -118,14 +118,20 @@ func (q *queue) processJob(job *que.Job) error {
 		for {
 			select {
 			case <-time.After(15 * time.Second):
-				parentCancelled, _ := q.isParentJobCancelled(jobArgs.ID)
-				// parent job is cancelled, cancel this queuejob
+				parentCancelled, err := q.isParentJobCancelled(jobArgs.ID)
+
+				if err != nil {
+					q.log.Warnf("Could not determine parent job %d status: %s", jobArgs.ID, err)
+				}
+
 				if parentCancelled {
+					// cancelled context will get picked up by worker.go#writeBBDataToFile
 					cancel()
+					q.log.Warnf("Parent job %d cancelled, exiting goroutine", jobArgs.ID)
 					return
 				}
 			case <-ctx.Done():
-				// the queuejob has been processed, stop this goroutine and move on
+				q.log.Warnf("Job %d has been processed, exiting goroutine", job.ID)
 				return
 			}
 		}

@@ -476,11 +476,6 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	complete, err := checkJobCompleteAndCleanup(ctx, s.r, j.ID)
-	// no jobs should be completed since status has always been cancelled
-	assert.Nil(s.T(), err)
-	assert.False(s.T(), complete)
-
 	jobArgs := models.JobEnqueueArgs{
 		ID:             int(j.ID),
 		ACOID:          j.ACOID.String(),
@@ -492,7 +487,7 @@ func (s *WorkerTestSuite) TestJobCancelledTerminalStatus() {
 	processJobErr := s.w.ProcessJob(ctx, j, jobArgs)
 	completedJob, _ := s.r.GetJobByID(context.Background(), j.ID)
 
-	// cancelled parent job status should not update after failed queujob
+	// cancelled parent job status should not update after failed queuejob
 	assert.Contains(s.T(), processJobErr.Error(), "job was not updated, no match found")
 	assert.Equal(s.T(), models.JobStatusCancelled, completedJob.Status)
 }

@@ -103,7 +103,9 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	if err != nil {
 		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
 		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
-		if err != nil {
+		if goerrors.Is(err, repository.ErrJobNotUpdated) {
+			log.Warnf("Failed to update job (job cancelled): %s", err)
+		} else if err != nil {
 			return err
 		}
 	} else {
@@ -175,7 +177,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
 		// if the parent job was cancelled, stop processing beneIDs and fail the job
-		if ctx.Err() != nil {
+		if ctx.Err() == context.Canceled {
 			failed = true
 			break
 		}
@@ -353,11 +355,13 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		if err = os.Remove(staging); err != nil {
 			return false, err
 		}
-
-		if err := r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted); err != nil {
+		// make sure only inProgress jobs get moved to completed (don't update Cancelled jobs)
+		err = r.UpdateJobStatusCheckStatus(ctx, j.ID, models.JobStatusPending, models.JobStatusCompleted)
+		if goerrors.Is(err, repository.ErrJobNotUpdated) {
+			log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
+		} else if err != nil {
 			return false, err
 		}
-
 		// Able to mark job as completed
 		return true, nil
 	}
