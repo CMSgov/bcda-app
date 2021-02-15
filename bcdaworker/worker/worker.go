@@ -105,6 +105,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
 		if goerrors.Is(err, repository.ErrJobNotUpdated) {
 			log.Warnf("Failed to update job (job cancelled): %s", err)
+			return err
 		} else if err != nil {
 			return err
 		}
@@ -355,17 +356,22 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		if err = os.Remove(staging); err != nil {
 			return false, err
 		}
-		// make sure only inProgress jobs get moved to completed (don't update Cancelled jobs)
-		err = r.UpdateJobStatusCheckStatus(ctx, j.ID, models.JobStatusPending, models.JobStatusCompleted)
-		if goerrors.Is(err, repository.ErrJobNotUpdated) {
-			log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
-		} else if err != nil {
-			return false, err
-		}
-		// Able to mark job as completed
-		return true, nil
-	}
 
+		// make sure only inProgress jobs get moved to completed (don't update Cancelled jobs)
+		if j.Status != models.JobStatusCancelled {
+			err = r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted)
+			if err != nil {
+				return false, err
+			}
+			// Able to mark job as completed
+			return true, nil
+		} else {
+			// don't update job, Cancelled is a terminal status
+			log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
+			return true, nil
+
+		}
+	}
 	// We still have parts of the job that are not complete
 	return false, nil
 }

@@ -127,11 +127,9 @@ func (q *queue) processJob(job *que.Job) error {
 				if parentCancelled {
 					// cancelled context will get picked up by worker.go#writeBBDataToFile
 					cancel()
-					q.log.Warnf("Parent job %d cancelled, exiting goroutine", jobArgs.ID)
 					return
 				}
 			case <-ctx.Done():
-				q.log.Warnf("Job %d has been processed, exiting goroutine", job.ID)
 				return
 			}
 		}
