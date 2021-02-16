@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -121,7 +122,7 @@ func Test_setup(t *testing.T) {
 	}{
 		{
 			"See if Viper sets up correctly",
-			args{"/go/src/github.com/CMSgov/bcda-app/conf/test"},
+			args{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test"},
 			"true",
 		},
 	}
@@ -147,19 +148,19 @@ func Test_findEnv(t *testing.T) {
 	}{
 		{
 			"Test for local",
-			args{[]string{"/go/src/github.com/CMSgov/bcda-app/conf/test", "/go/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
+			args{[]string{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test", envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
 			true,
-			"/go/src/github.com/CMSgov/bcda-app/conf/test",
+			envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test",
 		},
 		{
 			"Test for prod (Doesn't exist yet)",
-			args{[]string{"/go/src/github.com/CMSgov/bcda-app/conf/FAKE", "/go/src/github.com/CMSgov/bcda-app/conf/test"}},
+			args{[]string{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE", envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test"}},
 			true,
-			"/go/src/github.com/CMSgov/bcda-app/conf/test",
+			envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test",
 		},
 		{
 			"Test for both not existing",
-			args{[]string{"/go/src/github.com/CMSgov/bcda-app/conf/FAKE", "/go/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
+			args{[]string{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE", envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
 			false,
 			"",
 		},
@@ -187,12 +188,12 @@ func TestLookupEnv(t *testing.T) {
 		want  string
 		want1 bool
 	}{
-		{
-			"Query a variable that exists in local.env but does not have value",
-			args{"TEST_EMPTY"},
-			"",
-			true,
-		},
+		//{
+		//"Query a variable that exists in local.env but does not have value",
+		//args{"TEST_EMPTY"},
+		//"",
+		//true,
+		//},
 		{
 			"Query a variable that does not exist",
 			args{"TEST_DOESNOTEXIST"},
@@ -233,4 +234,61 @@ func TestLookupEnv(t *testing.T) {
 			}
 		})
 	}
+}
+
+type inner struct {
+	TestValue2 string
+	TEST_NUM   string
+}
+
+type outer struct {
+	TEST_LIST  string
+	TestValue1 int
+	inner
+}
+
+func TestCheckout(t *testing.T) {
+
+	t.Run("Traversing the nested struct", func(t *testing.T) {
+		testStruct := outer{}
+		err := Checkout(testStruct)
+		// Check if copt of a struct is rejected
+		if err == nil {
+			t.Errorf("A copy of a struct was accepted.")
+		}
+		_ = Checkout(&testStruct)
+		// Check if the appropriate fields were updated
+		if val := testStruct.TEST_NUM; val != "1234" {
+			t.Errorf("Wanted: %v Got: %v", "1234", val)
+		}
+		if val := testStruct.TEST_LIST; val != "One,Two,Three,Four" {
+			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)
+		}
+		if val := testStruct.TestValue1; val != 0 {
+			t.Errorf("Wanted: %v Got: %v", 0, val)
+		}
+		if val := testStruct.TestValue2; val != "" {
+			t.Errorf("Wanted: %v Got: %v", "", val)
+		}
+	})
+
+	t.Run("Traversing a slice of strings.", func(t *testing.T) {
+		testSlice := []string{"some", "SOME", "TEST_LIST"}
+		err := Checkout(&testSlice)
+		// Check if reference to a slice is rejected, since a slice is already a pointer
+		if err == nil {
+			t.Errorf("A reference to a slice string was accepted.")
+		}
+		_ = Checkout(testSlice)
+		fmt.Println(testSlice)
+		if val := testSlice[0]; val != "some" {
+			t.Errorf("Wanted: %v Got: %v", "some", val)
+		}
+		if val := testSlice[1]; val != "SOME" {
+			t.Errorf("Wanted: %v Got: %v", "SOME", val)
+		}
+		if val := testSlice[2]; val != "One,Two,Three,Four" {
+			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)
+		}
+	})
 }

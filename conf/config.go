@@ -19,7 +19,10 @@ package conf
 */
 
 import (
+	"errors"
+	"go/build"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -29,7 +32,12 @@ import (
 
 // An instance of the viper struct containing the config information. Only made
 // accessible through public functions: GetEnv, SetEnv, etc.
-var envVars viper.Viper
+type config struct {
+	gopath string
+	viper.Viper
+}
+
+var envVars config
 
 // Implementing a state machine that tracks the status of the config ingestion.
 // This state machine should go away when in stage 3.
@@ -74,15 +82,21 @@ func setup(dir string) *viper.Viper {
 */
 func init() {
 
+	gopath := os.Getenv("GOPATH")
+
+	if gopath == "" {
+		gopath = build.Default.GOPATH
+	}
+
 	// Possible config file locations: local and PROD/DEV/TEST respectfully.
 	var locationSlice = []string{
-		"/go/src/github.com/CMSgov/bcda-app/shared_files/decrypted",
+		gopath + "/src/github.com/CMSgov/bcda-app/shared_files/decrypted",
 		// Placeholder for configuration location for TEST/DEV/PROD once available.
 	}
 
 	if success, loc := findEnv(locationSlice[:]); success {
 		// A config file found, set up viper using that location
-		envVars = *setup(loc)
+		envVars = config{gopath, *setup(loc)}
 	} else {
 		// Checked both locations, no config file found
 		state = noConfigFound
@@ -188,5 +202,90 @@ func UnsetEnv(protect *testing.T, key string) error {
 	err = os.Unsetenv(key)
 
 	return err
+
+}
+
+// Gopath function exposes the gopath of the application while keeping it immutable. Golang does
+// not allow const to be strngs, and a var would make it mutable if made public.
+func Gopath() string {
+	return envVars.gopath
+}
+
+/*
+
+    CODE BELOW THIS BLOCK IS EXPERIMENTAL AT THE CURRENT TIME
+
+Checkout function takes a reference to a struct or a slice of string. It will traverse both
+data structures and look up key value pairs in the conf / viper struct by the name of the field
+for structs and string values for the slice. The function works with pointers so no value is
+returned. An error is returned if the wrong data structure is provided.
+*/
+func Checkout(list interface{}) error {
+
+	// Check if the data type provided is supported
+    switch list := list.(type) {
+	case []string:
+
+		for n, str := range list {
+			if val, exists := LookupEnv(str); exists {
+				list[n] = val
+			}
+		}
+
+		return nil
+	// Checking the rest of data types through reflection
+	default:
+		// Get the concrete value from the interface
+		check := reflect.ValueOf(list)
+		// Is it a pointer?
+		if check.Kind() == reflect.Ptr {
+
+			// Is the pointer a reference to a struct?
+			el := check.Elem()
+			if el.Kind() == reflect.Struct {
+
+				// Get ready to walk the fields of the structs
+				num := el.NumField()
+
+				for i := 0; i < num; i++ {
+					field := el.Field(i)
+					if field.CanInterface() && field.IsValid() && field.Type().Name() == "string" {
+						// Look up the variable and add the value if it exists
+						name := el.Type().Field(i).Name
+						// Look up in the conf struct
+						if val, exists := LookupEnv(name); exists {
+							field.SetString(val)
+						}
+						// Is the field of the struct a nested struct?
+					} else if field.Kind() == reflect.Struct {
+						walk(field)
+					}
+				}
+
+				return nil
+			}
+		}
+	}
+
+	return errors.New("The data type provided to Checkout func is not supported.")
+
+}
+
+func walk(field reflect.Value) {
+
+	num := field.NumField()
+
+	for i := 0; i < num; i++ {
+		innerField := field.Field(i)
+		if innerField.CanInterface() && innerField.IsValid() && innerField.Type().Name() == "string" {
+			name := field.Type().Field(i).Name
+			// Look up in the conf struct
+			if val, exists := LookupEnv(name); exists {
+				innerField.SetString(val)
+			}
+		} else if innerField.Kind() == reflect.Struct {
+			walk(innerField)
+		}
+	}
 
 }
