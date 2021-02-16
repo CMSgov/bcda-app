@@ -279,6 +279,22 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			},
 		},
 		{
+			"Drop cclf_beneficiary_xrefs table",
+			func(t *testing.T) {
+				assertTableExists(t, true, db, "cclf_beneficiary_xrefs")
+				migrator.runMigration(t, "8")
+				assertTableExists(t, false, db, "cclf_beneficiary_xrefs")
+			},
+		},
+		{
+			"Create cclf_beneficiary_xrefs table",
+			func(t *testing.T) {
+				assertTableExists(t, false, db, "cclf_beneficiary_xrefs")
+				migrator.runMigration(t, "7")
+				assertTableExists(t, true, db, "cclf_beneficiary_xrefs")
+			},
+		},
+		{
 			"Add deleted_at columns to database tables",
 			func(t *testing.T) {
 				for _, table := range migration7Tables {

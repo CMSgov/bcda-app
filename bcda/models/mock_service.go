@@ -16,6 +16,27 @@ type MockService struct {
 	mock.Mock
 }
 
+// CancelJob provides a mock function with given fields: ctx, jobID
+func (_m *MockService) CancelJob(ctx context.Context, jobID uint) (uint, error) {
+	ret := _m.Called(ctx, jobID)
+
+	var r0 uint
+	if rf, ok := ret.Get(0).(func(context.Context, uint) uint); ok {
+		r0 = rf(ctx, jobID)
+	} else {
+		r0 = ret.Get(0).(uint)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
+		r1 = rf(ctx, jobID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetJobAndKeys provides a mock function with given fields: ctx, jobID
 func (_m *MockService) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error) {
 	ret := _m.Called(ctx, jobID)
