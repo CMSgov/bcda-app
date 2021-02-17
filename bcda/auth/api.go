@@ -39,8 +39,6 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 	token, err := GetProvider().MakeAccessToken(Credentials{ClientID: clientId, ClientSecret: secret})
 	if err != nil {
 		if pe, ok := err.(*autherrors.ProviderError); ok {
-			// TODO: is there a way to create tuples in go?
-			// TODO: even better, the http.responses are constants with a value.  Can I just return http.Error(w, pe.Error(), pe.Code)
 			switch pe.Code {
 			case 400:
 				http.Error(w, pe.Error(), http.StatusBadRequest)
@@ -54,9 +52,14 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 			case 500:
 				http.Error(w, pe.Error(), http.StatusInternalServerError)
 				return
+			default:
+				http.Error(w, "this is the default in the switch", http.StatusInternalServerError)
+				// http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
 			}
 		}
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		// http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		http.Error(w, "should not hit this", http.StatusUnauthorized)
 		return
 	}
 

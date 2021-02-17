@@ -34,6 +34,11 @@ type TokenResponse struct {
 	TokenType   string `json:"token_type"`
 }
 
+type TokenErrorResponse struct {
+	Error       string `json:"error"`
+	Description string `json:"error_description"`
+}
+
 func init() {
 	ssasLogger = logrus.New()
 	ssasLogger.Formatter = &logrus.JSONFormatter{}
@@ -320,7 +325,12 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &autherrors.ProviderError{Code: resp.StatusCode, Message: resp.Status}
+		var te = TokenErrorResponse{}
+		err = json.NewDecoder(resp.Body).Decode(&te)
+		if err != nil {
+			return nil, &autherrors.ProviderError{Code: resp.StatusCode, Message: "could not decode response error"}
+		}
+		return nil, &autherrors.ProviderError{Code: resp.StatusCode, Message: te.Description}
 	}
 
 	var t = TokenResponse{}
