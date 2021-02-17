@@ -6,7 +6,9 @@ import (
 )
 
 type Termination struct {
-	Date                time.Time
+	TerminationDate time.Time // When caller moved from full to limited access
+	CutoffDate      time.Time // When caller moved to no access
+
 	BlacklistType       Blacklist
 	AttributionStrategy Attribution
 	OptOutStrategy      OptOut
@@ -20,7 +22,7 @@ type Termination struct {
 func (t *Termination) AttributionDate() time.Time {
 	switch t.AttributionStrategy {
 	case AttributionHistorical:
-		return t.Date
+		return t.TerminationDate
 	case AttributionLatest:
 		// By returning a zero time, we signal to the caller
 		// that there should not be an upper bound placed on the
@@ -33,14 +35,14 @@ func (t *Termination) AttributionDate() time.Time {
 	}
 }
 
-// OptOutDate returns the date that should be used for opt-outs 
+// OptOutDate returns the date that should be used for opt-outs
 // based on the associated opt-out strategy.
 // The returned date should be used as an upper bound when querying for
 // opt-out data.
 func (t *Termination) OptOutDate() time.Time {
 	switch t.OptOutStrategy {
 	case OptOutHistorical:
-		return t.Date
+		return t.TerminationDate
 	case OptOutLatest:
 		// By returning a zero time, we signal to the caller
 		// that there should not be an upper bound placed on the
@@ -60,7 +62,7 @@ func (t *Termination) OptOutDate() time.Time {
 func (t *Termination) ClaimsDate() time.Time {
 	switch t.ClaimsStrategy {
 	case ClaimsHistorical:
-		return t.Date
+		return t.TerminationDate
 	case ClaimsLatest:
 		// By returning a zero time, we signal to the caller
 		// that there should not be an upper bound placed on the

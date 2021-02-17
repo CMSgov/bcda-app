@@ -397,7 +397,10 @@ func (r *RepositoryTestSuite) TestDuplicateCCLFFileNames() {
 func (r *RepositoryTestSuite) TestACOMethods() {
 	assert := r.Assert()
 
+	now := time.Now().UTC().Round(time.Millisecond)
 	termination := &models.Termination{
+		TerminationDate:     now,
+		CutoffDate:          now.Add(time.Hour).Round(time.Millisecond),
 		BlacklistType:       models.Voluntary,
 		AttributionStrategy: models.AttributionHistorical,
 		OptOutStrategy:      models.OptOutLatest,

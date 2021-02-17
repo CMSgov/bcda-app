@@ -9,16 +9,16 @@ import (
 
 func TestTerminationDates(t *testing.T) {
 	termination := &Termination{
-		Date:                time.Now(),
+		TerminationDate:                time.Now(),
 		AttributionStrategy: AttributionHistorical,
 		OptOutStrategy:      OptOutHistorical,
 		ClaimsStrategy:      ClaimsHistorical,
 	}
 
 	// Historical strategies use the termination date
-	assert.Equal(t, termination.Date, termination.AttributionDate())
-	assert.Equal(t, termination.Date, termination.OptOutDate())
-	assert.Equal(t, termination.Date, termination.ClaimsDate())
+	assert.Equal(t, termination.TerminationDate, termination.AttributionDate())
+	assert.Equal(t, termination.TerminationDate, termination.OptOutDate())
+	assert.Equal(t, termination.TerminationDate, termination.ClaimsDate())
 
 	termination.AttributionStrategy = AttributionLatest
 	termination.OptOutStrategy = OptOutLatest
