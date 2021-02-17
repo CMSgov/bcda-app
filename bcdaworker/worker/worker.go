@@ -330,6 +330,12 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		return true, nil
 	}
 
+	if j.Status == models.JobStatusCancelled {
+		// don't update job, Cancelled is a terminal status
+		log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
+		return true, nil
+	}
+
 	completedCount, err := r.GetJobKeyCount(ctx, jobID)
 	if err != nil {
 		return false, err
@@ -356,21 +362,14 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		if err = os.Remove(staging); err != nil {
 			return false, err
 		}
-
-		// make sure only inProgress jobs get moved to completed (don't update Cancelled jobs)
-		if j.Status != models.JobStatusCancelled {
-			err = r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted)
-			if err != nil {
-				return false, err
-			}
-			// Able to mark job as completed
-			return true, nil
-		} else {
-			// don't update job, Cancelled is a terminal status
-			log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
-			return true, nil
-
+		// TODO: rework so that failed jobs do not get marked complete
+		err = r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted)
+		if err != nil {
+			return false, err
 		}
+		// Able to mark job as completed
+		return true, nil
+
 	}
 	// We still have parts of the job that are not complete
 	return false, nil
