@@ -372,7 +372,12 @@ func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("introspect request failed; %v", resp.StatusCode)
+		var te = TokenErrorResponse{}
+		err = json.NewDecoder(resp.Body).Decode(&te)
+		if err != nil {
+			return nil, &autherrors.ProviderError{Code: resp.StatusCode, Message: "could not decode response error"}
+		}
+		return nil, &autherrors.ProviderError{Code: resp.StatusCode, Message: fmt.Sprintf("introspect request failed; %s", te.Description)}
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
