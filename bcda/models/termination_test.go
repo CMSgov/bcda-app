@@ -9,7 +9,8 @@ import (
 
 func TestTerminationDates(t *testing.T) {
 	termination := &Termination{
-		TerminationDate:                time.Now(),
+		TerminationDate:     time.Now(),
+		CutoffDate:          time.Now().Add(time.Hour),
 		AttributionStrategy: AttributionHistorical,
 		OptOutStrategy:      OptOutHistorical,
 		ClaimsStrategy:      ClaimsHistorical,
