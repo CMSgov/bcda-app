@@ -223,7 +223,7 @@ returned. An error is returned if the wrong data structure is provided.
 func Checkout(list interface{}) error {
 
 	// Check if the data type provided is supported
-    switch list := list.(type) {
+	switch list := list.(type) {
 	case []string:
 
 		for n, str := range list {
@@ -246,12 +246,15 @@ func Checkout(list interface{}) error {
 
 				// Get ready to walk the fields of the structs
 				num := el.NumField()
+				elType := el.Type()
 
 				for i := 0; i < num; i++ {
 					field := el.Field(i)
 					if field.CanInterface() && field.IsValid() && field.Type().Name() == "string" {
 						// Look up the variable and add the value if it exists
-						name := el.Type().Field(i).Name
+						name := elType.Field(i).Name
+						// Tags are supported, but currrently they do nothing
+						_ = elType.Field(i).Tag.Get("conf")
 						// Look up in the conf struct
 						if val, exists := LookupEnv(name); exists {
 							field.SetString(val)
@@ -274,11 +277,13 @@ func Checkout(list interface{}) error {
 func walk(field reflect.Value) {
 
 	num := field.NumField()
+	fieldType := field.Type()
 
 	for i := 0; i < num; i++ {
 		innerField := field.Field(i)
 		if innerField.CanInterface() && innerField.IsValid() && innerField.Type().Name() == "string" {
-			name := field.Type().Field(i).Name
+			name := fieldType.Field(i).Name
+			_ = fieldType.Field(i).Tag.Get("conf")
 			// Look up in the conf struct
 			if val, exists := LookupEnv(name); exists {
 				innerField.SetString(val)
