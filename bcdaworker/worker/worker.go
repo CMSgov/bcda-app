@@ -67,6 +67,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
+		// could also occur if job was marked as cancelled
 		log.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		return errors.Wrap(err, "could not update job status in database")
@@ -100,8 +101,12 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 	// This is only run AFTER completion of all the collection
 	if err != nil {
-		err = w.r.UpdateJobStatus(ctx, job.ID, models.JobStatusFailed)
-		if err != nil {
+		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
+		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
+		if goerrors.Is(err, repository.ErrJobNotUpdated) {
+			log.Warnf("Failed to update job (job cancelled): %s", err)
+			return err
+		} else if err != nil {
 			return err
 		}
 	} else {
@@ -172,6 +177,12 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	failed := false
 
 	for _, beneID := range jobArgs.BeneficiaryIDs {
+		// if the parent job was cancelled, stop processing beneIDs and fail the job
+		if ctx.Err() == context.Canceled {
+			failed = true
+			break
+		}
+
 		errMsg, err := func() (string, error) {
 			id, err := strconv.ParseUint(beneID, 10, 64)
 			if err != nil {
@@ -182,6 +193,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			if err != nil {
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), err
 			}
+
 			b, err := bundleFunc(bene.BlueButtonID)
 			if err != nil {
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), err
@@ -208,6 +220,9 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	}
 
 	if failed {
+		if ctx.Err() == context.Canceled {
+			return "", 0, errors.New(fmt.Sprintf("Parent job %d was cancelled", jobArgs.ID))
+		}
 		return "", 0, errors.New("number of failed requests has exceeded threshold")
 	}
 
@@ -315,6 +330,12 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		return true, nil
 	}
 
+	if j.Status == models.JobStatusCancelled {
+		// don't update job, Cancelled is a terminal status
+		log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
+		return true, nil
+	}
+
 	completedCount, err := r.GetJobKeyCount(ctx, jobID)
 	if err != nil {
 		return false, err
@@ -341,15 +362,15 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		if err = os.Remove(staging); err != nil {
 			return false, err
 		}
-
-		if err := r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted); err != nil {
+		// TODO: rework so that failed jobs do not get marked complete
+		err = r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted)
+		if err != nil {
 			return false, err
 		}
-
 		// Able to mark job as completed
 		return true, nil
-	}
 
+	}
 	// We still have parts of the job that are not complete
 	return false, nil
 }
