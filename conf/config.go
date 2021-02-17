@@ -1,16 +1,19 @@
 package conf
 
 /*
-   This is a package that wraps the viper, a package designed to handle config
-   files, for the BCDA app. This package will go through three different stages.
+   This is a package that wraps viper, a package designed to handle configuration
+   files, for BCDA and BCDAWORKER. This package will go through a number of stages.
 
    1. Local env looks primarily at conf package for variables, but will also look
    in the environment for any variables it is not tracking. PROD/TEST/DEV will
    only look in the environment. (WE ARE HERE NOW)
 
-   2. Local env will only look at conf package. PROD/TEST/DEV will look at both.
+   2. Local env will only look at conf package. PROD/TEST/DEV still the same.
 
    3. All env will look at the conf package.
+
+   4. Make conf package less ubiquitous by implementing some solution that removes
+   all the repeated calls to the conf package for information.
 
    Assumptions:
    1. The configuration file is a env file (can be changed if needed).
@@ -30,16 +33,17 @@ import (
 
 // Private global variable:
 
-// An instance of the viper struct containing the config information. Only made
-// accessible through public functions: GetEnv, SetEnv, etc.
+// config is a conf package struct that wraps the viper struct with one other field
 type config struct {
 	gopath string
 	viper.Viper
 }
 
+// envVars is an uninitialized config struct at this point, and it is private.
+// It is initialized by the init func when the configuration file is found.
 var envVars config
 
-// Implementing a state machine that tracks the status of the config ingestion.
+// Implementing a state machine that tracks the status of the configuration loading.
 // This state machine should go away when in stage 3.
 type configStatus uint8
 
@@ -49,7 +53,7 @@ const (
 	noConfigFound configStatus = 2
 )
 
-// if config file found and loaded, doesn't changed
+// if configuration file found and loaded, state doesn't changed
 var state configStatus = configGood
 
 /*
@@ -82,23 +86,24 @@ func setup(dir string) *viper.Viper {
 */
 func init() {
 
+	// Find the gopath on the machine running the application
 	gopath := os.Getenv("GOPATH")
 
 	if gopath == "" {
 		gopath = build.Default.GOPATH
 	}
 
-	// Possible config file locations: local and PROD/DEV/TEST respectfully.
+	// Possible configuration file locations: local and PROD/DEV/TEST respectfully.
 	var locationSlice = []string{
 		gopath + "/src/github.com/CMSgov/bcda-app/shared_files/decrypted",
 		// Placeholder for configuration location for TEST/DEV/PROD once available.
 	}
 
 	if success, loc := findEnv(locationSlice[:]); success {
-		// A config file found, set up viper using that location
+		// A configuration file found, initialize config struct
 		envVars = config{gopath, *setup(loc)}
 	} else {
-		// Checked both locations, no config file found
+		// Checked both locations, no configuration file found
 		state = noConfigFound
 	}
 
@@ -106,9 +111,11 @@ func init() {
 
 /*
    findEnv is a helper function that will determine what environment the application
-   is running in: local or PROD/TEST/DEV. Each environment should have a distinct
+   is running in: local or PROD/TEST/DEV env. Each environment should have a distinct
    path where the configuration file is located. First it check the local path,
    then the PROD/DEV/TEST. If both not found, defaults to just using environment vars.
+
+   Later iterations of this package will phase out this "defaulting" behavior.
 */
 func findEnv(location []string) (bool, string) {
 
@@ -125,9 +132,10 @@ func findEnv(location []string) (bool, string) {
 
 // GetEnv() is a public function that retrieves values stored in conf. If it does not
 // exist, an empty string (i.e., "") is returned.
+// This function will be phased out in later versions of the package.
 func GetEnv(key string) string {
 
-	// If the config file is loaded and ingested correctly, use the config file.
+	// If the configuration file is loaded correctly, check config struct for info
 	if state == configGood {
 
 		if value := envVars.GetString(key); value != "" {
@@ -136,6 +144,7 @@ func GetEnv(key string) string {
 			// if it is blank, check environment variables. Just in case there are
 			// variables that started off empty and is now available. Once made available,
 			// that variable is immutable for the rest of the runtime.
+			// This functionality will be phased out in later versions of the package
 			v, exist := os.LookupEnv(key)
 			if exist {
 				var _ = SetEnv(&testing.T{}, key, v)
@@ -145,12 +154,13 @@ func GetEnv(key string) string {
 
 	}
 
-	// Config file not good, so default to environment variables.
+	// Configuration file not good, so default to environment variables.
 	return os.Getenv(key)
 
 }
 
 // LookupEnv is a public function, like GetEnv, designed to replace os.LookupEnv() in code-base.
+// This function will most likely become a private function in later versions of the package.
 func LookupEnv(key string) (string, bool) {
 
 	if state == configGood {
@@ -172,15 +182,16 @@ func LookupEnv(key string) (string, bool) {
 // SetEnv is a public function that adds key values into conf. This function should only be used
 // either in this package itself or testing. Protect parameter is type *testing.T, and it's there
 // to ensure developers knowingly use it in the appropriate circumstances.
+// This function will most likely become a private function in later versions of the package.
 func SetEnv(protect *testing.T, key string, value string) error {
 
 	var err error
 
-	// If config is good, change the config in memory
+	// If configuration file is good, change key value in conf struct
 	if state == configGood {
 		envVars.Set(key, value) // This doesn't return anything...
 	} else {
-		// Config is bad, change the EV
+		// Configuration file is bad, change the EV
 		err = os.Setenv(key, value)
 	}
 
@@ -190,10 +201,11 @@ func SetEnv(protect *testing.T, key string, value string) error {
 
 // UnsetEnv is a public function that "unsets" a variable. Like SetEnv, this should only be used
 // either in this package itself or testing.
+// This function will most likely become a private function in later versions of the package.
 func UnsetEnv(protect *testing.T, key string) error {
 	var err error
 
-	// If config is good, change the conf in memory
+	// If configuration file is good
 	if state == configGood {
 		envVars.Set(key, "")
 	}
@@ -205,16 +217,20 @@ func UnsetEnv(protect *testing.T, key string) error {
 
 }
 
+/***********************************************************************************************
+
+    CODE BELOW THIS BLOCK IS EXPERIMENTAL AND ONLY BEING USED INTERNALLY BY CONF PACKAGE
+
+***********************************************************************************************/
+
 // Gopath function exposes the gopath of the application while keeping it immutable. Golang does
-// not allow const to be strngs, and a var would make it mutable if made public.
+// not allow const to be strings, and a var would make it mutable if made public. This could be
+// something the config / viper struct keeps track. For now it's separate.
 func Gopath() string {
 	return envVars.gopath
 }
 
 /*
-
-    CODE BELOW THIS BLOCK IS EXPERIMENTAL AT THE CURRENT TIME
-
 Checkout function takes a reference to a struct or a slice of string. It will traverse both
 data structures and look up key value pairs in the conf / viper struct by the name of the field
 for structs and string values for the slice. The function works with pointers so no value is
@@ -224,6 +240,7 @@ func Checkout(list interface{}) error {
 
 	// Check if the data type provided is supported
 	switch list := list.(type) {
+	// If it's a slice of strings
 	case []string:
 
 		for n, str := range list {
@@ -240,22 +257,25 @@ func Checkout(list interface{}) error {
 		// Is it a pointer?
 		if check.Kind() == reflect.Ptr {
 
-			// Is the pointer a reference to a struct?
+			// Dereference the pointer
 			el := check.Elem()
+
+			// Is the data type a struct?
 			if el.Kind() == reflect.Struct {
 
 				// Get ready to walk the fields of the structs
-				num := el.NumField()
-				elType := el.Type()
+				num := el.NumField() // Number of fields in struct
+				elType := el.Type()  // Used for tags
 
 				for i := 0; i < num; i++ {
 					field := el.Field(i)
+					// Ensure the field is "exportable" and is a type string
 					if field.CanInterface() && field.IsValid() && field.Type().Name() == "string" {
-						// Look up the variable and add the value if it exists
+						// Get the field name
 						name := elType.Field(i).Name
-						// Tags are supported, but currrently they do nothing
+						// Tags are supported, but currently they do nothing
 						_ = elType.Field(i).Tag.Get("conf")
-						// Look up in the conf struct
+						// Look up in the conf struct and set if possible
 						if val, exists := LookupEnv(name); exists {
 							field.SetString(val)
 						}
@@ -274,6 +294,8 @@ func Checkout(list interface{}) error {
 
 }
 
+// walk is a private function used by Checkout to recursively walk a possible nested struct. The code
+// in this function is pretty much identical to Checkout. It's been broke out to simplify Checkout.
 func walk(field reflect.Value) {
 
 	num := field.NumField()
@@ -284,7 +306,6 @@ func walk(field reflect.Value) {
 		if innerField.CanInterface() && innerField.IsValid() && innerField.Type().Name() == "string" {
 			name := fieldType.Field(i).Name
 			_ = fieldType.Field(i).Tag.Get("conf")
-			// Look up in the conf struct
 			if val, exists := LookupEnv(name); exists {
 				innerField.SetString(val)
 			}
