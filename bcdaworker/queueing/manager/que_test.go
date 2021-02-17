@@ -83,7 +83,8 @@ func TestProcessJob(t *testing.T) {
 			t.Fatal("Job not completed in alloted time.")
 			return
 		default:
-			if postgrestest.GetJobByID(t, db, job.ID).Status == models.JobStatusCompleted {
+			currentJob := postgrestest.GetJobByID(t, db, job.ID)
+			if currentJob.Status == models.JobStatusCompleted || currentJob.Status == models.JobStatusCancelled {
 				return
 			}
 			log.Infof("Waiting on job to be completed. Current status %s.", job.Status)
