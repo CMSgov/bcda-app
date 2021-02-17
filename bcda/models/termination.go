@@ -5,6 +5,38 @@ import (
 	"time"
 )
 
+type Blacklist uint8
+
+const (
+	// Involuntary means the caller had access revoked immediately
+	Involuntary Blacklist = iota
+	// Voluntary means the caller had limited access then had their access completely revoked
+	Voluntary
+	// Limited means the caller has limited access to the service
+	Limited
+)
+
+type Attribution uint8
+
+const (
+	AttributionHistorical Attribution = iota
+	AttributionLatest
+)
+
+type OptOut uint8
+
+const (
+	OptOutHistorical OptOut = iota
+	OptOutLatest
+)
+
+type Claims uint8
+
+const (
+	ClaimsHistorical Claims = iota
+	ClaimsLatest
+)
+
 type Termination struct {
 	TerminationDate time.Time // When caller moved from full to limited access
 	CutoffDate      time.Time // When caller moved to no access
@@ -74,35 +106,3 @@ func (t *Termination) ClaimsDate() time.Time {
 		panic(fmt.Sprintf("Unsupported claims strategy %d supplied.", t.ClaimsStrategy))
 	}
 }
-
-type Blacklist uint8
-
-const (
-	// Involuntary means the caller had access revoked immediately
-	Involuntary Blacklist = iota
-	// Voluntary means the caller had limited access then had their access completely revoked
-	Voluntary
-	// Limited means the caller has limited access to the service
-	Limited
-)
-
-type Attribution uint8
-
-const (
-	AttributionHistorical Attribution = iota
-	AttributionLatest
-)
-
-type OptOut uint8
-
-const (
-	OptOutHistorical OptOut = iota
-	OptOutLatest
-)
-
-type Claims uint8
-
-const (
-	ClaimsHistorical Claims = iota
-	ClaimsLatest
-)
