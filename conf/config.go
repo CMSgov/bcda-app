@@ -227,7 +227,7 @@ func UnsetEnv(protect *testing.T, key string) error {
 // not allow const to be strings, and a var would make it mutable if made public. This could be
 // something the config / viper struct keeps track. For now it's separate.
 //func Gopath() string {
-	//return envVars.gopath
+//return envVars.gopath
 //}
 
 /*
@@ -247,8 +247,8 @@ func Checkout(v interface{}) error {
 			if val, exists := LookupEnv(key); exists {
 				v[n] = val
 			} else {
-                v[n] = ""
-            }
+				v[n] = ""
+			}
 		}
 
 		return nil
@@ -265,7 +265,7 @@ func Checkout(v interface{}) error {
 			// Is the data type a struct?
 			if el.Kind() == reflect.Struct {
 
-                // Recursively walk the struct
+				// Recursively walk the struct
 				walk(el)
 
 				return nil
@@ -280,25 +280,25 @@ func Checkout(v interface{}) error {
 // walk is a private function used by Checkout to recursively walk a possible nested struct.
 func walk(field reflect.Value) {
 
-    // Get the number of fields in the struct
+	// Get the number of fields in the struct
 	num := field.NumField()
-    // Used to get Tag information
+	// Used to get Tag information
 	fieldType := field.Type()
 
-    // Traverse the struct
+	// Traverse the struct
 	for i := 0; i < num; i++ {
 		innerField := field.Field(i)
-        // Ensure the field is "exportable" and is a type string
+		// Ensure the field is "exportable" and is a type string
 		if innerField.CanInterface() && innerField.IsValid() && innerField.Type().Name() == "string" {
-            // Get the field name
+			// Get the field name
 			name := fieldType.Field(i).Name
-            // Tags are supported, but currently they do nothing
+			// Tags are supported, but currently they do nothing
 			_ = fieldType.Field(i).Tag.Get("conf")
-            // Look up in the conf struct and set if possible
+			// Look up in the conf struct and set if possible
 			if val, exists := LookupEnv(name); exists {
 				innerField.SetString(val)
 			}
-        // Is the field of the struct a nested struct?
+			// Is the field of the struct a nested struct?
 		} else if innerField.Kind() == reflect.Struct {
 			walk(innerField)
 		}
