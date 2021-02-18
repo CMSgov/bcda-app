@@ -53,13 +53,11 @@ func GetAuthToken(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, pe.Error(), http.StatusInternalServerError)
 				return
 			default:
-				http.Error(w, "this is the default in the switch", http.StatusInternalServerError)
-				// http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 		}
-		// http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		http.Error(w, "should not hit this", http.StatusUnauthorized)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 

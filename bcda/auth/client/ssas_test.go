@@ -33,6 +33,12 @@ type SSASClientTestSuite struct {
 	suite.Suite
 }
 
+type errorResponse struct {
+	respCode        int
+	respStatus      string
+	respDescription string
+}
+
 func (s *SSASClientTestSuite) SetupTest() {
 	origSSASUseTLS = conf.GetEnv("SSAS_USE_TLS")
 	origSSASURL = conf.GetEnv("SSAS_URL")
@@ -279,59 +285,6 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	assert.Equal(s.T(), tokenString, string(respKey))
 }
 
-func CreateTestFailureClient(s *SSASClientTestSuite, respCode int, respStatus, respDescription string) *authclient.SSASClient {
-	router := chi.NewRouter()
-	errorResponse := authclient.TokenErrorResponse{Error: respStatus, Description: respDescription}
-	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(respCode)
-		w.Header().Set("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(errorResponse)
-		if err != nil {
-			log.Fatal(err)
-		}
-	})
-	server := httptest.NewServer(router)
-
-	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
-	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
-
-	client, err := authclient.NewSSASClient()
-	if err != nil {
-		s.FailNow("Failed to create SSAS client", err.Error())
-	}
-
-	return client
-}
-
-func (s *SSASClientTestSuite) TestGetTokenErrors() {
-	tests := []struct {
-		respCode        int
-		respStatus      string
-		respDescription string
-	}{
-		{http.StatusBadRequest, "Bad_request", "bad request"},
-		{http.StatusUnauthorized, "unauthorized", "invalid client secret"},
-		{http.StatusNotFound, "Not_found", "client not found"},
-		{http.StatusInternalServerError, "internal_server_error", "internal server error"},
-	}
-
-	for _, tt := range tests {
-		s.T().Run(string(tt.respStatus), func(t *testing.T) {
-			client := CreateTestFailureClient(s, tt.respCode, tt.respStatus, tt.respDescription)
-
-			_, err := client.GetToken(authclient.Credentials{ClientID: "sad", ClientSecret: "client"})
-
-			assert.NotNil(s.T(), err)
-			assert.Contains(s.T(), err.Error(), fmt.Sprintf("%d - %s", tt.respCode, tt.respDescription))
-			if pe, ok := err.(*autherrors.ProviderError); ok {
-				assert.Equal(s.T(), tt.respCode, pe.Code)
-				assert.Equal(s.T(), tt.respDescription, pe.Message)
-			}
-		})
-	}
-}
-
 func (s *SSASClientTestSuite) TestGetVersionPassing() {
 	router := chi.NewRouter()
 	router.Get("/_version", func(w http.ResponseWriter, r *http.Request) {
@@ -434,6 +387,79 @@ func (s *SSASClientTestSuite) TestVerifyPublicToken() {
 	}
 
 	assert.True(s.T(), ir["active"].(bool))
+}
+
+func CreateGetTokenFailureClient(s *SSASClientTestSuite, res errorResponse, verify bool) *authclient.SSASClient {
+	router := chi.NewRouter()
+	var route string
+	if verify {
+		conf.SetEnv(s.T(), "BCDA_SSAS_CLIENT_ID", "sad")
+		conf.SetEnv(s.T(), "BCDA_SSAS_SECRET", "customer")
+		route = "/introspect"
+	} else {
+		route = "/token"
+	}
+	payload := authclient.TokenErrorResponse{Error: res.respStatus, Description: res.respDescription}
+	router.Post(route, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(res.respCode)
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(payload)
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	return client
+}
+
+func (s *SSASClientTestSuite) TestTokenErrors() {
+	const tokenString = "totallyfake.tokenstringfor.testing"
+	tests := []struct {
+		respCode        int
+		respStatus      string
+		respDescription string
+	}{
+		{http.StatusBadRequest, "Bad_request", "bad request"},
+		{http.StatusUnauthorized, "unauthorized", "invalid client secret"},
+		{http.StatusNotFound, "Not_found", "client not found"},
+		{http.StatusInternalServerError, "internal_server_error", "internal server error"},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(string(tt.respStatus), func(t *testing.T) {
+			res := errorResponse{respCode: tt.respCode, respStatus: tt.respStatus, respDescription: tt.respDescription}
+
+			client := CreateGetTokenFailureClient(s, res, false)
+			_, err := client.GetToken(authclient.Credentials{ClientID: "sad", ClientSecret: "client"})
+
+			assert.NotNil(s.T(), err)
+			assert.Contains(s.T(), err.Error(), fmt.Sprintf("%d - %s", tt.respCode, tt.respDescription))
+			if pe, ok := err.(*autherrors.ProviderError); ok {
+				assert.Equal(s.T(), tt.respCode, pe.Code)
+				assert.Equal(s.T(), tt.respDescription, pe.Message)
+			}
+
+			client = CreateGetTokenFailureClient(s, res, true)
+			_, err = client.VerifyPublicToken(tokenString)
+
+			assert.NotNil(s.T(), err)
+			assert.Contains(s.T(), err.Error(), fmt.Sprintf("%d - introspect request failed; %s", tt.respCode, tt.respDescription))
+			if pe, ok := err.(*autherrors.ProviderError); ok {
+				assert.Equal(s.T(), tt.respCode, pe.Code)
+				assert.Equal(s.T(), "introspect request failed; "+tt.respDescription, pe.Message)
+			}
+		})
+	}
 }
 
 func TestSSASClientTestSuite(t *testing.T) {
