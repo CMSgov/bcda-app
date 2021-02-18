@@ -75,6 +75,13 @@ unit-test-db:
 	# Clean up any existing data to ensure we spin up container in a known state.
 	docker-compose -f docker-compose.test.yml rm -fsv db-unit-test
 	docker-compose -f docker-compose.test.yml up -d db-unit-test
+	
+	# Wait for the database to be ready
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait wait-for-it -h db-unit-test -p 5432 -t 60
+	
+	# Perform migrations to ensure matching schemas
+	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
+	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
 
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
