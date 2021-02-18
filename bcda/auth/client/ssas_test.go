@@ -16,6 +16,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
+	autherrors "github.com/CMSgov/bcda-app/bcda/auth/errors"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -276,6 +277,59 @@ func (s *SSASClientTestSuite) TestGetToken() {
 	}
 
 	assert.Equal(s.T(), tokenString, string(respKey))
+}
+
+func CreateTestFailureClient(s *SSASClientTestSuite, respCode int, respStatus, respDescription string) *authclient.SSASClient {
+	router := chi.NewRouter()
+	errorResponse := authclient.TokenErrorResponse{Error: respStatus, Description: respDescription}
+	router.Post("/token", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(respCode)
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(errorResponse)
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
+	server := httptest.NewServer(router)
+
+	conf.SetEnv(s.T(), "SSAS_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", server.URL)
+	conf.SetEnv(s.T(), "SSAS_USE_TLS", "false")
+
+	client, err := authclient.NewSSASClient()
+	if err != nil {
+		s.FailNow("Failed to create SSAS client", err.Error())
+	}
+
+	return client
+}
+
+func (s *SSASClientTestSuite) TestGetTokenErrors() {
+	tests := []struct {
+		respCode        int
+		respStatus      string
+		respDescription string
+	}{
+		{http.StatusBadRequest, "Bad_request", "bad request"},
+		{http.StatusUnauthorized, "unauthorized", "invalid client secret"},
+		{http.StatusNotFound, "Not_found", "client not found"},
+		{http.StatusInternalServerError, "internal_server_error", "internal server error"},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(string(tt.respStatus), func(t *testing.T) {
+			client := CreateTestFailureClient(s, tt.respCode, tt.respStatus, tt.respDescription)
+
+			_, err := client.GetToken(authclient.Credentials{ClientID: "sad", ClientSecret: "client"})
+
+			assert.NotNil(s.T(), err)
+			assert.Contains(s.T(), err.Error(), fmt.Sprintf("%d - %s", tt.respCode, tt.respDescription))
+			if pe, ok := err.(*autherrors.ProviderError); ok {
+				assert.Equal(s.T(), tt.respCode, pe.Code)
+				assert.Equal(s.T(), tt.respDescription, pe.Message)
+			}
+		})
+	}
 }
 
 func (s *SSASClientTestSuite) TestGetVersionPassing() {
