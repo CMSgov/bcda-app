@@ -464,13 +464,6 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	basePath := "/v2/fhir"
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			repository := &MockRepository{}
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
-			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything).Return(nil, nil)
-			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
-			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
-			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
-			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, defaultRunoutClaimThru, basePath)
 			conditions := RequestConditions{
 				CMSID:     tt.acoID,
 				ACOID:     uuid.NewUUID(),
@@ -478,6 +471,18 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				Since:     tt.expSince,
 				ReqType:   tt.reqType,
 			}
+			
+			repository := &MockRepository{}
+			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
+				Return(&ACO{UUID: conditions.ACOID}, nil)
+			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything).Return(nil, nil)
+			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
+			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
+			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
+			
+			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, defaultRunoutClaimThru, basePath)
+
 			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID

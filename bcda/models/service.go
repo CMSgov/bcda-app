@@ -106,6 +106,11 @@ type runoutParameters struct {
 }
 
 func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error) {
+
+	if err := s.setTimeConstraints(ctx, conditions.ACOID, &conditions); err != nil {
+		return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
+	}
+
 	conditions.fileType = FileTypeDefault
 	switch conditions.ReqType {
 	case Runout:
@@ -374,6 +379,27 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint) ([]*CCL
 	}
 
 	return benes, nil
+}
+
+// setTimeConstraints searches for any time bounds that we should apply on the associated ACO
+func (s *service) setTimeConstraints(ctx context.Context, acoID uuid.UUID, conditions *RequestConditions) error {
+	aco, err := s.repository.GetACOByUUID(ctx, acoID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve aco: %w", err)
+	}
+
+	// If aco is not terminated, then we should not apply any time constraints
+	if aco.TerminationDetails == nil {
+		conditions.attributionDate = time.Time{}
+		conditions.claimsDate = time.Time{}
+		conditions.optOptDate = time.Time{}
+		return nil
+	}
+
+	conditions.attributionDate = aco.TerminationDetails.AttributionDate()
+	conditions.claimsDate = aco.TerminationDetails.ClaimsDate()
+	conditions.optOptDate = aco.TerminationDetails.OptOutDate()
+	return nil
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
