@@ -161,7 +161,7 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKe
 		return nil, nil, err
 	}
 
-	// No need to look up job keys if the
+	// No need to look up job keys if the job is complete
 	if j.Status != JobStatusCompleted {
 		return j, nil, nil
 	}
