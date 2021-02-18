@@ -133,6 +133,11 @@ func (s *ServiceTestSuite) TearDownTest() {
 }
 
 func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
+	conditions := RequestConditions{
+		CMSID:    "cmsID",
+		Since:    time.Now(),
+		fileType: FileTypeDefault,
+	}
 	tests := []struct {
 		name          string
 		cclfFileNew   *CCLFFile
@@ -144,7 +149,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(1),
 			getCCLFFile(2),
 			func(serv *service) error {
-				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), "cmsID", time.Now())
+				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), conditions)
 				return err
 			},
 		},
@@ -153,7 +158,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(3),
 			nil,
 			func(serv *service) error {
-				_, err := serv.getBeneficiaries(context.Background(), "cmsID", FileTypeDefault)
+				_, err := serv.getBeneficiaries(context.Background(), conditions)
 				return err
 			},
 		},
@@ -287,7 +292,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays).Return([]string{suppressedMBI}, nil)
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
-			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(), "cmsID", since)
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
+				RequestConditions{CMSID: "cmsID", Since: since, fileType: FileTypeDefault})
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -384,7 +390,8 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 			}
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
-			benes, err := serviceInstance.getBeneficiaries(context.Background(), "cmsID", tt.fileType)
+			benes, err := serviceInstance.getBeneficiaries(context.Background(),
+				RequestConditions{CMSID: "cmsID", fileType: tt.fileType})
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -464,7 +471,14 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
 			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, defaultRunoutClaimThru, basePath)
-			queJobs, err := serviceInstance.GetQueJobs(context.Background(), tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
+			conditions := RequestConditions{
+				CMSID:     tt.acoID,
+				ACOID:     uuid.NewUUID(),
+				Resources: tt.resourceTypes,
+				Since:     tt.expSince,
+				ReqType:   tt.reqType,
+			}
+			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
