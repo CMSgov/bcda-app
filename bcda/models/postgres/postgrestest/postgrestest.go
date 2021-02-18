@@ -23,65 +23,39 @@ const (
 )
 
 func CreateACO(t *testing.T, db *sql.DB, aco models.ACO) {
-	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
-	if aco.CMSID != nil {
-		ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted").
-			Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted)
-	} else {
-		ib.Cols("uuid", "client_id", "name", "blacklisted").
-			Values(aco.UUID, aco.ClientID, aco.Name, aco.Blacklisted)
-	}
-	query, args := ib.Build()
-	_, err := db.Exec(query, args...)
-	assert.NoError(t, err)
+	r := postgres.NewRepository(db)
+	assert.NoError(t, r.CreateACO(context.Background(), aco))
 }
 
 func GetACOByUUID(t *testing.T, db *sql.DB, uuid uuid.UUID) models.ACO {
-	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name", "blacklisted").
-		From("acos")
-	sb.Where(sb.Equal("uuid", uuid)).Limit(1)
-	query, args := sb.Build()
-
-	var aco models.ACO
-	err := db.QueryRow(query, args...).Scan(&aco.ID, &aco.UUID, &aco.CMSID, &aco.Name, &aco.Blacklisted)
+	r := postgres.NewRepository(db)
+	aco, err := r.GetACOByUUID(context.Background(), uuid)
 	assert.NoError(t, err)
-
-	return aco
+	return *aco
 }
 
 func GetACOByCMSID(t *testing.T, db *sql.DB, cmsID string) models.ACO {
-	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name").
-		From("acos")
-	sb.Where(sb.Equal("cms_id", cmsID)).Limit(1)
-	query, args := sb.Build()
-
-	var aco models.ACO
-	err := db.QueryRow(query, args...).Scan(&aco.ID, &aco.UUID, &aco.CMSID, &aco.Name)
+	r := postgres.NewRepository(db)
+	aco, err := r.GetACOByCMSID(context.Background(), cmsID)
 	assert.NoError(t, err)
-
-	return aco
+	return *aco
 }
 
 func UpdateACO(t *testing.T, db *sql.DB, aco models.ACO) {
-	ub := sqlFlavor.NewUpdateBuilder().Update("acos")
-	ub.Set(
-		ub.Assign("cms_id", aco.CMSID),
-		ub.Assign("name", aco.Name),
-		ub.Assign("client_id", aco.ClientID),
-		ub.Assign("group_id", aco.GroupID),
-		ub.Assign("system_id", aco.SystemID),
-		ub.Assign("alpha_secret", aco.AlphaSecret),
-		ub.Assign("public_key", aco.PublicKey),
-		ub.Assign("blacklisted", aco.Blacklisted),
-	).Where(ub.Equal("uuid", aco.UUID))
-
-	query, args := ub.Build()
-	result, err := db.Exec(query, args...)
-	assert.NoError(t, err)
-
-	count, err := result.RowsAffected()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, count)
+	r := postgres.NewRepository(db)
+	// This should capture ALL fields present in the ACO model
+	fieldsAndValues := map[string]interface{}{
+		"cms_id": aco.CMSID,
+		"name": aco.Name,
+		"client_id": aco.ClientID,
+		"group_id": aco.GroupID,
+		"system_id": aco.SystemID,
+		"alpha_secret": aco.AlphaSecret,
+		"public_key": aco.PublicKey,
+		"blacklisted": aco.Blacklisted,
+		"termination_details": aco.TerminationDetails,
+	}
+	assert.NoError(t, r.UpdateACO(context.Background(), aco.UUID, fieldsAndValues))
 }
 
 // DeleteACO also removes data from any foreign key relations (jobs) before deleting the ACO.

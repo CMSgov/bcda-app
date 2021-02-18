@@ -1,0 +1,5 @@
+FROM debian:buster-slim as wait-for-it
+RUN apt-get update && apt-get install -y "wait-for-it"
+
+FROM debian:buster-slim
+COPY --from=wait-for-it /usr/bin/wait-for-it /usr/bin/wait-for-it

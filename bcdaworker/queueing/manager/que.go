@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
@@ -30,9 +31,10 @@ type queue struct {
 	pool              *pgx.ConnPool
 	healthCheckCancel context.CancelFunc
 
-	worker worker.Worker
-	log    *logrus.Logger
-	queDB  *sql.DB
+	worker     worker.Worker
+	repository repository.Repository
+	log        *logrus.Logger
+	queDB      *sql.DB
 
 	cloudWatchEnv string
 }
@@ -48,8 +50,10 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queu
 
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
+	mainDB := database.GetDbConnection()
 	q := &queue{
-		worker:        worker.NewWorker(database.GetDbConnection()),
+		worker:        worker.NewWorker(mainDB),
+		repository:    postgres.NewRepository(mainDB),
 		log:           log,
 		queDB:         db,
 		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
@@ -96,8 +100,10 @@ func (q *queue) StopQue() {
 }
 
 func (q *queue) processJob(job *que.Job) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+
 	defer q.updateJobQueueCountCloudwatchMetric()
+	defer cancel()
 
 	var jobArgs models.JobEnqueueArgs
 	err := json.Unmarshal(job.Args, &jobArgs)
@@ -106,6 +112,28 @@ func (q *queue) processJob(job *que.Job) error {
 		q.log.Warnf("Failed to deserialize job.Args '%s' %s. Removing queuejob from que.", job.Args, err)
 		return nil
 	}
+
+	// start a goroutine that will periodically check the status of the parent job
+	go func() {
+		for {
+			select {
+			case <-time.After(15 * time.Second):
+				parentCancelled, err := q.isParentJobCancelled(jobArgs.ID)
+
+				if err != nil {
+					q.log.Warnf("Could not determine parent job %d status: %s", jobArgs.ID, err)
+				}
+
+				if parentCancelled {
+					// cancelled context will get picked up by worker.go#writeBBDataToFile
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
@@ -138,6 +166,17 @@ func (q *queue) processJob(job *que.Job) error {
 	}
 
 	return nil
+}
+
+func (q *queue) isParentJobCancelled(jobID int) (bool, error) {
+	ctx := context.Background()
+
+	job, err := q.repository.GetJobByID(ctx, uint(jobID))
+	if err != nil {
+		return false, err
+	}
+
+	return (job.Status == models.JobStatusCancelled), nil
 }
 
 func (q *queue) updateJobQueueCountCloudwatchMetric() {
