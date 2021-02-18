@@ -121,7 +121,7 @@ load-fixtures:
 load-synthetic-cclf-data:
 	docker-compose up -d api
 	docker-compose up -d db
-	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth small medium large extra-large)
+	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
 	for acoSize in $(ACO_SIZES) ; do \
 		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
