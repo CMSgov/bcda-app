@@ -27,7 +27,6 @@ type contextKey struct {
 var (
 	TokenContextKey    = &contextKey{"token"}
 	AuthDataContextKey = &contextKey{"ad"}
-	
 )
 
 // ParseToken puts the decoded token and AuthData value into the request context. Decoded values come from
