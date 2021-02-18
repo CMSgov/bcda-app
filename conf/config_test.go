@@ -281,11 +281,11 @@ func TestCheckout(t *testing.T) {
 		}
 		_ = Checkout(testSlice)
 		fmt.Println(testSlice)
-		if val := testSlice[0]; val != "some" {
-			t.Errorf("Wanted: %v Got: %v", "some", val)
+		if val := testSlice[0]; val != "" {
+			t.Errorf("Wanted: %v Got: %v", "", val)
 		}
-		if val := testSlice[1]; val != "SOME" {
-			t.Errorf("Wanted: %v Got: %v", "SOME", val)
+		if val := testSlice[1]; val != "" {
+			t.Errorf("Wanted: %v Got: %v", "", val)
 		}
 		if val := testSlice[2]; val != "One,Two,Three,Four" {
 			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)

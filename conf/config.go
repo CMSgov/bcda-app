@@ -226,9 +226,9 @@ func UnsetEnv(protect *testing.T, key string) error {
 // Gopath function exposes the gopath of the application while keeping it immutable. Golang does
 // not allow const to be strings, and a var would make it mutable if made public. This could be
 // something the config / viper struct keeps track. For now it's separate.
-func Gopath() string {
-	return envVars.gopath
-}
+//func Gopath() string {
+	//return envVars.gopath
+//}
 
 /*
 Checkout function takes a reference to a struct or a slice of string. It will traverse both
@@ -236,24 +236,26 @@ data structures and look up key value pairs in the conf / viper struct by the na
 for structs and string values for the slice. The function works with pointers so no value is
 returned. An error is returned if the wrong data structure is provided.
 */
-func Checkout(list interface{}) error {
+func Checkout(v interface{}) error {
 
 	// Check if the data type provided is supported
-	switch list := list.(type) {
+	switch v := v.(type) {
 	// If it's a slice of strings
 	case []string:
 
-		for n, str := range list {
-			if val, exists := LookupEnv(str); exists {
-				list[n] = val
-			}
+		for n, key := range v {
+			if val, exists := LookupEnv(key); exists {
+				v[n] = val
+			} else {
+                v[n] = ""
+            }
 		}
 
 		return nil
 	// Checking the rest of data types through reflection
 	default:
 		// Get the concrete value from the interface
-		check := reflect.ValueOf(list)
+		check := reflect.ValueOf(v)
 		// Is it a pointer?
 		if check.Kind() == reflect.Ptr {
 
@@ -263,27 +265,8 @@ func Checkout(list interface{}) error {
 			// Is the data type a struct?
 			if el.Kind() == reflect.Struct {
 
-				// Get ready to walk the fields of the structs
-				num := el.NumField() // Number of fields in struct
-				elType := el.Type()  // Used for tags
-
-				for i := 0; i < num; i++ {
-					field := el.Field(i)
-					// Ensure the field is "exportable" and is a type string
-					if field.CanInterface() && field.IsValid() && field.Type().Name() == "string" {
-						// Get the field name
-						name := elType.Field(i).Name
-						// Tags are supported, but currently they do nothing
-						_ = elType.Field(i).Tag.Get("conf")
-						// Look up in the conf struct and set if possible
-						if val, exists := LookupEnv(name); exists {
-							field.SetString(val)
-						}
-						// Is the field of the struct a nested struct?
-					} else if field.Kind() == reflect.Struct {
-						walk(field)
-					}
-				}
+                // Recursively walk the struct
+				walk(el)
 
 				return nil
 			}
@@ -294,21 +277,28 @@ func Checkout(list interface{}) error {
 
 }
 
-// walk is a private function used by Checkout to recursively walk a possible nested struct. The code
-// in this function is pretty much identical to Checkout. It's been broke out to simplify Checkout.
+// walk is a private function used by Checkout to recursively walk a possible nested struct.
 func walk(field reflect.Value) {
 
+    // Get the number of fields in the struct
 	num := field.NumField()
+    // Used to get Tag information
 	fieldType := field.Type()
 
+    // Traverse the struct
 	for i := 0; i < num; i++ {
 		innerField := field.Field(i)
+        // Ensure the field is "exportable" and is a type string
 		if innerField.CanInterface() && innerField.IsValid() && innerField.Type().Name() == "string" {
+            // Get the field name
 			name := fieldType.Field(i).Name
+            // Tags are supported, but currently they do nothing
 			_ = fieldType.Field(i).Tag.Get("conf")
+            // Look up in the conf struct and set if possible
 			if val, exists := LookupEnv(name); exists {
 				innerField.SetString(val)
 			}
+        // Is the field of the struct a nested struct?
 		} else if innerField.Kind() == reflect.Struct {
 			walk(innerField)
 		}
