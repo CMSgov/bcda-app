@@ -11,7 +11,8 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     steps:
-      - id: go-cache-paths
+      - name: Retrieve Go paths
+        id: go-cache-paths
         run: |
           echo "::set-output name=go-build-cache::$(go env GOCACHE)"
           echo "::set-output name=go-mod-cache::$(go env GOMODCACHE)" 
@@ -22,12 +23,12 @@ jobs:
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Create Go Build Cache
+      - name: Retrieve Go build cache
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
-      - name: Create Go Mod Cache
+      - name: Retrieve Go mod cache
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
