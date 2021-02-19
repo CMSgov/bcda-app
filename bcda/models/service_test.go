@@ -48,6 +48,21 @@ func TestSupportedACOs(t *testing.T) {
 		{"CEC invalid characters", "E999E", false},
 		{"valid CEC", "E9999", true},
 
+		{"CKCC too short", "C999", false},
+		{"CKCC too long", "C99999", false},
+		{"CKCC invalid characters", "C999V", false},
+		{"valid CKCC", "C9999", true},
+
+		{"KCF too short", "K999", false},
+		{"KCF too long", "K99999", false},
+		{"KCF invalid characters", "K999V", false},
+		{"valid KCF", "K9999", true},
+
+		{"DC too short", "D999", false},
+		{"DC too long", "D99999", false},
+		{"DC invalid characters", "D999V", false},
+		{"valid DC", "D9999", true},
+
 		{"Unregistered ACO", "Z1234", false},
 	}
 

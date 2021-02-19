@@ -56,6 +56,9 @@ func (s *CCLFUtilTestSuite) TestImport() {
 		{"test", "dev"},
 		{"test-new-beneficiaries", "dev-cec"},
 		{"test", "dev-ng"},
+		{"test", "dev-ckcc"},
+		{"test-new-beneficiaries", "dev-kcf"},
+		{"test", "dev-dc"},
 	}
 	for _, tt := range tests {
 		for _, fileType := range []models.CCLFFileType{models.FileTypeDefault, models.FileTypeRunout} {
@@ -65,5 +68,24 @@ func (s *CCLFUtilTestSuite) TestImport() {
 					assert.NoError(t, err)
 				})
 		}
+	}
+}
+
+func (s *CCLFUtilTestSuite) TestHasAnyPrefix() {
+	tests := []struct {
+		s        string
+		prefixes []string
+		found    bool
+	}{
+		{"A0001", []string{"A"}, true},
+		{"A0001", []string{"B"}, false},
+		{"Z0001", []string{"X", "Y", "Z"}, true},
+		{"Z0001", []string{"A", "B", "C"}, false},
+	}
+	for _, tt := range tests {
+		s.T().Run(fmt.Sprintf("Test String %s - Prefix(es) %s - Expect to be found %t", tt.s, tt.prefixes, tt.found),
+			func(t *testing.T) {
+				assert.Equal(t, tt.found, hasAnyPrefix(tt.s, tt.prefixes...))
+			})
 	}
 }

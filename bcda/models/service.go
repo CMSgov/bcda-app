@@ -466,7 +466,10 @@ func IsSupportedACO(cmsID string) bool {
 		ssp     = `^A\d{4}$`
 		ngaco   = `^V\d{3}$`
 		cec     = `^E\d{4}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)`
+		ckcc    = `^C\d{4}$`
+		kcf     = `^K\d{4}$`
+		dc      = `^D\d{4}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
