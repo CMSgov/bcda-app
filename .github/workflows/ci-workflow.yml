@@ -1,4 +1,4 @@
-name: "BCDA CI Workflow"
+name: BCDA CI Workflow
 
 on: [push]
 
@@ -8,19 +8,33 @@ env:
 
 jobs:
   build:
-    name: "Build and Test"
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v1
-      - name: "Decrypt secrets"
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build-cache::$(go env GOCACHE)"
+          echo "::set-output name=go-mod-cache::$(go env GOMODCACHE)" 
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: "Build the stack"
+      - name: Create Go Build Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
+      - name: Create Go Mod Cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+      - name: Build the stack
         run: |
           make docker-bootstrap
-      - name: "Run all tests"
+      - name: Run all tests
         run: |
           make test
