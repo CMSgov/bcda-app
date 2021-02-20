@@ -243,6 +243,7 @@ type inner struct {
 
 type outer struct {
 	TEST_LIST  string
+	Test_tag   string `conf:"TEST_LIST"`
 	TestValue1 int
 	inner
 }
@@ -269,6 +270,10 @@ func TestCheckout(t *testing.T) {
 		}
 		if val := testStruct.TestValue2; val != "" {
 			t.Errorf("Wanted: %v Got: %v", "", val)
+		}
+		// Check if tags work
+		if val := testStruct.Test_tag; val != "One,Two,Three,Four" {
+			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)
 		}
 	})
 

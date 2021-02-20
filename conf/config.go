@@ -290,10 +290,14 @@ func walk(field reflect.Value) {
 		innerField := field.Field(i)
 		// Ensure the field is "exportable" and is a type string
 		if innerField.CanInterface() && innerField.IsValid() && innerField.Type().Name() == "string" {
-			// Get the field name
-			name := fieldType.Field(i).Name
-			// Tags are supported, but currently they do nothing
-			_ = fieldType.Field(i).Tag.Get("conf")
+
+			// Tags are supported
+			name := fieldType.Field(i).Tag.Get("conf")
+			// If the Tag is not there, then default to the name of the struct
+			if name == "" {
+				name = fieldType.Field(i).Name
+			}
+
 			// Look up in the conf struct and set if possible
 			if val, exists := LookupEnv(name); exists {
 				innerField.SetString(val)
