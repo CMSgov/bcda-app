@@ -37,16 +37,22 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 		fileName string
 		cmsID    string
 	}{
-		"dev":          {"dev", "A9994"},
-		"dev-cec":      {"dev", "E9994"},
-		"dev-cec-auth": {"dev", "E9996"},
-		"dev-ng":       {"dev", "V994"},
-		"dev-ng-auth":  {"dev", "V996"},
-		"dev-auth":     {"dev", "A9996"},
-		"small":        {"small", "A9990"},
-		"medium":       {"medium", "A9991"},
-		"large":        {"large", "A9992"},
-		"extra-large":  {"extra-large", "A9993"},
+		"dev":           {"dev", "A9994"},
+		"dev-auth":      {"dev", "A9996"},
+		"dev-cec":       {"dev", "E9994"},
+		"dev-cec-auth":  {"dev", "E9996"},
+		"dev-ng":        {"dev", "V994"},
+		"dev-ng-auth":   {"dev", "V996"},
+		"dev-ckcc":      {"dev", "C9994"},
+		"dev-ckcc-auth": {"dev", "C9996"},
+		"dev-kcf":       {"dev", "K9994"},
+		"dev-kcf-auth":  {"dev", "K9996"},
+		"dev-dc":        {"dev", "D9994"},
+		"dev-dc-auth":   {"dev", "D9996"},
+		"small":         {"small", "A9990"},
+		"medium":        {"medium", "A9991"},
+		"large":         {"large", "A9992"},
+		"extra-large":   {"extra-large", "A9993"},
 	}[acoSize]
 
 	if !ok {
@@ -85,7 +91,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 			filename = fmt.Sprintf("T.BCD.%s.%s%s", info.cmsID, file.Name(), suffix)
 		} else if strings.HasPrefix(info.cmsID, "E") {
 			filename = fmt.Sprintf("T.CEC.%s%s", file.Name(), suffix)
-		} else if strings.HasPrefix(info.cmsID, "V") {
+		} else if hasAnyPrefix(info.cmsID, "V", "C", "K", "D") {
 			filename = fmt.Sprintf("T.%s.ACO.%s%s", info.cmsID, file.Name(), suffix)
 		}
 		sourceFilename := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(), filename)
@@ -159,4 +165,13 @@ func addFileToZip(zipWriter *zip.Writer, filename string) error {
 	}
 	_, err = io.Copy(writer, fileToZip)
 	return err
+}
+
+func hasAnyPrefix(s string, prefixes ...string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(s, prefix) {
+			return true
+		}
+	}
+	return false
 }
