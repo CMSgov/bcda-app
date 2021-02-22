@@ -36,7 +36,7 @@ jobs:
       - name: Find files
         run: |
           ls -lhA /home/runner/work/bcda-app/bcda-app/
-          ls -lhA /go/
+          tree -dL 3 /home/runner/
           go env
       - name: Build the stack
         run: |
