@@ -35,8 +35,7 @@ jobs:
           key: ${{ runner.os }}-go-mod-test1${{ hashFiles('**/go.sum') }}
       - name: Find files
         run: |
-          tree -daL 2 $(go env GOCACHE)
-          tree -daL 2 $(go env GOMODCACHE)
+          tree -daL 3 /home/runner/work/
           echo ${{ steps.go-cache-paths.outputs.go-build-cache }}
           echo ${{ steps.go-cache-paths.outputs.go-mod-cache }}
       - name: Build the stack
