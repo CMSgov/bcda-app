@@ -33,6 +33,11 @@ jobs:
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
           key: ${{ runner.os }}-go-mod-test1${{ hashFiles('**/go.sum') }}
+      - name: Find files
+        run: |
+          ls -lhA /home/runner/work/bcda-app/bcda-app/
+          ls -lhA /go/
+          go env
       - name: Build the stack
         run: |
           make docker-bootstrap
