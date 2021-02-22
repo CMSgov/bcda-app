@@ -242,9 +242,10 @@ type inner struct {
 }
 
 type outer struct {
-	TEST_LIST  string
-	Test_tag   string `conf:"TEST_LIST"`
-	TestValue1 int
+	TEST_LIST     string
+	Test_tag      string `conf:"TEST_LIST"`
+	TEST_SOMEPATH string `conf:"-"`
+	TestValue1    int
 	inner
 }
 
@@ -274,6 +275,10 @@ func TestCheckout(t *testing.T) {
 		// Check if tags work
 		if val := testStruct.Test_tag; val != "One,Two,Three,Four" {
 			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)
+		}
+		// Check if explicit skip of tag works
+		if val := testStruct.TEST_SOMEPATH; val != "" {
+			t.Errorf("Wanted: %v Got: %v", "c", val)
 		}
 	})
 

@@ -293,8 +293,11 @@ func walk(field reflect.Value) {
 
 			// Tags are supported
 			name := fieldType.Field(i).Tag.Get("conf")
-			// If the Tag is not there, then default to the name of the struct
-			if name == "" {
+			// If "-" is provided as a tag, explicitly skip that field
+			if name == "-" {
+				continue
+			} else if name == "" {
+				// If the Tag is not there, then default to the name of the struct
 				name = fieldType.Field(i).Name
 			}
 
