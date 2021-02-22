@@ -12,6 +12,8 @@ services:
       # Remaining environment variables defined in ./shared_files/decrypted/local.env
     volumes:
       - ./test_results:/go/src/github.com/CMSgov/bcda-app/test_results
+      - ${GOPATH}/.cache:${HOME}/.cache
+      - ${GOPATH}/pkg/mod:/go/pkg/mod
   db-unit-test:
     image: postgres
     environment:
