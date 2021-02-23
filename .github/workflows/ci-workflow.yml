@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Create Go path for cache
         run: |
-          mkdir $HOME/go
+          mkdir -p $HOME/go/pkg/mod
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
