@@ -31,12 +31,12 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
-          key: ${{ runner.os }}-go-build-test4-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-build-test5-${{ hashFiles('**/go.sum') }}
       - name: Retrieve Go mod cache
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          key: ${{ runner.os }}-go-mod-test4-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-mod-test5-${{ hashFiles('**/go.sum') }}
       - name: Find files
         run: |
           tree -daL 3 /home/runner/go/
