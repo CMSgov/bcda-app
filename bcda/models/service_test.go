@@ -447,7 +447,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	since := time.Now()
 	terminationDetails := &Termination{
 		ClaimsStrategy:  ClaimsHistorical,
-		TerminationDate: time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond),
+		TerminationDate: time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
 
 	type test struct {
