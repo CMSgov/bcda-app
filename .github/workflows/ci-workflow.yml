@@ -30,12 +30,12 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
-          key: ${{ runner.os }}-go-build-test2-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-build-test3-${{ hashFiles('**/go.sum') }}
       - name: Retrieve Go mod cache
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          key: ${{ runner.os }}-go-mod-test2${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-mod-test3${{ hashFiles('**/go.sum') }}
       - name: Find files
         run: |
           tree -daL 3 /home/runner/work/
@@ -44,8 +44,7 @@ jobs:
           echo ${{ steps.go-cache-paths.outputs.go-mod-cache }}
       - name: Build the stack
         run: |
-          go get -u github.com/go-delve/delve/cmd/dlv
-          #make docker-bootstrap
+          make docker-bootstrap
       - name: Run all tests
         run: |
           echo "testing"

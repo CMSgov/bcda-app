@@ -149,6 +149,7 @@ load-fixtures-ssas:
 	docker-compose run ssas sh -c 'main --add-fixture-data'
 
 docker-build:
+	go mod download
 	docker-compose build --force-rm
 	docker-compose -f docker-compose.test.yml build --force-rm
 

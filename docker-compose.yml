@@ -63,7 +63,7 @@ services:
       - USER_GUIDE_LOC=https://stage.bcda.cms.gov
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${GOPATH}/.cache:${HOME}/.cache
+      - ${HOME}/.cache/go-build:/root/.cache/go-build
       - ${GOPATH}/pkg/mod:/go/pkg/mod
     ports:
       - "3000:3000"
@@ -95,7 +95,7 @@ services:
       - BB_CLIENT_PAGE_SIZE=50
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${GOPATH}/.cache:${HOME}/.cache
+      - ${HOME}/.cache/go-build:/root/.cache/go-build
       - ${GOPATH}/pkg/mod:/go/pkg/mod
     depends_on:
       - queue
@@ -153,7 +153,7 @@ services:
       - SSAS_TOKEN_BLACKLIST_CACHE_REFRESH_MINUTES=5
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
-      - ${GOPATH}/.cache:${HOME}/.cache
+      - ${HOME}/.cache/go-build:/root/.cache/go-build
       - ${GOPATH}/pkg/mod:/go/pkg/mod
     ports:
       - "3003:3003"
