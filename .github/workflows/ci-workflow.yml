@@ -44,10 +44,12 @@ jobs:
           echo ${{ steps.go-cache-paths.outputs.go-mod-cache }}
       - name: Build the stack
         run: |
-          make docker-bootstrap
+          go get github.com/derekparker/delve/cmd/dlv
+          #make docker-bootstrap
       - name: Run all tests
         run: |
-          make test
+          echo "testing"
+          #make test
       - name: Find files after build and test
         run: |
           tree -daL 3 /home/runner/work/
