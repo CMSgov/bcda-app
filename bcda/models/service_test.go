@@ -3,6 +3,7 @@ package models
 import (
 	context "context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -148,6 +149,11 @@ func (s *ServiceTestSuite) TearDownTest() {
 }
 
 func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
+	conditions := RequestConditions{
+		CMSID:    "cmsID",
+		Since:    time.Now(),
+		fileType: FileTypeDefault,
+	}
 	tests := []struct {
 		name          string
 		cclfFileNew   *CCLFFile
@@ -159,7 +165,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(1),
 			getCCLFFile(2),
 			func(serv *service) error {
-				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), "cmsID", time.Now())
+				_, _, err := serv.getNewAndExistingBeneficiaries(context.Background(), conditions)
 				return err
 			},
 		},
@@ -168,7 +174,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			getCCLFFile(3),
 			nil,
 			func(serv *service) error {
-				_, err := serv.getBeneficiaries(context.Background(), "cmsID", FileTypeDefault)
+				_, err := serv.getBeneficiaries(context.Background(), conditions)
 				return err
 			},
 		},
@@ -302,7 +308,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays).Return([]string{suppressedMBI}, nil)
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
-			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(), "cmsID", since)
+			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
+				RequestConditions{CMSID: "cmsID", Since: since, fileType: FileTypeDefault})
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -399,7 +406,8 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 			}
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
-			benes, err := serviceInstance.getBeneficiaries(context.Background(), "cmsID", tt.fileType)
+			benes, err := serviceInstance.getBeneficiaries(context.Background(),
+				RequestConditions{CMSID: "cmsID", fileType: tt.fileType})
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -472,14 +480,26 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	basePath := "/v2/fhir"
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
+			conditions := RequestConditions{
+				CMSID:     tt.acoID,
+				ACOID:     uuid.NewUUID(),
+				Resources: tt.resourceTypes,
+				Since:     tt.expSince,
+				ReqType:   tt.reqType,
+			}
+
 			repository := &MockRepository{}
+			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
+				Return(&ACO{UUID: conditions.ACOID}, nil)
 			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
+
 			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, defaultRunoutClaimThru, basePath)
-			queJobs, err := serviceInstance.GetQueJobs(context.Background(), tt.acoID, &Job{ACOID: uuid.NewUUID()}, tt.resourceTypes, tt.expSince, tt.reqType)
+
+			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
 			assert.NoError(t, err)
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
@@ -543,6 +563,18 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 }
 
+func (s *ServiceTestSuite) TestGetQueJobsFailedACOLookup() {
+	conditions := RequestConditions{ACOID: uuid.NewRandom()}
+	repository := &MockRepository{}
+	repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
+		Return(nil, context.DeadlineExceeded)
+	defer repository.AssertExpectations(s.T())
+	service := &service{repository: repository}
+	queJobs, err := service.GetQueJobs(context.Background(), conditions)
+	assert.Nil(s.T(), queJobs)
+	assert.True(s.T(), errors.Is(err, context.DeadlineExceeded), "Root cause should be deadline exceeded")
+}
+
 func (s *ServiceTestSuite) TestCancelJob() {
 	ctx := context.Background()
 	synthErr := fmt.Errorf("Synthetic error for testing.")
@@ -579,6 +611,53 @@ func (s *ServiceTestSuite) TestCancelJob() {
 				assert.NoError(t, err)
 				assert.Equal(t, cancelledJobID, tt.resultJobID)
 			}
+		})
+	}
+}
+
+// TODO: Remove this test once BCDA-4214,4216,4217 are complete.
+// We should be leveraging the time constraints found
+// on the RequestConditions and we shouldn't need this test anymore.
+// Since we do not have any users of it, we need to verify that we set the fields correctly
+func (s *ServiceTestSuite) TestSetTimeConstraints() {
+	termination := &Termination{
+		TerminationDate:     time.Now(),
+		AttributionStrategy: AttributionHistorical,
+		OptOutStrategy:      OptOutHistorical,
+		ClaimsStrategy:      ClaimsLatest,
+	}
+	conditions := RequestConditions{ACOID: uuid.NewRandom()}
+	type dates struct {
+		Attribution time.Time
+		OptOut      time.Time
+		Claims      time.Time
+	}
+	tests := []struct {
+		name     string
+		details  *Termination
+		expDates dates
+	}{
+		// When we do not have termination details, we must assume that there
+		// are no time boundaries.
+		{"NoDetails", nil, dates{time.Time{}, time.Time{}, time.Time{}}},
+		{"DetailsSet", termination, dates{termination.AttributionDate(), termination.OptOutDate(), termination.ClaimsDate()}},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			c1 := conditions
+			aco := &ACO{UUID: conditions.ACOID, TerminationDetails: tt.details}
+			repository := &MockRepository{}
+			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
+				Return(aco, nil)
+			defer repository.AssertExpectations(t)
+			service := &service{repository: repository}
+
+			err := service.setTimeConstraints(context.Background(), aco.UUID, &c1)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expDates.Attribution, c1.attributionDate)
+			assert.Equal(t, tt.expDates.OptOut, c1.optOptDate)
+			assert.Equal(t, tt.expDates.Claims, c1.claimsDate)
 		})
 	}
 }
