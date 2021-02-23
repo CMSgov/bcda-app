@@ -21,6 +21,7 @@ jobs:
       - name: Create Go path for cache
         run: |
           mkdir -p $HOME/go/pkg/mod
+          mkdir -p $HOME/.cache/go-build/
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
