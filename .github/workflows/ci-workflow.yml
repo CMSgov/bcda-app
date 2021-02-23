@@ -44,7 +44,7 @@ jobs:
           echo ${{ steps.go-cache-paths.outputs.go-mod-cache }}
       - name: Build the stack
         run: |
-          go get github.com/derekparker/delve/cmd/dlv
+          go get -u github.com/derekparker/delve/cmd/dlv
           #make docker-bootstrap
       - name: Run all tests
         run: |
