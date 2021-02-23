@@ -48,7 +48,8 @@ jobs:
         run: |
           whoami
           pwd
-          make docker-bootstrap
+          mkdir $HOME/.cache/go-build/00/
+          #make docker-bootstrap
       - name: Run all tests
         run: |
           echo "testing"
