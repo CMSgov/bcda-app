@@ -346,7 +346,19 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 
 	var queJobs []*que.Job
-	queJobs, err = h.Svc.GetQueJobs(ctx, ad.CMSID, &newJob, resourceTypes, since, reqType)
+
+	conditions := models.RequestConditions{
+		ReqType:   reqType,
+		Resources: resourceTypes,
+
+		CMSID: ad.CMSID,
+		ACOID: newJob.ACOID,
+
+		JobID:           newJob.ID,
+		Since:           since,
+		TransactionTime: newJob.TransactionTime,
+	}
+	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
 	if err != nil {
 		log.Error(err)
 		var (
@@ -381,7 +393,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	for _, j := range queJobs {
 		if err = h.qc.Enqueue(j); err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
