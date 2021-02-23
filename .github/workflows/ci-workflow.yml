@@ -11,17 +11,12 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     steps:
-      - name: Retrieve Go paths
-        id: go-cache-paths
-        run: |
-          echo "::set-output name=go-build-cache::$(go env GOCACHE)"
-          echo "::set-output name=go-mod-cache::$(go env GOMODCACHE)" 
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Create Go path for cache
+      - name: Create Go paths for cache
         run: |
-          mkdir -p $HOME/go/pkg/mod
-          mkdir -p $HOME/.cache/go-build/
+          mkdir -p $HOME/work/bcda-app/mod
+          mkdir -p $HOME/work/bcda-app/cache
       - name: Decrypt secrets
         run: |
           echo $VAULT_PW > .vault_password
@@ -37,7 +32,7 @@ jobs:
         uses: actions/cache@v2
         with:
           #path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          path: /home/runner/work/bcda-app/go/pkg/mod
+          path: /home/runner/work/bcda-app/mod
           key: ${{ runner.os }}-go-mod-test3${{ hashFiles('**/go.sum') }}
       - name: Find files
         run: |
@@ -49,8 +44,7 @@ jobs:
         run: |
           whoami
           pwd
-          mkdir $HOME/.cache/go-build/00/
-          #make docker-bootstrap
+          make docker-bootstrap
       - name: Run all tests
         run: |
           echo "testing"
