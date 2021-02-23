@@ -29,12 +29,14 @@ jobs:
       - name: Retrieve Go build cache
         uses: actions/cache@v2
         with:
-          path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
+          #path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
+          path: /home/runner/work/bcda-app/cache
           key: ${{ runner.os }}-go-build-test3-${{ hashFiles('**/go.sum') }}
       - name: Retrieve Go mod cache
         uses: actions/cache@v2
         with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
+          #path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
+          path: /home/runner/work/bcda-app/go/pkg/mod
           key: ${{ runner.os }}-go-mod-test3${{ hashFiles('**/go.sum') }}
       - name: Find files
         run: |
@@ -46,7 +48,7 @@ jobs:
         run: |
           whoami
           pwd
-          #make docker-bootstrap
+          make docker-bootstrap
       - name: Run all tests
         run: |
           echo "testing"
