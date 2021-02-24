@@ -49,4 +49,3 @@ jobs:
       - name: Find files after build and test
         run: |
           tree -daL 3 /home/runner/go/
-
