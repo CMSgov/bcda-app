@@ -128,7 +128,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 			return nil, err
 		}
 		queJobs = append(queJobs, jobs...)
-	case RetrieveNewBeneHistData: // update here
+	case RetrieveNewBeneHistData:
 		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(ctx, conditions)
 		if err != nil {
 			return nil, err
@@ -209,7 +209,6 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-// update here?
 func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*CCLFBeneficiary) (jobs []*que.Job, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
