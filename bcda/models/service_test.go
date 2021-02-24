@@ -450,8 +450,8 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
 
-	sinceAfterTermination := terminationDetails.TerminationDate.Add(10 * 24 * time.Hour).Round(time.Millisecond).UTC()
-	sinceBeforeTermination := terminationDetails.TerminationDate.Add(-10 * 24 * time.Hour).Round(time.Millisecond).UTC()
+	sinceAfterTermination := terminationDetails.TerminationDate.Add(10 * 24 * time.Hour)
+	sinceBeforeTermination := terminationDetails.TerminationDate.Add(-10 * 24 * time.Hour)
 
 	type test struct {
 		name               string

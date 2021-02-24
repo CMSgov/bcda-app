@@ -266,19 +266,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 
 	var (
 		cutoffTime time.Time
-		upperBound time.Time
 	)
-
-	// if the _since parameter is after the attribution date,
-	// we should only return "old" benes; set the upper bound
-	// to the attribution date to avoid returning benes
-	// that were assigned after the attribution date
-	if !conditions.attributionDate.IsZero() &&
-		conditions.Since.After(conditions.attributionDate) {
-		upperBound = conditions.attributionDate
-	} else {
-		upperBound = conditions.Since
-	}
 
 	// only set cutoffTime if there is no attributionDate set
 	if s.stdCutoffDuration > 0 && conditions.attributionDate.IsZero() {
@@ -294,9 +282,9 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	if cclfFileNew == nil {
 		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
-	// will return all benes before since date, or all benes up until the attribution date
+
 	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		time.Time{}, upperBound, FileTypeDefault)
+		time.Time{}, conditions.Since, FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
