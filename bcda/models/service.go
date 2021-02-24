@@ -123,9 +123,12 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 
 	hasAttributionDate := !conditions.attributionDate.IsZero()
 
-	// for default requests, or other requests where the Since parameter is after a
-	// terminated ACO's attribution date, we should only retrieve exisiting benes
-	if conditions.ReqType == DefaultRequest || conditions.ReqType == Runout || hasAttributionDate && conditions.Since.After(conditions.attributionDate) {
+	// for default requests, runouts, or other requests where the Since parameter is
+	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
+	if conditions.ReqType == DefaultRequest ||
+		conditions.ReqType == Runout ||
+		hasAttributionDate && conditions.Since.After(conditions.attributionDate) {
+
 		beneficiaries, err = s.getBeneficiaries(ctx, conditions)
 		if err != nil {
 			return nil, err
