@@ -23,6 +23,7 @@ type Alr struct {
 type AlrMetaData struct {
 	MetaDataID uint // Foreign key
 	ACO        string
+	Timestamp  time.Time
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
