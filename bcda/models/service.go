@@ -123,7 +123,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 
 	hasAttributionDate := !conditions.attributionDate.IsZero()
 
-	// for default requests, runouts, or other requests where the Since parameter is
+	// for default requests, runouts, or any requests where the Since parameter is
 	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
 	if conditions.ReqType == DefaultRequest ||
 		conditions.ReqType == Runout ||
@@ -138,7 +138,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 		if err != nil {
 			return nil, err
 		}
-		// add new beneficaries to the job queue; use a default time value to ensure
+		// add new beneficiaries to the job queue; use a default time value to ensure
 		// that we retrieve the full history for these beneficiaries
 		jobs, err = s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
 		if err != nil {
@@ -149,7 +149,7 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 		return nil, fmt.Errorf("Unsupported RequestType %d", conditions.ReqType)
 	}
 
-	// add existiing beneficaries to the job queue
+	// add existiing beneficiaries to the job queue
 	jobs, err = s.createQueueJobs(conditions, conditions.Since, beneficiaries)
 	if err != nil {
 		return nil, err
