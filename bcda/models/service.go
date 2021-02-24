@@ -106,57 +106,53 @@ type runoutParameters struct {
 }
 
 func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error) {
-
 	if err := s.setTimeConstraints(ctx, conditions.ACOID, &conditions); err != nil {
 		return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
 	}
 
-	conditions.fileType = FileTypeDefault
-	switch conditions.ReqType {
-	case Runout:
+	var (
+		beneficiaries, newBeneficiaries []*CCLFBeneficiary
+		jobs                            []*que.Job
+	)
+
+	if conditions.ReqType == Runout {
 		conditions.fileType = FileTypeRunout
-		fallthrough
-	case DefaultRequest:
-		beneficiaries, err := s.getBeneficiaries(ctx, conditions)
+	} else {
+		conditions.fileType = FileTypeDefault
+	}
+
+	hasAttributionDate := !conditions.attributionDate.IsZero()
+
+	// for default requests, or other requests where the Since parameter is after a
+	// terminated ACO's attribution date, we should only retrieve exisiting benes
+	if conditions.ReqType == DefaultRequest || conditions.ReqType == Runout || hasAttributionDate && conditions.Since.After(conditions.attributionDate) {
+		beneficiaries, err = s.getBeneficiaries(ctx, conditions)
 		if err != nil {
 			return nil, err
 		}
-
-		// add beneficaries to the job queue
-		jobs, err := s.createQueueJobs(conditions, conditions.Since, beneficiaries)
+	} else if conditions.ReqType == RetrieveNewBeneHistData {
+		newBeneficiaries, beneficiaries, err = s.getNewAndExistingBeneficiaries(ctx, conditions)
 		if err != nil {
 			return nil, err
 		}
-		queJobs = append(queJobs, jobs...)
-	case RetrieveNewBeneHistData:
-		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(ctx, conditions)
-		if err != nil {
-			return nil, err
-		}
-
-		var jobs []*que.Job
-
-		// new benes should only be returned if they were added before an ACO's termination date.
-		//
-		if conditions.attributionDate.Before(conditions.Since) {
-			// add new beneficaries to the job queue use a default time value to ensure
-			// that we retrieve the full history for these beneficiaries
-			jobs, err = s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
-			if err != nil {
-				return nil, err
-			}
-			queJobs = append(queJobs, jobs...)
-		}
-
-		// add existing beneficaries to the job queue
-		jobs, err = s.createQueueJobs(conditions, conditions.Since, beneficiaries)
+		// add new beneficaries to the job queue; use a default time value to ensure
+		// that we retrieve the full history for these beneficiaries
+		jobs, err = s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
 		if err != nil {
 			return nil, err
 		}
 		queJobs = append(queJobs, jobs...)
-	default:
+	} else {
 		return nil, fmt.Errorf("Unsupported RequestType %d", conditions.ReqType)
 	}
+
+	// add existiing beneficaries to the job queue
+	jobs, err = s.createQueueJobs(conditions, conditions.Since, beneficiaries)
+	if err != nil {
+		return nil, err
+	}
+
+	queJobs = append(queJobs, jobs...)
 
 	return queJobs, nil
 }
