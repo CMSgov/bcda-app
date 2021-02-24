@@ -128,19 +128,25 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 			return nil, err
 		}
 		queJobs = append(queJobs, jobs...)
-	case RetrieveNewBeneHistData:
+	case RetrieveNewBeneHistData: // update here
 		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(ctx, conditions)
 		if err != nil {
 			return nil, err
 		}
 
-		// add new beneficaries to the job queue use a default time value to ensure
-		// that we retrieve the full history for these beneficiaries
-		jobs, err := s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
-		if err != nil {
-			return nil, err
+		var jobs []*que.Job
+
+		// new benes should only be returned if they were added before an ACO's termination date.
+		//
+		if conditions.attributionDate.Before(conditions.Since) {
+			// add new beneficaries to the job queue use a default time value to ensure
+			// that we retrieve the full history for these beneficiaries
+			jobs, err = s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
+			if err != nil {
+				return nil, err
+			}
+			queJobs = append(queJobs, jobs...)
 		}
-		queJobs = append(queJobs, jobs...)
 
 		// add existing beneficaries to the job queue
 		jobs, err = s.createQueueJobs(conditions, conditions.Since, beneficiaries)
@@ -203,6 +209,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
+// update here?
 func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*CCLFBeneficiary) (jobs []*que.Job, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
@@ -261,23 +268,37 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 
 	var (
 		cutoffTime time.Time
+		upperBound time.Time
 	)
 
-	if s.stdCutoffDuration > 0 {
+	// if the _since parameter is after the attribution date,
+	// we should only return "old" benes; set the upper bound
+	// to the attribution date to avoid returning benes
+	// that were assigned after the attribution date
+	if !conditions.attributionDate.IsZero() &&
+		conditions.Since.After(conditions.attributionDate) {
+		upperBound = conditions.attributionDate
+	} else {
+		upperBound = conditions.Since
+	}
+
+	// only set cutoffTime if there is no attributionDate set
+	if s.stdCutoffDuration > 0 && conditions.attributionDate.IsZero() {
 		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	}
 
+	// will get all benes between cutoff time and now, or all benes up until the attribution date
 	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		cutoffTime, time.Time{}, conditions.fileType)
+		cutoffTime, conditions.attributionDate, conditions.fileType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
 	if cclfFileNew == nil {
 		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
-
+	// will return all benes before since date, or all benes up until the attribution date
 	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		time.Time{}, conditions.Since, FileTypeDefault)
+		time.Time{}, upperBound, FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
@@ -333,14 +354,16 @@ func (s *service) getBeneficiaries(ctx context.Context, conditions RequestCondit
 		cutoffTime time.Time
 	)
 
-	if conditions.fileType == FileTypeDefault && s.stdCutoffDuration > 0 {
-		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
-	} else if conditions.fileType == FileTypeRunout && s.rp.cutoffDuration > 0 {
-		cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
+	// only set a cutoffTime if there is no attributionDate set
+	if conditions.attributionDate.IsZero() {
+		if conditions.fileType == FileTypeDefault && s.stdCutoffDuration > 0 {
+			cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
+		} else if conditions.fileType == FileTypeRunout && s.rp.cutoffDuration > 0 {
+			cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
+		}
 	}
-
 	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum,
-		constants.ImportComplete, cutoffTime, time.Time{}, conditions.fileType)
+		constants.ImportComplete, cutoffTime, conditions.attributionDate, conditions.fileType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
 			conditions.CMSID, conditions.fileType, err.Error())
