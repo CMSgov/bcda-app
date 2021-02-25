@@ -446,6 +446,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 	since := time.Now()
 	terminationDetails := &Termination{
+		ClaimsStrategy:      ClaimsHistorical,
 		AttributionStrategy: AttributionHistorical,
 		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
@@ -471,10 +472,11 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"RunoutRequest", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, nil},
 		{"RunoutRequest with Since", defaultACOID, Runout, since, defaultRunoutClaimThru, benes1, nil, nil},
 		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil, nil},
-		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationDetails},
-		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationDetails},
-		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, benes1, nil, terminationDetails},
-		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationDetails},
+		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, terminationDetails.TerminationDate, benes1, nil, terminationDetails},
+		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, terminationDetails.TerminationDate, benes1, nil, terminationDetails},
+		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, terminationDetails.TerminationDate, benes1, nil, terminationDetails},
+		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, terminationDetails.TerminationDate, append(benes1, benes2...), nil, terminationDetails},
+		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, terminationDetails}, // Runout cutoff takes precedence over termination cutoff
 	}
 
 	// Add all combinations of resource types

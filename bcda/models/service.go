@@ -238,8 +238,13 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 					BBBasePath:      s.bbBasePath,
 				}
 
+				// If the caller made a request for runout data
+				// it takes precedence over any other claims date
+				// that may be applied
 				if conditions.ReqType == Runout {
 					enqueueArgs.ServiceDate = s.rp.claimThruDate
+				} else if !conditions.claimsDate.IsZero() {
+					enqueueArgs.ServiceDate = conditions.claimsDate
 				}
 
 				args, err := json.Marshal(enqueueArgs)
