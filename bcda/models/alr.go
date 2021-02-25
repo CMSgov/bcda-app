@@ -6,7 +6,7 @@ import (
 
 type Alr struct {
 	ID            uint
-	ACOID         uint // Link to AlrMetaData
+	MetaKey       uint // Foreign Key
 	BeneMBI       string
 	BeneHIC       string
 	BeneFirstName string
@@ -15,20 +15,11 @@ type Alr struct {
 	BeneDOB       time.Time
 	BeneDOD       time.Time
 	Timestamp     time.Time
-	KeyValue      string // This stores all the other "violate" fields
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	KeyValue      map[string]string // All "violate" fields
 }
 
 type AlrMetaData struct {
-	MetaDataID uint // Foreign key
-	ACO        string
-	Timestamp  time.Time
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID        uint // Primary Key
+	ACO       string
+	Timestamp time.Time
 }
-
-// Thought in progress...
-/* type CSVContents struct {
-	Dataframe dataframe.DataFrame
-} */
