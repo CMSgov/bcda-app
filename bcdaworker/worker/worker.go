@@ -244,8 +244,9 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 
 	cclfBeneficiary := *bene
 
-	bbID, err := cclfBeneficiary.GetBlueButtonID(bb)
+	bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI)
 	if err != nil {
+		err = fmt.Errorf("failed to get blue button id for ID %d: %w", beneID, err)
 		return cclfBeneficiary, err
 	}
 
