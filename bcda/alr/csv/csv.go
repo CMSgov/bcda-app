@@ -3,10 +3,12 @@ package csv
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/dimchansky/utfbom"
 	"github.com/go-gota/gota/dataframe"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -59,11 +61,14 @@ func ToALR(names ...string) ([]models.Alr, error) {
 }
 
 func toDataFrame(fileName string) (dataframe.DataFrame, error) {
-	f, err := os.Open(fileName)
+	f, err := os.Open(filepath.Clean(fileName))
 	if err != nil {
 		return dataframe.DataFrame{}, fmt.Errorf("failed to open ALR file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		logrus.Warnf("Failed to close file %s", err.Error())
+	}()
 
 	// Trim the Byte Order Marker if it's present
 	// See: https://github.com/golang/go/issues/33887

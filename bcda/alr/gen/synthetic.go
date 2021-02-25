@@ -3,8 +3,8 @@ package gen
 import (
 	"encoding/csv"
 	"fmt"
-	"math/rand"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"time"
@@ -37,14 +37,14 @@ var valuegen map[*regexp.Regexp]func() string = map[*regexp.Regexp]func() string
 		return randomEmpty(less,
 			func() string { return randomDate(minDeathDate, time.Now()) })
 	},
-	regexp.MustCompile("CNTY"):  func() string { return randomdata.City() }, // No county data source
-	regexp.MustCompile("STATE"): func() string { return randomdata.State(randomdata.Large) },
+	regexp.MustCompile("GEO_SSA_CNTY_CD_NAME"): func() string { return randomdata.City() }, // No county data source
+	regexp.MustCompile("GEO_SSA_STATE_NAME"):   func() string { return randomdata.State(randomdata.Large) },
 	// NOTE: This CNTY_CODE will not match up with the provided CNTY/STATE tuple.
 	// Need to integrate valid counties + state codes using the FIPS data set to align
 	// See: https://en.wikipedia.org/wiki/FIPS_county_code
-	regexp.MustCompile("CNTY_CODE"): func() string { return strconv.Itoa(randomdata.Number(1, 52)) + "000" },
-	regexp.MustCompile("VA_TIN"):    func() string { return randomdata.StringNumberExt(1, "", 9) },
-	regexp.MustCompile("VA_NPI"):    func() string { return randomdata.StringNumberExt(1, "", 10) },
+	regexp.MustCompile("STATE_COUNTY_CD"): func() string { return randomdata.StringNumberExt(1, "", 2) + randomdata.StringNumberExt(1, "", 3) },
+	regexp.MustCompile("VA_TIN"):          func() string { return randomdata.StringNumberExt(1, "", 9) },
+	regexp.MustCompile("VA_NPI"):          func() string { return randomdata.StringNumberExt(1, "", 10) },
 	regexp.MustCompile("EnrollFlag"): func() string {
 		return randomEmpty(half,
 			func() string { return strconv.Itoa(randomdata.Number(5)) })
@@ -69,11 +69,16 @@ var valuegen map[*regexp.Regexp]func() string = map[*regexp.Regexp]func() string
 // UpdateCSV uses a random generator to populate fields present in the CSV file referenced by the fileName.
 // It will generate a new row for each MBI returned by the supplier.
 func UpdateCSV(fileName string, supplier mbiSupplier) error {
-	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_APPEND, 0666)
+	file, err := os.OpenFile(filepath.Clean(fileName), os.O_RDWR|os.O_APPEND, 0600)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logrus.Warnf("Failed to close file %s", err.Error())
+		}
+	}()
+
 	r := csv.NewReader(file)
 	w := csv.NewWriter(file)
 	defer w.Flush()
@@ -117,19 +122,17 @@ func UpdateCSV(fileName string, supplier mbiSupplier) error {
 	return nil
 }
 
-type weight int
+type weight float64
 
 const (
-	half    weight = 2
-	quarter weight = 4
-	less    weight = 10
+	half    weight = 0.5
+	quarter weight = 0.25
+	less    weight = 0.1
 )
-
-var randomizer = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // randomEmpty uses the weight value to check if we should return an empty string
 func randomEmpty(w weight, supplier func() string) string {
-	if randomizer.Int31()%int32(w) == 0 {
+	if float64(w) >= randomdata.Decimal(1) {
 		return supplier()
 	}
 	return ""
