@@ -34,16 +34,16 @@ var joinFields = requiredFields
 
 // ToALR reads in a CSV file(s) and unmarshals the data into an ALR model.
 // CSV files are joined based on a predetermined list of fields
-func ToALR(names ...string) ([]models.Alr, error) {
+func ToALR(csvPaths ...string) ([]models.Alr, error) {
 	var mergedDF dataframe.DataFrame
-	for _, name := range names {
-		df, err := toDataFrame(name)
+	for _, csvPath := range csvPaths {
+		df, err := toDataFrame(csvPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create dataframe: %w", err)
 		}
 		if err := validate(df); err != nil {
 			return nil, fmt.Errorf("dataframe from %s is not valid: %w",
-				name, err)
+				csvPath, err)
 		}
 
 		if len(mergedDF.Names()) == 0 {
@@ -60,8 +60,8 @@ func ToALR(names ...string) ([]models.Alr, error) {
 	return toALR(records[0], records[1:])
 }
 
-func toDataFrame(fileName string) (dataframe.DataFrame, error) {
-	f, err := os.Open(filepath.Clean(fileName))
+func toDataFrame(csvPath string) (dataframe.DataFrame, error) {
+	f, err := os.Open(filepath.Clean(csvPath))
 	if err != nil {
 		return dataframe.DataFrame{}, fmt.Errorf("failed to open ALR file: %w", err)
 	}
