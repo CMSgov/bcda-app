@@ -31,7 +31,7 @@ func TestToALRBadInputs(t *testing.T) {
 		file  string
 		cause string
 	}{
-		{"missing_mbi", "required filed 'BENE_MBI_ID' not found"},
+		{"missing_mbi", "required field 'BENE_MBI_ID' not found"},
 		{"empty", "load records: empty DataFrame"},
 		{"wrong_num_fields", "record on line 2: wrong number of fields"},
 		{"not_found", "failed to open ALR file: open testdata/bad/not_found.csv: no such file or directory"},

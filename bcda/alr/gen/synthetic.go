@@ -42,9 +42,11 @@ var valuegen map[*regexp.Regexp]func() string = map[*regexp.Regexp]func() string
 	// NOTE: This CNTY_CODE will not match up with the provided CNTY/STATE tuple.
 	// Need to integrate valid counties + state codes using the FIPS data set to align
 	// See: https://en.wikipedia.org/wiki/FIPS_county_code
-	regexp.MustCompile("STATE_COUNTY_CD"): func() string { return randomdata.StringNumberExt(1, "", 2) + randomdata.StringNumberExt(1, "", 3) },
-	regexp.MustCompile("VA_TIN"):          func() string { return randomdata.StringNumberExt(1, "", 9) },
-	regexp.MustCompile("VA_NPI"):          func() string { return randomdata.StringNumberExt(1, "", 10) },
+	regexp.MustCompile("STATE_COUNTY_CD"): func() string {
+		return fmt.Sprintf("%02d", randomdata.Number(1, 52)) + randomdata.StringNumberExt(1, "", 3)
+	},
+	regexp.MustCompile("VA_TIN"): func() string { return randomdata.StringNumberExt(1, "", 9) },
+	regexp.MustCompile("VA_NPI"): func() string { return randomdata.StringNumberExt(1, "", 10) },
 	regexp.MustCompile("EnrollFlag"): func() string {
 		return randomEmpty(half,
 			func() string { return strconv.Itoa(randomdata.Number(5)) })
