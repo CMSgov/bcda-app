@@ -446,12 +446,14 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 	since := time.Now()
 	terminationHistorical := &Termination{
+		ClaimsStrategy:      ClaimsHistorical,
 		AttributionStrategy: AttributionHistorical,
 		OptOutStrategy:      OptOutHistorical,
 		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
 
 	terminationLatest := &Termination{
+		ClaimsStrategy:      ClaimsLatest,
 		AttributionStrategy: AttributionLatest,
 		OptOutStrategy:      OptOutLatest,
 		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
@@ -484,6 +486,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationHistorical},
 		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, benes1, nil, terminationHistorical},
 		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationHistorical},
+		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, terminationHistorical}, // Runout cutoff takes precedence over termination cutoff
 
 		// Terminated ACOs: latest
 		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationLatest},
