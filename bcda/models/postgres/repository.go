@@ -261,7 +261,7 @@ func (r *Repository) CreateSuppression(ctx context.Context, suppression models.S
 	return err
 }
 
-func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([]string, error) {
+func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int, upperBound time.Time) ([]string, error) {
 	var suppressedMBIs []string
 
 	subSB := sqlFlavor.NewSelectBuilder()
@@ -274,6 +274,10 @@ func (r *Repository) GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([
 	sb := sqlFlavor.NewSelectBuilder().Distinct().Select("s.mbi")
 	sb.From(sb.BuilderAs(subSB, "h")).Join("suppressions s", "s.mbi = h.mbi", "s.effective_date = h.max_date")
 	sb.Where(sb.Equal("preference_indicator", "N"))
+
+	if !upperBound.IsZero() {
+		sb.Where(sb.LessEqualThan("effective_date", upperBound))
+	}
 
 	query, args := sb.Build()
 	rows, err := r.QueryContext(ctx, query, args...)

@@ -34,7 +34,7 @@ type RequestConditions struct {
 	fileType CCLFFileType
 
 	attributionDate time.Time
-	optOptDate      time.Time
+	optOutDate      time.Time
 	claimsDate      time.Time
 }
 
@@ -292,7 +292,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	if cclfFileOld == nil {
 		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW",
 			conditions.CMSID, conditions.Since)
-		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID)
+		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -310,7 +310,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	}
 
 	// Retrieve all of the benes associated with this CCLF file.
-	benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID)
+	benes, err := s.getBenesByFileID(ctx, cclfFileNew.ID, conditions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -358,7 +358,7 @@ func (s *service) getBeneficiaries(ctx context.Context, conditions RequestCondit
 		return nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
-	benes, err := s.getBenesByFileID(ctx, cclfFile.ID)
+	benes, err := s.getBenesByFileID(ctx, cclfFile.ID, conditions)
 	if err != nil {
 		return nil, err
 	}
@@ -370,13 +370,13 @@ func (s *service) getBeneficiaries(ctx context.Context, conditions RequestCondit
 	return benes, nil
 }
 
-func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint) ([]*CCLFBeneficiary, error) {
+func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditions RequestConditions) ([]*CCLFBeneficiary, error) {
 	var (
 		ignoredMBIs []string
 		err         error
 	)
 	if !s.sp.includeSuppressedBeneficiaries {
-		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays)
+		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, conditions.optOutDate)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
 		}
@@ -401,13 +401,13 @@ func (s *service) setTimeConstraints(ctx context.Context, acoID uuid.UUID, condi
 	if aco.TerminationDetails == nil {
 		conditions.attributionDate = time.Time{}
 		conditions.claimsDate = time.Time{}
-		conditions.optOptDate = time.Time{}
+		conditions.optOutDate = time.Time{}
 		return nil
 	}
 
 	conditions.attributionDate = aco.TerminationDetails.AttributionDate()
 	conditions.claimsDate = aco.TerminationDetails.ClaimsDate()
-	conditions.optOptDate = aco.TerminationDetails.OptOutDate()
+	conditions.optOutDate = aco.TerminationDetails.OptOutDate()
 	return nil
 }
 

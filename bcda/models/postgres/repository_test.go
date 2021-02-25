@@ -294,16 +294,25 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 	tests := []struct {
 		name          string
 		expQueryRegex string
+		upperBound    time.Time
 		errToReturn   error
 	}{
 		{
 			"HappyPath",
-			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW()  AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2`,
+			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW() AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2`,
+			time.Time{},
+			nil,
+		},
+		{
+			"WithUpperBound",
+			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW() AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2 AND updated_at <= $3`,
+			time.Now().Add(-1 * 24 * time.Hour),
 			nil,
 		},
 		{
 			"ErrorOnQuery",
 			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW()  AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2`,
+			time.Time{},
 			fmt.Errorf("Some SQL error"),
 		},
 	}
@@ -319,8 +328,14 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 			}()
 			repository := postgres.NewRepository(db)
 
-			// No arguments because the lookback days is embedded in the query
-			query := mock.ExpectQuery(regexp.QuoteMeta(tt.expQueryRegex)).WithArgs("", "N")
+			args := []driver.Value{"", "N"}
+
+			if !tt.upperBound.IsZero() {
+				args = append(args, tt.upperBound)
+			}
+
+			query := mock.ExpectQuery(fmt.Sprintf("^%s$", regexp.QuoteMeta(tt.expQueryRegex))).
+				WithArgs(args...)
 			if tt.errToReturn == nil {
 				rows := sqlmock.NewRows([]string{"mbi"})
 				for _, mbi := range suppressedMBIs {
@@ -331,7 +346,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 				query.WillReturnError(tt.errToReturn)
 			}
 
-			result, err := repository.GetSuppressedMBIs(context.Background(), lookbackDays)
+			result, err := repository.GetSuppressedMBIs(context.Background(), lookbackDays, tt.upperBound)
 			if tt.errToReturn == nil {
 				assert.NoError(t, err)
 				assert.Equal(t, suppressedMBIs, result)
@@ -581,9 +596,13 @@ func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 	fileID := uint(rand.Int31())
+	upperBound := time.Now().Add(-30 * time.Minute)
 	// Effective date is too old
 	tooOld := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
 		EffectiveDt: time.Now().Add(-365 * 24 * time.Hour)}
+	// Effective date is after the upper bound
+	tooNew := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "N",
+		EffectiveDt: time.Now()}
 	// Mismatching preference indicators
 	mismatch1 := models.Suppression{FileID: fileID, MBI: testUtils.RandomMBI(r.T()), PrefIndicator: "Y",
 		EffectiveDt: time.Now().Add(-time.Hour)}
@@ -595,6 +614,7 @@ func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 		EffectiveDt: time.Now().Add(-time.Hour)}
 
 	assert.NoError(r.repository.CreateSuppression(ctx, tooOld))
+	assert.NoError(r.repository.CreateSuppression(ctx, tooNew))
 	assert.NoError(r.repository.CreateSuppression(ctx, mismatch1))
 	assert.NoError(r.repository.CreateSuppression(ctx, mismatch2))
 	assert.NoError(r.repository.CreateSuppression(ctx, suppressed1))
@@ -602,13 +622,14 @@ func (r *RepositoryTestSuite) TestSuppresionsMethods() {
 
 	defer postgrestest.DeleteSuppressionFileByID(r.T(), r.db, fileID)
 
-	mbis, err := r.repository.GetSuppressedMBIs(ctx, 10)
+	mbis, err := r.repository.GetSuppressedMBIs(ctx, 10, upperBound)
 	assert.NoError(err)
 
 	// Since we have other data seeded in this table, we cannot do a len check on the MBIs
 	assert.Contains(mbis, suppressed1.MBI)
 	assert.Contains(mbis, suppressed2.MBI)
 	assert.NotContains(mbis, tooOld.MBI)
+	assert.NotContains(mbis, tooNew.MBI)
 	assert.NotContains(mbis, mismatch1.MBI)
 	assert.NotContains(mbis, mismatch2.MBI)
 }

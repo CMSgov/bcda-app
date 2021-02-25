@@ -198,7 +198,7 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 			err := tt.funcUnderTest(serviceInstance)
 			assert.NoError(t, err)
 
-			repository.AssertNotCalled(t, "GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays)
+			repository.AssertNotCalled(t, "GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, time.Time{})
 		})
 	}
 }
@@ -305,7 +305,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			if tt.cclfFileNew != nil {
 				repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFileNew.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
-			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays).Return([]string{suppressedMBI}, nil)
+			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, time.Time{}).Return([]string{suppressedMBI}, nil)
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
@@ -400,7 +400,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
 
 			suppressedMBI := "suppressedMBI"
-			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays).Return([]string{suppressedMBI}, nil)
+			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, time.Time{}).Return([]string{suppressedMBI}, nil)
 			if tt.cclfFile != nil {
 				repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
@@ -445,13 +445,20 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 
 	since := time.Now()
-	terminationDetails := &Termination{
+	terminationHistorical := &Termination{
 		AttributionStrategy: AttributionHistorical,
+		OptOutStrategy:      OptOutHistorical,
 		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
 
-	sinceAfterTermination := terminationDetails.TerminationDate.Add(10 * 24 * time.Hour)
-	sinceBeforeTermination := terminationDetails.TerminationDate.Add(-10 * 24 * time.Hour)
+	terminationLatest := &Termination{
+		AttributionStrategy: AttributionLatest,
+		OptOutStrategy:      OptOutLatest,
+		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
+	}
+
+	sinceAfterTermination := terminationHistorical.TerminationDate.Add(10 * 24 * time.Hour)
+	sinceBeforeTermination := terminationHistorical.TerminationDate.Add(-10 * 24 * time.Hour)
 
 	type test struct {
 		name               string
@@ -471,10 +478,19 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"RunoutRequest", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, nil},
 		{"RunoutRequest with Since", defaultACOID, Runout, since, defaultRunoutClaimThru, benes1, nil, nil},
 		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil, nil},
-		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationDetails},
-		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationDetails},
-		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, benes1, nil, terminationDetails},
-		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationDetails},
+
+		// Terminated ACOs: historical
+		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationHistorical},
+		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationHistorical},
+		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, benes1, nil, terminationHistorical},
+		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationHistorical},
+
+		// Terminated ACOs: latest
+		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationLatest},
+		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationLatest},
+		// should still receive full benes since Attribution is set to latest
+		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, append(benes1, benes2...), nil, terminationLatest},
+		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationLatest},
 	}
 
 	// Add all combinations of resource types
@@ -493,18 +509,19 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			conditions := RequestConditions{
-				CMSID:     tt.acoID,
-				ACOID:     uuid.NewUUID(),
-				Resources: tt.resourceTypes,
-				Since:     tt.expSince,
-				ReqType:   tt.reqType,
+				CMSID:      tt.acoID,
+				ACOID:      uuid.NewUUID(),
+				Resources:  tt.resourceTypes,
+				Since:      tt.expSince,
+				ReqType:    tt.reqType,
+				optOutDate: time.Time{},
 			}
 
 			repository := &MockRepository{}
 			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
 				Return(&ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
 			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
-			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything).Return(nil, nil)
+			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
@@ -668,7 +685,7 @@ func (s *ServiceTestSuite) TestSetTimeConstraints() {
 			err := service.setTimeConstraints(context.Background(), aco.UUID, &c1)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expDates.Attribution, c1.attributionDate)
-			assert.Equal(t, tt.expDates.OptOut, c1.optOptDate)
+			assert.Equal(t, tt.expDates.OptOut, c1.optOutDate)
 			assert.Equal(t, tt.expDates.Claims, c1.claimsDate)
 		})
 	}
