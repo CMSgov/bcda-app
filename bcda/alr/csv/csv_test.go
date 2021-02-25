@@ -13,7 +13,7 @@ import (
 func TestToALR(t *testing.T) {
 	alrs, err := csv.ToALR("testdata/table1.csv", "testdata/table2.csv")
 	assert.NoError(t, err)
-
+	assert.Len(t, alrs, 5)
 	// Spot check a couple of fields to verify merged data sets match our expectations
 	for _, alr := range alrs {
 		assert.False(t, alr.BeneDOB.IsZero(), "DOB should always be set")

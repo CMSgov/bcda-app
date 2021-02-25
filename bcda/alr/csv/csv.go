@@ -30,6 +30,7 @@ var requiredFields []string = []string{
 }
 
 // Fields that will be used to join multiple dataframes together
+// To merge two rows in a dataframe, all of the required fields must match.
 var joinFields = requiredFields
 
 // ToALR reads in a CSV file(s) and unmarshals the data into an ALR model.
@@ -51,9 +52,6 @@ func ToALR(csvPaths ...string) ([]models.Alr, error) {
 		} else {
 			mergedDF = mergedDF.InnerJoin(df, joinFields...)
 		}
-
-		fmt.Printf("%d %d %d %v\n", df.Ncol(), df.Ncol(), df.Nrow(), df.Names())
-		fmt.Printf("%d %d %d %v\n", mergedDF.Ncol(), mergedDF.Ncol(), mergedDF.Nrow(), mergedDF.Names())
 	}
 
 	records := mergedDF.Records()
@@ -66,8 +64,9 @@ func toDataFrame(csvPath string) (dataframe.DataFrame, error) {
 		return dataframe.DataFrame{}, fmt.Errorf("failed to open ALR file: %w", err)
 	}
 	defer func() {
-		err := f.Close()
-		logrus.Warnf("Failed to close file %s", err.Error())
+		if err := f.Close(); err != nil {
+			logrus.Warnf("Failed to close file %s", err.Error())
+		}
 	}()
 
 	// Trim the Byte Order Marker if it's present
