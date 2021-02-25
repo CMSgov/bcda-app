@@ -305,7 +305,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 		},
 		{
 			"WithUpperBound",
-			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW() AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2 AND updated_at <= $3`,
+			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW() AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2 AND effective_date <= $3`,
 			time.Now().Add(-1 * 24 * time.Hour),
 			nil,
 		},
