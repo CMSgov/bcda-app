@@ -6,14 +6,13 @@ CREATE TABLE IF NOT EXISTS public.alr (
     id bigint NOT NULL,
     -- metakey is the foreign key referencing id in alr_meta
     metakey integer NOT NULL,
-    mbi character(10) NOT NULL,
-    hic character varying(10),
-    firstname character(50),
-    lastname character(50),
-    sex character varying(10),
+    mbi character(11) NOT NULL,
+    hic character(12),
+    firstname character(30),
+    lastname character(40),
+    sex character(1),
     dob timestamp,
     dod timestamp,
-    timestp timestamp with time zone,
     keyvalue bytea
 );
 
@@ -26,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.alr_meta (
     UNIQUE (id, aco, timestp)
 );
 
-CREATE INDEX IF NOT EXISTS idx_metaid_timestamp ON public.alr_meta (aco, timestp);
+CREATE INDEX IF NOT EXISTS idx_metaid_timestamp ON public.alr_meta USING btree (aco, timestp);
 
 ALTER TABLE ONLY public.alr_meta
     ADD CONSTRAINT primary_key_alr_meta PRIMARY KEY (id);
