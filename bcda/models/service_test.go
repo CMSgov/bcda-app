@@ -509,12 +509,11 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			conditions := RequestConditions{
-				CMSID:      tt.acoID,
-				ACOID:      uuid.NewUUID(),
-				Resources:  tt.resourceTypes,
-				Since:      tt.expSince,
-				ReqType:    tt.reqType,
-				optOutDate: time.Time{},
+				CMSID:     tt.acoID,
+				ACOID:     uuid.NewUUID(),
+				Resources: tt.resourceTypes,
+				Since:     tt.expSince,
+				ReqType:   tt.reqType,
 			}
 
 			repository := &MockRepository{}
