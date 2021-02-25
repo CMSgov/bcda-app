@@ -447,8 +447,12 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	since := time.Now()
 	terminationDetails := &Termination{
 		ClaimsStrategy:  ClaimsHistorical,
-		TerminationDate: time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
+		AttributionStrategy: AttributionHistorical,
+		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
+
+	// sinceAfterTermination := terminationDetails.TerminationDate.Add(10 * 24 * time.Hour)
+	// sinceBeforeTermination := terminationDetails.TerminationDate.Add(-10 * 24 * time.Hour)
 
 	type test struct {
 		name               string
@@ -471,6 +475,10 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"TerminatedACO", defaultACOID, DefaultRequest, time.Time{}, terminationDetails.TerminationDate, benes1, nil, terminationDetails},
 		{"TerminatedACONewBenes", defaultACOID, RetrieveNewBeneHistData, since, terminationDetails.TerminationDate, append(benes1, benes2...), nil, terminationDetails},
 		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, terminationDetails}, // Runout cutoff takes precedence over termination cutoff
+		// {"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationDetails},
+		// {"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationDetails},
+		// {"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, benes1, nil, terminationDetails},
+		// {"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationDetails},
 	}
 
 	// Add all combinations of resource types
