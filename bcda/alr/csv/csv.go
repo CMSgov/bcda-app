@@ -88,7 +88,7 @@ func validate(df dataframe.DataFrame) error {
 
 	for _, required := range requiredFields {
 		if _, ok := m[required]; !ok {
-			return fmt.Errorf("required filed '%s' not found", required)
+			return fmt.Errorf("required field '%s' not found", required)
 		}
 	}
 
