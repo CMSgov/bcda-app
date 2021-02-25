@@ -482,10 +482,10 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil, nil},
 
 		// Terminated ACOs: historical
-		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationHistorical},
-		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationHistorical},
-		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, benes1, nil, terminationHistorical},
-		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationHistorical},
+		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, terminationHistorical.ClaimsDate(), benes1, nil, terminationHistorical},
+		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, terminationHistorical.ClaimsDate(), benes1, nil, terminationHistorical},
+		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, terminationHistorical.ClaimsDate(), benes1, nil, terminationHistorical},
+		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, terminationHistorical.ClaimsDate(), append(benes1, benes2...), nil, terminationHistorical},
 		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, terminationHistorical}, // Runout cutoff takes precedence over termination cutoff
 
 		// Terminated ACOs: latest
