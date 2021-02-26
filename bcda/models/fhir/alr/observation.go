@@ -1,6 +1,7 @@
 package alr
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -13,6 +14,7 @@ func getAssignment(alr models.Alr) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Identifier = []*fhirdatatypes.Identifier{mbiIdentifier(alr.BeneMBI)}
 	observation.Code = codeableConcept("Assignment", "Assignment flags, step, newly assigned, etc.")
+	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(alr.BeneMBI)}
 }
 
 func codeableConcept(code, display string) *fhirdatatypes.CodeableConcept {
@@ -23,3 +25,9 @@ func codeableConcept(code, display string) *fhirdatatypes.CodeableConcept {
 				Display: fhirString(display)}},
 	}
 }
+
+func assignmentFields() regexp.Regexp {
+	[]string{"IN_VA_MAX", "CBA_FLAG", "ASSIGNMENT_TYPE", "ASSIGNED_BEFORE", "ASG_STATUS"}
+}
+
+func 
