@@ -172,10 +172,13 @@ func TestGetCMSID(t *testing.T) {
 
 func TestGetCCLFMetadata(t *testing.T) {
 	const (
-		sspID, cecID, ngacoID = "A9999", "E9999", "V999"
-		sspProd, sspTest      = "P.BCD." + sspID, "T.BCD." + sspID
-		cecProd, cecTest      = "P.CEC", "T.CEC"
-		ngacoProd, ngacoTest  = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+		sspID, cecID, ngacoID, ckccID, kcfID, dcID = "A9999", "E9999", "V999", "C9999", "K9999", "D9999"
+		sspProd, sspTest                           = "P.BCD." + sspID, "T.BCD." + sspID
+		cecProd, cecTest                           = "P.CEC", "T.CEC"
+		ngacoProd, ngacoTest                       = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+		ckccProd, ckccTest                         = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
+		kcfProd, kcfTest                           = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
+		dcProd, dcTest                             = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
 	)
 
 	start := time.Now()
@@ -200,6 +203,9 @@ func TestGetCCLFMetadata(t *testing.T) {
 		strings.Replace(gen(sspProd, validTime), "ZC8Y", "ZC8R", 1)
 	cecProdFile, cecTestFile := gen(cecProd, validTime), gen(cecTest, validTime)
 	ngacoProdFile, ngacoTestFile := gen(ngacoProd, validTime), gen(ngacoTest, validTime)
+	ckccProdFile, ckccTestFile := gen(ckccProd, validTime), gen(ckccTest, validTime)
+	kcfProdFile, kcfTestFile := gen(kcfProd, validTime), gen(kcfTest, validTime)
+	dcProdFile, dcTestFile := gen(dcProd, validTime), gen(dcTest, validTime)
 
 	tests := []struct {
 		name     string
@@ -209,6 +215,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 		metadata cclfFileMetadata
 	}{
 		{"Non CCLF0 or CCLF8 file", sspID, "P.A0001.ACO.ZC9Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
+		{"Unsupported CCLF file type", "Z9999", "P.Z0001.ACO.ZC8Y18.D190108.T2355000", "invalid filename", cclfFileMetadata{}},
 		{"Invalid date (no 13th month)", sspID, "T.BCD.A0001.ZC0Y18.D181320.T0001000", "failed to parse date", cclfFileMetadata{}},
 		{"CCLF file too old", sspID, gen(sspProd, startUTC.Add(-365*24*time.Hour)), "out of range", cclfFileMetadata{}},
 		{"CCLF file too new", sspID, gen(sspProd, startUTC.Add(365*24*time.Hour)), "out of range", cclfFileMetadata{}},
@@ -285,6 +292,72 @@ func TestGetCCLFMetadata(t *testing.T) {
 				name:      ngacoTestFile,
 				cclfNum:   8,
 				acoID:     ngacoID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Production CKCC file", ckccID, ckccProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      ckccProdFile,
+				cclfNum:   8,
+				acoID:     ckccID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Test CKCC file", ckccID, ckccTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      ckccTestFile,
+				cclfNum:   8,
+				acoID:     ckccID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Production KCF file", kcfID, kcfProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      kcfProdFile,
+				cclfNum:   8,
+				acoID:     kcfID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Test KCF file", kcfID, kcfTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      kcfTestFile,
+				cclfNum:   8,
+				acoID:     kcfID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Production DC file", dcID, dcProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      dcProdFile,
+				cclfNum:   8,
+				acoID:     dcID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Test DC file", dcID, dcTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      dcTestFile,
+				cclfNum:   8,
+				acoID:     dcID,
 				timestamp: validTime,
 				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,

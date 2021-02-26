@@ -135,10 +135,30 @@ func getCMSID(name string) (string, error) {
 
 func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	var metadata cclfFileMetadata
-	// CCLF filename convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y|R]**.Dyymmdd.Thhmmsst
-	// CCLF filename convention for NGACO:  P.V***.ACO.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
-	// CCLF file name convetion for CEC: P.CEC.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
-	filenameRegexp := regexp.MustCompile(`(T|P)(?:\.BCD)?\.(.*?)(?:\.ACO)?\.ZC(0|8)(Y|R)(\d{2})\.(D\d{6}\.T\d{6})\d`)
+	const (
+		prefix = `(P|T)\.`
+		suffix = `\.ZC(0|8)(Y|R)(\d{2})\.(D\d{6}\.T\d{6})\d`
+		aco    = `(?:\.ACO)`
+		bcd    = `(?:BCD\.)`
+
+		// CCLF filename convention for SSP with BCD identifier: P.BCD.A****.ZC[0|8][Y|R]**.Dyymmdd.Thhmmsst
+		ssp = `A\d{4}`
+		// CCLF filename convention for NGACO: P.V***.ACO.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
+		ngaco = `V\d{3}`
+		// CCLF file name convention for CEC: P.CEC.ZC[0|8][Y|R].Dyymmdd.Thhmmsst
+		cec = `CEC`
+		// CCLF file name convention for CKCC: P.C****.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
+		ckcc = `C\d{4}`
+		// CCLF file name convention for KCF: P.K****.ACO.ZC[0|8](Y|R)**.Dyymmdd.Thhmmsst
+		kcf = `K\d{4}`
+		// CCLF file name convention for DC: P.D****.ACO.ZC(Y|R)**.Dyymmdd.Thhmmsst
+		dc = `D\d{4}`
+
+		pattern = prefix + `(` + bcd + ssp + `|` + ngaco + aco + `|` + cec +
+			`|` + ckcc + aco + `|` + kcf + aco + `|` + dc + aco + `)` + suffix
+	)
+
+	filenameRegexp := regexp.MustCompile(pattern)
 	parts := filenameRegexp.FindStringSubmatch(fileName)
 
 	if len(parts) != 7 {

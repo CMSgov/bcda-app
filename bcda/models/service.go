@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bgentry/que-go"
+	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -17,6 +18,25 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 )
+
+type RequestConditions struct {
+	ReqType   RequestType
+	Resources []string
+
+	CMSID string
+	ACOID uuid.UUID
+
+	JobID           uint
+	Since           time.Time
+	TransactionTime time.Time
+
+	// Fields set in the service
+	fileType CCLFFileType
+
+	attributionDate time.Time
+	optOptDate      time.Time
+	claimsDate      time.Time
+}
 
 type RequestType uint8
 
@@ -31,7 +51,7 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error)
+	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error)
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
 
@@ -85,46 +105,57 @@ type runoutParameters struct {
 	cutoffDuration time.Duration
 }
 
-func (s *service) GetQueJobs(ctx context.Context, cmsID string, job *Job, resourceTypes []string, since time.Time, reqType RequestType) (queJobs []*que.Job, err error) {
-	fileType := FileTypeDefault
-	switch reqType {
-	case Runout:
-		fileType = FileTypeRunout
-		fallthrough
-	case DefaultRequest:
-		beneficiaries, err := s.getBeneficiaries(ctx, cmsID, fileType)
-		if err != nil {
-			return nil, err
-		}
-
-		// add beneficaries to the job queue
-		jobs, err := s.createQueueJobs(job, cmsID, resourceTypes, since, beneficiaries, reqType)
-		if err != nil {
-			return nil, err
-		}
-		queJobs = append(queJobs, jobs...)
-	case RetrieveNewBeneHistData:
-		newBeneficiaries, beneficiaries, err := s.getNewAndExistingBeneficiaries(ctx, cmsID, since)
-		if err != nil {
-			return nil, err
-		}
-
-		// add new beneficaries to the job queue
-		jobs, err := s.createQueueJobs(job, cmsID, resourceTypes, time.Time{}, newBeneficiaries, reqType)
-		if err != nil {
-			return nil, err
-		}
-		queJobs = append(queJobs, jobs...)
-
-		// add existing beneficaries to the job queue
-		jobs, err = s.createQueueJobs(job, cmsID, resourceTypes, since, beneficiaries, reqType)
-		if err != nil {
-			return nil, err
-		}
-		queJobs = append(queJobs, jobs...)
-	default:
-		return nil, fmt.Errorf("Unsupported RequestType %d", reqType)
+func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error) {
+	if err := s.setTimeConstraints(ctx, conditions.ACOID, &conditions); err != nil {
+		return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
 	}
+
+	var (
+		beneficiaries, newBeneficiaries []*CCLFBeneficiary
+		jobs                            []*que.Job
+	)
+
+	if conditions.ReqType == Runout {
+		conditions.fileType = FileTypeRunout
+	} else {
+		conditions.fileType = FileTypeDefault
+	}
+
+	hasAttributionDate := !conditions.attributionDate.IsZero()
+
+	// for default requests, runouts, or any requests where the Since parameter is
+	// after a terminated ACO's attribution date, we should only retrieve exisiting benes
+	if conditions.ReqType == DefaultRequest ||
+		conditions.ReqType == Runout ||
+		hasAttributionDate && conditions.Since.After(conditions.attributionDate) {
+
+		beneficiaries, err = s.getBeneficiaries(ctx, conditions)
+		if err != nil {
+			return nil, err
+		}
+	} else if conditions.ReqType == RetrieveNewBeneHistData {
+		newBeneficiaries, beneficiaries, err = s.getNewAndExistingBeneficiaries(ctx, conditions)
+		if err != nil {
+			return nil, err
+		}
+		// add new beneficiaries to the job queue; use a default time value to ensure
+		// that we retrieve the full history for these beneficiaries
+		jobs, err = s.createQueueJobs(conditions, time.Time{}, newBeneficiaries)
+		if err != nil {
+			return nil, err
+		}
+		queJobs = append(queJobs, jobs...)
+	} else {
+		return nil, fmt.Errorf("Unsupported RequestType %d", conditions.ReqType)
+	}
+
+	// add existiing beneficiaries to the job queue
+	jobs, err = s.createQueueJobs(conditions, conditions.Since, beneficiaries)
+	if err != nil {
+		return nil, err
+	}
+
+	queJobs = append(queJobs, jobs...)
 
 	return queJobs, nil
 }
@@ -135,7 +166,7 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKe
 		return nil, nil, err
 	}
 
-	// No need to look up job keys if the
+	// No need to look up job keys if the job is complete
 	if j.Status != JobStatusCompleted {
 		return j, nil, nil
 	}
@@ -177,7 +208,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string, since time.Time, beneficiaries []*CCLFBeneficiary, reqType RequestType) (jobs []*que.Job, err error) {
+func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*CCLFBeneficiary) (jobs []*que.Job, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
@@ -185,7 +216,7 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 		sinceArg = "gt" + since.Format(time.RFC3339Nano)
 	}
 
-	for _, rt := range resourceTypes {
+	for _, rt := range conditions.Resources {
 		maxBeneficiaries, err := getMaxBeneCount(rt)
 		if err != nil {
 			return nil, err
@@ -198,17 +229,22 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
 				enqueueArgs := JobEnqueueArgs{
-					ID:              int(job.ID),
-					ACOID:           job.ACOID.String(),
+					ID:              int(conditions.JobID),
+					ACOID:           conditions.ACOID.String(),
 					BeneficiaryIDs:  jobIDs,
 					ResourceType:    rt,
 					Since:           sinceArg,
-					TransactionTime: job.TransactionTime,
+					TransactionTime: conditions.TransactionTime,
 					BBBasePath:      s.bbBasePath,
 				}
 
-				if reqType == Runout {
+				// If the caller made a request for runout data
+				// it takes precedence over any other claims date
+				// that may be applied
+				if conditions.ReqType == Runout {
 					enqueueArgs.ServiceDate = s.rp.claimThruDate
+				} else if !conditions.claimsDate.IsZero() {
+					enqueueArgs.ServiceDate = conditions.claimsDate
 				}
 
 				args, err := json.Marshal(enqueueArgs)
@@ -219,7 +255,7 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 				j := &que.Job{
 					Type:     "ProcessJob",
 					Args:     args,
-					Priority: getJobPriority(CMSID, rt, (!since.IsZero() || reqType == RetrieveNewBeneHistData)),
+					Priority: getJobPriority(conditions.CMSID, rt, (!since.IsZero() || conditions.ReqType == RetrieveNewBeneHistData)),
 				}
 
 				jobs = append(jobs, j)
@@ -231,44 +267,51 @@ func (s *service) createQueueJobs(job *Job, CMSID string, resourceTypes []string
 	return jobs, nil
 }
 
-func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, cmsID string, since time.Time) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error) {
+func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error) {
 
 	var (
 		cutoffTime time.Time
 	)
 
-	if s.stdCutoffDuration > 0 {
+	// only set cutoffTime if there is no attributionDate set
+	if s.stdCutoffDuration > 0 && conditions.attributionDate.IsZero() {
 		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
 	}
 
-	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, FileTypeDefault)
+	// will get all benes between cutoff time and now, or all benes up until the attribution date
+	cclfFileNew, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
+		cutoffTime, conditions.attributionDate, conditions.fileType)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", cmsID, err.Error())
+		return nil, nil, fmt.Errorf("failed to get new CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
 	if cclfFileNew == nil {
-		return nil, nil, CCLFNotFoundError{8, cmsID, FileTypeDefault, cutoffTime}
+		return nil, nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
-	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault)
+	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
+		time.Time{}, conditions.Since, FileTypeDefault)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", cmsID, err.Error())
+		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
 
 	if cclfFileOld == nil {
-		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW", cmsID, since)
+		s.logger.Infof("Unable to find CCLF8 File for cmsID %s prior to date: %s; all beneficiaries will be considered NEW",
+			conditions.CMSID, conditions.Since)
 		newBeneficiaries, err = s.getBenesByFileID(ctx, cclfFileNew.ID)
 		if err != nil {
 			return nil, nil, err
 		}
 		if len(newBeneficiaries) == 0 {
-			return nil, nil, fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", cmsID, cclfFileNew.ID)
+			return nil, nil, fmt.Errorf("Found 0 new beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+				conditions.CMSID, cclfFileNew.ID)
 		}
 		return newBeneficiaries, nil, nil
 	}
 
 	oldMBIs, err := s.repository.GetCCLFBeneficiaryMBIs(ctx, cclfFileOld.ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve MBIs for cmsID %s cclfFileID %d %s", cmsID, cclfFileOld.ID, err.Error())
+		return nil, nil, fmt.Errorf("failed to retrieve MBIs for cmsID %s cclfFileID %d %s",
+			conditions.CMSID, cclfFileOld.ID, err.Error())
 	}
 
 	// Retrieve all of the benes associated with this CCLF file.
@@ -277,7 +320,8 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, cmsID stri
 		return nil, nil, err
 	}
 	if len(benes) == 0 {
-		return nil, nil, fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d", cmsID, cclfFileNew.ID)
+		return nil, nil, fmt.Errorf("Found 0 new or existing beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
+			conditions.CMSID, cclfFileNew.ID)
 	}
 
 	// Split the results beteween new and old benes based on the existence of the bene in the old map
@@ -296,24 +340,27 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, cmsID stri
 	return newBeneficiaries, beneficiaries, nil
 }
 
-func (s *service) getBeneficiaries(ctx context.Context, cmsID string, fileType CCLFFileType) ([]*CCLFBeneficiary, error) {
+func (s *service) getBeneficiaries(ctx context.Context, conditions RequestConditions) ([]*CCLFBeneficiary, error) {
 	var (
 		cutoffTime time.Time
 	)
 
-	if fileType == FileTypeDefault && s.stdCutoffDuration > 0 {
-		cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
-	} else if fileType == FileTypeRunout && s.rp.cutoffDuration > 0 {
-		cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
+	// only set a cutoffTime if there is no attributionDate set
+	if conditions.attributionDate.IsZero() {
+		if conditions.fileType == FileTypeDefault && s.stdCutoffDuration > 0 {
+			cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
+		} else if conditions.fileType == FileTypeRunout && s.rp.cutoffDuration > 0 {
+			cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
+		}
 	}
-
-	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, cutoffTime, time.Time{}, fileType)
+	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum,
+		constants.ImportComplete, cutoffTime, conditions.attributionDate, conditions.fileType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CCLF file for cmsID %s fileType %d %s",
-			cmsID, fileType, err.Error())
+			conditions.CMSID, conditions.fileType, err.Error())
 	}
 	if cclfFile == nil {
-		return nil, CCLFNotFoundError{8, cmsID, fileType, cutoffTime}
+		return nil, CCLFNotFoundError{8, conditions.CMSID, conditions.fileType, cutoffTime}
 	}
 
 	benes, err := s.getBenesByFileID(ctx, cclfFile.ID)
@@ -322,7 +369,7 @@ func (s *service) getBeneficiaries(ctx context.Context, cmsID string, fileType C
 	}
 	if len(benes) == 0 {
 		return nil, fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID %s cclfFiledID %d",
-			cmsID, cclfFile.ID)
+			conditions.CMSID, cclfFile.ID)
 	}
 
 	return benes, nil
@@ -346,6 +393,27 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint) ([]*CCL
 	}
 
 	return benes, nil
+}
+
+// setTimeConstraints searches for any time bounds that we should apply on the associated ACO
+func (s *service) setTimeConstraints(ctx context.Context, acoID uuid.UUID, conditions *RequestConditions) error {
+	aco, err := s.repository.GetACOByUUID(ctx, acoID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve aco: %w", err)
+	}
+
+	// If aco is not terminated, then we should not apply any time constraints
+	if aco.TerminationDetails == nil {
+		conditions.attributionDate = time.Time{}
+		conditions.claimsDate = time.Time{}
+		conditions.optOptDate = time.Time{}
+		return nil
+	}
+
+	conditions.attributionDate = aco.TerminationDetails.AttributionDate()
+	conditions.claimsDate = aco.TerminationDetails.ClaimsDate()
+	conditions.optOptDate = aco.TerminationDetails.OptOutDate()
+	return nil
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
@@ -412,7 +480,10 @@ func IsSupportedACO(cmsID string) bool {
 		ssp     = `^A\d{4}$`
 		ngaco   = `^V\d{3}$`
 		cec     = `^E\d{4}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)`
+		ckcc    = `^C\d{4}$`
+		kcf     = `^K\d{4}$`
+		dc      = `^D\d{4}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
