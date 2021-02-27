@@ -43,3 +43,4 @@ jobs:
       - name: Run all tests
         run: |
           make test
+
