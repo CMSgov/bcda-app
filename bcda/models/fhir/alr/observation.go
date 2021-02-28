@@ -10,6 +10,8 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
+var assignment, enrollment, exclusion, riskFlags, riskScores  *regexp.Regexp
+
 func getAssignment(alr models.Alr) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Identifier = []*fhirdatatypes.Identifier{mbiIdentifier(alr.BeneMBI)}
