@@ -37,6 +37,9 @@ jobs:
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
           key: ${{ runner.os }}-go-mod-temp-${{ hashFiles('**/go.sum') }}
+      - name: Download dependencies
+        run: |
+          go mod download
       - name: Build the stack
         run: |
           make docker-bootstrap
