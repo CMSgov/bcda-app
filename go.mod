@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/aws/aws-sdk-go v1.28.8
 	github.com/bgentry/que-go v1.0.1
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
@@ -12,8 +13,10 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
+	github.com/dimchansky/utfbom v1.1.1
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
+	github.com/go-gota/gota v0.10.1
 	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f
 	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
