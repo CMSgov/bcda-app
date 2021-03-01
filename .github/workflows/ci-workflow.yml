@@ -31,12 +31,12 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
-          key: ${{ runner.os }}-go-build-temp-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-build-test6-${{ hashFiles('**/go.sum') }}
       - name: Retrieve Go mod cache
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          key: ${{ runner.os }}-go-mod-temp-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-mod-test6-${{ hashFiles('**/go.sum') }}
       - name: Download dependencies
         run: |
           go mod download
