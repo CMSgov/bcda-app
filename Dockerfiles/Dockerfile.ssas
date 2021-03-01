@@ -16,8 +16,6 @@ RUN go get github.com/mattn/go-colorable
 # the config files are placed in the expected spot
 RUN git clone https://github.com/CMSgov/bcda-ssas-app.git
 WORKDIR /go/bcda-ssas-app
-COPY go.mod go.sum ./
-RUN go mod download
 RUN go install ./ssas/service/main
 # Make sure we are in the directory to ensure the config files are resolved as expected
 WORKDIR /go/bcda-ssas-app/ssas
