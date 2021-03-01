@@ -9,8 +9,6 @@ RUN go get github.com/howeyc/fsnotify
 RUN go get github.com/mattn/go-colorable
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
-COPY go.mod go.sum ./
-RUN go mod download
 COPY . .
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
