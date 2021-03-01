@@ -31,25 +31,19 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
-          key: ${{ runner.os }}-go-build-test6-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-build-20210301-1-${{ hashFiles('**/go.sum') }}
       - name: Retrieve Go mod cache
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          key: ${{ runner.os }}-go-mod-test6-${{ hashFiles('**/go.sum') }}
-      - name: Find files before download
-        run: |
-          tree -daL 3 ${{ steps.go-cache-paths.outputs.go-mod-cache }}
+          key: ${{ runner.os }}-go-mod-20210301-1-${{ hashFiles('**/go.sum') }}
       - name: Download dependencies
         run: |
           go mod download
-      - name: Find files after download
-        run: |
-          tree -daL 3 ${{ steps.go-cache-paths.outputs.go-mod-cache }}
       - name: Build the stack
         run: |
           make docker-bootstrap
       - name: Run all tests
         run: |
-          #make test
+          make test
 
