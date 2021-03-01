@@ -14,7 +14,6 @@ type Alr struct {
 	BeneSex       string
 	BeneDOB       time.Time
 	BeneDOD       time.Time
-	Timestamp     time.Time
 	KeyValue      map[string]string // All "violate" fields
 }
 
