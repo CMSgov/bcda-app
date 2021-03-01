@@ -12,6 +12,16 @@ import (
 
 var assignment, enrollment, exclusion, riskFlags, riskScores  *regexp.Regexp
 
+func init() {
+	assignment = regexp.MustCompile(`^(IN_VA_MAX)|(CBA_FLAG)|(ASSIGNMENT_TYPE)|(ASSIGNED_BEFORE)|(ASG_STATUS)$`)
+	enrollment = regexp.MustCompile(`^EnrollFlag\d+$`)
+	exclusion = regexp.MustCompile(`^(EXCLUDED)|(DECEASED_EXCLUDED)|(MISSING_ID_EXCLUDED)|(PART_A_B_ONLY_EXCLUDED)|` +
+	`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)$`)
+	riskFlags = regexp.MustCompile(`^(HCC_version)|(HCC_COL_\d+)$`)
+	riskScores = regexp.MustCompile(`^(BENE_RSK_R_SCRE_0{1,9})|(BENE_RSK_R_SCRE_0{1,9})$`)
+
+}
+
 func getAssignment(alr models.Alr) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Identifier = []*fhirdatatypes.Identifier{mbiIdentifier(alr.BeneMBI)}
