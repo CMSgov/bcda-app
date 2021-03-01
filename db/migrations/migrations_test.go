@@ -104,6 +104,8 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 	migration7Tables := []string{"acos", "cclf_beneficiaries", "cclf_files",
 		"job_keys", "jobs", "suppressions", "suppression_files"}
 
+	migration10Tables := []string{"alr", "alr_meta"}
+
 	// Tests should begin with "up" migrations, in order, followed by "down" migrations in reverse order
 	tests := []struct {
 		name  string
@@ -243,6 +245,24 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				migrator.runMigration(t, "9")
 				assertColumnExists(t, true, db, "acos", "termination_details")
 				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
+			},
+		},
+		{
+			"Add ALR tables",
+			func(t *testing.T) {
+				migrator.runMigration(t, "10")
+				for _, table := range migration10Tables {
+					assertTableExists(t, true, db, table)
+				}
+			},
+		},
+		{
+			"Removing ALR tables",
+			func(t *testing.T) {
+				migrator.runMigration(t, "9")
+				for _, table := range migration10Tables {
+					assertTableExists(t, false, db, table)
+				}
 			},
 		},
 		{
