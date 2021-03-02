@@ -1,0 +1,148 @@
+HCC Version,HCC Column Position,HCC Flag,HCC Description 
+V12,HCC_COL_1,HCC1,HIV/AIDS
+V12,HCC_COL_2,HCC2,Septicemia/Shock
+V12,HCC_COL_3,HCC5,Opportunistic Infections
+V12,HCC_COL_4,HCC7,Metastatic Cancer and Acute Leukemia
+V12,HCC_COL_5,HCC8,Lung, Upper Digestive Tract, and Other Severe Cancers
+V12,HCC_COL_6,HCC9,Lymphatic, Head and Neck, Brain, and Other Major Cancers
+V12,HCC_COL_7,HCC10,Breast, Prostate, Colorectal and Other Cancers and Tumors
+V12,HCC_COL_8,HCC15,Diabetes with Renal or Peripheral Circulatory Manifestation
+V12,HCC_COL_9,HCC16,Diabetes with Neurologic or Other Specified Manifestation
+V12,HCC_COL_10,HCC17,Diabetes with Acute Complications
+V12,HCC_COL_11,HCC18,Diabetes with Ophthalmologic or Unspecified Manifestation
+V12,HCC_COL_12,HCC19,Diabetes without Complication
+V12,HCC_COL_13,HCC21,Protein-Calorie Malnutrition
+V12,HCC_COL_14,HCC25,End-Stage Liver Disease
+V12,HCC_COL_15,HCC26,Cirrhosis of Liver
+V12,HCC_COL_16,HCC27,Chronic Hepatitis
+V12,HCC_COL_17,HCC31,Intestinal Obstruction/Perforation
+V12,HCC_COL_18,HCC32,Pancreatic Disease
+V12,HCC_COL_19,HCC33,Inflammatory Bowel Disease
+V12,HCC_COL_20,HCC37,Bone/Joint/Muscle Infections/Necrosis
+V12,HCC_COL_21,HCC38,Rheumatoid Arthritis and Inflammatory Connective Tissue Disease
+V12,HCC_COL_22,HCC44,Severe Hematological Disorders
+V12,HCC_COL_23,HCC45,Disorders of Immunity
+V12,HCC_COL_24,HCC51,Drug/Alcohol Psychosis
+V12,HCC_COL_25,HCC52,Drug/Alcohol Dependence
+V12,HCC_COL_26,HCC54,Schizophrenia
+V12,HCC_COL_27,HCC55,Major Depressive, Bipolar, and Paranoid Disorders
+V12,HCC_COL_28,HCC67,Quadriplegia, Other Extensive Paralysis
+V12,HCC_COL_29,HCC68,Paraplegia
+V12,HCC_COL_30,HCC69,Spinal Cord Disorders/Injuries
+V12,HCC_COL_31,HCC70,Muscular Dystrophy
+V12,HCC_COL_32,HCC71,Polyneuropathy
+V12,HCC_COL_33,HCC72,Multiple Sclerosis
+V12,HCC_COL_34,HCC73,Parkinson's and Huntington's Diseases
+V12,HCC_COL_35,HCC74,Seizure Disorders and Convulsions
+V12,HCC_COL_37,HCC77,Respirator Dependence/Tracheostomy Status
+V12,HCC_COL_38,HCC78,Respiratory Arrest
+V12,HCC_COL_39,HCC79,Cardio-Respiratory Failure and Shock
+V12,HCC_COL_40,HCC80,Congestive Heart Failure
+V12,HCC_COL_41,HCC81,Acute Myocardial Infarction
+V12,HCC_COL_42,HCC82,Unstable Angina and Other Acute Ischemic Heart Disease
+V12,HCC_COL_43,HCC83,Angina Pectoris/Old Myocardial Infarction
+V12,HCC_COL_44,HCC92,Specified Heart Arrhythmias
+V12,HCC_COL_45,HCC95,Cerebral Hemorrhage
+V12,HCC_COL_46,HCC96,Ischemic or Unspecified Stroke
+V12,HCC_COL_47,HCC100,Hemiplegia/Hemiparesis
+V12,HCC_COL_48,HCC101,Cerebral Palsy and Other Paralytic Syndromes
+V12,HCC_COL_49,HCC104,Vascular Disease with Complications
+V12,HCC_COL_50,HCC105,Vascular Disease
+V12,HCC_COL_51,HCC107,Cystic Fibrosis
+V12,HCC_COL_52,HCC108,Chronic Obstructive Pulmonary Disease
+V12,HCC_COL_53,HCC111,Aspiration and Specified Bacterial Pneumonias
+V12,HCC_COL_54,HCC112,Pneumococcal Pneumonia, Empyema, Lung Abscess
+V12,HCC_COL_55,HCC119,Proliferative Diabetic Retinopathy and Vitreous Hemorrhage
+V12,HCC_COL_56,HCC130,Dialysis Status
+V12,HCC_COL_57,HCC131,Renal Failure
+V12,HCC_COL_58,HCC132,Nephritis
+V12,HCC_COL_59,HCC148,Decubitus Ulcer of Skin
+V12,HCC_COL_60,HCC149,Chronic Ulcer of Skin, Except Decubitus
+V12,HCC_COL_61,HCC150,Extensive Third-Degree Burns
+V12,HCC_COL_62,HCC154,Severe Head Injury
+V12,HCC_COL_63,HCC155,Major Head Injury
+V12,HCC_COL_64,HCC157,Vertebral Fractures without Spinal Cord Injury
+V12,HCC_COL_65,HCC158,Hip Fracture/Dislocation
+V12,HCC_COL_66,HCC161,Traumatic Amputation
+V12,HCC_COL_67,HCC164,Major Complications of Medical Care and Trauma
+V12,HCC_COL_68,HCC174,Major Organ Transplant Status
+V12,HCC_COL_69,HCC176,Artificial Openings for Feeding or Elimination
+V12,HCC_COL_70,HCC177,Amputation Status, Lower Limb/Amputation Complications
+V22,HCC_COL_1,HCC1,HIV/AIDS
+V22,HCC_COL_2,HCC2,Septicemia, Sepsis, Systemic Inflammatory Response Syndrome/Shock
+V22,HCC_COL_3,HCC6,Opportunistic Infections
+V22,HCC_COL_4,HCC8,Metastatic Cancer and Acute Leukemia
+V22,HCC_COL_5,HCC9,Lung and Other Severe Cancers
+V22,HCC_COL_6,HCC10,Lymphoma and Other Cancers 
+V22,HCC_COL_7,HCC11,Colorectal, Bladder, and Other Cancers
+V22,HCC_COL_8,HCC12,Breast, Prostate, and Other Cancers and Tumors
+V22,HCC_COL_9,HCC17,Diabetes with Acute Complications
+V22,HCC_COL_10,HCC18,Diabetes with Chronic Complications
+V22,HCC_COL_11,HCC19,Diabetes without Complication
+V22,HCC_COL_12,HCC21,Protein-Calorie Malnutrition
+V22,HCC_COL_13,HCC22,Morbid Obesity
+V22,HCC_COL_14,HCC23,Other Significant Endocrine and Metabolic Disorders
+V22,HCC_COL_15,HCC27,End-Stage Liver Disease
+V22,HCC_COL_16,HCC28,Cirrhosis of Liver
+V22,HCC_COL_17,HCC29,Chronic Hepatitis
+V22,HCC_COL_18,HCC33,Intestinal Obstruction/Perforation
+V22,HCC_COL_19,HCC34,Chronic Pancreatitis
+V22,HCC_COL_20,HCC35,Inflammatory Bowel Disease
+V22,HCC_COL_21,HCC39,Bone, Joint, and Muscle Infections/Necrosis
+V22,HCC_COL_22,HCC40,Rheumatoid Arthritis and Inflammatory Connective Tissue Disease
+V22,HCC_COL_23,HCC46,Severe Hematological Disorders
+V22,HCC_COL_24,HCC47,Disorders of Immunity
+V22,HCC_COL_25,HCC48,Coagulation Defects and Other Specified Hematological Disorders
+V22,HCC_COL_26,HCC54,Drug/Alcohol Psychosis
+V22,HCC_COL_27,HCC55,Drug/Alcohol Dependence
+V22,HCC_COL_28,HCC57,Schizophrenia
+V22,HCC_COL_29,HCC58,Major Depressive, Bipolar, and Paranoid Disorders
+V22,HCC_COL_30,HCC70,Quadriplegia
+V22,HCC_COL_31,HCC71,Paraplegia
+V22,HCC_COL_32,HCC72,Spinal Cord Disorders/Injuries
+V22,HCC_COL_33,HCC73,Amyotrophic Lateral Sclerosis and Other Motor Neuron Diseases
+V22,HCC_COL_34,HCC74,Cerebral Palsy
+V22,HCC_COL_35,HCC75,Myasthenia Gravis/Myoneural Disorders, Inflammatory and Toxic Neuropathy
+V22,HCC_COL_36,HCC76,Muscular Dystrophy
+V22,HCC_COL_37,HCC77,Multiple Sclerosis
+V22,HCC_COL_38,HCC78,Parkinson's and Huntington's Disease
+V22,HCC_COL_39,HCC79,Seizure Disorders and Convulsions
+V22,HCC_COL_41,HCC82,Respirator Dependence/Tracheostomy Status
+V22,HCC_COL_42,HCC83,Respiratory Arrest
+V22,HCC_COL_43,HCC84,Cardio-Respiratory Failure and Shock
+V22,HCC_COL_44,HCC85,Congestive Heart Failure
+V22,HCC_COL_45,HCC86,Acute Myocardial Infarction
+V22,HCC_COL_46,HCC87,Unstable Angina and Other Acute Ischemic Heart Disease
+V22,HCC_COL_47,HCC88,Angina Pectoris
+V22,HCC_COL_48,HCC96,Specified Heart Arrhythmias
+V22,HCC_COL_49,HCC99,Cerebral Hemorrhage
+V22,HCC_COL_50,HCC100,Ischemic or Unspecified Stroke
+V22,HCC_COL_51,HCC103,Hemiplegia/Hemiparesis
+V22,HCC_COL_52,HCC104,Monoplegia, Other Paralytic Syndromes
+V22,HCC_COL_53,HCC106,Atherosclerosis of the Extremities with Ulceration or Gangrene
+V22,HCC_COL_54,HCC107,Vascular Disease with Complications
+V22,HCC_COL_55,HCC108,Vascular Disease
+V22,HCC_COL_56,HCC110,Cystic Fibrosis
+V22,HCC_COL_57,HCC111,Chronic Obstructive Pulmonary Disease
+V22,HCC_COL_58,HCC112,Fibrosis of Lung and Other Chronic Lung Disorders
+V22,HCC_COL_59,HCC114,Aspiration and Specified Bacterial Pneumonias
+V22,HCC_COL_60,HCC115,Pneumococcal Pneumonia, Empyema, Lung Abscess
+V22,HCC_COL_61,HCC122,Proliferative Diabetic Retinopathy and Vitreous Hemorrhage
+V22,HCC_COL_62,HCC124,Exudative Macular Degeneration
+V22,HCC_COL_63,HCC134,Dialysis Status
+V22,HCC_COL_64,HCC135,Acute Renal Failure
+V22,HCC_COL_65,HCC136,Chronic Kidney Disease, Stage 5
+V22,HCC_COL_66,HCC137,Chronic Kidney Disease, Severe (Stage 4)
+V22,HCC_COL_67,HCC157,Pressure Ulcer of Skin with Necrosis Through to Muscle, Tendon, or Bone
+V22,HCC_COL_68,HCC158,Pressure Ulcer of Skin with Full-Thickness Skin Loss
+V22,HCC_COL_69,HCC161,Chronic Ulcer of Skin, Except Pressure
+V22,HCC_COL_70,HCC162,Severe Skin Burn or Condition
+V22,HCC_COL_71,HCC166,Severe Head Injury
+V22,HCC_COL_72,HCC167,Major Head Injury
+V22,HCC_COL_73,HCC169,Vertebral Fractures without Spinal Cord Injury
+V22,HCC_COL_74,HCC170,Hip Fracture/Dislocation
+V22,HCC_COL_75,HCC173,Traumatic Amputations and Complications
+V22,HCC_COL_76,HCC176,Complications of Specified Implanted Device or Graft
+V22,HCC_COL_77,HCC186,Major Organ Transplant or Replacement Status
+V22,HCC_COL_78,HCC188,Artificial Openings for Feeding or Elimination
+V22,HCC_COL_79,HCC189,Amputation Status, Lower Limb/Amputation Complications

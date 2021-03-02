@@ -18,8 +18,7 @@ func init() {
 	exclusion = regexp.MustCompile(`^(EXCLUDED)|(DECEASED_EXCLUDED)|(MISSING_ID_EXCLUDED)|(PART_A_B_ONLY_EXCLUDED)|` +
 	`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)$`)
 	riskFlags = regexp.MustCompile(`^(HCC_version)|(HCC_COL_\d+)$`)
-	riskScores = regexp.MustCompile(`^(BENE_RSK_R_SCRE_0{1,9})|(BENE_RSK_R_SCRE_0{1,9})$`)
-
+	riskScores = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|(DIS)|(AGDU)|(AGND)|(DEM_ESRD)|(DEM_DIS)|(DEM_AGDU)|(DEM_AGND))_SCORE)$`)
 }
 
 func getAssignment(alr models.Alr) *fhirmodels.Observation {
