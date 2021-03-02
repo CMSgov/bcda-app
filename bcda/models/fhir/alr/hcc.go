@@ -1,7 +1,6 @@
 package alr
 
 import (
-	"encoding/csv"
 	"fmt"
 	"os"
 
@@ -21,19 +20,19 @@ type hccKey struct {
 
 var crosswalk map[hccKey]hcc
 
+// Populates the crosswalk with
 func init() {
 	const (
-		version = "HCC Version"
+		version        = "HCC Version"
 		columnPosition = "HCC Column Position"
-		flag = "HCC Flag"
-		description = "HCC Description"
+		flag           = "HCC Flag"
+		description    = "HCC Description"
 	)
 	// Scan through local path then the location of the file from the RPM
-	// See:
+	// See: ./ops/build_and_package.sh#49
 	paths := []string{"./hcc_crosswalk.csv", "/etc/sv/api/hcc_crosswalk.csv"}
 
 	var df dataframe.DataFrame
-	var r *csv.Reader
 	for _, path := range paths {
 		if _, err := os.Stat(path); err == nil {
 			f, err := os.Open(path)
@@ -41,7 +40,7 @@ func init() {
 				panic(err)
 			}
 			defer f.Close()
-			df = dataframe.ReadCSV(f)
+			df = dataframe.ReadCSV(f, dataframe.HasHeader(true), dataframe.DetectTypes(false))
 		} else {
 			logrus.Warnf("Failed to read file at %s. Skipping. Err: %s",
 				path, err.Error())
@@ -54,6 +53,16 @@ func init() {
 
 	crosswalk = make(map[hccKey]hcc)
 	for _, record := range df.Maps() {
-		key := hccKey{version: record[version], }
+		key := hccKey{version: record[version].(string), columnPosition: record[columnPosition].(string)}
+		value := hcc{flag: record[flag].(string), description: record[description].(string)}
+		crosswalk[key] = value
 	}
+}
+
+func hccData(version, column string) *hcc {
+	res, ok := crosswalk[hccKey{version: version, columnPosition: column}]
+	if !ok {
+		return nil
+	}
+	return &res
 }
