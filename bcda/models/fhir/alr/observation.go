@@ -40,5 +40,3 @@ func codeableConcept(code, display string) *fhirdatatypes.CodeableConcept {
 func assignmentFields() regexp.Regexp {
 	[]string{"IN_VA_MAX", "CBA_FLAG", "ASSIGNMENT_TYPE", "ASSIGNED_BEFORE", "ASG_STATUS"}
 }
-
-func 

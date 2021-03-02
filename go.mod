@@ -14,6 +14,7 @@ require (
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
+	github.com/go-gota/gota v0.10.1
 	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f
 	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
