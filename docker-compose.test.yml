@@ -9,10 +9,11 @@ services:
       - ./shared_files/decrypted/local.env
     environment:
       - DB=postgresql://postgres:toor@db-unit-test:5432
+      - GOLANGCI_LINT_CACHE=/root/.cache/go-build
       # Remaining environment variables defined in ./shared_files/decrypted/local.env
     volumes:
       - ./test_results:/go/src/github.com/CMSgov/bcda-app/test_results
-      - ${GOPATH}/.cache:${HOME}/.cache
+      - ${HOME}/.cache/go-build:/root/.cache/go-build
       - ${GOPATH}/pkg/mod:/go/pkg/mod
   db-unit-test:
     image: postgres
