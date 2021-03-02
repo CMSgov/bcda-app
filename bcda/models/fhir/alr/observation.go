@@ -20,43 +20,74 @@ func init() {
 	riskScoresPattern = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|(DIS)|(AGDU)|(AGND)|(DEM_ESRD)|(DEM_DIS)|(DEM_AGDU)|(DEM_AGND))_SCORE)$`)
 }
 
-func assignment(alr *models.Alr) *fhirmodels.Observation {
+func observations(alr *models.Alr) []*fhirmodels.Observation {
+	mbi := alr.BeneMBI
+	assignmentFields := make(map[string]string)
+	enrollmentFields := make(map[string]string)
+	exclusionFields := make(map[string]string)
+	riskFlagFields := make(map[string]string)
+	riskScoreFields := make(map[string]string)
+
+	for k, v := range alr.KeyValue {
+		if assignmentPattern.MatchString(k) {
+			assignmentFields[k] = v
+		} else if enrollmentPattern.MatchString(k) {
+			enrollmentFields[k] = v
+		} else if exclusionPattern.MatchString(k) {
+			exclusionFields[k] = v
+		} else if riskFlagsPattern.MatchString(k) {
+			riskFlagFields[k] = v
+		} else if riskScoresPattern.MatchString(k) {
+			riskScoreFields[k] = v
+		}
+	}
+
+	return []*fhirmodels.Observation{
+		assignment(mbi, assignmentFields),
+		enrollment(mbi, enrollmentFields),
+		exclusion(mbi, exclusionFields),
+		riskFlags(mbi, riskFlagFields),
+		riskScores(mbi, riskScoreFields),
+	}
+}
+
+func assignment(mbi string, keyValue map[string]string) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Code = codeableConcept("Assignment", "Assignment flags, step, newly assigned, etc.")
-	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(alr.BeneMBI)}
-	observation.Component = observationComponents(assignmentPattern, "assignment", alr.KeyValue)
+	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(mbi)}
+	observation.Component = observationComponents(assignmentPattern, "assignment", keyValue)
 	return observation
 }
 
-func enrollment(alr *models.Alr) *fhirmodels.Observation {
+func enrollment(mbi string, keyValue map[string]string) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Code = codeableConcept("Enrollment", "Monthly enrollment flags")
-	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(alr.BeneMBI)}
-	observation.Component = observationComponents(enrollmentPattern, "enrollment", alr.KeyValue)
+	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(mbi)}
+	observation.Component = observationComponents(enrollmentPattern, "enrollment", keyValue)
 	return observation
 }
 
-func exclusion(alr *models.Alr) *fhirmodels.Observation {
+func exclusion(mbi string, keyValue map[string]string) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Code = codeableConcept("Exclusion", "Exclusion reasons")
-	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(alr.BeneMBI)}
-	observation.Component = observationComponents(exclusionPattern, "exclusion", alr.KeyValue)
+	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(mbi)}
+	observation.Component = observationComponents(exclusionPattern, "exclusion", keyValue)
 	return observation
 }
 
-func riskFlags(alr *models.Alr) *fhirmodels.Observation {
+func riskFlags(mbi string, keyValue map[string]string) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Code = codeableConcept("Risk Flags", "HCC risk flags")
-	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(alr.BeneMBI)}
-	observation.Component = riskFlagObservationComponents(alr.KeyValue)
+	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(mbi)}
+	observation.Component = riskFlagObservationComponents(keyValue)
 	return observation
 }
 
-func riskScores(alr *models.Alr) *fhirmodels.Observation {
+func riskScores(mbi string, keyValue map[string]string) *fhirmodels.Observation {
 	observation := &fhirmodels.Observation{}
 	observation.Code = codeableConcept("Risk Scores", "HCC and other risk scores")
-	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(alr.BeneMBI)}
-	observation.Component = observationComponents(exclusionPattern, "risk_scores", alr.KeyValue)
+	observation.Subject = &fhirdatatypes.Reference{Identifier: mbiIdentifier(mbi)}
+	observation.Component = observationComponents(exclusionPattern, "risk_scores", keyValue)
 	return observation
 }
 
@@ -77,10 +108,8 @@ func codeableConcept(code, display string) *fhirdatatypes.CodeableConcept {
 func observationComponents(pattern *regexp.Regexp, system string, keyValue map[string]string) []*fhirmodels.Observation_Component {
 	var components []*fhirmodels.Observation_Component
 	for k, v := range keyValue {
-		if pattern.MatchString(k) {
-			component := observationComponent(system, k, v)
-			components = append(components, component)
-		}
+		component := observationComponent(system, k, v)
+		components = append(components, component)
 	}
 	return components
 }
@@ -95,16 +124,14 @@ func riskFlagObservationComponents(keyValue map[string]string) []*fhirmodels.Obs
 
 	var components []*fhirmodels.Observation_Component
 	for k, v := range keyValue {
-		if riskFlagsPattern.MatchString(k) {
-			hcc := hccData(version, k)
-			if hcc == nil {
-				continue
-			}
-			component := observationComponent(system, hcc.flag, v)
-			component.Code.Coding[0].Version = fhirString(version)
-			component.Code.Coding[0].Display = fhirString(hcc.description)
-			components = append(components, component)
+		hcc := hccData(version, k)
+		if hcc == nil {
+			continue
 		}
+		component := observationComponent(system, hcc.flag, v)
+		component.Code.Coding[0].Version = fhirString(version)
+		component.Code.Coding[0].Display = fhirString(hcc.description)
+		components = append(components, component)
 	}
 
 	return components

@@ -9,7 +9,7 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
-func getPatient(alr models.Alr) *fhirmodels.Patient {
+func patient(alr *models.Alr) *fhirmodels.Patient {
 	p := &fhirmodels.Patient{}
 	p.Name = []*fhirdatatypes.HumanName{{Given: []*fhirdatatypes.String{fhirString(alr.BeneFirstName)},
 		Family: fhirString(alr.BeneLastName)}}
@@ -57,7 +57,7 @@ func getAddress(kv map[string]string) []*fhirdatatypes.Address {
 	return []*fhirdatatypes.Address{address}
 }
 
-func getIdentifiers(alr models.Alr) []*fhirdatatypes.Identifier {
+func getIdentifiers(alr *models.Alr) []*fhirdatatypes.Identifier {
 	var ids []*fhirdatatypes.Identifier
 	ids = append(ids, mbiIdentifier(alr.BeneMBI))
 	if len(alr.BeneHIC) > 0 {
