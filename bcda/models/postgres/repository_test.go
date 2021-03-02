@@ -291,27 +291,27 @@ func (r *RepositoryTestSuite) TestGetCCLFBeneficiaries() {
 
 func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 	lookbackDays := 10
+	upperBound := time.Now().Round(time.Millisecond).UTC()
+	lowerBound := upperBound.Add(time.Duration(-1*lookbackDays*24) * time.Hour)
+
 	tests := []struct {
 		name          string
 		expQueryRegex string
+		lowerBound    time.Time
 		upperBound    time.Time
 		errToReturn   error
 	}{
 		{
 			"HappyPath",
-			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW() AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2`,
-			time.Time{},
-			nil,
-		},
-		{
-			"WithUpperBound",
-			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW() AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2 AND effective_date <= $3`,
-			time.Now().Add(-1 * 24 * time.Hour),
+			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date >= $1 AND effective_date <= $2 AND preference_indicator <> $3 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $4`,
+			lowerBound,
+			upperBound,
 			nil,
 		},
 		{
 			"ErrorOnQuery",
-			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date BETWEEN NOW() - interval '10 days' AND NOW()  AND preference_indicator <> $1 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $2`,
+			`SELECT DISTINCT s.mbi FROM (SELECT mbi, MAX(effective_date) as max_date FROM suppressions WHERE effective_date >= $1 AND effective_date <= $2 AND preference_indicator <> $3 GROUP BY mbi) AS h JOIN suppressions s ON s.mbi = h.mbi AND s.effective_date = h.max_date WHERE preference_indicator = $4`,
+			time.Time{}.Add(-1 * 10 * 24 * time.Hour),
 			time.Time{},
 			fmt.Errorf("Some SQL error"),
 		},
@@ -328,12 +328,7 @@ func (r *RepositoryTestSuite) TestGetSuppressedMBIs() {
 			}()
 			repository := postgres.NewRepository(db)
 
-			args := []driver.Value{"", "N"}
-
-			if !tt.upperBound.IsZero() {
-				args = append(args, tt.upperBound)
-			}
-
+			args := []driver.Value{tt.lowerBound, tt.upperBound, "", "N"}
 			query := mock.ExpectQuery(fmt.Sprintf("^%s$", regexp.QuoteMeta(tt.expQueryRegex))).
 				WithArgs(args...)
 			if tt.errToReturn == nil {

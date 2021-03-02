@@ -381,7 +381,12 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 		err         error
 	)
 	if !s.sp.includeSuppressedBeneficiaries {
-		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, conditions.optOutDate)
+		upperBound := conditions.optOutDate
+		if conditions.optOutDate.IsZero() {
+			upperBound = time.Now()
+		}
+
+		ignoredMBIs, err = s.repository.GetSuppressedMBIs(ctx, s.sp.lookbackDays, upperBound)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retreive suppressedMBIs %s", err.Error())
 		}
