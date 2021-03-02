@@ -445,24 +445,38 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 
 	since := time.Now()
+	terminationDetails := &Termination{
+		ClaimsStrategy:      ClaimsHistorical,
+		AttributionStrategy: AttributionHistorical,
+		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
+	}
+
+	sinceAfterTermination := terminationDetails.TerminationDate.Add(10 * 24 * time.Hour)
+	sinceBeforeTermination := terminationDetails.TerminationDate.Add(-10 * 24 * time.Hour)
 
 	type test struct {
-		name           string
-		acoID          string
-		reqType        RequestType
-		expSince       time.Time
-		expServiceDate time.Time
-		expBenes       []*CCLFBeneficiary
-		resourceTypes  []string
+		name               string
+		acoID              string
+		reqType            RequestType
+		expSince           time.Time
+		expServiceDate     time.Time
+		expBenes           []*CCLFBeneficiary
+		resourceTypes      []string
+		terminationDetails *Termination
 	}
 
 	baseTests := []test{
-		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
-		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, time.Time{}, benes1, nil},
-		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil},
-		{"RunoutRequest", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil},
-		{"RunoutRequest with Since", defaultACOID, Runout, since, defaultRunoutClaimThru, benes1, nil},
-		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil},
+		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil, nil},
+		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, time.Time{}, benes1, nil, nil},
+		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil, nil},
+		{"RunoutRequest", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, nil},
+		{"RunoutRequest with Since", defaultACOID, Runout, since, defaultRunoutClaimThru, benes1, nil, nil},
+		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil, nil},
+		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, terminationDetails.TerminationDate, benes1, nil, terminationDetails},
+		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, terminationDetails.TerminationDate, benes1, nil, terminationDetails},
+		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, terminationDetails.TerminationDate, benes1, nil, terminationDetails},
+		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, terminationDetails.TerminationDate, append(benes1, benes2...), nil, terminationDetails},
+		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, terminationDetails}, // Runout cutoff takes precedence over termination cutoff
 	}
 
 	// Add all combinations of resource types
@@ -490,7 +504,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 			repository := &MockRepository{}
 			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
-				Return(&ACO{UUID: conditions.ACOID}, nil)
+				Return(&ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
 			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
