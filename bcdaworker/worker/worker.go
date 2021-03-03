@@ -21,7 +21,7 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	newrelic "github.com/newrelic/go-agent"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
