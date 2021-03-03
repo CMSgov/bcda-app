@@ -864,6 +864,77 @@ func (r *RepositoryTestSuite) TestCCLFFileType() {
 	assert.Equal(r.T(), withType.Type, result[0].Type)
 }
 
+/*******************************************************************************
+	TestAlr tests the following
+		1. gogEncoder, gogDecoder
+		2. AddAlr
+		3. GetAlr
+*******************************************************************************/
+func (r *RepositoryTestSuite) TestAlr() {
+	// gogEncoder and gogDecoder testing
+	exMap := make(map[string]string)
+	exMap["test1"] = "test01"
+	from, err := postgres.GobEncoder(exMap)
+	assert.Nil(r.T(), err)
+	to, err := postgres.GobDecoder(from)
+	assert.Nil(r.T(), err)
+	assert.Equal(r.T(), exMap, to)
+
+	// Clear the test table alr alr_meta before continuing
+	// results, _ := r.db.Exec("TRUNCATE alr, alr_meta;")
+	// n, _ := results.RowsAffected()
+	// fmt.Println(n, "rows were deleted.")
+
+	// Generate some data
+	aco := "A1234"
+	timestamp := time.Now()
+	dob1, _ := time.Parse("01/02/2006", "01/20/1950")
+	dob2, _ := time.Parse("01/02/2006", "04/15/1950")
+	alrs := []models.Alr{
+		{
+			ID:            1, // These are set manually for testing
+			MetaKey:       1, // PostgreSQL should automatically make these
+			BeneMBI:       "abc123abc01",
+			BeneHIC:       "1q2w3e4r5t6y",
+			BeneFirstName: "John",
+			BeneLastName:  "Smith",
+			BeneSex:       "M",
+			BeneDOB:       dob1,
+			BeneDOD:       time.Time{},
+			KeyValue:      exMap,
+		},
+		{
+			ID:            2,
+			MetaKey:       1,
+			BeneMBI:       "abd123abd02",
+			BeneHIC:       "0p9o8i7u6y5t",
+			BeneFirstName: "Melissa",
+			BeneLastName:  "Jones",
+			BeneSex:       "F",
+			BeneDOB:       dob2,
+			BeneDOD:       time.Time{},
+			KeyValue:      exMap,
+		},
+	}
+	alrRepo := postgres.NewAlrRepo(r.db)
+	ctx := context.Background()
+
+	// Test AddAlr
+	err = alrRepo.AddAlr(ctx, aco, timestamp, alrs)
+	assert.Nil(r.T(), err)
+
+	// Test GetAlr
+	data, err := alrRepo.GetAlr(ctx, aco, timestamp)
+	assert.Nil(r.T(), err)
+
+	// Compare the values
+	assert.Equal(r.T(), alrs[0], data[0])
+	assert.Equal(r.T(), alrs[1], data[1])
+
+	// Double check if you can get value from map
+	assert.EqualValues(r.T(), data[0].KeyValue["test1"], "test01")
+}
+
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
 	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)
