@@ -53,7 +53,7 @@ type cclfBeneficiaryRepository interface {
 }
 
 type suppressionRepository interface {
-	GetSuppressedMBIs(ctx context.Context, lookbackDays int) ([]string, error)
+	GetSuppressedMBIs(ctx context.Context, lookbackDays int, upperBound time.Time) ([]string, error)
 
 	CreateSuppression(ctx context.Context, suppression Suppression) error
 }
