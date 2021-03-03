@@ -326,13 +326,12 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		return false, err
 	}
 
-	if j.Status == models.JobStatusCompleted {
+	switch j.Status {
+	case models.JobStatusCompleted:
 		return true, nil
-	}
-
-	if j.Status == models.JobStatusCancelled {
-		// don't update job, Cancelled is a terminal status
-		log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
+	case models.JobStatusCancelled, models.JobStatusFailed:
+		// don't update job, Cancelled and Failed are terminal statuses
+		log.Warnf("Failed to mark job as completed (Job %s): %s", j.Status, err)
 		return true, nil
 	}
 
