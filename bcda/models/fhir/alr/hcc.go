@@ -3,6 +3,7 @@ package alr
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/sirupsen/logrus"
@@ -35,11 +36,12 @@ func init() {
 	var df dataframe.DataFrame
 	for _, path := range paths {
 		if _, err := os.Stat(path); err == nil {
-			f, err := os.Open(path)
+			f, err := os.Open(filepath.Clean(path))
 			if err != nil {
 				panic(err)
 			}
-			defer f.Close()
+			// See: https://github.com/securego/gosec/issues/579
+			defer f.Close() // #nosec G307
 
 			df = dataframe.ReadCSV(f, dataframe.HasHeader(true), dataframe.DetectTypes(false),
 				dataframe.WithDelimiter('\t'))
