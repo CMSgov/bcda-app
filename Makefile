@@ -15,10 +15,8 @@ package:
 
 LINT_TIMEOUT ?= 3m
 lint:
-	$(eval CACHE := $(shell go env GOCACHE))
 	docker-compose -f docker-compose.test.yml build tests
 	docker-compose -f docker-compose.test.yml run \
-	-v $(CACHE):/cache/go -e GOCACHE=/cache/go -e GOLANGCI_LINT_CACHE=/cache/go \
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
@@ -103,7 +101,7 @@ load-fixtures:
 
 	docker-compose up -d db queue
 	echo "Wait for databases to be ready..."
-	sleep 5
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h db -p 5432 -t 60 && wait-for-it -h queue -p 5432 -t 60"
 
 	# Initialize schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
@@ -115,12 +113,10 @@ load-fixtures:
 	$(MAKE) load-fixtures-ssas
 
 	# Ensure components are started as expected
-	docker-compose restart api worker ssas
-	sleep 5
+	docker-compose up -d api worker ssas
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
 
 load-synthetic-cclf-data:
-	docker-compose up -d api
-	docker-compose up -d db
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
 	for acoSize in $(ACO_SIZES) ; do \
@@ -137,8 +133,6 @@ load-synthetic-cclf-data:
 	done
 
 load-synthetic-suppression-data:
-	docker-compose up -d api
-	docker-compose up -d db
 	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
 	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
 	# See postgres#GetSuppressedMBIs for more information
@@ -152,12 +146,7 @@ docker-build:
 	docker-compose build --force-rm
 	docker-compose -f docker-compose.test.yml build --force-rm
 
-docker-bootstrap:
-	$(MAKE) docker-build
-	$(MAKE) documentation
-	docker-compose up -d
-	sleep 40
-	$(MAKE) load-fixtures
+docker-bootstrap: docker-build documentation load-fixtures
 
 api-shell:
 	docker-compose exec api bash
