@@ -140,7 +140,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
-	defer endSegment(segment)
+	segment.End()
 
 	var bundleFunc func(bbID string) (*fhirmodels.Bundle, error)
 	switch jobArgs.ResourceType {
@@ -270,7 +270,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
-	defer endSegment(segment)
+	segment.End()
 
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
@@ -296,7 +296,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	segment := getSegment(ctx, "fhirBundleToResourceNDJSON")
-	defer endSegment(segment)
+	segment.End()
 
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
@@ -381,12 +381,6 @@ func getSegment(ctx context.Context, name string) newrelic.Segment {
 		segment.StartTime = txn.StartSegmentNow()
 	}
 	return segment
-}
-
-func endSegment(segment newrelic.Segment) {
-	if err := segment.End(); err != nil {
-		log.Warnf("Failed to end segment %s", err)
-	}
 }
 
 func createDir(path string) error {
