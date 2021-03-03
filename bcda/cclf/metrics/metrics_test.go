@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/newrelic/go-agent/_integrations/nrlogrus"
+	"github.com/newrelic/go-agent/v3/integrations/nrlogrus"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus/hooks/test"
 )

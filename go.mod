@@ -24,8 +24,8 @@ require (
 	github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
-	github.com/newrelic/go-agent v3.9.0+incompatible
 	github.com/newrelic/go-agent/v3 v3.9.0
+	github.com/newrelic/go-agent/v3/integrations/nrlogrus v1.0.0
 	github.com/otiai10/copy v1.4.2
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
@@ -53,7 +53,6 @@ replace (
 	github.com/go-chi/render => github.com/go-chi/render v1.0.1
 	github.com/jackc/pgx => github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
 	github.com/lib/pq => github.com/lib/pq v1.9.0
-	github.com/newrelic/go-agent => github.com/newrelic/go-agent v3.9.0+incompatible
 	github.com/newrelic/go-agent/v3 => github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/opencensus-integrations/gomongowrapper => github.com/eug48/gomongowrapper v0.0.3
 	github.com/pborman/uuid => github.com/pborman/uuid v0.0.0-20180122190007-c65b2f87fee3
