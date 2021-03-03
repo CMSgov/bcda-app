@@ -23,6 +23,11 @@ func fhirDateTime(t time.Time) *fhirdatatypes.DateTime {
 	return &fhirdatatypes.DateTime{ValueUs: micros, Precision: fhirdatatypes.DateTime_DAY}
 }
 
+func fhirInstant(t time.Time) *fhirdatatypes.Instant {
+	micros := t.UnixNano() / int64(time.Microsecond)
+	return &fhirdatatypes.Instant{ValueUs: micros, Precision: fhirdatatypes.Instant_SECOND}
+}
+
 func fhirString(s string) *fhirdatatypes.String {
 	return &fhirdatatypes.String{Value: s}
 }

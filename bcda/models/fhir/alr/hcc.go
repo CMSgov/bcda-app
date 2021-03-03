@@ -30,7 +30,7 @@ func init() {
 	)
 	// Scan through local path then the location of the file from the RPM
 	// See: ./ops/build_and_package.sh#49
-	paths := []string{"./hcc_crosswalk.csv", "/etc/sv/api/hcc_crosswalk.csv"}
+	paths := []string{"./hcc_crosswalk.tsv", "/etc/sv/api/hcc_crosswalk.tsv"}
 
 	var df dataframe.DataFrame
 	for _, path := range paths {
@@ -40,7 +40,16 @@ func init() {
 				panic(err)
 			}
 			defer f.Close()
-			df = dataframe.ReadCSV(f, dataframe.HasHeader(true), dataframe.DetectTypes(false))
+
+			df = dataframe.ReadCSV(f, dataframe.HasHeader(true), dataframe.DetectTypes(false),
+				dataframe.WithDelimiter('\t'))
+			if df.Err != nil {
+				logrus.Warnf("Failed to parse CSV to data frame. Skipping. Err: %s", df.Err)
+				continue
+			}
+
+			logrus.Debugf("Successfully loaded dataframe from %s.", path)
+			break
 		} else {
 			logrus.Warnf("Failed to read file at %s. Skipping. Err: %s",
 				path, err.Error())
