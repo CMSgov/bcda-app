@@ -266,6 +266,12 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			cutoffDuration := 1 * time.Hour
 			cmsID := "cmsID"
 			since := time.Now().Add(-1 * time.Hour)
+			now := time.Now().Round(time.Millisecond)
+			// Since we're using time.Now() within the service call, we can't compare directly.
+			// Make sure we're close enough.
+			mockUpperBound := mock.MatchedBy(func(t time.Time) bool {
+				return now.Sub(t) < time.Second
+			})
 
 			var benes []*CCLFBeneficiary
 			oldMBIs := make(map[string]bool)
@@ -305,7 +311,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			if tt.cclfFileNew != nil {
 				repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFileNew.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
-			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, time.Time{}).Return([]string{suppressedMBI}, nil)
+			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, mockUpperBound).Return([]string{suppressedMBI}, nil)
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
@@ -370,6 +376,12 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 			repository := &MockRepository{}
 			cutoffDuration := 1 * time.Hour
 			cmsID := "cmsID"
+			now := time.Now().Round(time.Millisecond)
+			// Since we're using time.Now() within the service call, we can't compare directly.
+			// Make sure we're close enough.
+			mockUpperBound := mock.MatchedBy(func(t time.Time) bool {
+				return now.Sub(t) < time.Second
+			})
 
 			var benes []*CCLFBeneficiary
 			mbis := make(map[string]bool)
@@ -400,7 +412,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				time.Time{}, tt.fileType).Return(tt.cclfFile, nil)
 
 			suppressedMBI := "suppressedMBI"
-			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, time.Time{}).Return([]string{suppressedMBI}, nil)
+			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, mockUpperBound).Return([]string{suppressedMBI}, nil)
 			if tt.cclfFile != nil {
 				repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
