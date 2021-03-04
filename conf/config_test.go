@@ -122,13 +122,13 @@ func Test_setup(t *testing.T) {
 	}{
 		{
 			"See if Viper sets up correctly",
-			args{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test"},
+			args{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test/local.env"},
 			"true",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var v = setup(tt.args.dir)
+			v, state := setup(tt.args.dir)
 			if !reflect.DeepEqual(v.Get("TEST").(string), tt.want) {
 				t.Errorf("setup() = %v, want %v", state, tt.want)
 			}
@@ -148,19 +148,19 @@ func Test_findEnv(t *testing.T) {
 	}{
 		{
 			"Test for local",
-			args{[]string{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test", envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
+			args{[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
 			true,
-			envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test",
+			os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test",
 		},
 		{
 			"Test for prod (Doesn't exist yet)",
-			args{[]string{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE", envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test"}},
+			args{[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test"}},
 			true,
-			envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/test",
+			os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/test",
 		},
 		{
 			"Test for both not existing",
-			args{[]string{envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE", envVars.gopath + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
+			args{[]string{os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE", os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/conf/FAKE"}},
 			false,
 			"",
 		},
@@ -246,7 +246,7 @@ type outer struct {
 	Test_tag      string `conf:"TEST_LIST"`
 	TEST_SOMEPATH string `conf:"-"`
 	TestValue1    int
-	inner
+	inner         `conf:",squash"`
 }
 
 func TestCheckout(t *testing.T) {

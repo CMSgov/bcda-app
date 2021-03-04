@@ -28,6 +28,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mitchellh/mapstructure"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -35,7 +37,6 @@ import (
 
 // config is a conf package struct that wraps the viper struct with one other field
 type config struct {
-	gopath string
 	viper.Viper
 }
 
@@ -48,9 +49,9 @@ var envVars config
 type configStatus uint8
 
 const (
-	configGood    configStatus = 0
-	configBad     configStatus = 1
-	noConfigFound configStatus = 2
+	configGood configStatus = 0
+	// configBad     configStatus = 1
+	// noConfigFound configStatus = 2
 )
 
 // if configuration file found and loaded, state doesn't changed
@@ -60,23 +61,20 @@ var state configStatus = configGood
    This is the private helper function that sets up viper. This function is
    called by the init() function only once during initialization of the package.
 */
-func setup(dir string) *viper.Viper {
-
-	// Viper setup
+func setup(locations ...string) (config, configStatus) {
 	var v = viper.New()
-	v.SetConfigName("local")
-	v.SetConfigType("env")
-	v.AddConfigPath(dir)
-	// Viper is lazy, do the read and parse of the config file
-	var err = v.ReadInConfig()
+	v.AutomaticEnv()
 
-	// If viper cannot read the configuration file...
-	if err != nil {
-		state = configBad
+	for _, loc := range locations {
+		v.SetConfigFile(loc)
+		if err := v.MergeInConfig(); err != nil {
+			log.Warnf("Failed to read in config from %s %s", loc, err.Error())
+		} else {
+			log.Debugf("Successfully loaded config from %s.", loc)
+		}
 	}
 
-	return v
-
+	return config{*v}, configGood
 }
 
 /*
@@ -93,20 +91,23 @@ func init() {
 		gopath = build.Default.GOPATH
 	}
 
+	apiConfigPath := os.Getenv("BCDA_API_CONFIG_PATH")
+	workerConfigPath := os.Getenv("BCDA_WORKER_CONFIG_PATH")
+
 	// Possible configuration file locations: local and PROD/DEV/TEST respectfully.
-	var locationSlice = []string{
-		gopath + "/src/github.com/CMSgov/bcda-app/shared_files/decrypted",
+	var locations = []string{
+		gopath + "/src/github.com/CMSgov/bcda-app/shared_files/decrypted/local.env",
 		// Placeholder for configuration location for TEST/DEV/PROD once available.
 	}
 
-	if success, loc := findEnv(locationSlice[:]); success {
-		// A configuration file found, initialize config struct
-		envVars = config{gopath, *setup(loc)}
-	} else {
-		// Checked both locations, no configuration file found
-		state = noConfigFound
+	if apiConfigPath != "" {
+		locations = append(locations, apiConfigPath)
+	}
+	if workerConfigPath != "" {
+		locations = append(locations, workerConfigPath)
 	}
 
+	envVars, state = setup(locations...)
 }
 
 /*
@@ -237,7 +238,6 @@ for structs and string values for the slice. The function works with pointers so
 returned. An error is returned if the wrong data structure is provided.
 */
 func Checkout(v interface{}) error {
-
 	// Check if the data type provided is supported
 	switch v := v.(type) {
 	// If it's a slice of strings
@@ -258,57 +258,10 @@ func Checkout(v interface{}) error {
 		check := reflect.ValueOf(v)
 		// Is it a pointer?
 		if check.Kind() == reflect.Ptr {
-
-			// Dereference the pointer
-			el := check.Elem()
-
-			// Is the data type a struct?
-			if el.Kind() == reflect.Struct {
-
-				// Recursively walk the struct
-				walk(el)
-
-				return nil
-			}
+			return envVars.Unmarshal(v, func(dc *mapstructure.DecoderConfig) { dc.TagName = "conf" })
 		}
 	}
 
 	return errors.New("The data type provided to Checkout func is not supported.")
-
-}
-
-// walk is a private function used by Checkout to recursively walk a possible nested struct.
-func walk(field reflect.Value) {
-
-	// Get the number of fields in the struct
-	num := field.NumField()
-	// Used to get Tag information
-	fieldType := field.Type()
-
-	// Traverse the struct
-	for i := 0; i < num; i++ {
-		innerField := field.Field(i)
-		// Ensure the field is "exportable" and is a type string
-		if innerField.CanInterface() && innerField.IsValid() && innerField.Type().Name() == "string" {
-
-			// Tags are supported
-			name := fieldType.Field(i).Tag.Get("conf")
-			// If "-" is provided as a tag, explicitly skip that field
-			if name == "-" {
-				continue
-			} else if name == "" {
-				// If the Tag is not there, then default to the name of the struct
-				name = fieldType.Field(i).Name
-			}
-
-			// Look up in the conf struct and set if possible
-			if val, exists := LookupEnv(name); exists {
-				innerField.SetString(val)
-			}
-			// Is the field of the struct a nested struct?
-		} else if innerField.Kind() == reflect.Struct {
-			walk(innerField)
-		}
-	}
 
 }

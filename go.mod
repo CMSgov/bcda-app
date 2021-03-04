@@ -24,6 +24,7 @@ require (
 	github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/mitchellh/mapstructure v1.2.3
 	github.com/newrelic/go-agent/v3 v3.9.0
 	github.com/newrelic/go-agent/v3/integrations/nrlogrus v1.0.0
 	github.com/otiai10/copy v1.4.2
