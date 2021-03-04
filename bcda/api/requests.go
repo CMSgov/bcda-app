@@ -29,6 +29,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
@@ -37,7 +38,7 @@ import (
 type Handler struct {
 	qc *que.Client
 
-	Svc models.Service
+	Svc service.Service
 
 	// Needed to have access to the repository/db for lookup needed in the bulkRequest.
 	// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
@@ -131,7 +132,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 
 	repository := postgres.NewRepository(db)
 	h.db, h.r = db, repository
-	h.Svc = models.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
+	h.Svc = service.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
 		runoutCutoffDuration, runoutClaimThruDate,
 		basePath)
 
@@ -151,7 +152,7 @@ func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 		responseutils.WriteError(err, w, http.StatusBadRequest)
 		return
 	}
-	reqType := models.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
 	h.bulkRequest(resourceTypes, w, r, reqType)
 }
 
@@ -161,18 +162,18 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		groupRunout = "runout"
 	)
 
-	reqType := models.DefaultRequest
+	reqType := service.DefaultRequest
 	groupID := chi.URLParam(r, "groupId")
 	switch groupID {
 	case groupAll:
 		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
 		_, ok := r.URL.Query()["_since"]
 		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
-			reqType = models.RetrieveNewBeneHistData
+			reqType = service.RetrieveNewBeneHistData
 		}
 	case groupRunout:
 		if utils.GetEnvBool("BCDA_ENABLE_RUNOUT", true) {
-			reqType = models.Runout
+			reqType = service.Runout
 			break
 		}
 		fallthrough
@@ -191,7 +192,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	h.bulkRequest(resourceTypes, w, r, reqType)
 }
 
-func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType models.RequestType) {
+func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := context.Background()
 
@@ -347,7 +348,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 
 	var queJobs []*que.Job
 
-	conditions := models.RequestConditions{
+	conditions := service.RequestConditions{
 		ReqType:   reqType,
 		Resources: resourceTypes,
 
@@ -365,7 +366,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 			oo       *fhirmodels.OperationOutcome
 			respCode int
 		)
-		if _, ok := errors.Cause(err).(models.CCLFNotFoundError); ok && reqType == models.Runout {
+		if _, ok := errors.Cause(err).(service.CCLFNotFoundError); ok && reqType == service.Runout {
 			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, err.Error())
 			respCode = http.StatusNotFound

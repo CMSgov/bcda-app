@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/bgentry/que-go"
@@ -75,13 +76,13 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 		respCode    int
 	}{
 		{"Successful", nil, http.StatusAccepted},
-		{"No CCLF file found", models.CCLFNotFoundError{}, http.StatusNotFound},
+		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound},
 		{"Some other error", errors.New("Some other error"), http.StatusInternalServerError},
 	}
 
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			mockSvc := &models.MockService{}
+			mockSvc := &service.MockService{}
 			var jobs []*que.Job
 			if tt.errToReturn == nil {
 				jobs = qj
@@ -254,14 +255,14 @@ func (s *RequestsTestSuite) TestBulkRequestWithOldJobPaths() {
 	// Create jobs that githave an unsupported path
 
 	resources := []string{"ExplanationOfBenefit", "Coverage", "Patient"}
-	mockSvc := &models.MockService{}
+	mockSvc := &service.MockService{}
 	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	h := NewHandler(resources, "/v1/fhir")
 	h.Svc = mockSvc
 
 	req := s.genGroupRequest("all")
 	w := httptest.NewRecorder()
-	h.bulkRequest(resources, w, req, models.RetrieveNewBeneHistData)
+	h.bulkRequest(resources, w, req, service.RetrieveNewBeneHistData)
 
 	s.Equal(http.StatusAccepted, w.Result().StatusCode)
 }

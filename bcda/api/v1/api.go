@@ -23,6 +23,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 )
@@ -261,7 +262,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 	_, err = h.Svc.CancelJob(context.Background(), uint(jobID))
 	if err != nil {
 		switch err {
-		case models.ErrJobNotCancellable:
+		case service.ErrJobNotCancellable:
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DeletedErr, err.Error())
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return

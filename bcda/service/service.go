@@ -1,4 +1,4 @@
-package models
+package service
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
@@ -31,7 +32,7 @@ type RequestConditions struct {
 	TransactionTime time.Time
 
 	// Fields set in the service
-	fileType CCLFFileType
+	fileType models.CCLFFileType
 
 	attributionDate time.Time
 	optOutDate      time.Time
@@ -53,7 +54,7 @@ var _ Service = &service{}
 type Service interface {
 	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error)
 
-	GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error)
+	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 }
@@ -62,7 +63,7 @@ const (
 	cclf8FileNum = int(8)
 )
 
-func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int,
+func NewService(r models.Repository, cutoffDuration time.Duration, lookbackDays int,
 	runoutCutoffDuration time.Duration, runoutClaimThru time.Time,
 	basePath string) Service {
 	return &service{
@@ -83,7 +84,7 @@ func NewService(r Repository, cutoffDuration time.Duration, lookbackDays int,
 }
 
 type service struct {
-	repository Repository
+	repository models.Repository
 
 	logger *log.Logger
 
@@ -111,14 +112,14 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 	}
 
 	var (
-		beneficiaries, newBeneficiaries []*CCLFBeneficiary
+		beneficiaries, newBeneficiaries []*models.CCLFBeneficiary
 		jobs                            []*que.Job
 	)
 
 	if conditions.ReqType == Runout {
-		conditions.fileType = FileTypeRunout
+		conditions.fileType = models.FileTypeRunout
 	} else {
-		conditions.fileType = FileTypeDefault
+		conditions.fileType = models.FileTypeDefault
 	}
 
 	hasAttributionDate := !conditions.attributionDate.IsZero()
@@ -160,14 +161,14 @@ func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) 
 	return queJobs, nil
 }
 
-func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKey, error) {
+func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error) {
 	j, err := s.repository.GetJobByID(ctx, jobID)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// No need to look up job keys if the job is complete
-	if j.Status != JobStatusCompleted {
+	if j.Status != models.JobStatusCompleted {
 		return j, nil, nil
 	}
 
@@ -176,9 +177,9 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*Job, []*JobKe
 		return nil, nil, err
 	}
 
-	nonEmptyKeys := make([]*JobKey, 0, len(keys))
+	nonEmptyKeys := make([]*models.JobKey, 0, len(keys))
 	for i, key := range keys {
-		if strings.TrimSpace(key.FileName) == BlankFileName {
+		if strings.TrimSpace(key.FileName) == models.BlankFileName {
 			continue
 		}
 		nonEmptyKeys = append(nonEmptyKeys, keys[i])
@@ -195,8 +196,8 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	}
 
 	// Check if the job is pending or in progress.
-	if job.Status == JobStatusPending || job.Status == JobStatusInProgress {
-		job.Status = JobStatusCancelled
+	if job.Status == models.JobStatusPending || job.Status == models.JobStatusInProgress {
+		job.Status = models.JobStatusCancelled
 		err = s.repository.UpdateJob(ctx, *job)
 		if err != nil {
 			return 0, ErrJobNotCancelled
@@ -208,7 +209,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*CCLFBeneficiary) (jobs []*que.Job, err error) {
+func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*que.Job, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
@@ -228,7 +229,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 			rowCount++
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				enqueueArgs := JobEnqueueArgs{
+				enqueueArgs := models.JobEnqueueArgs{
 					ID:              int(conditions.JobID),
 					ACOID:           conditions.ACOID.String(),
 					BeneficiaryIDs:  jobIDs,
@@ -267,7 +268,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 	return jobs, nil
 }
 
-func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*CCLFBeneficiary, err error) {
+func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions RequestConditions) (newBeneficiaries, beneficiaries []*models.CCLFBeneficiary, err error) {
 
 	var (
 		cutoffTime time.Time
@@ -289,7 +290,7 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	}
 
 	cclfFileOld, err := s.repository.GetLatestCCLFFile(ctx, conditions.CMSID, cclf8FileNum, constants.ImportComplete,
-		time.Time{}, conditions.Since, FileTypeDefault)
+		time.Time{}, conditions.Since, models.FileTypeDefault)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get old CCLF file for cmsID %s %s", conditions.CMSID, err.Error())
 	}
@@ -340,16 +341,16 @@ func (s *service) getNewAndExistingBeneficiaries(ctx context.Context, conditions
 	return newBeneficiaries, beneficiaries, nil
 }
 
-func (s *service) getBeneficiaries(ctx context.Context, conditions RequestConditions) ([]*CCLFBeneficiary, error) {
+func (s *service) getBeneficiaries(ctx context.Context, conditions RequestConditions) ([]*models.CCLFBeneficiary, error) {
 	var (
 		cutoffTime time.Time
 	)
 
 	// only set a cutoffTime if there is no attributionDate set
 	if conditions.attributionDate.IsZero() {
-		if conditions.fileType == FileTypeDefault && s.stdCutoffDuration > 0 {
+		if conditions.fileType == models.FileTypeDefault && s.stdCutoffDuration > 0 {
 			cutoffTime = time.Now().Add(-1 * s.stdCutoffDuration)
-		} else if conditions.fileType == FileTypeRunout && s.rp.cutoffDuration > 0 {
+		} else if conditions.fileType == models.FileTypeRunout && s.rp.cutoffDuration > 0 {
 			cutoffTime = time.Now().Add(-1 * s.rp.cutoffDuration)
 		}
 	}
@@ -375,7 +376,7 @@ func (s *service) getBeneficiaries(ctx context.Context, conditions RequestCondit
 	return benes, nil
 }
 
-func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditions RequestConditions) ([]*CCLFBeneficiary, error) {
+func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditions RequestConditions) ([]*models.CCLFBeneficiary, error) {
 	var (
 		ignoredMBIs []string
 		err         error
@@ -497,7 +498,7 @@ func IsSupportedACO(cmsID string) bool {
 type CCLFNotFoundError struct {
 	FileNumber int
 	CMSID      string
-	FileType   CCLFFileType
+	FileType   models.CCLFFileType
 	CutoffTime time.Time
 }
 
