@@ -39,11 +39,10 @@ type alrCopyFromSource struct {
 
 /*******************************************************************************
 	HELPER FUNCTIONS
-		1. NewAlrStd - Used to instantiate AlrRepository struct
-		2. NewAlrPgx
-		3. gogEncoder
+		1. NewAlrRepo - Used to instantiate AlrRepository struct
+		2. gogEncoder
 			- Used for turning map[string]string to []bytes
-		4. gobDecoder
+		3. gobDecoder
 			- Used for turning []bytes back to map
 *******************************************************************************/
 
