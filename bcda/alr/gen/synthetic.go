@@ -66,7 +66,7 @@ var valuegen map[*regexp.Regexp]func() string = map[*regexp.Regexp]func() string
 			return strconv.FormatFloat(res, 'f', 3, 64)
 		})
 	},
-	regexp.MustCompile("_EXCLUDED$"): func() string {
+	regexp.MustCompile("EXCLUDED$"): func() string {
 		return randomEmpty(half,
 			func() string { return strconv.Itoa(randomdata.Number(2)) })
 	},

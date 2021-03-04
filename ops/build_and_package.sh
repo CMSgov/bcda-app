@@ -37,7 +37,7 @@ fi
 
 if [ ! -f ../bcda/models/fhir/alr/hcc_crosswalk.csv ]
 then
-  echo "Crosswalk flie must exist prior to creating package."
+  echo "Crosswalk file must exist prior to creating package."
   exit 1
 fi
 

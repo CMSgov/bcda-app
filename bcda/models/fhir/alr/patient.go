@@ -22,13 +22,19 @@ func patient(alr *models.Alr) *fhirmodels.Patient {
 }
 
 func getGender(gender string) *fhircodes.AdministrativeGenderCode {
-	if gender == "1" {
-		return &fhircodes.AdministrativeGenderCode{Value: fhircodes.AdministrativeGenderCode_MALE}
-	} else if gender == "2" {
-		return &fhircodes.AdministrativeGenderCode{Value: fhircodes.AdministrativeGenderCode_FEMALE}
-	} else {
+	code := &fhircodes.AdministrativeGenderCode{}
+	switch gender {
+	case "0":
+		code.Value = fhircodes.AdministrativeGenderCode_UNKNOWN
+	case "1":
+		code.Value = fhircodes.AdministrativeGenderCode_MALE
+	case "2":
+		code.Value = fhircodes.AdministrativeGenderCode_FEMALE
+	default:
 		return nil
 	}
+
+	return code
 }
 
 func getDeceased(death time.Time) *fhirmodels.Patient_Deceased {
