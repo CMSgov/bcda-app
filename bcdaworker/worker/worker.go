@@ -361,7 +361,7 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		if err = os.Remove(staging); err != nil {
 			return false, err
 		}
-		// TODO: rework so that failed jobs do not get marked complete
+
 		err = r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted)
 		if err != nil {
 			return false, err
