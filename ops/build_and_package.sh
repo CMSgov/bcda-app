@@ -35,12 +35,18 @@ then
   exit 1
 fi
 
+if [ ! -f ../bcda/models/fhir/alr/hcc_crosswalk.tsv ]
+then
+  echo "Crosswalk file must exist prior to creating package."
+  exit 1
+fi
+
 cd ../bcda
 go clean
 echo "Building bcda binary..." 
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api
+fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api models/fhir/alr/hcc_crosswalk.tsv=/etc/sv/api/hcc_crosswalk.tsv
 cd ../bcdaworker
 go clean
 echo "Building bcdaworker..."
