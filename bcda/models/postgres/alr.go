@@ -180,11 +180,10 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 
 func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.Time, upperBound time.Time) ([]models.Alr, error) {
 
-	/* 	Query the alr_meta table to get foreign key */
-
 	// Build the query
 	// sqlFlavor is from the repository.go file
 	meta := sqlFlavor.NewSelectBuilder()
+	// Filtering the alr table with foreign key from alr_meta through a join
 	meta.Select("alr_meta.timestp", "alr.id", "alr.metakey", "alr.mbi", "alr.hic",
 		"alr.firstname", "alr.lastname", "alr.sex",
 		"alr. dob", "alr.dod", "alr.keyvalue").

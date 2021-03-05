@@ -917,15 +917,15 @@ func (r *RepositoryTestSuite) TestAlr() {
 
 	// Test GetAlr
 	// No bounds
-	data, err := alrRepo.GetAlr(ctx, aco, time.Time{}, time.Time{})
+	nobounds, err := alrRepo.GetAlr(ctx, aco, time.Time{}, time.Time{})
 	assert.NoError(r.T(), err)
-	assert.Greater(r.T(), len(data), 1)
+	assert.Greater(r.T(), len(nobounds), 1)
 
 	// Compare the values
-	assert.EqualValues(r.T(), alrs[0].BeneMBI, data[0].BeneMBI)
+	assert.EqualValues(r.T(), alrs[0].BeneMBI, nobounds[0].BeneMBI)
 	// Go time added a monotonic clock... this is to remove it.
 	assert.EqualValues(r.T(), timestamp.Truncate(time.Microsecond),
-		data[0].Timestamp.Truncate(time.Microsecond))
+		nobounds[0].Timestamp.Truncate(time.Microsecond))
 
 	// Get exact date
 	exact, err := alrRepo.GetAlr(ctx, aco, timestamp2, timestamp2)
@@ -943,8 +943,8 @@ func (r *RepositoryTestSuite) TestAlr() {
 	assert.EqualValues(r.T(), alrs[0].BeneFirstName, rn[0].BeneFirstName)
 
 	// Double check if you can get value from map
-	assert.EqualValues(r.T(), data[0].KeyValue["test1"], "Test 01!")
-	assert.EqualValues(r.T(), data[0].KeyValue["test2"], "Test 02!")
+	assert.EqualValues(r.T(), nobounds[0].KeyValue["test1"], "Test 01!")
+	assert.EqualValues(r.T(), nobounds[0].KeyValue["test2"], "Test 02!")
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
