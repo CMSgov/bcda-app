@@ -871,23 +871,14 @@ func (r *RepositoryTestSuite) TestCCLFFileType() {
 		3. GetAlr
 *******************************************************************************/
 func (r *RepositoryTestSuite) TestAlr() {
-	// gogEncoder and gogDecoder testing
-	exMap := make(map[string]string)
-	exMap["test1"] = "test01"
-	from, err := postgres.GobEncoder(exMap)
-	assert.Nil(r.T(), err)
-	to, err := postgres.GobDecoder(from)
-	assert.Nil(r.T(), err)
-	assert.Equal(r.T(), exMap, to)
-
-	// Clear the test table alr alr_meta before continuing
-	// results, _ := r.db.Exec("TRUNCATE alr, alr_meta;")
-	// n, _ := results.RowsAffected()
-	// fmt.Println(n, "rows were deleted.")
 
 	// Generate some data
+	exMap := make(map[string]string)
+	exMap["test1"] = "Test 01!"
+	exMap["test2"] = "Test 02!"
 	aco := "A1234"
 	timestamp := time.Now()
+	timestamp2 := timestamp.Add(time.Hour * 24)
 	dob1, _ := time.Parse("01/02/2006", "01/20/1950")
 	dob2, _ := time.Parse("01/02/2006", "04/15/1950")
 	alrs := []models.Alr{
@@ -905,7 +896,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 		},
 		{
 			ID:            2,
-			MetaKey:       1,
+			MetaKey:       2,
 			BeneMBI:       "abd123abd02",
 			BeneHIC:       "0p9o8i7u6y5t",
 			BeneFirstName: "Melissa",
@@ -920,19 +911,36 @@ func (r *RepositoryTestSuite) TestAlr() {
 	ctx := context.Background()
 
 	// Test AddAlr
-	err = alrRepo.AddAlr(ctx, aco, timestamp, alrs)
-	assert.Nil(r.T(), err)
+	err := alrRepo.AddAlr(ctx, aco, timestamp, alrs[:1])
+	// Add the second person with a different timestamp
+	_ = alrRepo.AddAlr(ctx, aco, timestamp2, alrs[1:2])
+	assert.NoError(r.T(), err)
 
 	// Test GetAlr
-	data, err := alrRepo.GetAlr(ctx, aco, timestamp)
-	assert.Nil(r.T(), err)
+	// No bounds
+	data, err := alrRepo.GetAlr(ctx, aco, time.Time{}, time.Time{})
+	assert.NoError(r.T(), err)
+	assert.Greater(r.T(), len(data), 1)
 
 	// Compare the values
 	assert.Equal(r.T(), alrs[0], data[0])
-	assert.Equal(r.T(), alrs[1], data[1])
+
+	// Get exact date
+	exact, err := alrRepo.GetAlr(ctx, aco, timestamp2, timestamp2)
+	assert.NoError(r.T(), err)
+	assert.Len(r.T(), exact, 1)
+
+	// Compare the values
+	assert.Equal(r.T(), alrs[1], exact[0])
+
+	// Get a range and make sure we got the right person
+	rn, err := alrRepo.GetAlr(ctx, aco, timestamp, timestamp.Add(time.Hour*10))
+	assert.NoError(r.T(), err)
+	assert.EqualValues(r.T(), alrs[0].BeneFirstName, rn[0].BeneFirstName)
 
 	// Double check if you can get value from map
-	assert.EqualValues(r.T(), data[0].KeyValue["test1"], "test01")
+	assert.EqualValues(r.T(), data[0].KeyValue["test1"], "Test 01!")
+	assert.EqualValues(r.T(), data[0].KeyValue["test2"], "Test 02!")
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
