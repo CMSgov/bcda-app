@@ -185,7 +185,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.
 	// Build the query
 	// sqlFlavor is from the repository.go file
 	meta := sqlFlavor.NewSelectBuilder()
-	meta.Select("alr.id", "alr.metakey", "alr.mbi", "alr.hic",
+	meta.Select("alr_meta.timestp", "alr.id", "alr.metakey", "alr.mbi", "alr.hic",
 		"alr.firstname", "alr.lastname", "alr.sex",
 		"alr. dob", "alr.dod", "alr.keyvalue").
 		From("alr_meta")
@@ -195,14 +195,14 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.
 		whereCond = meta.Equal("aco", ACO)
 	} else if upperBound.IsZero() && !lowerBound.IsZero() {
 		whereCond = meta.And(meta.Equal("aco", ACO),
-			meta.GreaterEqualThan("timestp", lowerBound))
+			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
 	} else if !upperBound.IsZero() && lowerBound.IsZero() {
 		whereCond = meta.And(meta.Equal("aco", ACO),
-			meta.LessEqualThan("timestp", upperBound))
+			meta.LessEqualThan("alr_meta.timestp", upperBound))
 	} else {
 		whereCond = meta.And(meta.Equal("aco", ACO),
-			meta.LessEqualThan("timestp", upperBound),
-			meta.GreaterEqualThan("timestp", lowerBound))
+			meta.LessEqualThan("alr_meta.timestp", upperBound),
+			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
 	}
 
 	meta.Where(whereCond)
@@ -220,7 +220,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.
 	for rows.Next() {
 		var alr models.Alr
 		var keyValueBytes []byte
-		if err := rows.Scan(&alr.ID, &alr.MetaKey, &alr.BeneMBI, &alr.BeneHIC,
+		if err := rows.Scan(&alr.Timestamp, &alr.ID, &alr.MetaKey, &alr.BeneMBI, &alr.BeneHIC,
 			&alr.BeneFirstName, &alr.BeneLastName, &alr.BeneSex,
 			&alr.BeneDOB, &alr.BeneDOD, &keyValueBytes); err != nil {
 			return nil, err

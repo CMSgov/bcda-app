@@ -866,9 +866,8 @@ func (r *RepositoryTestSuite) TestCCLFFileType() {
 
 /*******************************************************************************
 	TestAlr tests the following
-		1. gogEncoder, gogDecoder
-		2. AddAlr
-		3. GetAlr
+		1. AddAlr
+		2. GetAlr
 *******************************************************************************/
 func (r *RepositoryTestSuite) TestAlr() {
 
@@ -923,7 +922,10 @@ func (r *RepositoryTestSuite) TestAlr() {
 	assert.Greater(r.T(), len(data), 1)
 
 	// Compare the values
-	assert.Equal(r.T(), alrs[0], data[0])
+	assert.EqualValues(r.T(), alrs[0].BeneMBI, data[0].BeneMBI)
+	// Go time added a monotonic clock... this is to remove it.
+	assert.EqualValues(r.T(), timestamp.Truncate(time.Microsecond),
+		data[0].Timestamp.Truncate(time.Microsecond))
 
 	// Get exact date
 	exact, err := alrRepo.GetAlr(ctx, aco, timestamp2, timestamp2)
@@ -931,7 +933,9 @@ func (r *RepositoryTestSuite) TestAlr() {
 	assert.Len(r.T(), exact, 1)
 
 	// Compare the values
-	assert.Equal(r.T(), alrs[1], exact[0])
+	assert.EqualValues(r.T(), alrs[1].BeneMBI, exact[0].BeneMBI)
+	assert.EqualValues(r.T(), timestamp2.Truncate(time.Microsecond),
+		exact[0].Timestamp.Truncate(time.Microsecond))
 
 	// Get a range and make sure we got the right person
 	rn, err := alrRepo.GetAlr(ctx, aco, timestamp, timestamp.Add(time.Hour*10))
