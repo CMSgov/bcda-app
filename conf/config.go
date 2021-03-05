@@ -51,9 +51,9 @@ var envVars config
 type configStatus uint8
 
 const (
-	configGood configStatus = 0
-	// configBad     configStatus = 1
-	// noConfigFound configStatus = 2
+	configGood    configStatus = 0
+	configBad     configStatus = 1
+	noConfigFound configStatus = 2
 
 	structtag  = "conf"
 	defaulttag = structtag + "_default"
@@ -67,19 +67,27 @@ var state configStatus = configGood
    called by the init() function only once during initialization of the package.
 */
 func setup(locations ...string) (config, configStatus) {
+	status := noConfigFound
+
 	var v = viper.New()
 	v.AutomaticEnv()
 
 	for _, loc := range locations {
-		v.SetConfigFile(loc)
-		if err := v.MergeInConfig(); err != nil {
-			log.Warnf("Failed to read in config from %s %s", loc, err.Error())
-		} else {
-			log.Debugf("Successfully loaded config from %s.", loc)
+		if _, err := os.Stat(loc); err == nil {
+			v.SetConfigFile(loc)
+			if err := v.MergeInConfig(); err != nil {
+				log.Warnf("Failed to read in config from %s %s", loc, err.Error())
+				if status != configGood {
+					status = configBad
+				}
+			} else {
+				log.Debugf("Successfully loaded config from %s.", loc)
+				status = configGood
+			}
 		}
 	}
 
-	return config{*v}, configGood
+	return config{*v}, status
 }
 
 /*
@@ -263,10 +271,16 @@ func Checkout(v interface{}) error {
 		check := reflect.ValueOf(v)
 		// Is it a pointer?
 		if check.Kind() == reflect.Ptr {
-			if err := bindenvs(v); err != nil {
-				return fmt.Errorf("failed to bind env vars to viper struct: %w", err)
+			// Dereference the pointer
+			el := check.Elem()
+
+			// Is the data type a struct?
+			if el.Kind() == reflect.Struct {
+				if err := bindenvs(el); err != nil {
+					return fmt.Errorf("failed to bind env vars to viper struct: %w", err)
+				}
+				return envVars.Unmarshal(v, func(dc *mapstructure.DecoderConfig) { dc.TagName = structtag })
 			}
-			return envVars.Unmarshal(v, func(dc *mapstructure.DecoderConfig) { dc.TagName = structtag })
 		}
 	}
 
@@ -276,21 +290,20 @@ func Checkout(v interface{}) error {
 
 // bindenv: workaround to make the unmarshal work with environment variables
 // Inspired from solution found here : https://github.com/spf13/viper/issues/188#issuecomment-399884438
-func bindenvs(v interface{}, parts ...string) error {
-	ifv := reflect.ValueOf(v)
-	if ifv.Kind() == reflect.Ptr {
-		ifv = ifv.Elem()
+func bindenvs(field reflect.Value, parts ...string) error {
+	if field.Kind() == reflect.Ptr {
+		field = field.Elem()
 	}
-	for i := 0; i < ifv.NumField(); i++ {
-		v := ifv.Field(i)
-		t := ifv.Type().Field(i)
+	for i := 0; i < field.NumField(); i++ {
+		v := field.Field(i)
+		t := field.Type().Field(i)
 		tv, ok := t.Tag.Lookup(structtag)
 		if !ok {
 			continue
 		}
 		dv, hasDefault := t.Tag.Lookup(defaulttag)
 		if tv == ",squash" {
-			if err := bindenvs(v.Interface(), parts...); err != nil {
+			if err := bindenvs(v, parts...); err != nil {
 				return err
 			}
 			continue
@@ -298,7 +311,7 @@ func bindenvs(v interface{}, parts ...string) error {
 		var err error
 		switch v.Kind() {
 		case reflect.Struct:
-			err = bindenvs(v.Interface(), append(parts, tv)...)
+			err = bindenvs(v, append(parts, tv)...)
 		default:
 			key := strings.Join(append(parts, tv), ".")
 			err = envVars.BindEnv(key)
