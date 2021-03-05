@@ -39,6 +39,20 @@ type ACOConfig struct {
 }
 
 func LoadConfig() (cfg *Config, err error) {
+	cfg = &Config{}
+	if err := conf.Checkout(cfg); err != nil {
+		return nil, err
+	}
+
+	if err := cfg.computeFields(); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// Parse un-exported fields using the fields loaded via the config
+func (cfg *Config) computeFields() (err error) {
 	const (
 		// YYYY-MM-DD
 		claimThruLayout = "2006-01-02"
@@ -46,28 +60,21 @@ func LoadConfig() (cfg *Config, err error) {
 		perfYearLayout = "01/02"
 	)
 
-	cfg = &Config{}
-	if err := conf.Checkout(cfg); err != nil {
-		return nil, err
-	}
-
-	// Parse un-exported fields using the fields loaded via the config
 	cfg.cutoffDuration = 24 * time.Hour * time.Duration(cfg.CutoffDurationDays)
 	cfg.RunoutConfig.cutoffDuration = 24 * time.Hour * time.Duration(cfg.RunoutConfig.CutoffDurationDays)
 	if cfg.RunoutConfig.claimThru, err = time.Parse(claimThruLayout, cfg.RunoutConfig.ClaimThruDate); err != nil {
-		return nil, fmt.Errorf("failed to parse runout claim thru date: %w", err)
+		return fmt.Errorf("failed to parse runout claim thru date: %w", err)
 	}
 	for _, acoCfg := range cfg.ACOConfigs {
 		if acoCfg.patternExp, err = regexp.Compile(acoCfg.Pattern); err != nil {
-			return nil, fmt.Errorf("failed to parse ACO model %s pattern: %w", acoCfg.Model, err)
+			return fmt.Errorf("failed to parse ACO model %s pattern: %w", acoCfg.Model, err)
 		}
 		if acoCfg.PerfYearTransition != "" {
 			if acoCfg.perfYear, err = time.Parse(perfYearLayout, acoCfg.PerfYearTransition); err != nil {
-				return nil, fmt.Errorf("failed to parse perf year: %w", err)
+				return fmt.Errorf("failed to parse perf year: %w", err)
 			}
 		}
-		fmt.Printf("%+v\n", acoCfg)
 	}
 
-	return cfg, nil
+	return nil
 }

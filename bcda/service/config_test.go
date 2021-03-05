@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func 
 func TestFoo(t *testing.T) {
 	cfg, err := service.LoadConfig()
 	assert.NoError(t, err)
