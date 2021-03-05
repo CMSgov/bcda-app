@@ -35,7 +35,7 @@ var joinFields = requiredFields
 
 // ToALR reads in a CSV file(s) and unmarshals the data into an ALR model.
 // CSV files are joined based on a predetermined list of fields
-func ToALR(csvPaths ...string) ([]models.Alr, error) {
+func ToALR(csvPaths ...string) ([]*models.Alr, error) {
 	var mergedDF dataframe.DataFrame
 	for _, csvPath := range csvPaths {
 		df, err := toDataFrame(csvPath)
@@ -95,9 +95,9 @@ func validate(df dataframe.DataFrame) error {
 	return nil
 }
 
-func toALR(headers []string, rows [][]string) ([]models.Alr, error) {
+func toALR(headers []string, rows [][]string) ([]*models.Alr, error) {
 	setters := getALRSetters(headers)
-	alrs := make([]models.Alr, 0, len(rows))
+	alrs := make([]*models.Alr, 0, len(rows))
 	for _, row := range rows {
 		a := &alr{}
 		a.KeyValue = make(map[string]string, len(row))
@@ -110,7 +110,7 @@ func toALR(headers []string, rows [][]string) ([]models.Alr, error) {
 				setter(a, val)
 			}
 		}
-		alrs = append(alrs, a.Alr)
+		alrs = append(alrs, &a.Alr)
 	}
 
 	return alrs, nil
