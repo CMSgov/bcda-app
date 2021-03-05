@@ -1,0 +1,7 @@
+aco_config:
+  - model: "CKCC"
+    name_pattern: "C\\d{4}"
+    performance_year_transition: "04/01"
+    lookback_period: 3
+  - model: "SSP"
+    name_pattern: "A\\d{4}"

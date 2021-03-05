@@ -23,9 +23,11 @@ package conf
 
 import (
 	"errors"
+	"fmt"
 	"go/build"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/mitchellh/mapstructure"
@@ -52,6 +54,9 @@ const (
 	configGood configStatus = 0
 	// configBad     configStatus = 1
 	// noConfigFound configStatus = 2
+
+	structtag  = "conf"
+	defaulttag = structtag + "_default"
 )
 
 // if configuration file found and loaded, state doesn't changed
@@ -258,10 +263,53 @@ func Checkout(v interface{}) error {
 		check := reflect.ValueOf(v)
 		// Is it a pointer?
 		if check.Kind() == reflect.Ptr {
-			return envVars.Unmarshal(v, func(dc *mapstructure.DecoderConfig) { dc.TagName = "conf" })
+			if err := bindenvs(v); err != nil {
+				return fmt.Errorf("failed to bind env vars to viper struct: %w", err)
+			}
+			return envVars.Unmarshal(v, func(dc *mapstructure.DecoderConfig) { dc.TagName = structtag })
 		}
 	}
 
 	return errors.New("The data type provided to Checkout func is not supported.")
 
+}
+
+// bindenv: workaround to make the unmarshal work with environment variables
+// Inspired from solution found here : https://github.com/spf13/viper/issues/188#issuecomment-399884438
+func bindenvs(v interface{}, parts ...string) error {
+	ifv := reflect.ValueOf(v)
+	if ifv.Kind() == reflect.Ptr {
+		ifv = ifv.Elem()
+	}
+	for i := 0; i < ifv.NumField(); i++ {
+		v := ifv.Field(i)
+		t := ifv.Type().Field(i)
+		tv, ok := t.Tag.Lookup(structtag)
+		if !ok {
+			continue
+		}
+		dv, hasDefault := t.Tag.Lookup(defaulttag)
+		if tv == ",squash" {
+			if err := bindenvs(v.Interface(), parts...); err != nil {
+				return err
+			}
+			continue
+		}
+		var err error
+		switch v.Kind() {
+		case reflect.Struct:
+			err = bindenvs(v.Interface(), append(parts, tv)...)
+		default:
+			key := strings.Join(append(parts, tv), ".")
+			err = envVars.BindEnv(key)
+			if hasDefault {
+				envVars.SetDefault(key, dv)
+			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
