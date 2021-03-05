@@ -107,7 +107,7 @@ func (a *alrCopyFromSource) Err() error {
 func (a *alrCopyFromSource) Values() ([]interface{}, error) {
 	// Get the row
 	alr := a.alrs[0]
-	// Move counter up so we look at the following row next
+	// Adjust the slice to remove the row we are using here
 	a.alrs = a.alrs[1:]
 
 	// Convert the map[string]string to slices of bytes
@@ -116,6 +116,7 @@ func (a *alrCopyFromSource) Values() ([]interface{}, error) {
 		return nil, err
 	}
 
+	// Place it into slice of interfaces for CopyFrom
 	row := []interface{}{
 		&pgtype.Int8{Int: a.metaKey, Status: pgtype.Present},      // bigint
 		&pgtype.Text{String: alr.BeneMBI, Status: pgtype.Present}, // varchar
@@ -138,10 +139,10 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 	// Do this in a single transaction using BeginEX from the pgx package
 	tx, err := conn.BeginEx(ctx, nil)
 	if err != nil {
-		rollBack(tx)
 		return err
 	}
 
+	// Build the query... sqlFlavor from repository.go
 	// Update the alr_meta table and get the foreign key
 	updateAlrMeta := sqlFlavor.NewInsertBuilder().InsertInto("alr_meta")
 	updateAlrMeta.Cols("aco", "timestp").Values(aco, timestamp)
@@ -150,6 +151,7 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 
 	var metaKey int64
 	if err := tx.QueryRowEx(ctx, query, nil, args...).Scan(&metaKey); err != nil {
+		// If any part of the tx fails, attempt to rollback changes
 		rollBack(tx)
 		return err
 	}
@@ -164,7 +166,6 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 
 	fields := []string{"metakey", "mbi", "hic", "firstname", "lastname", "sex", "dob", "dod", "keyvalue"}
 	_, err = tx.CopyFrom(pgx.Identifier([]string{"alr"}), fields, cfs)
-	// If the copyfrom fails, attempt to rollback changes
 	if err != nil {
 		rollBack(tx)
 		return err
@@ -181,14 +182,14 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.Time, upperBound time.Time) ([]models.Alr, error) {
 
 	// Build the query
-	// sqlFlavor is from the repository.go file
 	meta := sqlFlavor.NewSelectBuilder()
-	// Filtering the alr table with foreign key from alr_meta through a join
+	// Filtering the alr table with data from alr_meta through a join
 	meta.Select("alr_meta.timestp", "alr.id", "alr.metakey", "alr.mbi", "alr.hic",
 		"alr.firstname", "alr.lastname", "alr.sex",
 		"alr. dob", "alr.dod", "alr.keyvalue").
 		From("alr_meta")
 
+	// where condition for different time range scenarios
 	var whereCond string
 	if upperBound.IsZero() && lowerBound.IsZero() {
 		whereCond = meta.Equal("aco", ACO)
@@ -208,13 +209,13 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.
 	meta.JoinWithOption("LEFT", "alr", "alr_meta.id = alr.metakey")
 	query, args := meta.Build()
 
-	// Using the foreign key, query the alr table
+	// Run the query
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get ALR data
+	// Get ALR data by row by calling Next()
 	var alrs []models.Alr
 	for rows.Next() {
 		var alr models.Alr
@@ -232,6 +233,5 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.
 		alrs = append(alrs, alr)
 	}
 
-	// Send back either a specific error or the results back to caller
 	return alrs, nil
 }
