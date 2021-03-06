@@ -15,6 +15,7 @@ type Alr struct {
 	BeneDOB       time.Time
 	BeneDOD       time.Time
 	KeyValue      map[string]string // All "violate" fields
+	Timestamp     time.Time         // NOT in the database, from AlrMetaData
 }
 
 type AlrMetaData struct {
