@@ -84,13 +84,24 @@ func TestProcessJob(t *testing.T) {
 			return
 		default:
 			currentJob := postgrestest.GetJobByID(t, db, job.ID)
-			if currentJob.Status == models.JobStatusCompleted || currentJob.Status == models.JobStatusCancelled {
+			// don't wait for a job if it has a terminal status
+			if isTerminalStatus(currentJob.Status) {
 				return
 			}
 			log.Infof("Waiting on job to be completed. Current status %s.", job.Status)
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
+}
+
+func isTerminalStatus(status models.JobStatus) bool {
+	switch status {
+	case models.JobStatusCompleted,
+		models.JobStatusCancelled,
+		models.JobStatusFailed:
+		return true
+	}
+	return false
 }
 
 func TestProcessJobInvalidArgs(t *testing.T) {
