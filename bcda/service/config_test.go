@@ -16,4 +16,8 @@ func TestLoadConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Len(t, cfg.ACOConfigs, 6)
+	// Ensure that fields with the same name can be represented by different values
+	// NOTE: These values come from local.env
+	assert.Equal(t, cfg.CutoffDurationDays, 0)
+	assert.Equal(t, cfg.RunoutConfig.CutoffDurationDays, 180)
 }
