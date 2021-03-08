@@ -117,7 +117,8 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
-		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime, client.ClaimsDate{UpperBound: serviceDate}).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime,
+		 mock.MatchedBy(testUtils.ClaimsDateMatcher{client.ClaimsDate{UpperBound: serviceDate}}.Match)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 		bbc.On("GetCoverage", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
 		bbc.On("GetPatient", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
 	}
@@ -136,7 +137,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 	for _, tt := range tests {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
-				Since: since, TransactionTime: transactionTime, ServiceDate: serviceDate}
+				Since: since, TransactionTime: transactionTime, ClaimsDate: client.ClaimsDate{UpperBound: serviceDate}}
 			uuid, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
 			if tt.expectZeroSize {
 				assert.EqualValues(t, 0, size)

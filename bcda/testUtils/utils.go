@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/otiai10/copy"
@@ -149,4 +151,21 @@ func GetRandomIPV4Address(t *testing.T) string {
 	}
 
 	return fmt.Sprintf("%d.%d.%d.%d", data[0], data[1], data[2], data[3])
+}
+
+type TimeMatcher struct {
+	Expected time.Time
+}
+
+func (matcher TimeMatcher) Match(actual time.Time) bool {
+	return matcher.Expected.Equal(actual)
+}
+
+type ClaimsDateMatcher struct {
+	Expected client.ClaimsDate
+}
+
+func (matcher ClaimsDateMatcher) Match(actual client.ClaimsDate) bool {
+	return matcher.Expected.LowerBound.Equal(actual.LowerBound) &&
+		matcher.Expected.UpperBound.Equal(actual.UpperBound)
 }
