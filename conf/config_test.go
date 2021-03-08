@@ -1,10 +1,11 @@
 package conf
 
 import (
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetEnv(t *testing.T) {
@@ -44,9 +45,7 @@ func TestGetEnv(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetEnv(tt.args.key); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetEnv() = %v, want %v", got, tt.want)
-			}
+			assert.EqualValues(t, tt.want, GetEnv(tt.args.key))
 		})
 	}
 }
@@ -73,9 +72,7 @@ func TestSetEnv(t *testing.T) {
 			if err := SetEnv(tt.args.protect, tt.args.key, tt.args.value); (err != nil) != tt.wantErr {
 				t.Errorf("SetEnv() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if val := GetEnv(tt.args.key); val != tt.args.value {
-				t.Errorf("New value entered (%v) into conf does not match value provided.", tt.args.value)
-			}
+			assert.Equal(t, tt.args.value, GetEnv(tt.args.key))
 		})
 	}
 }
@@ -101,12 +98,8 @@ func TestUnsetEnv(t *testing.T) {
 			if err := UnsetEnv(tt.args.protect, tt.args.key); (err != nil) != tt.wantErr {
 				t.Errorf("UnsetEnv() error = %v, wantErr %v, %v", err, tt.wantErr, state)
 			}
-			if val := GetEnv(tt.args.key); val != "" {
-				t.Errorf("UnsetEnv did not clear the key from conf. Value is %v", val)
-			}
-			if val := os.Getenv(tt.args.key); val != "" {
-				t.Errorf("UnsetEnv did not clear the key from EV. Value is %v", val)
-			}
+			assert.Empty(t, GetEnv(tt.args.key))
+			assert.Empty(t, os.Getenv(tt.args.key))
 		})
 	}
 }
@@ -168,12 +161,8 @@ func Test_findEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := findEnv(tt.args.location)
-			if got != tt.want {
-				t.Errorf("findEnv() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("findEnv() got1 = %v, want %v", got1, tt.want1)
-			}
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want1, got1)
 		})
 	}
 }
@@ -226,12 +215,8 @@ func TestLookupEnv(t *testing.T) {
 			}
 
 			got, got1 := LookupEnv(tt.args.key)
-			if got != tt.want {
-				t.Errorf("LookupEnv() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("LookupEnv() got1 = %v, want %v", got1, tt.want1)
-			}
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want1, got1)
 		})
 	}
 }
@@ -242,11 +227,12 @@ type inner struct {
 }
 
 type outer struct {
-	TEST_LIST     string
-	Test_tag      string `conf:"TEST_LIST"`
-	TEST_SOMEPATH string `conf:"-"`
-	TestValue1    int
-	inner         `conf:",squash"`
+	TEST_LIST        string
+	Test_tag         string `conf:"TEST_LIST"`
+	TEST_SOMEPATH    string `conf:"-"`
+	TestDefaultValue int    `conf:"TEST_DEFAULT_VALUE" conf_default:"123"`
+	TestValue1       int
+	inner            `conf:",squash"`
 }
 
 func TestCheckout(t *testing.T) {
@@ -254,51 +240,30 @@ func TestCheckout(t *testing.T) {
 	t.Run("Traversing the nested struct", func(t *testing.T) {
 		testStruct := outer{}
 		err := Checkout(testStruct)
-		// Check if copt of a struct is rejected
-		if err == nil {
-			t.Errorf("A copy of a struct was accepted.")
-		}
-		_ = Checkout(&testStruct)
-		// Check if the appropriate fields were updated
-		if val := testStruct.TEST_NUM; val != "1234" {
-			t.Errorf("Wanted: %v Got: %v", "1234", val)
-		}
-		if val := testStruct.TEST_LIST; val != "One,Two,Three,Four" {
-			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)
-		}
-		if val := testStruct.TestValue1; val != 0 {
-			t.Errorf("Wanted: %v Got: %v", 0, val)
-		}
-		if val := testStruct.TestValue2; val != "" {
-			t.Errorf("Wanted: %v Got: %v", "", val)
-		}
+		assert.Error(t, err)
+
+		assert.NoError(t, Checkout(&testStruct))
+		assert.Equal(t, testStruct.TEST_NUM, "1234")
+		assert.Equal(t, testStruct.TEST_LIST, "One,Two,Three,Four")
+		assert.Equal(t, testStruct.TestValue1, 0)
+		assert.Equal(t, testStruct.TestValue2, "")
 		// Check if tags work
-		if val := testStruct.Test_tag; val != "One,Two,Three,Four" {
-			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)
-		}
+		assert.Equal(t, testStruct.Test_tag, "One,Two,Three,Four")
 		// Check if explicit skip of tag works
-		if val := testStruct.TEST_SOMEPATH; val != "" {
-			t.Errorf("Wanted: %v Got: %v", "c", val)
-		}
+		assert.Equal(t, testStruct.TEST_SOMEPATH, "")
+		assert.Equal(t, testStruct.TestDefaultValue, 123)
 	})
 
 	t.Run("Traversing a slice of strings.", func(t *testing.T) {
 		testSlice := []string{"some", "SOME", "TEST_LIST"}
 		err := Checkout(&testSlice)
+
 		// Check if reference to a slice is rejected, since a slice is already a pointer
-		if err == nil {
-			t.Errorf("A reference to a slice string was accepted.")
-		}
-		_ = Checkout(testSlice)
-		fmt.Println(testSlice)
-		if val := testSlice[0]; val != "" {
-			t.Errorf("Wanted: %v Got: %v", "", val)
-		}
-		if val := testSlice[1]; val != "" {
-			t.Errorf("Wanted: %v Got: %v", "", val)
-		}
-		if val := testSlice[2]; val != "One,Two,Three,Four" {
-			t.Errorf("Wanted: %v Got: %v", "One,Two,Three,Four", val)
-		}
+		assert.Error(t, err)
+
+		assert.NoError(t, Checkout(testSlice))
+		assert.Equal(t, testSlice[0], "")
+		assert.Equal(t, testSlice[1], "")
+		assert.Equal(t, testSlice[2], "One,Two,Three,Four")
 	})
 }

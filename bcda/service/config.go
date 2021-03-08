@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"time"
@@ -36,6 +37,14 @@ type ACOConfig struct {
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp
 	perfYear   time.Time
+}
+
+func (config *ACOConfig) String() string {
+	d, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Sprintf("failed to marshal config %s", err.Error())
+	}
+	return string(d)
 }
 
 func LoadConfig() (cfg *Config, err error) {
