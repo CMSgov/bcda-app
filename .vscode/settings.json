@@ -5,9 +5,13 @@
         "TEST_DB_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "QUEUE_DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
-        "BCDA_API_CONFIG_PATH": "${workspaceFolder}/conf/testdata/api.yml"
+        "BCDA_API_CONFIG_PATH": "${workspaceFolder}/shared_files/decrypted/api.yml"
     },
     "go.testEnvFile": "${workspaceFolder}/shared_files/decrypted/local.env",
+    "go.testFlags": [
+        // Allow us to see verbose logging output for testing. e.g output from t.Log/t.Logf
+        "-v"
+    ],
     "go.testTimeout": "2m",
     "go.buildOnSave": "package",
     "go.lintTool": "golangci-lint",

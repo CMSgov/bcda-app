@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -12,10 +11,10 @@ import (
 // TestLoadConfig verifies the configuration reference by BCDA_API_CONFIG_PATH
 // can be loaded properly
 func TestLoadConfig(t *testing.T) {
-	fmt.Println("Loading configuration from " + os.Getenv("BCDA_API_CONFIG_PATH"))
+	t.Log("Loading configuration from " + os.Getenv("BCDA_API_CONFIG_PATH"))
 	cfg, err := service.LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	fmt.Printf("Successfully loaded config %+v\n", cfg)
+	t.Logf("Successfully loaded config %+v", cfg)
 	assert.Len(t, cfg.ACOConfigs, 6)
 }
