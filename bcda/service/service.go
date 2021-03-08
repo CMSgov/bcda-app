@@ -65,9 +65,11 @@ const (
 
 func NewService(r models.Repository, cfg *Config, basePath string) Service {
 	acoMap := make(map[*regexp.Regexp]*ACOConfig)
-	for idx, config := range cfg.ACOConfigs {
-		acoMap[config.patternExp] 
+	for idx := range cfg.ACOConfigs {
+		acoCfg := cfg.ACOConfigs[idx]
+		acoMap[acoCfg.patternExp] = acoCfg
 	}
+
 	return &service{
 		repository:        r,
 		logger:            log.StandardLogger(),
@@ -82,6 +84,7 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 			cutoffDuration: cfg.RunoutConfig.cutoffDuration,
 		},
 		bbBasePath: basePath,
+		acoConfig:  acoMap,
 	}
 }
 
@@ -96,7 +99,7 @@ type service struct {
 	bbBasePath        string
 
 	// Links pattern match to the associated ACO config
-	acoConfig map[*regexp.Regexp]ACOConfig
+	acoConfig map[*regexp.Regexp]*ACOConfig
 }
 
 type suppressionParameters struct {
