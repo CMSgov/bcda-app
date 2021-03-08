@@ -1,4 +1,4 @@
-package models
+package service
 
 import (
 	context "context"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/pborman/uuid"
@@ -152,12 +153,12 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 	conditions := RequestConditions{
 		CMSID:    "cmsID",
 		Since:    time.Now(),
-		fileType: FileTypeDefault,
+		fileType: models.FileTypeDefault,
 	}
 	tests := []struct {
 		name          string
-		cclfFileNew   *CCLFFile
-		cclfFileOld   *CCLFFile
+		cclfFileNew   *models.CCLFFile
+		cclfFileOld   *models.CCLFFile
 		funcUnderTest func(s *service) error
 	}{
 		{
@@ -184,15 +185,15 @@ func (s *ServiceTestSuite) TestIncludeSuppressedBeneficiaries() {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(8)
 			sp := suppressionParameters{true, lookbackDays}
-			repository := &MockRepository{}
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, FileTypeDefault).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), FileTypeDefault).Return(tt.cclfFileOld, nil)
+			repository := &models.MockRepository{}
+			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.MatchedBy(timeIsSetMatcher), time.Time{}, models.FileTypeDefault).Return(tt.cclfFileNew, nil)
+			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, time.Time{}, mock.MatchedBy(timeIsSetMatcher), models.FileTypeDefault).Return(tt.cclfFileOld, nil)
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, tt.cclfFileOld.ID).Return([]string{"1", "2", "3"}, nil)
 			}
 
 			var suppressedMBIs []string
-			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFileNew.ID, suppressedMBIs).Return([]*CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
+			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFileNew.ID, suppressedMBIs).Return([]*models.CCLFBeneficiary{getCCLFBeneficiary(1, "1")}, nil)
 			serviceInstance := &service{repository: repository, sp: sp, stdCutoffDuration: 1 * time.Hour}
 
 			err := tt.funcUnderTest(serviceInstance)
@@ -207,8 +208,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 	tests := []struct {
 		name string
 
-		cclfFileNew *CCLFFile
-		cclfFileOld *CCLFFile
+		cclfFileNew *models.CCLFFile
+		cclfFileOld *models.CCLFFile
 
 		oldMBIs []string
 
@@ -262,7 +263,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(30)
 			fileNum := int(8)
-			repository := &MockRepository{}
+			repository := &models.MockRepository{}
 			cutoffDuration := 1 * time.Hour
 			cmsID := "cmsID"
 			since := time.Now().Add(-1 * time.Hour)
@@ -273,7 +274,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 				return now.Sub(t) < time.Second
 			})
 
-			var benes []*CCLFBeneficiary
+			var benes []*models.CCLFBeneficiary
 			oldMBIs := make(map[string]bool)
 			newMBIs := make(map[string]bool)
 			beneID := uint(1)
@@ -301,8 +302,8 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 					return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
 				}),
 				time.Time{},
-				FileTypeDefault).Return(tt.cclfFileNew, nil)
-			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete, time.Time{}, since, FileTypeDefault).Return(tt.cclfFileOld, nil)
+				models.FileTypeDefault).Return(tt.cclfFileNew, nil)
+			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, cmsID, fileNum, constants.ImportComplete, time.Time{}, since, models.FileTypeDefault).Return(tt.cclfFileOld, nil)
 
 			if tt.cclfFileOld != nil {
 				repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, tt.cclfFileOld.ID).Return(tt.oldMBIs, nil)
@@ -315,7 +316,7 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 
 			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
-				RequestConditions{CMSID: "cmsID", Since: since, fileType: FileTypeDefault})
+				RequestConditions{CMSID: "cmsID", Since: since, fileType: models.FileTypeDefault})
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)
@@ -339,31 +340,31 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 func (s *ServiceTestSuite) TestGetBeneficiaries() {
 	tests := []struct {
 		name        string
-		fileType    CCLFFileType
-		cclfFile    *CCLFFile
+		fileType    models.CCLFFileType
+		cclfFile    *models.CCLFFile
 		expectedErr error
 	}{
 		{
 			"BenesReturned",
-			FileTypeDefault,
+			models.FileTypeDefault,
 			getCCLFFile(1),
 			nil,
 		},
 		{
 			"NoCCLFFileFound",
-			FileTypeDefault,
+			models.FileTypeDefault,
 			nil,
 			fmt.Errorf("no CCLF8 file found for cmsID"),
 		},
 		{
 			"NoBenesFound",
-			FileTypeDefault,
+			models.FileTypeDefault,
 			getCCLFFile(2),
 			fmt.Errorf("Found 0 beneficiaries from CCLF8 file for cmsID"),
 		},
 		{
 			"BenesReturnedRunout",
-			FileTypeRunout,
+			models.FileTypeRunout,
 			getCCLFFile(3),
 			nil,
 		},
@@ -373,7 +374,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 		s.T().Run(tt.name, func(t *testing.T) {
 			lookbackDays := int(30)
 			fileNum := int(8)
-			repository := &MockRepository{}
+			repository := &models.MockRepository{}
 			cutoffDuration := 1 * time.Hour
 			cmsID := "cmsID"
 			now := time.Now().Round(time.Millisecond)
@@ -383,7 +384,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				return now.Sub(t) < time.Second
 			})
 
-			var benes []*CCLFBeneficiary
+			var benes []*models.CCLFBeneficiary
 			mbis := make(map[string]bool)
 			beneID := uint(1)
 			// Skip populating benes under certain test conditions
@@ -401,9 +402,9 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 					// Since we're using time.Now() within the service call, we can't compare directly.
 					// Make sure we're close enough.
 					switch tt.fileType {
-					case FileTypeDefault:
+					case models.FileTypeDefault:
 						return time.Now().Add(-1*cutoffDuration).Sub(t) < time.Second
-					case FileTypeRunout:
+					case models.FileTypeRunout:
 						return time.Now().Add(-1*120*24*time.Hour).Sub(t) < time.Second
 					default:
 						return false // We do not understand this fileType
@@ -441,8 +442,8 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	defaultACOID, priorityACOID := "SOME_ACO_ID", "PRIORITY_ACO_ID"
 	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
-	benes1, benes2 := make([]*CCLFBeneficiary, 10), make([]*CCLFBeneficiary, 20)
-	allBenes := [][]*CCLFBeneficiary{benes1, benes2}
+	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
+	allBenes := [][]*models.CCLFBeneficiary{benes1, benes2}
 	for idx, b := range allBenes {
 		for i := 0; i < len(b); i++ {
 			id := uint(idx*10000 + i + 1)
@@ -457,17 +458,17 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 
 	since := time.Now()
-	terminationHistorical := &Termination{
-		ClaimsStrategy:      ClaimsHistorical,
-		AttributionStrategy: AttributionHistorical,
-		OptOutStrategy:      OptOutHistorical,
+	terminationHistorical := &models.Termination{
+		ClaimsStrategy:      models.ClaimsHistorical,
+		AttributionStrategy: models.AttributionHistorical,
+		OptOutStrategy:      models.OptOutHistorical,
 		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
 
-	terminationLatest := &Termination{
-		ClaimsStrategy:      ClaimsLatest,
-		AttributionStrategy: AttributionLatest,
-		OptOutStrategy:      OptOutLatest,
+	terminationLatest := &models.Termination{
+		ClaimsStrategy:      models.ClaimsLatest,
+		AttributionStrategy: models.AttributionLatest,
+		OptOutStrategy:      models.OptOutLatest,
 		TerminationDate:     time.Now().Add(-30 * 24 * time.Hour).Round(time.Millisecond).UTC(),
 	}
 
@@ -480,9 +481,9 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		reqType            RequestType
 		expSince           time.Time
 		expServiceDate     time.Time
-		expBenes           []*CCLFBeneficiary
+		expBenes           []*models.CCLFBeneficiary
 		resourceTypes      []string
-		terminationDetails *Termination
+		terminationDetails *models.Termination
 	}
 
 	baseTests := []test{
@@ -531,9 +532,9 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				ReqType:   tt.reqType,
 			}
 
-			repository := &MockRepository{}
+			repository := &models.MockRepository{}
 			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
-				Return(&ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
+				Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
 			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
 			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
@@ -547,7 +548,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
 			for _, qj := range queJobs {
-				var args JobEnqueueArgs
+				var args models.JobEnqueueArgs
 				assert.NoError(t, json.Unmarshal(qj.Args, &args))
 				assert.Equal(t, tt.expServiceDate, args.ServiceDate)
 
@@ -608,7 +609,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 
 func (s *ServiceTestSuite) TestGetQueJobsFailedACOLookup() {
 	conditions := RequestConditions{ACOID: uuid.NewRandom()}
-	repository := &MockRepository{}
+	repository := &models.MockRepository{}
 	repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
 		Return(nil, context.DeadlineExceeded)
 	defer repository.AssertExpectations(s.T())
@@ -622,28 +623,28 @@ func (s *ServiceTestSuite) TestCancelJob() {
 	ctx := context.Background()
 	synthErr := fmt.Errorf("Synthetic error for testing.")
 	tests := []struct {
-		status           JobStatus
+		status           models.JobStatus
 		cancellableJobID uint
 		resultJobID      uint
 		getJobError      error
 		updateJobError   error
 	}{
-		{JobStatusPending, 123456, 123456, nil, nil},
-		{JobStatusInProgress, 123456, 123456, nil, nil},
-		{JobStatusFailed, 123456, 0, nil, nil},
-		{JobStatusExpired, 123456, 0, nil, nil},
-		{JobStatusArchived, 123456, 0, nil, nil},
-		{JobStatusCompleted, 123456, 0, nil, nil},
-		{JobStatusCancelled, 123456, 0, nil, nil},
-		{JobStatusFailedExpired, 123456, 0, nil, nil},
-		{JobStatusInProgress, 123456, 123456, synthErr, nil}, // error occurred on GetJobByID
-		{JobStatusInProgress, 123456, 123456, nil, synthErr}, // error occurred on UpdateJob
+		{models.JobStatusPending, 123456, 123456, nil, nil},
+		{models.JobStatusInProgress, 123456, 123456, nil, nil},
+		{models.JobStatusFailed, 123456, 0, nil, nil},
+		{models.JobStatusExpired, 123456, 0, nil, nil},
+		{models.JobStatusArchived, 123456, 0, nil, nil},
+		{models.JobStatusCompleted, 123456, 0, nil, nil},
+		{models.JobStatusCancelled, 123456, 0, nil, nil},
+		{models.JobStatusFailedExpired, 123456, 0, nil, nil},
+		{models.JobStatusInProgress, 123456, 123456, synthErr, nil}, // error occurred on GetJobByID
+		{models.JobStatusInProgress, 123456, 123456, nil, synthErr}, // error occurred on UpdateJob
 	}
 
 	for _, tt := range tests {
 		s.T().Run(string(tt.status), func(t *testing.T) {
-			repository := &MockRepository{}
-			repository.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(&Job{Status: tt.status}, tt.getJobError)
+			repository := &models.MockRepository{}
+			repository.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(&models.Job{Status: tt.status}, tt.getJobError)
 			repository.On("UpdateJob", testUtils.CtxMatcher, mock.Anything).Return(tt.updateJobError)
 			s := &service{}
 			s.repository = repository
@@ -663,11 +664,11 @@ func (s *ServiceTestSuite) TestCancelJob() {
 // on the RequestConditions and we shouldn't need this test anymore.
 // Since we do not have any users of it, we need to verify that we set the fields correctly
 func (s *ServiceTestSuite) TestSetTimeConstraints() {
-	termination := &Termination{
+	termination := &models.Termination{
 		TerminationDate:     time.Now(),
-		AttributionStrategy: AttributionHistorical,
-		OptOutStrategy:      OptOutHistorical,
-		ClaimsStrategy:      ClaimsLatest,
+		AttributionStrategy: models.AttributionHistorical,
+		OptOutStrategy:      models.OptOutHistorical,
+		ClaimsStrategy:      models.ClaimsLatest,
 	}
 	conditions := RequestConditions{ACOID: uuid.NewRandom()}
 	type dates struct {
@@ -677,7 +678,7 @@ func (s *ServiceTestSuite) TestSetTimeConstraints() {
 	}
 	tests := []struct {
 		name     string
-		details  *Termination
+		details  *models.Termination
 		expDates dates
 	}{
 		// When we do not have termination details, we must assume that there
@@ -689,8 +690,8 @@ func (s *ServiceTestSuite) TestSetTimeConstraints() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			c1 := conditions
-			aco := &ACO{UUID: conditions.ACOID, TerminationDetails: tt.details}
-			repository := &MockRepository{}
+			aco := &models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.details}
+			repository := &models.MockRepository{}
 			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
 				Return(aco, nil)
 			defer repository.AssertExpectations(t)
@@ -705,14 +706,14 @@ func (s *ServiceTestSuite) TestSetTimeConstraints() {
 	}
 }
 
-func getCCLFFile(id uint) *CCLFFile {
-	return &CCLFFile{
+func getCCLFFile(id uint) *models.CCLFFile {
+	return &models.CCLFFile{
 		ID: id,
 	}
 }
 
-func getCCLFBeneficiary(id uint, mbi string) *CCLFBeneficiary {
-	return &CCLFBeneficiary{
+func getCCLFBeneficiary(id uint, mbi string) *models.CCLFBeneficiary {
+	return &models.CCLFBeneficiary{
 		ID:  id,
 		MBI: mbi,
 	}

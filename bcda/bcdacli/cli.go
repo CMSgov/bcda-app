@@ -26,6 +26,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/suppression"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -540,7 +541,7 @@ func createGroup(id, name, acoID string) (string, error) {
 		err error
 	)
 
-	if match := models.IsSupportedACO(acoID); match {
+	if match := service.IsSupportedACO(acoID); match {
 		aco, err = r.GetACOByCMSID(context.Background(), acoID)
 		if err != nil {
 			return "", err
@@ -591,7 +592,7 @@ func createACO(name, cmsID string) (string, error) {
 
 	var cmsIDPt *string
 	if cmsID != "" {
-		match := models.IsSupportedACO(cmsID)
+		match := service.IsSupportedACO(cmsID)
 		if !match {
 			return "", errors.New("ACO CMS ID (--cms-id) is invalid")
 		}

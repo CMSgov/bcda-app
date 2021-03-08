@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -74,7 +75,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		return p.handleArchiveError(path, info, err)
 	}
 
-	supported := models.IsSupportedACO(cmsID)
+	supported := service.IsSupportedACO(cmsID)
 	if !supported {
 		return p.handleArchiveError(path, info, fmt.Errorf("cmsID %s not supported", cmsID))
 	}
