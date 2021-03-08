@@ -515,6 +515,8 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 		{"PendingButComplete", models.JobStatusPending, 1, 1, true},
 		{"PendingNotComplete", models.JobStatusPending, 10, 1, false},
 		{"AlreadyCompleted", models.JobStatusCompleted, 1, 1, true},
+		{"Cancelled", models.JobStatusCancelled, 1, 1, true},
+		{"Failed", models.JobStatusFailed, 1, 1, true},
 	}
 
 	for _, tt := range tests {
@@ -536,8 +538,8 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 			defer repository.AssertExpectations(t)
 			repository.On("GetJobByID", testUtils.CtxMatcher, jobID).Return(j, nil)
 
-			// A job previously marked as completed will bypass all of these calls
-			if tt.status != models.JobStatusCompleted {
+			// A job previously marked as a terminal status (Completed, Cancelled, or Failed) will bypass all of these calls
+			if !isTerminalStatus(tt.status) {
 				repository.On("GetJobKeyCount", testUtils.CtxMatcher, jobID).Return(tt.jobKeys, nil)
 				if tt.completed {
 					repository.On("UpdateJobStatus", testUtils.CtxMatcher, j.ID, models.JobStatusCompleted).
@@ -549,13 +551,23 @@ func (s *WorkerTestSuite) TestCheckJobCompleteAndCleanup() {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.completed, completed)
 
-			// Completed job should've bypassed all of these calls. Therefore any data will remain.
-			if tt.completed && tt.status != models.JobStatusCompleted {
+			// Terminal Status job should've bypassed all of these calls. Therefore any data will remain.
+			if tt.completed && !isTerminalStatus(tt.status) {
 				_, err := os.Stat(sDir)
 				assert.True(t, os.IsNotExist(err))
 			}
 		})
 	}
+}
+
+func isTerminalStatus(status models.JobStatus) bool {
+	switch status {
+	case models.JobStatusCompleted,
+		models.JobStatusCancelled,
+		models.JobStatusFailed:
+		return true
+	}
+	return false
 }
 
 func (s *WorkerTestSuite) TestValidateJob() {

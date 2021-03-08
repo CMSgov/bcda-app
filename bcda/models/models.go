@@ -1,14 +1,10 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -123,65 +119,6 @@ type Suppression struct {
 	SAMHSAPrefIndicator string
 	ACOCMSID            string
 	BeneficiaryLinkKey  int
-}
-
-// This method will ensure that a valid BlueButton ID is returned.
-// If you use cclfBeneficiary.BlueButtonID you will not be guaranteed a valid value
-func (cclfBeneficiary *CCLFBeneficiary) GetBlueButtonID(bb client.APIClient) (blueButtonID string, err error) {
-	modelIdentifier := cclfBeneficiary.MBI
-
-	blueButtonID, err = GetBlueButtonID(bb, modelIdentifier, "beneficiary", cclfBeneficiary.ID)
-	if err != nil {
-		return "", err
-	}
-	return blueButtonID, nil
-}
-
-func GetBlueButtonID(bb client.APIClient, modelIdentifier, reqType string, modelID uint) (blueButtonID string, err error) {
-	hashedIdentifier := client.HashIdentifier(modelIdentifier)
-
-	jsonData, err := bb.GetPatientByIdentifierHash(hashedIdentifier)
-	if err != nil {
-		return "", err
-	}
-	var patient Patient
-	err = json.Unmarshal([]byte(jsonData), &patient)
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-
-	if len(patient.Entry) == 0 {
-
-		err = fmt.Errorf("patient identifier not found at Blue Button for CCLF %s ID: %v", reqType, modelID)
-
-		log.Error(err)
-		return "", err
-	}
-	var foundIdentifier = false
-	var foundBlueButtonID = false
-	blueButtonID = patient.Entry[0].Resource.ID
-	for _, identifier := range patient.Entry[0].Resource.Identifier {
-		if strings.Contains(identifier.System, "us-mbi") {
-			if identifier.Value == modelIdentifier {
-				foundIdentifier = true
-			}
-		} else if strings.Contains(identifier.System, "bene_id") && identifier.Value == blueButtonID {
-			foundBlueButtonID = true
-		}
-	}
-	if !foundIdentifier {
-		err = fmt.Errorf("Identifier not found")
-		log.Error(err)
-		return "", err
-	}
-	if !foundBlueButtonID {
-		err = fmt.Errorf("Blue Button identifier not found in the identifiers")
-		log.Error(err)
-		return "", err
-	}
-
-	return blueButtonID, nil
 }
 
 type JobEnqueueArgs struct {

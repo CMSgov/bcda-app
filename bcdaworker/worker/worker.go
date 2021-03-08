@@ -140,7 +140,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
 	segment := getSegment(ctx, "writeBBDataToFile")
-	segment.End()
+	defer segment.End()
 
 	var bundleFunc func(bbID string) (*fhirmodels.Bundle, error)
 	switch jobArgs.ResourceType {
@@ -244,8 +244,9 @@ func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, b
 
 	cclfBeneficiary := *bene
 
-	bbID, err := cclfBeneficiary.GetBlueButtonID(bb)
+	bbID, err := getBlueButtonID(bb, cclfBeneficiary.MBI)
 	if err != nil {
+		err = fmt.Errorf("failed to get blue button id for ID %d: %w", beneID, err)
 		return cclfBeneficiary, err
 	}
 
@@ -270,7 +271,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, jobID int) {
 	segment := getSegment(ctx, "appendErrorToFile")
-	segment.End()
+	defer segment.End()
 
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
@@ -296,7 +297,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
 	segment := getSegment(ctx, "fhirBundleToResourceNDJSON")
-	segment.End()
+	defer segment.End()
 
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
@@ -326,13 +327,12 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		return false, err
 	}
 
-	if j.Status == models.JobStatusCompleted {
+	switch j.Status {
+	case models.JobStatusCompleted:
 		return true, nil
-	}
-
-	if j.Status == models.JobStatusCancelled {
-		// don't update job, Cancelled is a terminal status
-		log.Warnf("Failed to mark job as completed (job cancelled): %s", err)
+	case models.JobStatusCancelled, models.JobStatusFailed:
+		// don't update job, Cancelled and Failed are terminal statuses
+		log.Warnf("Failed to mark job as completed (Job %s): %s", j.Status, err)
 		return true, nil
 	}
 
@@ -362,7 +362,7 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		if err = os.Remove(staging); err != nil {
 			return false, err
 		}
-		// TODO: rework so that failed jobs do not get marked complete
+
 		err = r.UpdateJobStatus(ctx, j.ID, models.JobStatusCompleted)
 		if err != nil {
 			return false, err

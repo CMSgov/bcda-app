@@ -66,6 +66,12 @@ var valuegen map[*regexp.Regexp]func() string = map[*regexp.Regexp]func() string
 			return strconv.FormatFloat(res, 'f', 3, 64)
 		})
 	},
+	regexp.MustCompile("EXCLUDED$"): func() string {
+		return randomEmpty(half,
+			func() string { return strconv.Itoa(randomdata.Number(2)) })
+	},
+	regexp.MustCompile("^CBA_FLAG$"):        func() string { return strconv.Itoa(randomdata.Number(2)) },
+	regexp.MustCompile("^ASSIGNMENT_TYPE$"): func() string { return strconv.Itoa(randomdata.Number(3)) },
 }
 
 // UpdateCSV uses a random generator to populate fields present in the CSV file referenced by the fileName.
