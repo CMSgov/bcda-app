@@ -150,7 +150,8 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}
 	case "ExplanationOfBenefit":
 		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
-			return bb.GetExplanationOfBenefit(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, jobArgs.ServiceDate)
+			return bb.GetExplanationOfBenefit(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime,
+				client.ClaimsDate{LowerBound: jobArgs.ClaimsDate.LowerBound, UpperBound: jobArgs.ClaimsDate.UpperBound})
 		}
 	case "Patient":
 		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {

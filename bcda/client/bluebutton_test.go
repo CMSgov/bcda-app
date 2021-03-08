@@ -231,14 +231,14 @@ func (s *BBRequestTestSuite) TestGetCoverage_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsDate{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 33, len(e.Entries))
 	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsDate{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -300,7 +300,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, time.Time{})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsDate{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -319,7 +319,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, time.Time{})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, client.ClaimsDate{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -338,7 +338,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitWithServiceDate",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, serviceDate)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsDate{UpperBound: serviceDate})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)

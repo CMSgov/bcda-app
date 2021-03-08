@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 
 	"github.com/stretchr/testify/mock"
@@ -18,7 +19,7 @@ type BlueButtonClient struct {
 	MBI  *string
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, serviceDate client.ClaimsDate) (*models.Bundle, error) {
 	args := bbc.Called(patientID, jobID, cmsID, since, transactionTime, serviceDate)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

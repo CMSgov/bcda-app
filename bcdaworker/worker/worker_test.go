@@ -107,6 +107,7 @@ func TestWorkerTestSuite(t *testing.T) {
 
 func (s *WorkerTestSuite) TestWriteResourceToFile() {
 	bbc := testUtils.BlueButtonClient{}
+	// TODO fix time comparison!
 	since, transactionTime, serviceDate := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now(), time.Now().Add(-180*24*time.Hour)
 
 	var cclfBeneficiaryIDs []string
@@ -116,7 +117,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
-		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime, serviceDate).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime, client.ClaimsDate{UpperBound: serviceDate}).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 		bbc.On("GetCoverage", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
 		bbc.On("GetPatient", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
 	}
