@@ -84,12 +84,14 @@ func (cfg *Config) computeFields() (err error) {
 	if cfg.RunoutConfig.claimThru, err = time.Parse(claimThruLayout, cfg.RunoutConfig.ClaimThruDate); err != nil {
 		return fmt.Errorf("failed to parse runout claim thru date: %w", err)
 	}
-	for _, acoCfg := range cfg.ACOConfigs {
-		if acoCfg.patternExp, err = regexp.Compile(acoCfg.Pattern); err != nil {
-			return fmt.Errorf("failed to parse ACO model %s pattern: %w", acoCfg.Model, err)
+
+	// Replace the ACO configs inline with computed columns
+	for idx := range cfg.ACOConfigs {
+		if cfg.ACOConfigs[idx].patternExp, err = regexp.Compile(cfg.ACOConfigs[idx].Pattern); err != nil {
+			return fmt.Errorf("failed to parse ACO model %s pattern: %w", cfg.ACOConfigs[idx].Model, err)
 		}
-		if acoCfg.PerfYearTransition != "" {
-			if acoCfg.perfYear, err = time.Parse(perfYearLayout, acoCfg.PerfYearTransition); err != nil {
+		if cfg.ACOConfigs[idx].PerfYearTransition != "" {
+			if cfg.ACOConfigs[idx].perfYear, err = time.Parse(perfYearLayout, cfg.ACOConfigs[idx].PerfYearTransition); err != nil {
 				return fmt.Errorf("failed to parse perf year: %w", err)
 			}
 		}
