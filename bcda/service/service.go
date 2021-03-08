@@ -63,21 +63,19 @@ const (
 	cclf8FileNum = int(8)
 )
 
-func NewService(r models.Repository, cutoffDuration time.Duration, lookbackDays int,
-	runoutCutoffDuration time.Duration, runoutClaimThru time.Time,
-	basePath string) Service {
+func NewService(r models.Repository, cfg *Config, basePath string) Service {
 	return &service{
 		repository:        r,
 		logger:            log.StandardLogger(),
-		stdCutoffDuration: cutoffDuration,
+		stdCutoffDuration: cfg.cutoffDuration,
 		sp: suppressionParameters{
 			includeSuppressedBeneficiaries: false,
-			lookbackDays:                   lookbackDays,
+			lookbackDays:                   cfg.SuppressionLookbackDays,
 		},
 		rp: runoutParameters{
 			// Runouts apply to claims data for the previous year.
-			claimThruDate:  runoutClaimThru,
-			cutoffDuration: runoutCutoffDuration,
+			claimThruDate:  cfg.RunoutConfig.claimThru,
+			cutoffDuration: cfg.RunoutConfig.cutoffDuration,
 		},
 		bbBasePath: basePath,
 	}

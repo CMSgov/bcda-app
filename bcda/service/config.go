@@ -11,8 +11,8 @@ import (
 )
 
 type Config struct {
-	SuppressionLookbackDays int `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"45"`
-	CutoffDurationDays      int `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"60"`
+	SuppressionLookbackDays int `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
+	CutoffDurationDays      int `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
 
 	RunoutConfig `conf:",squash"`
 
@@ -20,6 +20,14 @@ type Config struct {
 
 	// Un-exported fields that are computed using the exported ones above
 	cutoffDuration time.Duration
+}
+
+func (config *Config) String() string {
+	d, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Sprintf("failed to marshal config %s", err.Error())
+	}
+	return string(d)
 }
 
 type RunoutConfig struct {

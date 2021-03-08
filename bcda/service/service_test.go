@@ -314,7 +314,15 @@ func (s *ServiceTestSuite) TestGetNewAndExistingBeneficiaries() {
 			}
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, lookbackDays, mockUpperBound).Return([]string{suppressedMBI}, nil)
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
+			cfg := &Config{
+				cutoffDuration:          time.Hour,
+				SuppressionLookbackDays: lookbackDays,
+				RunoutConfig: RunoutConfig{
+					cutoffDuration: defaultRunoutCutoff,
+					claimThru:      defaultRunoutClaimThru,
+				},
+			}
+			serviceInstance := NewService(repository, cfg, "").(*service)
 			newBenes, oldBenes, err := serviceInstance.getNewAndExistingBeneficiaries(context.Background(),
 				RequestConditions{CMSID: "cmsID", Since: since, fileType: models.FileTypeDefault})
 
@@ -418,7 +426,15 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 				repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, tt.cclfFile.ID, []string{suppressedMBI}).Return(benes, nil)
 			}
 
-			serviceInstance := NewService(repository, 1*time.Hour, lookbackDays, defaultRunoutCutoff, defaultRunoutClaimThru, "").(*service)
+			cfg := &Config{
+				cutoffDuration:          time.Hour,
+				SuppressionLookbackDays: lookbackDays,
+				RunoutConfig: RunoutConfig{
+					cutoffDuration: defaultRunoutCutoff,
+					claimThru:      defaultRunoutClaimThru,
+				},
+			}
+			serviceInstance := NewService(repository, cfg, "").(*service)
 			benes, err := serviceInstance.getBeneficiaries(context.Background(),
 				RequestConditions{CMSID: "cmsID", fileType: tt.fileType})
 
@@ -541,7 +557,15 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
 			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
 
-			serviceInstance := NewService(repository, 1*time.Hour, 0, defaultRunoutCutoff, defaultRunoutClaimThru, basePath)
+			cfg := &Config{
+				cutoffDuration:          time.Hour,
+				SuppressionLookbackDays: 0,
+				RunoutConfig: RunoutConfig{
+					cutoffDuration: defaultRunoutCutoff,
+					claimThru:      defaultRunoutClaimThru,
+				},
+			}
+			serviceInstance := NewService(repository, cfg, basePath)
 
 			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
 			assert.NoError(t, err)

@@ -119,22 +119,15 @@ func NewHandler(resources []string, basePath string) *Handler {
 	}()
 
 	h.qc = que.NewClient(pgxpool)
-
-	cutoffDuration := time.Duration(utils.GetEnvInt("CCLF_CUTOFF_DATE_DAYS", 45)*24) * time.Hour
-
-	// Allow runout requests to be up to 4 months after runout data was ingested
-	runoutCutoffDuration := time.Duration(utils.GetEnvInt("RUNOUT_CUTOFF_DATE_DAYS", 120)*24) * time.Hour
-	runoutClaimThru := utils.FromEnv("RUNOUT_CLAIM_THRU_DATE", "2020-12-31")
-	runoutClaimThruDate, err := time.Parse(claimThruDateFmt, runoutClaimThru)
+	
+	cfg, err := service.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to parse RUNOUT_CLAIM_THRU_DATE '%s'. Err: %v", runoutClaimThru, err)
+		log.Fatalf("Failed to load service config. Err: %v", err)
 	}
 
 	repository := postgres.NewRepository(db)
 	h.db, h.r = db, repository
-	h.Svc = service.NewService(repository, cutoffDuration, utils.GetEnvInt("BCDA_SUPPRESSION_LOOKBACK_DAYS", 60),
-		runoutCutoffDuration, runoutClaimThruDate,
-		basePath)
+	h.Svc = service.NewService(repository, cfg, basePath)
 
 	h.supportedResources = make(map[string]struct{}, len(resources))
 	for _, r := range resources {
