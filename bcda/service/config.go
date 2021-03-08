@@ -14,20 +14,20 @@ type Config struct {
 	SuppressionLookbackDays int `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
 	CutoffDurationDays      int `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
 
-	RunoutConfig `conf:",squash"`
+	// Use the squash tag to allow the RunoutConfigs to avoid requiring the parameters
+	// to be defined as a child of RunoutConfig.
+	// Ex: Without the ,squash, we would have to have RunoutConfig.RUNOUT_CUTOFF_DATE_DAYS
+	// With the ,squash, we would have RUNOUT_CUTOFF_DATE_DAYS.
+	RunoutConfig RunoutConfig `conf:",squash"`
 
-	ACOConfigs []*ACOConfig `conf:"aco_config"`
+	ACOConfigs []ACOConfig `conf:"aco_config"`
 
 	// Un-exported fields that are computed using the exported ones above
 	cutoffDuration time.Duration
 }
 
-func (config *Config) String() string {
-	d, err := json.Marshal(config)
-	if err != nil {
-		return fmt.Sprintf("failed to marshal config %s", err.Error())
-	}
-	return string(d)
+func (config Config) String() string {
+	return toJSON(config)
 }
 
 type RunoutConfig struct {
@@ -36,6 +36,10 @@ type RunoutConfig struct {
 	// Un-exported fields that are computed using the exported ones above
 	cutoffDuration time.Duration
 	claimThru      time.Time
+}
+
+func (config RunoutConfig) String() string {
+	return toJSON(config)
 }
 
 type ACOConfig struct {
@@ -49,11 +53,7 @@ type ACOConfig struct {
 }
 
 func (config *ACOConfig) String() string {
-	d, err := json.Marshal(config)
-	if err != nil {
-		return fmt.Sprintf("failed to marshal config %s", err.Error())
-	}
-	return string(d)
+	return toJSON(config)
 }
 
 func LoadConfig() (cfg *Config, err error) {
@@ -96,4 +96,12 @@ func (cfg *Config) computeFields() (err error) {
 	}
 
 	return nil
+}
+
+func toJSON(config interface{}) string {
+	d, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Sprintf("failed to marshal config %s", err.Error())
+	}
+	return string(d)
 }
