@@ -64,6 +64,10 @@ const (
 )
 
 func NewService(r models.Repository, cfg *Config, basePath string) Service {
+	acoMap := make(map[*regexp.Regexp]*ACOConfig)
+	for idx, config := range cfg.ACOConfigs {
+		acoMap[config.patternExp] 
+	}
 	return &service{
 		repository:        r,
 		logger:            log.StandardLogger(),
@@ -90,6 +94,9 @@ type service struct {
 	sp                suppressionParameters
 	rp                runoutParameters
 	bbBasePath        string
+
+	// Links pattern match to the associated ACO config
+	acoConfig map[*regexp.Regexp]ACOConfig
 }
 
 type suppressionParameters struct {
