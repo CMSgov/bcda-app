@@ -52,8 +52,6 @@ type Handler struct {
 }
 
 func NewHandler(resources []string, basePath string) *Handler {
-	const claimThruDateFmt = "2006-01-02"
-
 	h := &Handler{}
 
 	db := database.GetDbConnection()
