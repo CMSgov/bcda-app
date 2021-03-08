@@ -56,6 +56,27 @@ func (config *ACOConfig) String() string {
 	return toJSON(config)
 }
 
+// LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
+// We compute lookback time by evaluating the performance year transition and the number of lookback years.
+func (config *ACOConfig) LookbackTime() time.Time {
+	if config.perfYear.IsZero() || config.LookbackYears == 0 {
+		return time.Time{}
+	}
+	now := time.Now()
+
+	var year int
+
+	// If we passed our perf year transition, we consider us to be in the new performance year.
+	// Otherwise we are still in the previous performance year.
+	if now.Month() >= config.perfYear.Month() && now.Day() >= config.perfYear.Day() {
+		year = now.Year() - config.LookbackYears
+	} else {
+		year = now.Year() - 1 - config.LookbackYears
+	}
+
+	return time.Date(year, config.perfYear.Month(), config.perfYear.Day(), 0, 0, 0, 0, time.UTC)
+}
+
 func LoadConfig() (cfg *Config, err error) {
 	cfg = &Config{}
 	if err := conf.Checkout(cfg); err != nil {

@@ -67,7 +67,7 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 	acoMap := make(map[*regexp.Regexp]*ACOConfig)
 	for idx := range cfg.ACOConfigs {
 		acoCfg := cfg.ACOConfigs[idx]
-		acoMap[acoCfg.patternExp] = acoCfg
+		acoMap[acoCfg.patternExp] = &acoCfg
 	}
 
 	return &service{
@@ -247,14 +247,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 					BBBasePath:      s.bbBasePath,
 				}
 
-				// If the caller made a request for runout data
-				// it takes precedence over any other claims date
-				// that may be applied
-				if conditions.ReqType == Runout {
-					enqueueArgs.ServiceDate = s.rp.claimThruDate
-				} else if !conditions.claimsDate.IsZero() {
-					enqueueArgs.ServiceDate = conditions.claimsDate
-				}
+				s.setClaimsDate(&enqueueArgs, conditions)
 
 				args, err := json.Marshal(enqueueArgs)
 				if err != nil {
@@ -428,6 +421,31 @@ func (s *service) setTimeConstraints(ctx context.Context, acoID uuid.UUID, condi
 	conditions.claimsDate = aco.TerminationDetails.ClaimsDate()
 	conditions.optOutDate = aco.TerminationDetails.OptOutDate()
 	return nil
+}
+
+// setClaimsDate computes the claims window to apply on the args
+func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestConditions) {
+
+	// If the caller made a request for runout data
+	// it takes precedence over any other claims date
+	// that may be applied
+	if conditions.ReqType == Runout {
+		args.ClaimsDate.UpperBound = s.rp.claimThruDate
+	} else if !conditions.claimsDate.IsZero() {
+		args.ClaimsDate.UpperBound = conditions.claimsDate
+	}
+
+	for pattern, cfg := range s.acoConfig {
+		if pattern.MatchString(conditions.CMSID) {
+			args.ClaimsDate.LowerBound = cfg.LookbackTime()
+			break
+		}
+	}
+
+	// For backwards compatibility we'll continue setting the service date
+	// TODO: Remove this after we create a release with this code in place.
+	// After our next deployment, there shouldn't be any consumers of the ServiceDate field.
+	args.ServiceDate = args.ClaimsDate.UpperBound
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
