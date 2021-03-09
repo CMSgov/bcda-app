@@ -45,7 +45,7 @@ var (
 	now          = time.Now()
 	nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 	since        = "gt2020-02-14"
-	claimsDate   = client.ClaimsDate{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
+	claimsDate   = client.ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
 		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
 )
 
@@ -232,14 +232,14 @@ func (s *BBRequestTestSuite) TestGetCoverage_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsDate{})
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 33, len(e.Entries))
 	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsDate{})
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -301,7 +301,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsDate{})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -320,7 +320,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, client.ClaimsDate{})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -339,7 +339,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitWithUpperBoundServiceDate",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsDate{UpperBound: claimsDate.UpperBound})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -359,7 +359,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitWithLowerBoundServiceDate",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsDate{LowerBound: claimsDate.LowerBound})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -454,8 +455,15 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 }
 
 func (s *ServiceTestSuite) TestGetQueJobs() {
+	defaultACOID, priorityACOID, lookbackACOID := "SOME_ACO_ID", "PRIORITY_ACO_ID", "LOOKBACK_ACO"
 
-	defaultACOID, priorityACOID := "SOME_ACO_ID", "PRIORITY_ACO_ID"
+	acoCfg := ACOConfig{
+		patternExp:    regexp.MustCompile(lookbackACOID),
+		LookbackYears: 3,
+		perfYear:      time.Now(),
+	}
+	acoCfgs := map[*regexp.Regexp]*ACOConfig{acoCfg.patternExp: &acoCfg}
+
 	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
 	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
@@ -491,38 +499,47 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	sinceAfterTermination := terminationHistorical.TerminationDate.Add(10 * 24 * time.Hour)
 	sinceBeforeTermination := terminationHistorical.TerminationDate.Add(-10 * 24 * time.Hour)
 
+	type claimsWindow struct {
+		LowerBound time.Time
+		UpperBound time.Time
+	}
+
 	type test struct {
 		name               string
 		acoID              string
 		reqType            RequestType
 		expSince           time.Time
-		expServiceDate     time.Time
+		expClaimsWindow    claimsWindow
 		expBenes           []*models.CCLFBeneficiary
 		resourceTypes      []string
 		terminationDetails *models.Termination
 	}
 
 	baseTests := []test{
-		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil, nil},
-		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, time.Time{}, benes1, nil, nil},
-		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, time.Time{}, append(benes1, benes2...), nil, nil},
-		{"RunoutRequest", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, nil},
-		{"RunoutRequest with Since", defaultACOID, Runout, since, defaultRunoutClaimThru, benes1, nil, nil},
-		{"Priority", priorityACOID, DefaultRequest, time.Time{}, time.Time{}, benes1, nil, nil},
+		{"BasicRequest (non-Group)", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, nil, nil},
+		{"BasicRequest with Since (non-Group) ", defaultACOID, DefaultRequest, since, claimsWindow{}, benes1, nil, nil},
+		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, claimsWindow{}, append(benes1, benes2...), nil, nil},
+		{"RunoutRequest", defaultACOID, Runout, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
+		{"RunoutRequest with Since", defaultACOID, Runout, since, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
+		{"Priority", priorityACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, nil, nil},
 
 		// Terminated ACOs: historical
-		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, terminationHistorical.ClaimsDate(), benes1, nil, terminationHistorical},
-		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, terminationHistorical.ClaimsDate(), benes1, nil, terminationHistorical},
-		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, terminationHistorical.ClaimsDate(), benes1, nil, terminationHistorical},
-		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, terminationHistorical.ClaimsDate(), append(benes1, benes2...), nil, terminationHistorical},
-		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, defaultRunoutClaimThru, benes1, nil, terminationHistorical}, // Runout cutoff takes precedence over termination cutoff
+		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, append(benes1, benes2...), nil, terminationHistorical},
+		{"TerminatedACORunout", defaultACOID, Runout, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, terminationHistorical}, // Runout cutoff takes precedence over termination cutoff
 
 		// Terminated ACOs: latest
-		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, time.Time{}, benes1, nil, terminationLatest},
-		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, time.Time{}, benes1, nil, terminationLatest},
+		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, claimsWindow{}, benes1, nil, terminationLatest},
+		{"Since Before Termination", defaultACOID, DefaultRequest, sinceBeforeTermination, claimsWindow{}, benes1, nil, terminationLatest},
 		// should still receive full benes since Attribution is set to latest
-		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, time.Time{}, append(benes1, benes2...), nil, terminationLatest},
-		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, time.Time{}, append(benes1, benes2...), nil, terminationLatest},
+		{"New Benes With Since After Termination", defaultACOID, RetrieveNewBeneHistData, sinceAfterTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
+		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
+
+		// ACO with lookback period
+		{"ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: acoCfg.LookbackTime()}, benes1, nil, nil},
+		{"Terminated ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: acoCfg.LookbackTime(), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
 	}
 
 	// Add all combinations of resource types
@@ -566,6 +583,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				},
 			}
 			serviceInstance := NewService(repository, cfg, basePath)
+			serviceInstance.(*service).acoConfig = acoCfgs
 
 			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
 			assert.NoError(t, err)
@@ -574,7 +592,10 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			for _, qj := range queJobs {
 				var args models.JobEnqueueArgs
 				assert.NoError(t, json.Unmarshal(qj.Args, &args))
-				assert.Equal(t, tt.expServiceDate, args.ServiceDate)
+				assert.True(t, tt.expClaimsWindow.LowerBound.Equal(args.ClaimsWindow.LowerBound),
+					"Lower bounds should equal. Have %s. Want %s", args.ClaimsWindow.LowerBound, tt.expClaimsWindow.LowerBound)
+				assert.True(t, tt.expClaimsWindow.UpperBound.Equal(args.ClaimsWindow.UpperBound),
+					"Upper bounds should equal. Have %s. Want %s", args.ClaimsWindow.UpperBound, tt.expClaimsWindow.UpperBound)
 
 				subMap := benesInJob[args.ResourceType]
 				if subMap == nil {
@@ -679,53 +700,6 @@ func (s *ServiceTestSuite) TestCancelJob() {
 				assert.NoError(t, err)
 				assert.Equal(t, cancelledJobID, tt.resultJobID)
 			}
-		})
-	}
-}
-
-// TODO: Remove this test once BCDA-4214,4216,4217 are complete.
-// We should be leveraging the time constraints found
-// on the RequestConditions and we shouldn't need this test anymore.
-// Since we do not have any users of it, we need to verify that we set the fields correctly
-func (s *ServiceTestSuite) TestSetTimeConstraints() {
-	termination := &models.Termination{
-		TerminationDate:     time.Now(),
-		AttributionStrategy: models.AttributionHistorical,
-		OptOutStrategy:      models.OptOutHistorical,
-		ClaimsStrategy:      models.ClaimsLatest,
-	}
-	conditions := RequestConditions{ACOID: uuid.NewRandom()}
-	type dates struct {
-		Attribution time.Time
-		OptOut      time.Time
-		Claims      time.Time
-	}
-	tests := []struct {
-		name     string
-		details  *models.Termination
-		expDates dates
-	}{
-		// When we do not have termination details, we must assume that there
-		// are no time boundaries.
-		{"NoDetails", nil, dates{time.Time{}, time.Time{}, time.Time{}}},
-		{"DetailsSet", termination, dates{termination.AttributionDate(), termination.OptOutDate(), termination.ClaimsDate()}},
-	}
-
-	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
-			c1 := conditions
-			aco := &models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.details}
-			repository := &models.MockRepository{}
-			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
-				Return(aco, nil)
-			defer repository.AssertExpectations(t)
-			service := &service{repository: repository}
-
-			err := service.setTimeConstraints(context.Background(), aco.UUID, &c1)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expDates.Attribution, c1.attributionDate)
-			assert.Equal(t, tt.expDates.OptOut, c1.optOutDate)
-			assert.Equal(t, tt.expDates.Claims, c1.claimsDate)
 		})
 	}
 }

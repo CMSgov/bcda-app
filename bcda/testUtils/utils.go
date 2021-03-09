@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/conf"
@@ -153,16 +152,8 @@ func GetRandomIPV4Address(t *testing.T) string {
 	return fmt.Sprintf("%d.%d.%d.%d", data[0], data[1], data[2], data[3])
 }
 
-type TimeMatcher struct {
-	Expected time.Time
-}
-
-func (matcher TimeMatcher) Match(actual time.Time) bool {
-	return matcher.Expected.Equal(actual)
-}
-
-func ClaimsDateMatcher(expected client.ClaimsDate) (matcher interface{}) {
-	return mock.MatchedBy(func(actual client.ClaimsDate) bool {
+func ClaimsWindowMatcher(expected client.ClaimsWindow) (matcher interface{}) {
+	return mock.MatchedBy(func(actual client.ClaimsWindow) bool {
 		return expected.LowerBound.Equal(actual.LowerBound) &&
 			expected.UpperBound.Equal(actual.UpperBound)
 	})

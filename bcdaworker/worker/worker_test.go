@@ -117,7 +117,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime,
-			testUtils.ClaimsDateMatcher(client.ClaimsDate{UpperBound: serviceDate})).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+			testUtils.ClaimsWindowMatcher(client.ClaimsWindow{UpperBound: serviceDate})).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 		bbc.On("GetCoverage", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
 		bbc.On("GetPatient", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
 	}
@@ -136,7 +136,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 	for _, tt := range tests {
 		s.T().Run(tt.resource, func(t *testing.T) {
 			jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: tt.resource, BeneficiaryIDs: cclfBeneficiaryIDs,
-				Since: since, TransactionTime: transactionTime, ClaimsDate: client.ClaimsDate{UpperBound: serviceDate}}
+				Since: since, TransactionTime: transactionTime, ClaimsWindow: client.ClaimsWindow{UpperBound: serviceDate}}
 			uuid, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
 			if tt.expectZeroSize {
 				assert.EqualValues(t, 0, size)
@@ -267,8 +267,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
 	beneficiaryIDs := []string{"a1000089833", "a1000065301", "a1000012463"}
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsDateMatcher(client.ClaimsDate{})).Return(nil, errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsDateMatcher(client.ClaimsDate{})).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsWindowMatcher(client.ClaimsWindow{})).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsWindowMatcher(client.ClaimsWindow{})).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0])).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 	bbc.MBI = &beneficiaryIDs[1]
@@ -304,7 +304,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsDateMatcher(client.ClaimsDate{}))
+	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsWindowMatcher(client.ClaimsWindow{}))
 }
 
 func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
@@ -626,7 +626,7 @@ func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 
 // first argument is lowerBound, second argument is upperBound
 func claimsDateMatcher(times ...time.Time) (matcher interface{}) {
-	date := client.ClaimsDate{}
+	date := client.ClaimsWindow{}
 	if len(times) == 2 {
 		date.UpperBound = times[2]
 	}
@@ -634,7 +634,7 @@ func claimsDateMatcher(times ...time.Time) (matcher interface{}) {
 		date.LowerBound = times[1]
 	}
 
-	return testUtils.ClaimsDateMatcher(date)
+	return testUtils.ClaimsWindowMatcher(date)
 }
 
 func assertEqualErrorFiles(t *testing.T, expected, actual string) {

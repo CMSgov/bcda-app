@@ -54,13 +54,13 @@ func NewConfig(basePath string) BlueButtonConfig {
 	}
 }
 
-type ClaimsDate struct {
+type ClaimsWindow struct {
 	LowerBound time.Time
 	UpperBound time.Time
 }
 
 type APIClient interface {
-	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsDate ClaimsDate) (*models.Bundle, error)
+	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsDate ClaimsWindow) (*models.Bundle, error)
 	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
@@ -186,7 +186,7 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since stri
 	return bbc.getBundleData(u, jobID, cmsID, nil)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsDate ClaimsDate) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsDate ClaimsWindow) (*models.Bundle, error) {
 	// ServiceDate only uses yyyy-mm-dd
 	const svcDateFmt = "2006-01-02"
 

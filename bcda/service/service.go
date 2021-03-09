@@ -430,14 +430,14 @@ func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestC
 	// it takes precedence over any other claims date
 	// that may be applied
 	if conditions.ReqType == Runout {
-		args.ClaimsDate.UpperBound = s.rp.claimThruDate
+		args.ClaimsWindow.UpperBound = s.rp.claimThruDate
 	} else if !conditions.claimsDate.IsZero() {
-		args.ClaimsDate.UpperBound = conditions.claimsDate
+		args.ClaimsWindow.UpperBound = conditions.claimsDate
 	}
 
 	for pattern, cfg := range s.acoConfig {
 		if pattern.MatchString(conditions.CMSID) {
-			args.ClaimsDate.LowerBound = cfg.LookbackTime()
+			args.ClaimsWindow.LowerBound = cfg.LookbackTime()
 			break
 		}
 	}
@@ -445,7 +445,7 @@ func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestC
 	// For backwards compatibility we'll continue setting the service date
 	// TODO: Remove this after we create a release with this code in place.
 	// After our next deployment, there shouldn't be any consumers of the ServiceDate field.
-	args.ServiceDate = args.ClaimsDate.UpperBound
+	args.ServiceDate = args.ClaimsWindow.UpperBound
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
