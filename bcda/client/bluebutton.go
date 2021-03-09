@@ -197,10 +197,10 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	params.Set("excludeSAMHSA", "true")
 
 	if !claimsDate.LowerBound.IsZero() {
-		params.Set("service-date", fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(svcDateFmt)))
+		params.Add("service-date", fmt.Sprintf("ge%s", claimsDate.LowerBound.Format(svcDateFmt)))
 	}
 	if !claimsDate.UpperBound.IsZero() {
-		params.Set("service-date", fmt.Sprintf("le%s", claimsDate.LowerBound.Format(svcDateFmt)))
+		params.Add("service-date", fmt.Sprintf("le%s", claimsDate.UpperBound.Format(svcDateFmt)))
 	}
 
 	updateParamWithLastUpdated(&params, since, transactionTime)

@@ -161,11 +161,9 @@ func (matcher TimeMatcher) Match(actual time.Time) bool {
 	return matcher.Expected.Equal(actual)
 }
 
-type ClaimsDateMatcher struct {
-	Expected client.ClaimsDate
-}
-
-func (matcher ClaimsDateMatcher) Match(actual client.ClaimsDate) bool {
-	return matcher.Expected.LowerBound.Equal(actual.LowerBound) &&
-		matcher.Expected.UpperBound.Equal(actual.UpperBound)
+func ClaimsDateMatcher(expected client.ClaimsDate) (matcher interface{}) {
+	return mock.MatchedBy(func(actual client.ClaimsDate) bool {
+		return expected.LowerBound.Equal(actual.LowerBound) &&
+			expected.UpperBound.Equal(actual.UpperBound)
+	})
 }
