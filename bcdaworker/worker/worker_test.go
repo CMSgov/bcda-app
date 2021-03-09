@@ -195,6 +195,25 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 	bbc.AssertExpectations(s.T())
 }
 
+// TODO: (BCDA-4339) - Remove this test. Only needed to verify backwards compatibility logic
+func (s *WorkerTestSuite) TestEOBBackwardCompatibility() {
+	beneID := "a1000003701"
+	cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneID, BlueButtonID: beneID}
+	postgrestest.CreateCCLFBeneficiary(s.T(), s.db, &cclfBeneficiary)
+
+	jobArgs := models.JobEnqueueArgs{ID: s.jobID, ResourceType: "ExplanationOfBenefit", BeneficiaryIDs: []string{fmt.Sprintf("%d", cclfBeneficiary.ID)},
+		ServiceDate: time.Now()}
+	bbc := client.MockBlueButtonClient{}
+	bbc.MBI = &beneID
+	bbc.On("GetPatientByIdentifierHash", mock.Anything).Return(bbc.GetData("Patient", beneID))
+	bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, "", time.Time{},
+		claimsWindowMatcher(time.Time{}, jobArgs.ServiceDate)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+	uuid, size, err := writeBBDataToFile(context.Background(), s.r, &bbc, *s.testACO.CMSID, jobArgs)
+	assert.NoError(s.T(), err)
+	assert.Greater(s.T(), size, int64(0))
+	assert.Greater(s.T(), len(uuid), 0)
+	bbc.AssertExpectations(s.T())
+}
 func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	transactionTime := time.Now()
 
