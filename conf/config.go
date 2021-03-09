@@ -292,7 +292,7 @@ func Checkout(v interface{}) error {
 // Inspired from solution found here : https://github.com/spf13/viper/issues/188#issuecomment-399884438
 func bindenvs(field reflect.Value, parts ...string) error {
 	if field.Kind() == reflect.Ptr {
-		field = field.Elem()
+		return nil
 	}
 	for i := 0; i < field.NumField(); i++ {
 		v := field.Field(i)
