@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -32,11 +33,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
 type Handler struct {
-	qc *que.Client
+	enq queueing.Enqueuer
 
 	Svc service.Service
 
@@ -65,6 +67,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 		log.Fatal(err)
 	}
 
+	// this is handled in the worker's enqueuer, what abt the goroutine?
 	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
 		ConnConfig:   pgxcfg,
 		AfterConnect: que.PrepareStatements,
@@ -115,9 +118,9 @@ func NewHandler(resources []string, basePath string) *Handler {
 			}
 		}
 	}()
+	// handles code above
+	h.enq = queueing.NewEnqueuer(queueDatabaseURL)
 
-	h.qc = que.NewClient(pgxpool)
-	
 	cfg, err := service.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load service config. Err: %v", err)
@@ -383,7 +386,13 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
 	for _, j := range queJobs {
-		if err = h.qc.Enqueue(j); err != nil {
+		var jobEnqueueArgs models.JobEnqueueArgs
+		err := json.Unmarshal(j.Args, &jobEnqueueArgs)
+		if err != nil {
+			return
+		}
+
+		if err = h.enq.AddJob(jobEnqueueArgs, int(j.Priority)); err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, "")
