@@ -106,7 +106,7 @@ func TestWorkerTestSuite(t *testing.T) {
 }
 
 func (s *WorkerTestSuite) TestWriteResourceToFile() {
-	bbc := testUtils.BlueButtonClient{}
+	bbc := client.MockBlueButtonClient{}
 	since, transactionTime, serviceDate := time.Now().Add(-24*time.Hour).Format(time.RFC3339Nano), time.Now(), time.Now().Add(-180*24*time.Hour)
 
 	var cclfBeneficiaryIDs []string
@@ -197,7 +197,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 	transactionTime := time.Now()
 
-	bbc := testUtils.BlueButtonClient{}
+	bbc := client.MockBlueButtonClient{}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
 	beneficiaryID := "abcdef12000"
@@ -221,7 +221,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "70")
 	transactionTime := time.Now()
 
-	bbc := testUtils.BlueButtonClient{}
+	bbc := client.MockBlueButtonClient{}
 	// Set up the mock function to return the expected values
 	bbc.On("GetExplanationOfBenefit", "abcdef10000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.On("GetExplanationOfBenefit", "abcdef11000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(nil, errors.New("error"))
@@ -264,7 +264,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "60")
 	transactionTime := time.Now()
 
-	bbc := testUtils.BlueButtonClient{}
+	bbc := client.MockBlueButtonClient{}
 	// Set up the mock function to return the expected values
 	beneficiaryIDs := []string{"a1000089833", "a1000065301", "a1000012463"}
 	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(nil, errors.New("error"))
@@ -312,7 +312,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
 	defer conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", origFailPct)
 	conf.SetEnv(s.T(), "EXPORT_FAIL_PCT", "51")
 
-	bbc := testUtils.BlueButtonClient{}
+	bbc := client.MockBlueButtonClient{}
 	bbc.On("GetPatientByIdentifierHash", mock.AnythingOfType("string")).Return("", errors.New("No beneficiary found for MBI"))
 
 	badMBIs := []string{"ab000000001", "ab000000002"}
