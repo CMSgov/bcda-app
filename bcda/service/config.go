@@ -10,6 +10,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func LoadConfig() (cfg *Config, err error) {
+	cfg = &Config{}
+	if err := conf.Checkout(cfg); err != nil {
+		return nil, err
+	}
+
+	if err := cfg.computeFields(); err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("Successfully loaded config %+v.", cfg)
+	return cfg, nil
+}
+
 type Config struct {
 	SuppressionLookbackDays int `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
 	CutoffDurationDays      int `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
@@ -28,6 +42,36 @@ type Config struct {
 
 func (config Config) String() string {
 	return toJSON(config)
+}
+
+// Parse un-exported fields using the fields loaded via the config
+func (cfg *Config) computeFields() (err error) {
+	const (
+		// YYYY-MM-DD
+		claimThruLayout = "2006-01-02"
+		// MM/DD
+		perfYearLayout = "01/02"
+	)
+
+	cfg.cutoffDuration = 24 * time.Hour * time.Duration(cfg.CutoffDurationDays)
+	cfg.RunoutConfig.cutoffDuration = 24 * time.Hour * time.Duration(cfg.RunoutConfig.CutoffDurationDays)
+	if cfg.RunoutConfig.claimThru, err = time.Parse(claimThruLayout, cfg.RunoutConfig.ClaimThruDate); err != nil {
+		return fmt.Errorf("failed to parse runout claim thru date: %w", err)
+	}
+
+	// Replace the ACO configs inline with computed columns
+	for idx := range cfg.ACOConfigs {
+		if cfg.ACOConfigs[idx].patternExp, err = regexp.Compile(cfg.ACOConfigs[idx].Pattern); err != nil {
+			return fmt.Errorf("failed to parse ACO model %s pattern: %w", cfg.ACOConfigs[idx].Model, err)
+		}
+		if cfg.ACOConfigs[idx].PerfYearTransition != "" {
+			if cfg.ACOConfigs[idx].perfYear, err = time.Parse(perfYearLayout, cfg.ACOConfigs[idx].PerfYearTransition); err != nil {
+				return fmt.Errorf("failed to parse perf year: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 type RunoutConfig struct {
@@ -75,50 +119,6 @@ func (config *ACOConfig) LookbackTime() time.Time {
 	}
 
 	return time.Date(year, config.perfYear.Month(), config.perfYear.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-func LoadConfig() (cfg *Config, err error) {
-	cfg = &Config{}
-	if err := conf.Checkout(cfg); err != nil {
-		return nil, err
-	}
-
-	if err := cfg.computeFields(); err != nil {
-		return nil, err
-	}
-
-	logrus.Infof("Successfully loaded config %+v.", cfg)
-	return cfg, nil
-}
-
-// Parse un-exported fields using the fields loaded via the config
-func (cfg *Config) computeFields() (err error) {
-	const (
-		// YYYY-MM-DD
-		claimThruLayout = "2006-01-02"
-		// MM/DD
-		perfYearLayout = "01/02"
-	)
-
-	cfg.cutoffDuration = 24 * time.Hour * time.Duration(cfg.CutoffDurationDays)
-	cfg.RunoutConfig.cutoffDuration = 24 * time.Hour * time.Duration(cfg.RunoutConfig.CutoffDurationDays)
-	if cfg.RunoutConfig.claimThru, err = time.Parse(claimThruLayout, cfg.RunoutConfig.ClaimThruDate); err != nil {
-		return fmt.Errorf("failed to parse runout claim thru date: %w", err)
-	}
-
-	// Replace the ACO configs inline with computed columns
-	for idx := range cfg.ACOConfigs {
-		if cfg.ACOConfigs[idx].patternExp, err = regexp.Compile(cfg.ACOConfigs[idx].Pattern); err != nil {
-			return fmt.Errorf("failed to parse ACO model %s pattern: %w", cfg.ACOConfigs[idx].Model, err)
-		}
-		if cfg.ACOConfigs[idx].PerfYearTransition != "" {
-			if cfg.ACOConfigs[idx].perfYear, err = time.Parse(perfYearLayout, cfg.ACOConfigs[idx].PerfYearTransition); err != nil {
-				return fmt.Errorf("failed to parse perf year: %w", err)
-			}
-		}
-	}
-
-	return nil
 }
 
 func toJSON(config interface{}) string {
