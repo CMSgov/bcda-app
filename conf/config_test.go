@@ -222,7 +222,7 @@ func TestLookupEnv(t *testing.T) {
 }
 
 type inner struct {
-	TestValue2 string
+	TestValue2 string `conf:"TestValue2" conf_default:"ABC"`
 	TEST_NUM   string
 }
 
@@ -233,10 +233,19 @@ type outer struct {
 	TestDefaultValue int    `conf:"TEST_DEFAULT_VALUE" conf_default:"123"`
 	TestValue1       int
 	inner            `conf:",squash"`
+	Inner            struct {
+		A string `conf:"A"`
+	} `conf:"INNER"`
+	A string `conf:"A"`
 }
 
 func TestCheckout(t *testing.T) {
-
+	t.Cleanup(func() {
+		assert.NoError(t, os.Unsetenv("A"))
+		assert.NoError(t, os.Unsetenv("INNER.A"))
+	})
+	assert.NoError(t, os.Setenv("A", "DEF"))
+	assert.NoError(t, os.Setenv("INNER.A", "GHI"))
 	t.Run("Traversing the nested struct", func(t *testing.T) {
 		testStruct := outer{}
 		err := Checkout(testStruct)
@@ -246,12 +255,14 @@ func TestCheckout(t *testing.T) {
 		assert.Equal(t, testStruct.TEST_NUM, "1234")
 		assert.Equal(t, testStruct.TEST_LIST, "One,Two,Three,Four")
 		assert.Equal(t, testStruct.TestValue1, 0)
-		assert.Equal(t, testStruct.TestValue2, "")
+		assert.Equal(t, testStruct.TestValue2, "ABC")
 		// Check if tags work
 		assert.Equal(t, testStruct.Test_tag, "One,Two,Three,Four")
 		// Check if explicit skip of tag works
 		assert.Equal(t, testStruct.TEST_SOMEPATH, "")
-		assert.Equal(t, testStruct.TestDefaultValue, 123)
+		assert.Equal(t, testStruct.TestDefaultValue, 123, "Default value should be honored")
+		assert.Equal(t, testStruct.A, "DEF")
+		assert.Equal(t, testStruct.Inner.A, "GHI")
 	})
 
 	t.Run("Traversing a slice of strings.", func(t *testing.T) {
