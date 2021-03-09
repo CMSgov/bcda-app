@@ -628,10 +628,10 @@ func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 func claimsWindowMatcher(times ...time.Time) (matcher interface{}) {
 	expected := client.ClaimsWindow{}
 	if len(times) == 2 {
-		expected.UpperBound = times[2]
+		expected.UpperBound = times[1]
 	}
 	if len(times) == 1 {
-		expected.LowerBound = times[1]
+		expected.LowerBound = times[0]
 	}
 
 	return mock.MatchedBy(func(actual client.ClaimsWindow) bool {
