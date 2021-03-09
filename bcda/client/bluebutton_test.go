@@ -613,13 +613,15 @@ func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
 	assert.Contains(t, req.URL.Query()["service-date"], fmt.Sprintf("le%s", claimsDate.UpperBound.Format("2006-01-02")))
 }
 func noServiceDateUpperBoundChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD
 	assert.NotContains(t, req.URL.Query()["service-date"], fmt.Sprintf("le%s", claimsDate.UpperBound.Format("2006-01-02")))
 }
 func serviceDateLowerBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.String(), fmt.Sprintf("service-date=ge%s", claimsDate.LowerBound.Format("2006-01-02")))
+	assert.Contains(t, req.URL.Query()["service-date"], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format("2006-01-02")))
 }
 func noServiceDateLowerBoundChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD
 	assert.NotContains(t, req.URL.Query()["service-date"], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format("2006-01-02")))
 }
 func noIncludeAddressFieldsChecker(t *testing.T, req *http.Request) {
