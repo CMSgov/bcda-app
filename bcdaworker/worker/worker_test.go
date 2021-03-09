@@ -117,7 +117,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		cclfBeneficiaryIDs = append(cclfBeneficiaryIDs, strconv.FormatUint(uint64(cclfBeneficiary.ID), 10))
 		bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(cclfBeneficiary.MBI)).Return(bbc.GetData("Patient", beneID))
 		bbc.On("GetExplanationOfBenefit", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime,
-			testUtils.ClaimsWindowMatcher(client.ClaimsWindow{UpperBound: serviceDate})).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
+			claimsWindowMatcher(time.Time{}, serviceDate)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 		bbc.On("GetCoverage", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
 		bbc.On("GetPatient", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
 	}
@@ -199,7 +199,7 @@ func (s *WorkerTestSuite) TestWriteEmptyResourceToFile() {
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsDateMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
+	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefitEmpty", "abcdef12000"))
 	beneficiaryID := "abcdef12000"
 	var cclfBeneficiaryIDs []string
 
@@ -223,9 +223,9 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
-	bbc.On("GetExplanationOfBenefit", "abcdef10000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsDateMatcher()).Return(nil, errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "abcdef11000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsDateMatcher()).Return(nil, errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsDateMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
+	bbc.On("GetExplanationOfBenefit", "abcdef10000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef11000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", "abcdef12000", strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(bbc.GetBundleData("ExplanationOfBenefit", "abcdef12000"))
 	beneficiaryIDs := []string{"abcdef10000", "abcdef11000", "abcdef12000"}
 	var cclfBeneficiaryIDs []string
 
@@ -267,8 +267,8 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	bbc := testUtils.BlueButtonClient{}
 	// Set up the mock function to return the expected values
 	beneficiaryIDs := []string{"a1000089833", "a1000065301", "a1000012463"}
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsWindowMatcher(client.ClaimsWindow{})).Return(nil, errors.New("error"))
-	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsWindowMatcher(client.ClaimsWindow{})).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[0], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(nil, errors.New("error"))
+	bbc.On("GetExplanationOfBenefit", beneficiaryIDs[1], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher()).Return(nil, errors.New("error"))
 	bbc.MBI = &beneficiaryIDs[0]
 	bbc.On("GetPatientByIdentifierHash", client.HashIdentifier(beneficiaryIDs[0])).Return(bbc.GetData("Patient", beneficiaryIDs[0]))
 	bbc.MBI = &beneficiaryIDs[1]
@@ -304,7 +304,7 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
-	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, testUtils.ClaimsWindowMatcher(client.ClaimsWindow{}))
+	bbc.AssertNotCalled(s.T(), "GetExplanationOfBenefit", beneficiaryIDs[2], strconv.Itoa(s.jobID), *s.testACO.CMSID, "", transactionTime, claimsWindowMatcher())
 }
 
 func (s *WorkerTestSuite) TestWriteEOBDataToFile_BlueButtonIDNotFound() {
@@ -625,16 +625,19 @@ func generateUniqueJobID(t *testing.T, db *sql.DB, acoID uuid.UUID) int {
 }
 
 // first argument is lowerBound, second argument is upperBound
-func claimsDateMatcher(times ...time.Time) (matcher interface{}) {
-	date := client.ClaimsWindow{}
+func claimsWindowMatcher(times ...time.Time) (matcher interface{}) {
+	expected := client.ClaimsWindow{}
 	if len(times) == 2 {
-		date.UpperBound = times[2]
+		expected.UpperBound = times[2]
 	}
 	if len(times) == 1 {
-		date.LowerBound = times[1]
+		expected.LowerBound = times[1]
 	}
 
-	return testUtils.ClaimsWindowMatcher(date)
+	return mock.MatchedBy(func(actual client.ClaimsWindow) bool {
+		return expected.LowerBound.Equal(actual.LowerBound) &&
+			expected.UpperBound.Equal(actual.UpperBound)
+	})
 }
 
 func assertEqualErrorFiles(t *testing.T, expected, actual string) {

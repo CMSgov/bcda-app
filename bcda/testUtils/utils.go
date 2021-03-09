@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/otiai10/copy"
@@ -150,11 +149,4 @@ func GetRandomIPV4Address(t *testing.T) string {
 	}
 
 	return fmt.Sprintf("%d.%d.%d.%d", data[0], data[1], data[2], data[3])
-}
-
-func ClaimsWindowMatcher(expected client.ClaimsWindow) (matcher interface{}) {
-	return mock.MatchedBy(func(actual client.ClaimsWindow) bool {
-		return expected.LowerBound.Equal(actual.LowerBound) &&
-			expected.UpperBound.Equal(actual.UpperBound)
-	})
 }
