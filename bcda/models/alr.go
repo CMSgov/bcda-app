@@ -35,3 +35,10 @@ type AlrJobs struct {
 	LowerBound      time.Time
 	UpperBound      time.Time
 }
+type JobAlrEnqueueArgs struct {
+	ID              uint
+	ACO             string
+	TransactionTime time.Time
+	LowerBound      time.Time
+	UpperBound      time.Time
+}
