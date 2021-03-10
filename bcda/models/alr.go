@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Data Structure for storing information into database
 type Alr struct {
 	ID            uint
 	MetaKey       uint // Foreign Key
@@ -22,4 +23,15 @@ type AlrMetaData struct {
 	ID        uint // Primary Key
 	ACO       string
 	Timestamp time.Time
+}
+
+// Data Structure for Jobs
+type AlrJobs struct {
+	ID              uint
+	ACO             string
+	RequestedURL    string
+	Status          JobStatus
+	TransactionTime time.Time
+	LowerBound      time.Time
+	UpperBound      time.Time
 }
