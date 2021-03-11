@@ -9,7 +9,6 @@ require (
 	github.com/bgentry/que-go v1.0.1
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/cenkalti/backoff/v4 v4.0.2
-	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.1-0.20180309185540-3c771ce311b7+incompatible
 	github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654 // indirect
 	github.com/dgryski/go-lttb v0.0.0-20180810165845-318fcdf10a77 // indirect
@@ -17,11 +16,12 @@ require (
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
 	github.com/go-gota/gota v0.10.1
+	github.com/go-testfixtures/testfixtures/v3 v3.5.0
 	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f
 	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
-	github.com/jackc/pgx v3.1.1-0.20180608201956-39bbc98d99d7+incompatible
+	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mitchellh/mapstructure v1.2.3
@@ -39,7 +39,7 @@ require (
 	github.com/tsenart/go-tsz v0.0.0-20180814235614-0bd30b3df1c3 // indirect
 	github.com/tsenart/vegeta v12.1.0+incompatible
 	github.com/urfave/cli v1.20.1-0.20180226030253-8e01ec4cd3e2
-	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
+	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59
 	google.golang.org/genproto v0.0.0-20201204160425-06b3db808446 // indirect
 	google.golang.org/grpc v1.34.0 // indirect
 	google.golang.org/grpc/examples v0.0.0-20210111180913-4cf4a98505bc // indirect

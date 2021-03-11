@@ -18,7 +18,10 @@ import (
 var LogFatal = log.Fatal
 
 func GetDbConnection() *sql.DB {
-	databaseURL := conf.GetEnv("DATABASE_URL")
+	return getDbConnection(conf.GetEnv("DATABASE_URL"))
+}
+
+func getDbConnection(dsn string) *sql.DB {
 	dc := stdlib.DriverConfig{
 		ConnConfig: pgx.ConnConfig{
 			Logger:   logrusadapter.NewLogger(logrus.StandardLogger()),
@@ -32,7 +35,7 @@ func GetDbConnection() *sql.DB {
 
 	stdlib.RegisterDriverConfig(&dc)
 
-	db, err := sql.Open("pgx", dc.ConnectionString(databaseURL))
+	db, err := sql.Open("pgx", dc.ConnectionString(dsn))
 	if err != nil {
 		LogFatal(err)
 	}

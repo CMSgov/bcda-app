@@ -20,7 +20,7 @@ type AlrRequestWindow struct {
 	UpperBound time.Time
 }
 
-func (s *service) CreateAlrJobs(ctx context.Context, cmsID string, reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error) {
+func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error) {
 	constraint, err := s.timeConstraints(ctx, cmsID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set time constraints: %w", err)
@@ -56,10 +56,11 @@ func (s *service) CreateAlrJobs(ctx context.Context, cmsID string, reqType AlrRe
 			UpperBound: window.UpperBound,
 			MBIs:       make([]string, 0, s.alrMBIsPerJob),
 		}
-		
+
 		for _, bene := range part {
 			job.MBIs = append(job.MBIs, bene.MBI)
 		}
+		jobs = append(jobs, job)
 	}
 
 	return jobs, nil

@@ -58,6 +58,8 @@ var _ Service = &service{}
 type Service interface {
 	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error)
 
+	GetAlrJobs(ctx context.Context, cmsID string, reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error)
+
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
