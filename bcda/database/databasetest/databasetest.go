@@ -20,7 +20,7 @@ var dsnPattern *regexp.Regexp = regexp.MustCompile(`(?P<conn>postgresql\:\/\/\S+
 
 // CreateDatabase creates a clone of the database referenced by DATABASE_URL
 // It returns the connection to the database as well as the created name
-func CreateDatabase(t *testing.T, cleanup bool) (*sql.DB, string) {
+func CreateDatabase(t *testing.T, migrationPath string, cleanup bool) (*sql.DB, string) {
 	dsn := conf.GetEnv("DATABASE_URL")
 	db := database.GetDbConnectionDSN(dsn)
 
@@ -32,7 +32,7 @@ func CreateDatabase(t *testing.T, cleanup bool) (*sql.DB, string) {
 	// the WITH TEMPLATE requires that there are no active connections to the old database
 	_, err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", newDBName))
 	assert.NoError(t, err)
-	setupBCDATables(t, newDSN)
+	setupBCDATables(t, migrationPath, newDSN)
 
 	newDB := database.GetDbConnectionDSN(newDSN)
 	if cleanup {
@@ -50,8 +50,8 @@ func dbName(dsn string) string {
 	return dsnPattern.FindStringSubmatch(dsn)[2]
 }
 
-func setupBCDATables(t *testing.T, dsn string) {
-	m, err := migrate.New("file://../../../db/migrations/bcda/", setMigrationsTable(dsn, "migrations_bcda"))
+func setupBCDATables(t *testing.T, migrationPath, dsn string) {
+	m, err := migrate.New("file://"+migrationPath, setMigrationsTable(dsn, "migrations_bcda"))
 	assert.NoError(t, err)
 	assert.NoError(t, m.Up())
 	m.Close()

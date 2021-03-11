@@ -4,6 +4,8 @@
   mbi: ALR_REG_001
 - file_id: 1
   mbi: ALR_REG_002
+- file_id: 1
+  mbi: ALR_REG_003
 - file_id: 2
   mbi: ALR_RUN_000
 - file_id: 2

@@ -16,13 +16,13 @@ func TestCreateDatabase(t *testing.T) {
 	// Run in sub test to verify database is dropped
 	t.Run("CreateAndDrop", func(sub *testing.T) {
 		var db *sql.DB
-		db, dropped = CreateDatabase(sub, true)
+		db, dropped = CreateDatabase(sub, "../../../db/migrations/bcda/", true)
 		assert.NotNil(t, db)
 		assert.NoError(t, db.Close())
 	})
 	t.Run("CreateAndNoDrop", func(sub *testing.T) {
 		var db *sql.DB
-		db, notDropped = CreateDatabase(sub, false)
+		db, notDropped = CreateDatabase(sub, "../../../db/migrations/bcda/", false)
 		assert.NotNil(t, db)
 		assert.NoError(t, db.Close())
 	})
