@@ -34,6 +34,10 @@ type RequestConditions struct {
 	// Fields set in the service
 	fileType models.CCLFFileType
 
+	timeConstraint
+}
+
+type timeConstraint struct {
 	attributionDate time.Time
 	optOutDate      time.Time
 	claimsDate      time.Time
@@ -115,7 +119,7 @@ type runoutParameters struct {
 }
 
 func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error) {
-	if err := s.setTimeConstraints(ctx, conditions.ACOID, &conditions); err != nil {
+	if conditions.timeConstraint, err = s.timeConstraints(ctx, conditions.CMSID); err != nil {
 		return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
 	}
 
@@ -402,25 +406,23 @@ func (s *service) getBenesByFileID(ctx context.Context, cclfFileID uint, conditi
 	return benes, nil
 }
 
-// setTimeConstraints searches for any time bounds that we should apply on the associated ACO
-func (s *service) setTimeConstraints(ctx context.Context, acoID uuid.UUID, conditions *RequestConditions) error {
-	aco, err := s.repository.GetACOByUUID(ctx, acoID)
+// timeConstraints searches for any time bounds that we should apply on the associated ACO
+func (s *service) timeConstraints(ctx context.Context, cmsID string) (timeConstraint, error) {
+	var constraint timeConstraint
+	aco, err := s.repository.GetACOByCMSID(ctx, cmsID)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve aco: %w", err)
+		return constraint, fmt.Errorf("failed to retrieve aco: %w", err)
 	}
 
 	// If aco is not terminated, then we should not apply any time constraints
 	if aco.TerminationDetails == nil {
-		conditions.attributionDate = time.Time{}
-		conditions.claimsDate = time.Time{}
-		conditions.optOutDate = time.Time{}
-		return nil
+		return constraint, nil
 	}
 
-	conditions.attributionDate = aco.TerminationDetails.AttributionDate()
-	conditions.claimsDate = aco.TerminationDetails.ClaimsDate()
-	conditions.optOutDate = aco.TerminationDetails.OptOutDate()
-	return nil
+	constraint.attributionDate = aco.TerminationDetails.AttributionDate()
+	constraint.claimsDate = aco.TerminationDetails.ClaimsDate()
+	constraint.optOutDate = aco.TerminationDetails.OptOutDate()
+	return constraint, nil
 }
 
 // setClaimsDate computes the claims window to apply on the args
