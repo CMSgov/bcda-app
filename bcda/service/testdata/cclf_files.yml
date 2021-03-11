@@ -1,0 +1,16 @@
+- id: 1
+  cclf_num: 8
+  name: ALR_Regular_File
+  aco_cms_id: A0001
+  timestamp: RAW=NOW()
+  performance_year: RAW=to_char(NOW(), 'yy')::int
+  import_status: Completed
+  type: 0
+- id: 2
+  cclf_num: 8
+  name: ALR_Runout_File
+  aco_cms_id: A0001
+  timestamp: RAW=NOW()
+  performance_year: RAW=to_char(NOW(), 'yy')::int
+  import_status: Completed
+  type: 1
