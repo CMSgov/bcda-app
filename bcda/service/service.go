@@ -87,8 +87,9 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 			claimThruDate:  cfg.RunoutConfig.claimThru,
 			cutoffDuration: cfg.RunoutConfig.cutoffDuration,
 		},
-		bbBasePath: basePath,
-		acoConfig:  acoMap,
+		bbBasePath:    basePath,
+		acoConfig:     acoMap,
+		alrMBIsPerJob: cfg.AlrJobSize,
 	}
 }
 
@@ -104,6 +105,8 @@ type service struct {
 
 	// Links pattern match to the associated ACO config
 	acoConfig map[*regexp.Regexp]*ACOConfig
+
+	alrMBIsPerJob uint
 }
 
 type suppressionParameters struct {

@@ -36,12 +36,38 @@ func (s *service) CreateAlrJobs(ctx context.Context, cmsID string, reqType AlrRe
 		fileType:       fileType,
 		timeConstraint: constraint,
 	}
+
 	benes, err := s.getBeneficiaries(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retreive beneficiaries: %w", err.Error())
+		return nil, fmt.Errorf("failed to retreive beneficiaries: %w", err)
 	}
 
+	jobs := make([]*models.JobAlrEnqueueArgs, 0, len(benes)/int(s.alrMBIsPerJob))
+	for {
+		var part []*models.CCLFBeneficiary
+		part, benes = partitionBenes(benes, s.alrMBIsPerJob)
+		if len(part) == 0 {
+			break
+		}
 
-	return nil, nil
+		job := &models.JobAlrEnqueueArgs{
+			ACO:        cmsID,
+			LowerBound: window.LowerBound,
+			UpperBound: window.UpperBound,
+			MBIs:       make([]string, 0, s.alrMBIsPerJob),
+		}
+		
+		for _, bene := range part {
+			job.MBIs = append(job.MBIs, bene.MBI)
+		}
+	}
+
+	return jobs, nil
 }
 
+func partitionBenes(input []*models.CCLFBeneficiary, size uint) (part, remaining []*models.CCLFBeneficiary) {
+	if uint(len(input)) <= size {
+		return input, nil
+	}
+	return input[:size], input[size:]
+}
