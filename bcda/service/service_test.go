@@ -2,7 +2,6 @@ package service
 
 import (
 	context "context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -590,17 +589,15 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			// map tuple of resourceType:beneID
 			benesInJob := make(map[string]map[string]struct{})
 			for _, qj := range queJobs {
-				var args models.JobEnqueueArgs
-				assert.NoError(t, json.Unmarshal(qj.Args, &args))
-				assert.True(t, tt.expClaimsWindow.LowerBound.Equal(args.ClaimsWindow.LowerBound),
-					"Lower bounds should equal. Have %s. Want %s", args.ClaimsWindow.LowerBound, tt.expClaimsWindow.LowerBound)
-				assert.True(t, tt.expClaimsWindow.UpperBound.Equal(args.ClaimsWindow.UpperBound),
-					"Upper bounds should equal. Have %s. Want %s", args.ClaimsWindow.UpperBound, tt.expClaimsWindow.UpperBound)
+				assert.True(t, tt.expClaimsWindow.LowerBound.Equal(qj.ClaimsWindow.LowerBound),
+					"Lower bounds should equal. Have %s. Want %s", qj.ClaimsWindow.LowerBound, tt.expClaimsWindow.LowerBound)
+				assert.True(t, tt.expClaimsWindow.UpperBound.Equal(qj.ClaimsWindow.UpperBound),
+					"Upper bounds should equal. Have %s. Want %s", qj.ClaimsWindow.UpperBound, tt.expClaimsWindow.UpperBound)
 
-				subMap := benesInJob[args.ResourceType]
+				subMap := benesInJob[qj.ResourceType]
 				if subMap == nil {
 					subMap = make(map[string]struct{})
-					benesInJob[args.ResourceType] = subMap
+					benesInJob[qj.ResourceType] = subMap
 				}
 
 				// Need to see if the bene is considered "new" or not. If the bene
@@ -608,7 +605,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				var expectedTime time.Time
 				if !tt.expSince.IsZero() {
 					var hasNewBene bool
-					for _, beneID := range args.BeneficiaryIDs {
+					for _, beneID := range qj.BeneficiaryIDs {
 						if _, ok := benes1ID[beneID]; !ok {
 							hasNewBene = true
 							break
@@ -619,26 +616,27 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 					}
 				}
 				if expectedTime.IsZero() {
-					assert.Empty(t, args.Since)
+					assert.Empty(t, qj.Since)
 				} else {
-					assert.Equal(t, fmt.Sprintf("gt%s", expectedTime.Format(time.RFC3339Nano)), args.Since)
+					assert.Equal(t, fmt.Sprintf("gt%s", expectedTime.Format(time.RFC3339Nano)), qj.Since)
 				}
-
 				expectedPriority := int16(100)
 				if isPriorityACO(tt.acoID) {
 					expectedPriority = 10
-				} else if args.ResourceType == "Patient" || args.ResourceType == "Coverage" {
+				} else if qj.ResourceType == "Patient" || qj.ResourceType == "Coverage" {
 					expectedPriority = 20
-				} else if len(args.Since) > 0 || tt.reqType == RetrieveNewBeneHistData {
+				} else if len(qj.Since) > 0 || tt.reqType == RetrieveNewBeneHistData {
 					expectedPriority = 30
 				}
-				assert.Equal(t, expectedPriority, qj.Priority)
 
-				for _, beneID := range args.BeneficiaryIDs {
+				sinceParam := (!tt.expSince.IsZero() || conditions.ReqType == RetrieveNewBeneHistData)
+				assert.Equal(t, expectedPriority, serviceInstance.GetJobPriority(conditions.CMSID, qj.ResourceType, sinceParam))
+
+				for _, beneID := range qj.BeneficiaryIDs {
 					subMap[beneID] = struct{}{}
 				}
 
-				assert.Equal(t, basePath, args.BBBasePath)
+				assert.Equal(t, basePath, qj.BBBasePath)
 			}
 
 			for _, resourceType := range tt.resourceTypes {

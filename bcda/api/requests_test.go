@@ -22,7 +22,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/conf"
 
-	"github.com/bgentry/que-go"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/mock"
@@ -68,7 +67,7 @@ func (s *RequestsTestSuite) TearDownTest() {
 
 func (s *RequestsTestSuite) TestRunoutEnabled() {
 	conf.SetEnv(s.T(), "BCDA_ENABLE_RUNOUT", "true")
-	qj := []*que.Job{{Type: "ProcessJob"}, {Type: "ProcessJob"}}
+	qj := []*models.JobEnqueueArgs{}
 	tests := []struct {
 		name string
 
@@ -83,7 +82,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			mockSvc := &service.MockService{}
-			var jobs []*que.Job
+			var jobs []*models.JobEnqueueArgs
 			if tt.errToReturn == nil {
 				jobs = qj
 			}

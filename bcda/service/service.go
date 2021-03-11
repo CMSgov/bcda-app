@@ -2,14 +2,12 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	goerrors "errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 
@@ -52,11 +50,13 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error)
+	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error)
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
+
+	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 }
 
 const (
@@ -114,14 +114,14 @@ type runoutParameters struct {
 	cutoffDuration time.Duration
 }
 
-func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error) {
+func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error) {
 	if err := s.setTimeConstraints(ctx, conditions.ACOID, &conditions); err != nil {
 		return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
 	}
 
 	var (
 		beneficiaries, newBeneficiaries []*models.CCLFBeneficiary
-		jobs                            []*que.Job
+		jobs                            []*models.JobEnqueueArgs
 	)
 
 	if conditions.ReqType == Runout {
@@ -217,7 +217,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*que.Job, err error) {
+func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
@@ -249,18 +249,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 
 				s.setClaimsDate(&enqueueArgs, conditions)
 
-				args, err := json.Marshal(enqueueArgs)
-				if err != nil {
-					return nil, err
-				}
-
-				j := &que.Job{
-					Type:     "ProcessJob",
-					Args:     args,
-					Priority: getJobPriority(conditions.CMSID, rt, (!since.IsZero() || conditions.ReqType == RetrieveNewBeneHistData)),
-				}
-
-				jobs = append(jobs, j)
+				jobs = append(jobs, &enqueueArgs)
 				jobIDs = make([]string, 0, maxBeneficiaries)
 			}
 		}
@@ -450,7 +439,7 @@ func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestC
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
 // Priority is based on the request parameters that the job is executing on.
-func getJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
+func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	var priority int16
 	if isPriorityACO(acoID) {
 		priority = int16(10) // priority level for jobs for synthetic ACOs that are used for smoke testing
