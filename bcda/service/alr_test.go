@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
@@ -25,13 +27,13 @@ func TestAlrTestSuite(t *testing.T) {
 
 func (s *AlrTestSuite) SetupSuite() {
 	s.cmsID = "A0001" // See testdata/acos.yml
-	db, _ := database.CreateDatabase(s.T(), true)
+	db, _ := databasetest.CreateDatabase(s.T(), true)
 	tf, err := testfixtures.New(
 		testfixtures.Database(db),
 		testfixtures.Dialect("postgres"),
 		testfixtures.Directory("testdata/"),
 	)
-	
+
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
 	}
@@ -48,9 +50,24 @@ func (s *AlrTestSuite) SetupSuite() {
 }
 
 func (s *AlrTestSuite) TestRunoutRequest() {
-	jobs, err := s.svc.GetAlrJobs(context.Background(), s.cmsID, RunoutAlrRequest, AlrRequestWindow{})
-	assert.NoError(s.T(), err)
-	assert.NotEmpty(s.T(), jobs)
+	assert := assert.New(s.T())
+	s.svc.(*service).alrMBIsPerJob = 2
+	timeWindow := AlrRequestWindow{LowerBound: time.Now().Add(-24 * time.Hour), UpperBound: time.Now()}
+	jobs, err := s.svc.GetAlrJobs(context.Background(), s.cmsID, RunoutAlrRequest, timeWindow)
+	assert.NoError(err)
+	// See testdata/cclf_beneficiaries.yml for information about the number of benes
+	// Should have 5 total benes for the runout job
+	assert.Len(jobs, 3)
+	var mbis []string
+	for _, job := range jobs {
+		assert.Equal(s.cmsID, job.ACO)
+		assert.True(timeWindow.LowerBound.Equal(job.LowerBound))
+		assert.True(timeWindow.UpperBound.Equal(job.UpperBound))
+		mbis = append(mbis, job.MBIs...)
+	}
+	for i := 0; i < 5; i++ {
+		assert.Contains(mbis, fmt.Sprintf("ALR_RUN_%03d", i))
+	}
 }
 
 func TestPartitionBenes(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var dsnPattern *regexp.Regexp = regexp.MustCompile(`(?P<conn>postgresql\:\/\/\S+\:\S+\@\S+\:\d+\/?)(?P<dbname>.*?)(?P<options>\?.*?)`)
+var dsnPattern *regexp.Regexp = regexp.MustCompile(`(?P<conn>postgresql\:\/\/\S+\:\S+\@\S+\:\d+\/)(?P<dbname>.*)(?P<options>\?.*)`)
 
 // CreateDatabase creates a clone of the database referenced by DATABASE_URL
 // It returns the connection to the database as well as the created name
@@ -51,12 +51,12 @@ func dbName(dsn string) string {
 }
 
 func setupBCDATables(t *testing.T, dsn string) {
-	m, err := migrate.New("file://../../db/migrations/bcda/", setMigrationsTable(dsn, "migrations_bcda"))
+	m, err := migrate.New("file://../../../db/migrations/bcda/", setMigrationsTable(dsn, "migrations_bcda"))
 	assert.NoError(t, err)
 	assert.NoError(t, m.Up())
 	m.Close()
 }
 
 func setMigrationsTable(dsn, migrationsTable string) string {
-	return dsnPattern.ReplaceAllString(dsn, fmt.Sprintf("${conn}${dbname}{options}&x-migrations-table=%s", migrationsTable))
+	return dsnPattern.ReplaceAllString(dsn, fmt.Sprintf("${conn}${dbname}${options}&x-migrations-table=%s", migrationsTable))
 }
