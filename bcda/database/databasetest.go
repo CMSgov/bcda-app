@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,16 +24,14 @@ func CreateDatabase(t *testing.T, cleanup bool) (*sql.DB, string) {
 	db := getDbConnection(dsn)
 	newDBName := strings.ReplaceAll(fmt.Sprintf("%s_%s", dbName(dsn), uuid.New()), "-", "_")
 
-	_, err := db.Exec(fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid) 
-FROM pg_stat_activity 
-WHERE pg_stat_activity.datname = '%s' 
-AND pid <> pg_backend_pid();`, dbName(dsn)))
-	assert.NoError(t, err)
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s WITH TEMPLATE %s", newDBName, dbName(dsn)))
+	_, err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", newDBName))
 	assert.NoError(t, err)
 	fmt.Printf("%s\n", newDBName)
 
-	newDB := getDbConnection(dsnPattern.ReplaceAllString(dsn, fmt.Sprintf("${conn}%s${options}", newDBName)))
+	newDSN := dsnPattern.ReplaceAllString(dsn, fmt.Sprintf("${conn}%s${options}", newDBName))
+	setupBCDATables(t, newDSN)
+
+	newDB := getDbConnection(newDSN)
 	if cleanup {
 		t.Cleanup(func() {
 			assert.NoError(t, newDB.Close())
@@ -44,4 +45,15 @@ AND pid <> pg_backend_pid();`, dbName(dsn)))
 
 func dbName(dsn string) string {
 	return dsnPattern.FindStringSubmatch(dsn)[2]
+}
+
+func setupBCDATables(t *testing.T, dsn string) {
+	m, err := migrate.New("file://../../db/migrations/bcda/", setMigrationsTable(dsn, "migrations_bcda"))
+	assert.NoError(t, err)
+	assert.NoError(t, m.Up())
+	m.Close()
+}
+
+func setMigrationsTable(dsn, migrationsTable string) string {
+	return dsnPattern.ReplaceAllString(dsn, fmt.Sprintf("${conn}${dbname}{options}&x-migrations-table=%s", migrationsTable))
 }

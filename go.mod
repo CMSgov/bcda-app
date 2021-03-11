@@ -17,6 +17,7 @@ require (
 	github.com/go-chi/render v1.0.1
 	github.com/go-gota/gota v0.10.1
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
+	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f
 	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
@@ -31,7 +32,7 @@ require (
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v1.2.0 // indirect
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/viper v1.7.1
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
@@ -39,7 +40,7 @@ require (
 	github.com/tsenart/go-tsz v0.0.0-20180814235614-0bd30b3df1c3 // indirect
 	github.com/tsenart/vegeta v12.1.0+incompatible
 	github.com/urfave/cli v1.20.1-0.20180226030253-8e01ec4cd3e2
-	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59
+	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	google.golang.org/genproto v0.0.0-20201204160425-06b3db808446 // indirect
 	google.golang.org/grpc v1.34.0 // indirect
 	google.golang.org/grpc/examples v0.0.0-20210111180913-4cf4a98505bc // indirect
