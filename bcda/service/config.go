@@ -10,6 +10,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func LoadConfig() (cfg *Config, err error) {
+	cfg = &Config{}
+	if err := conf.Checkout(cfg); err != nil {
+		return nil, err
+	}
+
+	if err := cfg.computeFields(); err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("Successfully loaded config %+v.", cfg)
+	return cfg, nil
+}
+
 type Config struct {
 	SuppressionLookbackDays int `conf:"BCDA_SUPPRESSION_LOOKBACK_DAYS" conf_default:"60"`
 	CutoffDurationDays      int `conf:"CCLF_CUTOFF_DATE_DAYS" conf_default:"45"`
@@ -28,46 +42,6 @@ type Config struct {
 
 func (config Config) String() string {
 	return toJSON(config)
-}
-
-type RunoutConfig struct {
-	CutoffDurationDays int    `conf:"RUNOUT_CUTOFF_DATE_DAYS" conf_default:"180"`
-	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2020-12-31"`
-	// Un-exported fields that are computed using the exported ones above
-	cutoffDuration time.Duration
-	claimThru      time.Time
-}
-
-func (config RunoutConfig) String() string {
-	return toJSON(config)
-}
-
-type ACOConfig struct {
-	Model              string
-	Pattern            string `conf:"name_pattern"`
-	PerfYearTransition string `conf:"performance_year_transition"`
-	LookbackYears      int    `conf:"lookback_period"`
-	// Un-exported fields that are computed using the exported ones above
-	patternExp *regexp.Regexp
-	perfYear   time.Time
-}
-
-func (config *ACOConfig) String() string {
-	return toJSON(config)
-}
-
-func LoadConfig() (cfg *Config, err error) {
-	cfg = &Config{}
-	if err := conf.Checkout(cfg); err != nil {
-		return nil, err
-	}
-
-	if err := cfg.computeFields(); err != nil {
-		return nil, err
-	}
-
-	logrus.Infof("Successfully loaded config %+v.", cfg)
-	return cfg, nil
 }
 
 // Parse un-exported fields using the fields loaded via the config
@@ -98,6 +72,53 @@ func (cfg *Config) computeFields() (err error) {
 	}
 
 	return nil
+}
+
+type RunoutConfig struct {
+	CutoffDurationDays int    `conf:"RUNOUT_CUTOFF_DATE_DAYS" conf_default:"180"`
+	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2020-12-31"`
+	// Un-exported fields that are computed using the exported ones above
+	cutoffDuration time.Duration
+	claimThru      time.Time
+}
+
+func (config RunoutConfig) String() string {
+	return toJSON(config)
+}
+
+type ACOConfig struct {
+	Model              string
+	Pattern            string `conf:"name_pattern"`
+	PerfYearTransition string `conf:"performance_year_transition"`
+	LookbackYears      int    `conf:"lookback_period"`
+	// Un-exported fields that are computed using the exported ones above
+	patternExp *regexp.Regexp
+	perfYear   time.Time
+}
+
+func (config *ACOConfig) String() string {
+	return toJSON(config)
+}
+
+// LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
+// We compute lookback time by evaluating the performance year transition and the number of lookback years.
+func (config *ACOConfig) LookbackTime() time.Time {
+	if config.perfYear.IsZero() || config.LookbackYears == 0 {
+		return time.Time{}
+	}
+	now := time.Now()
+
+	var year int
+
+	// If we passed our perf year transition, we consider us to be in the new performance year.
+	// Otherwise we are still in the previous performance year.
+	if now.Month() >= config.perfYear.Month() && now.Day() >= config.perfYear.Day() {
+		year = now.Year() - config.LookbackYears
+	} else {
+		year = now.Year() - 1 - config.LookbackYears
+	}
+
+	return time.Date(year, config.perfYear.Month(), config.perfYear.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 func toJSON(config interface{}) string {

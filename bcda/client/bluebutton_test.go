@@ -45,7 +45,8 @@ var (
 	now          = time.Now()
 	nowFormatted = url.QueryEscape(now.Format(time.RFC3339Nano))
 	since        = "gt2020-02-14"
-	serviceDate  = time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)
+	claimsDate   = client.ClaimsWindow{LowerBound: time.Date(2017, 12, 31, 0, 0, 0, 0, time.UTC),
+		UpperBound: time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)}
 )
 
 func (s *BBTestSuite) SetupSuite() {
@@ -231,14 +232,14 @@ func (s *BBRequestTestSuite) TestGetCoverage_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 33, len(e.Entries))
 	assert.Equal(s.T(), "carrier-10525061996", e.Entries[3]["resource"].(map[string]interface{})["id"])
 }
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
-	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, time.Time{})
+	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -300,7 +301,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefit",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, time.Time{})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -319,7 +320,7 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 		{
 			"GetExplanationOfBenefitNoSince",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, time.Time{})
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, "", now, client.ClaimsWindow{})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -336,9 +337,9 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 			},
 		},
 		{
-			"GetExplanationOfBenefitWithServiceDate",
+			"GetExplanationOfBenefitWithUpperBoundServiceDate",
 			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
-				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, serviceDate)
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
 			},
 			func(t *testing.T, payload interface{}) {
 				result, ok := payload.(*models.Bundle)
@@ -349,7 +350,48 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				sinceChecker,
 				nowChecker,
 				excludeSAMHSAChecker,
-				serviceDateChecker,
+				serviceDateUpperBoundChecker,
+				noServiceDateLowerBoundChecker,
+				noIncludeAddressFieldsChecker,
+				includeTaxNumbersChecker,
+			},
+		},
+		{
+			"GetExplanationOfBenefitWithLowerBoundServiceDate",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				excludeSAMHSAChecker,
+				serviceDateLowerBoundChecker,
+				noServiceDateUpperBoundChecker,
+				noIncludeAddressFieldsChecker,
+				includeTaxNumbersChecker,
+			},
+		},
+		{
+			"GetExplanationOfBenefitWithLowerAndUpperBoundServiceDate",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetExplanationOfBenefit("patient1", jobID, cmsID, since, now, claimsDate)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				excludeSAMHSAChecker,
+				serviceDateLowerBoundChecker,
+				serviceDateUpperBoundChecker,
 				noIncludeAddressFieldsChecker,
 				includeTaxNumbersChecker,
 			},
@@ -564,11 +606,23 @@ func nowChecker(t *testing.T, req *http.Request) {
 	assert.Contains(t, req.URL.String(), fmt.Sprintf("_lastUpdated=le%s", nowFormatted))
 }
 func noServiceDateChecker(t *testing.T, req *http.Request) {
-	assert.NotContains(t, req.URL.String(), "service-date")
+	assert.Empty(t, req.URL.Query()["service-date"])
 }
-func serviceDateChecker(t *testing.T, req *http.Request) {
+func serviceDateUpperBoundChecker(t *testing.T, req *http.Request) {
 	// We expect that service date only contains YYYY-MM-DD
-	assert.Contains(t, req.URL.String(), fmt.Sprintf("service-date=le%s", serviceDate.Format("2006-01-02")))
+	assert.Contains(t, req.URL.Query()["service-date"], fmt.Sprintf("le%s", claimsDate.UpperBound.Format("2006-01-02")))
+}
+func noServiceDateUpperBoundChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD
+	assert.NotContains(t, req.URL.Query()["service-date"], fmt.Sprintf("le%s", claimsDate.UpperBound.Format("2006-01-02")))
+}
+func serviceDateLowerBoundChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD
+	assert.Contains(t, req.URL.Query()["service-date"], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format("2006-01-02")))
+}
+func noServiceDateLowerBoundChecker(t *testing.T, req *http.Request) {
+	// We expect that service date only contains YYYY-MM-DD
+	assert.NotContains(t, req.URL.Query()["service-date"], fmt.Sprintf("ge%s", claimsDate.LowerBound.Format("2006-01-02")))
 }
 func noIncludeAddressFieldsChecker(t *testing.T, req *http.Request) {
 	assert.Empty(t, req.Header.Get("IncludeAddressFields"))
