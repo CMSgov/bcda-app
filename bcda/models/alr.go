@@ -27,18 +27,17 @@ type AlrMetaData struct {
 
 // Data Structure for Jobs
 type AlrJobs struct {
-	ID              uint
-	ACO             string
-	RequestedURL    string
-	Status          JobStatus
-	TransactionTime time.Time
-	LowerBound      time.Time
-	UpperBound      time.Time
+	ID           uint
+	ACO          string
+	RequestedURL string
+	Status       JobStatus
+	LowerBound   time.Time
+	UpperBound   time.Time
 }
 type JobAlrEnqueueArgs struct {
-	ID              uint
-	ACO             string
-	TransactionTime time.Time
-	LowerBound      time.Time
-	UpperBound      time.Time
+	ID         uint
+	ACO        string
+	MBIs       []string
+	LowerBound time.Time
+	UpperBound time.Time
 }
