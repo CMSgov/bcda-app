@@ -39,10 +39,18 @@ type queue struct {
 	cloudWatchEnv string
 }
 
+// Assignment List Report (ALR) shares the worker pool and "piggy-backs" off
+// Beneficiary FHIR Data workflow. Instead of creating redundant functions and
+// methods, masterQueue wraps both structs allows for sharing.
+type masterQueue struct {
+	*queue
+	*alrQueue // This is defined in alr.go
+}
+
 // StartQue creates a que-go client and begins listening for items
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
-func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queue {
+func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *masterQueue {
 	db, err := sql.Open("pgx", queueDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -57,6 +65,11 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queu
 		log:           log,
 		queDB:         db,
 		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
+	}
+	// Same as above, but do one for ALR
+	qAlr := &alrQueue{
+		alrLog:    log,
+		alrWorker: worker.NewAlrWorker(mainDB),
 	}
 
 	cfg, err := pgx.ParseURI(queueDatabaseURL)
@@ -80,17 +93,21 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *queu
 	qc := que.NewClient(q.pool)
 	wm := que.WorkMap{
 		queueing.QUE_PROCESS_JOB: q.processJob,
+		queueing.ALR_JOB:         qAlr.startAlrJob, // ALR currently shares pool
 	}
 
 	q.quePool = que.NewWorkerPool(qc, wm, numWorkers)
 
 	q.quePool.Start()
 
-	return q
+	return &masterQueue{
+		q,
+		qAlr, // ALR piggypbacks
+	}
 }
 
 // StopQue cleans up any resources created
-func (q *queue) StopQue() {
+func (q *masterQueue) StopQue() {
 	q.healthCheckCancel()
 	if err := q.queDB.Close(); err != nil {
 		q.log.Warnf("Failed to close connection to queue database %s", err)

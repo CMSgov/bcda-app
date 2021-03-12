@@ -179,7 +179,13 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 	return nil
 }
 
-func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.Time, upperBound time.Time) ([]models.Alr, error) {
+func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, MBIs []string, lowerBound time.Time, upperBound time.Time) ([]models.Alr, error) {
+
+	// Convert []string{} to []interface{}
+	mbis := make([]interface{}, len(MBIs))
+	for i, v := range MBIs {
+		mbis[i] = v
+	}
 
 	// Build the query
 	meta := sqlFlavor.NewSelectBuilder()
@@ -192,15 +198,19 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.
 	// where condition for different time range scenarios
 	var whereCond string
 	if upperBound.IsZero() && lowerBound.IsZero() {
-		whereCond = meta.Equal("aco", ACO)
+		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...))
 	} else if upperBound.IsZero() && !lowerBound.IsZero() {
 		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...),
 			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
 	} else if !upperBound.IsZero() && lowerBound.IsZero() {
 		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...),
 			meta.LessEqualThan("alr_meta.timestp", upperBound))
 	} else {
 		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...),
 			meta.LessEqualThan("alr_meta.timestp", upperBound),
 			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
 	}
