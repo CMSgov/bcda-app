@@ -78,7 +78,7 @@ func (s *AlrTestSuite) TestDefaultRequest() {
 	jobs, err := s.svc.GetAlrJobs(context.Background(), s.cmsID, DefaultAlrRequest, timeWindow)
 	assert.NoError(err)
 	// See testdata/cclf_beneficiaries.yml for information about the number of benes/MBIs
-	// Should have 4 total benes for the runout job
+	// Should have 4 total benes for the default job
 	assert.Len(jobs, 2)
 	var mbis []string
 	for _, job := range jobs {

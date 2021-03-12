@@ -40,7 +40,7 @@ func CreateDatabase(t *testing.T, migrationPath string, cleanup bool) (*sql.DB, 
 			assert.NoError(t, newDB.Close())
 			_, err = db.Exec(fmt.Sprintf("DROP DATABASE " + newDBName))
 			assert.NoError(t, err)
-			db.Close()
+			assert.NoError(t, db.Close())
 		})
 	}
 	return newDB, newDBName
@@ -54,7 +54,9 @@ func setupBCDATables(t *testing.T, migrationPath, dsn string) {
 	m, err := migrate.New("file://"+migrationPath, setMigrationsTable(dsn, "migrations_bcda"))
 	assert.NoError(t, err)
 	assert.NoError(t, m.Up())
-	m.Close()
+	srcErr, dbErr := m.Close()
+	assert.NoError(t, srcErr)
+	assert.NoError(t, dbErr)
 }
 
 func setMigrationsTable(dsn, migrationsTable string) string {
