@@ -566,7 +566,7 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 			}
 
 			repository := &models.MockRepository{}
-			repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
+			repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
 				Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
 			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
 			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
@@ -653,9 +653,9 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 }
 
 func (s *ServiceTestSuite) TestGetQueJobsFailedACOLookup() {
-	conditions := RequestConditions{ACOID: uuid.NewRandom()}
+	conditions := RequestConditions{ACOID: uuid.NewRandom(), CMSID: uuid.New()}
 	repository := &models.MockRepository{}
-	repository.On("GetACOByUUID", testUtils.CtxMatcher, conditions.ACOID).
+	repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
 		Return(nil, context.DeadlineExceeded)
 	defer repository.AssertExpectations(s.T())
 	service := &service{repository: repository}
