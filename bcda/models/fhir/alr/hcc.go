@@ -31,7 +31,9 @@ func init() {
 	)
 	// Scan through local path then the location of the file from the RPM
 	// See: ./ops/build_and_package.sh#49
-	paths := []string{"./hcc_crosswalk.tsv", "/etc/sv/api/hcc_crosswalk.tsv"}
+	paths := []string{"./hcc_crosswalk.tsv",
+		"/etc/sv/api/hcc_crosswalk.tsv",
+		"/go/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/hcc_crosswalk.tsv"}
 
 	var df dataframe.DataFrame
 	for _, path := range paths {
