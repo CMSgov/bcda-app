@@ -150,8 +150,8 @@ func (a *alrWorker) ProcessAlrJob(
 	}(c, w, result)
 
 	// Marshall into JSON and send it over the channel
-	for _, v := range alrModels {
-		patient, observations := alr.ToFHIR(&v, v.Timestamp)
+	for i := range alrModels {
+		patient, observations := alr.ToFHIR(&alrModels[i], alrModels[i].Timestamp)
 		c <- data{patient, observations}
 	}
 
