@@ -454,7 +454,7 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 }
 
 func (s *ServiceTestSuite) TestGetQueJobs() {
-	defaultACOID, priorityACOID, lookbackACOID := "SOME_ACO_ID", "PRIORITY_ACO_ID", "LOOKBACK_ACO"
+	defaultACOID, lookbackACOID := "SOME_ACO_ID", "LOOKBACK_ACO"
 
 	acoCfg := ACOConfig{
 		patternExp:    regexp.MustCompile(lookbackACOID),
@@ -462,8 +462,6 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		perfYear:      time.Now(),
 	}
 	acoCfgs := map[*regexp.Regexp]*ACOConfig{acoCfg.patternExp: &acoCfg}
-
-	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
 
 	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
 	allBenes := [][]*models.CCLFBeneficiary{benes1, benes2}
@@ -520,7 +518,6 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"GroupAll", defaultACOID, RetrieveNewBeneHistData, since, claimsWindow{}, append(benes1, benes2...), nil, nil},
 		{"RunoutRequest", defaultACOID, Runout, time.Time{}, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
 		{"RunoutRequest with Since", defaultACOID, Runout, since, claimsWindow{UpperBound: defaultRunoutClaimThru}, benes1, nil, nil},
-		{"Priority", priorityACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, nil, nil},
 
 		// Terminated ACOs: historical
 		{"Since After Termination", defaultACOID, DefaultRequest, sinceAfterTermination, claimsWindow{UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
@@ -620,17 +617,6 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 				} else {
 					assert.Equal(t, fmt.Sprintf("gt%s", expectedTime.Format(time.RFC3339Nano)), qj.Since)
 				}
-				expectedPriority := int16(100)
-				if isPriorityACO(tt.acoID) {
-					expectedPriority = 10
-				} else if qj.ResourceType == "Patient" || qj.ResourceType == "Coverage" {
-					expectedPriority = 20
-				} else if len(qj.Since) > 0 || tt.reqType == RetrieveNewBeneHistData {
-					expectedPriority = 30
-				}
-
-				sinceParam := (!tt.expSince.IsZero() || conditions.ReqType == RetrieveNewBeneHistData)
-				assert.Equal(t, expectedPriority, serviceInstance.GetJobPriority(conditions.CMSID, qj.ResourceType, sinceParam))
 
 				for _, beneID := range qj.BeneficiaryIDs {
 					subMap[beneID] = struct{}{}
@@ -698,6 +684,54 @@ func (s *ServiceTestSuite) TestCancelJob() {
 				assert.NoError(t, err)
 				assert.Equal(t, cancelledJobID, tt.resultJobID)
 			}
+		})
+	}
+}
+
+func (s *ServiceTestSuite) TestGetJobPriority() {
+	const (
+		defaultACOID  = "Some ACO"
+		priorityACOID = "Priority ACO"
+	)
+
+	tests := []struct {
+		name         string
+		acoID        string
+		resourceType string
+		expSince     string
+		reqType      RequestType
+	}{
+		{"Patient with Since", defaultACOID, "Patient", "some time", DefaultRequest},
+		{"Patient without Since", defaultACOID, "Patient", "", DefaultRequest},
+		{"Patient Runout", defaultACOID, "Patient", "some time", Runout},
+		{"Patient with Historic Benes", defaultACOID, "Patient", "", RetrieveNewBeneHistData},
+		{"Priority ACO", priorityACOID, "Patient", "some time", DefaultRequest},
+		{"Group with Since", defaultACOID, "Coverage", "some time", DefaultRequest},
+		{"Group without Since", defaultACOID, "Coverage", "", DefaultRequest},
+		{"EOB with Since", defaultACOID, "ExplanationOfBenefit", "some time", DefaultRequest},
+		{"EOB without Since", defaultACOID, "ExplanationOfBenefit", "", DefaultRequest},
+		{"EOB with Historic Benes", defaultACOID, "ExplanationOfBenefit", "", RetrieveNewBeneHistData},
+	}
+
+	svc := &service{}
+	conf.SetEnv(s.T(), "PRIORITY_ACO_REG_EX", priorityACOID)
+
+	for _, tt := range tests {
+		expectedPriority := int16(100)
+
+		s.T().Run(string(tt.name), func(t *testing.T) {
+			if isPriorityACO(tt.acoID) {
+				expectedPriority = 10
+			} else if tt.resourceType == "Patient" || tt.resourceType == "Coverage" {
+				expectedPriority = 20
+			} else if len(tt.expSince) > 0 || tt.reqType == RetrieveNewBeneHistData {
+				expectedPriority = 30
+			}
+
+			sinceParam := (len(tt.expSince) > 0) || tt.reqType == RetrieveNewBeneHistData
+			jobPriority := svc.GetJobPriority(tt.acoID, tt.resourceType, sinceParam)
+
+			assert.Equal(t, expectedPriority, jobPriority)
 		})
 	}
 }
