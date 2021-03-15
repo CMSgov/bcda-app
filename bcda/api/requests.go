@@ -9,14 +9,12 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
-	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
 
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/bgentry/que-go"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 
@@ -32,11 +30,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
 type Handler struct {
-	qc *que.Client
+	enq queueing.Enqueuer
 
 	Svc service.Service
 
@@ -60,18 +59,6 @@ func NewHandler(resources []string, basePath string) *Handler {
 	db.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
 
 	queueDatabaseURL := conf.GetEnv("QUEUE_DATABASE_URL")
-	pgxcfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pgxpool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   pgxcfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// With que-go locked to pgx v3, we need a mechanism that will allow us to
 	// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
@@ -92,14 +79,6 @@ func NewHandler(resources []string, basePath string) *Handler {
 				return
 			case <-ticker.C:
 				log.Debug("Sending ping")
-				c, err := pgxpool.Acquire()
-				if err != nil {
-					log.Warnf("Failed to acquire connection %s", err.Error())
-				}
-				if err := c.Ping(ctx); err != nil {
-					log.Warnf("Failed to ping %s", err.Error())
-				}
-				pgxpool.Release(c)
 
 				c1, err := db.Conn(ctx)
 				if err != nil {
@@ -116,8 +95,8 @@ func NewHandler(resources []string, basePath string) *Handler {
 		}
 	}()
 
-	h.qc = que.NewClient(pgxpool)
-	
+	h.enq = queueing.NewEnqueuer(queueDatabaseURL)
+
 	cfg, err := service.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load service config. Err: %v", err)
@@ -302,7 +281,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 			return
 		}
 
-		// We've successfully create the job
+		// We've successfully created the job
 		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
 		w.WriteHeader(http.StatusAccepted)
 	}()
@@ -337,7 +316,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		}
 	}
 
-	var queJobs []*que.Job
+	var queJobs []*models.JobEnqueueArgs
 
 	conditions := service.RequestConditions{
 		ReqType:   reqType,
@@ -383,7 +362,10 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
 	for _, j := range queJobs {
-		if err = h.qc.Enqueue(j); err != nil {
+		sinceParam := (!since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData)
+		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
+
+		if err = h.enq.AddJob(*j, int(jobPriority)); err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, "")
