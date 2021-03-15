@@ -46,3 +46,5 @@ func TestQueEnqueuer(t *testing.T) {
 	_, err = db.Exec(query, args...)
 	assert.NoError(t, err)
 }
+
+// Add test for ALR Queuing

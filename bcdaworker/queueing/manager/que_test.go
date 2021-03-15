@@ -165,3 +165,5 @@ func TestProcessJobFailedValidation(t *testing.T) {
 	}
 
 }
+
+// Test ALR startAlrjob

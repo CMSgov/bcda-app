@@ -31,6 +31,7 @@ type AlrWorker interface {
 type alrWorker struct {
 	*postgres.AlrRepository
 	FHIR_STAGING_DIR string
+	ndjsonFilename   string
 }
 
 const (
@@ -44,6 +45,7 @@ func NewAlrWorker(db *sql.DB) *alrWorker {
 	worker := &alrWorker{
 		AlrRepository:    alrR,
 		FHIR_STAGING_DIR: "",
+		ndjsonFilename:   "", // Filled in later
 	}
 
 	err := conf.Checkout(worker) // worker is already a reference, no & needed
@@ -144,6 +146,9 @@ func (a *alrWorker) ProcessAlrJob(
 			}
 		}
 
+		// Add the location of the ndjson
+		a.ndjsonFilename = fileUUID
+
 		// Everything went a-ok... send nil
 		result <- nil
 
@@ -156,7 +161,9 @@ func (a *alrWorker) ProcessAlrJob(
 	}
 
 	// Wait on the go routine and return back results
-	return <-result
+	err = <-result
+
+	return err
 }
 
 func (a *alrWorker) UpdateJobAlrStatus(ctx context.Context, jobID uint,
