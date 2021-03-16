@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/bgentry/que-go"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/log/logrusadapter"
 	"github.com/jackc/pgx/stdlib"
@@ -74,6 +75,8 @@ func createQueue(cfg *Config) (*pgx.ConnPool, error) {
 	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
 		ConnConfig:     pgxCfg,
 		MaxConnections: cfg.MaxOpenConns,
+		// Needed to ensure the prepared statements are available for each connection.
+		AfterConnect: que.PrepareStatements,
 	})
 	if err != nil {
 		return nil, err

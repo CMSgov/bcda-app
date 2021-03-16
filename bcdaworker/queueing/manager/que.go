@@ -40,17 +40,6 @@ type queue struct {
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
 func StartQue(log *logrus.Logger, numWorkers int) *queue {
-	db := database.QueueConnection
-	conn, err := db.Acquire()
-	if err != nil {
-		log.Fatalf("Failed to get queue connection %s", err.Error())
-	}
-	defer db.Release(conn)
-
-	if err := que.PrepareStatements(conn); err != nil {
-		log.Fatalf("Failed to setup prepared statements %s", err.Error())
-	}
-
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
 	mainDB := database.Connection
@@ -58,7 +47,7 @@ func StartQue(log *logrus.Logger, numWorkers int) *queue {
 		worker:        worker.NewWorker(mainDB),
 		repository:    postgres.NewRepository(mainDB),
 		log:           log,
-		queDB:         db,
+		queDB:         database.QueueConnection,
 		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
 	}
 

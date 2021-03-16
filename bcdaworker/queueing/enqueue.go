@@ -6,7 +6,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -18,18 +17,7 @@ type Enqueuer interface {
 }
 
 func NewEnqueuer() Enqueuer {
-	db := database.QueueConnection
-	conn, err := db.Acquire()
-	if err != nil {
-		log.Fatalf("Failed to get queue connection %s", err.Error())
-	}
-	defer db.Release(conn)
-
-	if err := que.PrepareStatements(conn); err != nil {
-		log.Fatalf("Failed to setup prepared statements %s", err.Error())
-	}
-
-	return queEnqueuer{que.NewClient(db)}
+	return queEnqueuer{que.NewClient(database.QueueConnection)}
 }
 
 type queEnqueuer struct {
