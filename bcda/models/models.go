@@ -130,4 +130,8 @@ type JobEnqueueArgs struct {
 	TransactionTime time.Time
 	ServiceDate     time.Time
 	BBBasePath      string
+	ClaimsWindow      struct {
+		LowerBound time.Time
+		UpperBound time.Time
+	}
 }

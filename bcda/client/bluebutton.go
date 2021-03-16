@@ -54,8 +54,13 @@ func NewConfig(basePath string) BlueButtonConfig {
 	}
 }
 
+type ClaimsWindow struct {
+	LowerBound time.Time
+	UpperBound time.Time
+}
+
 type APIClient interface {
-	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error)
+	GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error)
 	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
@@ -181,7 +186,7 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since stri
 	return bbc.getBundleData(u, jobID, cmsID, nil)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime, serviceDate time.Time) (*models.Bundle, error) {
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
 	// ServiceDate only uses yyyy-mm-dd
 	const svcDateFmt = "2006-01-02"
 
@@ -190,11 +195,14 @@ func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, si
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
-	// If service date is supplied, it represents the latest date (inclusive) that claims should occur.
-	// That's why the le (less than or equal to) operator is used.
-	if !serviceDate.IsZero() {
-		params.Set("service-date", fmt.Sprintf("le%s", serviceDate.Format(svcDateFmt)))
+
+	if !claimsWindow.LowerBound.IsZero() {
+		params.Add("service-date", fmt.Sprintf("ge%s", claimsWindow.LowerBound.Format(svcDateFmt)))
 	}
+	if !claimsWindow.UpperBound.IsZero() {
+		params.Add("service-date", fmt.Sprintf("le%s", claimsWindow.UpperBound.Format(svcDateFmt)))
+	}
+
 	updateParamWithLastUpdated(&params, since, transactionTime)
 
 	u, err := bbc.getURL("ExplanationOfBenefit", params)

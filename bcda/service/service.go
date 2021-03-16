@@ -2,14 +2,12 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	goerrors "errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 
@@ -52,11 +50,13 @@ var _ Service = &service{}
 
 // Service contains all of the methods needed to interact with the data represented in the models package
 type Service interface {
-	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error)
+	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error)
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
+
+	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 }
 
 const (
@@ -64,6 +64,12 @@ const (
 )
 
 func NewService(r models.Repository, cfg *Config, basePath string) Service {
+	acoMap := make(map[*regexp.Regexp]*ACOConfig)
+	for idx := range cfg.ACOConfigs {
+		acoCfg := cfg.ACOConfigs[idx]
+		acoMap[acoCfg.patternExp] = &acoCfg
+	}
+
 	return &service{
 		repository:        r,
 		logger:            log.StandardLogger(),
@@ -78,6 +84,7 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 			cutoffDuration: cfg.RunoutConfig.cutoffDuration,
 		},
 		bbBasePath: basePath,
+		acoConfig:  acoMap,
 	}
 }
 
@@ -90,6 +97,9 @@ type service struct {
 	sp                suppressionParameters
 	rp                runoutParameters
 	bbBasePath        string
+
+	// Links pattern match to the associated ACO config
+	acoConfig map[*regexp.Regexp]*ACOConfig
 }
 
 type suppressionParameters struct {
@@ -104,14 +114,14 @@ type runoutParameters struct {
 	cutoffDuration time.Duration
 }
 
-func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*que.Job, err error) {
+func (s *service) GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error) {
 	if err := s.setTimeConstraints(ctx, conditions.ACOID, &conditions); err != nil {
 		return nil, fmt.Errorf("failed to set time constraints for caller: %w", err)
 	}
 
 	var (
 		beneficiaries, newBeneficiaries []*models.CCLFBeneficiary
-		jobs                            []*que.Job
+		jobs                            []*models.JobEnqueueArgs
 	)
 
 	if conditions.ReqType == Runout {
@@ -207,7 +217,7 @@ func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
 	return 0, ErrJobNotCancellable
 }
 
-func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*que.Job, err error) {
+func (s *service) createQueueJobs(conditions RequestConditions, since time.Time, beneficiaries []*models.CCLFBeneficiary) (jobs []*models.JobEnqueueArgs, err error) {
 
 	// persist in format ready for usage with _lastUpdated -- i.e., prepended with 'gt'
 	var sinceArg string
@@ -237,27 +247,9 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 					BBBasePath:      s.bbBasePath,
 				}
 
-				// If the caller made a request for runout data
-				// it takes precedence over any other claims date
-				// that may be applied
-				if conditions.ReqType == Runout {
-					enqueueArgs.ServiceDate = s.rp.claimThruDate
-				} else if !conditions.claimsDate.IsZero() {
-					enqueueArgs.ServiceDate = conditions.claimsDate
-				}
+				s.setClaimsDate(&enqueueArgs, conditions)
 
-				args, err := json.Marshal(enqueueArgs)
-				if err != nil {
-					return nil, err
-				}
-
-				j := &que.Job{
-					Type:     "ProcessJob",
-					Args:     args,
-					Priority: getJobPriority(conditions.CMSID, rt, (!since.IsZero() || conditions.ReqType == RetrieveNewBeneHistData)),
-				}
-
-				jobs = append(jobs, j)
+				jobs = append(jobs, &enqueueArgs)
 				jobIDs = make([]string, 0, maxBeneficiaries)
 			}
 		}
@@ -420,9 +412,34 @@ func (s *service) setTimeConstraints(ctx context.Context, acoID uuid.UUID, condi
 	return nil
 }
 
+// setClaimsDate computes the claims window to apply on the args
+func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestConditions) {
+
+	// If the caller made a request for runout data
+	// it takes precedence over any other claims date
+	// that may be applied
+	if conditions.ReqType == Runout {
+		args.ClaimsWindow.UpperBound = s.rp.claimThruDate
+	} else if !conditions.claimsDate.IsZero() {
+		args.ClaimsWindow.UpperBound = conditions.claimsDate
+	}
+
+	for pattern, cfg := range s.acoConfig {
+		if pattern.MatchString(conditions.CMSID) {
+			args.ClaimsWindow.LowerBound = cfg.LookbackTime()
+			break
+		}
+	}
+
+	// TODO: (BCDA-4339) Remove this after we create a release with this code in place.
+	// After our next deployment, there shouldn't be any consumers of the ServiceDate field.
+	// This is needed in case a new API creates a job that is worked on by an old worker version.
+	args.ServiceDate = args.ClaimsWindow.UpperBound
+}
+
 // Gets the priority for the job where the lower the number the higher the priority in the queue.
 // Priority is based on the request parameters that the job is executing on.
-func getJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
+func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
 	var priority int16
 	if isPriorityACO(acoID) {
 		priority = int16(10) // priority level for jobs for synthetic ACOs that are used for smoke testing
