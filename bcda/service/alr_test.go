@@ -125,6 +125,7 @@ func TestPartitionBenes(t *testing.T) {
 				numParts++
 				total = append(total, part...)
 			}
+			assert.Equal(t, tt.expNumParts, numParts)
 			assert.Equal(t, benes, total)
 		})
 	}
