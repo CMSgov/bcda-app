@@ -51,7 +51,7 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrReque
 		}
 
 		job := &models.JobAlrEnqueueArgs{
-			ACO:        cmsID,
+			CMSID:        cmsID,
 			LowerBound: window.LowerBound,
 			UpperBound: window.UpperBound,
 			MBIs:       make([]string, 0, s.alrMBIsPerJob),

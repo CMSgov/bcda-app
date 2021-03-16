@@ -60,7 +60,7 @@ func (s *AlrTestSuite) TestRunoutRequest() {
 	assert.Len(jobs, 3)
 	var mbis []string
 	for _, job := range jobs {
-		assert.Equal(s.cmsID, job.ACO)
+		assert.Equal(s.cmsID, job.CMSID)
 		assert.True(timeWindow.LowerBound.Equal(job.LowerBound))
 		assert.True(timeWindow.UpperBound.Equal(job.UpperBound))
 		mbis = append(mbis, job.MBIs...)
@@ -82,7 +82,7 @@ func (s *AlrTestSuite) TestDefaultRequest() {
 	assert.Len(jobs, 2)
 	var mbis []string
 	for _, job := range jobs {
-		assert.Equal(s.cmsID, job.ACO)
+		assert.Equal(s.cmsID, job.CMSID)
 		assert.True(timeWindow.LowerBound.Equal(job.LowerBound))
 		assert.True(timeWindow.UpperBound.Equal(job.UpperBound))
 		mbis = append(mbis, job.MBIs...)
