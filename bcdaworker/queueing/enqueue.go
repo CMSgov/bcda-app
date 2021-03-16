@@ -30,6 +30,7 @@ func NewEnqueuer(queueDatabaseURL string) Enqueuer {
 		ConnConfig:   cfg,
 		AfterConnect: que.PrepareStatements,
 	})
+	pool.Prepare()
 	if err != nil {
 		log.Fatal(err)
 	}

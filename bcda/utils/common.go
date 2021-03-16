@@ -77,8 +77,12 @@ func IsUUID(s string) bool {
 
 // CloseFileAndLogError closes a file and logs any errors
 func CloseFileAndLogError(f *os.File) {
-	if ferr := f.Close(); ferr != nil {
-		logrus.Error(ferr)
+	CloseAndLog(logrus.ErrorLevel, f.Close)
+}
+
+func CloseAndLog(level logrus.Level, close func() error) {
+	if err := close(); close != nil {
+		logrus.StandardLogger().Log(level, err.Error())
 	}
 }
 

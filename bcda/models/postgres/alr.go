@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/stdlib"
@@ -135,6 +136,7 @@ func (a *alrCopyFromSource) Values() ([]interface{}, error) {
 func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.Time, alrs []models.Alr) error {
 	// Grab pgx.Conn
 	conn := getPgxConn(r.DB)
+	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(r.DB, conn) })
 
 	// Do this in a single transaction using BeginEX from the pgx package
 	tx, err := conn.BeginEx(ctx, nil)

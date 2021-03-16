@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
@@ -243,6 +244,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		return errors.Wrap(err, "failed to acquire connection")
 	}
+	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
 
 	importedCount, err := CopyFrom(ctx, conn, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000))
 	if err != nil {
