@@ -24,6 +24,7 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
@@ -34,6 +35,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -71,6 +73,11 @@ func (s *APITestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	origBBKey = conf.GetEnv("BB_CLIENT_KEY_FILE")
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
+
+	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
+	enqueuer := &queueing.MockEnqueuer{}
+	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
+	h.Enq = enqueuer
 }
 
 func (s *APITestSuite) TearDownSuite() {

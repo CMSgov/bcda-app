@@ -35,7 +35,7 @@ import (
 )
 
 type Handler struct {
-	enq queueing.Enqueuer
+	Enq queueing.Enqueuer
 
 	Svc service.Service
 
@@ -54,7 +54,7 @@ func NewHandler(resources []string, basePath string) *Handler {
 	h := &Handler{}
 
 	db := database.Connection
-	h.enq = queueing.NewEnqueuer()
+	h.Enq = queueing.NewEnqueuer()
 
 	cfg, err := service.LoadConfig()
 	if err != nil {
@@ -324,7 +324,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		sinceParam := (!since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData)
 		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
 
-		if err = h.enq.AddJob(*j, int(jobPriority)); err != nil {
+		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {
 			log.Error(err)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, "")

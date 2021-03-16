@@ -1,4 +1,4 @@
-package v2_test
+package v2
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	v2 "github.com/CMSgov/bcda-app/bcda/api/v2"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/go-chi/chi"
@@ -25,6 +25,7 @@ import (
 	fhirresources "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -35,8 +36,6 @@ const (
 type APITestSuite struct {
 	suite.Suite
 	db *sql.DB
-
-	cleanup func()
 }
 
 func (s *APITestSuite) SetupSuite() {
@@ -48,17 +47,18 @@ func (s *APITestSuite) SetupSuite() {
 	origBBKey := conf.GetEnv("BB_CLIENT_KEY_FILE")
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 
-	s.cleanup = func() {
+	s.T().Cleanup(func() {
 		conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
 		conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
 		conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", origBBKey)
-	}
+	})
 
 	s.db = database.Connection
-}
 
-func (s *APITestSuite) TearDownSuite() {
-	s.cleanup()
+	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
+	enqueuer := &queueing.MockEnqueuer{}
+	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
+	h.Enq = enqueuer
 }
 
 func TestAPITestSuite(t *testing.T) {
@@ -66,7 +66,7 @@ func TestAPITestSuite(t *testing.T) {
 }
 
 func (s *APITestSuite) TestMetadataResponse() {
-	ts := httptest.NewServer(http.HandlerFunc(v2.Metadata))
+	ts := httptest.NewServer(http.HandlerFunc(Metadata))
 	defer ts.Close()
 
 	unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
@@ -136,7 +136,7 @@ func (s *APITestSuite) TestResourceTypes() {
 		{"Unsupported type - default", nil, http.StatusBadRequest},
 	}
 
-	for idx, handler := range []http.HandlerFunc{v2.BulkGroupRequest, v2.BulkPatientRequest} {
+	for idx, handler := range []http.HandlerFunc{BulkGroupRequest, BulkPatientRequest} {
 		for _, tt := range tests {
 			s.T().Run(fmt.Sprintf("%s-%d", tt.name, idx), func(t *testing.T) {
 				rr := httptest.NewRecorder()
@@ -165,7 +165,9 @@ func (s *APITestSuite) TestResourceTypes() {
 
 				handler(rr, req)
 				assert.Equal(t, tt.statusCode, rr.Code)
-				fmt.Println(rr.Body.String())
+				if rr.Code == http.StatusAccepted {
+					assert.NotEmpty(t, rr.Header().Get("Content-Location"))
+				}
 			})
 		}
 	}
