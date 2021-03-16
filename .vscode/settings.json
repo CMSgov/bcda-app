@@ -5,7 +5,18 @@
         "TEST_DB_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "QUEUE_DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
-        "BCDA_API_CONFIG_PATH": "${workspaceFolder}/shared_files/decrypted/api.yml"
+        "BCDA_API_CONFIG_PATH": "${workspaceFolder}/shared_files/decrypted/api.yml",
+        // Since we have different directory structure in our test containers, we should
+        // define all files/directory paths here
+        "ATO_PUBLIC_KEY_FILE": "${workspaceFolder}/shared_files/ATO_public.pem",
+        "ATO_PRIVATE_KEY_FILE": "${workspaceFolder}/shared_files/ATO_private.pem",
+        "BB_CLIENT_CERT_FILE": "${workspaceFolder}/shared_files/decrypted/bfd-dev-test-cert.pem",
+        "BB_CLIENT_KEY_FILE": "${workspaceFolder}/shared_files/decrypted/bfd-dev-test-key.pem",
+        "FHIR_PAYLOAD_DIR": "${workspaceFolder}/bcdaworker/data",
+        "FHIR_STAGING_DIR": "${workspaceFolder}/bcdaworker/tmpdata",
+        "FHIR_ARCHIVE_DIR": "${workspaceFolder}/bcdaworker/archive",
+        "JWT_PRIVATE_KEY_FILE": "${workspaceFolder}/shared_files/api_unit_test_auth_private.pem",
+        "JWT_PUBLIC_KEY_FILE": "${workspaceFolder}/shared_files/api_unit_test_auth_public.pem",
     },
     "go.testEnvFile": "${workspaceFolder}/shared_files/decrypted/local.env",
     "go.testFlags": [
