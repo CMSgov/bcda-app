@@ -54,7 +54,7 @@ func (s *APITestSuite) SetupSuite() {
 		conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", origBBKey)
 	}
 
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 }
 
 func (s *APITestSuite) TearDownSuite() {

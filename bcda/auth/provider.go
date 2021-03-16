@@ -28,7 +28,7 @@ func init() {
 	log.SetReportCaller(true)
 	SetProvider(strings.ToLower(conf.GetEnv(`BCDA_AUTH_PROVIDER`)))
 
-	repository = postgres.NewRepository(database.GetDbConnection())
+	repository = postgres.NewRepository(database.Connection)
 }
 
 func SetProvider(name string) {

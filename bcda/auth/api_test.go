@@ -48,7 +48,7 @@ func (s *AuthAPITestSuite) SetupSuite() {
 	}
 	s.backend = auth.InitAlphaBackend()
 
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 	s.r = postgres.NewRepository(s.db)
 }
 

@@ -262,7 +262,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
 	apiRouter := NewAPIRouter()
 
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	p := auth.GetProvider()

@@ -53,49 +53,8 @@ type Handler struct {
 func NewHandler(resources []string, basePath string) *Handler {
 	h := &Handler{}
 
-	db := database.GetDbConnection()
-	db.SetMaxOpenConns(utils.GetEnvInt("BCDA_DB_MAX_OPEN_CONNS", 25))
-	db.SetMaxIdleConns(utils.GetEnvInt("BCDA_DB_MAX_IDLE_CONNS", 25))
-	db.SetConnMaxLifetime(time.Duration(utils.GetEnvInt("BCDA_DB_CONN_MAX_LIFETIME_MIN", 5)) * time.Minute)
-
-	queueDatabaseURL := conf.GetEnv("QUEUE_DATABASE_URL")
-
-	// With que-go locked to pgx v3, we need a mechanism that will allow us to
-	// discard bad connections in the pgxpool (see: https://github.com/jackc/pgx/issues/494)
-	// This implementation is based off of the "fix" that is present in v4
-	// (see: https://github.com/jackc/pgx/blob/v4.10.0/pgxpool/pool.go#L333)
-	// Use the same approach to validate the connection associated with the sql.DB
-
-	// If we implement a cleanup function on the handler,
-	// consider using context.WithCancel() to give us a hook to stop the goroutine
-	ctx := context.Background()
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		for {
-			select {
-			case <-ctx.Done():
-				ticker.Stop()
-				log.Debug("Stopping pgxpool checker")
-				return
-			case <-ticker.C:
-				log.Debug("Sending ping")
-
-				c1, err := db.Conn(ctx)
-				if err != nil {
-					log.Warnf("Failed to acquire connection %s", err.Error())
-					continue
-				}
-				if err := c1.PingContext(ctx); err != nil {
-					log.Warnf("Failed to ping %s", err.Error())
-				}
-				if err := c1.Close(); err != nil {
-					log.Warnf("Failed to close conection %s", err.Error())
-				}
-			}
-		}
-	}()
-
-	h.enq = queueing.NewEnqueuer(queueDatabaseURL)
+	db := database.Connection
+	h.enq = queueing.NewEnqueuer()
 
 	cfg, err := service.LoadConfig()
 	if err != nil {

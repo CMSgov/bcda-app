@@ -1,14 +1,11 @@
 package queueing
 
 import (
-	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/bgentry/que-go"
-	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,25 +17,19 @@ type Enqueuer interface {
 	AddJob(job models.JobEnqueueArgs, priority int) error
 }
 
-func NewEnqueuer(queueDatabaseURL string) Enqueuer {
-	cfg, err := pgx.ParseURI(queueDatabaseURL)
+func NewEnqueuer() Enqueuer {
+	db := database.QueueConnection
+	conn, err := db.Acquire()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to get queue connection %s", err.Error())
+	}
+	defer db.Release(conn)
+
+	if err := que.PrepareStatements(conn); err != nil {
+		log.Fatalf("Failed to setup prepared statements %s", err.Error())
 	}
 
-	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   cfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	pool.Prepare()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Ensure that the connections are valid. Needed until we move to pgx v4
-	database.StartHealthCheck(context.Background(), pool, 10*time.Second)
-
-	return queEnqueuer{que.NewClient(pool)}
+	return queEnqueuer{que.NewClient(db)}
 }
 
 type queEnqueuer struct {

@@ -59,7 +59,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
@@ -373,7 +373,7 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 }
 
 func (s *CCLFTestSuite) TestImportRunoutCCLF() {
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	cmsID := "RNOUT"

@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx"
@@ -33,11 +32,9 @@ func init() {
 		logrus.Fatalf("Failed to create queue %s", err.Error())
 	}
 
-	startHealthCheck(Connection, QueueConnection, time.Duration(cfg.HealthCheckSec) * time.Second)
+	startHealthCheck(context.Background(), Connection, QueueConnection,
+		time.Duration(cfg.HealthCheckSec)*time.Second)
 }
-
-// Variable substitution to support testing.
-var LogFatal = log.Fatal
 
 func createDB(cfg *Config) (*sql.DB, error) {
 	dc := stdlib.DriverConfig{
@@ -94,12 +91,15 @@ func createQueue(cfg *Config) (*pgx.ConnPool, error) {
 //
 // startHealthCheck returns immediately with the health check running in a goroutine that
 // can be stopped via the supplied context
-func startHealthCheck(db *sql.DB, pool *pgx.ConnPool, interval time.Duration) {
-	ctx := context.Background()
+func startHealthCheck(ctx context.Context, db *sql.DB, pool *pgx.ConnPool, interval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		for {
 			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				logrus.Debug("Stopping health checker")
+				return
 			case <-ticker.C:
 				logrus.StandardLogger().Debug("Sending ping")
 				c, err := pool.Acquire()
@@ -112,16 +112,9 @@ func startHealthCheck(db *sql.DB, pool *pgx.ConnPool, interval time.Duration) {
 				}
 				pool.Release(c)
 
-				c1, err := db.Conn(ctx)
-				if err != nil {
-					logrus.Warnf("Failed to acquire connection %s", err.Error())
-					continue
-				}
-				if err := c1.PingContext(ctx); err != nil {
+				// Handle acquiring connection, pinging, and releasing connection
+				if err := db.Ping(); err != nil {
 					logrus.Warnf("Failed to ping %s", err.Error())
-				}
-				if err := c1.Close(); err != nil {
-					logrus.Warnf("Failed to close connection %s", err.Error())
 				}
 			}
 		}

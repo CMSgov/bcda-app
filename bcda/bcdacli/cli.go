@@ -58,7 +58,7 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
-		db = database.GetDbConnection()
+		db = database.Connection
 		r = postgres.NewRepository(db)
 		return nil
 	}

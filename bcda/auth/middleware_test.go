@@ -148,7 +148,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	j := models.Job{
@@ -205,7 +205,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	j := models.Job{
@@ -249,7 +249,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 // TestRequireTokenACOMatchInvalidToken validates that we return a 404
 // If the caller does not supply the auth data
 func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	j := models.Job{

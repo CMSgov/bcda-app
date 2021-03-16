@@ -54,7 +54,7 @@ func TestSuppressionTestSuite(t *testing.T) {
 
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	// 181120 file
@@ -119,7 +119,7 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 
 func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	assert := assert.New(s.T())
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	// Verify empty file is rejected

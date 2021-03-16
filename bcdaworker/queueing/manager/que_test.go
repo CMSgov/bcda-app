@@ -55,7 +55,7 @@ func TestProcessJob(t *testing.T) {
 	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir)
 	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir)
 
-	db := database.GetDbConnection()
+	db := database.Connection
 	defer db.Close()
 
 	cmsID := testUtils.RandomHexID()[0:4]
@@ -66,14 +66,13 @@ func TestProcessJob(t *testing.T) {
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
 
-	queueURL := conf.GetEnv("QUEUE_DATABASE_URL")
-	q := StartQue(log, queueURL, 1)
+	q := StartQue(log, 1)
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
 	// Since the jobArgs does not have any beneIDs, the job should complete almost immediately
 	jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: cmsID, BBBasePath: uuid.New()}
 
-	enqueuer := queueing.NewEnqueuer(queueURL)
+	enqueuer := queueing.NewEnqueuer()
 	assert.NoError(t, enqueuer.AddJob(jobArgs, 1))
 
 	timeout := time.After(10 * time.Second)

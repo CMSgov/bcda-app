@@ -62,7 +62,7 @@ func ParseToken(next http.Handler) http.Handler {
 
 		// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
 		// logic into a service method.
-		db := database.GetDbConnection()
+		db := database.Connection
 		defer db.Close()
 
 		repository := postgres.NewRepository(db)
@@ -154,7 +154,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Error()
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "AuthData not found")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
@@ -163,13 +163,13 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, err.Error())
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
 		}
 
-		db := database.GetDbConnection()
+		db := database.Connection
 		defer db.Close()
 
 		repository := postgres.NewRepository(db)
@@ -177,7 +177,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		job, err := repository.GetJobByID(context.Background(), uint(jobID))
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
@@ -187,7 +187,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 			log.Errorf("ACO %s does not have access to job ID %d %s",
 				ad.ACOID, job.ID, job.ACOID)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return

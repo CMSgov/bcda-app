@@ -81,7 +81,7 @@ func (s *APITestSuite) TearDownSuite() {
 }
 
 func (s *APITestSuite) SetupTest() {
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 	s.rr = httptest.NewRecorder()
 }
 
