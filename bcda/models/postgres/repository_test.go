@@ -438,7 +438,7 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 
 	//aco.Blacklisted = true
 	assert.NoError(r.repository.UpdateACO(ctx, aco.UUID,
-		map[string]interface{}{"blacklisted": aco.BlacklistedFunc()}))
+		map[string]interface{}{"blacklisted": aco.Blacklisted}))
 
 	res, err := r.repository.GetACOByCMSID(ctx, cmsID)
 	assert.NoError(err)
