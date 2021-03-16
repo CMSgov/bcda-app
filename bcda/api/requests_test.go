@@ -58,7 +58,6 @@ func (s *RequestsTestSuite) SetupTest() {
 
 func (s *RequestsTestSuite) TearDownSuite() {
 	postgrestest.DeleteACO(s.T(), s.db, s.acoID)
-	s.db.Close()
 }
 
 func (s *RequestsTestSuite) TearDownTest() {

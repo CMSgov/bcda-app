@@ -42,10 +42,6 @@ func (r *RepositoryTestSuite) SetupSuite() {
 	r.repository = postgres.NewRepository(r.db)
 }
 
-func (r *RepositoryTestSuite) TearDownSuite() {
-	r.db.Close()
-}
-
 func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
 	cmsID := "cmsID"
 	cclfNum := int(8)

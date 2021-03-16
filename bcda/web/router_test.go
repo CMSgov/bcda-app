@@ -263,7 +263,6 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	apiRouter := NewAPIRouter()
 
 	db := database.Connection
-	defer db.Close()
 
 	p := auth.GetProvider()
 	cmsID := testUtils.RandomHexID()[0:4]

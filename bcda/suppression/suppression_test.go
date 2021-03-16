@@ -55,7 +55,6 @@ func TestSuppressionTestSuite(t *testing.T) {
 func (s *SuppressionTestSuite) TestImportSuppression() {
 	assert := assert.New(s.T())
 	db := database.Connection
-	defer db.Close()
 
 	// 181120 file
 	fileTime, _ := time.Parse(time.RFC3339, "2018-11-20T10:00:00Z")
@@ -120,7 +119,6 @@ func (s *SuppressionTestSuite) TestImportSuppression() {
 func (s *SuppressionTestSuite) TestImportSuppression_MissingData() {
 	assert := assert.New(s.T())
 	db := database.Connection
-	defer db.Close()
 
 	// Verify empty file is rejected
 	metadata := &suppressionFileMetadata{}

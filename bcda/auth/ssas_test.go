@@ -84,10 +84,6 @@ func (s *SSASPluginTestSuite) TearDownTest() {
 	postgrestest.DeleteACO(s.T(), s.db, uuid.Parse(testACOUUID))
 }
 
-func (s *SSASPluginTestSuite) TearDownSuite() {
-	s.db.Close()
-}
-
 func (s *SSASPluginTestSuite) TestRegisterSystem() {
 	// These variables will allow us to swap out expectations without
 	// reinstantiating the server

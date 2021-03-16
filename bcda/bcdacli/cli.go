@@ -62,9 +62,6 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	app.After = func(c *cli.Context) error {
-		return db.Close()
-	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
 	var thresholdHr int
 	var httpPort, httpsPort int

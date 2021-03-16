@@ -24,7 +24,6 @@ type OktaAuthPluginTestSuite struct {
 
 func (s *OktaAuthPluginTestSuite) SetupSuite() {
 	db := database.Connection
-	defer db.Close()
 
 	aco := postgrestest.GetACOByUUID(s.T(), db, uuid.Parse(KnownFixtureACO))
 

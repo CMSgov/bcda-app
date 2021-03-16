@@ -149,7 +149,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
 	db := database.Connection
-	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -206,7 +205,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
 
 func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	db := database.Connection
-	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),
@@ -250,7 +248,6 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 // If the caller does not supply the auth data
 func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	db := database.Connection
-	defer db.Close()
 
 	j := models.Job{
 		ACOID:      uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"),

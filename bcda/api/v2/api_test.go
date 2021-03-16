@@ -59,7 +59,6 @@ func (s *APITestSuite) SetupSuite() {
 
 func (s *APITestSuite) TearDownSuite() {
 	s.cleanup()
-	s.db.Close()
 }
 
 func TestAPITestSuite(t *testing.T) {

@@ -302,7 +302,6 @@ func importSuppressionMetadata(metadata *suppressionFileMetadata, importFunc fun
 	}
 
 	db := database.Connection
-	defer db.Close()
 
 	r := postgres.NewRepository(db)
 
@@ -415,7 +414,6 @@ func (m suppressionFileMetadata) String() string {
 
 func updateImportStatus(fileID uint, status string) {
 	db := database.Connection
-	defer db.Close()
 	r := postgres.NewRepository(db)
 
 	if err := r.UpdateSuppressionFileImportStatus(context.Background(), fileID, status); err != nil {

@@ -44,7 +44,6 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 
 func (s *AlphaAuthPluginTestSuite) TearDownSuite() {
 	s.reset()
-	s.db.Close()
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {

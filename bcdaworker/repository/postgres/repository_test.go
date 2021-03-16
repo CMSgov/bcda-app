@@ -33,10 +33,6 @@ func (r *RepositoryTestSuite) SetupSuite() {
 	r.repository = postgres.NewRepository(r.db)
 }
 
-func (r *RepositoryTestSuite) TearDownSuite() {
-	r.db.Close()
-}
-
 // TestACOMethods validates the CRUD operations associated with the acos table
 func (r *RepositoryTestSuite) TestACOMethods() {
 	assert := r.Assert()

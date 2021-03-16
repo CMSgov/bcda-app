@@ -63,7 +63,6 @@ func ParseToken(next http.Handler) http.Handler {
 		// TODO (BCDA-3412): Remove this reference once we've captured all of the necessary
 		// logic into a service method.
 		db := database.Connection
-		defer db.Close()
 
 		repository := postgres.NewRepository(db)
 
@@ -169,10 +168,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 			return
 		}
 
-		db := database.Connection
-		defer db.Close()
-
-		repository := postgres.NewRepository(db)
+		repository := postgres.NewRepository(database.Connection)
 
 		job, err := repository.GetJobByID(context.Background(), uint(jobID))
 		if err != nil {

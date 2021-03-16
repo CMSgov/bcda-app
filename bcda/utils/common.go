@@ -81,7 +81,7 @@ func CloseFileAndLogError(f *os.File) {
 }
 
 func CloseAndLog(level logrus.Level, close func() error) {
-	if err := close(); close != nil {
+	if err := close(); err != nil {
 		logrus.StandardLogger().Log(level, err.Error())
 	}
 }

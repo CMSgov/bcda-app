@@ -56,7 +56,6 @@ func TestProcessJob(t *testing.T) {
 	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir)
 
 	db := database.Connection
-	defer db.Close()
 
 	cmsID := testUtils.RandomHexID()[0:4]
 	aco := models.ACO{UUID: uuid.NewRandom(), CMSID: &cmsID}

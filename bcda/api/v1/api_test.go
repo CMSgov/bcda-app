@@ -87,7 +87,6 @@ func (s *APITestSuite) SetupTest() {
 
 func (s *APITestSuite) TearDownTest() {
 	postgrestest.DeleteJobsByACOID(s.T(), s.db, acoUnderTest)
-	s.db.Close()
 }
 
 func (s *APITestSuite) TestBulkEOBRequest() {
@@ -811,23 +810,6 @@ func (s *APITestSuite) TestHealthCheck() {
 	handler := http.HandlerFunc(HealthCheck)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
-}
-
-func (s *APITestSuite) TestHealthCheckWithBadDatabaseURL() {
-	// Mock database.LogFatal() to allow execution to continue despite bad URL
-	origLogFatal := database.LogFatal
-	defer func() { database.LogFatal = origLogFatal }()
-	database.LogFatal = func(args ...interface{}) {
-		fmt.Println("FATAL (NO-OP)")
-	}
-	dbURL := conf.GetEnv("DATABASE_URL")
-	defer conf.SetEnv(s.T(), "DATABASE_URL", dbURL)
-	conf.SetEnv(s.T(), "DATABASE_URL", "not-a-database")
-	req, err := http.NewRequest("GET", "/_health", nil)
-	assert.Nil(s.T(), err)
-	handler := http.HandlerFunc(HealthCheck)
-	handler.ServeHTTP(s.rr, req)
-	assert.Equal(s.T(), http.StatusBadGateway, s.rr.Code)
 }
 
 func (s *APITestSuite) TestAuthInfoDefault() {

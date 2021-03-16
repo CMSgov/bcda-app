@@ -85,7 +85,6 @@ func (s *CLITestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
 	os.RemoveAll(s.pendingDeletionDir)
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
-	s.db.Close()
 }
 
 func TestCLITestSuite(t *testing.T) {

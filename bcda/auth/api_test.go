@@ -54,7 +54,6 @@ func (s *AuthAPITestSuite) SetupSuite() {
 
 func (s *AuthAPITestSuite) TearDownSuite() {
 	s.reset()
-	s.db.Close()
 }
 
 func (s *AuthAPITestSuite) SetupTest() {

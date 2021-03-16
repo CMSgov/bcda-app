@@ -153,7 +153,6 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
 	db := database.Connection
-	defer db.Close()
 
 	repository := postgres.NewRepository(db)
 
@@ -347,7 +346,6 @@ func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string 
 	var acoOrder []string
 
 	db := database.Connection
-	defer db.Close()
 
 	priorityACOs := getPriorityACOs(db)
 	// Ensure there are no duplicate ACOs by wrapping it in Dedup()
