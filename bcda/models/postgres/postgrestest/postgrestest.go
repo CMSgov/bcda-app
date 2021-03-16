@@ -45,14 +45,14 @@ func UpdateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 	r := postgres.NewRepository(db)
 	// This should capture ALL fields present in the ACO model
 	fieldsAndValues := map[string]interface{}{
-		"cms_id": aco.CMSID,
-		"name": aco.Name,
-		"client_id": aco.ClientID,
-		"group_id": aco.GroupID,
-		"system_id": aco.SystemID,
-		"alpha_secret": aco.AlphaSecret,
-		"public_key": aco.PublicKey,
-		"blacklisted": aco.Blacklisted,
+		"cms_id":              aco.CMSID,
+		"name":                aco.Name,
+		"client_id":           aco.ClientID,
+		"group_id":            aco.GroupID,
+		"system_id":           aco.SystemID,
+		"alpha_secret":        aco.AlphaSecret,
+		"public_key":          aco.PublicKey,
+		"blacklisted":         aco.Blacklisted, // TODO: remove after removing column
 		"termination_details": aco.TerminationDetails,
 	}
 	assert.NoError(t, r.UpdateACO(context.Background(), aco.UUID, fieldsAndValues))

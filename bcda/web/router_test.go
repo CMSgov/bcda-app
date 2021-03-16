@@ -294,7 +294,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			for _, path := range config.paths {
 				s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blacklistValue, path), func(t *testing.T) {
 					aco.Blacklisted = blacklistValue
-					postgrestest.UpdateACO(t, db, *aco)
+					postgrestest.UpdateACO(t, db, *aco) // TODO: Remove after removing column
 					rr := httptest.NewRecorder()
 					req, err := http.NewRequest("GET", path, nil)
 					assert.NoError(t, err)

@@ -68,6 +68,19 @@ type ACO struct {
 	TerminationDetails *Termination `json:"termination"`
 }
 
+// Blacklisted returns bool based on TerminationDetails.
+func (aco *ACO) BlacklistedFunc() bool {
+	if aco.TerminationDetails != nil {
+		if aco.TerminationDetails.BlacklistType == Involuntary || aco.TerminationDetails.BlacklistType == Voluntary {
+			return true
+		} else {
+			return false
+		}
+	} else {
+		return false
+	}
+}
+
 type CCLFFileType int16
 
 const (
@@ -130,7 +143,7 @@ type JobEnqueueArgs struct {
 	TransactionTime time.Time
 	ServiceDate     time.Time
 	BBBasePath      string
-	ClaimsWindow      struct {
+	ClaimsWindow    struct {
 		LowerBound time.Time
 		UpperBound time.Time
 	}

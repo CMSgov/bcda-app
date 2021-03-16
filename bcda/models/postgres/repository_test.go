@@ -436,9 +436,9 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	aco.ID = postgrestest.GetACOByCMSID(r.T(), r.db, cmsID).ID
 	terminatedACO.ID = postgrestest.GetACOByCMSID(r.T(), r.db, terminatedCMSID).ID
 
-	aco.Blacklisted = true
+	//aco.Blacklisted = true
 	assert.NoError(r.repository.UpdateACO(ctx, aco.UUID,
-		map[string]interface{}{"blacklisted": aco.Blacklisted}))
+		map[string]interface{}{"blacklisted": aco.BlacklistedFunc()}))
 
 	res, err := r.repository.GetACOByCMSID(ctx, cmsID)
 	assert.NoError(err)

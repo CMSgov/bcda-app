@@ -44,9 +44,9 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
-	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted",
+	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted", // TODO: remove after removing column
 		"termination_details")
-	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted,
+	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.BlacklistedFunc(), // TODO: remove after removing column
 		termination{aco.TerminationDetails})
 	query, args := ib.Build()
 	_, err := r.ExecContext(ctx, query, args...)
@@ -528,7 +528,7 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	)
 	err := row.Scan(&aco.ID, &aco.UUID, &cmsID, &name,
 		&clientID, &groupID, &systemID, &alphaSecret,
-		&publicKey, &aco.Blacklisted, &termination)
+		&publicKey, &aco.Blacklisted, &termination) // TODO: remove after removing column
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no ACO record found for %s", value)

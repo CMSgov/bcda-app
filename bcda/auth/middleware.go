@@ -84,7 +84,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
 				ad.CMSID = *aco.CMSID
-				ad.Blacklisted = aco.Blacklisted
+				ad.Blacklisted = aco.BlacklistedFunc()
 
 			default:
 				aco, err := repository.GetACOByUUID(context.Background(), uuid.Parse(claims.ACOID))
@@ -96,7 +96,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.TokenID = claims.UUID
 				ad.ACOID = claims.ACOID
 				ad.CMSID = *aco.CMSID
-				ad.Blacklisted = aco.Blacklisted
+				ad.Blacklisted = aco.BlacklistedFunc()
 			}
 		}
 		ctx := context.WithValue(r.Context(), TokenContextKey, token)
@@ -154,7 +154,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Error()
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "AuthData not found")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
@@ -163,7 +163,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, err.Error())
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
@@ -177,7 +177,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		job, err := repository.GetJobByID(context.Background(), uint(jobID))
 		if err != nil {
 			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
@@ -187,7 +187,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 			log.Errorf("ACO %s does not have access to job ID %d %s",
 				ad.ACOID, job.ID, job.ACOID)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, 
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
 			return
