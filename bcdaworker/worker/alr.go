@@ -22,8 +22,6 @@ import (
 /******************************************************************************
 	Data Structures
 	-AlrWorker
-	-sqlFlavor
-	-AlrWorker
 	-data
 		- Use to send FHIR data to a go routine to write to disk
 ******************************************************************************/
