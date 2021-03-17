@@ -59,13 +59,12 @@ func (s *CCLFTestSuite) SetupSuite() {
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", s.origDate)
 	os.RemoveAll(s.pendingDeletionDir)
-	s.db.Close()
 }
 
 func (s *CCLFTestSuite) TearDownTest() {
@@ -373,8 +372,7 @@ func (s *CCLFTestSuite) TestGetPriorityACOs() {
 }
 
 func (s *CCLFTestSuite) TestImportRunoutCCLF() {
-	db := database.GetDbConnection()
-	defer db.Close()
+	db := database.Connection
 
 	cmsID := "RNOUT"
 	defer func() {

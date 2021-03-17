@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/stdlib"
@@ -135,6 +136,7 @@ func (a *alrCopyFromSource) Values() ([]interface{}, error) {
 func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.Time, alrs []models.Alr) error {
 	// Grab pgx.Conn
 	conn := getPgxConn(r.DB)
+	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(r.DB, conn) })
 
 	// Do this in a single transaction using BeginEX from the pgx package
 	tx, err := conn.BeginEx(ctx, nil)
@@ -179,7 +181,13 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 	return nil
 }
 
-func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.Time, upperBound time.Time) ([]models.Alr, error) {
+func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, MBIs []string, lowerBound time.Time, upperBound time.Time) ([]models.Alr, error) {
+
+	// Convert []string{} to []interface{}
+	mbis := make([]interface{}, len(MBIs))
+	for i, v := range MBIs {
+		mbis[i] = v
+	}
 
 	// Build the query
 	meta := sqlFlavor.NewSelectBuilder()
@@ -192,15 +200,19 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, lowerBound time.
 	// where condition for different time range scenarios
 	var whereCond string
 	if upperBound.IsZero() && lowerBound.IsZero() {
-		whereCond = meta.Equal("aco", ACO)
+		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...))
 	} else if upperBound.IsZero() && !lowerBound.IsZero() {
 		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...),
 			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
 	} else if !upperBound.IsZero() && lowerBound.IsZero() {
 		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...),
 			meta.LessEqualThan("alr_meta.timestp", upperBound))
 	} else {
 		whereCond = meta.And(meta.Equal("aco", ACO),
+			meta.In("alr.mbi", mbis...),
 			meta.LessEqualThan("alr_meta.timestp", upperBound),
 			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
 	}
