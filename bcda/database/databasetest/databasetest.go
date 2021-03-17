@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -21,8 +20,10 @@ var dsnPattern *regexp.Regexp = regexp.MustCompile(`(?P<conn>postgresql\:\/\/\S+
 // CreateDatabase creates a clone of the database referenced by DATABASE_URL
 // It returns the connection to the database as well as the created name
 func CreateDatabase(t *testing.T, migrationPath string, cleanup bool) (*sql.DB, string) {
-	dsn := conf.GetEnv("DATABASE_URL")
-	db := database.GetDbConnectionDSN(dsn)
+	cfg, err := database.LoadConfig()
+	assert.NoError(t, err)
+	dsn := cfg.DatabaseURL
+	db := database.Connection
 
 	newDBName := strings.ReplaceAll(fmt.Sprintf("%s_%s", dbName(dsn), uuid.New()), "-", "_")
 	newDSN := dsnPattern.ReplaceAllString(dsn, fmt.Sprintf("${conn}%s${options}", newDBName))
@@ -30,17 +31,18 @@ func CreateDatabase(t *testing.T, migrationPath string, cleanup bool) (*sql.DB, 
 	// Use CREATE DATABASE + migrate to build tables instead of
 	// CREATE DATABASE <NEW> WITH TEMPLATE <OLD>
 	// the WITH TEMPLATE requires that there are no active connections to the old database
-	_, err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", newDBName))
+	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", newDBName))
 	assert.NoError(t, err)
 	setupBCDATables(t, migrationPath, newDSN)
 
-	newDB := database.GetDbConnectionDSN(newDSN)
+	newDB, err := sql.Open("pgx", newDSN)
+	assert.NoError(t, err)
+
 	if cleanup {
 		t.Cleanup(func() {
 			assert.NoError(t, newDB.Close())
 			_, err = db.Exec(fmt.Sprintf("DROP DATABASE " + newDBName))
 			assert.NoError(t, err)
-			assert.NoError(t, db.Close())
 		})
 	}
 	return newDB, newDBName

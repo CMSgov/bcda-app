@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	_ "github.com/jackc/pgx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,8 +28,7 @@ func TestCreateDatabase(t *testing.T) {
 		assert.NoError(t, db.Close())
 	})
 
-	db := database.GetDbConnection()
-	defer db.Close()
+	db := database.Connection
 
 	var count int
 	assert.NoError(t,
