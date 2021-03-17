@@ -26,7 +26,7 @@ import (
 // transforming and delegating that work to the underlying worker
 type queue struct {
 	// Resources associated with the underlying que client
-	quePool           *que.WorkerPool
+	quePool *que.WorkerPool
 
 	worker     worker.Worker
 	repository repository.Repository
@@ -36,10 +36,18 @@ type queue struct {
 	cloudWatchEnv string
 }
 
+// Assignment List Report (ALR) shares the worker pool and "piggy-backs" off
+// Beneficiary FHIR Data workflow. Instead of creating redundant functions and
+// methods, masterQueue wraps both structs allows for sharing.
+type masterQueue struct {
+	*queue
+	*alrQueue // This is defined in alr.go
+}
+
 // StartQue creates a que-go client and begins listening for items
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
-func StartQue(log *logrus.Logger, numWorkers int) *queue {
+func StartQue(log *logrus.Logger, numWorkers int) *masterQueue {
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
 	mainDB := database.Connection
@@ -50,21 +58,31 @@ func StartQue(log *logrus.Logger, numWorkers int) *queue {
 		queDB:         database.QueueConnection,
 		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
 	}
+	// Same as above, but do one for ALR
+	qAlr := &alrQueue{
+		alrLog:    log,
+		alrWorker: worker.NewAlrWorker(mainDB),
+	}
+	master := &masterQueue{
+		q,
+		qAlr, // ALR piggypbacks
+	}
 
 	qc := que.NewClient(q.queDB)
 	wm := que.WorkMap{
 		queueing.QUE_PROCESS_JOB: q.processJob,
+		queueing.ALR_JOB:         master.startAlrJob, // ALR currently shares pool
 	}
 
 	q.quePool = que.NewWorkerPool(qc, wm, numWorkers)
 
 	q.quePool.Start()
 
-	return q
+	return master
 }
 
 // StopQue cleans up any resources created
-func (q *queue) StopQue() {
+func (q *masterQueue) StopQue() {
 	q.quePool.Shutdown()
 }
 
