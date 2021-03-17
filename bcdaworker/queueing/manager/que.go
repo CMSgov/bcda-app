@@ -71,6 +71,10 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *mast
 		alrLog:    log,
 		alrWorker: worker.NewAlrWorker(mainDB),
 	}
+	master := &masterQueue{
+		q,
+		qAlr, // ALR piggypbacks
+	}
 
 	cfg, err := pgx.ParseURI(queueDatabaseURL)
 	if err != nil {
@@ -93,17 +97,14 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *mast
 	qc := que.NewClient(q.pool)
 	wm := que.WorkMap{
 		queueing.QUE_PROCESS_JOB: q.processJob,
-		queueing.ALR_JOB:         qAlr.startAlrJob, // ALR currently shares pool
+		queueing.ALR_JOB:         master.startAlrJob, // ALR currently shares pool
 	}
 
 	q.quePool = que.NewWorkerPool(qc, wm, numWorkers)
 
 	q.quePool.Start()
 
-	return &masterQueue{
-		q,
-		qAlr, // ALR piggypbacks
-	}
+	return master
 }
 
 // StopQue cleans up any resources created

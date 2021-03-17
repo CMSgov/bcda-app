@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -13,42 +12,50 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/google/fhir/go/jsonformat"
 	"github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
-	"github.com/huandu/go-sqlbuilder"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-type AlrWorker interface {
-	ProcessAlrJob(ctx context.Context, jobArgs models.JobAlrEnqueueArgs) error
-	UpdateJobAlrStatus(ctx context.Context, jobID uint, newStatus models.JobStatus) error
-	GetAlrJobStatus(ctx context.Context, jobID uint) (*models.JobStatus, error)
-}
+/******************************************************************************
+	Data Structures
+	-AlrWorker
+	-sqlFlavor
+	-AlrWorker
+	-data
+		- Use to send FHIR data to a go routine to write to disk
+******************************************************************************/
 
-type alrWorker struct {
+type AlrWorker struct {
 	*postgres.AlrRepository
 	FHIR_STAGING_DIR string
 	ndjsonFilename   string
 }
 
-const (
-	sqlFlavor = sqlbuilder.PostgreSQL
-)
+type data struct {
+	patient      *resources_go_proto.Patient
+	observations []*resources_go_proto.Observation
+}
 
-func NewAlrWorker(db *sql.DB) *alrWorker {
+/******************************************************************************
+	Functions
+	-NewAlrWorker
+	-goWriter
+******************************************************************************/
+
+func NewAlrWorker(db *sql.DB) AlrWorker {
 	alrR := postgres.NewAlrRepo(db)
 
 	// embed data struct that has method GetAlr
-	worker := &alrWorker{
+	worker := AlrWorker{
 		AlrRepository:    alrR,
 		FHIR_STAGING_DIR: "",
 		ndjsonFilename:   "", // Filled in later
 	}
 
-	err := conf.Checkout(worker) // worker is already a reference, no & needed
+	err := conf.Checkout(&worker) // worker is already a reference, no & needed
 	if err != nil {
 		logrus.Fatal("Could not get data from conf for ALR.", err)
 	}
@@ -56,7 +63,54 @@ func NewAlrWorker(db *sql.DB) *alrWorker {
 	return worker
 }
 
-func (a *alrWorker) ProcessAlrJob(
+func goWriter(c chan data, w *bufio.Writer,
+	marshaller *jsonformat.Marshaller, result chan error) {
+
+	for i := range c {
+		// marshall
+		patientb, err := marshaller.MarshalResource(i.patient)
+		patients := string(patientb) + "\n"
+		if err != nil {
+			// Make sure to send err back to the other thread
+			result <- err
+			return
+		}
+		var observations []string
+
+		for _, observation := range i.observations {
+			obsMarshalled, err := marshaller.MarshalResource(observation)
+			if err != nil {
+				result <- err
+				return
+			}
+			observations = append(observations, string(obsMarshalled))
+		}
+
+		observation := strings.Join(observations, "\n")
+
+		// IO operation
+		_, err = w.WriteString(patients + observation)
+		if err != nil {
+			result <- err
+			return
+		}
+		err = w.Flush()
+		if err != nil {
+			result <- err
+			return
+		}
+	}
+
+	result <- nil
+}
+
+/******************************************************************************
+	Methods
+	-ProcessAlrJob
+******************************************************************************/
+
+// ProcessAlrJob is a function called by the Worker to serve ALR data to users
+func (a *AlrWorker) ProcessAlrJob(
 	ctx context.Context,
 	jobArgs models.JobAlrEnqueueArgs,
 ) error {
@@ -76,9 +130,16 @@ func (a *alrWorker) ProcessAlrJob(
 	}
 
 	// Set up IO operation to dump ndjson
-	fileUUID := uuid.New()
+
+	// Created necessary directory
+	err = os.MkdirAll(fmt.Sprintf("%s/%d", a.FHIR_STAGING_DIR, id), 0744)
+	if err != nil {
+		return err
+	}
+
+	a.ndjsonFilename = uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", a.FHIR_STAGING_DIR,
-		id, fileUUID))
+		id, a.ndjsonFilename))
 	if err != nil {
 		logrus.Error(err)
 		return err
@@ -87,16 +148,10 @@ func (a *alrWorker) ProcessAlrJob(
 	defer utils.CloseFileAndLogError(f)
 
 	// Serialize data into JSON
-	marshaller, err := jsonformat.NewPrettyMarshaller(jsonformat.STU3)
+	marshaller, err := jsonformat.NewMarshaller(false, "", "", jsonformat.STU3)
 	if err != nil {
 		logrus.Error(err)
 		return err
-	}
-
-	// data is what will be sent over the channel to the go routine
-	type data struct {
-		patient      *resources_go_proto.Patient
-		observations []*resources_go_proto.Observation
 	}
 
 	// Creating channels for go routine
@@ -104,55 +159,10 @@ func (a *alrWorker) ProcessAlrJob(
 	c := make(chan data, 1000) // 1000 rows before blocking
 	result := make(chan error)
 
-	// Go rountine + closure that will write to file
-	// Two channels involved with this closure. One receiving "data", and the
-	// other will send an error is there was any error. The worker thread will
-	// will also use the result channel to wait for the IO to finish.
-	go func(c chan data, w *bufio.Writer, result chan error) {
-		// Receive data through channel
-
-		for i := range c {
-			// marshall
-			patientb, err := marshaller.Marshal(i.patient)
-			patients := string(patientb) + "\n"
-			if err != nil {
-				// Make sure to send err back to the other thread
-				result <- err
-				return
-			}
-			var observations []string
-
-			for _, observation := range i.observations {
-				obsMarshalled, err := marshaller.Marshal(observation)
-				if err != nil {
-					result <- err
-					return
-				}
-				observations = append(observations, string(obsMarshalled))
-			}
-
-			observation := strings.Join(observations, "\n")
-
-			// IO operation
-			_, err = w.WriteString(patients + observation)
-			if err != nil {
-				result <- err
-				return
-			}
-			err = w.Flush()
-			if err != nil {
-				result <- err
-				return
-			}
-		}
-
-		// Add the location of the ndjson
-		a.ndjsonFilename = fileUUID
-
-		// Everything went a-ok... send nil
-		result <- nil
-
-	}(c, w, result)
+	// A go routine that will streamed data to write to disk.
+	// Reason for a go routine is to not block when writing, since disk writing is
+	// generally slower than memory access. We are streaming to keep mem lower.
+	go goWriter(c, w, marshaller, result)
 
 	// Marshall into JSON and send it over the channel
 	for i := range alrModels {
@@ -160,56 +170,9 @@ func (a *alrWorker) ProcessAlrJob(
 		c <- data{patient, observations}
 	}
 
-	// Wait on the go routine and return back results
-	err = <-result
+	// close channel c since we no longer writing to it
+	close(c)
 
-	return err
-}
-
-func (a *alrWorker) UpdateJobAlrStatus(ctx context.Context, jobID uint,
-	newStatus models.JobStatus) error {
-
-	ub := sqlFlavor.NewUpdateBuilder().Update("jobs")
-	ub.Set(ub.Assign("updated_at", sqlbuilder.Raw("NOW()")))
-	ub.SetMore(ub.Assign("status", newStatus))
-	ub.Where(ub.Equal("id", jobID))
-
-	query, args := ub.Build()
-	result, err := a.ExecContext(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
-		return repository.ErrJobNotUpdated
-	}
-
-	return nil
-}
-
-func (a *alrWorker) GetAlrJobStatus(ctx context.Context, jobID uint) (*models.JobStatus,
-	error) {
-	sb := sqlFlavor.NewSelectBuilder()
-	sb.Select("status")
-	sb.From("jobs").Where(sb.Equal("id", jobID))
-
-	query, args := sb.Build()
-
-	var j models.JobStatus
-
-	err := a.QueryRowContext(ctx, query, args...).Scan(&j)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, repository.ErrJobNotFound
-		}
-		return nil, err
-	}
-
-	return &j, nil
+	// Wait on the go routine to finish
+	return <-result
 }

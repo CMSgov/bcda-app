@@ -33,7 +33,8 @@ func init() {
 	// See: ./ops/build_and_package.sh#49
 	paths := []string{"./hcc_crosswalk.tsv",
 		"/etc/sv/api/hcc_crosswalk.tsv",
-		"/go/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/hcc_crosswalk.tsv"}
+		"/go/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/hcc_crosswalk.tsv",
+		os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/hcc_crosswalk.tsv"}
 
 	var df dataframe.DataFrame
 	for _, path := range paths {

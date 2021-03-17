@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -17,7 +17,7 @@ import (
 // Initial Setup
 type AlrWorkerTestSuite struct {
 	suite.Suite
-	alrWorker *alrWorker
+	alrWorker AlrWorker
 	db        *sql.DB
 	jobArgs   models.JobAlrEnqueueArgs
 }
@@ -31,8 +31,9 @@ func (s *AlrWorkerTestSuite) SetupSuite() {
 	// TODO: Replace this with Martin's testing strategy from #4239
 	exMap := make(map[string]string)
 	exMap["EnrollFlag1"] = "1"
-	exMap["HCC1"] = "1"
-	exMap["HCC2"] = "0"
+	exMap["HCC_version"] = "V12"
+	exMap["HCC_COL_1"] = "1"
+	exMap["HCC_COL_2"] = "0"
 	aco := "A1234"
 	MBIs := []string{"abd123abd01", "abd123abd02"}
 	timestamp := time.Now()
@@ -85,7 +86,7 @@ func (s *AlrWorkerTestSuite) SetupSuite() {
 		s.FailNow(err.Error())
 	}
 
-	conf.SetEnv(s.T(), "FHIR_PAYLOAD_DIR", tempDir)
+	s.alrWorker.FHIR_STAGING_DIR = tempDir
 }
 
 // Test NewAlrWorker returns a worker alrWorker
@@ -101,11 +102,10 @@ func (s *AlrWorkerTestSuite) TestProcessAlrJob() {
 	err := s.alrWorker.ProcessAlrJob(ctx, s.jobArgs)
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
-	// Make sure the filename is available for retrieval
-	assert.NotEmpty(s.T(), s.alrWorker.ndjsonFilename)
-	// Check the contents of the ndjson
 }
 
 func TestAlrWorkerTestSuite(t *testing.T) {
-	suite.Run(t, new(WorkerTestSuite))
+	d := new(AlrWorkerTestSuite)
+	suite.Run(t, d)
+	t.Cleanup(func() { os.RemoveAll(d.alrWorker.FHIR_STAGING_DIR) })
 }

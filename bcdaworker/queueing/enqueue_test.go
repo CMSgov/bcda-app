@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
@@ -24,7 +25,15 @@ func TestQueEnqueuer(t *testing.T) {
 	priority := math.MaxInt16
 	enqueuer := NewEnqueuer(databaseURL)
 	jobArgs := models.JobEnqueueArgs{ID: int(rand.Int31()), ACOID: uuid.New()}
+	alrJobArgs := models.JobAlrEnqueueArgs{
+		ID:         1,
+		CMSID:      "A1234",
+		MBIs:       []string{"abd123abd01", "abd123abd02"},
+		LowerBound: time.Now(),
+		UpperBound: time.Now(),
+	}
 	assert.NoError(t, enqueuer.AddJob(jobArgs, priority))
+	assert.NoError(t, enqueuer.AddAlrJob(alrJobArgs, priority))
 
 	// Verify that we've inserted the que_job as expected
 	sb := sqlbuilder.PostgreSQL.NewSelectBuilder().Select("COUNT(1)").From("que_jobs")
@@ -46,5 +55,3 @@ func TestQueEnqueuer(t *testing.T) {
 	_, err = db.Exec(query, args...)
 	assert.NoError(t, err)
 }
-
-// Add test for ALR Queuing

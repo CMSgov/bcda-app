@@ -21,14 +21,14 @@ type Alr struct {
 
 type AlrMetaData struct {
 	ID        uint // Primary Key
-	ACO       string
+	CMSID     string
 	Timestamp time.Time
 }
 
 // Data Structure for Jobs
 type AlrJobs struct {
 	ID     uint
-	ACO    string
+	CMSID  string
 	Status JobStatus
 }
 type JobAlrEnqueueArgs struct {
