@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
@@ -151,8 +152,7 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 }
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
-	db := database.GetDbConnection()
-	defer db.Close()
+	db := database.Connection
 
 	repository := postgres.NewRepository(db)
 
@@ -243,6 +243,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		return errors.Wrap(err, "failed to acquire connection")
 	}
+	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
 
 	importedCount, err := CopyFrom(ctx, conn, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000))
 	if err != nil {
@@ -344,8 +345,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 func orderACOs(cclfMap map[string]map[metadataKey][]*cclfFileMetadata) []string {
 	var acoOrder []string
 
-	db := database.GetDbConnection()
-	defer db.Close()
+	db := database.Connection
 
 	priorityACOs := getPriorityACOs(db)
 	// Ensure there are no duplicate ACOs by wrapping it in Dedup()

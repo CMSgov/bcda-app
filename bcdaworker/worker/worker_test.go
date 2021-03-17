@@ -47,7 +47,7 @@ type WorkerTestSuite struct {
 }
 
 func (s *WorkerTestSuite) SetupSuite() {
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 	s.r = postgres.NewRepository(s.db)
 	s.w = NewWorker(s.db)
 
@@ -96,7 +96,6 @@ func (s *WorkerTestSuite) TearDownTest() {
 func (s *WorkerTestSuite) TearDownSuite() {
 	testUtils.SetUnitTestKeysForAuth()
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
-	s.db.Close()
 	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
 }

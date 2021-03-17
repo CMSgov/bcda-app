@@ -47,7 +47,7 @@ func (s *MigrationTestSuite) SetupSuite() {
 	// postgres://<USER_NAME>:<PASSWORD>@<HOST>:<PORT>/<DB_NAME>
 	re := regexp.MustCompile(`(postgresql\:\/\/\S+\:\S+\@\S+\:\d+\/)(.*)(\?.*)`)
 
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 
 	databaseURL := conf.GetEnv("DATABASE_URL")
 	s.bcdaDB = fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())

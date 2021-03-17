@@ -38,13 +38,12 @@ func (s *AlphaAuthPluginTestSuite) SetupSuite() {
 	}
 	s.backend = auth.InitAlphaBackend()
 
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 	s.repository = postgres.NewRepository(s.db)
 }
 
 func (s *AlphaAuthPluginTestSuite) TearDownSuite() {
 	s.reset()
-	s.db.Close()
 }
 
 func (s *AlphaAuthPluginTestSuite) SetupTest() {
