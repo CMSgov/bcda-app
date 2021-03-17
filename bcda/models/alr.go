@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/pborman/uuid"
 )
 
 // Data Structure for storing information into database
@@ -27,15 +25,7 @@ type AlrMetaData struct {
 	Timestamp time.Time
 }
 
-// Data Structure for Jobs... this uses the same postgreSQL table as Job
-type AlrJobs struct {
-	ID              uint
-	CMSID           uuid.UUID
-	Status          JobStatus
-	JobCount        int
-	TransactionTime time.Time
-	RequestedURL    string
-}
+// There is no AlrJobs struct because ALR uses Job struct from BFD
 type JobAlrEnqueueArgs struct {
 	ID         uint
 	CMSID      string
