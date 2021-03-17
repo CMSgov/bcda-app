@@ -52,7 +52,6 @@ func UpdateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 		"system_id":           aco.SystemID,
 		"alpha_secret":        aco.AlphaSecret,
 		"public_key":          aco.PublicKey,
-		"blacklisted":         aco.Blacklisted, // TODO: remove after removing column
 		"termination_details": aco.TerminationDetails,
 	}
 	assert.NoError(t, r.UpdateACO(context.Background(), aco.UUID, fieldsAndValues))
