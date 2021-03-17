@@ -447,6 +447,8 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	res, err = r.repository.GetACOByUUID(ctx, aco.UUID)
 	assert.NoError(err)
 	assert.Equal(aco, *res)
+	assert.NoError(r.repository.UpdateACO(ctx, aco.UUID,
+		map[string]interface{}{"termination_details": aco.TerminationDetails}))
 
 	res, err = r.repository.GetACOByCMSID(ctx, terminatedCMSID)
 	assert.NoError(err)
@@ -459,6 +461,9 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	res, err = r.repository.GetACOByUUID(ctx, terminatedACO.UUID)
 	assert.NoError(err)
 	assert.Equal(terminatedACO, *res)
+
+	assert.NoError(r.repository.UpdateACO(ctx, terminatedACO.UUID,
+		map[string]interface{}{"termination_details": terminatedACO.TerminationDetails}))
 
 	// Negative cases
 	res, err = r.repository.GetACOByCMSID(ctx, aco.UUID.String())
