@@ -800,7 +800,7 @@ func (s *CLITestSuite) TestBlacklistACO() {
 		TerminationDetails: &models.Termination{
 			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			BlacklistType:   0,
+			BlacklistType:   models.Involuntary,
 		}}
 	notBlacklistedACO := models.ACO{UUID: uuid.NewUUID(), CMSID: &notBlacklistedCMSID,
 		TerminationDetails: &models.Termination{}}
@@ -819,8 +819,11 @@ func (s *CLITestSuite) TestBlacklistACO() {
 	s.Error(s.testApp.Run([]string{"bcda", "unblacklist-aco", "--cms-id", notFoundCMSID}))
 	s.Error(s.testApp.Run([]string{"bcda", "blacklist-aco", "--cms-id", notFoundCMSID}))
 
-	//s.False(postgrestest.GetACOByUUID(s.T(), s.db, blacklistedACO.UUID).BlacklistedFunc())
-	//s.True(postgrestest.GetACOByUUID(s.T(), s.db, notBlacklistedACO.UUID).BlacklistedFunc())
+	dbBlacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, blacklistedACO.UUID)
+	s.False(dbBlacklistedACO.BlacklistedFunc())
+
+	dbNotBlacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notBlacklistedACO.UUID)
+	s.True(dbNotBlacklistedACO.BlacklistedFunc())
 }
 
 func getRandomPort(t *testing.T) int {

@@ -294,7 +294,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 		{
 			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-			BlacklistType:   0,
+			BlacklistType:   models.Involuntary,
 		},
 		{},
 	}
