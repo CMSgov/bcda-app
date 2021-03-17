@@ -48,13 +48,12 @@ func (s *AuthAPITestSuite) SetupSuite() {
 	}
 	s.backend = auth.InitAlphaBackend()
 
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 	s.r = postgres.NewRepository(s.db)
 }
 
 func (s *AuthAPITestSuite) TearDownSuite() {
 	s.reset()
-	s.db.Close()
 }
 
 func (s *AuthAPITestSuite) SetupTest() {
