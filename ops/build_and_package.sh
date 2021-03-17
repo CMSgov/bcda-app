@@ -52,7 +52,7 @@ go clean
 echo "Building bcdaworker..."
 go build
 echo "Packaging bcdaworker binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker models/fhir/alr/hcc_crosswalk.tsv=/etc/sv/worker/hcc_crosswalk.tsv
+fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker ../bcda/models/fhir/alr/hcc_crosswalk.tsv=/etc/sv/worker/hcc_crosswalk.tsv
 
 #Sign RPMs
 echo "Importing GPG Key files"
