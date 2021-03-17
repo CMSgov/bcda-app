@@ -46,7 +46,7 @@ func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
 	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted", // TODO: remove after removing column
 		"termination_details")
-	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.BlacklistedFunc(), // TODO: remove after removing column
+	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted, // TODO: remove after removing column
 		termination{aco.TerminationDetails})
 	query, args := ib.Build()
 	_, err := r.ExecContext(ctx, query, args...)
