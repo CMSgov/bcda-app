@@ -65,7 +65,13 @@ func (r *Repository) GetACOByCMSID(ctx context.Context, cmsID string) (*models.A
 func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("acos")
 	for field, value := range fieldsAndValues {
-		ub.SetMore(ub.Assign(field, value))
+		// Need to cast the termination data into the type that allows it to be serialized
+		// into the correct postgres type
+		if field == "termination_details" {
+			ub.SetMore(ub.Assign(field, termination{value.(*models.Termination)}))
+		} else {
+			ub.SetMore(ub.Assign(field, value))
+		}
 	}
 	ub.Where(ub.Equal("uuid", acoUUID))
 
