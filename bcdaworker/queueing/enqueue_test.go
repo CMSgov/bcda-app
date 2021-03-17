@@ -1,14 +1,13 @@
 package queueing
 
 import (
-	"database/sql"
 	"math"
 	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/huandu/go-sqlbuilder"
 	_ "github.com/jackc/pgx"
 	"github.com/pborman/uuid"
@@ -17,13 +16,10 @@ import (
 
 func TestQueEnqueuer(t *testing.T) {
 	// Need access to the queue database to ensure we've enqueued the job successfully
-	databaseURL := conf.GetEnv("QUEUE_DATABASE_URL")
-	db, err := sql.Open("pgx", databaseURL)
-	assert.NoError(t, err)
-	defer db.Close()
+	db := database.QueueConnection
 
 	priority := math.MaxInt16
-	enqueuer := NewEnqueuer(databaseURL)
+	enqueuer := NewEnqueuer()
 	jobArgs := models.JobEnqueueArgs{ID: int(rand.Int31()), ACOID: uuid.New()}
 	alrJobArgs := models.JobAlrEnqueueArgs{
 		ID:         1,
@@ -52,6 +48,6 @@ func TestQueEnqueuer(t *testing.T) {
 		delete.Equal("priority", priority))
 	query, args = delete.Build()
 
-	_, err = db.Exec(query, args...)
+	_, err := db.Exec(query, args...)
 	assert.NoError(t, err)
 }

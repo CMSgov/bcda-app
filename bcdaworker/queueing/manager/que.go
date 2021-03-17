@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
@@ -27,14 +26,12 @@ import (
 // transforming and delegating that work to the underlying worker
 type queue struct {
 	// Resources associated with the underlying que client
-	quePool           *que.WorkerPool
-	pool              *pgx.ConnPool
-	healthCheckCancel context.CancelFunc
+	quePool *que.WorkerPool
 
 	worker     worker.Worker
 	repository repository.Repository
 	log        *logrus.Logger
-	queDB      *sql.DB
+	queDB      *pgx.ConnPool
 
 	cloudWatchEnv string
 }
@@ -50,20 +47,15 @@ type masterQueue struct {
 // StartQue creates a que-go client and begins listening for items
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
-func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *masterQueue {
-	db, err := sql.Open("pgx", queueDatabaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func StartQue(log *logrus.Logger, numWorkers int) *masterQueue {
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
-	mainDB := database.GetDbConnection()
+	mainDB := database.Connection
 	q := &queue{
 		worker:        worker.NewWorker(mainDB),
 		repository:    postgres.NewRepository(mainDB),
 		log:           log,
-		queDB:         db,
+		queDB:         database.QueueConnection,
 		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
 	}
 	// Same as above, but do one for ALR
@@ -76,25 +68,7 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *mast
 		qAlr, // ALR piggypbacks
 	}
 
-	cfg, err := pgx.ParseURI(queueDatabaseURL)
-	if err != nil {
-		q.log.Fatal(err)
-	}
-
-	q.pool, err = pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig:   cfg,
-		AfterConnect: que.PrepareStatements,
-	})
-	if err != nil {
-		q.log.Fatal(err)
-	}
-
-	// Ensure that the connections are valid. Needed until we move to pgx v4
-	ctx, cancel := context.WithCancel(context.Background())
-	q.healthCheckCancel = cancel
-	database.StartHealthCheck(ctx, q.pool, 10*time.Second)
-
-	qc := que.NewClient(q.pool)
+	qc := que.NewClient(q.queDB)
 	wm := que.WorkMap{
 		queueing.QUE_PROCESS_JOB: q.processJob,
 		queueing.ALR_JOB:         master.startAlrJob, // ALR currently shares pool
@@ -109,11 +83,6 @@ func StartQue(log *logrus.Logger, queueDatabaseURL string, numWorkers int) *mast
 
 // StopQue cleans up any resources created
 func (q *masterQueue) StopQue() {
-	q.healthCheckCancel()
-	if err := q.queDB.Close(); err != nil {
-		q.log.Warnf("Failed to close connection to queue database %s", err)
-	}
-	q.pool.Close()
 	q.quePool.Shutdown()
 }
 

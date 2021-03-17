@@ -24,7 +24,7 @@ type AlrWorkerTestSuite struct {
 
 // Initial Setup
 func (s *AlrWorkerTestSuite) SetupSuite() {
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 	s.alrWorker = NewAlrWorker(s.db)
 
 	// Create synthetic Data
