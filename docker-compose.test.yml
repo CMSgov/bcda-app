@@ -8,7 +8,8 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      - DB=postgresql://postgres:toor@db-unit-test:5432
+      - DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
+      - QUEUE_DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable
       - GOLANGCI_LINT_CACHE=/root/.cache/go-build
       # Remaining environment variables defined in ./shared_files/decrypted/local.env
     volumes:
