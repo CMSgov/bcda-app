@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,7 +27,7 @@ var (
 type OutputCollection []Output
 
 type Output struct {
-	Url  string `json:"url"`
+	URL  string `json:"url"`
 	Type string `json:"type"`
 }
 
@@ -45,7 +46,9 @@ func init() {
 }
 
 func main() {
-	c := &client{httpClient: &http.Client{Timeout: 10 * time.Second}, accessToken: accessToken, retries: httpRetry}
+	c := NewClient(accessToken, httpRetry)
+
+	c.httpClient.Timeout = 10 * time.Second // Set the timeout before throwing an error
 
 	logFields := logrus.Fields{
 		"endpoint":      endpoint,
@@ -82,6 +85,31 @@ func main() {
 		}
 		log.Infof("Finished validating data from url %s", u)
 	}
+}
+
+func NewClient(accessToken string, retries int) *client {
+	c := &client{accessToken: accessToken}
+
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = retries
+	retryClient.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		if resp.StatusCode == http.StatusUnauthorized {
+			log.Info("Access token expired. Refreshing...")
+			if err := c.updateAccessToken(); err != nil {
+				return false, fmt.Errorf("failed to update access token %s", err.Error())
+			}
+			return true, nil
+		}
+
+		// The default policy does the rest of the retry lifting, it will retry:
+		//   It will not retry when ctx contains Canceled or DeadlineExceeded
+		//   It will not retry when err is a redirect, invalid protocol scheme, or TLS cert verification error
+		//   It will retry all 5xx errors EXCEPT 501 Not Implemented
+		//   Is will retry a 429 Too Many Requests
+		return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
+	}
+	c.httpClient = retryClient.StandardClient()
+	return c
 }
 
 func startJob(c *client, endpoint, resourceType string) (string, error) {
@@ -146,7 +174,7 @@ func getDataURLs(c *client, jobEndpoint string, timeout time.Duration) ([]string
 
 			var urls []string
 			for _, item := range data {
-				urls = append(urls, item.Url)
+				urls = append(urls, item.URL)
 			}
 			return urls, nil
 
@@ -252,8 +280,6 @@ func isValidNDJSONText(data string) bool {
 type client struct {
 	httpClient  *http.Client
 	accessToken string
-
-	retries int
 }
 
 func (c *client) Do(req *http.Request) (*http.Response, error) {
@@ -263,29 +289,13 @@ func (c *client) Do(req *http.Request) (*http.Response, error) {
 			return nil, fmt.Errorf("failed to update access token %s", err.Error())
 		}
 	}
-	for i := 0; i <= c.retries; i++ {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				continue
-			}
-			return nil, err
-		}
-
-		if resp.StatusCode == http.StatusUnauthorized {
-			log.Info("Access token expired. Refreshing...")
-			if err := c.updateAccessToken(); err != nil {
-				return nil, fmt.Errorf("failed to update access token %s", err.Error())
-			}
-			// Retry request with new access token
-			continue
-		}
-
-		return resp, nil
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive response with error: %w", err)
 	}
 
-	return nil, fmt.Errorf("failed to receive response after %d tries", c.retries)
+	return resp, nil
 }
 
 func (c *client) updateAccessToken() error {

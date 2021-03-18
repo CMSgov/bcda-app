@@ -19,6 +19,8 @@ require (
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/google/fhir/go v0.0.0-20210120234235-b7cfb32dc82f
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.6.8 // indirect
 	github.com/huandu/go-sqlbuilder v1.10.0
 	github.com/influxdata/tdigest v0.0.0-20181121200506-bf2b5ad3c0a9 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
