@@ -48,6 +48,8 @@ func init() {
 func main() {
 	c := NewClient(accessToken, httpRetry)
 
+	c.httpClient.Timeout = 10 * time.Second // Set the timeout before throwing an error
+
 	logFields := logrus.Fields{
 		"endpoint":      endpoint,
 		"resourceTypes": resourceType,
@@ -99,6 +101,11 @@ func NewClient(accessToken string, retries int) *client {
 			return true, nil
 		}
 
+		// The default policy does the rest of the retry lifting, it will retry:
+		//   It will not retry when ctx contains Canceled or DeadlineExceeded
+		//   It will not retry when err is a redirect, invalid protocol scheme, or TLS cert verification error
+		//   It will retry all 5xx errors EXCEPT 501 Not Implemented
+		//   Is will retry a 429 Too Many Requests
 		return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 	}
 	c.httpClient = retryClient.StandardClient()
