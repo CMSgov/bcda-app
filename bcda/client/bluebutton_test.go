@@ -55,7 +55,6 @@ func (s *BBTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 	conf.SetEnv(s.T(), "BB_REQUEST_RETRY_INTERVAL_MS", "10")
 	conf.SetEnv(s.T(), "BB_TIMEOUT_MS", "2000")
-	conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", "0")
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {
@@ -292,6 +291,10 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 }
 
 func (s *BBRequestTestSuite) TestValidateRequest() {
+	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
+	defer conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", old)
+	conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", "0") // Need to ensure that requests do not have the _count parameter
+
 	tests := []struct {
 		name          string
 		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error)

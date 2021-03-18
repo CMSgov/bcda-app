@@ -180,12 +180,6 @@ func LookupEnv(key string) (string, bool) {
 	if state == configGood {
 		if value := envVars.GetString(key); value != "" {
 			return value, true
-		} else {
-			v, exist := os.LookupEnv(key)
-			if exist {
-				var _ = SetEnv(&testing.T{}, key, v)
-			}
-			return v, exist
 		}
 	}
 
