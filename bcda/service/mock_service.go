@@ -35,6 +35,29 @@ func (_m *MockService) CancelJob(ctx context.Context, jobID uint) (uint, error) 
 	return r0, r1
 }
 
+// GetAlrJobs provides a mock function with given fields: ctx, cmsID, reqType, window
+func (_m *MockService) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error) {
+	ret := _m.Called(ctx, cmsID, reqType, window)
+
+	var r0 []*models.JobAlrEnqueueArgs
+	if rf, ok := ret.Get(0).(func(context.Context, string, AlrRequestType, AlrRequestWindow) []*models.JobAlrEnqueueArgs); ok {
+		r0 = rf(ctx, cmsID, reqType, window)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.JobAlrEnqueueArgs)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, AlrRequestType, AlrRequestWindow) error); ok {
+		r1 = rf(ctx, cmsID, reqType, window)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetJobAndKeys provides a mock function with given fields: ctx, jobID
 func (_m *MockService) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error) {
 	ret := _m.Called(ctx, jobID)
