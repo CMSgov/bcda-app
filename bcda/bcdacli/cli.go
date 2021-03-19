@@ -730,12 +730,8 @@ func setBlacklistState(cmsID string, td *models.Termination) error {
 	if err != nil {
 		return err
 	}
-	tdJSON, err := json.Marshal(td)
-	if err != nil {
-		return err
-	}
 	return r.UpdateACO(context.Background(), aco.UUID,
-		map[string]interface{}{"termination_details": tdJSON})
+		map[string]interface{}{"termination_details": td})
 }
 
 // CCLF file name pattern and regex

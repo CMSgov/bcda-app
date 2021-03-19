@@ -18,6 +18,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/suite"
 
 	_ "github.com/jackc/pgx"
@@ -254,6 +257,114 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				for _, table := range migration10Tables {
 					assertTableExists(t, true, db, table)
 				}
+			},
+		},
+		{
+			"Set ACO Termination Details Default",
+			func(t *testing.T) {
+				// create ACO that has been blacklisted by using createTestRow since "Blacklisted"
+				// is no longer an models.ACO property.
+				cmsID := testUtils.RandomHexID()[0:4]
+				acoUUID := uuid.NewUUID()
+				aco := map[string]interface{}{
+					"uuid":        acoUUID,
+					"cms_id":      cmsID,
+					"name":        "Blacklisted ACO",
+					"blacklisted": true,
+				}
+				createTestRow(t, db, "acos", aco)
+
+				defer postgrestest.DeleteACO(t, db, acoUUID)
+
+				migrator.runMigration(t, "11")
+				assertColumnExists(t, true, db, "acos", "termination_details")
+
+				sb := sqlFlavor.NewSelectBuilder()
+				sb.Select("blacklisted", "termination_details").
+					From("acos").
+					Where(
+						sb.Equal("blacklisted", true),
+					)
+
+				query, args := sb.Build()
+				rows, err := db.Query(query, args...)
+				assert.NoError(t, err)
+				defer rows.Close()
+
+				for rows.Next() {
+					var blacklisted bool
+					var termination_details string
+					assert.NoError(t, rows.Scan(&blacklisted, &termination_details))
+					assert.NotEqual(t, nullValue, termination_details,
+						"\"termination_details\" value is not supposed to be null.  Actual value is %s", termination_details,
+					)
+				}
+			},
+		},
+		{
+			"Remove ACO Blacklisted Column",
+			func(t *testing.T) {
+				assertColumnExists(t, true, db, "acos", "blacklisted")
+				migrator.runMigration(t, "12")
+				assertColumnExists(t, false, db, "acos", "blacklisted")
+			},
+		},
+		// down migrations tests begin here with test number - 1
+		{
+			"Add ACO Blacklisted Column",
+			func(t *testing.T) {
+				// create ACO that has been terminated with termination details.
+				cmsID := testUtils.RandomHexID()[0:4]
+				aco := models.ACO{
+					UUID:  uuid.NewUUID(),
+					CMSID: &cmsID,
+					Name:  "Blacklisted ACO2",
+					TerminationDetails: &models.Termination{
+						TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+						CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+						BlacklistType:   models.Involuntary,
+					}}
+
+				println(aco.UUID.String())
+				defer postgrestest.DeleteACO(t, db, aco.UUID)
+
+				postgrestest.CreateACO(t, s.db, aco)
+				assertColumnExists(t, false, db, "acos", "blacklisted")
+				migrator.runMigration(t, "11")
+				assertColumnExists(t, true, db, "acos", "blacklisted")
+				// TODO: assert blacklisted = true where termination_details is not null
+				/*
+					sb := sqlFlavor.NewSelectBuilder()
+					sb.Select("termination_details", "blacklisted").
+						From("acos").
+						Where(
+							sb.IsNotNull("termination_details"),
+						)
+
+					query, args := sb.Build()
+					println(query)
+					rows, err := db.Query(query, args...)
+					assert.NoError(t, err)
+					defer rows.Close()
+
+					for rows.Next() {
+						println("Checking for blacklisted being true")
+						var termination_details string
+						var blacklisted bool
+						assert.NoError(t, rows.Scan(&termination_details, &blacklisted))
+						assert.False(t, blacklisted,
+							"\"blacklisted\" value is not supposed to be true if \"termination_details\" is not null.  Actual value is %", blacklisted,
+						)
+					}
+				*/
+			},
+		},
+		{
+			"Remove ACO Termination Details Default",
+			func(t *testing.T) {
+				migrator.runMigration(t, "10")
+				assertColumnExists(t, true, db, "acos", "termination_details")
+				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
 			},
 		},
 		{
