@@ -328,35 +328,33 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				println(aco.UUID.String())
 				defer postgrestest.DeleteACO(t, db, aco.UUID)
 
-				postgrestest.CreateACO(t, s.db, aco)
+				postgrestest.CreateACO(t, db, aco)
 				assertColumnExists(t, false, db, "acos", "blacklisted")
 				migrator.runMigration(t, "11")
 				assertColumnExists(t, true, db, "acos", "blacklisted")
 				// TODO: assert blacklisted = true where termination_details is not null
-				/*
-					sb := sqlFlavor.NewSelectBuilder()
-					sb.Select("termination_details", "blacklisted").
-						From("acos").
-						Where(
-							sb.IsNotNull("termination_details"),
-						)
+				sb := sqlFlavor.NewSelectBuilder()
+				sb.Select("termination_details", "blacklisted").
+					From("acos").
+					Where(
+						sb.IsNotNull("termination_details"),
+					)
 
-					query, args := sb.Build()
-					println(query)
-					rows, err := db.Query(query, args...)
-					assert.NoError(t, err)
-					defer rows.Close()
+				query, args := sb.Build()
+				println(query)
+				rows, err := db.Query(query, args...)
+				assert.NoError(t, err)
+				defer rows.Close()
 
-					for rows.Next() {
-						println("Checking for blacklisted being true")
-						var termination_details string
-						var blacklisted bool
-						assert.NoError(t, rows.Scan(&termination_details, &blacklisted))
-						assert.False(t, blacklisted,
-							"\"blacklisted\" value is not supposed to be true if \"termination_details\" is not null.  Actual value is %", blacklisted,
-						)
-					}
-				*/
+				for rows.Next() {
+					println("Checking for blacklisted being true")
+					var termination_details string
+					var blacklisted bool
+					assert.NoError(t, rows.Scan(&termination_details, &blacklisted))
+					assert.True(t, blacklisted,
+						"\"blacklisted\" value is not supposed to be true if \"termination_details\" is not null.  Actual value is %", blacklisted,
+					)
+				}
 			},
 		},
 		{

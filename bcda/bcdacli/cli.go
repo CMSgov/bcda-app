@@ -529,7 +529,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return setBlacklistState(acoCMSID, &models.Termination{})
+				return setBlacklistState(acoCMSID, nil)
 			},
 		},
 	}
