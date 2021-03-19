@@ -36,45 +36,41 @@ const (
 type MigrationTestSuite struct {
 	suite.Suite
 
-	db *sql.DB
-
-	bcdaDB    string
-	bcdaDBURL string
-
-	bcdaQueueDB    string
+	bcdaDBURL      string
 	bcdaQueueDBURL string
 }
 
 func (s *MigrationTestSuite) SetupSuite() {
 	// We expect that the DB URL follows
-	// postgres://<USER_NAME>:<PASSWORD>@<HOST>:<PORT>/<DB_NAME>
+	// postgres://<USER_NAME>:<PASSWORD>@<HOST>: <PORT>/<DB_NAME>
 	re := regexp.MustCompile(`(postgresql\:\/\/\S+\:\S+\@\S+\:\d+\/)(.*)(\?.*)`)
 
-	s.db = database.GetDbConnection()
+	db := database.GetDbConnection()
 
 	databaseURL := conf.GetEnv("DATABASE_URL")
-	s.bcdaDB = fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())
-	s.bcdaQueueDB = fmt.Sprintf("migrate_test_bcda_queue_%d", time.Now().Nanosecond())
-	s.bcdaDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", s.bcdaDB))
-	s.bcdaQueueDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", s.bcdaQueueDB))
+	bcdaDB := fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())
+	bcdaQueueDB := fmt.Sprintf("migrate_test_bcda_queue_%d", time.Now().Nanosecond())
+	s.bcdaDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", bcdaDB))
+	s.bcdaQueueDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", bcdaQueueDB))
 
-	if _, err := s.db.Exec("CREATE DATABASE " + s.bcdaDB); err != nil {
+	if _, err := db.Exec("CREATE DATABASE " + bcdaDB); err != nil {
 		assert.FailNowf(s.T(), "Could not create bcda db", err.Error())
 	}
 
-	if _, err := s.db.Exec("CREATE DATABASE " + s.bcdaQueueDB); err != nil {
+	if _, err := db.Exec("CREATE DATABASE " + bcdaQueueDB); err != nil {
 		assert.FailNowf(s.T(), "Could not create bcda_queue db", err.Error())
 	}
-}
 
-func (s *MigrationTestSuite) TearDownSuite() {
-	if _, err := s.db.Exec("DROP DATABASE " + s.bcdaDB); err != nil {
-		assert.FailNowf(s.T(), "Could not drop bcda db", err.Error())
-	}
+	s.T().Cleanup(
+		func() {
+			if _, err := db.Exec("DROP DATABASE " + bcdaDB); err != nil {
+				assert.FailNowf(s.T(), "Could not drop bcda db", err.Error())
+			}
 
-	if _, err := s.db.Exec("DROP DATABASE " + s.bcdaQueueDB); err != nil {
-		assert.FailNowf(s.T(), "Could not drop bcda_queue db", err.Error())
-	}
+			if _, err := db.Exec("DROP DATABASE " + bcdaQueueDB); err != nil {
+				assert.FailNowf(s.T(), "Could not drop bcda_queue db", err.Error())
+			}
+		})
 }
 
 func TestMigrationTestSuite(t *testing.T) {
