@@ -148,29 +148,8 @@ func findEnv(location []string) (bool, string) {
 // exist, an empty string (i.e., "") is returned.
 // This function will be phased out in later versions of the package.
 func GetEnv(key string) string {
-
-	// If the configuration file is loaded correctly, check config struct for info
-	if state == configGood {
-
-		if value := envVars.GetString(key); value != "" {
-			return value
-		} else {
-			// if it is blank, check environment variables. Just in case there are
-			// variables that started off empty and is now available. Once made available,
-			// that variable is immutable for the rest of the runtime.
-			// This functionality will be phased out in later versions of the package
-			v, exist := os.LookupEnv(key)
-			if exist {
-				var _ = SetEnv(&testing.T{}, key, v)
-			}
-			return v
-		}
-
-	}
-
-	// Configuration file not good, so default to environment variables.
-	return os.Getenv(key)
-
+	val, _ := LookupEnv(key)
+	return val
 }
 
 // LookupEnv is a public function, like GetEnv, designed to replace os.LookupEnv() in code-base.
@@ -178,13 +157,14 @@ func GetEnv(key string) string {
 func LookupEnv(key string) (string, bool) {
 
 	if state == configGood {
-		if value := envVars.GetString(key); value != "" {
-			return value, true
+		if value := envVars.Get(key); value == nil {
+			return "", false
+		} else {
+			return value.(string), true
 		}
 	}
 
 	return os.LookupEnv(key)
-
 }
 
 // SetEnv is a public function that adds key values into conf. This function should only be used
@@ -215,14 +195,13 @@ func UnsetEnv(protect *testing.T, key string) error {
 
 	// If configuration file is good
 	if state == configGood {
-		envVars.Set(key, "")
+		envVars.Set(key, nil)
+	} else {
+		err = os.Unsetenv(key)
 	}
 
-	// Unset environment variable too, because GetEnv would copy it back over when it should not.
-	err = os.Unsetenv(key)
 
 	return err
-
 }
 
 /***********************************************************************************************
