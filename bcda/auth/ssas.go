@@ -161,7 +161,7 @@ func adFromClaims(r models.Repository, claims *CommonClaims) (AuthData, error) {
 		return ad, fmt.Errorf("no aco for cmsID %s; %v", ad.CMSID, err)
 	}
 	ad.ACOID = aco.UUID.String()
-	ad.Blacklisted = aco.BlacklistedFunc()
+	ad.Blacklisted = aco.Blacklisted()
 
 	return ad, nil
 }

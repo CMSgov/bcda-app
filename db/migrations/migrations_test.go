@@ -314,21 +314,20 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				aco := models.ACO{
 					UUID:  uuid.NewUUID(),
 					CMSID: &cmsID,
-					Name:  "Blacklisted ACO2",
+					Name:  "Blacklisted ACO",
 					TerminationDetails: &models.Termination{
 						TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 						CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 						BlacklistType:   models.Involuntary,
 					}}
 
-				println(aco.UUID.String())
 				defer postgrestest.DeleteACO(t, db, aco.UUID)
 
 				postgrestest.CreateACO(t, db, aco)
 				assertColumnExists(t, false, db, "acos", "blacklisted")
 				migrator.runMigration(t, "11")
 				assertColumnExists(t, true, db, "acos", "blacklisted")
-				// TODO: assert blacklisted = true where termination_details is not null
+
 				sb := sqlFlavor.NewSelectBuilder()
 				sb.Select("termination_details", "blacklisted").
 					From("acos").
@@ -337,13 +336,11 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 					)
 
 				query, args := sb.Build()
-				println(query)
 				rows, err := db.Query(query, args...)
 				assert.NoError(t, err)
 				defer rows.Close()
 
 				for rows.Next() {
-					println("Checking for blacklisted being true")
 					var termination_details string
 					var blacklisted bool
 					assert.NoError(t, rows.Scan(&termination_details, &blacklisted))

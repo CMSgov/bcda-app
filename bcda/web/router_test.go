@@ -290,20 +290,20 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 		{NewAuthRouter(), []string{"/auth/welcome"}},
 	}
 
-	blackListValues := []models.Termination{
+	blackListValues := []*models.Termination{
 		{
 			TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			BlacklistType:   models.Involuntary,
 		},
-		{},
+		nil, 
 	}
 
 	for _, blacklistValue := range blackListValues {
 		for _, config := range configs {
 			for _, path := range config.paths {
 				s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blacklistValue, path), func(t *testing.T) {
-					aco.TerminationDetails = &blacklistValue
+					aco.TerminationDetails = blacklistValue
 					postgrestest.UpdateACO(t, db, *aco)
 					rr := httptest.NewRecorder()
 					req, err := http.NewRequest("GET", path, nil)
@@ -311,7 +311,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 					req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 					config.handler.ServeHTTP(rr, req)
 
-					if aco.BlacklistedFunc() {
+					if aco.Blacklisted() {
 						assert.Equal(t, http.StatusForbidden, rr.Code)
 						assert.Contains(t, rr.Body.String(), fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", cmsID))
 					} else {

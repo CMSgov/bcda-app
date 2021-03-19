@@ -484,7 +484,7 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 		"column \"some_unknown_column\" of relation \"acos\" does not exist")
 	assert.EqualError(
 		r.repository.UpdateACO(ctx, uuid.Parse(aco.ClientID),
-			map[string]interface{}{"blacklisted": true}),
+			map[string]interface{}{"termination_details": &models.Termination{}}),
 		fmt.Sprintf("ACO %s not updated, no row found", aco.ClientID))
 	assert.Contains(r.repository.CreateACO(ctx, aco).Error(), "duplicate key value violates unique constraint \"acos_cms_id_key\"")
 }
