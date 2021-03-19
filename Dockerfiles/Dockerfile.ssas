@@ -6,10 +6,8 @@ RUN apk add git openssl
 RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
 
-RUN go get -u github.com/derekparker/delve/cmd/dlv
-RUN go get github.com/BurntSushi/toml
-RUN go get github.com/howeyc/fsnotify
-RUN go get github.com/mattn/go-colorable
+RUN cat /go/src/github.com/CMSgov/bcda/tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
+
 # Clone bcda-ssas-app over running "go get" since we have issue determining
 # the path where the bcda-ssas-app is placed.
 # We need to run main --start at a particular location in order to guarantee that

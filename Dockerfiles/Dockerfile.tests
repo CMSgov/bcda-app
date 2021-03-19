@@ -1,18 +1,17 @@
 FROM golang:1.15-buster
 
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
-
-RUN go get -u github.com/xo/usql
-RUN go get -u github.com/securego/gosec/cmd/gosec
-RUN go get -u gotest.tools/gotestsum
-RUN go get -u github.com/tsenart/vegeta
-RUN go get -u -d github.com/golang-migrate/migrate/cmd/migrate; \
-    cd $GOPATH/src/github.com/golang-migrate/migrate/cmd/migrate; \
-    git checkout v4.10.0; \
-    go build -tags 'postgres' -ldflags="-X main.Version=$(git describe --tags)" -o $GOPATH/bin/migrate github.com/golang-migrate/migrate/v4/cmd/migrate
-
+ 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
 
+RUN cat tools.go | awk '/[\/\/] test/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
+
+# TODO: maybe just rip this out and use migrate directly in the code
+RUN cat tools.go | awk '/[\/\/] migrate/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get -u -d %; \
+    cd $GOPATH/src/github.com/golang-migrate/migrate/cmd/migrate; \
+    git checkout v4.10.0; \
+    go build -tags 'postgres' -ldflags="-X main.Version=$(git describe --tags)" -o $GOPATH/bin/migrate github.com/golang-migrate/migrate/v4/cmd/migrate
+   
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 ENTRYPOINT []
