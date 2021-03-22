@@ -21,6 +21,7 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 
 # Since the UI references a single swagger spec, we need to include the swagger UI for V1 API.
 # The full spec (v1 + v2) is created at the root of swaggerui to allow us to continue to build a complete OpenAPI file
+# TODO (BCDA-4109) - Remove generating the swagger UI specific to v1 API
 CMD mkdir -p swaggerui/v2 && \
     mkdir -p swaggerui/v1 && \
     cp -r /tmp/swagger-ui-${swaggerVersion}/dist/* swaggerui/v1/ && \

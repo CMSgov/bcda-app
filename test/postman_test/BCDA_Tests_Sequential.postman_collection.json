@@ -199,7 +199,8 @@
 						"swagger",
 						""
 					]
-				}
+				},
+				"description": "TODO (BCDA-4109) - Remove test verifying v1 specific artifacts"
 			},
 			"response": []
 		},
