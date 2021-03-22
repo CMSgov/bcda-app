@@ -10,8 +10,6 @@ timestamp=`date +%Y-%m-%d_%H-%M-%S`
 mkdir -p test_results/${timestamp}
 mkdir -p test_results/latest
 
-DB_HOST_URL=${DB}?sslmode=disable
-TEST_DB_URL=${DB}/bcda_test?sslmode=disable
 echo "Running unit tests and placing results/coverage in test_results/${timestamp} on host..."
 
 # Avoid the db/migrations package since it only contains test code
@@ -21,7 +19,7 @@ PACKAGES_TO_COVER=$(go list ./... | egrep -v 'test|mock|db/migrations' | tr "\n"
 # Supply the following flag to gotestsum command: -coverpkg ${PACKAGES_TO_COVER}
 # NOTE: This flag is a go test flag and should be placed after the -- i.e. same spots as covermode, race, etc.
 
-DATABASE_URL=$TEST_DB_URL QUEUE_DATABASE_URL=$TEST_DB_URL gotestsum \
+gotestsum \
     --junitfile test_results/${timestamp}/junit.xml -- \
     -covermode atomic \
     -race ./... \

@@ -177,12 +177,12 @@ func TestLookupEnv(t *testing.T) {
 		want  string
 		want1 bool
 	}{
-		//{
-		//"Query a variable that exists in local.env but does not have value",
-		//args{"TEST_EMPTY"},
-		//"",
-		//true,
-		//},
+		{
+			"Query a variable that exists in local.env but does not have value",
+			args{"TEST_EMPTY"},
+			"",
+			true,
+		},
 		{
 			"Query a variable that does not exist",
 			args{"TEST_DOESNOTEXIST"},
