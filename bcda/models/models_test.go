@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +14,7 @@ import (
 type ModelsTestSuite struct {
 	suite.Suite
 
-	db         *sql.DB
+	db *sql.DB
 }
 
 func TestModelsTestSuite(t *testing.T) {
