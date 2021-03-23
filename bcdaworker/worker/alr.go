@@ -29,7 +29,8 @@ import (
 type AlrWorker struct {
 	*postgres.AlrRepository
 	FHIR_STAGING_DIR string
-	ndjsonFilename   string
+	FHIR_PAYLOAD_DIR string
+	NdjsonFilename   string
 }
 
 type data struct {
@@ -50,7 +51,7 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 	worker := AlrWorker{
 		AlrRepository:    alrR,
 		FHIR_STAGING_DIR: "",
-		ndjsonFilename:   "", // Filled in later
+		NdjsonFilename:   "", // Filled in later
 	}
 
 	err := conf.Checkout(&worker) // worker is already a reference, no & needed
@@ -130,14 +131,14 @@ func (a *AlrWorker) ProcessAlrJob(
 	// Set up IO operation to dump ndjson
 
 	// Created necessary directory
-	err = os.MkdirAll(fmt.Sprintf("%s/%d", a.FHIR_STAGING_DIR, id), 0744)
+	err = createDir(fmt.Sprintf("%s/%d", a.FHIR_STAGING_DIR, id))
 	if err != nil {
 		return err
 	}
 
-	a.ndjsonFilename = uuid.New()
+	a.NdjsonFilename = uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", a.FHIR_STAGING_DIR,
-		id, a.ndjsonFilename))
+		id, a.NdjsonFilename))
 	if err != nil {
 		logrus.Error(err)
 		return err

@@ -3,6 +3,8 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -10,6 +12,10 @@ import (
 	"github.com/bgentry/que-go"
 	"github.com/sirupsen/logrus"
 )
+
+/******************************************************************************
+	Data Structures
+******************************************************************************/
 
 // alrQueue is the data structure for jobs related to Assignment List Report
 // (ALR). ALR piggybacks Beneficiary FHIR through the masterQueue data struct.
@@ -19,11 +25,44 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
+var alrJobTracker = make(map[uint]models.JobStatus, 2)
+
+/******************************************************************************
+	Functions
+	- checkIfCancelled - originally a closure, turned into func for clarity
+******************************************************************************/
+
+func checkIfCancelled(ctx context.Context, q *masterQueue,
+	cancel context.CancelFunc, jobArgs models.JobAlrEnqueueArgs) {
+	for {
+		select {
+		case <-time.After(15 * time.Second):
+			jobStatus, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+
+			if err != nil {
+				q.alrLog.Warnf("Could not find job %d status: %s", jobArgs.ID, err)
+			}
+
+			if jobStatus.Status == models.JobStatusCancelled {
+				cancel()
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+/******************************************************************************
+	Methods
+******************************************************************************/
+
 // startALRJob is the Job that the worker will run from the pool. This function
 // has been written here (alr.go) to separate from beneficiary FHIR workflow.
 // This job is handled by the same worker pool that works on beneficiary.
 func (q *masterQueue) startAlrJob(job *que.Job) error {
-	// Creating Context for possible cancellation
+
+	// Creating Context for possible cancellation; used by checkIfCancelled fn
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -33,33 +72,28 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	var jobArgs models.JobAlrEnqueueArgs
 	err := json.Unmarshal(job.Args, &jobArgs)
 	if err != nil {
-		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s. Removing job...",
+		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s.",
 			job.Args, err)
 		// By returning nil to que-go, job is removed from queue
-		return nil
+		return err
+	}
+
+	// To reduce the number of pings to the DB, track some information on the
+	// worker side.
+	if _, exists := alrJobTracker[jobArgs.ID]; !exists {
+		alrJobTracker[jobArgs.ID] = models.JobStatusInProgress
+		err := q.repository.UpdateJobStatus(ctx, jobArgs.ID,
+			models.JobStatusInProgress)
+		if err != nil {
+			q.alrLog.Warnf("Failed to update job status '%s' %s.",
+				job.Args, err)
+			// By returning nil to que-go, job is removed from queue
+			return err
+		}
 	}
 
 	// Check if the job was cancelled
-	go func() {
-		for {
-			select {
-			case <-time.After(15 * time.Second):
-				jobStatus, err := q.repository.GetJobByID(ctx, jobArgs.ID)
-
-				if err != nil {
-					q.alrLog.Warnf("Could not find job %d status: %s", jobArgs.ID, err)
-				}
-
-				if jobStatus.Status == models.JobStatusCancelled {
-					// cancelled context will get picked up by worker.go#writeBBDataToFile
-					cancel()
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	go checkIfCancelled(ctx, q, cancel, jobArgs)
 
 	// Do the Job
 	err = q.alrWorker.ProcessAlrJob(ctx, jobArgs)
@@ -71,12 +105,60 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	}
 
 	// Update DB that work is done / success
-	err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusCompleted)
+	err = q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID)
 	if err != nil {
-		// This means the job did not finish for various reason
-		q.alrLog.Warnf("Failed to update job to complete for '%s' %s", job.Args, err)
-		// Re-enqueue the job
-		return nil
+		q.alrLog.Warnf("Failed to increment job to count for '%s' %s", job.Args, err)
+		// Can't increment for some DB reason... rollback the file created and try again...
+		err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
+			jobArgs.ID, q.alrWorker.NdjsonFilename))
+		if err != nil {
+			q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
+		}
+		return err
+	}
+
+	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+	if err != nil {
+		q.alrLog.Warnf("Failed to get alr Job by id for '%s' %s", job.Args, err)
+		err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
+			jobArgs.ID, q.alrWorker.NdjsonFilename))
+		if err != nil {
+			q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
+		}
+		return err
+	}
+
+	// Check if the Job is done
+	if alrJobs.CompletedJobCount == alrJobs.JobCount {
+		// we're done, so move files from staging to payload
+		err := os.Rename(q.alrWorker.FHIR_STAGING_DIR, q.alrWorker.FHIR_PAYLOAD_DIR)
+		if err != nil {
+			q.alrLog.Warnf("Failed to rename alr dirs '%s' %s", job.Args, err)
+
+			// TODO: The this point the jobs are done, and this error is an OS issue,
+			// and should be handled better instead of retrying the job
+			err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
+				jobArgs.ID, q.alrWorker.NdjsonFilename))
+			if err != nil {
+				q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
+			}
+
+			return err
+		}
+		// mark job as done
+		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusCompleted)
+
+		if err != nil {
+			q.alrLog.Warnf("Failed to update job to complete '%s' %s", job.Args, err)
+			err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
+				jobArgs.ID, q.alrWorker.NdjsonFilename))
+			if err != nil {
+				q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
+			}
+			return err
+		}
+
+		delete(alrJobTracker, jobArgs.ID)
 	}
 
 	return nil
