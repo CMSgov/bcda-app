@@ -818,11 +818,11 @@ func (s *CLITestSuite) TestBlacklistACO() {
 	s.Error(s.testApp.Run([]string{"bcda", "unblacklist-aco", "--cms-id", notFoundCMSID}))
 	s.Error(s.testApp.Run([]string{"bcda", "blacklist-aco", "--cms-id", notFoundCMSID}))
 
-	dbBlacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, blacklistedACO.UUID)
-	s.False(dbBlacklistedACO.Blacklisted())
+	newlyUnblacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, blacklistedACO.UUID)
+	s.False(newlyUnblacklistedACO.Blacklisted())
 
-	dbNotBlacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notBlacklistedACO.UUID)
-	s.True(dbNotBlacklistedACO.Blacklisted())
+	newlyBlacklistedACO := postgrestest.GetACOByUUID(s.T(), s.db, notBlacklistedACO.UUID)
+	s.True(newlyBlacklistedACO.Blacklisted())
 }
 
 func getRandomPort(t *testing.T) int {

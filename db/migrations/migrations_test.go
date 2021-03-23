@@ -276,7 +276,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertColumnExists(t, true, db, "acos", "termination_details")
 
 				sb := sqlFlavor.NewSelectBuilder()
-				sb.Select("blacklisted", "termination_details").
+				sb.Select("termination_details").
 					From("acos").
 					Where(
 						sb.Equal("blacklisted", true),
@@ -287,14 +287,14 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assert.NoError(t, err)
 				defer rows.Close()
 
+				var rowsFound bool
 				for rows.Next() {
-					var blacklisted bool
-					var termination_details string
-					assert.NoError(t, rows.Scan(&blacklisted, &termination_details))
-					assert.NotEqual(t, nullValue, termination_details,
-						"\"termination_details\" value is not supposed to be null.  Actual value is %s", termination_details,
-					)
+					rowsFound = true
+					var terminationDetails sql.NullString
+					assert.NoError(t, rows.Scan(&terminationDetails))
+					assert.True(t, terminationDetails.Valid)
 				}
+				assert.True(t, rowsFound)
 			},
 		},
 		{
@@ -329,7 +329,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertColumnExists(t, true, db, "acos", "blacklisted")
 
 				sb := sqlFlavor.NewSelectBuilder()
-				sb.Select("termination_details", "blacklisted").
+				sb.Select("blacklisted").
 					From("acos").
 					Where(
 						sb.IsNotNull("termination_details"),
@@ -340,14 +340,16 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assert.NoError(t, err)
 				defer rows.Close()
 
+				var rowsFound bool
 				for rows.Next() {
-					var termination_details string
+					rowsFound = true
 					var blacklisted bool
-					assert.NoError(t, rows.Scan(&termination_details, &blacklisted))
+					assert.NoError(t, rows.Scan(&blacklisted))
 					assert.True(t, blacklisted,
 						"\"blacklisted\" value is not supposed to be true if \"termination_details\" is not null.  Actual value is %", blacklisted,
 					)
 				}
+				assert.True(t, rowsFound)
 			},
 		},
 		{
