@@ -123,7 +123,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
-	ctx := context.Background()
+	ctx := r.Context()
 
 	var (
 		ad      auth.AuthData
