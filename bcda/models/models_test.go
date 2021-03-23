@@ -30,17 +30,32 @@ func (s *ModelsTestSuite) TestJobStatusMessage() {
 }
 
 func (s *ModelsTestSuite) TestACOBlacklist() {
-	blackListValues := Termination{
-		TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-		CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
-		BlacklistType:   Involuntary,
+	blackListDate := time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local)
+	blackListValues := []Termination{
+		{
+			TerminationDate: blackListDate,
+			CutoffDate:      blackListDate,
+			BlacklistType:   Involuntary,
+		},
+		{
+			TerminationDate: blackListDate,
+			CutoffDate:      blackListDate,
+			BlacklistType:   Voluntary,
+		},
+		{
+			TerminationDate: blackListDate,
+			CutoffDate:      blackListDate,
+			BlacklistType:   Limited,
+		},
 	}
 	tests := []struct {
 		title          string
 		td             *Termination
 		expectedResult bool
 	}{
-		{"Details Present", &blackListValues, true},
+		{"Details Involuntary", &blackListValues[0], true},
+		{"Details Voluntary", &blackListValues[1], true},
+		{"Details Limited", &blackListValues[2], false},
 		{"Details Missing", &Termination{}, true},
 		{"Null", nil, false},
 	}
