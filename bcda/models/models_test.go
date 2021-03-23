@@ -1,7 +1,6 @@
 package models
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
@@ -13,8 +12,6 @@ import (
 
 type ModelsTestSuite struct {
 	suite.Suite
-
-	db *sql.DB
 }
 
 func TestModelsTestSuite(t *testing.T) {
