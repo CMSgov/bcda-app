@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -10,13 +12,35 @@ import (
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 )
 
+var versionExp = regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
 var supportedOutputFormats = map[string]struct{}{
-	"ndjson":                  struct{}{},
-	"application/fhir+ndjson": struct{}{},
-	"application/ndjson":      struct{}{}}
+	"ndjson":                  {},
+	"application/fhir+ndjson": {},
+	"application/ndjson":      {}}
 
-func ValidateRequest(next http.Handler) http.Handler {
+type RequestParameters struct {
+	Since         time.Time
+	ResourceTypes []string
+	Version       string // e.g. v1, v2
+}
+
+// requestkey is an unexported context key to avoid collisions
+type requestkey int
+
+var rk requestkey
+
+func NewRequestParametersContext(ctx context.Context, rp RequestParameters) context.Context {
+	return context.WithValue(ctx, rk, rp)
+}
+
+func RequestParametersFromContext(ctx context.Context) (RequestParameters, bool) {
+	rp, ok := ctx.Value(rk).(RequestParameters)
+	return rp, ok
+}
+
+func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var rp RequestParameters
 
 		//validate "_outputFormat" parameter
 		params, ok := r.URL.Query()["_outputFormat"]
@@ -59,9 +83,10 @@ func ValidateRequest(next http.Handler) http.Handler {
 				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
 				responseutils.WriteError(oo, w, http.StatusBadRequest)
 			}
+			rp.Since = sinceDate
 		}
 
-		// validate optional "_type" parameter
+		// validate no duplicate resource types
 		var resourceTypes []string
 		params, ok = r.URL.Query()["_type"]
 		if ok {
@@ -71,13 +96,59 @@ func ValidateRequest(next http.Handler) http.Handler {
 				if _, ok := resourceMap[resource]; !ok {
 					resourceMap[resource] = struct{}{}
 				} else {
-					errMsg := fmt.Sprintf("Repeated resource type %s")
-					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,"Repeated resource type")
-					return nil, oo
+					errMsg := fmt.Sprintf("Repeated resource type %s", resource)
+					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, errMsg)
+					responseutils.WriteError(oo, w, http.StatusBadRequest)
+					return
 				}
 			}
+			rp.ResourceTypes = resourceTypes
 		}
 
+		// Get API version
+		parts := versionExp.FindStringSubmatch(r.URL.Path)
+		if len(parts) != 2 {
+			errMsg := fmt.Sprintf("Unexpected path provided %s", r.URL.Path)
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, errMsg)
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		}
+		rp.Version = parts[1]
+
+		r = r.WithContext(NewRequestParametersContext(r.Context(), rp))
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func ValidateRequestHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := r.Header
+
+		acceptHeader := h.Get("Accept")
+		preferHeader := h.Get("Prefer")
+
+		if acceptHeader == "" {
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Accept header is required")
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		} else if acceptHeader != "application/fhir+json" {
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "application/fhir+json is the only supported response format")
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		}
+
+		if preferHeader == "" {
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Prefer header is required")
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		} else if preferHeader != "respond-async" {
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Only asynchronous responses are supported")
+			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 

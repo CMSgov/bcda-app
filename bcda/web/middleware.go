@@ -21,45 +21,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	repository models.Repository
-)
-
-func init() {
-	r = postgres.NewRepository(database.Connection)
-}
-
-func ValidateBulkRequestHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h := r.Header
-
-		acceptHeader := h.Get("Accept")
-		preferHeader := h.Get("Prefer")
-
-		if acceptHeader == "" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Accept header is required")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-			return
-		} else if acceptHeader != "application/fhir+json" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "application/fhir+json is the only supported response format")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-			return
-		}
-
-		if preferHeader == "" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Prefer header is required")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-			return
-		} else if preferHeader != "respond-async" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Only asynchronous responses are supported")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
 func ConnectionClose(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Connection", "close")
