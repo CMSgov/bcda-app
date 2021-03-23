@@ -58,12 +58,9 @@ func setUpApp() *cli.App {
 	app.Usage = Usage
 	app.Version = constants.Version
 	app.Before = func(c *cli.Context) error {
-		db = database.GetDbConnection()
+		db = database.Connection
 		r = postgres.NewRepository(db)
 		return nil
-	}
-	app.After = func(c *cli.Context) error {
-		return db.Close()
 	}
 	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
 	var thresholdHr int

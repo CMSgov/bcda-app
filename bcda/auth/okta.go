@@ -44,7 +44,7 @@ var _ Provider = OktaAuthPlugin{}
 // Create a new plugin using the provided backend. Having the backend passed in facilitates testing with Mockta.
 func NewOktaAuthPlugin(backend OktaBackend) OktaAuthPlugin {
 	return OktaAuthPlugin{backend,
-		postgres.NewRepository(database.GetDbConnection())}
+		postgres.NewRepository(database.Connection)}
 }
 
 func (o OktaAuthPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error) {

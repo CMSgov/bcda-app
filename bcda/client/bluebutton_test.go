@@ -291,6 +291,10 @@ func (s *BBRequestTestSuite) TearDownAllSuite() {
 }
 
 func (s *BBRequestTestSuite) TestValidateRequest() {
+	old := conf.GetEnv("BB_CLIENT_PAGE_SIZE")
+	defer conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", old)
+	conf.SetEnv(s.T(), "BB_CLIENT_PAGE_SIZE", "0") // Need to ensure that requests do not have the _count parameter
+
 	tests := []struct {
 		name          string
 		funcUnderTest func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error)

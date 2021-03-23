@@ -21,16 +21,11 @@ type Alr struct {
 
 type AlrMetaData struct {
 	ID        uint // Primary Key
-	ACO       string
+	CMSID     string
 	Timestamp time.Time
 }
 
-// Data Structure for Jobs
-type AlrJobs struct {
-	ID     uint
-	ACO    string
-	Status JobStatus
-}
+// There is no AlrJobs struct because ALR uses Job struct from BFD
 type JobAlrEnqueueArgs struct {
 	ID         uint
 	CMSID      string

@@ -72,7 +72,7 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	queue := manager.StartQue(log.StandardLogger(), conf.GetEnv("QUEUE_DATABASE_URL"), utils.GetEnvInt("WORKER_POOL_SIZE", 2))
+	queue := manager.StartQue(log.StandardLogger(), utils.GetEnvInt("WORKER_POOL_SIZE", 2))
 	defer queue.StopQue()
 
 	if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {

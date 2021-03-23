@@ -38,12 +38,8 @@ func TestRepositoryTestSuite(t *testing.T) {
 }
 
 func (r *RepositoryTestSuite) SetupSuite() {
-	r.db = database.GetDbConnection()
+	r.db = database.Connection
 	r.repository = postgres.NewRepository(r.db)
-}
-
-func (r *RepositoryTestSuite) TearDownSuite() {
-	r.db.Close()
 }
 
 func (r *RepositoryTestSuite) TestGetLatestCCLFFile() {
@@ -877,6 +873,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 	exMap["test1"] = "Test 01!"
 	exMap["test2"] = "Test 02!"
 	aco := "A1234"
+	MBIs := []string{"abd123abd01", "abd123abd02"}
 	timestamp := time.Now()
 	timestamp2 := timestamp.Add(time.Hour * 24)
 	dob1, _ := time.Parse("01/02/2006", "01/20/1950")
@@ -885,7 +882,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 		{
 			ID:            1, // These are set manually for testing
 			MetaKey:       1, // PostgreSQL should automatically make these
-			BeneMBI:       "abc123abc01",
+			BeneMBI:       MBIs[0],
 			BeneHIC:       "1q2w3e4r5t6y",
 			BeneFirstName: "John",
 			BeneLastName:  "Smith",
@@ -897,7 +894,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 		{
 			ID:            2,
 			MetaKey:       2,
-			BeneMBI:       "abd123abd02",
+			BeneMBI:       MBIs[1],
 			BeneHIC:       "0p9o8i7u6y5t",
 			BeneFirstName: "Melissa",
 			BeneLastName:  "Jones",
@@ -918,7 +915,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 
 	// Test GetAlr
 	// No bounds
-	nobounds, err := alrRepo.GetAlr(ctx, aco, time.Time{}, time.Time{})
+	nobounds, err := alrRepo.GetAlr(ctx, aco, MBIs, time.Time{}, time.Time{})
 	assert.NoError(r.T(), err)
 	assert.Greater(r.T(), len(nobounds), 1)
 
@@ -929,7 +926,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 		nobounds[0].Timestamp.Truncate(time.Microsecond))
 
 	// Get exact date
-	exact, err := alrRepo.GetAlr(ctx, aco, timestamp2, timestamp2)
+	exact, err := alrRepo.GetAlr(ctx, aco, MBIs, timestamp2, timestamp2)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), exact, 1)
 
@@ -939,13 +936,24 @@ func (r *RepositoryTestSuite) TestAlr() {
 		exact[0].Timestamp.Truncate(time.Microsecond))
 
 	// Get a range and make sure we got the right person
-	rn, err := alrRepo.GetAlr(ctx, aco, timestamp, timestamp.Add(time.Hour*10))
+	rn, err := alrRepo.GetAlr(ctx, aco, MBIs, timestamp, timestamp.Add(time.Hour*10))
 	assert.NoError(r.T(), err)
 	assert.EqualValues(r.T(), alrs[0].BeneFirstName, rn[0].BeneFirstName)
 
 	// Double check if you can get value from map
 	assert.EqualValues(r.T(), nobounds[0].KeyValue["test1"], "Test 01!")
 	assert.EqualValues(r.T(), nobounds[0].KeyValue["test2"], "Test 02!")
+
+	// Check if the MBI filter worker
+	mbi, err := alrRepo.GetAlr(ctx, aco, MBIs[:1], time.Time{}, time.Time{})
+	assert.NoError(r.T(), err)
+	assert.EqualValues(r.T(), alrs[0].BeneMBI, mbi[0].BeneMBI)
+
+	// Check if providing mbi not in DB is ok
+	MBIs = append(MBIs, "A9999")
+	extra, err := alrRepo.GetAlr(ctx, aco, MBIs, time.Time{}, time.Time{})
+	assert.NoError(r.T(), err)
+	assert.Len(r.T(), extra, 2) // There should only be two entries in DB, so ok
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {

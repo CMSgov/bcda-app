@@ -43,7 +43,7 @@ func TestRequestsTestSuite(t *testing.T) {
 }
 
 func (s *RequestsTestSuite) SetupSuite() {
-	s.db = database.GetDbConnection()
+	s.db = database.Connection
 
 	// Create an ACO for us to test with
 	s.acoID = uuid.NewUUID()
@@ -58,7 +58,6 @@ func (s *RequestsTestSuite) SetupTest() {
 
 func (s *RequestsTestSuite) TearDownSuite() {
 	postgrestest.DeleteACO(s.T(), s.db, s.acoID)
-	s.db.Close()
 }
 
 func (s *RequestsTestSuite) TearDownTest() {

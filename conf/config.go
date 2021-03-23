@@ -35,6 +35,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+// nullValue allows us to "unset" a parameter within the viper config
+// we need to set a non-nil value when using the Set function to ensure
+// that the value is returned.
+type nullValue struct{}
+
+var null = nullValue{}
+
 // Private global variable:
 
 // config is a conf package struct that wraps the viper struct with one other field
@@ -71,6 +78,9 @@ func setup(locations ...string) (config, configStatus) {
 
 	var v = viper.New()
 	v.AutomaticEnv()
+	// Allows environment variables explicitly set to
+	// an empty string and be considered as valid
+	v.AllowEmptyEnv(true)
 
 	for _, loc := range locations {
 		if _, err := os.Stat(loc); err == nil {
@@ -148,29 +158,8 @@ func findEnv(location []string) (bool, string) {
 // exist, an empty string (i.e., "") is returned.
 // This function will be phased out in later versions of the package.
 func GetEnv(key string) string {
-
-	// If the configuration file is loaded correctly, check config struct for info
-	if state == configGood {
-
-		if value := envVars.GetString(key); value != "" {
-			return value
-		} else {
-			// if it is blank, check environment variables. Just in case there are
-			// variables that started off empty and is now available. Once made available,
-			// that variable is immutable for the rest of the runtime.
-			// This functionality will be phased out in later versions of the package
-			v, exist := os.LookupEnv(key)
-			if exist {
-				var _ = SetEnv(&testing.T{}, key, v)
-			}
-			return v
-		}
-
-	}
-
-	// Configuration file not good, so default to environment variables.
-	return os.Getenv(key)
-
+	val, _ := LookupEnv(key)
+	return val
 }
 
 // LookupEnv is a public function, like GetEnv, designed to replace os.LookupEnv() in code-base.
@@ -178,19 +167,18 @@ func GetEnv(key string) string {
 func LookupEnv(key string) (string, bool) {
 
 	if state == configGood {
-		if value := envVars.GetString(key); value != "" {
-			return value, true
+		value := envVars.Get(key)
+		if value == nil {
+			return "", false
+		} else if _, ok := value.(nullValue); ok {
+			// key was explicitly unset via UnsetEnv
+			return "", false
 		} else {
-			v, exist := os.LookupEnv(key)
-			if exist {
-				var _ = SetEnv(&testing.T{}, key, v)
-			}
-			return v, exist
+			return value.(string), true
 		}
 	}
 
 	return os.LookupEnv(key)
-
 }
 
 // SetEnv is a public function that adds key values into conf. This function should only be used
@@ -217,18 +205,15 @@ func SetEnv(protect *testing.T, key string, value string) error {
 // either in this package itself or testing.
 // This function will most likely become a private function in later versions of the package.
 func UnsetEnv(protect *testing.T, key string) error {
-	var err error
 
 	// If configuration file is good
 	if state == configGood {
-		envVars.Set(key, "")
+		envVars.Set(key, null)
 	}
 
-	// Unset environment variable too, because GetEnv would copy it back over when it should not.
-	err = os.Unsetenv(key)
-
-	return err
-
+	// Unset environment variable too to ensure that viper does not attempt
+	// to retrieve it from the os.
+	return os.Unsetenv(key)
 }
 
 /***********************************************************************************************
