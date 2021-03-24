@@ -437,11 +437,6 @@ func (s *service) setClaimsDate(args *models.JobEnqueueArgs, conditions RequestC
 			break
 		}
 	}
-
-	// TODO: (BCDA-4339) Remove this after we create a release with this code in place.
-	// After our next deployment, there shouldn't be any consumers of the ServiceDate field.
-	// This is needed in case a new API creates a job that is worked on by an old worker version.
-	args.ServiceDate = args.ClaimsWindow.UpperBound
 }
 
 // Gets the priority for the job where the lower the number the higher the priority in the queue.

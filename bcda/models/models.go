@@ -140,7 +140,6 @@ type JobEnqueueArgs struct {
 	ResourceType    string
 	Since           string
 	TransactionTime time.Time
-	ServiceDate     time.Time
 	BBBasePath      string
 	ClaimsWindow    struct {
 		LowerBound time.Time
