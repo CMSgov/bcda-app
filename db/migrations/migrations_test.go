@@ -20,6 +20,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/stretchr/testify/suite"
 
 	_ "github.com/jackc/pgx"
@@ -35,45 +38,41 @@ const (
 type MigrationTestSuite struct {
 	suite.Suite
 
-	db *sql.DB
-
-	bcdaDB    string
-	bcdaDBURL string
-
-	bcdaQueueDB    string
+	bcdaDBURL      string
 	bcdaQueueDBURL string
 }
 
 func (s *MigrationTestSuite) SetupSuite() {
 	// We expect that the DB URL follows
-	// postgres://<USER_NAME>:<PASSWORD>@<HOST>:<PORT>/<DB_NAME>
+	// postgres://<USER_NAME>:<PASSWORD>@<HOST>: <PORT>/<DB_NAME>
 	re := regexp.MustCompile(`(postgresql\:\/\/\S+\:\S+\@\S+\:\d+\/)(.*)(\?.*)`)
 
-	s.db = database.Connection
+	db := database.Connection
 
 	databaseURL := conf.GetEnv("DATABASE_URL")
-	s.bcdaDB = fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())
-	s.bcdaQueueDB = fmt.Sprintf("migrate_test_bcda_queue_%d", time.Now().Nanosecond())
-	s.bcdaDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", s.bcdaDB))
-	s.bcdaQueueDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", s.bcdaQueueDB))
+	bcdaDB := fmt.Sprintf("migrate_test_bcda_%d", time.Now().Nanosecond())
+	bcdaQueueDB := fmt.Sprintf("migrate_test_bcda_queue_%d", time.Now().Nanosecond())
+	s.bcdaDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", bcdaDB))
+	s.bcdaQueueDBURL = re.ReplaceAllString(databaseURL, fmt.Sprintf("${1}%s${3}", bcdaQueueDB))
 
-	if _, err := s.db.Exec("CREATE DATABASE " + s.bcdaDB); err != nil {
+	if _, err := db.Exec("CREATE DATABASE " + bcdaDB); err != nil {
 		assert.FailNowf(s.T(), "Could not create bcda db", err.Error())
 	}
 
-	if _, err := s.db.Exec("CREATE DATABASE " + s.bcdaQueueDB); err != nil {
+	if _, err := db.Exec("CREATE DATABASE " + bcdaQueueDB); err != nil {
 		assert.FailNowf(s.T(), "Could not create bcda_queue db", err.Error())
 	}
-}
 
-func (s *MigrationTestSuite) TearDownSuite() {
-	if _, err := s.db.Exec("DROP DATABASE " + s.bcdaDB); err != nil {
-		assert.FailNowf(s.T(), "Could not drop bcda db", err.Error())
-	}
+	s.T().Cleanup(
+		func() {
+			if _, err := db.Exec("DROP DATABASE " + bcdaDB); err != nil {
+				assert.FailNowf(s.T(), "Could not drop bcda db", err.Error())
+			}
 
-	if _, err := s.db.Exec("DROP DATABASE " + s.bcdaQueueDB); err != nil {
-		assert.FailNowf(s.T(), "Could not drop bcda_queue db", err.Error())
-	}
+			if _, err := db.Exec("DROP DATABASE " + bcdaQueueDB); err != nil {
+				assert.FailNowf(s.T(), "Could not drop bcda_queue db", err.Error())
+			}
+		})
 }
 
 func TestMigrationTestSuite(t *testing.T) {
@@ -256,6 +255,111 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				for _, table := range migration10Tables {
 					assertTableExists(t, true, db, table)
 				}
+			},
+		},
+		{
+			"Set ACO Termination Details Default",
+			func(t *testing.T) {
+				// create ACO that has been blacklisted by using createTestRow since "Blacklisted"
+				// is no longer an models.ACO property.
+				cmsID := testUtils.RandomHexID()[0:4]
+				acoUUID := uuid.NewUUID()
+				aco := map[string]interface{}{
+					"uuid":        acoUUID,
+					"cms_id":      cmsID,
+					"name":        "Blacklisted ACO",
+					"blacklisted": true,
+				}
+				createTestRow(t, db, "acos", aco)
+
+				defer postgrestest.DeleteACO(t, db, acoUUID)
+
+				migrator.runMigration(t, "11")
+				assertColumnExists(t, true, db, "acos", "termination_details")
+
+				sb := sqlFlavor.NewSelectBuilder()
+				sb.Select("termination_details").
+					From("acos").
+					Where(
+						sb.Equal("blacklisted", true),
+					)
+
+				query, args := sb.Build()
+				rows, err := db.Query(query, args...)
+				assert.NoError(t, err)
+				defer rows.Close()
+
+				var rowsFound bool
+				for rows.Next() {
+					rowsFound = true
+					var terminationDetails sql.NullString
+					assert.NoError(t, rows.Scan(&terminationDetails))
+					assert.True(t, terminationDetails.Valid)
+				}
+				assert.True(t, rowsFound)
+			},
+		},
+		{
+			"Remove ACO Blacklisted Column",
+			func(t *testing.T) {
+				assertColumnExists(t, true, db, "acos", "blacklisted")
+				migrator.runMigration(t, "12")
+				assertColumnExists(t, false, db, "acos", "blacklisted")
+			},
+		},
+		// down migrations tests begin here with test number - 1
+		{
+			"Add ACO Blacklisted Column",
+			func(t *testing.T) {
+				// create ACO that has been terminated with termination details.
+				cmsID := testUtils.RandomHexID()[0:4]
+				aco := models.ACO{
+					UUID:  uuid.NewUUID(),
+					CMSID: &cmsID,
+					Name:  "Blacklisted ACO",
+					TerminationDetails: &models.Termination{
+						TerminationDate: time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+						CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
+						BlacklistType:   models.Involuntary,
+					}}
+
+				defer postgrestest.DeleteACO(t, db, aco.UUID)
+
+				postgrestest.CreateACO(t, db, aco)
+				assertColumnExists(t, false, db, "acos", "blacklisted")
+				migrator.runMigration(t, "11")
+				assertColumnExists(t, true, db, "acos", "blacklisted")
+
+				sb := sqlFlavor.NewSelectBuilder()
+				sb.Select("blacklisted").
+					From("acos").
+					Where(
+						sb.IsNotNull("termination_details"),
+					)
+
+				query, args := sb.Build()
+				rows, err := db.Query(query, args...)
+				assert.NoError(t, err)
+				defer rows.Close()
+
+				var rowsFound bool
+				for rows.Next() {
+					rowsFound = true
+					var blacklisted bool
+					assert.NoError(t, rows.Scan(&blacklisted))
+					assert.True(t, blacklisted,
+						"\"blacklisted\" value is not supposed to be true if \"termination_details\" is not null.  Actual value is %", blacklisted,
+					)
+				}
+				assert.True(t, rowsFound)
+			},
+		},
+		{
+			"Remove ACO Termination Details Default",
+			func(t *testing.T) {
+				migrator.runMigration(t, "10")
+				assertColumnExists(t, true, db, "acos", "termination_details")
+				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
 			},
 		},
 		{

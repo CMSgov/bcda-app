@@ -506,7 +506,12 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return setBlacklistState(acoCMSID, true)
+				td := &models.Termination{
+					TerminationDate: time.Now(),
+					CutoffDate:      time.Now(),
+					BlacklistType:   models.Involuntary,
+				}
+				return setBlacklistState(acoCMSID, td)
 			},
 		},
 		{
@@ -521,7 +526,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				return setBlacklistState(acoCMSID, false)
+				return setBlacklistState(acoCMSID, nil)
 			},
 		},
 	}
@@ -716,14 +721,14 @@ func cleanupJobData(jobID uint, rootDirs ...string) error {
 	return nil
 }
 
-func setBlacklistState(cmsID string, blacklistState bool) error {
+func setBlacklistState(cmsID string, td *models.Termination) error {
 	ctx := context.Background()
 	aco, err := r.GetACOByCMSID(ctx, cmsID)
 	if err != nil {
 		return err
 	}
 	return r.UpdateACO(context.Background(), aco.UUID,
-		map[string]interface{}{"blacklisted": blacklistState})
+		map[string]interface{}{"termination_details": td})
 }
 
 // CCLF file name pattern and regex
