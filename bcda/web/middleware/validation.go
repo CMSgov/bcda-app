@@ -12,7 +12,6 @@ import (
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 )
 
-var versionExp = regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
 var supportedOutputFormats = map[string]struct{}{
 	"ndjson":                  {},
 	"application/fhir+ndjson": {},
@@ -38,7 +37,7 @@ func RequestParametersFromContext(ctx context.Context) (RequestParameters, bool)
 	return rp, ok
 }
 
-func ValidateRequestURL(next http.Handler) http.Handler {
+func ValidateRequestURL(next Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var rp RequestParameters
 
@@ -106,18 +105,17 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		}
 
 		// Get API version
-		parts := versionExp.FindStringSubmatch(r.URL.Path)
-		if len(parts) != 2 {
-			errMsg := fmt.Sprintf("Unexpected path provided %s", r.URL.Path)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, errMsg)
+		version, err := getVersion(r.URL.Path)
+		if err != nil {
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, err.Error())
 			responseutils.WriteError(oo, w, http.StatusBadRequest)
 			return
 		}
-		rp.Version = parts[1]
+		rp.Version = version
 
 		r = r.WithContext(NewRequestParametersContext(r.Context(), rp))
 
-		next.ServeHTTP(w, r)
+		next(w, r, rp)
 	})
 }
 
@@ -158,4 +156,14 @@ func getKeys(kv map[string]struct{}) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+var versionExp = regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
+
+func getVersion(path string) (string, error) {
+	parts := versionExp.FindStringSubmatch(path)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("unexpected path provided %s", path)
+	}
+	return parts[1], nil
 }

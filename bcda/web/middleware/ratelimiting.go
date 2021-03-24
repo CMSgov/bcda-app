@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -16,19 +15,27 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
 	repository models.Repository
+	jobTimeout time.Duration
 )
 
 func init() {
-	r = postgres.NewRepository(database.Connection)
+	repository = postgres.NewRepository(database.Connection)
+	jobTimeout = time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
 }
 
-func ConcurrentJobs(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		acoID := uuid.NewRandom()
+func CheckConcurrentJobs(next Handler) Handler {
+	return Handler(func(w http.ResponseWriter, r *http.Request, rp RequestParameters) {
+		ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+		if !ok {
+			panic("AuthData should be set before calling this handler")
+		}
+		acoID := uuid.Parse(ad.ACOID)
+
 		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
 		if err != nil {
 			log.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
@@ -37,75 +44,54 @@ func ConcurrentJobs(next http.Handler) http.Handler {
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		}
 		if len(pendingAndInProgressJobs) > 0 {
-			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
-				if _, ok := err.(duplicateTypeError); ok {
-					w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-					w.WriteHeader(http.StatusTooManyRequests)
-				} else {
-					log.Error(err)
-					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-						responseutils.InternalErr, "")
-					responseutils.WriteError(oo, w, http.StatusInternalServerError)
-				}
-
+			if hasDuplicates(pendingAndInProgressJobs, rp.ResourceTypes, rp.Version) {
+				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+				w.WriteHeader(http.StatusTooManyRequests)
 				return
 			}
 		}
+		next(w, r, rp)
 	})
 }
 
-func checkDuplicates(pendingAndInProgressJobs []*models.Job, types []string, version string) ([]string, error) {
-	var unworkedTypes []string
-
+func hasDuplicates(pendingAndInProgressJobs []*models.Job, types []string, version string) bool {
+	typeSet := make(map[string]struct{}, len(types))
 	for _, t := range types {
-		worked := false
-		for _, job := range pendingAndInProgressJobs {
-			req, err := url.Parse(job.RequestURL)
-			if err != nil {
-				return nil, err
-			}
-			jobVersion, err := getVersion(req)
-			if err != nil {
-				return nil, err
-			}
+		typeSet[t] = struct{}{}
+	}
 
-			// We allow different API versions to trigger jobs with the same resource type
-			if jobVersion != version {
-				continue
-			}
+	for _, job := range pendingAndInProgressJobs {
+		// Cannot determine duplicates if we can't get the underlying URL
+		req, err := url.Parse(job.RequestURL)
+		if err != nil {
+			continue
+		}
 
-			// If the job has timed-out we will allow new job to be created
-			if time.Now().After(job.CreatedAt.Add(GetJobTimeout())) {
-				continue
-			}
+		// Cannot determine duplicates if we can't figure out the version
+		jobVersion, err := getVersion(req.Path)
+		if err != nil {
+			continue
+		}
 
-			if requestedTypes, ok := req.Query()["_type"]; ok {
-				// if this type is being worked no need to keep looking, break out and go to the next type.
-				if strings.Contains(requestedTypes[0], t) {
-					worked = true
-					break
+		// We allow different API versions to trigger jobs with the same resource type
+		if jobVersion != version {
+			continue
+		}
+
+		// If the job has timed-out we will allow new job to be created
+		if time.Now().After(job.CreatedAt.Add(jobTimeout)) {
+			continue
+		}
+
+		if requestedTypes, ok := req.Query()["_type"]; ok {
+			for _, rt := range requestedTypes {
+				if _, ok := typeSet[rt]; ok {
+					return true
 				}
-			} else {
-				// we have an export all types that is still in progress
-				return nil, duplicateTypeError{}
 			}
+		} else {
+			// we have an export all types that is still in progress
+			return true
 		}
-		if !worked {
-			unworkedTypes = append(unworkedTypes, t)
-		}
 	}
-	if len(unworkedTypes) == 0 {
-		return nil, duplicateTypeError{}
-	} else {
-		return unworkedTypes, nil
-	}
-}
-
-func getVersion(url *url.URL) (string, error) {
-	re := regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
-	parts := re.FindStringSubmatch(url.Path)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("unexpected path provided %s", url.Path)
-	}
-	return parts[1], nil
 }
