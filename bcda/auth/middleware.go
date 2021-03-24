@@ -83,7 +83,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.TokenID = claims.Id
 				ad.ACOID = aco.UUID.String()
 				ad.CMSID = *aco.CMSID
-				ad.Blacklisted = aco.Blacklisted
+				ad.Blacklisted = aco.Blacklisted()
 
 			default:
 				aco, err := repository.GetACOByUUID(context.Background(), uuid.Parse(claims.ACOID))
@@ -95,7 +95,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad.TokenID = claims.UUID
 				ad.ACOID = claims.ACOID
 				ad.CMSID = *aco.CMSID
-				ad.Blacklisted = aco.Blacklisted
+				ad.Blacklisted = aco.Blacklisted()
 			}
 		}
 		ctx := context.WithValue(r.Context(), TokenContextKey, token)
