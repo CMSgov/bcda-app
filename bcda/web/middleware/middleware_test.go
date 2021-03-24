@@ -20,91 +20,17 @@ type MiddlewareTestSuite struct {
 }
 
 func (s *MiddlewareTestSuite) SetupTest() {
-	// router := chi.NewRouter()
-	// router.With(ValidateBulkRequestHeaders).Get("/", func(w http.ResponseWriter, r *http.Request) {
-	// 	_, err := w.Write([]byte("Test router"))
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// })
+	router := chi.NewRouter()
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte("Test router"))
+		if err != nil {
+			log.Fatal(err)
+		}
+	})
 
-	// s.server = httptest.NewServer(router)
+	s.server = httptest.NewServer(router)
 }
 
-func (s *MiddlewareTestSuite) TestValidateBulkRequestHeaders() {
-	client := s.server.Client()
-
-	req, err := http.NewRequest("GET", s.server.URL, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.Header.Add("Accept", "application/fhir+json")
-	req.Header.Add("Prefer", "respond-async")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	assert.Equal(s.T(), 200, resp.StatusCode)
-}
-
-func (s *MiddlewareTestSuite) TestValidateBulkRequestHeadersInvalidAccept() {
-	client := s.server.Client()
-
-	req, err := http.NewRequest("GET", s.server.URL, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.Header.Add("Accept", "")
-	req.Header.Add("Prefer", "respond-async")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	assert.Equal(s.T(), 400, resp.StatusCode)
-
-	req.Header.Set("Accept", "test")
-
-	resp, err = client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	assert.Equal(s.T(), 400, resp.StatusCode)
-}
-
-func (s *MiddlewareTestSuite) TestValidateBulkRequestHeadersInvalidPrefer() {
-	client := s.server.Client()
-
-	req, err := http.NewRequest("GET", s.server.URL, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.Header.Add("Accept", "application/fhir+json")
-	req.Header.Add("Prefer", "")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	assert.Equal(s.T(), 400, resp.StatusCode)
-
-	req.Header.Set("Prefer", "test")
-
-	resp, err = client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	assert.Equal(s.T(), 400, resp.StatusCode)
-}
 
 func (s *MiddlewareTestSuite) TestConnectionCloseHeader() {
 	router := chi.NewRouter()
@@ -172,11 +98,11 @@ func TestMiddlewareTestSuite(t *testing.T) {
 }
 
 func mockTLSServerContext() context.Context {
-	crt, err := ioutil.ReadFile("../../shared_files/localhost.crt")
+	crt, err := ioutil.ReadFile("../../../shared_files/localhost.crt")
 	if err != nil {
 		panic(err)
 	}
-	key, err := ioutil.ReadFile("../../shared_files/localhost.key")
+	key, err := ioutil.ReadFile("../../../shared_files/localhost.key")
 	if err != nil {
 		panic(err)
 	}
