@@ -432,10 +432,6 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	aco.ID = postgrestest.GetACOByCMSID(r.T(), r.db, cmsID).ID
 	terminatedACO.ID = postgrestest.GetACOByCMSID(r.T(), r.db, terminatedCMSID).ID
 
-	aco.Blacklisted = true
-	assert.NoError(r.repository.UpdateACO(ctx, aco.UUID,
-		map[string]interface{}{"blacklisted": aco.Blacklisted}))
-
 	res, err := r.repository.GetACOByCMSID(ctx, cmsID)
 	assert.NoError(err)
 	assert.Equal(aco, *res)
@@ -447,6 +443,8 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	res, err = r.repository.GetACOByUUID(ctx, aco.UUID)
 	assert.NoError(err)
 	assert.Equal(aco, *res)
+	assert.NoError(r.repository.UpdateACO(ctx, aco.UUID,
+		map[string]interface{}{"termination_details": aco.TerminationDetails}))
 
 	res, err = r.repository.GetACOByCMSID(ctx, terminatedCMSID)
 	assert.NoError(err)
@@ -459,6 +457,9 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 	res, err = r.repository.GetACOByUUID(ctx, terminatedACO.UUID)
 	assert.NoError(err)
 	assert.Equal(terminatedACO, *res)
+
+	assert.NoError(r.repository.UpdateACO(ctx, terminatedACO.UUID,
+		map[string]interface{}{"termination_details": terminatedACO.TerminationDetails}))
 
 	// Negative cases
 	res, err = r.repository.GetACOByCMSID(ctx, aco.UUID.String())
@@ -479,7 +480,7 @@ func (r *RepositoryTestSuite) TestACOMethods() {
 		"column \"some_unknown_column\" of relation \"acos\" does not exist")
 	assert.EqualError(
 		r.repository.UpdateACO(ctx, uuid.Parse(aco.ClientID),
-			map[string]interface{}{"blacklisted": true}),
+			map[string]interface{}{"termination_details": &models.Termination{}}),
 		fmt.Sprintf("ACO %s not updated, no row found", aco.ClientID))
 	assert.Contains(r.repository.CreateACO(ctx, aco).Error(), "duplicate key value violates unique constraint \"acos_cms_id_key\"")
 }

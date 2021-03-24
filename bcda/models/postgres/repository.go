@@ -44,9 +44,8 @@ func NewRepositoryTx(tx *sql.Tx) *Repository {
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
 	ib := sqlFlavor.NewInsertBuilder().InsertInto("acos")
-	ib.Cols("uuid", "cms_id", "client_id", "name", "blacklisted",
-		"termination_details")
-	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name, aco.Blacklisted,
+	ib.Cols("uuid", "cms_id", "client_id", "name", "termination_details")
+	ib.Values(aco.UUID, aco.CMSID, aco.ClientID, aco.Name,
 		termination{aco.TerminationDetails})
 	query, args := ib.Build()
 	_, err := r.ExecContext(ctx, query, args...)
@@ -66,7 +65,13 @@ func (r *Repository) GetACOByCMSID(ctx context.Context, cmsID string) (*models.A
 func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAndValues map[string]interface{}) error {
 	ub := sqlFlavor.NewUpdateBuilder().Update("acos")
 	for field, value := range fieldsAndValues {
-		ub.SetMore(ub.Assign(field, value))
+		// Need to cast the termination data into the type that allows it to be serialized
+		// into the correct postgres type
+		if field == "termination_details" {
+			ub.SetMore(ub.Assign(field, termination{value.(*models.Termination)}))
+		} else {
+			ub.SetMore(ub.Assign(field, value))
+		}
 	}
 	ub.Where(ub.Equal("uuid", acoUUID))
 
@@ -516,7 +521,7 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 func (r *Repository) getACO(ctx context.Context, field string, value interface{}) (*models.ACO, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name",
 		"client_id", "group_id", "system_id", "alpha_secret", "public_key",
-		"blacklisted", "termination_details").From("acos")
+		"termination_details").From("acos")
 	sb.Where(sb.Equal(field, value))
 
 	query, args := sb.Build()
@@ -528,7 +533,7 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	)
 	err := row.Scan(&aco.ID, &aco.UUID, &cmsID, &name,
 		&clientID, &groupID, &systemID, &alphaSecret,
-		&publicKey, &aco.Blacklisted, &termination)
+		&publicKey, &termination)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no ACO record found for %s", value)
