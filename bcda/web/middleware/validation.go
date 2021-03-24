@@ -37,7 +37,7 @@ func RequestParametersFromContext(ctx context.Context) (RequestParameters, bool)
 	return rp, ok
 }
 
-func ValidateRequestURL(next Handler) http.Handler {
+func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var rp RequestParameters
 
@@ -115,7 +115,7 @@ func ValidateRequestURL(next Handler) http.Handler {
 
 		r = r.WithContext(NewRequestParametersContext(r.Context(), rp))
 
-		next(w, r, rp)
+		next.ServeHTTP(w, r)
 	})
 }
 

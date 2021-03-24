@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 
 	"net/http"
-	"strings"
 	"time"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
@@ -27,6 +26,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 )
 
@@ -74,13 +74,8 @@ func NewHandler(resources []string, basePath string) *Handler {
 }
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := h.validateRequest(r)
-	if err != nil {
-		responseutils.WriteError(err, w, http.StatusBadRequest)
-		return
-	}
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	h.bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(w, r, reqType)
 }
 
 func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
@@ -110,16 +105,10 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resourceTypes, err := h.validateRequest(r)
-	if err != nil {
-		responseutils.WriteError(err, w, http.StatusBadRequest)
-		return
-	}
-
-	h.bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(w, r, reqType)
 }
 
-func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
+func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := r.Context()
 
@@ -134,6 +123,24 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		return
 	}
 
+	rp, ok := middleware.RequestParametersFromContext(r.Context())
+	if !ok {
+		panic("Request parameters must be set prior to calling this handler.")
+	}
+
+	resourceTypes := rp.ResourceTypes
+	// If caller does not supply resource types, we default to all supported resource types
+	if len(resourceTypes) == 0 {
+		resourceTypes = []string{"Patient", "ExplanationOfBenefit", "Coverage"}
+	}
+
+	if err = h.validateRequest(resourceTypes); err != nil {
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
+			err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
 	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
 		log.Error(err)
@@ -144,39 +151,6 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 
 	acoID := uuid.Parse(ad.ACOID)
-
-	// // If we really do find this record with the below matching criteria then this particular ACO has already made
-	// // a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
-	// // their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
-	// // Overall, this will prevent a queue of concurrent calls from slowing up our system.
-	// // NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	// if conf.GetEnv("DEPLOYMENT_TARGET") == "prod" {
-	// 	pendingAndInProgressJobs, err := h.r.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
-	// 	if err != nil {
-	// 		err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
-	// 		log.Error(err)
-	// 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-	// 			responseutils.InternalErr, "")
-	// 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-	// 	}
-	// 	if len(pendingAndInProgressJobs) > 0 {
-	// 		if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
-	// 			if _, ok := err.(duplicateTypeError); ok {
-	// 				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-	// 				w.WriteHeader(http.StatusTooManyRequests)
-	// 			} else {
-	// 				log.Error(err)
-	// 				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-	// 					responseutils.InternalErr, "")
-	// 				responseutils.WriteError(oo, w, http.StatusInternalServerError)
-	// 			}
-
-	// 			return
-	// 		} else {
-	// 			resourceTypes = types
-	// 		}
-	// 	}
-	// }
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -324,75 +298,15 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 }
 
-func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
-
-	// validate optional "_type" parameter
-	var resourceTypes []string
-	params, ok := r.URL.Query()["_type"]
-	if ok {
-		resourceMap := make(map[string]bool)
-		params = strings.Split(params[0], ",")
-		for _, p := range params {
-			if !resourceMap[p] {
-				resourceMap[p] = true
-				resourceTypes = append(resourceTypes, p)
-			} else {
-				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Repeated resource type")
-				return nil, oo
-			}
-		}
-	} else {
-		// resource types not supplied in request; default to applying all resource types.
-		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
-	}
+func (h *Handler) validateRequest(resourceTypes []string) error {
 
 	for _, resourceType := range resourceTypes {
 		if _, ok := h.supportedResources[resourceType]; !ok {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-				fmt.Sprintf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources))
-			return nil, oo
+			return fmt.Errorf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources)
 		}
 	}
 
-	// validate optional "_since" parameter
-	params, ok = r.URL.Query()["_since"]
-	if ok {
-		sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
-		if err != nil {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
-			return nil, oo
-		} else if sinceDate.After(time.Now()) {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
-			return nil, oo
-		}
-	}
-
-	//validate "_outputFormat" parameter
-	params, ok = r.URL.Query()["_outputFormat"]
-	if ok {
-		if params[0] != "ndjson" && params[0] != "application/fhir+ndjson" && params[0] != "application/ndjson" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson")
-			return nil, oo
-		}
-	}
-
-	// we do not support "_elements" parameter
-	_, ok = r.URL.Query()["_elements"]
-	if ok {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
-		return nil, oo
-	}
-
-	// Check and see if the user has a duplicated the query parameter symbol (?)
-	// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
-	for key := range r.URL.Query() {
-		if strings.HasPrefix(key, "?") {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
-			return nil, oo
-		}
-	}
-
-	return resourceTypes, nil
+	return nil
 }
 
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {

@@ -30,12 +30,18 @@ func init() {
 	retrySeconds = utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)
 }
 
-func CheckConcurrentJobs(next Handler) Handler {
-	return Handler(func(w http.ResponseWriter, r *http.Request, rp RequestParameters) {
+func CheckConcurrentJobs(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 		if !ok {
 			panic("AuthData should be set before calling this handler")
 		}
+
+		rp, ok := RequestParametersFromContext(r.Context())
+		if !ok {
+			panic("RequestParameters should be set before calling this handler")
+		}
+
 		acoID := uuid.Parse(ad.ACOID)
 
 		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
@@ -52,7 +58,7 @@ func CheckConcurrentJobs(next Handler) Handler {
 				return
 			}
 		}
-		next(w, r, rp)
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -61,6 +67,8 @@ func hasDuplicates(pendingAndInProgressJobs []*models.Job, types []string, versi
 	for _, t := range types {
 		typeSet[t] = struct{}{}
 	}
+
+	allResources := len(types) == 0
 
 	for _, job := range pendingAndInProgressJobs {
 		// Cannot determine duplicates if we can't get the underlying URL
@@ -83,6 +91,12 @@ func hasDuplicates(pendingAndInProgressJobs []*models.Job, types []string, versi
 		// If the job has timed-out we will allow new job to be created
 		if time.Now().After(job.CreatedAt.Add(jobTimeout)) {
 			continue
+		}
+
+		// Any in-progress job will have duplicate types since the caller
+		// is requesting all resources
+		if allResources {
+			return true
 		}
 
 		if requestedTypes, ok := req.Query()["_type"]; ok {
