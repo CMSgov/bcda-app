@@ -20,15 +20,15 @@ type MiddlewareTestSuite struct {
 }
 
 func (s *MiddlewareTestSuite) SetupTest() {
-	router := chi.NewRouter()
-	router.With(ValidateBulkRequestHeaders).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("Test router"))
-		if err != nil {
-			log.Fatal(err)
-		}
-	})
+	// router := chi.NewRouter()
+	// router.With(ValidateBulkRequestHeaders).Get("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	_, err := w.Write([]byte("Test router"))
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// })
 
-	s.server = httptest.NewServer(router)
+	// s.server = httptest.NewServer(router)
 }
 
 func (s *MiddlewareTestSuite) TestValidateBulkRequestHeaders() {

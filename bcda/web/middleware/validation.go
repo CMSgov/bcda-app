@@ -37,6 +37,10 @@ func RequestParametersFromContext(ctx context.Context) (RequestParameters, bool)
 	return rp, ok
 }
 
+// ValidateRequestURL ensure that request matches certain expectations.
+// Any error that it finds will result in a http.StatusBadRequest response.
+// If successful, it populates the request context with RequestParameters that can be used downstream.
+// These paramters can be retrieved by calling RequestParametersFromContext.
 func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var rp RequestParameters
@@ -81,16 +85,16 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 			} else if sinceDate.After(time.Now()) {
 				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
 				responseutils.WriteError(oo, w, http.StatusBadRequest)
+				return
 			}
 			rp.Since = sinceDate
 		}
 
 		// validate no duplicate resource types
-		var resourceTypes []string
 		params, ok = r.URL.Query()["_type"]
 		if ok {
 			resourceMap := make(map[string]struct{})
-			resourceTypes = strings.Split(params[0], ",")
+			resourceTypes := strings.Split(params[0], ",")
 			for _, resource := range resourceTypes {
 				if _, ok := resourceMap[resource]; !ok {
 					resourceMap[resource] = struct{}{}
@@ -113,9 +117,9 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		}
 		rp.Version = version
 
-		r = r.WithContext(NewRequestParametersContext(r.Context(), rp))
+		ctx := NewRequestParametersContext(r.Context(), rp)
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -163,7 +167,7 @@ var versionExp = regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
 func getVersion(path string) (string, error) {
 	parts := versionExp.FindStringSubmatch(path)
 	if len(parts) != 2 {
-		return "", fmt.Errorf("unexpected path provided %s", path)
+		return "", fmt.Errorf("cannot retrieve version")
 	}
 	return parts[1], nil
 }
