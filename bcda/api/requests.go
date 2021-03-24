@@ -28,7 +28,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
-	"github.com/CMSgov/bcda-app/conf"
 )
 
 type Handler struct {
@@ -146,38 +145,38 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 
 	acoID := uuid.Parse(ad.ACOID)
 
-	// If we really do find this record with the below matching criteria then this particular ACO has already made
-	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
-	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
-	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
-	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	if conf.GetEnv("DEPLOYMENT_TARGET") == "prod" {
-		pendingAndInProgressJobs, err := h.r.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
-		if err != nil {
-			err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		}
-		if len(pendingAndInProgressJobs) > 0 {
-			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
-				if _, ok := err.(duplicateTypeError); ok {
-					w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-					w.WriteHeader(http.StatusTooManyRequests)
-				} else {
-					log.Error(err)
-					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-						responseutils.InternalErr, "")
-					responseutils.WriteError(oo, w, http.StatusInternalServerError)
-				}
+	// // If we really do find this record with the below matching criteria then this particular ACO has already made
+	// // a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
+	// // their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
+	// // Overall, this will prevent a queue of concurrent calls from slowing up our system.
+	// // NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
+	// if conf.GetEnv("DEPLOYMENT_TARGET") == "prod" {
+	// 	pendingAndInProgressJobs, err := h.r.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
+	// 	if err != nil {
+	// 		err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
+	// 		log.Error(err)
+	// 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+	// 			responseutils.InternalErr, "")
+	// 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+	// 	}
+	// 	if len(pendingAndInProgressJobs) > 0 {
+	// 		if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
+	// 			if _, ok := err.(duplicateTypeError); ok {
+	// 				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+	// 				w.WriteHeader(http.StatusTooManyRequests)
+	// 			} else {
+	// 				log.Error(err)
+	// 				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+	// 					responseutils.InternalErr, "")
+	// 				responseutils.WriteError(oo, w, http.StatusInternalServerError)
+	// 			}
 
-				return
-			} else {
-				resourceTypes = types
-			}
-		}
-	}
+	// 			return
+	// 		} else {
+	// 			resourceTypes = types
+	// 		}
+	// 	}
+	// }
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
