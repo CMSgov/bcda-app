@@ -1,11 +1,8 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
-	"regexp"
 	"strconv"
 
 	"github.com/go-chi/chi"
@@ -35,6 +32,8 @@ import (
 )
 
 type Handler struct {
+	JobTimeout time.Duration
+
 	Enq queueing.Enqueuer
 
 	Svc service.Service
@@ -51,7 +50,7 @@ type Handler struct {
 }
 
 func NewHandler(resources []string, basePath string) *Handler {
-	h := &Handler{}
+	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	db := database.Connection
 	h.Enq = queueing.NewEnqueuer()
@@ -126,17 +125,9 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	ctx := r.Context()
 
 	var (
-		ad      auth.AuthData
-		version string
-		err     error
+		ad  auth.AuthData
+		err error
 	)
-
-	if version, err = getVersion(r.URL); err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-			responseutils.RequestErr, err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-	}
 
 	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.TokenErr, "")
@@ -405,61 +396,6 @@ func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.Operat
 	return resourceTypes, nil
 }
 
-type duplicateTypeError struct{}
-
-func (e duplicateTypeError) Error() string {
-	return "Duplicate type found"
-}
-
-// check429 verifies that we do not have a duplicate resource type request based on the supplied in-progress/pending jobs.
-// Returns the unworkedTypes (if any)
-func check429(pendingAndInProgressJobs []*models.Job, types []string, version string) ([]string, error) {
-	var unworkedTypes []string
-
-	for _, t := range types {
-		worked := false
-		for _, job := range pendingAndInProgressJobs {
-			req, err := url.Parse(job.RequestURL)
-			if err != nil {
-				return nil, err
-			}
-			jobVersion, err := getVersion(req)
-			if err != nil {
-				return nil, err
-			}
-
-			// We allow different API versions to trigger jobs with the same resource type
-			if jobVersion != version {
-				continue
-			}
-
-			// If the job has timed-out we will allow new job to be created
-			if time.Now().After(job.CreatedAt.Add(GetJobTimeout())) {
-				continue
-			}
-
-			if requestedTypes, ok := req.Query()["_type"]; ok {
-				// if this type is being worked no need to keep looking, break out and go to the next type.
-				if strings.Contains(requestedTypes[0], t) {
-					worked = true
-					break
-				}
-			} else {
-				// we have an export all types that is still in progress
-				return nil, duplicateTypeError{}
-			}
-		}
-		if !worked {
-			unworkedTypes = append(unworkedTypes, t)
-		}
-	}
-	if len(unworkedTypes) == 0 {
-		return nil, duplicateTypeError{}
-	} else {
-		return unworkedTypes, nil
-	}
-}
-
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 	var ok bool
 	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
@@ -467,19 +403,6 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 		err = errors.New("no auth data in context")
 	}
 	return
-}
-
-func GetJobTimeout() time.Duration {
-	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
-}
-
-func getVersion(url *url.URL) (string, error) {
-	re := regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
-	parts := re.FindStringSubmatch(url.Path)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("unexpected path provided %s", url.Path)
-	}
-	return parts[1], nil
 }
 
 // swagger:model fileItem

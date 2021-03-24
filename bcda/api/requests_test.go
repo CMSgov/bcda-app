@@ -203,37 +203,37 @@ func (s *RequestsTestSuite) TestInvalidRequests() {
 	}
 }
 
-func (s *RequestsTestSuite) TestCheck429() {
-	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
-	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now().Add(-2 * GetJobTimeout())}
-	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
-	tests := []struct {
-		name        string
-		job         models.Job
-		version     string
-		passesCheck bool
-	}{
-		{"Same version", validJob, "v1", false},
-		{"Different version", validJob, "v2", true},
-		{"Invalid job (bad URL)", models.Job{RequestURL: string([]byte{0x7f})}, "", false},
-		{"Invalid job (no version)", models.Job{RequestURL: "/api/Group/$export"}, "", false},
-		{"Same version - expired", expiredJob, "v1", true},
-		{"Duplicate type", duplicateType, "v1", false},
-	}
+// func (s *RequestsTestSuite) TestCheck429() {
+// 	validJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
+// 	expiredJob := models.Job{RequestURL: "/api/v1/Group/$export", Status: models.JobStatusInProgress, CreatedAt: time.Now().Add(-2 * GetJobTimeout())}
+// 	duplicateType := models.Job{RequestURL: "/api/v1/Group/$export?_type=Patient", Status: models.JobStatusInProgress, CreatedAt: time.Now()}
+// 	tests := []struct {
+// 		name        string
+// 		job         models.Job
+// 		version     string
+// 		passesCheck bool
+// 	}{
+// 		{"Same version", validJob, "v1", false},
+// 		{"Different version", validJob, "v2", true},
+// 		{"Invalid job (bad URL)", models.Job{RequestURL: string([]byte{0x7f})}, "", false},
+// 		{"Invalid job (no version)", models.Job{RequestURL: "/api/Group/$export"}, "", false},
+// 		{"Same version - expired", expiredJob, "v1", true},
+// 		{"Duplicate type", duplicateType, "v1", false},
+// 	}
 
-	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
-			res, err := check429([]*models.Job{&tt.job}, []string{"Patient"}, tt.version)
-			if tt.passesCheck {
-				assert.NotNil(t, res)
-				assert.NoError(t, err)
-			} else {
-				assert.Nil(t, res)
-				assert.Error(t, err)
-			}
-		})
-	}
-}
+// 	for _, tt := range tests {
+// 		s.T().Run(tt.name, func(t *testing.T) {
+// 			res, err := check429([]*models.Job{&tt.job}, []string{"Patient"}, tt.version)
+// 			if tt.passesCheck {
+// 				assert.NotNil(t, res)
+// 				assert.NoError(t, err)
+// 			} else {
+// 				assert.Nil(t, res)
+// 				assert.Error(t, err)
+// 			}
+// 		})
+// 	}
+// }
 
 // TestBulkRequestWithOldJobPaths verifies that bulk requests for a caller with older jobs
 // whose paths are no longer valid will still be accepted.

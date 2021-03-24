@@ -19,13 +19,15 @@ import (
 )
 
 var (
-	repository models.Repository
-	jobTimeout time.Duration
+	repository   models.Repository
+	jobTimeout   time.Duration
+	retrySeconds int
 )
 
 func init() {
 	repository = postgres.NewRepository(database.Connection)
 	jobTimeout = time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
+	retrySeconds = utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)
 }
 
 func CheckConcurrentJobs(next Handler) Handler {
@@ -45,7 +47,7 @@ func CheckConcurrentJobs(next Handler) Handler {
 		}
 		if len(pendingAndInProgressJobs) > 0 {
 			if hasDuplicates(pendingAndInProgressJobs, rp.ResourceTypes, rp.Version) {
-				w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
+				w.Header().Set("Retry-After", strconv.Itoa(retrySeconds))
 				w.WriteHeader(http.StatusTooManyRequests)
 				return
 			}

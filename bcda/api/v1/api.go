@@ -143,15 +143,15 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	case models.JobStatusCompleted:
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
-		if job.UpdatedAt.Add(api.GetJobTimeout()).Before(time.Now()) {
-			w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
+		if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
+			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
+		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 		scheme := "http"
 		if servicemux.IsHTTPS(r) {
 			scheme = "https"
@@ -204,7 +204,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 	case models.JobStatusArchived, models.JobStatusExpired:
-		w.Header().Set("Expires", job.UpdatedAt.Add(api.GetJobTimeout()).String())
+		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.NotFoundErr, "")
 		responseutils.WriteError(oo, w, http.StatusGone)

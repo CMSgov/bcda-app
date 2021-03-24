@@ -403,7 +403,7 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 
 	// change created_at timestamp so that the job is considered expired.
 	// Use an offset to account for any clock skew
-	j.CreatedAt = j.CreatedAt.Add(-(api.GetJobTimeout() + time.Second))
+	j.CreatedAt = j.CreatedAt.Add(-(h.JobTimeout + time.Second))
 	postgrestest.UpdateJob(s.T(), s.db, j)
 
 	rr = httptest.NewRecorder()
@@ -511,7 +511,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			} else if rr.Code == http.StatusInternalServerError {
 				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
 			} else if rr.Code == http.StatusGone {
-				assertExpiryEquals(t, j.CreatedAt.Add(api.GetJobTimeout()), rr.Header().Get("Expires"))
+				assertExpiryEquals(t, j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
 			}
 		})
 	}
@@ -542,7 +542,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.T(), j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.CreatedAt.Add(h.JobTimeout), s.rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
@@ -634,14 +634,14 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	j.UpdatedAt = time.Now().Add(-(api.GetJobTimeout() + time.Second))
+	j.UpdatedAt = time.Now().Add(-(h.JobTimeout + time.Second))
 	postgrestest.UpdateJob(s.T(), s.db, j)
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
 	JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.T(), j.UpdatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(h.JobTimeout), s.rr.Header().Get("Expires"))
 }
 
 func (s *APITestSuite) TestDeleteJobBadInputs() {
