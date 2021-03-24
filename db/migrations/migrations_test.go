@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
-	"os/exec"
 	"regexp"
-	"strings"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/pborman/uuid"
 
@@ -398,41 +400,28 @@ type migrator struct {
 }
 
 func (m migrator) runMigration(t *testing.T, idx string) {
-	args := []string{"goto", idx}
-	expVersion := idx
+	expVersion, err := strconv.ParseUint(idx, 10, 32)
+	if err != nil {
+		t.Errorf("Could not parse expected version number %s", err.Error())
+	}
+	migration, err := migrate.New("file://"+m.migrationPath, m.dbURL)
+	assert.NoError(t, err)
+
 	// Since we do not have a 0 index, this is interpreted
 	// as revert the last migration (1)
 	if idx == "0" {
-		args = []string{"down", "1"}
+		if err := migration.Steps(-1); err != nil {
+			t.Errorf("Failed to revert migration %s", err.Error())
+		}
+	} else {
+		if err = migration.Migrate(uint(expVersion)); err != nil {
+			t.Errorf("Failed to run migration %s", err.Error())
+		}
 	}
 
-	args = append([]string{"-database", m.dbURL, "-path",
-		m.migrationPath}, args...)
-
-	_, err := exec.Command("migrate", args...).CombinedOutput()
-	if err != nil {
-		t.Errorf("Failed to run migration %s", err.Error())
-	}
-
-	// If we're going down past the first schema, we won't be able
-	// to check the version since there's no active schema version
-	if idx == "0" {
-		return
-	}
-
-	// Expected output:
-	// <VERSION>
-	// If there's a failure (i.e. dirty migration)
-	// <VERSION> (dirty)
-	out, err := exec.Command("migrate", "-database", m.dbURL, "-path",
-		m.migrationPath, "version").CombinedOutput()
-	if err != nil {
-		t.Errorf("Failed to retrieve version information %s", err.Error())
-	}
-	str := strings.TrimSpace(string(out))
-
-	assert.Contains(t, expVersion, str)
-	assert.NotContains(t, str, "dirty")
+	src, db := migration.Close()
+	assert.NoError(t, src)
+	assert.NoError(t, db)
 }
 
 func assertColumnExists(t *testing.T, shouldExist bool, db *sql.DB, tableName, columnName string) {

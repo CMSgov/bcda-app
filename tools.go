@@ -16,11 +16,5 @@ import (
 	_ "github.com/tsenart/vegeta"
 	_ "github.com/xo/usql"
 	_ "gotest.tools/gotestsum"
-
 	// end test dependencies
-
-	// TODO: maybe just rip this out and use migrate directly in the code
-	// migrate dependency, needs special checkout
-	_ "github.com/golang-migrate/migrate/v4"
-	// end migrate dependency
 )
