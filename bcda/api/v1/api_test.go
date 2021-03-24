@@ -35,6 +35,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 )
@@ -332,8 +333,8 @@ func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
 		status        models.JobStatus
 		expStatusCode int
 	}{
-		{models.JobStatusPending, http.StatusTooManyRequests},
-		{models.JobStatusInProgress, http.StatusTooManyRequests},
+		{models.JobStatusPending, http.StatusAccepted},
+		{models.JobStatusInProgress, http.StatusAccepted},
 		{models.JobStatusCompleted, http.StatusAccepted},
 		{models.JobStatusArchived, http.StatusAccepted},
 		{models.JobStatusExpired, http.StatusAccepted},
@@ -396,17 +397,17 @@ func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
 
 	// serve job
 	handler := http.HandlerFunc(handlerFunc)
+	// rr := httptest.NewRecorder()
+
+	// handler.ServeHTTP(rr, req)
+	// assert.Equal(s.T(), http.StatusTooManyRequests, rr.Code)
+
+	// // change created_at timestamp so that the job is considered expired.
+	// // Use an offset to account for any clock skew
+	// j.CreatedAt = j.CreatedAt.Add(-(h.JobTimeout + time.Second))
+	// postgrestest.UpdateJob(s.T(), s.db, j)
+
 	rr := httptest.NewRecorder()
-
-	handler.ServeHTTP(rr, req)
-	assert.Equal(s.T(), http.StatusTooManyRequests, rr.Code)
-
-	// change created_at timestamp so that the job is considered expired.
-	// Use an offset to account for any clock skew
-	j.CreatedAt = j.CreatedAt.Add(-(h.JobTimeout + time.Second))
-	postgrestest.UpdateJob(s.T(), s.db, j)
-
-	rr = httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 }
@@ -424,22 +425,28 @@ func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string
 	}
 
 	requestUrl, _ := url.Parse(fmt.Sprintf("/api/v1/%s/$export", endpoint))
+
+	rp := middleware.RequestParameters{
+		Version: "v1",
+	}
 	q := requestUrl.Query()
 	if testRequestParams.resourceType != "" {
-		q.Set("_type", testRequestParams.resourceType)
+		rp.ResourceTypes = strings.Split(testRequestParams.resourceType, ",")
 	}
 	if testRequestParams.since != "" {
-		q.Set("_since", testRequestParams.since)
+		rp.Since, _ = time.Parse(time.RFC3339Nano, testRequestParams.since)
 	}
-	if testRequestParams.outputFormat != "" {
-		q.Set("_outputFormat", testRequestParams.outputFormat)
-	}
+	// if testRequestParams.outputFormat != "" {
+	// 	rp.
+	// 	q.Set("_outputFormat", testRequestParams.outputFormat)
+	// }
 
 	requestUrl.RawQuery = q.Encode()
 	req = httptest.NewRequest("GET", requestUrl.String(), nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("groupId", group)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(middleware.NewRequestParametersContext(req.Context(), rp))
 	return requestUrl.Path, handlerFunc, req
 }
 
