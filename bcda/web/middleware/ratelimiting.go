@@ -45,6 +45,7 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 		acoID := uuid.Parse(ad.ACOID)
 
 		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
+		fmt.Printf("Received %v pending and inprogress jobs for ACO ID %s\n", pendingAndInProgressJobs, acoID.String())
 		if err != nil {
 			log.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
@@ -110,4 +111,7 @@ func hasDuplicates(pendingAndInProgressJobs []*models.Job, types []string, versi
 			return true
 		}
 	}
+
+	// No duplicates
+	return false
 }

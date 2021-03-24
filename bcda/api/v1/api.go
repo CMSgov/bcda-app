@@ -25,7 +25,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -55,7 +54,7 @@ func init() {
 		429: tooManyRequestsResponse
 		500: errorResponse
 */
-func BulkPatientRequest(w http.ResponseWriter, r *http.Request, rp middleware.RequestParameters) {
+func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkPatientRequest(w, r)
 }
 
