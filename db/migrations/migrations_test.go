@@ -273,7 +273,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 
 				defer postgrestest.DeleteACO(t, db, acoUUID)
 
-				migrator.runMigration(t, "11")
+				migrator.runMigration(t, 11)
 				assertColumnExists(t, true, db, "acos", "termination_details")
 
 				sb := sqlFlavor.NewSelectBuilder()
@@ -302,7 +302,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Remove ACO Blacklisted Column",
 			func(t *testing.T) {
 				assertColumnExists(t, true, db, "acos", "blacklisted")
-				migrator.runMigration(t, "12")
+				migrator.runMigration(t, 12)
 				assertColumnExists(t, false, db, "acos", "blacklisted")
 			},
 		},
@@ -326,7 +326,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 
 				postgrestest.CreateACO(t, db, aco)
 				assertColumnExists(t, false, db, "acos", "blacklisted")
-				migrator.runMigration(t, "11")
+				migrator.runMigration(t, 11)
 				assertColumnExists(t, true, db, "acos", "blacklisted")
 
 				sb := sqlFlavor.NewSelectBuilder()
@@ -356,7 +356,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Remove ACO Termination Details Default",
 			func(t *testing.T) {
-				migrator.runMigration(t, "10")
+				migrator.runMigration(t, 10)
 				assertColumnExists(t, true, db, "acos", "termination_details")
 				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
 			},
