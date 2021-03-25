@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -25,7 +26,14 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
-var alrJobTracker = make(map[uint]models.JobStatus, 2)
+type alrJobTrackerStuct struct {
+	tracker map[uint]models.JobStatus
+	sync.Mutex
+}
+
+var alrJobTracker = alrJobTrackerStuct{
+	tracker: make(map[uint]models.JobStatus, 2),
+}
 
 /******************************************************************************
 	Functions
@@ -80,8 +88,9 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	// To reduce the number of pings to the DB, track some information on the
 	// worker side.
-	if _, exists := alrJobTracker[jobArgs.ID]; !exists {
-		alrJobTracker[jobArgs.ID] = models.JobStatusInProgress
+	alrJobTracker.Lock()
+	if _, exists := alrJobTracker.tracker[jobArgs.ID]; !exists {
+		alrJobTracker.tracker[jobArgs.ID] = models.JobStatusInProgress
 		err := q.repository.UpdateJobStatus(ctx, jobArgs.ID,
 			models.JobStatusInProgress)
 		if err != nil {
@@ -91,6 +100,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			return err
 		}
 	}
+	alrJobTracker.Unlock()
 
 	// Check if the job was cancelled
 	go checkIfCancelled(ctx, q, cancel, jobArgs)
@@ -142,8 +152,9 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			q.alrLog.Warnf("Failed to update job to complete '%s' %s", job.Args, err)
 			return err
 		}
-
-		delete(alrJobTracker, jobArgs.ID)
+		alrJobTracker.Lock()
+		delete(alrJobTracker.tracker, jobArgs.ID)
+		alrJobTracker.Unlock()
 	}
 
 	return nil

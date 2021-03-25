@@ -200,7 +200,7 @@ func TestStartAlrJob(t *testing.T) {
 		},
 		{
 			ID:            2,
-			MetaKey:       2,
+			MetaKey:       1,
 			BeneMBI:       MBIs[1],
 			BeneHIC:       "0p9o8i7u6y5t",
 			BeneFirstName: "Melissa",
@@ -214,8 +214,7 @@ func TestStartAlrJob(t *testing.T) {
 	ctx := context.Background()
 
 	// Add Data into repo
-	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp, alrs[:1])
-	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp2, alrs[1:2])
+	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp, alrs)
 
 	r := postgres.NewRepository(db)
 	acoUUID := uuid.NewRandom()
@@ -227,7 +226,7 @@ func TestStartAlrJob(t *testing.T) {
 		RequestURL:        "",
 		Status:            models.JobStatusPending,
 		TransactionTime:   time.Now(),
-		JobCount:          1,
+		JobCount:          2,
 		CompletedJobCount: 0,
 	}
 	id, err := r.CreateJob(ctx, job)
@@ -237,12 +236,21 @@ func TestStartAlrJob(t *testing.T) {
 	jobArgs := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
-		MBIs:       MBIs,
+		MBIs:       MBIs[:1],
+		LowerBound: timestamp,
+		UpperBound: timestamp2,
+	}
+	jobArgs2 := models.JobAlrEnqueueArgs{
+		ID:         id,
+		CMSID:      cmsID,
+		MBIs:       MBIs[1:],
 		LowerBound: timestamp,
 		UpperBound: timestamp2,
 	}
 	enqueuer := queueing.NewEnqueuer()
 	err = enqueuer.AddAlrJob(jobArgs, 100)
+	assert.NoError(t, err)
+	err = enqueuer.AddAlrJob(jobArgs2, 100)
 	assert.NoError(t, err)
 
 	// Now start the workers...
