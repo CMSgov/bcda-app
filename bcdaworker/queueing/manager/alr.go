@@ -132,13 +132,13 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	if alrJobs.CompletedJobCount == alrJobs.JobCount {
 		// we're done, so move files from staging to payload
 		// First make sure there is no conflicting directory... only an issue on local
-		if _, err := os.Stat(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR,
-			jobArgs.ID)); os.IsNotExist(err) {
-			os.RemoveAll(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID))
+		err := os.RemoveAll(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_PAYLOAD_DIR, jobArgs.ID))
+		if err != nil {
+			q.alrLog.Warnf("Could not clear payload directory")
 		}
 
 		// Move the file from staging to payload
-		err := os.Rename(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID),
+		err = os.Rename(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID),
 			fmt.Sprintf("%s/%d", q.alrWorker.FHIR_PAYLOAD_DIR, jobArgs.ID))
 		if err != nil {
 			q.alrLog.Warnf("Failed to rename alr dirs '%s' %s", job.Args, err)
