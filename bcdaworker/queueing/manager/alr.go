@@ -109,22 +109,12 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	if err != nil {
 		q.alrLog.Warnf("Failed to increment job to count for '%s' %s", job.Args, err)
 		// Can't increment for some DB reason... rollback the file created and try again...
-		err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
-			jobArgs.ID, q.alrWorker.NdjsonFilename))
-		if err != nil {
-			q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
-		}
 		return err
 	}
 
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
 	if err != nil {
 		q.alrLog.Warnf("Failed to get alr Job by id for '%s' %s", job.Args, err)
-		err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
-			jobArgs.ID, q.alrWorker.NdjsonFilename))
-		if err != nil {
-			q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
-		}
 		return err
 	}
 
@@ -143,14 +133,6 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		if err != nil {
 			q.alrLog.Warnf("Failed to rename alr dirs '%s' %s", job.Args, err)
 
-			// TODO: The this point the jobs are done, and this error is an OS issue,
-			// and should be handled better instead of retrying the job
-			osErr := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
-				jobArgs.ID, q.alrWorker.NdjsonFilename))
-			if osErr != nil {
-				q.alrLog.Warnf("Could not remove ndjson file due to failure to move file.")
-			}
-
 			return err
 		}
 		// mark job as done
@@ -158,11 +140,6 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 		if err != nil {
 			q.alrLog.Warnf("Failed to update job to complete '%s' %s", job.Args, err)
-			err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
-				jobArgs.ID, q.alrWorker.NdjsonFilename))
-			if err != nil {
-				q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
-			}
 			return err
 		}
 

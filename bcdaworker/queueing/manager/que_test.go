@@ -217,21 +217,12 @@ func TestStartAlrJob(t *testing.T) {
 	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp, alrs[:1])
 	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp2, alrs[1:2])
 
-	// Create JobArgs
-	jobArgs := models.JobAlrEnqueueArgs{
-		ID:         1,
-		CMSID:      cmsID,
-		MBIs:       MBIs,
-		LowerBound: timestamp,
-		UpperBound: timestamp2,
-	}
-
 	r := postgres.NewRepository(db)
 	acoUUID := uuid.NewRandom()
 	aco := models.ACO{UUID: acoUUID, CMSID: &cmsID}
-	postgrestest.CreateACO(t, db, aco)
+	err := r.CreateACO(ctx, aco)
+	assert.NoError(t, err)
 	job := models.Job{
-		ID:                1,
 		ACOID:             acoUUID,
 		RequestURL:        "",
 		Status:            models.JobStatusPending,
@@ -239,16 +230,23 @@ func TestStartAlrJob(t *testing.T) {
 		JobCount:          1,
 		CompletedJobCount: 0,
 	}
-	_, err := r.CreateJob(context.Background(), job)
+	id, err := r.CreateJob(ctx, job)
 	assert.NoError(t, err)
 
-	// add job, relying on the service package from bcda
+	// Create JobArgs
+	jobArgs := models.JobAlrEnqueueArgs{
+		ID:         id,
+		CMSID:      cmsID,
+		MBIs:       MBIs,
+		LowerBound: timestamp,
+		UpperBound: timestamp2,
+	}
 	enqueuer := queueing.NewEnqueuer()
 	err = enqueuer.AddAlrJob(jobArgs, 100)
 	assert.NoError(t, err)
 
 	// Now start the workers...
-	q := StartQue(log, 1)
+	q := StartQue(log, 2)
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
 
@@ -259,13 +257,14 @@ func TestStartAlrJob(t *testing.T) {
 			t.Fatal("Job not completed in alloted time.")
 			return
 		default:
-			currentJob := postgrestest.GetJobByID(t, db, job.ID)
+			currentJob, err := r.GetJobByID(ctx, id)
+			assert.NoError(t, err)
 			// don't wait for a job if it has a terminal status
 			if isTerminalStatus(currentJob.Status) {
 				return
 			}
 			log.Infof("Waiting on job to be completed. Current status %s.", currentJob.Status)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
