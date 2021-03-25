@@ -516,16 +516,6 @@ func (s *APITestSuite) TestAuthInfoOkta() {
 	auth.SetProvider(originalProvider)
 }
 
-func (s *APITestSuite) verifyJobCount(acoID uuid.UUID, expectedJobCount int) {
-	count := s.getJobCount(acoID)
-	assert.Equal(s.T(), expectedJobCount, count)
-}
-
-func (s *APITestSuite) getJobCount(acoID uuid.UUID) int {
-	jobs := postgrestest.GetJobsByACOID(s.T(), s.db, acoID)
-	return len(jobs)
-}
-
 func (s *APITestSuite) makeContextValues(acoID uuid.UUID) (data auth.AuthData) {
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoID)
 	return auth.AuthData{ACOID: aco.UUID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}

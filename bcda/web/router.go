@@ -42,8 +42,8 @@ func NewAPIRouter() http.Handler {
 	}
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(append(commonAuth, middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, middleware.CheckConcurrentJobs)...).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
-		r.With(append(commonAuth, middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, middleware.CheckConcurrentJobs)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
+		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
+		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler("/jobs/{jobID}", v1.DeleteJob))
 		r.Get(m.WrapHandler("/metadata", v1.Metadata))
@@ -52,8 +52,8 @@ func NewAPIRouter() http.Handler {
 	if utils.GetEnvBool("VERSION_2_ENDPOINT_ACTIVE", true) {
 		FileServer(r, "/api/v2/swagger", http.Dir("./swaggerui/v2"))
 		r.Route("/api/v2", func(r chi.Router) {
-			r.With(append(commonAuth, middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, middleware.CheckConcurrentJobs)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
-			r.With(append(commonAuth, middleware.ValidateRequestURL, middleware.ValidateRequestHeaders, middleware.CheckConcurrentJobs)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
+			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
+			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
 		})
 	}
