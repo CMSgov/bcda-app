@@ -88,6 +88,8 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	// To reduce the number of pings to the DB, track some information on the
 	// worker side.
+	// This is actually not a race condition, but the unit-test does not like it.
+	// alrJobTracker should only be updated twice: first and last job.
 	alrJobTracker.Lock()
 	if _, exists := alrJobTracker.tracker[jobArgs.ID]; !exists {
 		alrJobTracker.tracker[jobArgs.ID] = models.JobStatusInProgress
@@ -96,6 +98,8 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		if err != nil {
 			q.alrLog.Warnf("Failed to update job status '%s' %s.",
 				job.Args, err)
+			// unlock before returning to prevent deadlock
+			alrJobTracker.Unlock()
 			// By returning nil to que-go, job is removed from queue
 			return err
 		}

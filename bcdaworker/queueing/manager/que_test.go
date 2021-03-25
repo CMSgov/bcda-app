@@ -258,7 +258,7 @@ func TestStartAlrJob(t *testing.T) {
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
 
-	timeout := time.After(10 * time.Second)
+	timeout := time.After(20 * time.Second)
 	for {
 		select {
 		case <-timeout:
