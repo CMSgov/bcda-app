@@ -3,13 +3,10 @@ FROM golang:1.15-alpine3.12
 RUN apk update upgrade
 RUN apk add git
 
-RUN go get -u github.com/derekparker/delve/cmd/dlv
-RUN go get github.com/BurntSushi/toml
-RUN go get github.com/howeyc/fsnotify
-RUN go get github.com/mattn/go-colorable
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 COPY . .
+
+RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 RUN go install
