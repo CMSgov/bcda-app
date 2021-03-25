@@ -49,9 +49,12 @@ type Handler struct {
 }
 
 func NewHandler(resources []string, basePath string) *Handler {
+	return newHandler(resources, basePath, database.Connection)
+}
+
+func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
-	db := database.Connection
 	h.Enq = queueing.NewEnqueuer()
 
 	cfg, err := service.LoadConfig()
@@ -89,6 +92,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	switch groupID {
 	case groupAll:
 		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
+
 		_, ok := r.URL.Query()["_since"]
 		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
 			reqType = service.RetrieveNewBeneHistData
@@ -227,18 +231,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 	newJob.TransactionTime = b.Meta.LastUpdated
 
-	var since time.Time
-	// Decode the _since parameter (if it exists) so it can be persisted in job args
-	if params, ok := r.URL.Query()["_since"]; ok {
-		since, err = time.Parse(time.RFC3339Nano, params[0])
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.RequestErr, err.Error())
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-		}
-	}
-
 	var queJobs []*models.JobEnqueueArgs
 
 	conditions := service.RequestConditions{
@@ -249,7 +241,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		ACOID: newJob.ACOID,
 
 		JobID:           newJob.ID,
-		Since:           since,
+		Since:           rp.Since,
 		TransactionTime: newJob.TransactionTime,
 	}
 	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
@@ -285,7 +277,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
 	for _, j := range queJobs {
-		sinceParam := (!since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData)
+		sinceParam := (!rp.Since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData)
 		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
 
 		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {

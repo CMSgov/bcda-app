@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -22,7 +21,6 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
@@ -33,8 +31,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/bcda/web/middleware"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -44,7 +40,6 @@ const (
 
 var (
 	acoUnderTest = uuid.Parse(constants.SmallACOUUID)
-	since        = time.Now().Round(time.Millisecond).Add(-24 * time.Hour)
 )
 
 type APITestSuite struct {
@@ -62,11 +57,6 @@ func (s *APITestSuite) SetupSuite() {
 	origBBKey := conf.GetEnv("BB_CLIENT_KEY_FILE")
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := &queueing.MockEnqueuer{}
-	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
-	h.Enq = enqueuer
-
 	s.T().Cleanup(func() {
 		conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
 		conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
@@ -82,196 +72,6 @@ func (s *APITestSuite) SetupTest() {
 
 func (s *APITestSuite) TearDownTest() {
 	postgrestest.DeleteJobsByACOID(s.T(), s.db, acoUnderTest)
-}
-
-func (s *APITestSuite) TestBulkEOBRequest() {
-	bulkEOBRequestHelper("Patient", time.Time{}, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestHelper("Group/all", time.Time{}, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestHelper("Patient", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestHelper("Group/all", since, s)
-}
-
-func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
-	bulkEOBRequestNoBeneficiariesInACOHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestNoBeneficiariesInACOHelper("Group/all", s)
-}
-
-func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
-	bulkEOBRequestMissingTokenHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestMissingTokenHelper("Group/all", s)
-}
-
-func (s *APITestSuite) TestBulkPatientRequest() {
-	for _, since := range []time.Time{{}, since} {
-		bulkPatientRequestHelper("Patient", since, s)
-		s.TearDownTest()
-		s.SetupTest()
-		bulkPatientRequestHelper("Group/all", since, s)
-		s.TearDownTest()
-		s.SetupTest()
-	}
-}
-
-func (s *APITestSuite) TestBulkCoverageRequest() {
-	requestParams := middleware.RequestParameters{
-		ResourceTypes: []string{"Coverage"},
-	}
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-
-	requestParams.Since = since
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-}
-
-func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
-	bulkPatientRequestBBClientFailureHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestBBClientFailureHelper("Group/all", s)
-}
-
-func bulkEOBRequestHelper(endpoint string, since time.Time, s *APITestSuite) {
-	acoID := acoUnderTest
-	requestParams := middleware.RequestParameters{ResourceTypes: []string{"ExplanationOfBenefit"},
-		Since: since}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-}
-
-func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) {
-	acoID := uuid.Parse("A40404F7-1EF2-485A-9B71-40FE7ACDCBC2")
-	jobCount := s.getJobCount(acoID)
-
-	// Since we should've failed somewhere in the bulk request, we should not have
-	// have a job count change.
-	defer s.verifyJobCount(acoID, jobCount)
-
-	_, handlerFunc, req := bulkRequestHelper(endpoint,
-		middleware.RequestParameters{ResourceTypes: []string{"ExplanationOfBenefit"}})
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-}
-
-func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
-	requestParams := middleware.RequestParameters{ResourceTypes: []string{"ExplanationOfBenefit"}}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
-
-	respOO := getOperationOutcome(s.T(), s.rr.Body.Bytes())
-
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Code.Value)
-}
-
-func bulkPatientRequestHelper(endpoint string, since time.Time, s *APITestSuite) {
-	acoID := acoUnderTest
-
-	requestParams := middleware.RequestParameters{ResourceTypes: []string{"Patient"}, Since: since}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-}
-
-func bulkCoverageRequestHelper(endpoint string, requestParams middleware.RequestParameters, s *APITestSuite) {
-	acoID := acoUnderTest
-
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-}
-
-func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
-	orig := conf.GetEnv("BB_CLIENT_CERT_FILE")
-	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", orig)
-
-	err := conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "blah")
-	assert.Nil(s.T(), err)
-
-	acoID := acoUnderTest
-
-	jobCount := s.getJobCount(acoID)
-
-	// Since we should've failed somewhere in the bulk request, we should not have
-	// have a job count change.
-	defer s.verifyJobCount(acoID, jobCount)
-
-	requestParams := middleware.RequestParameters{ResourceTypes: []string{"Patient"}}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handlerFunc(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-}
-
-func bulkRequestHelper(endpoint string, rp middleware.RequestParameters) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
-	var handlerFunc http.HandlerFunc
-	var req *http.Request
-	var group string
-
-	if endpoint == "Patient" {
-		handlerFunc = BulkPatientRequest
-	} else if endpoint == "Group/all" {
-		handlerFunc = BulkGroupRequest
-		group = "all"
-	}
-
-	requestUrl, _ := url.Parse(fmt.Sprintf("/api/v1/%s/$export", endpoint))
-
-	req = httptest.NewRequest("GET", requestUrl.String(), nil)
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("groupId", group)
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	req = req.WithContext(middleware.NewRequestParametersContext(req.Context(), rp))
-	return requestUrl.Path, handlerFunc, req
 }
 
 func (s *APITestSuite) TestJobStatusBadInputs() {
