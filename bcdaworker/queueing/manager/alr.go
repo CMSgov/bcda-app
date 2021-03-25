@@ -131,16 +131,24 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// Check if the Job is done
 	if alrJobs.CompletedJobCount == alrJobs.JobCount {
 		// we're done, so move files from staging to payload
-		err := os.Rename(q.alrWorker.FHIR_STAGING_DIR, q.alrWorker.FHIR_PAYLOAD_DIR)
+		// First make sure there is no conflicting directory... only an issue on local
+		if _, err := os.Stat(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR,
+			jobArgs.ID)); os.IsNotExist(err) {
+			os.RemoveAll(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID))
+		}
+
+		// Move the file from staging to payload
+		err := os.Rename(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID),
+			fmt.Sprintf("%s/%d", q.alrWorker.FHIR_PAYLOAD_DIR, jobArgs.ID))
 		if err != nil {
 			q.alrLog.Warnf("Failed to rename alr dirs '%s' %s", job.Args, err)
 
 			// TODO: The this point the jobs are done, and this error is an OS issue,
 			// and should be handled better instead of retrying the job
-			err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
+			osErr := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", q.alrWorker.FHIR_STAGING_DIR,
 				jobArgs.ID, q.alrWorker.NdjsonFilename))
-			if err != nil {
-				q.alrLog.Warnf("Failed to rm file from alr staging '%s' %s", job.Args, err)
+			if osErr != nil {
+				q.alrLog.Warnf("Could not remove ndjson file due to failure to move file.")
 			}
 
 			return err

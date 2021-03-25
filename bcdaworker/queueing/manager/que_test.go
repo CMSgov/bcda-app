@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
@@ -165,3 +167,105 @@ func TestProcessJobFailedValidation(t *testing.T) {
 }
 
 // Test ALR startAlrjob
+func TestStartAlrJob(t *testing.T) {
+	// Set up data based on testfixtures
+	db := database.Connection
+	alrWorker := worker.NewAlrWorker(db)
+
+	// Create synthetic Data
+	// TODO: Replace this with Martin's testing strategy from #4239
+	exMap := make(map[string]string)
+	exMap["EnrollFlag1"] = "1"
+	exMap["HCC_version"] = "V12"
+	exMap["HCC_COL_1"] = "1"
+	exMap["HCC_COL_2"] = "0"
+	cmsID := "A1234"
+	MBIs := []string{"abd123abd01", "abd123abd02"}
+	timestamp := time.Now()
+	timestamp2 := timestamp.Add(time.Hour * 24)
+	dob1, _ := time.Parse("01/02/2006", "01/20/1950")
+	dob2, _ := time.Parse("01/02/2006", "04/15/1950")
+	alrs := []models.Alr{
+		{
+			ID:            1, // These are set manually for testing
+			MetaKey:       1, // PostgreSQL should automatically make these
+			BeneMBI:       MBIs[0],
+			BeneHIC:       "1q2w3e4r5t6y",
+			BeneFirstName: "John",
+			BeneLastName:  "Smith",
+			BeneSex:       "1",
+			BeneDOB:       dob1,
+			BeneDOD:       time.Time{},
+			KeyValue:      exMap,
+		},
+		{
+			ID:            2,
+			MetaKey:       2,
+			BeneMBI:       MBIs[1],
+			BeneHIC:       "0p9o8i7u6y5t",
+			BeneFirstName: "Melissa",
+			BeneLastName:  "Jones",
+			BeneSex:       "2",
+			BeneDOB:       dob2,
+			BeneDOD:       time.Time{},
+			KeyValue:      exMap,
+		},
+	}
+	ctx := context.Background()
+
+	// Add Data into repo
+	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp, alrs[:1])
+	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp2, alrs[1:2])
+
+	// Create JobArgs
+	jobArgs := models.JobAlrEnqueueArgs{
+		ID:         1,
+		CMSID:      cmsID,
+		MBIs:       MBIs,
+		LowerBound: timestamp,
+		UpperBound: timestamp2,
+	}
+
+	r := postgres.NewRepository(db)
+	acoUUID := uuid.NewRandom()
+	aco := models.ACO{UUID: acoUUID, CMSID: &cmsID}
+	postgrestest.CreateACO(t, db, aco)
+	job := models.Job{
+		ID:                1,
+		ACOID:             acoUUID,
+		RequestURL:        "",
+		Status:            models.JobStatusPending,
+		TransactionTime:   time.Now(),
+		JobCount:          1,
+		CompletedJobCount: 0,
+	}
+	_, err := r.CreateJob(context.Background(), job)
+	assert.NoError(t, err)
+
+	// add job, relying on the service package from bcda
+	enqueuer := queueing.NewEnqueuer()
+	err = enqueuer.AddAlrJob(jobArgs, 100)
+	assert.NoError(t, err)
+
+	// Now start the workers...
+	q := StartQue(log, 1)
+	q.cloudWatchEnv = "dev"
+	defer q.StopQue()
+
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			t.Fatal("Job not completed in alloted time.")
+			return
+		default:
+			currentJob := postgrestest.GetJobByID(t, db, job.ID)
+			// don't wait for a job if it has a terminal status
+			if isTerminalStatus(currentJob.Status) {
+				return
+			}
+			log.Infof("Waiting on job to be completed. Current status %s.", currentJob.Status)
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
