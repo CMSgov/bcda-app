@@ -27,8 +27,7 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
-// alrJobTrackerStruct is used to tracker the status of the job and minimize
-// potentially 1000s of hits to the DB
+// alrJobTrackerStruct is used to tracker the status of the job
 type alrJobTrackerStuct struct {
 	tracker        map[uint]models.JobStatus // uint is big job
 	attemptTracker map[uint]uint             // uint is the small jobs
@@ -93,18 +92,31 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	defer cancel()
 
 	// Unmarshall JSON that contains the job details
-	// JSON selected for ALR for continuity... may change in the future
 	var jobArgs models.JobAlrEnqueueArgs
 	err := json.Unmarshal(job.Args, &jobArgs)
+	// If we cannot unmarshall this, it would be very problematic.
 	if err != nil {
-		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s.",
+		// TODO: perhaps just fail the job?
+		q.alrLog.Fatalf("Failed to unmarhall job.Args '%s' %s.",
 			job.Args, err)
-		// By returning nil to que-go, job is removed from queue
-		return err
 	}
 
-	// To reduce the number of pings to the DB, track some information on the
-	// worker side.
+	// Check if this is already a failed job, and don't continue if it is
+	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+	if err != nil {
+		// TODO: perhaps just fail the job?
+		q.alrLog.Warnf("Could not get information on '%s' %s.",
+			job.Args, err)
+		return nil
+	}
+	if alrJobs.Status == models.JobStatusCancelled {
+		q.alrLog.Warnf("ALR big job has been cancelled, worker will not tasked for %s",
+			job.Args)
+		return nil
+	}
+
+	// Keep tracker of how many times a small job has failed.
+	// If the threshold is reached, fail the job
 	alrJobTracker.Lock()
 	if _, exists := alrJobTracker.tracker[jobArgs.ID]; !exists {
 		alrJobTracker.tracker[jobArgs.ID] = models.JobStatusInProgress
@@ -116,11 +128,10 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 				job.Args, err)
 			// unlock before returning to avoid deadlock
 			alrJobTracker.Unlock()
-			// By returning nil to que-go, job is removed from queue
 			return err
 		}
 	} else {
-		// Check if this job has been retried too many times
+		// Check if this job has been retried too many times - 5 times is max
 		if alrJobTracker.attemptTracker[jobArgs.QueueID] > 4 {
 			// Fail the job
 			err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
@@ -163,7 +174,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return err
 	}
 
-	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+	alrJobs, err = q.repository.GetJobByID(ctx, jobArgs.ID)
 	if err != nil {
 		q.alrLog.Warnf("Failed to get alr Job by id for '%s' %s", job.Args, err)
 		// Try again

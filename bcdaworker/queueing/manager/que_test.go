@@ -289,6 +289,8 @@ func TestStartAlrJob(t *testing.T) {
 		qAlr, // ALR piggypbacks
 	}
 
+	// Since the worker is tested by BFD, it is not tested here
+	// and we jump straight to the work
 	err = master.startAlrJob(&que.Job{
 		Args: jobArgsJson,
 	})
