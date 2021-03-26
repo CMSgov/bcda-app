@@ -27,17 +27,20 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
-// alrJobTrackerStruct is used to tracker the status of the job
+// alrJobTrackerStruct is used to track the status of the job
 type alrJobTrackerStuct struct {
-	tracker        map[uint]models.JobStatus // uint is big job
-	attemptTracker map[uint]uint             // uint is the small jobs
+	tracker map[uint]alrJobAttempt // unint here is the big job
 	sync.Mutex
+}
+
+type alrJobAttempt struct {
+	status         models.JobStatus
+	attemptTracker map[uint]uint // 1st uint is the small job
 }
 
 // Instance at the global private level
 var alrJobTracker = alrJobTrackerStuct{
-	tracker:        make(map[uint]models.JobStatus, 2),
-	attemptTracker: make(map[uint]uint, 8),
+	tracker: make(map[uint]alrJobAttempt),
 }
 
 /******************************************************************************
@@ -114,12 +117,16 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return nil
 	}
 
-	// Keep tracker of how many times a small job has failed.
+	// Keep track of how many times a small job has failed.
 	// If the threshold is reached, fail the job
 	alrJobTracker.Lock()
 	if _, exists := alrJobTracker.tracker[jobArgs.ID]; !exists {
-		alrJobTracker.tracker[jobArgs.ID] = models.JobStatusInProgress
-		alrJobTracker.attemptTracker[jobArgs.QueueID] = 0
+
+		alrJobTracker.tracker[jobArgs.ID] = alrJobAttempt{
+			status:         models.JobStatusInProgress,
+			attemptTracker: make(map[uint]uint),
+		}
+		alrJobTracker.tracker[jobArgs.ID].attemptTracker[jobArgs.QueueID] = 0
 		err := q.repository.UpdateJobStatus(ctx, jobArgs.ID,
 			models.JobStatusInProgress)
 		if err != nil {
@@ -131,7 +138,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		}
 	} else {
 		// Check if this job has been retried too many times - 5 times is max
-		if alrJobTracker.attemptTracker[jobArgs.QueueID] > 4 {
+		if alrJobTracker.tracker[jobArgs.ID].attemptTracker[jobArgs.QueueID] > 4 {
 			// Fail the job
 			err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
 			if err != nil {
@@ -142,11 +149,10 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 				jobArgs.ID)
 			// Clean up the failed job from tracker
 			delete(alrJobTracker.tracker, jobArgs.ID)
-			delete(alrJobTracker.attemptTracker, jobArgs.ID)
 			return nil
 		}
 
-		alrJobTracker.attemptTracker[jobArgs.QueueID]++
+		alrJobTracker.tracker[jobArgs.ID].attemptTracker[jobArgs.QueueID]++
 	}
 	alrJobTracker.Unlock()
 
@@ -213,13 +219,8 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		// Everything went smoothly, let's clean up the tracker
 		alrJobTracker.Lock()
 		delete(alrJobTracker.tracker, jobArgs.ID)
-		delete(alrJobTracker.attemptTracker, jobArgs.QueueID)
 		alrJobTracker.Unlock()
 	}
-
-	alrJobTracker.Lock()
-	delete(alrJobTracker.attemptTracker, jobArgs.QueueID)
-	alrJobTracker.Unlock()
 
 	return nil
 }
