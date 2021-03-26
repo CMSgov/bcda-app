@@ -104,7 +104,6 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// Check if this is already a failed job, and don't continue if it is
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
 	if err != nil {
-		// TODO: perhaps just fail the job?
 		q.alrLog.Warnf("Could not get information on '%s' %s.",
 			job.Args, err)
 		return nil
