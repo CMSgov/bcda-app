@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
-	"os/exec"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/pborman/uuid"
 
@@ -113,7 +114,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Apply initial schema",
 			func(t *testing.T) {
-				migrator.runMigration(t, "1")
+				migrator.runMigration(t, 1)
 				for _, table := range migration1Tables {
 					assertTableExists(t, true, db, table)
 				}
@@ -122,7 +123,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Add type column to cclf_files",
 			func(t *testing.T) {
-				migrator.runMigration(t, "2")
+				migrator.runMigration(t, 2)
 				assertColumnExists(t, true, db, "cclf_files", "type")
 				assertColumnDefaultValue(t, db, "type", "0", []interface{}{"cclf_files"})
 			},
@@ -130,7 +131,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Add blacklisted column to acos",
 			func(t *testing.T) {
-				migrator.runMigration(t, "3")
+				migrator.runMigration(t, 3)
 				assertColumnExists(t, true, db, "acos", "blacklisted")
 				assertColumnDefaultValue(t, db, "blacklisted", "false", []interface{}{"acos"})
 			},
@@ -139,21 +140,21 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Remove HICN column from cclf_beneficiaries and suppressions",
 			func(t *testing.T) {
 				assertColumnExists(t, true, db, "cclf_beneficiaries", "hicn")
-				migrator.runMigration(t, "4")
+				migrator.runMigration(t, 4)
 				assertColumnExists(t, false, db, "cclf_beneficiaries", "hicn")
 			},
 		},
 		{
 			"Add default now() timestamp to created_at columns",
 			func(t *testing.T) {
-				migrator.runMigration(t, "5")
+				migrator.runMigration(t, 5)
 				assertColumnDefaultValue(t, db, "created_at", "now()", migration5Tables)
 			},
 		},
 		{
 			"Add default now() timestamp to updated_at columns",
 			func(t *testing.T) {
-				migrator.runMigration(t, "6")
+				migrator.runMigration(t, 6)
 				assertColumnDefaultValue(t, db, "updated_at", "now()", migration5Tables)
 
 				type tables struct {
@@ -224,7 +225,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				for _, table := range migration7Tables {
 					assertColumnExists(t, true, db, table, "deleted_at")
 				}
-				migrator.runMigration(t, "7")
+				migrator.runMigration(t, 7)
 				for _, table := range migration7Tables {
 					assertColumnExists(t, false, db, table, "deleted_at")
 				}
@@ -234,14 +235,14 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Drop cclf_beneficiary_xrefs table",
 			func(t *testing.T) {
 				assertTableExists(t, true, db, "cclf_beneficiary_xrefs")
-				migrator.runMigration(t, "8")
+				migrator.runMigration(t, 8)
 				assertTableExists(t, false, db, "cclf_beneficiary_xrefs")
 			},
 		},
 		{
 			"Add termination_details column to acos",
 			func(t *testing.T) {
-				migrator.runMigration(t, "9")
+				migrator.runMigration(t, 9)
 				assertColumnExists(t, true, db, "acos", "termination_details")
 				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
 			},
@@ -249,7 +250,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Add ALR tables",
 			func(t *testing.T) {
-				migrator.runMigration(t, "10")
+				migrator.runMigration(t, 10)
 				for _, table := range migration10Tables {
 					assertTableExists(t, true, db, table)
 				}
@@ -272,7 +273,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 
 				defer postgrestest.DeleteACO(t, db, acoUUID)
 
-				migrator.runMigration(t, "11")
+				migrator.runMigration(t, 11)
 				assertColumnExists(t, true, db, "acos", "termination_details")
 
 				sb := sqlFlavor.NewSelectBuilder()
@@ -301,7 +302,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Remove ACO Blacklisted Column",
 			func(t *testing.T) {
 				assertColumnExists(t, true, db, "acos", "blacklisted")
-				migrator.runMigration(t, "12")
+				migrator.runMigration(t, 12)
 				assertColumnExists(t, false, db, "acos", "blacklisted")
 			},
 		},
@@ -325,7 +326,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 
 				postgrestest.CreateACO(t, db, aco)
 				assertColumnExists(t, false, db, "acos", "blacklisted")
-				migrator.runMigration(t, "11")
+				migrator.runMigration(t, 11)
 				assertColumnExists(t, true, db, "acos", "blacklisted")
 
 				sb := sqlFlavor.NewSelectBuilder()
@@ -355,7 +356,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Remove ACO Termination Details Default",
 			func(t *testing.T) {
-				migrator.runMigration(t, "10")
+				migrator.runMigration(t, 10)
 				assertColumnExists(t, true, db, "acos", "termination_details")
 				assertColumnDefaultValue(t, db, "termination_details", nullValue, []interface{}{"acos"})
 			},
@@ -363,7 +364,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Removing ALR tables",
 			func(t *testing.T) {
-				migrator.runMigration(t, "9")
+				migrator.runMigration(t, 9)
 				for _, table := range migration10Tables {
 					assertTableExists(t, false, db, table)
 				}
@@ -372,7 +373,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Remove termination_details column to acos",
 			func(t *testing.T) {
-				migrator.runMigration(t, "8")
+				migrator.runMigration(t, 8)
 				assertColumnExists(t, false, db, "acos", "termination_details")
 			},
 		},
@@ -380,7 +381,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Create cclf_beneficiary_xrefs table",
 			func(t *testing.T) {
 				assertTableExists(t, false, db, "cclf_beneficiary_xrefs")
-				migrator.runMigration(t, "7")
+				migrator.runMigration(t, 7)
 				assertTableExists(t, true, db, "cclf_beneficiary_xrefs")
 			},
 		},
@@ -390,7 +391,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				for _, table := range migration7Tables {
 					assertColumnExists(t, false, db, table, "deleted_at")
 				}
-				migrator.runMigration(t, "6")
+				migrator.runMigration(t, 6)
 				for _, table := range migration7Tables {
 					assertColumnExists(t, true, db, table, "deleted_at")
 				}
@@ -399,7 +400,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 		{
 			"Remove default now() timestamp to updated_at columns",
 			func(t *testing.T) {
-				migrator.runMigration(t, "5")
+				migrator.runMigration(t, 5)
 				assertColumnDefaultValue(t, db, "updated_at", "", migration5Tables)
 			},
 		},
@@ -407,7 +408,7 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Remove default now() timestamp to created_at columns",
 			func(t *testing.T) {
 				assertColumnDefaultValue(t, db, "created_at", "now()", migration5Tables)
-				migrator.runMigration(t, "4")
+				migrator.runMigration(t, 4)
 				assertColumnDefaultValue(t, db, "created_at", "", migration5Tables)
 			},
 		},
@@ -415,28 +416,28 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Add HICN column to cclf_beneficiaries and suppressions",
 			func(t *testing.T) {
 				assertColumnExists(t, false, db, "cclf_beneficiaries", "hicn")
-				migrator.runMigration(t, "3")
+				migrator.runMigration(t, 3)
 				assertColumnExists(t, true, db, "cclf_beneficiaries", "hicn")
 			},
 		},
 		{
 			"Remove blacklisted column from acos",
 			func(t *testing.T) {
-				migrator.runMigration(t, "2")
+				migrator.runMigration(t, 2)
 				assertColumnExists(t, false, db, "acos", "blacklisted")
 			},
 		},
 		{
 			"Remove type column from cclf_files",
 			func(t *testing.T) {
-				migrator.runMigration(t, "1")
+				migrator.runMigration(t, 1)
 				assertColumnExists(t, false, db, "cclf_files", "type")
 			},
 		},
 		{
 			"Revert initial schema",
 			func(t *testing.T) {
-				migrator.runMigration(t, "0")
+				migrator.runMigration(t, 0)
 				for _, table := range migration1Tables {
 					assertTableExists(t, false, db, table)
 				}
@@ -472,7 +473,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 		{
 			"Apply initial schema",
 			func(t *testing.T) {
-				migrator.runMigration(t, "1")
+				migrator.runMigration(t, 1)
 				for _, table := range migration1Tables {
 					assertTableExists(t, true, db, table)
 				}
@@ -481,7 +482,7 @@ func (s *MigrationTestSuite) TestBCDAQueueMigration() {
 		{
 			"Revert initial schema",
 			func(t *testing.T) {
-				migrator.runMigration(t, "0")
+				migrator.runMigration(t, 0)
 				for _, table := range migration1Tables {
 					assertTableExists(t, false, db, table)
 				}
@@ -501,42 +502,26 @@ type migrator struct {
 	dbURL         string
 }
 
-func (m migrator) runMigration(t *testing.T, idx string) {
-	args := []string{"goto", idx}
-	expVersion := idx
+func (m migrator) runMigration(t *testing.T, idx uint) {
+
+	migration, err := migrate.New("file://"+m.migrationPath, m.dbURL)
+	assert.NoError(t, err)
+
 	// Since we do not have a 0 index, this is interpreted
 	// as revert the last migration (1)
-	if idx == "0" {
-		args = []string{"down", "1"}
+	if idx == 0 {
+		if err := migration.Steps(-1); err != nil {
+			t.Errorf("Failed to revert migration %s", err.Error())
+		}
+	} else {
+		if err = migration.Migrate(idx); err != nil {
+			t.Errorf("Failed to run migration %s", err.Error())
+		}
 	}
 
-	args = append([]string{"-database", m.dbURL, "-path",
-		m.migrationPath}, args...)
-
-	_, err := exec.Command("migrate", args...).CombinedOutput()
-	if err != nil {
-		t.Errorf("Failed to run migration %s", err.Error())
-	}
-
-	// If we're going down past the first schema, we won't be able
-	// to check the version since there's no active schema version
-	if idx == "0" {
-		return
-	}
-
-	// Expected output:
-	// <VERSION>
-	// If there's a failure (i.e. dirty migration)
-	// <VERSION> (dirty)
-	out, err := exec.Command("migrate", "-database", m.dbURL, "-path",
-		m.migrationPath, "version").CombinedOutput()
-	if err != nil {
-		t.Errorf("Failed to retrieve version information %s", err.Error())
-	}
-	str := strings.TrimSpace(string(out))
-
-	assert.Contains(t, expVersion, str)
-	assert.NotContains(t, str, "dirty")
+	src, db := migration.Close()
+	assert.NoError(t, src)
+	assert.NoError(t, db)
 }
 
 func assertColumnExists(t *testing.T, shouldExist bool, db *sql.DB, tableName, columnName string) {
