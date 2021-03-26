@@ -127,7 +127,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		return
 	}
 
-	rp, ok := middleware.RequestParametersFromContext(r.Context())
+	rp, ok := middleware.RequestParametersFromContext(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
 	}

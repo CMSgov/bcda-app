@@ -26,7 +26,7 @@ type RequestParameters struct {
 // requestkey is an unexported context key to avoid collisions
 type requestkey int
 
-var rk requestkey
+const rk requestkey = 0
 
 func NewRequestParametersContext(ctx context.Context, rp RequestParameters) context.Context {
 	return context.WithValue(ctx, rk, rp)
