@@ -11,6 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/bgentry/que-go"
+	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,20 +27,26 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
+// alrJobTrackerStruct is used to tracker the status of the job and minimize
+// potentially 1000s of hits to the DB
 type alrJobTrackerStuct struct {
-	tracker map[uint]models.JobStatus
+	tracker        map[uint]models.JobStatus // uint is big job
+	attemptTracker map[uint]uint             // uint is the small jobs
 	sync.Mutex
 }
 
+// Instance at the global private level
 var alrJobTracker = alrJobTrackerStuct{
-	tracker: make(map[uint]models.JobStatus, 2),
+	tracker:        make(map[uint]models.JobStatus, 2),
+	attemptTracker: make(map[uint]uint, 8),
 }
 
 /******************************************************************************
 	Functions
-	- checkIfCancelled - originally a closure, turned into func for clarity
 ******************************************************************************/
 
+// checkIFCanncelled was originally a closure to check if the job was cancelled,
+// but it has been turned into a func for ALR for clarity
 func checkIfCancelled(ctx context.Context, q *masterQueue,
 	cancel context.CancelFunc, jobArgs models.JobAlrEnqueueArgs) {
 	for {
@@ -61,6 +68,16 @@ func checkIfCancelled(ctx context.Context, q *masterQueue,
 	}
 }
 
+// deleteAndRetry is a helper function that will delete previous attempt at
+// creating ndjson if the worker hit an error along the way. This is to avoid
+// serving incomplete or redundant data to user.
+func deleteAndRetry(l *logrus.Logger, dir string, id uint, file string) {
+	err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", dir, id, file))
+	if err != nil {
+		l.Fatal("Could not remove alr ndjson.")
+	}
+}
+
 /******************************************************************************
 	Methods
 ******************************************************************************/
@@ -75,7 +92,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Unmarchall JSON that contains the job details
+	// Unmarshall JSON that contains the job details
 	// JSON selected for ALR for continuity... may change in the future
 	var jobArgs models.JobAlrEnqueueArgs
 	err := json.Unmarshal(job.Args, &jobArgs)
@@ -88,31 +105,49 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	// To reduce the number of pings to the DB, track some information on the
 	// worker side.
-	// This is actually not a race condition, but the unit-test does not like it.
-	// alrJobTracker should only be updated twice: first and last job.
 	alrJobTracker.Lock()
 	if _, exists := alrJobTracker.tracker[jobArgs.ID]; !exists {
 		alrJobTracker.tracker[jobArgs.ID] = models.JobStatusInProgress
+		alrJobTracker.attemptTracker[jobArgs.QueueID] = 0
 		err := q.repository.UpdateJobStatus(ctx, jobArgs.ID,
 			models.JobStatusInProgress)
 		if err != nil {
 			q.alrLog.Warnf("Failed to update job status '%s' %s.",
 				job.Args, err)
-			// unlock before returning to prevent deadlock
+			// unlock before returning to avoid deadlock
 			alrJobTracker.Unlock()
 			// By returning nil to que-go, job is removed from queue
 			return err
 		}
+	} else {
+		// Check if this job has been retried too many times
+		if alrJobTracker.attemptTracker[jobArgs.QueueID] > 4 {
+			// Fail the job
+			err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
+			if err != nil {
+				q.alrLog.Warnf("Could not mark job %d as failed in DB.",
+					jobArgs.ID)
+			}
+			q.alrLog.Warnf("One of the job for '%d' has failed five times.",
+				jobArgs.ID)
+			// Clean up the failed job from tracker
+			delete(alrJobTracker.tracker, jobArgs.ID)
+			delete(alrJobTracker.attemptTracker, jobArgs.ID)
+			return nil
+		}
+
+		alrJobTracker.attemptTracker[jobArgs.QueueID]++
 	}
 	alrJobTracker.Unlock()
 
 	// Check if the job was cancelled
 	go checkIfCancelled(ctx, q, cancel, jobArgs)
 
-	// Do the Job
-	err = q.alrWorker.ProcessAlrJob(ctx, jobArgs)
+	// Run ProcessAlrJob, which is the meat of the whole operation
+	ndjsonFilename := uuid.NewRandom()
+	err = q.alrWorker.ProcessAlrJob(ctx, jobArgs, ndjsonFilename)
 	if err != nil {
-		// This means the job did not finish for various reason
+		// This means the job did not finish
 		q.alrLog.Warnf("Failed to complete job.Args '%s' %s", job.Args, err)
 		// Re-enqueue the job
 		return err
@@ -121,14 +156,19 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// Update DB that work is done / success
 	err = q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID)
 	if err != nil {
-		q.alrLog.Warnf("Failed to increment job to count for '%s' %s", job.Args, err)
+		q.alrLog.Warnf("Failed to increment job count for '%s' %s", job.Args, err)
 		// Can't increment for some DB reason... rollback the file created and try again...
+		deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
+			string(ndjsonFilename))
 		return err
 	}
 
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
 	if err != nil {
 		q.alrLog.Warnf("Failed to get alr Job by id for '%s' %s", job.Args, err)
+		// Try again
+		deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
+			string(ndjsonFilename))
 		return err
 	}
 
@@ -146,7 +186,8 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			fmt.Sprintf("%s/%d", q.alrWorker.FHIR_PAYLOAD_DIR, jobArgs.ID))
 		if err != nil {
 			q.alrLog.Warnf("Failed to rename alr dirs '%s' %s", job.Args, err)
-
+			deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
+				string(ndjsonFilename))
 			return err
 		}
 		// mark job as done
@@ -154,12 +195,21 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 		if err != nil {
 			q.alrLog.Warnf("Failed to update job to complete '%s' %s", job.Args, err)
+			deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
+				string(ndjsonFilename))
 			return err
 		}
+
+		// Everything went smoothly, let's clean up the tracker
 		alrJobTracker.Lock()
 		delete(alrJobTracker.tracker, jobArgs.ID)
+		delete(alrJobTracker.attemptTracker, jobArgs.QueueID)
 		alrJobTracker.Unlock()
 	}
+
+	alrJobTracker.Lock()
+	delete(alrJobTracker.attemptTracker, jobArgs.QueueID)
+	alrJobTracker.Unlock()
 
 	return nil
 }

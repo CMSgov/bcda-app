@@ -17,6 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
@@ -50,12 +51,16 @@ func TestProcessJob(t *testing.T) {
 	conf.SetEnv(t, "BB_CLIENT_CA_FILE", "../../../shared_files/localhost.crt")
 
 	// Ensure we do not clutter our working directory with any data
-	tempDir, err := ioutil.TempDir("", "*")
+	tempDir1, err := ioutil.TempDir("", "*")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir)
-	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir)
+	tempDir2, err := ioutil.TempDir("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir1)
+	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
 
 	db := database.Connection
 
@@ -174,11 +179,15 @@ func TestStartAlrJob(t *testing.T) {
 
 	// Create synthetic Data
 	// TODO: Replace this with Martin's testing strategy from #4239
+	// To do this, this requires bringing in worker que migrations
+
+	// Create the key value pair
 	exMap := make(map[string]string)
 	exMap["EnrollFlag1"] = "1"
 	exMap["HCC_version"] = "V12"
 	exMap["HCC_COL_1"] = "1"
 	exMap["HCC_COL_2"] = "0"
+	// ACO
 	cmsID := "A1234"
 	MBIs := []string{"abd123abd01", "abd123abd02"}
 	timestamp := time.Now()
@@ -211,21 +220,28 @@ func TestStartAlrJob(t *testing.T) {
 			KeyValue:      exMap,
 		},
 	}
+
 	ctx := context.Background()
 
-	// Add Data into repo
-	_ = alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp, alrs)
+	// Add synthetic Data above into DB
+	err := alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp, alrs)
+	assert.NoError(t, err)
 
 	r := postgres.NewRepository(db)
+
+	// Create data needed for models.JobAlrEnQueueArgs & models.Jobs
+	// These are two data struct involved in ALr jobs
 	acoUUID := uuid.NewRandom()
 	aco := models.ACO{UUID: acoUUID, CMSID: &cmsID}
-	err := r.CreateACO(ctx, aco)
+	// Add the ACO into aco table
+	err = r.CreateACO(ctx, aco)
 	assert.NoError(t, err)
 	job := models.Job{
-		ACOID:             acoUUID,
-		RequestURL:        "",
-		Status:            models.JobStatusPending,
-		TransactionTime:   time.Now(),
+		ACOID:           acoUUID,
+		RequestURL:      "",
+		Status:          models.JobStatusPending,
+		TransactionTime: time.Now(),
+		// JobCount is partitioned automatically, but it is done manually here
 		JobCount:          2,
 		CompletedJobCount: 0,
 	}
@@ -235,6 +251,7 @@ func TestStartAlrJob(t *testing.T) {
 	// Create JobArgs
 	jobArgs := models.JobAlrEnqueueArgs{
 		ID:         id,
+		QueueID:    1,
 		CMSID:      cmsID,
 		MBIs:       MBIs[:1],
 		LowerBound: timestamp,
@@ -242,37 +259,47 @@ func TestStartAlrJob(t *testing.T) {
 	}
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
+		QueueID:    2,
 		CMSID:      cmsID,
 		MBIs:       MBIs[1:],
 		LowerBound: timestamp,
 		UpperBound: timestamp2,
 	}
-	enqueuer := queueing.NewEnqueuer()
-	err = enqueuer.AddAlrJob(jobArgs, 100)
+
+	// marshall jobs
+	jobArgsJson, err := json.Marshal(jobArgs)
 	assert.NoError(t, err)
-	err = enqueuer.AddAlrJob(jobArgs2, 100)
+	jobArgs2Json, err := json.Marshal(jobArgs2)
 	assert.NoError(t, err)
 
-	// Now start the workers...
-	q := StartQue(log, 2)
-	q.cloudWatchEnv = "dev"
-	defer q.StopQue()
-
-	timeout := time.After(20 * time.Second)
-	for {
-		select {
-		case <-timeout:
-			t.Fatal("Job not completed in alloted time.")
-			return
-		default:
-			currentJob, err := r.GetJobByID(ctx, id)
-			assert.NoError(t, err)
-			// don't wait for a job if it has a terminal status
-			if isTerminalStatus(currentJob.Status) {
-				return
-			}
-			log.Infof("Waiting on job to be completed. Current status %s.", currentJob.Status)
-			time.Sleep(1 * time.Second)
-		}
+	q := &queue{
+		worker:        worker.NewWorker(db),
+		repository:    workerRepo.NewRepository(db),
+		log:           log,
+		queDB:         database.QueueConnection,
+		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
 	}
+	// Same as above, but do one for ALR
+	qAlr := &alrQueue{
+		alrLog:    log,
+		alrWorker: worker.NewAlrWorker(db),
+	}
+	master := &masterQueue{
+		q,
+		qAlr, // ALR piggypbacks
+	}
+
+	err = master.startAlrJob(&que.Job{
+		Args: jobArgsJson,
+	})
+	assert.NoError(t, err)
+	err = master.startAlrJob(&que.Job{
+		Args: jobArgs2Json,
+	})
+	assert.NoError(t, err)
+
+	// Check job is complete
+	alrJob, err := r.GetJobByID(ctx, id)
+	assert.NoError(t, err)
+	assert.Equal(t, alrJob.Status, models.JobStatusCompleted)
 }

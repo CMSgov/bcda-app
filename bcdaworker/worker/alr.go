@@ -23,7 +23,6 @@ import (
 	Data Structures
 	-AlrWorker
 	-data
-		- Use to send FHIR data to a go routine to write to disk
 ******************************************************************************/
 
 type AlrWorker struct {
@@ -32,6 +31,7 @@ type AlrWorker struct {
 	FHIR_PAYLOAD_DIR string
 }
 
+//data is used to send FHIR data to a go routine to write to disk
 type data struct {
 	patient      *resources_go_proto.Patient
 	observations []*resources_go_proto.Observation
@@ -110,6 +110,7 @@ func goWriter(c chan data, w *bufio.Writer,
 func (a *AlrWorker) ProcessAlrJob(
 	ctx context.Context,
 	jobArgs models.JobAlrEnqueueArgs,
+	ndjsonFilename uuid.UUID,
 ) error {
 
 	// Parse the jobAlrEnqueueArgs
@@ -134,7 +135,6 @@ func (a *AlrWorker) ProcessAlrJob(
 		return err
 	}
 
-	ndjsonFilename := uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", a.FHIR_STAGING_DIR,
 		id, ndjsonFilename))
 	if err != nil {

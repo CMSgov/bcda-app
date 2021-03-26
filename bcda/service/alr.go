@@ -43,6 +43,7 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrReque
 	}
 
 	jobs := make([]*models.JobAlrEnqueueArgs, 0, len(benes)/int(s.alrMBIsPerJob))
+	var jobNum uint = 1
 	for {
 		var part []*models.CCLFBeneficiary
 		part, benes = partitionBenes(benes, s.alrMBIsPerJob)
@@ -51,11 +52,14 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrReque
 		}
 
 		job := &models.JobAlrEnqueueArgs{
-			CMSID:        cmsID,
+			QueueID:    jobNum,
+			CMSID:      cmsID,
 			LowerBound: window.LowerBound,
 			UpperBound: window.UpperBound,
 			MBIs:       make([]string, 0, s.alrMBIsPerJob),
 		}
+
+		jobNum++
 
 		for _, bene := range part {
 			job.MBIs = append(job.MBIs, bene.MBI)

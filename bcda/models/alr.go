@@ -28,6 +28,7 @@ type AlrMetaData struct {
 // There is no AlrJobs struct because ALR uses Job struct from BFD
 type JobAlrEnqueueArgs struct {
 	ID         uint
+	QueueID    uint
 	CMSID      string
 	MBIs       []string
 	LowerBound time.Time
