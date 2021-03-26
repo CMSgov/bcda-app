@@ -150,22 +150,11 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}
 	case "ExplanationOfBenefit":
 		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
-			var claimsWindow client.ClaimsWindow
-			// TODO: (BCDA-4339) Remove this conditional check once we've completed a release with the new ClaimsWindow code.
-			// We should be able to use the jobArgs.ClaimsWindow directly
-
-			// Use a conditional check to see if we've received a job with the new args populated. If not, we'll default
-			// to the old args.
-			// This logic will allow a new worker to populate the job correctly for a job created by an old API instance.
-			// New API creates a job for New Worker instance
-			if !jobArgs.ClaimsWindow.LowerBound.IsZero() || !jobArgs.ClaimsWindow.UpperBound.IsZero() {
-				claimsWindow.LowerBound, claimsWindow.UpperBound = jobArgs.ClaimsWindow.LowerBound, jobArgs.ClaimsWindow.UpperBound
-			} else {
-				// Backwards compatibility - old API would set the service date as the upperbound
-				claimsWindow.UpperBound = jobArgs.ServiceDate
-			}
+			cw := client.ClaimsWindow{
+				LowerBound: jobArgs.ClaimsWindow.LowerBound,
+				UpperBound: jobArgs.ClaimsWindow.UpperBound}
 			return bb.GetExplanationOfBenefit(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime,
-				claimsWindow)
+				cw)
 		}
 	case "Patient":
 		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
