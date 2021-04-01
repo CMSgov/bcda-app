@@ -127,7 +127,7 @@ func (config *ACOConfig) LookbackTime() time.Time {
 
 	// If we passed our perf year transition, we consider us to be in the new performance year.
 	// Otherwise we are still in the previous performance year.
-	if now.Month() >= config.perfYear.Month() || (now.Month() == config.perfYear.Month() &&
+	if now.Month() > config.perfYear.Month() || (now.Month() == config.perfYear.Month() &&
 		now.Day() >= config.perfYear.Day()) {
 		year = now.Year() - config.LookbackYears
 	} else {
