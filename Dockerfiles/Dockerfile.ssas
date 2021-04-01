@@ -23,4 +23,5 @@ RUN go install ./ssas/service/main
 # Make sure we are in the directory to ensure the config files are resolved as expected
 WORKDIR /go/bcda-ssas-app/ssas
 
-CMD ["main", "--start"]
+ENTRYPOINT ["main"]
+CMD ["--start"]

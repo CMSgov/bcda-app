@@ -1,18 +1,18 @@
 FROM node:current-slim
 
-WORKDIR '/'
+#WORKDIR /
 
 RUN apt update -y && apt install git -y
 
-RUN git clone https://github.com/smart-on-fhir/bdt.git
-WORKDIR '/bdt'
+#RUN git clone https://github.com/smart-on-fhir/bdt.git
+#WORKDIR '/bdt'
 
 # Pinning bdt version that is compatible with FHIR R3
-RUN git checkout bc64ac546d309969034fca3c9f9a5a01d4d7563f
+#RUN git checkout bc64ac546d309969034fca3c9f9a5a01d4d7563f
 
-COPY bdt/config.js .
-COPY bdt/run-bdt.sh .
+#RUN npm install
 
-RUN npm install
+#COPY bdt/config.js .
+#COPY bdt/run-bdt.sh .
 
-CMD ["./run-bdt.sh"]
+#ENTRYPOINT ["./run-bdt.sh"]

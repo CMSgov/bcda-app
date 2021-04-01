@@ -23,7 +23,7 @@ lint:
 # The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test
 # Note that these variables should only be used for smoke tests, must be set before the api starts, and cannot be changed after the api starts
 SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
-SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
+SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID) | tail -n1)
 
 #
 # The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token.
@@ -40,7 +40,7 @@ SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --r
 # or
 #    ACO_CMS_ID=A9999 make postman env=local
 ACO_CMS_ID ?= A9994
-clientTemp := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
+clientTemp := $(shell docker-compose run --rm api reset-client-credentials --cms-id $(ACO_CMS_ID) | tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
 
@@ -53,7 +53,7 @@ postman:
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id A9997'|tail -n2))
+	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm api reset-client-credentials --cms-id A9997 | tail -n2))
 
 	$(eval BLACKLIST_CLIENT_ID:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$1}'))
 	$(eval BLACKLIST_CLIENT_SECRET:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$2}'))
@@ -120,27 +120,27 @@ load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
 	for acoSize in $(ACO_SIZES) ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
+		docker-compose run --rm api import-synthetic-cclf-package --acoSize=$$acoSize --environment=test ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
 	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
+		docker-compose run --rm api import-synthetic-cclf-package --acoSize=$$acoSize --environment=test-new-beneficiaries ; \
 	done
 
 	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test --fileType=runout' ; \
+		docker-compose run --rm api import-synthetic-cclf-package --acoSize=$$acoSize --environment=test --fileType=runout ; \
 	done
 
 load-synthetic-suppression-data:
-	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
+	docker-compose run api import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles
 	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
 	# See postgres#GetSuppressedMBIs for more information
 	docker-compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
 
 load-fixtures-ssas:
 	docker-compose -f docker-compose.ssas-migrate.yml run --rm ssas-migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
-	docker-compose run ssas sh -c 'main --add-fixture-data'
+	docker-compose run ssas --add-fixture-data
 
 docker-build:
 	docker-compose build --force-rm
@@ -169,7 +169,7 @@ debug-worker:
 bdt:
 	# supply this target with the necessary environment vars, e.g.:
 	# make bdt BDT_BASE_URL=<origin of API>
-	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt .
+	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt . 
 	docker run --rm \
 	-e BASE_URL='${BDT_BASE_URL}' \
 	-e CLIENT_ID='${CLIENT_ID}' \
@@ -185,4 +185,4 @@ documentation:
 credentials:
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: ACO_CMS_ID=A9993 make credentials 
-	docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
+	docker-compose run --rm api reset-client-credentials --cms-id $(ACO_CMS_ID) | tail -n2
