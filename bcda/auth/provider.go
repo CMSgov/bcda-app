@@ -41,8 +41,6 @@ func GetProvider() Provider {
 	switch providerName {
 	case Alpha:
 		return AlphaAuthPlugin{repository}
-	case Okta:
-		return NewOktaAuthPlugin(client.NewOktaClient())
 	case SSAS:
 		c, err := client.NewSSASClient()
 		if err != nil {
