@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -266,14 +266,14 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	db := database.Connection
 
 	p := auth.GetProvider()
-	cmsID := testUtils.RandomHexID()[0:4]
-	id := uuid.NewRandom()
-	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
-	postgrestest.CreateACO(s.T(), db, *aco)
-	acoUUID := aco.UUID
+	cmsID := "A9990"
+	id := constants.SmallACOUUID
+	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.Parse(id), ClientID: id}
+	// postgrestest.CreateACO(s.T(), db, *aco)
+	// acoUUID := aco.UUID
 
-	defer postgrestest.DeleteACO(s.T(), db, acoUUID)
-	c, err := p.RegisterSystem(acoUUID.String(), "", "")
+	// defer postgrestest.DeleteACO(s.T(), db, acoUUID)
+	c, err := p.RegisterSystem(id, "", cmsID)
 	s.NoError(err)
 	token, err := p.MakeAccessToken(c)
 	s.NoError(err)
@@ -295,7 +295,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			BlacklistType:   models.Involuntary,
 		},
-		nil, 
+		nil,
 	}
 
 	for _, blacklistValue := range blackListValues {
