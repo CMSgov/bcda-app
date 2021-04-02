@@ -96,7 +96,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	// Success!?
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", "")
+	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", constants.DevACOUUID)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)
@@ -124,7 +124,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", "")
+	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", constants.DevACOUUID)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)

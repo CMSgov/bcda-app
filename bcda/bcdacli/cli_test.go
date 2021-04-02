@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -163,28 +162,28 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 	assert.Contains(buf.String(), "Public key saved for ACO")
 }
 
-func (s *CLITestSuite) TestGenerateClientCredentials() {
-	assert := assert.New(s.T())
+// func (s *CLITestSuite) TestGenerateClientCredentials() {
+// 	assert := assert.New(s.T())
 
-	cmsID := "A8880"
-	for _, ips := range [][]string{nil, []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
-		[]string{testUtils.GetRandomIPV4Address(s.T())}, []string{}} {
-		s.SetupTest()
+// 	cmsID := "A8880"
+// 	for _, ips := range [][]string{nil, []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
+// 		[]string{testUtils.GetRandomIPV4Address(s.T())}, []string{}} {
+// 		s.SetupTest()
 
-		aco := postgrestest.GetACOByCMSID(s.T(), s.db, cmsID)
-		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
-		aco.AlphaSecret = ""
-		postgrestest.UpdateACO(s.T(), s.db, aco)
+// 		aco := postgrestest.GetACOByCMSID(s.T(), s.db, cmsID)
+// 		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
+// 		aco.AlphaSecret = ""
+// 		postgrestest.UpdateACO(s.T(), s.db, aco)
 
-		buf := new(bytes.Buffer)
-		s.testApp.Writer = buf
+// 		buf := new(bytes.Buffer)
+// 		s.testApp.Writer = buf
 
-		args := []string{"bcda", "generate-client-credentials", "--cms-id", cmsID, "--ips", strings.Join(ips, ",")}
-		err := s.testApp.Run(args)
-		assert.Nil(err)
-		assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
-	}
-}
+// 		args := []string{"bcda", "generate-client-credentials", "--cms-id", cmsID, "--ips", strings.Join(ips, ",")}
+// 		err := s.testApp.Run(args)
+// 		assert.Nil(err)
+// 		assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
+// 	}
+// }
 
 func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
 	buf := new(bytes.Buffer)
@@ -203,36 +202,36 @@ func (s *CLITestSuite) TestGenerateClientCredentials_InvalidID() {
 	assert.Empty(buf)
 }
 
-func (s *CLITestSuite) TestResetSecretCLI() {
+// func (s *CLITestSuite) TestResetSecretCLI() {
 
-	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-	assert := assert.New(s.T())
+// 	// set up the test app writer (to redirect CLI responses from stdout to a byte buffer)
+// 	buf := new(bytes.Buffer)
+// 	s.testApp.Writer = buf
+// 	assert := assert.New(s.T())
 
-	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
+// 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
-	// execute positive scenarios via CLI
-	args := []string{"bcda", "reset-client-credentials", "--cms-id", "A9994"}
-	err := s.testApp.Run(args)
-	assert.Nil(err)
-	assert.Regexp(outputPattern, buf.String())
-	buf.Reset()
+// 	// execute positive scenarios via CLI
+// 	args := []string{"bcda", "reset-client-credentials", "--cms-id", "A9994"}
+// 	err := s.testApp.Run(args)
+// 	assert.Nil(err)
+// 	assert.Regexp(outputPattern, buf.String())
+// 	buf.Reset()
 
-	// Execute CLI with invalid ACO CMS ID
-	args = []string{"bcda", "reset-client-credentials", "--cms-id", "BLAH"}
-	err = s.testApp.Run(args)
-	assert.Equal("no ACO record found for BLAH", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
+// 	// Execute CLI with invalid ACO CMS ID
+// 	args = []string{"bcda", "reset-client-credentials", "--cms-id", "BLAH"}
+// 	err = s.testApp.Run(args)
+// 	assert.Equal("no ACO record found for BLAH", err.Error())
+// 	assert.Equal(0, buf.Len())
+// 	buf.Reset()
 
-	// Execute CLI with invalid inputs
-	args = []string{"bcda", "reset-client-credentials", "--abcd", "efg"}
-	err = s.testApp.Run(args)
-	assert.Equal("flag provided but not defined: -abcd", err.Error())
-	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
+// 	// Execute CLI with invalid inputs
+// 	args = []string{"bcda", "reset-client-credentials", "--abcd", "efg"}
+// 	err = s.testApp.Run(args)
+// 	assert.Equal("flag provided but not defined: -abcd", err.Error())
+// 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 
-}
+// }
 
 func (s *CLITestSuite) TestArchiveExpiring() {
 	assert := assert.New(s.T())
@@ -541,31 +540,31 @@ func (s *CLITestSuite) TestCleanupCancelled() {
 	}
 }
 
-func (s *CLITestSuite) TestRevokeToken() {
-	originalAuthProvider := auth.GetProviderName()
-	defer auth.SetProvider(originalAuthProvider)
-	auth.SetProvider("alpha")
-	// init
+// func (s *CLITestSuite) TestRevokeToken() {
+// 	originalAuthProvider := auth.GetProviderName()
+// 	defer auth.SetProvider(originalAuthProvider)
+// 	auth.SetProvider("alpha")
+// 	// init
 
-	assert := assert.New(s.T())
+// 	assert := assert.New(s.T())
 
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
+// 	buf := new(bytes.Buffer)
+// 	s.testApp.Writer = buf
 
-	// Negative case - attempt to revoke a token passing in a blank token string
-	args := []string{"bcda", "revoke-token", "--access-token", ""}
-	err := s.testApp.Run(args)
-	assert.Equal("Access token (--access-token) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
+// 	// Negative case - attempt to revoke a token passing in a blank token string
+// 	args := []string{"bcda", "revoke-token", "--access-token", ""}
+// 	err := s.testApp.Run(args)
+// 	assert.Equal("Access token (--access-token) must be provided", err.Error())
+// 	assert.Equal(0, buf.Len())
+// 	buf.Reset()
 
-	// Expect (for the moment) that alpha auth does not implement
-	args = []string{"bcda", "revoke-token", "--access-token", "this-token-value-is-immaterial"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "RevokeAccessToken is not implemented for alpha auth")
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-}
+// 	// Expect (for the moment) that alpha auth does not implement
+// 	args = []string{"bcda", "revoke-token", "--access-token", "this-token-value-is-immaterial"}
+// 	err = s.testApp.Run(args)
+// 	assert.EqualError(err, "RevokeAccessToken is not implemented for alpha auth")
+// 	assert.Equal(0, buf.Len())
+// 	buf.Reset()
+// }
 
 func (s *CLITestSuite) TestStartAPI() {
 	httpsPort, httpPort := strconv.Itoa(getRandomPort(s.T())), strconv.Itoa(getRandomPort(s.T()))

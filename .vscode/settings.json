@@ -6,6 +6,8 @@
         "DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "QUEUE_DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "BCDA_API_CONFIG_PATH": "${workspaceFolder}/shared_files/decrypted/api.yml",
+        "SSAS_URL": "http://127.0.0.1:3004",
+        "SSAS_PUBLIC_URL": "http://127.0.0.1:3003",
         // Since we have different directory structure in our test containers, we should
         // define all files/directory paths here
         "ATO_PUBLIC_KEY_FILE": "${workspaceFolder}/shared_files/ATO_public.pem",

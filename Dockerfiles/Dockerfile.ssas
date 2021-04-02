@@ -19,6 +19,7 @@ WORKDIR /go
 # the config files are placed in the expected spot
 RUN git clone https://github.com/CMSgov/bcda-ssas-app.git
 WORKDIR /go/bcda-ssas-app
+RUN git checkout dan/BCDA-4354_removeOKTA_ALPHA
 RUN go install ./ssas/service/main
 # Make sure we are in the directory to ensure the config files are resolved as expected
 WORKDIR /go/bcda-ssas-app/ssas

@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -11,7 +10,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/conf"
 )
 
 const (
@@ -20,31 +18,19 @@ const (
 	SSAS  = "ssas"
 )
 
-var providerName = Alpha
+var providerName = SSAS
 var repository models.Repository
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	SetProvider(strings.ToLower(conf.GetEnv(`BCDA_AUTH_PROVIDER`)))
+	// SetProvider(strings.ToLower(conf.GetEnv(`BCDA_AUTH_PROVIDER`)))
 
 	repository = postgres.NewRepository(database.Connection)
 }
 
 func SetProvider(name string) {
-	if name != "" {
-		switch strings.ToLower(name) {
-		case Okta:
-			providerName = name
-		case Alpha:
-			providerName = name
-		case SSAS:
-			providerName = name
-		default:
-			log.Infof(`Unknown providerName %s; using %s`, name, providerName)
-		}
-	}
-	log.Infof(`Auth is made possible by %s`, providerName)
+	providerName = SSAS
 }
 
 func GetProviderName() string {
