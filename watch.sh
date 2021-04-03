@@ -16,5 +16,5 @@ fi
 
 if [ "$1" == "worker" ]; then
     echo "Starting bcda worker entr watcher..."
-    find . ../bcda -name '*.go' | entr -nr sh -c "go install -v && bcdaworker"
+    find . ../bcda -name '*.go' | entr -nr go run -v "${@:2}"
 fi
