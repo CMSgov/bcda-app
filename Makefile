@@ -114,7 +114,7 @@ load-fixtures:
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 120 && wait-for-it -h ssas -p 3003 -t 60"
 
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
