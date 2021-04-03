@@ -38,18 +38,11 @@ func GetProviderName() string {
 }
 
 func GetProvider() Provider {
-	switch providerName {
-	case Alpha:
-		return AlphaAuthPlugin{repository}
-	case SSAS:
-		c, err := client.NewSSASClient()
-		if err != nil {
-			log.Fatalf("no client for SSAS; %s", err.Error())
-		}
-		return SSASPlugin{client: c, repository: repository}
-	default:
-		return AlphaAuthPlugin{}
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
 	}
+	return SSASPlugin{client: c, repository: repository}
 }
 
 type AuthData struct {

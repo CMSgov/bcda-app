@@ -23,7 +23,9 @@ lint:
 # The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test
 # Note that these variables should only be used for smoke tests, must be set before the api starts, and cannot be changed after the api starts
 SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
-SSAS_ADMIN_CLIENT_SECRET := 21bc0f337d9d1ad1084a5ac5e63e3c8a36519a932d9f7b88553095a96b7320fff510e15161a854f3
+SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
+BCDA_SSAS_CLIENT_ID ?= 0c527d2e-2e8a-4808-b11d-0fa06baf8254
+BCDA_SSAS_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(BCDA_SSAS_CLIENT_ID)'|tail -n1)
 
 #
 # The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token.
@@ -39,7 +41,7 @@ SSAS_ADMIN_CLIENT_SECRET := 21bc0f337d9d1ad1084a5ac5e63e3c8a36519a932d9f7b885530
 #    export ACO_CMS_ID=A9999; make postman env=local
 # or
 #    ACO_CMS_ID=A9999 make postman env=local
-ACO_CMS_ID ?= A9994
+ACO_CMS_ID ?= A9990
 clientTemp := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
 CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
 CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
@@ -65,7 +67,7 @@ postman:
 unit-test:
 	$(MAKE) unit-test-db
 	docker-compose -f docker-compose.test.yml build tests
-	docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
+	docker-compose -f docker-compose.test.yml run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) tests bash unit_test.sh
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
@@ -80,8 +82,6 @@ unit-test-db:
 	# Perform migrations to ensure matching schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
-
-	# Load some fixtures
 
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
@@ -119,7 +119,7 @@ load-fixtures:
 	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
 
 	# Additional fixtures for testing
-	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/ssas_fixtures.sql
+	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
 
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
