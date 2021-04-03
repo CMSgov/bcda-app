@@ -25,9 +25,22 @@ smoke-test:
 	docker-compose -f docker-compose.test.yml build tests
 	@BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
 
-BCDA_SSAS_CLIENT_ID = nil
-BCDA_SSAS_SECRET = nil
+BCDA_SSAS_CLIENT_ID = none
+BCDA_SSAS_SECRET = none
 postman:
+
+# Ensure we have the right BCDA_SSAS_SECRET if running the postman separately
+ifeq ($(BCDA_SSAS_CLIENT_ID), none)
+	$(info BCDA_SSAS_CLIENT_ID is nil, getting value.)
+	$(eval BCDA_SSAS_CLIENT_ID = 0c527d2e-2e8a-4808-b11d-0fa06baf8254)
+	$(eval BCDA_SSAS_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(BCDA_SSAS_CLIENT_ID)'|tail -n1))
+else
+endif
+
+	# Ensure api is started
+	@BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) docker-compose up -d api
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60"
+
 	$(eval ACO_CMS_ID := A9990)
 	$(eval clientTemp := $(shell docker-compose run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
 	$(eval CLIENT_ID := $(shell echo $(clientTemp) |awk '{print $$1}'))
@@ -38,7 +51,6 @@ postman:
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
 	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) api sh -c 'bcda reset-client-credentials --cms-id A9997'|tail -n2))
-	$(info LOOOOOOOOOOOOOOOOOK: $(BLACKLIST_TEMP))
 	$(eval BLACKLIST_CLIENT_ID:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$1}'))
 	$(eval BLACKLIST_CLIENT_SECRET:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$2}'))
 
@@ -83,7 +95,6 @@ test:
 	$(MAKE) smoke-test
 
 load-fixtures:
-
 	# Rebuild the databases to ensure that we're starting in a fresh state
 	docker-compose -f docker-compose.yml rm -fsv db queue
 
@@ -101,8 +112,8 @@ load-fixtures:
 	$(MAKE) load-fixtures-ssas
 
 	# Ensure components are started as expected
-	docker-compose up -d api worker ssas
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
+	docker-compose up -d worker ssas
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h ssas -p 3003 -t 60"
 
 	# Additional fixtures for testing
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
