@@ -489,6 +489,58 @@ func (s *CLITestSuite) TestCleanupFailed() {
 	}
 }
 
+func (s *CLITestSuite) TestCleanupCancelled() {
+	const threshold = 30
+	modified := time.Now().Add(-(time.Hour * (threshold + 1)))
+	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
+	// Job is old enough, but does not match the status
+	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+
+	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusCancelled, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
+
+	// Check that we can clean up jobs that do not have data
+	noDataID, noData := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
+	dir, _ := path.Split(noData.Name())
+	os.RemoveAll(dir)
+	assertFileNotExists(s.T(), noData.Name())
+
+	shouldExist := []*os.File{afterPayload, afterStaging, completed}
+	shouldNotExist := []*os.File{beforePayload, beforeStaging, noData}
+
+	defer func() {
+		for _, f := range append(shouldExist, shouldNotExist...) {
+			os.Remove(f.Name())
+			f.Close()
+		}
+	}()
+
+	err := s.testApp.Run([]string{"bcda", "cleanup-cancelled", "--threshold", strconv.Itoa(threshold)})
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), models.JobStatusCancelledExpired,
+		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCancelledExpired,
+		postgrestest.GetJobByID(s.T(), s.db, noDataID).Status)
+	assert.Equal(s.T(), models.JobStatusCancelledExpired,
+		postgrestest.GetJobByID(s.T(), s.db, beforeStagingJobID).Status)
+
+	assert.Equal(s.T(), models.JobStatusCancelled,
+		postgrestest.GetJobByID(s.T(), s.db, afterPayloadJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCancelled,
+		postgrestest.GetJobByID(s.T(), s.db, afterStagingJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCompleted,
+		postgrestest.GetJobByID(s.T(), s.db, completedJobID).Status)
+
+	for _, f := range shouldExist {
+		assert.FileExists(s.T(), f.Name())
+	}
+	for _, f := range shouldNotExist {
+		assertFileNotExists(s.T(), f.Name())
+	}
+}
+
 func (s *CLITestSuite) TestRevokeToken() {
 	originalAuthProvider := auth.GetProviderName()
 	defer auth.SetProvider(originalAuthProvider)
