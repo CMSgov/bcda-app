@@ -19,9 +19,15 @@ lint:
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
+SSAS_ADMIN_CLIENT_ID = none
+SSAS_ADMIN_CLIENT_SECRET = none
 smoke-test:
+ifeq ($(BCDA_SSAS_CLIENT_ID), none)
+	$(info SSAS_ADMIN_CLIENT_ID is none, getting value.)
 	$(eval SSAS_ADMIN_CLIENT_ID := 31e029ef-0e97-47f8-873c-0e8b7e7f99bf)
 	$(eval SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1))
+else
+endif
 	docker-compose -f docker-compose.test.yml build tests
 	@BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
 
@@ -31,7 +37,7 @@ postman:
 
 # Ensure we have the right BCDA_SSAS_SECRET if running the postman separately
 ifeq ($(BCDA_SSAS_CLIENT_ID), none)
-	$(info BCDA_SSAS_CLIENT_ID is nil, getting value.)
+	$(info BCDA_SSAS_CLIENT_ID is none, getting value.)
 	$(eval BCDA_SSAS_CLIENT_ID = 0c527d2e-2e8a-4808-b11d-0fa06baf8254)
 	$(eval BCDA_SSAS_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(BCDA_SSAS_CLIENT_ID)'|tail -n1))
 else
@@ -63,9 +69,12 @@ endif
 unit-test:
 	$(eval BCDA_SSAS_CLIENT_ID = 0c527d2e-2e8a-4808-b11d-0fa06baf8254)
 	$(eval BCDA_SSAS_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(BCDA_SSAS_CLIENT_ID)'|tail -n1))
+	$(eval SSAS_ADMIN_CLIENT_ID := 31e029ef-0e97-47f8-873c-0e8b7e7f99bf)
+	$(eval SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1))
 	$(MAKE) unit-test-db
 	docker-compose -f docker-compose.test.yml build tests
-	@docker-compose -f docker-compose.test.yml run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) tests bash unit_test.sh
+	@docker-compose -f docker-compose.test.yml run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) \
+	-e SSAS_ADMIN_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) -e SSAS_ADMIN_CLIENT_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) tests bash unit_test.sh
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.

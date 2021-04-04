@@ -15,9 +15,6 @@ function cleanup() {
 }
 trap cleanup EXIT
 
-SSAS_URL="http://ssas:3004" SSAS_PUBLIC_URL="http://ssas:3003" BCDA_SSAS_CLIENT_ID=$BCDA_SSAS_CLIENT_ID BCDA_SSAS_SECRET=$BCDA_SSAS_SECRET SSAS_ADMIN_CLIENT_ID=$BCDA_SSAS_CLIENT_ID SSAS_ADMIN_CLIENT_SECRET=$BCDA_SSAS_SECRET DEBUG=true docker-compose up -d api
-docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60"
-
 PIDS=()
 for CMS_ID in "${CMS_IDs[@]}"
 do
