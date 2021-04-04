@@ -121,7 +121,7 @@ load-fixtures:
 	$(MAKE) load-fixtures-ssas
 
 	# Ensure components are started as expected
-	docker-compose up -d worker ssas
+	docker-compose up -d worker ssas api
 	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h ssas -p 3003 -t 60"
 
 	# Additional fixtures for testing
