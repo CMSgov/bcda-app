@@ -9,6 +9,6 @@ COPY . .
 RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
-RUN go build
+RUN go install
 
-CMD ["../watch.sh", "worker", "main.go", "health.go"]
+CMD ["../watch.sh", "worker", "bcdaworker"]

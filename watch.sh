@@ -11,10 +11,10 @@ export ENTR_INOTIFY_WORKAROUND=true
 # start the docker service up again if changes are detected.
 if [ "$1" == "api" ]; then
     echo "Starting bcda api entr watcher..."
-    find . ../bcdaworker -name '*.go' | entr -nr go run -v "${@:2}"
+    find . ../bcdaworker -name '*.go' | entr -nr sh -c "go install -v && ${@:2}"
 fi
 
 if [ "$1" == "worker" ]; then
     echo "Starting bcda worker entr watcher..."
-    find . ../bcda -name '*.go' | entr -nr go run -v "${@:2}"
+    find . ../bcda -name '*.go' | entr -nr sh -c "go install -v && ${@:2}"
 fi
