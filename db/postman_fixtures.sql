@@ -1,5 +1,5 @@
 insert into groups(deleted_at, group_id, x_data, data)
-    values (null, 'A9997', '{"cms_ids":["A9994"]}', '{"name": "", "xdata": "", "group_id": "A9997"}'),
+    values (null, 'A9997', '{"cms_ids":["A9997"]}', '{"name": "", "xdata": "", "group_id": "A9997"}'),
            (null, 'A9990', '{"cms_ids":["A9990"]}', '{"name": "", "xdata": "", "group_id": "A9990"}');
 
 insert into systems(deleted_at, group_id, client_id, client_name, api_scope, g_id)
