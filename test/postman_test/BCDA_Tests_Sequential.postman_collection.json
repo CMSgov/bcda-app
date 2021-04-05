@@ -2620,8 +2620,8 @@
 							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Repeated Resource Type\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type\")",
+							"pm.test(\"Issue details text is Repeated resource type ExplanationOfBenefit\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type ExplanationOfBenefit\")",
 							"});"
 						],
 						"type": "text/javascript"
@@ -2997,8 +2997,8 @@
 							"    pm.expect(respJson.issue[0].details.coding[0].code).to.eql(\"Request Error\")",
 							"});",
 							"",
-							"pm.test(\"Issue details text is Repeated Resource Type\", function() {",
-							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type\")",
+							"pm.test(\"Issue details text is Repeated resource type ExplanationOfBenefit\", function() {",
+							"    pm.expect(respJson.issue[0].details.text).to.eql(\"Repeated resource type ExplanationOfBenefit\")",
 							"});"
 						],
 						"type": "text/javascript"
