@@ -50,7 +50,9 @@ func init() {
 func main() {
 	c := NewClient(accessToken, httpRetry)
 
-	c.httpClient.Timeout = httpTimeout // Set the timeout before throwing an error
+	// Set the timeouts before throwing an error
+	http.DefaultClient.Timeout = httpTimeout
+	c.httpClient.Timeout = httpTimeout
 
 	logFields := logrus.Fields{
 		"endpoint":      endpoint,
@@ -311,7 +313,6 @@ func (c *client) updateAccessToken() error {
 
 	// The retry logic may try to update the access token, to avoid a recursive
 	// retry loop we dont want to use the retry logic on updating the access token
-	http.DefaultClient.Timeout = httpTimeout
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
