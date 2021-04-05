@@ -1,18 +1,14 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
-	"regexp"
 	"strconv"
 
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 
 	"net/http"
-	"strings"
 	"time"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
@@ -30,11 +26,13 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
-	"github.com/CMSgov/bcda-app/conf"
 )
 
 type Handler struct {
+	JobTimeout time.Duration
+
 	Enq queueing.Enqueuer
 
 	Svc service.Service
@@ -51,9 +49,12 @@ type Handler struct {
 }
 
 func NewHandler(resources []string, basePath string) *Handler {
-	h := &Handler{}
+	return newHandler(resources, basePath, database.Connection)
+}
 
-	db := database.Connection
+func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
+	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
+
 	h.Enq = queueing.NewEnqueuer()
 
 	cfg, err := service.LoadConfig()
@@ -76,13 +77,8 @@ func NewHandler(resources []string, basePath string) *Handler {
 }
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
-	resourceTypes, err := h.validateRequest(r)
-	if err != nil {
-		responseutils.WriteError(err, w, http.StatusBadRequest)
-		return
-	}
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	h.bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(w, r, reqType)
 }
 
 func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +92,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	switch groupID {
 	case groupAll:
 		// Set flag to retrieve new beneficiaries' historical data if _since param is provided and feature is turned on
+
 		_, ok := r.URL.Query()["_since"]
 		if ok && utils.GetEnvBool("BCDA_ENABLE_NEW_GROUP", false) {
 			reqType = service.RetrieveNewBeneHistData
@@ -112,35 +109,39 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resourceTypes, err := h.validateRequest(r)
-	if err != nil {
-		responseutils.WriteError(err, w, http.StatusBadRequest)
-		return
-	}
-
-	h.bulkRequest(resourceTypes, w, r, reqType)
+	h.bulkRequest(w, r, reqType)
 }
 
-func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
+func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
-	ctx := context.Background()
+	ctx := r.Context()
 
 	var (
-		ad      auth.AuthData
-		version string
-		err     error
+		ad  auth.AuthData
+		err error
 	)
-
-	if version, err = getVersion(r.URL); err != nil {
-		log.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-			responseutils.RequestErr, err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-	}
 
 	if ad, err = readAuthData(r); err != nil {
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.TokenErr, "")
 		responseutils.WriteError(oo, w, http.StatusUnauthorized)
+		return
+	}
+
+	rp, ok := middleware.RequestParametersFromContext(ctx)
+	if !ok {
+		panic("Request parameters must be set prior to calling this handler.")
+	}
+
+	resourceTypes := rp.ResourceTypes
+	// If caller does not supply resource types, we default to all supported resource types
+	if len(resourceTypes) == 0 {
+		resourceTypes = []string{"Patient", "ExplanationOfBenefit", "Coverage"}
+	}
+
+	if err = h.validateRequest(resourceTypes); err != nil {
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
+			err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
 	}
 
@@ -154,39 +155,6 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 
 	acoID := uuid.Parse(ad.ACOID)
-
-	// If we really do find this record with the below matching criteria then this particular ACO has already made
-	// a bulk data request and it has yet to finish. Users will be presented with a 429 Too-Many-Requests error until either
-	// their job finishes or time expires (+24 hours default) for any remaining jobs left in a pending or in-progress state.
-	// Overall, this will prevent a queue of concurrent calls from slowing up our system.
-	// NOTE: this logic is relevant to PROD only; simultaneous requests in our lower environments is acceptable (i.e., shared opensbx creds)
-	if conf.GetEnv("DEPLOYMENT_TARGET") == "prod" {
-		pendingAndInProgressJobs, err := h.r.GetJobs(ctx, acoID, models.JobStatusInProgress, models.JobStatusPending)
-		if err != nil {
-			err = errors.Wrap(err, "failed to lookup pending and in-progress jobs")
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		}
-		if len(pendingAndInProgressJobs) > 0 {
-			if types, err := check429(pendingAndInProgressJobs, resourceTypes, version); err != nil {
-				if _, ok := err.(duplicateTypeError); ok {
-					w.Header().Set("Retry-After", strconv.Itoa(utils.GetEnvInt("CLIENT_RETRY_AFTER_IN_SECONDS", 0)))
-					w.WriteHeader(http.StatusTooManyRequests)
-				} else {
-					log.Error(err)
-					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-						responseutils.InternalErr, "")
-					responseutils.WriteError(oo, w, http.StatusInternalServerError)
-				}
-
-				return
-			} else {
-				resourceTypes = types
-			}
-		}
-	}
 
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
@@ -263,18 +231,6 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 	newJob.TransactionTime = b.Meta.LastUpdated
 
-	var since time.Time
-	// Decode the _since parameter (if it exists) so it can be persisted in job args
-	if params, ok := r.URL.Query()["_since"]; ok {
-		since, err = time.Parse(time.RFC3339Nano, params[0])
-		if err != nil {
-			log.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.RequestErr, err.Error())
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-		}
-	}
-
 	var queJobs []*models.JobEnqueueArgs
 
 	conditions := service.RequestConditions{
@@ -285,7 +241,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 		ACOID: newJob.ACOID,
 
 		JobID:           newJob.ID,
-		Since:           since,
+		Since:           rp.Since,
 		TransactionTime: newJob.TransactionTime,
 	}
 	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
@@ -321,7 +277,7 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	// error where the job does not exist. Since queuejobs are retried, the transient error will be resolved
 	// once we finish inserting the job.
 	for _, j := range queJobs {
-		sinceParam := (!since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData)
+		sinceParam := (!rp.Since.IsZero() || conditions.ReqType == service.RetrieveNewBeneHistData)
 		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
 
 		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {
@@ -334,130 +290,15 @@ func (h *Handler) bulkRequest(resourceTypes []string, w http.ResponseWriter, r *
 	}
 }
 
-func (h *Handler) validateRequest(r *http.Request) ([]string, *fhirmodels.OperationOutcome) {
-
-	// validate optional "_type" parameter
-	var resourceTypes []string
-	params, ok := r.URL.Query()["_type"]
-	if ok {
-		resourceMap := make(map[string]bool)
-		params = strings.Split(params[0], ",")
-		for _, p := range params {
-			if !resourceMap[p] {
-				resourceMap[p] = true
-				resourceTypes = append(resourceTypes, p)
-			} else {
-				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Repeated resource type")
-				return nil, oo
-			}
-		}
-	} else {
-		// resource types not supplied in request; default to applying all resource types.
-		resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
-	}
+func (h *Handler) validateRequest(resourceTypes []string) error {
 
 	for _, resourceType := range resourceTypes {
 		if _, ok := h.supportedResources[resourceType]; !ok {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-				fmt.Sprintf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources))
-			return nil, oo
+			return fmt.Errorf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources)
 		}
 	}
 
-	// validate optional "_since" parameter
-	params, ok = r.URL.Query()["_since"]
-	if ok {
-		sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
-		if err != nil {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
-			return nil, oo
-		} else if sinceDate.After(time.Now()) {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
-			return nil, oo
-		}
-	}
-
-	//validate "_outputFormat" parameter
-	params, ok = r.URL.Query()["_outputFormat"]
-	if ok {
-		if params[0] != "ndjson" && params[0] != "application/fhir+ndjson" && params[0] != "application/ndjson" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "_outputFormat parameter must be application/fhir+ndjson, application/ndjson, or ndjson")
-			return nil, oo
-		}
-	}
-
-	// we do not support "_elements" parameter
-	_, ok = r.URL.Query()["_elements"]
-	if ok {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
-		return nil, oo
-	}
-
-	// Check and see if the user has a duplicated the query parameter symbol (?)
-	// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
-	for key := range r.URL.Query() {
-		if strings.HasPrefix(key, "?") {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
-			return nil, oo
-		}
-	}
-
-	return resourceTypes, nil
-}
-
-type duplicateTypeError struct{}
-
-func (e duplicateTypeError) Error() string {
-	return "Duplicate type found"
-}
-
-// check429 verifies that we do not have a duplicate resource type request based on the supplied in-progress/pending jobs.
-// Returns the unworkedTypes (if any)
-func check429(pendingAndInProgressJobs []*models.Job, types []string, version string) ([]string, error) {
-	var unworkedTypes []string
-
-	for _, t := range types {
-		worked := false
-		for _, job := range pendingAndInProgressJobs {
-			req, err := url.Parse(job.RequestURL)
-			if err != nil {
-				return nil, err
-			}
-			jobVersion, err := getVersion(req)
-			if err != nil {
-				return nil, err
-			}
-
-			// We allow different API versions to trigger jobs with the same resource type
-			if jobVersion != version {
-				continue
-			}
-
-			// If the job has timed-out we will allow new job to be created
-			if time.Now().After(job.CreatedAt.Add(GetJobTimeout())) {
-				continue
-			}
-
-			if requestedTypes, ok := req.Query()["_type"]; ok {
-				// if this type is being worked no need to keep looking, break out and go to the next type.
-				if strings.Contains(requestedTypes[0], t) {
-					worked = true
-					break
-				}
-			} else {
-				// we have an export all types that is still in progress
-				return nil, duplicateTypeError{}
-			}
-		}
-		if !worked {
-			unworkedTypes = append(unworkedTypes, t)
-		}
-	}
-	if len(unworkedTypes) == 0 {
-		return nil, duplicateTypeError{}
-	} else {
-		return unworkedTypes, nil
-	}
+	return nil
 }
 
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {
@@ -467,19 +308,6 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 		err = errors.New("no auth data in context")
 	}
 	return
-}
-
-func GetJobTimeout() time.Duration {
-	return time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))
-}
-
-func getVersion(url *url.URL) (string, error) {
-	re := regexp.MustCompile(`\/api\/(.*)\/[Patient|Group].*`)
-	parts := re.FindStringSubmatch(url.Path)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("unexpected path provided %s", url.Path)
-	}
-	return parts[1], nil
 }
 
 // swagger:model fileItem

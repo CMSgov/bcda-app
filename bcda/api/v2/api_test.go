@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 
@@ -149,12 +149,11 @@ func (s *APITestSuite) TestResourceTypes() {
 				u, err := url.Parse(fmt.Sprintf("/api/v2/%s/$export", ep))
 				assert.NoError(t, err)
 
-				q := u.Query()
-				if len(tt.resourceTypes) > 0 {
-					q.Add("_type", strings.Join(tt.resourceTypes, ","))
-
+				rp := middleware.RequestParameters{
+					Version:       "v2",
+					ResourceTypes: tt.resourceTypes,
 				}
-				u.RawQuery = q.Encode()
+
 				req := httptest.NewRequest("GET", u.String(), nil)
 				rctx := chi.NewRouteContext()
 				rctx.URLParams.Add("groupId", "all")
@@ -162,6 +161,7 @@ func (s *APITestSuite) TestResourceTypes() {
 
 				ad := s.getAuthData()
 				req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+				req = req.WithContext(middleware.NewRequestParametersContext(req.Context(), rp))
 
 				handler(rr, req)
 				assert.Equal(t, tt.statusCode, rr.Code)
