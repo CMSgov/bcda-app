@@ -119,6 +119,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 		{models.JobStatusExpired, http.StatusGone},
 		{models.JobStatusArchived, http.StatusGone},
 		{models.JobStatusCancelled, http.StatusNotFound},
+		{models.JobStatusCancelledExpired, http.StatusNotFound},
 	}
 
 	for _, tt := range tests {

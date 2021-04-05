@@ -208,7 +208,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.NotFoundErr, "")
 		responseutils.WriteError(oo, w, http.StatusGone)
-	case models.JobStatusCancelled:
+	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND,
 			responseutils.NotFoundErr, "Job has been cancelled.")
 		responseutils.WriteError(oo, w, http.StatusNotFound)

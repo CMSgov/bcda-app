@@ -43,8 +43,42 @@ type Config struct {
 	cutoffDuration time.Duration
 }
 
+type RunoutConfig struct {
+	CutoffDurationDays int    `conf:"RUNOUT_CUTOFF_DATE_DAYS" conf_default:"180"`
+	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2020-12-31"`
+	// Un-exported fields that are computed using the exported ones above
+	cutoffDuration time.Duration
+	claimThru      time.Time
+}
+
+type ACOConfig struct {
+	Model              string
+	Pattern            string `conf:"name_pattern"`
+	PerfYearTransition string `conf:"performance_year_transition"`
+	LookbackYears      int    `conf:"lookback_period"`
+	// Un-exported fields that are computed using the exported ones above
+	patternExp *regexp.Regexp
+	perfYear   time.Time
+}
+
 func (config Config) String() string {
 	return toJSON(config)
+}
+
+func (config RunoutConfig) String() string {
+	return toJSON(config)
+}
+
+func (config *ACOConfig) String() string {
+	return toJSON(config)
+}
+
+func toJSON(config interface{}) string {
+	d, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Sprintf("failed to marshal config %s", err.Error())
+	}
+	return string(d)
 }
 
 // Parse un-exported fields using the fields loaded via the config
@@ -81,32 +115,6 @@ func (cfg *Config) computeFields() (err error) {
 	return nil
 }
 
-type RunoutConfig struct {
-	CutoffDurationDays int    `conf:"RUNOUT_CUTOFF_DATE_DAYS" conf_default:"180"`
-	ClaimThruDate      string `conf:"RUNOUT_CLAIM_THRU_DATE" conf_default:"2020-12-31"`
-	// Un-exported fields that are computed using the exported ones above
-	cutoffDuration time.Duration
-	claimThru      time.Time
-}
-
-func (config RunoutConfig) String() string {
-	return toJSON(config)
-}
-
-type ACOConfig struct {
-	Model              string
-	Pattern            string `conf:"name_pattern"`
-	PerfYearTransition string `conf:"performance_year_transition"`
-	LookbackYears      int    `conf:"lookback_period"`
-	// Un-exported fields that are computed using the exported ones above
-	patternExp *regexp.Regexp
-	perfYear   time.Time
-}
-
-func (config *ACOConfig) String() string {
-	return toJSON(config)
-}
-
 // LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
 // We compute lookback time by evaluating the performance year transition and the number of lookback years.
 func (config *ACOConfig) LookbackTime() time.Time {
@@ -119,19 +127,12 @@ func (config *ACOConfig) LookbackTime() time.Time {
 
 	// If we passed our perf year transition, we consider us to be in the new performance year.
 	// Otherwise we are still in the previous performance year.
-	if now.Month() >= config.perfYear.Month() && now.Day() >= config.perfYear.Day() {
+	if now.Month() > config.perfYear.Month() || (now.Month() == config.perfYear.Month() &&
+		now.Day() >= config.perfYear.Day()) {
 		year = now.Year() - config.LookbackYears
 	} else {
 		year = now.Year() - 1 - config.LookbackYears
 	}
 
 	return time.Date(year, config.perfYear.Month(), config.perfYear.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-func toJSON(config interface{}) string {
-	d, err := json.Marshal(config)
-	if err != nil {
-		return fmt.Sprintf("failed to marshal config %s", err.Error())
-	}
-	return string(d)
 }

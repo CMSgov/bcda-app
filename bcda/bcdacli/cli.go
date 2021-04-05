@@ -379,6 +379,23 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
+			Name:     "cleanup-cancelled",
+			Category: "Cleanup",
+			Usage:    "Remove job directory and files from archive and update job status to Expired",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "threshold",
+					Usage:       "How long files should wait in archive before deletion",
+					Destination: &thresholdHr,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				cutoff := time.Now().Add(-(time.Hour * time.Duration(thresholdHr)))
+				return cleanupJob(cutoff, models.JobStatusCancelled, models.JobStatusCancelledExpired,
+					conf.GetEnv("FHIR_STAGING_DIR"), conf.GetEnv("FHIR_PAYLOAD_DIR"))
+			},
+		},
+		{
 			Name:     "import-cclf-directory",
 			Category: "Data import",
 			Usage:    "Import all CCLF files from the specified directory",
