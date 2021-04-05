@@ -100,7 +100,7 @@ func NewClient(accessToken string, retries int) *client {
 		if resp.StatusCode == http.StatusUnauthorized {
 			log.Info("Access token expired. Refreshing...")
 			if err := c.updateAccessToken(); err != nil {
-				return false, fmt.Errorf("failed to update access token %s", err.Error())
+				return true, fmt.Errorf("failed to update access token %s", err.Error())
 			}
 			return true, nil
 		}
