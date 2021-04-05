@@ -32,7 +32,7 @@ ifeq ($(SSAS_ADMIN_CLIENT_ID), None)
 endif
 
 	docker-compose -f docker-compose.test.yml build tests
-	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
+	@BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
 
 ACO_CMS_ID = None
 clientTemp = None
@@ -45,7 +45,7 @@ ifeq ($(BCDA_SSAS_CLIENT_ID), None)
 	$(eval BCDA_SSAS_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(BCDA_SSAS_CLIENT_ID)'|tail -n1))
 endif
 
-	BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) docker-compose up -d api
+	@BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) docker-compose up -d api
 
 	$(eval ACO_CMS_ID = A9994)
 
@@ -75,7 +75,7 @@ ifeq ($(SSAS_ADMIN_CLIENT_ID), None)
 endif
 	$(MAKE) unit-test-db
 	docker-compose -f docker-compose.test.yml build tests
-	docker-compose -f docker-compose.test.yml run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) \
+	@docker-compose -f docker-compose.test.yml run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) \
 	-e SSAS_ADMIN_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) -e SSAS_ADMIN_CLIENT_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) tests bash unit_test.sh
 
 unit-test-db:
