@@ -20,63 +20,28 @@ lint:
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
-SSAS_ADMIN_CLIENT_ID = None
-SSAS_ADMIN_CLIENT_SECRET = None
-BCDA_SSAS_CLIENT_ID = None
-BCDA_SSAS_SECRET = None
 smoke-test:
-ifeq ($(SSAS_ADMIN_CLIENT_ID), None)
-	$(info SSAS_ADMIN_CLIENT_ID is currently set to None..., getting correct value.)
-	$(eval SSAS_ADMIN_CLIENT_ID = 31e029ef-0e97-47f8-873c-0e8b7e7f99bf)
-	$(eval SSAS_ADMIN_CLIENT_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1))
-endif
-
 	docker-compose -f docker-compose.test.yml build tests
-	@BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
+	test/smoke_test/smoke_test.sh
 
-ACO_CMS_ID = None
-clientTemp = None
-CLIENT_ID = None
-CLIENT_SECRET = None
 postman:
-ifeq ($(BCDA_SSAS_CLIENT_ID), None)
-	$(info BCDA_SSAS_CLIENT_ID is currently set to None..., getting correct value.)
-	$(eval BCDA_SSAS_CLIENT_ID = 0c527d2e-2e8a-4808-b11d-0fa06baf8254)
-	$(eval BCDA_SSAS_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(BCDA_SSAS_CLIENT_ID)'|tail -n1))
-endif
-
-	@BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) docker-compose up -d api
-
-	$(eval ACO_CMS_ID = A9994)
-
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) api sh -c 'bcda reset-client-credentials --cms-id A9997'|tail -n2))
-
-	$(eval BLACKLIST_CLIENT_ID:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$1}'))
-	$(eval BLACKLIST_CLIENT_SECRET:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$2}'))
+	$(eval BCDA_SSAS_CLIENT_ID=$(shell docker exec bcda-app_api_1 env | grep BCDA_SSAS_CLIENT_ID | cut -d'=' -f2))
+	$(eval BLACKLIST_CLIENT_ID=$(shell docker exec bcda-app_api_1 env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
+	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker exec bcda-app_api_1 env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
+	$(eval BCDA_SSAS_SECRET=$(shell docker exec bcda-app_api_1 env | grep BCDA_SSAS_SECRET | cut -d'=' -f2))
 	docker-compose -f docker-compose.test.yml build postman_test
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+	@docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(BCDA_SSAS_CLIENT_ID) --global-var clientSecret=$(BCDA_SSAS_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET)
 
 unit-test:
-ifeq ($(BCDA_SSAS_CLIENT_ID), None)
-	$(info BCDA_SSAS_CLIENT_ID is currently set to None..., getting correct value.)
-	$(eval BCDA_SSAS_CLIENT_ID = 0c527d2e-2e8a-4808-b11d-0fa06baf8254)
-	$(eval BCDA_SSAS_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(BCDA_SSAS_CLIENT_ID)'|tail -n1))
-endif
-ifeq ($(SSAS_ADMIN_CLIENT_ID), None)
-	$(info SSAS_ADMIN_CLIENT_ID is currently set to None..., getting correct value.)
-	$(eval SSAS_ADMIN_CLIENT_ID = 31e029ef-0e97-47f8-873c-0e8b7e7f99bf)
-	$(eval SSAS_ADMIN_CLIENT_SECRET = $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1))
-endif
 	$(MAKE) unit-test-db
 	docker-compose -f docker-compose.test.yml build tests
-	@docker-compose -f docker-compose.test.yml run --rm -e BCDA_SSAS_CLIENT_ID=$(BCDA_SSAS_CLIENT_ID) -e BCDA_SSAS_SECRET=$(BCDA_SSAS_SECRET) \
-	-e SSAS_ADMIN_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) -e SSAS_ADMIN_CLIENT_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) tests bash unit_test.sh
+	@docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
@@ -127,7 +92,7 @@ load-fixtures:
 	docker-compose up -d api worker ssas
 	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
 
-	# Additional fixtures for testing
+	# Additional fixtures for postman+ssas
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
 
 load-synthetic-cclf-data:
@@ -184,7 +149,7 @@ bdt:
 	# supply this target with the necessary environment vars, e.g.:
 	# make bdt BDT_BASE_URL=<origin of API>
 	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt .
-	docker run --rm \
+	@docker run --rm \
 	-e BASE_URL='${BDT_BASE_URL}' \
 	-e CLIENT_ID='${CLIENT_ID}' \
 	-e SECRET='${CLIENT_SECRET}' \
@@ -197,6 +162,7 @@ documentation:
 	docker-compose up --exit-code-from openapi openapi
 
 credentials:
+	$(eval ACO_CMS_ID = A9994)
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: ACO_CMS_ID=A9993 make credentials 
-	docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
+	@docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
