@@ -112,6 +112,72 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	h.bulkRequest(w, r, reqType)
 }
 
+func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
+	ctx := r.Context()
+
+	ad, err := readAuthData(r)
+	if err != nil {
+		panic("Auth data must be set prior to calling this handler.")
+	}
+
+	rp, ok := middleware.RequestParametersFromContext(ctx)
+	if !ok {
+		panic("Request parameters must be set prior to calling this handler.")
+	}
+
+	if err := h.validateRequest(rp.ResourceTypes); err != nil {
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
+			err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
+	req := service.DefaultAlrRequest
+	if reqType == service.Runout {
+		req = service.RunoutAlrRequest
+	}
+
+	// // Need to create job in transaction instead of the very end of the process because we need
+	// // the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
+	// // in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
+	// tx, err := h.db.BeginTx(ctx, nil)
+	// if err != nil {
+	// 	err = errors.Wrap(err, "failed to start transaction")
+	// 	log.Error(err)
+	// 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+	// 		responseutils.InternalErr, err.Error())
+	// 	responseutils.WriteError(oo, w, http.StatusInternalServerError)
+	// 	return
+	// }
+	// // Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
+	// rtx := postgres.NewRepositoryTx(tx)
+
+	// newJob := models.Job{
+	// 	ACOID:      uuid.UUID(ad.ACOID),
+	// 	RequestURL: fmt.Sprintf("%s://%s%s", r.URL.Scheme, r.Host, r.URL),
+	// 	Status:     models.JobStatusPending,
+	// }
+
+	// Create job
+	job := &models.Job{}
+
+	alrJobs, err := h.Svc.GetAlrJobs(ctx, ad.CMSID, req, service.AlrRequestWindow{LowerBound: rp.Since})
+	if err != nil {
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
+			err.Error())
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		return
+	}
+
+	for _, j := range alrJobs {
+		j.ID = job.ID
+	}
+
+	job.JobCount = len(alrJobs)
+
+	// commit job
+}
+
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := r.Context()
@@ -161,6 +227,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		scheme = "https"
 	}
 
+	fmt.Printf("%s %s %s\n", r.URL.Scheme, r.Host, r.URL)
 	newJob := models.Job{
 		ACOID:      acoID,
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
