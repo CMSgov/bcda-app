@@ -24,6 +24,8 @@ var (
 	log                                                                                     logrus.FieldLogger
 )
 
+const httpTimeout = 10 * time.Second
+
 type OutputCollection []Output
 
 type Output struct {
@@ -48,7 +50,9 @@ func init() {
 func main() {
 	c := NewClient(accessToken, httpRetry)
 
-	c.httpClient.Timeout = 10 * time.Second // Set the timeout before throwing an error
+	// Set the timeouts before throwing an error
+	http.DefaultClient.Timeout = httpTimeout
+	c.httpClient.Timeout = httpTimeout
 
 	logFields := logrus.Fields{
 		"endpoint":      endpoint,
@@ -96,7 +100,7 @@ func NewClient(accessToken string, retries int) *client {
 		if resp.StatusCode == http.StatusUnauthorized {
 			log.Info("Access token expired. Refreshing...")
 			if err := c.updateAccessToken(); err != nil {
-				return false, fmt.Errorf("failed to update access token %s", err.Error())
+				return true, fmt.Errorf("failed to update access token %s", err.Error())
 			}
 			return true, nil
 		}
@@ -307,7 +311,9 @@ func (c *client) updateAccessToken() error {
 	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Add("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	// The retry logic may try to update the access token, to avoid a recursive
+	// retry loop we dont want to use the retry logic on updating the access token
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
