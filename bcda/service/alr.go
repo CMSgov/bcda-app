@@ -79,7 +79,7 @@ func (s *service) getWindow(cmsID string, current AlrRequestWindow, claimsDate t
 	}
 
 	for pattern, cfg := range s.acoConfig {
-		if pattern.MatchString(cmsID) {
+		if pattern.MatchString(cmsID) && !cfg.LookbackTime().IsZero() {
 			new.LowerBound = cfg.LookbackTime()
 			break
 		}

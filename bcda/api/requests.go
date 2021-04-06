@@ -78,6 +78,7 @@ func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	log.Info(r.URL.String())
 	if isALRRequest(r) {
 		h.alrRequest(w, r, reqType)
 		return

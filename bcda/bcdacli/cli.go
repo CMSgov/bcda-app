@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/alr/csv"
+	"github.com/CMSgov/bcda-app/bcda/alr/gen"
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	authclient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/auth/rsautils"
@@ -431,6 +433,42 @@ func setUpApp() *cli.App {
 				}
 				fmt.Fprintf(app.Writer, "Completed CCLF runout file generation. Generated %d zip files.", rc)
 				return nil
+			},
+		},
+		{
+			Name:     "generate-alr-data",
+			Category: "Data import",
+			Usage:    "Generate and ingest ALR data associated with a particular ACO",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "cms-id",
+					Usage:       "CMS ID of ACO",
+					Destination: &acoCMSID,
+				},
+			},
+			Action: func(c *cli.Context) error {
+				file, err := r.GetLatestCCLFFile(context.Background(), acoCMSID, 8, "Completed",
+					time.Time{}, time.Time{}, models.FileTypeDefault)
+				if err != nil {
+					fmt.Fprintf(app.Writer, "%s\n", err)
+					return err
+				}
+				fmt.Printf("%+v %s\n", file, acoCMSID)
+
+				mbiSupplier := func() ([]string, error) {
+					return r.GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
+				}
+				if err := gen.UpdateCSV("./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv", mbiSupplier); err != nil {
+					return err
+				}
+
+				entries, err := csv.ToALR("./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv")
+				alrRepo := postgres.NewAlrRepo(database.Connection)
+				alrs := make([]models.Alr, 0, len(entries))
+				for idx := range entries {
+					alrs = append(alrs, *entries[idx])
+				}
+				return alrRepo.AddAlr(context.Background(), acoCMSID, time.Now(), alrs)
 			},
 		},
 		{

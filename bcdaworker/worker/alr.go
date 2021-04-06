@@ -6,12 +6,15 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/google/fhir/go/jsonformat"
 	"github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
@@ -28,6 +31,7 @@ import (
 
 type AlrWorker struct {
 	*postgres.AlrRepository
+	repository.Repository
 	FHIR_STAGING_DIR string
 	ndjsonFilename   string
 }
@@ -48,9 +52,10 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 
 	// embed data struct that has method GetAlr
 	worker := AlrWorker{
-		AlrRepository:    alrR,
-		FHIR_STAGING_DIR: "",
-		ndjsonFilename:   "", // Filled in later
+		AlrRepository: alrR,
+		Repository:    workerpg.NewRepository(db),
+		// FHIR_STAGING_DIR: "",
+		ndjsonFilename: "", // Filled in later
 	}
 
 	err := conf.Checkout(&worker) // worker is already a reference, no & needed
@@ -172,5 +177,15 @@ func (a *AlrWorker) ProcessAlrJob(
 	close(c)
 
 	// Wait on the go routine to finish
-	return <-result
+	if err := <-result; err != nil {
+		return fmt.Errorf("failed to write data: %w", err)
+	}
+
+	jk := models.JobKey{JobID: id, FileName: filepath.Base(f.Name()), ResourceType: "ALR"}
+	if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
+		return fmt.Errorf("failed to create job key: %w", err)
+	}
+
+	return nil
+
 }

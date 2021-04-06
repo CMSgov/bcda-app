@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -10,10 +11,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
-	"github.com/go-chi/chi"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
-	"gotest.tools/gotestsum/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
@@ -47,10 +47,12 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 	}
 
 	newJob := models.Job{
-		ACOID:      uuid.UUID(ad.ACOID),
+		ACOID:      uuid.Parse(ad.ACOID),
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.Path),
 		Status:     models.JobStatusPending,
+		TransactionTime: time.Now(),
 	}
+	fmt.Printf("Creating new job %+v %+v\n", newJob, ad)
 
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -113,8 +115,9 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 // to specify an ALR resource.
 func isALRRequest(r *http.Request) bool {
 	//ype=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR
-	typeParam := chi.URLParam(r, "_type")
-	typeFilterParam := chi.URLParam(r, "_typeFilter")
+	typeParam := r.URL.Query().Get("_type")
+	typeFilterParam := r.URL.Query().Get("_typeFilter")
+	log.Infof("Have Results: %s %s %v", typeParam, typeFilterParam, r.URL.Query())
 
 	hasType := typeParam == "Patient,Observation" ||
 		typeParam == "Observation,Patient"
