@@ -2,11 +2,11 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/go-chi/chi"
-	"github.com/pkg/errors"
 
 	"net/http"
 	"time"
@@ -78,6 +78,10 @@ func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	if isALRRequest(r) {
+		h.alrRequest(w, r, reqType)
+		return
+	}
 	h.bulkRequest(w, r, reqType)
 }
 
@@ -109,73 +113,11 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isALRRequest(r) {
+		h.alrRequest(w, r, reqType)
+		return
+	}
 	h.bulkRequest(w, r, reqType)
-}
-
-func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
-	ctx := r.Context()
-
-	ad, err := readAuthData(r)
-	if err != nil {
-		panic("Auth data must be set prior to calling this handler.")
-	}
-
-	rp, ok := middleware.RequestParametersFromContext(ctx)
-	if !ok {
-		panic("Request parameters must be set prior to calling this handler.")
-	}
-
-	if err := h.validateRequest(rp.ResourceTypes); err != nil {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-			err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
-
-	req := service.DefaultAlrRequest
-	if reqType == service.Runout {
-		req = service.RunoutAlrRequest
-	}
-
-	// // Need to create job in transaction instead of the very end of the process because we need
-	// // the newJob.ID field to be set in the associated queuejobs. By doing the job creation (and update)
-	// // in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
-	// tx, err := h.db.BeginTx(ctx, nil)
-	// if err != nil {
-	// 	err = errors.Wrap(err, "failed to start transaction")
-	// 	log.Error(err)
-	// 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-	// 		responseutils.InternalErr, err.Error())
-	// 	responseutils.WriteError(oo, w, http.StatusInternalServerError)
-	// 	return
-	// }
-	// // Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
-	// rtx := postgres.NewRepositoryTx(tx)
-
-	// newJob := models.Job{
-	// 	ACOID:      uuid.UUID(ad.ACOID),
-	// 	RequestURL: fmt.Sprintf("%s://%s%s", r.URL.Scheme, r.Host, r.URL),
-	// 	Status:     models.JobStatusPending,
-	// }
-
-	// Create job
-	job := &models.Job{}
-
-	alrJobs, err := h.Svc.GetAlrJobs(ctx, ad.CMSID, req, service.AlrRequestWindow{LowerBound: rp.Since})
-	if err != nil {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-			err.Error())
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
-		return
-	}
-
-	for _, j := range alrJobs {
-		j.ID = job.ID
-	}
-
-	job.JobCount = len(alrJobs)
-
-	// commit job
 }
 
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
@@ -227,7 +169,6 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		scheme = "https"
 	}
 
-	fmt.Printf("%s %s %s\n", r.URL.Scheme, r.Host, r.URL)
 	newJob := models.Job{
 		ACOID:      acoID,
 		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL),
@@ -239,7 +180,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
-		err = errors.Wrap(err, "failed to start transaction")
+		err = fmt.Errorf("failed to start transaction: %w", err)
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.InternalErr, "")
@@ -318,7 +259,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 			oo       *fhirmodels.OperationOutcome
 			respCode int
 		)
-		if _, ok := errors.Cause(err).(service.CCLFNotFoundError); ok && reqType == service.Runout {
+		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok && reqType == service.Runout {
 			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, err.Error())
 			respCode = http.StatusNotFound
