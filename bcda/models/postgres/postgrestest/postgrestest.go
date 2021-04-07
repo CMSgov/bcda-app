@@ -292,6 +292,17 @@ func GetSuppressionsByFileID(t *testing.T, db *sql.DB, fileID uint) []models.Sup
 	return suppressions
 }
 
+func GetALRCount(t *testing.T, db *sql.DB, cmsID string) int {
+	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(*)").From("alr a")
+	sb.Join("alr_meta b", "a.metakey = b.id")
+	sb.Where(sb.Equal("b.aco", cmsID))
+
+	query, args := sb.Build()
+	var count int
+	assert.NoError(t, db.QueryRow(query, args...).Scan(&count))
+	return count
+}
+
 func getFileIDsForCMSID(db *sql.DB, cmsID string) ([]interface{}, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id").From("cclf_files")
 	sb.Where(sb.Equal("aco_cms_id", cmsID))

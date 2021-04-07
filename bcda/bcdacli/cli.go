@@ -64,7 +64,7 @@ func setUpApp() *cli.App {
 		r = postgres.NewRepository(db)
 		return nil
 	}
-	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType string
+	var acoName, acoCMSID, acoID, accessToken, acoSize, filePath, dirToDelete, environment, groupID, groupName, ips, fileType, alrFile string
 	var thresholdHr int
 	var httpPort, httpsPort int
 	app.Commands = []cli.Command{
@@ -445,24 +445,46 @@ func setUpApp() *cli.App {
 					Usage:       "CMS ID of ACO",
 					Destination: &acoCMSID,
 				},
+				cli.StringFlag{
+					Name:        "alr-template-file",
+					Usage:       "File path for ALR template file",
+					Destination: &alrFile,
+					Value:       "./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv",
+				},
 			},
 			Action: func(c *cli.Context) error {
 				file, err := r.GetLatestCCLFFile(context.Background(), acoCMSID, 8, "Completed",
 					time.Time{}, time.Time{}, models.FileTypeDefault)
 				if err != nil {
-					fmt.Fprintf(app.Writer, "%s\n", err)
 					return err
 				}
-				fmt.Printf("%+v %s\n", file, acoCMSID)
+
+				tempFile, err := ioutil.TempFile("", "*")
+				if err != nil {
+					return err
+				}
+				in, err := os.Open(alrFile)
+				if err != nil {
+					return err
+				}
+				defer utils.CloseFileAndLogError(in)
+
+				if _, err := io.Copy(tempFile, in); err != nil {
+					return err
+				}
 
 				mbiSupplier := func() ([]string, error) {
 					return r.GetCCLFBeneficiaryMBIs(context.Background(), file.ID)
 				}
-				if err := gen.UpdateCSV("./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv", mbiSupplier); err != nil {
+				if err := gen.UpdateCSV(tempFile.Name(), mbiSupplier); err != nil {
 					return err
 				}
 
-				entries, err := csv.ToALR("./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv")
+				entries, err := csv.ToALR(tempFile.Name())
+				if err != nil {
+					return err
+				}
+
 				alrRepo := postgres.NewAlrRepo(database.Connection)
 				alrs := make([]models.Alr, 0, len(entries))
 				for idx := range entries {

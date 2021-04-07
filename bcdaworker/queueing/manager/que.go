@@ -43,8 +43,8 @@ type masterQueue struct {
 	*queue
 	*alrQueue // This is defined in alr.go
 
-	FHIR_STAGING_DIR string
-	FHIR_PAYLOAD_DIR string
+	StagingDir string `conf:"FHIR_STAGING_DIR"`
+	PayloadDir string `conf:"FHIR_PAYLOAD_DIR"`
 }
 
 func newMasterQueue(q *queue, qAlr *alrQueue) *masterQueue {

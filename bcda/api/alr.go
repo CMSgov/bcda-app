@@ -47,12 +47,11 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 	}
 
 	newJob := models.Job{
-		ACOID:      uuid.Parse(ad.ACOID),
-		RequestURL: fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.Path),
-		Status:     models.JobStatusPending,
+		ACOID:           uuid.Parse(ad.ACOID),
+		RequestURL:      fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.Path),
+		Status:          models.JobStatusPending,
 		TransactionTime: time.Now(),
 	}
-	fmt.Printf("Creating new job %+v %+v\n", newJob, ad)
 
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {

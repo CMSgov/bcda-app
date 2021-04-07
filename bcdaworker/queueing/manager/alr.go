@@ -72,14 +72,11 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return err
 	}
 
-	// Successfully process job, increment the compeleted count.
 	// Since the completed count is used for reporting (not for job completion), we do not
-	// need to wait for it to succeed
-	go func() {
-		if err := q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID); err != nil {
-			q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
-		}
-	}()
+	// need it to succeed for moving on.
+	if err := q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID); err != nil {
+		q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
+	}
 
 	jobComplete, err := q.isJobComplete(ctx, jobArgs.ID)
 	if err != nil {
@@ -89,14 +86,12 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	if jobComplete {
 		// Finished writing all data, we can now move the data over to the payload directory
-		err := os.Rename(fmt.Sprintf("%s/%d", q.FHIR_STAGING_DIR, jobArgs.ID), fmt.Sprintf("%s/%d", q.FHIR_PAYLOAD_DIR, jobArgs.ID))
+		err := os.Rename(fmt.Sprintf("%s/%d", q.StagingDir, jobArgs.ID), fmt.Sprintf("%s/%d", q.PayloadDir, jobArgs.ID))
 		if err != nil {
 			q.alrLog.Warnf("Failed to move data to payload directory %s", err)
 			return err
 		}
 
-		// NOTE: This assumes that there is a single que.Job for the job. This may not be the case.
-		// Update DB that work is done / success
 		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusCompleted)
 		if err != nil {
 			// This means the job did not finish for various reason
