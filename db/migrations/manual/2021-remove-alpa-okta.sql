@@ -1,0 +1,1 @@
+ALTER TABLE xxx DROP COLUMN xxxx;
