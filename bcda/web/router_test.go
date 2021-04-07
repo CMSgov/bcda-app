@@ -343,6 +343,7 @@ func (s *RouterTestSuite) TestRateLimitRoutes() {
 	for _, tt := range tests {
 		s.T().Run(tt.target, func(t *testing.T) {
 			conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", tt.target)
+			conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
 			router := NewAPIRouter().(chi.Router)
 			assert.NotNil(s.T(), router)
 
