@@ -63,6 +63,16 @@ type Credentials struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
+type CommonClaims struct {
+	ClientID string   `json:"cid,omitempty"`
+	SystemID string   `json:"sys,omitempty"`
+	Data     string   `json:"dat,omitempty"`
+	Scopes   []string `json:"scp,omitempty"`
+	ACOID    string   `json:"aco,omitempty"`
+	UUID     string   `json:"id,omitempty"`
+	jwt.StandardClaims
+}
+
 // Provider defines operations performed through an authentication provider.
 type Provider interface {
 	// RegisterSystem adds a software client for the ACO identified by localID.
