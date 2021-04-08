@@ -41,14 +41,21 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 		req = service.RunoutAlrRequest
 	}
 
+	// Depending on how the request is sent to the handler,
+	// the r.URL.Scheme may be unset.
 	scheme := "http"
 	if servicemux.IsHTTPS(r) {
 		scheme = "https"
 	}
 
+	requestURL := fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.Path)
+	if r.URL.RawQuery != "" {
+		requestURL = fmt.Sprintf("%s?%s", requestURL, r.URL.RawQuery)
+	}
+
 	newJob := models.Job{
 		ACOID:           uuid.Parse(ad.ACOID),
-		RequestURL:      fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.Path),
+		RequestURL:      requestURL,
 		Status:          models.JobStatusPending,
 		TransactionTime: time.Now(),
 	}

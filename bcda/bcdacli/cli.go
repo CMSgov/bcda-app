@@ -436,7 +436,7 @@ func setUpApp() *cli.App {
 			},
 		},
 		{
-			Name:     "generate-alr-data",
+			Name:     "generate-synthetic-alr-data",
 			Category: "Data import",
 			Usage:    "Generate and ingest synthetic ALR data associated with a particular ACO",
 			Flags: []cli.Flag{

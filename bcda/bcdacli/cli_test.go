@@ -983,7 +983,7 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 
 func (s *CLITestSuite) TestGenerateAlrData() {
 	initialCount := postgrestest.GetALRCount(s.T(), s.db, "A9994")
-	args := []string{"bcda", "generate-alr-data", "--cms-id", "A9994",
+	args := []string{"bcda", "generate-synthetic-alr-data", "--cms-id", "A9994",
 		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"}
 	err := s.testApp.Run(args)
 	assert.NoError(s.T(), err)

@@ -107,11 +107,14 @@ load-fixtures:
 	# Initialize schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
-	
+
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
+	
+	# Add ALR data for ACO under test. Must have attribution already set.
+	docker-compose run api sh -c 'bcda generate-synthetic-alr-data -cms-id=$(ACO_CMS_ID)'
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
