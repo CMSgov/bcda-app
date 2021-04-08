@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	Alpha = "alpha"
-	Okta  = "okta"
-	SSAS  = "ssas"
+	SSAS = "ssas"
 )
 
 var providerName = SSAS
@@ -24,13 +22,8 @@ var repository models.Repository
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	// SetProvider(strings.ToLower(conf.GetEnv(`BCDA_AUTH_PROVIDER`)))
 
 	repository = postgres.NewRepository(database.Connection)
-}
-
-func SetProvider(name string) {
-	providerName = SSAS
 }
 
 func GetProviderName() string {

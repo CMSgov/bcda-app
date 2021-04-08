@@ -17,8 +17,6 @@
         "FHIR_PAYLOAD_DIR": "${workspaceFolder}/bcdaworker/data",
         "FHIR_STAGING_DIR": "${workspaceFolder}/bcdaworker/tmpdata",
         "FHIR_ARCHIVE_DIR": "${workspaceFolder}/bcdaworker/archive",
-        "JWT_PRIVATE_KEY_FILE": "${workspaceFolder}/shared_files/api_unit_test_auth_private.pem",
-        "JWT_PUBLIC_KEY_FILE": "${workspaceFolder}/shared_files/api_unit_test_auth_public.pem",
     },
     "go.testEnvFile": "${workspaceFolder}/shared_files/decrypted/local.env",
     "go.testFlags": [

@@ -76,23 +76,6 @@ func SetAndRestoreEnvKey(key, value string) func() {
 	}
 }
 
-// SetUnitTestKeysForAuth sets the env vars auth uses to locate its signing key pair. Intended for use only
-// by unit tests of the API. Should be called by any API test that uses the auth backend. Returns a function
-// that will restore the original values, suitable for use with defer.
-func SetUnitTestKeysForAuth() func() {
-	private := SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
-	public := SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
-
-	return func() {
-		private()
-		public()
-	}
-	// if these paths are incorrect, unit tests will fail with an unhelpful panic referencing a logrus entry
-	// these paths only work because we assume that the binary location doesn't change from test to test or env to env
-	// the issue, and a path to a more robust solution, is well described in
-	// https://stackoverflow.com/questions/45579312/loading-a-needed-file-relative-vs-absolute-paths
-}
-
 func MakeDirToDelete(s suite.Suite, filePath string) {
 	assert := assert.New(s.T())
 	_, err := os.Create(filepath.Join(filePath, "deleteMe1.txt"))

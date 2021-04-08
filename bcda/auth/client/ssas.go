@@ -196,13 +196,14 @@ func (c *SSASClient) CreateSystem(clientName, groupID, scope, publicKey, trackin
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
-		return nil, errors.New(fmt.Sprintf("failed to create system. status code: %v", resp.StatusCode))
-	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read response body")
+	}
+	fmt.Println(string(body))
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, errors.New(fmt.Sprintf("failed to create system. status code: %v", resp.StatusCode))
 	}
 
 	return body, nil
@@ -248,14 +249,17 @@ func (c *SSASClient) ResetCredentials(systemID string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
-		return nil, errors.New(fmt.Sprintf("failed to reset credentials. status code: %v", resp.StatusCode))
-	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to reset credentials")
 	}
+	fmt.Println(string(body))
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, errors.New(fmt.Sprintf("failed to reset credentials. status code: %v", resp.StatusCode))
+	}
+
+	
 
 	return body, nil
 
