@@ -438,7 +438,7 @@ func setUpApp() *cli.App {
 		{
 			Name:     "generate-alr-data",
 			Category: "Data import",
-			Usage:    "Generate and ingest ALR data associated with a particular ACO",
+			Usage:    "Generate and ingest synthetic ALR data associated with a particular ACO",
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "cms-id",
@@ -463,7 +463,7 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
-				in, err := os.Open(alrFile)
+				in, err := os.Open(filepath.Clean(alrFile))
 				if err != nil {
 					return err
 				}

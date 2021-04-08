@@ -116,7 +116,6 @@ func isALRRequest(r *http.Request) bool {
 	//ype=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR
 	typeParam := r.URL.Query().Get("_type")
 	typeFilterParam := r.URL.Query().Get("_typeFilter")
-	log.Infof("Have Results: %s %s %v", typeParam, typeFilterParam, r.URL.Query())
 
 	hasType := typeParam == "Patient,Observation" ||
 		typeParam == "Observation,Patient"

@@ -112,7 +112,7 @@ func (a *alrCopyFromSource) Values() ([]interface{}, error) {
 	a.alrs = a.alrs[1:]
 
 	// Convert the map[string]string to slices of bytes
-	bytea, err := encoder(alr.KeyValue)
+	bytea, err := encoder(map[string]string{})
 	if err != nil {
 		return nil, err
 	}

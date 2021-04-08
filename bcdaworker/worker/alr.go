@@ -180,7 +180,14 @@ func (a *AlrWorker) ProcessAlrJob(
 		return fmt.Errorf("failed to write data: %w", err)
 	}
 
-	jk := models.JobKey{JobID: id, FileName: filepath.Base(f.Name()), ResourceType: "ALR"}
+	fileName := filepath.Base(f.Name())
+	// If we did not have an ALR data to write, we'll write a specific file name that indicates that the
+	// there is no data associated with this job.
+	if len(alrModels) == 0 {
+		fileName = models.BlankFileName
+	}
+
+	jk := models.JobKey{JobID: id, FileName: fileName, ResourceType: "ALR"}
 	if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
 		return fmt.Errorf("failed to create job key: %w", err)
 	}
