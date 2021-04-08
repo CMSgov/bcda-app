@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -320,6 +323,91 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			}
 		}
 	}
+}
+
+// Verifies that we have the rate limiting handlers in place for the correct environments
+func (s *RouterTestSuite) TestRateLimitRoutes() {
+	// patterns := []string{"/Group/{groupId}/$export", "/Patient/$export"}
+
+	env := conf.GetEnv("DEPLOYMENT_TARGET")
+	defer conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", env)
+
+	tests := []struct {
+		target       string
+		hasRateLimit bool
+	}{
+		{"dev", false},
+		{"prod", true},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.target, func(t *testing.T) {
+			conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", tt.target)
+			conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
+			router := NewAPIRouter().(chi.Router)
+			assert.NotNil(s.T(), router)
+
+			v1Router := getRouterForVersion("v1", router)
+			assert.NotNil(t, v1Router)
+			v2Router := getRouterForVersion("v2", router)
+			assert.NotNil(t, v2Router)
+
+			// Test all requests for all versions of the our API
+			for _, versionRouter := range []chi.Router{v1Router, v2Router} {
+				for _, ep := range []string{"/Group/{groupId}/$export", "/Patient/$export"} {
+					middlewares := getMiddlewareForHandler(ep, versionRouter)
+					assert.NotNil(t, middlewares)
+					var hasRateLimit bool
+					for _, mw := range middlewares {
+						assert.NotNil(t, mw)
+						// Use the pointer values of the middleware to check if we're
+						// using the rate limit functions.
+						// If the pointer value of the middleware matches the rate limit function, then
+						// we know that the middleware function used is the rate limit function
+						if reflect.ValueOf(mw) == reflect.ValueOf(middleware.CheckConcurrentJobs) {
+							hasRateLimit = true
+						}
+					}
+					assert.Equal(t, tt.hasRateLimit, hasRateLimit)
+				}
+			}
+		})
+	}
+}
+
+func getMiddlewareForHandler(pattern string, router chi.Router) chi.Middlewares {
+	for _, route := range router.Routes() {
+		if route.Pattern == pattern {
+			return route.Handlers["GET"].(*chi.ChainHandler).Middlewares
+		}
+		// Go through all of the children
+		if route.SubRoutes != nil {
+			middleware := getMiddlewareForHandler(pattern, route.SubRoutes.(chi.Router))
+			if middleware != nil {
+				return middleware
+			}
+		}
+	}
+	// No matches
+	return nil
+}
+
+// getRouterForVersion retrives the underlying router associated with a particular versioned endpoint
+func getRouterForVersion(version string, router chi.Router) chi.Router {
+	for _, route := range router.Routes() {
+		if route.Pattern == fmt.Sprintf("/api/%s/*", version) {
+			return route.SubRoutes.(chi.Router)
+		}
+		// Go through all of the children
+		if route.SubRoutes != nil {
+			router := getRouterForVersion(version, route.SubRoutes.(chi.Router))
+			if router != nil {
+				return router
+			}
+		}
+	}
+
+	return nil
 }
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))

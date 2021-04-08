@@ -10,10 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +21,6 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
@@ -35,7 +31,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
 )
 
@@ -49,42 +44,25 @@ var (
 
 type APITestSuite struct {
 	suite.Suite
-	rr    *httptest.ResponseRecorder
-	db    *sql.DB
-	reset func()
+	rr *httptest.ResponseRecorder
+	db *sql.DB
 }
-
-type RequestParams struct {
-	resourceType string
-	since        string
-	outputFormat string
-}
-
-var origDate string
-var origBBCert string
-var origBBKey string
 
 func (s *APITestSuite) SetupSuite() {
-	s.reset = testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
-	origDate = conf.GetEnv("CCLF_REF_DATE")
+	origDate := conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", time.Now().Format("060102 15:01:01"))
 	conf.SetEnv(s.T(), "BB_REQUEST_RETRY_INTERVAL_MS", "10")
-	origBBCert = conf.GetEnv("BB_CLIENT_CERT_FILE")
+	origBBCert := conf.GetEnv("BB_CLIENT_CERT_FILE")
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../../shared_files/decrypted/bfd-dev-test-cert.pem")
-	origBBKey = conf.GetEnv("BB_CLIENT_KEY_FILE")
+	origBBKey := conf.GetEnv("BB_CLIENT_KEY_FILE")
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../../shared_files/decrypted/bfd-dev-test-key.pem")
 
-	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := &queueing.MockEnqueuer{}
-	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
-	h.Enq = enqueuer
-}
-
-func (s *APITestSuite) TearDownSuite() {
-	conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
-	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
-	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", origBBKey)
-	s.reset()
+	s.T().Cleanup(func() {
+		conf.SetEnv(s.T(), "CCLF_REF_DATE", origDate)
+		conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", origBBCert)
+		conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", origBBKey)
+		testUtils.SetUnitTestKeysForAuth() // needed until token endpoint moves to auth
+	})
 }
 
 func (s *APITestSuite) SetupTest() {
@@ -94,354 +72,6 @@ func (s *APITestSuite) SetupTest() {
 
 func (s *APITestSuite) TearDownTest() {
 	postgrestest.DeleteJobsByACOID(s.T(), s.db, acoUnderTest)
-}
-
-func (s *APITestSuite) TestBulkEOBRequest() {
-	since := "2020-02-13T08:00:00.000-05:00"
-	bulkEOBRequestHelper("Patient", "", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestHelper("Group/all", "", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestHelper("Patient", since, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestHelper("Group/all", since, s)
-}
-
-func (s *APITestSuite) TestBulkEOBRequestNoBeneficiariesInACO() {
-	bulkEOBRequestNoBeneficiariesInACOHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestNoBeneficiariesInACOHelper("Group/all", s)
-}
-
-func (s *APITestSuite) TestBulkEOBRequestMissingToken() {
-	bulkEOBRequestMissingTokenHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkEOBRequestMissingTokenHelper("Group/all", s)
-}
-
-func (s *APITestSuite) TestBulkPatientRequest() {
-	for _, since := range []string{"", "2020-02-13T08:00:00.000-05:00", "2020-02-13T08:00:00.000+05:00"} {
-		bulkPatientRequestHelper("Patient", since, s)
-		s.TearDownTest()
-		s.SetupTest()
-		bulkPatientRequestHelper("Group/all", since, s)
-		s.TearDownTest()
-		s.SetupTest()
-	}
-}
-
-func (s *APITestSuite) TestBulkCoverageRequest() {
-	requestParams := RequestParams{}
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	requestParams.since = "2020-02-13T08:00:00.000-05:00"
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-}
-
-func (s *APITestSuite) TestBulkCoverageRequestValidOutputFormatNDJSON() {
-	requestParams := RequestParams{outputFormat: "ndjson"}
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-}
-
-func (s *APITestSuite) TestBulkCoverageRequestValidOutputFormatApplicationNDJSON() {
-	requestParams := RequestParams{outputFormat: "application/ndjson"}
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-}
-
-func (s *APITestSuite) TestBulkCoverageRequestValidOutputFormatApplicationFHIR() {
-	requestParams := RequestParams{outputFormat: "application/fhir+ndjson"}
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-}
-
-func (s *APITestSuite) TestBulkCoverageRequestValidMultipleParameters() {
-	requestParams := RequestParams{outputFormat: "application/fhir+ndjson", since: "2020-02-13T08:00:00.000-05:00"}
-	bulkCoverageRequestHelper("Patient", requestParams, s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkCoverageRequestHelper("Group/all", requestParams, s)
-}
-
-func (s *APITestSuite) TestBulkConcurrentRequest() {
-	bulkConcurrentRequestHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkConcurrentRequestHelper("Group/all", s)
-}
-
-func (s *APITestSuite) TestBulkConcurrentRequestTime() {
-	bulkConcurrentRequestTimeHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkConcurrentRequestTimeHelper("Group/all", s)
-}
-
-func (s *APITestSuite) TestBulkPatientRequestBBClientFailure() {
-	bulkPatientRequestBBClientFailureHelper("Patient", s)
-	s.TearDownTest()
-	s.SetupTest()
-	bulkPatientRequestBBClientFailureHelper("Group/all", s)
-}
-
-func bulkEOBRequestHelper(endpoint, since string, s *APITestSuite) {
-	acoID := acoUnderTest
-	requestParams := RequestParams{resourceType: "ExplanationOfBenefit", since: since}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-}
-
-func bulkEOBRequestNoBeneficiariesInACOHelper(endpoint string, s *APITestSuite) {
-	acoID := uuid.Parse("A40404F7-1EF2-485A-9B71-40FE7ACDCBC2")
-	jobCount := s.getJobCount(acoID)
-
-	// Since we should've failed somewhere in the bulk request, we should not have
-	// have a job count change.
-	defer s.verifyJobCount(acoID, jobCount)
-
-	requestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-}
-
-func bulkEOBRequestMissingTokenHelper(endpoint string, s *APITestSuite) {
-	requestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusUnauthorized, s.rr.Code)
-
-	respOO := getOperationOutcome(s.T(), s.rr.Body.Bytes())
-
-	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
-	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
-	assert.Equal(s.T(), responseutils.TokenErr, respOO.Issue[0].Details.Coding[0].Code.Value)
-}
-
-func bulkPatientRequestHelper(endpoint, since string, s *APITestSuite) {
-	acoID := acoUnderTest
-
-	requestParams := RequestParams{resourceType: "Patient", since: since}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-}
-
-func bulkCoverageRequestHelper(endpoint string, requestParams RequestParams, s *APITestSuite) {
-	acoID := acoUnderTest
-
-	requestParams.resourceType = "Coverage"
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handler := http.HandlerFunc(handlerFunc)
-	handler.ServeHTTP(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
-}
-
-func bulkPatientRequestBBClientFailureHelper(endpoint string, s *APITestSuite) {
-	orig := conf.GetEnv("BB_CLIENT_CERT_FILE")
-	defer conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", orig)
-
-	err := conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "blah")
-	assert.Nil(s.T(), err)
-
-	acoID := acoUnderTest
-
-	jobCount := s.getJobCount(acoID)
-
-	// Since we should've failed somewhere in the bulk request, we should not have
-	// have a job count change.
-	defer s.verifyJobCount(acoID, jobCount)
-
-	requestParams := RequestParams{resourceType: "Patient"}
-	_, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	handlerFunc(s.rr, req)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-
-	assert.Equal(s.T(), http.StatusInternalServerError, s.rr.Code)
-}
-
-func bulkConcurrentRequestHelper(endpoint string, s *APITestSuite) {
-	err := conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", "prod")
-	defer conf.UnsetEnv(s.T(), "DEPLOYMENT_TARGET")
-	assert.Nil(s.T(), err)
-	acoID := acoUnderTest
-
-	firstRequestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, firstRequestParams)
-
-	j := models.Job{
-		ACOID:      acoID,
-		RequestURL: requestUrl,
-		Status:     models.JobStatusInProgress,
-		JobCount:   1,
-	}
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	tests := []struct {
-		status        models.JobStatus
-		expStatusCode int
-	}{
-		{models.JobStatusPending, http.StatusTooManyRequests},
-		{models.JobStatusInProgress, http.StatusTooManyRequests},
-		{models.JobStatusCompleted, http.StatusAccepted},
-		{models.JobStatusArchived, http.StatusAccepted},
-		{models.JobStatusExpired, http.StatusAccepted},
-		{models.JobStatusFailed, http.StatusAccepted},
-		{models.JobStatusCancelled, http.StatusAccepted},
-		{models.JobStatusFailedExpired, http.StatusAccepted},
-		{models.JobStatusCancelledExpired, http.StatusAccepted},
-	}
-	assert.Equal(s.T(), len(models.AllJobStatuses), len(tests), "Not all models.JobStatus tested.")
-
-	exp := regexp.MustCompile(`\/api\/v1\/jobs\/(\d+)`)
-	for _, tt := range tests {
-		s.T().Run(string(tt.status), func(t *testing.T) {
-			j.Status = tt.status
-			postgrestest.UpdateJob(s.T(), s.db, j)
-
-			rr := httptest.NewRecorder()
-			handlerFunc(rr, req)
-
-			assert.Equal(t, tt.expStatusCode, rr.Code)
-			// If we've created a job, we need to make sure it's removed to not affect other tests
-			if rr.Code == http.StatusAccepted {
-				jobID, err := strconv.ParseUint(exp.FindStringSubmatch(rr.Header().Get("Content-Location"))[1], 10, 64)
-				assert.NoError(t, err)
-				postgrestest.DeleteJobByID(t, s.db, uint(jobID))
-			}
-		})
-	}
-
-	// different aco same endpoint
-	j.ACOID, j.Status = uuid.Parse("DBBD1CE1-AE24-435C-807D-ED45953077D3"), models.JobStatusInProgress
-	postgrestest.UpdateJob(s.T(), s.db, j)
-	rr := httptest.NewRecorder()
-	handlerFunc(rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
-	jobID, err := strconv.ParseUint(exp.FindStringSubmatch(rr.Header().Get("Content-Location"))[1], 10, 64)
-	assert.NoError(s.T(), err)
-	postgrestest.DeleteJobByID(s.T(), s.db, uint(jobID))
-}
-
-func bulkConcurrentRequestTimeHelper(endpoint string, s *APITestSuite) {
-	err := conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", "prod")
-	defer conf.UnsetEnv(s.T(), "DEPLOYMENT_TARGET")
-	assert.Nil(s.T(), err)
-	acoID := acoUnderTest
-
-	requestParams := RequestParams{resourceType: "ExplanationOfBenefit"}
-	requestUrl, handlerFunc, req := bulkRequestHelper(endpoint, requestParams)
-
-	j := models.Job{
-		ACOID:      acoID,
-		RequestURL: requestUrl,
-		Status:     models.JobStatusInProgress,
-		JobCount:   1,
-	}
-
-	postgrestest.CreateJobs(s.T(), s.db, &j)
-
-	ad := s.makeContextValues(acoID)
-	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
-
-	// serve job
-	handler := http.HandlerFunc(handlerFunc)
-	rr := httptest.NewRecorder()
-
-	handler.ServeHTTP(rr, req)
-	assert.Equal(s.T(), http.StatusTooManyRequests, rr.Code)
-
-	// change created_at timestamp so that the job is considered expired.
-	// Use an offset to account for any clock skew
-	j.CreatedAt = j.CreatedAt.Add(-(api.GetJobTimeout() + time.Second))
-	postgrestest.UpdateJob(s.T(), s.db, j)
-
-	rr = httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	assert.Equal(s.T(), http.StatusAccepted, rr.Code)
-}
-
-func bulkRequestHelper(endpoint string, testRequestParams RequestParams) (string, func(http.ResponseWriter, *http.Request), *http.Request) {
-	var handlerFunc http.HandlerFunc
-	var req *http.Request
-	var group string
-
-	if endpoint == "Patient" {
-		handlerFunc = BulkPatientRequest
-	} else if endpoint == "Group/all" {
-		handlerFunc = BulkGroupRequest
-		group = "all"
-	}
-
-	requestUrl, _ := url.Parse(fmt.Sprintf("/api/v1/%s/$export", endpoint))
-	q := requestUrl.Query()
-	if testRequestParams.resourceType != "" {
-		q.Set("_type", testRequestParams.resourceType)
-	}
-	if testRequestParams.since != "" {
-		q.Set("_since", testRequestParams.since)
-	}
-	if testRequestParams.outputFormat != "" {
-		q.Set("_outputFormat", testRequestParams.outputFormat)
-	}
-
-	requestUrl.RawQuery = q.Encode()
-	req = httptest.NewRequest("GET", requestUrl.String(), nil)
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("groupId", group)
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-	return requestUrl.Path, handlerFunc, req
 }
 
 func (s *APITestSuite) TestJobStatusBadInputs() {
@@ -513,7 +143,7 @@ func (s *APITestSuite) TestJobStatusNotComplete() {
 			} else if rr.Code == http.StatusInternalServerError {
 				assert.Contains(t, rr.Body.String(), "Service encountered numerous errors")
 			} else if rr.Code == http.StatusGone {
-				assertExpiryEquals(t, j.CreatedAt.Add(api.GetJobTimeout()), rr.Header().Get("Expires"))
+				assertExpiryEquals(t, j.CreatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
 			}
 		})
 	}
@@ -544,7 +174,7 @@ func (s *APITestSuite) TestJobStatusCompleted() {
 	assert.Equal(s.T(), "application/json", s.rr.Header().Get("Content-Type"))
 	str := s.rr.Header().Get("Expires")
 	fmt.Println(str)
-	assertExpiryEquals(s.T(), j.CreatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.CreatedAt.Add(h.JobTimeout), s.rr.Header().Get("Expires"))
 
 	var rb api.BulkResponseBody
 	err := json.Unmarshal(s.rr.Body.Bytes(), &rb)
@@ -636,14 +266,14 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	}
 	postgrestest.CreateJobs(s.T(), s.db, &j)
 
-	j.UpdatedAt = time.Now().Add(-(api.GetJobTimeout() + time.Second))
+	j.UpdatedAt = time.Now().Add(-(h.JobTimeout + time.Second))
 	postgrestest.UpdateJob(s.T(), s.db, j)
 
 	req := s.createJobStatusRequest(acoUnderTest, j.ID)
 	JobStatus(s.rr, req)
 
 	assert.Equal(s.T(), http.StatusGone, s.rr.Code)
-	assertExpiryEquals(s.T(), j.UpdatedAt.Add(api.GetJobTimeout()), s.rr.Header().Get("Expires"))
+	assertExpiryEquals(s.T(), j.UpdatedAt.Add(h.JobTimeout), s.rr.Header().Get("Expires"))
 }
 
 func (s *APITestSuite) TestDeleteJobBadInputs() {
@@ -886,16 +516,6 @@ func (s *APITestSuite) TestHealthCheck() {
 // 	// set provider back to original value
 // 	auth.SetProvider(originalProvider)
 // }
-
-func (s *APITestSuite) verifyJobCount(acoID uuid.UUID, expectedJobCount int) {
-	count := s.getJobCount(acoID)
-	assert.Equal(s.T(), expectedJobCount, count)
-}
-
-func (s *APITestSuite) getJobCount(acoID uuid.UUID) int {
-	jobs := postgrestest.GetJobsByACOID(s.T(), s.db, acoID)
-	return len(jobs)
-}
 
 func (s *APITestSuite) makeContextValues(acoID uuid.UUID) (data auth.AuthData) {
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoID)
