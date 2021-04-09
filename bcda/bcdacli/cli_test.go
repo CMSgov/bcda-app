@@ -550,32 +550,6 @@ func (s *CLITestSuite) TestCleanupCancelled() {
 	}
 }
 
-// func (s *CLITestSuite) TestRevokeToken() {
-// 	originalAuthProvider := auth.GetProviderName()
-// 	defer auth.SetProvider(originalAuthProvider)
-// 	auth.SetProvider("alpha")
-// 	// init
-
-// 	assert := assert.New(s.T())
-
-// 	buf := new(bytes.Buffer)
-// 	s.testApp.Writer = buf
-
-// 	// Negative case - attempt to revoke a token passing in a blank token string
-// 	args := []string{"bcda", "revoke-token", "--access-token", ""}
-// 	err := s.testApp.Run(args)
-// 	assert.Equal("Access token (--access-token) must be provided", err.Error())
-// 	assert.Equal(0, buf.Len())
-// 	buf.Reset()
-
-// 	// Expect (for the moment) that alpha auth does not implement
-// 	args = []string{"bcda", "revoke-token", "--access-token", "this-token-value-is-immaterial"}
-// 	err = s.testApp.Run(args)
-// 	assert.EqualError(err, "RevokeAccessToken is not implemented for alpha auth")
-// 	assert.Equal(0, buf.Len())
-// 	buf.Reset()
-// }
-
 func (s *CLITestSuite) TestStartAPI() {
 	httpsPort, httpPort := strconv.Itoa(getRandomPort(s.T())), strconv.Itoa(getRandomPort(s.T()))
 	args := []string{"bcda", "start-api", "--https-port", httpsPort, "--http-port", httpPort}

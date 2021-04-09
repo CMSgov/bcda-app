@@ -272,10 +272,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	cmsID := "A9990"
 	id := constants.SmallACOUUID
 	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.Parse(id), ClientID: id}
-	// postgrestest.CreateACO(s.T(), db, *aco)
-	// acoUUID := aco.UUID
 
-	// defer postgrestest.DeleteACO(s.T(), db, acoUUID)
 	c, err := p.RegisterSystem(id, "", cmsID)
 	s.NoError(err)
 	token, err := p.MakeAccessToken(c)
