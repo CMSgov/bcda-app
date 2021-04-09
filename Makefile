@@ -41,8 +41,11 @@ postman:
 
 unit-test:
 	$(MAKE) unit-test-db
+	
 	# Since we do not have a mock auth provider, we need to ensure that we have the ssas container running
 	docker-compose up -d ssas
+	$(MAKE) load-fixtures-ssas
+
 	docker-compose -f docker-compose.test.yml build tests
 	@docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
