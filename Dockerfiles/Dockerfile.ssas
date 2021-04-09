@@ -7,10 +7,12 @@ RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
-COPY . .
 
+# Download all dependencies
+COPY tools.go .
 RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
 
+COPY . .
 WORKDIR /go
 
 # Clone bcda-ssas-app over running "go get" since we have issue determining
