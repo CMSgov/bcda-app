@@ -3,9 +3,12 @@ FROM golang:1.15-buster
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
+
+# Download all dependencies
+COPY go.mod go.sum tools.go ./
+RUN go mod download
+RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
+
 COPY . .
-
-RUN cat tools.go | awk '/[\/\/] test/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 ENTRYPOINT []
