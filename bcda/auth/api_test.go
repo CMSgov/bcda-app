@@ -35,7 +35,6 @@ type AuthAPITestSuite struct {
 	rr      *httptest.ResponseRecorder
 	db      *sql.DB
 	r       models.Repository
-	backend *auth.AlphaBackend
 	reset   func()
 }
 
@@ -46,7 +45,6 @@ func (s *AuthAPITestSuite) SetupSuite() {
 		private()
 		public()
 	}
-	s.backend = auth.InitAlphaBackend()
 
 	s.db = database.Connection
 	s.r = postgres.NewRepository(s.db)
@@ -96,7 +94,7 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 	// Success!?
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", "")
+	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", constants.DevACOUUID)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)
@@ -124,7 +122,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 
 	s.rr = httptest.NewRecorder()
 	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", "")
+	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", constants.DevACOUUID)
 	assert.Nil(s.T(), err)
 	assert.NotEmpty(s.T(), creds.ClientID)
 	assert.NotEmpty(s.T(), creds.ClientSecret)

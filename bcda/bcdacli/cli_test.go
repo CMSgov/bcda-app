@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -54,8 +53,6 @@ func (s *CLITestSuite) SetupSuite() {
 		"medium": 25,
 		"large":  100,
 	}
-	testUtils.SetUnitTestKeysForAuth()
-	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
 	origDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181125")
 
@@ -167,13 +164,11 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 	assert := assert.New(s.T())
 
 	cmsID := "A8880"
-	for _, ips := range [][]string{nil, []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
-		[]string{testUtils.GetRandomIPV4Address(s.T())}, []string{}} {
+	for _, ips := range [][]string{nil, {testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
+		{testUtils.GetRandomIPV4Address(s.T())}, nil} {
 		s.SetupTest()
 
 		aco := postgrestest.GetACOByCMSID(s.T(), s.db, cmsID)
-		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
-		aco.AlphaSecret = ""
 		postgrestest.UpdateACO(s.T(), s.db, aco)
 
 		buf := new(bytes.Buffer)
@@ -212,9 +207,23 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
-	// execute positive scenarios via CLI
-	args := []string{"bcda", "reset-client-credentials", "--cms-id", "A9994"}
+	// Register the ACO that we'll reset
+	cmsID := "A8880"
+	args := []string{"bcda", "generate-client-credentials", "--cms-id", cmsID}
 	err := s.testApp.Run(args)
+	assert.Nil(err)
+
+	assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
+
+	// Update ACO with clientID
+	aco := postgrestest.GetACOByCMSID(s.T(), s.db, cmsID)
+	aco.ClientID = strings.Split(buf.String(), "\n")[1]
+	postgrestest.UpdateACO(s.T(), s.db, aco)
+	buf.Reset()
+
+	// execute positive scenarios via CLI
+	args = []string{"bcda", "reset-client-credentials", "--cms-id", cmsID}
+	err = s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
 	buf.Reset()
@@ -539,32 +548,6 @@ func (s *CLITestSuite) TestCleanupCancelled() {
 	for _, f := range shouldNotExist {
 		assertFileNotExists(s.T(), f.Name())
 	}
-}
-
-func (s *CLITestSuite) TestRevokeToken() {
-	originalAuthProvider := auth.GetProviderName()
-	defer auth.SetProvider(originalAuthProvider)
-	auth.SetProvider("alpha")
-	// init
-
-	assert := assert.New(s.T())
-
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
-
-	// Negative case - attempt to revoke a token passing in a blank token string
-	args := []string{"bcda", "revoke-token", "--access-token", ""}
-	err := s.testApp.Run(args)
-	assert.Equal("Access token (--access-token) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
-
-	// Expect (for the moment) that alpha auth does not implement
-	args = []string{"bcda", "revoke-token", "--access-token", "this-token-value-is-immaterial"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "RevokeAccessToken is not implemented for alpha auth")
-	assert.Equal(0, buf.Len())
-	buf.Reset()
 }
 
 func (s *CLITestSuite) TestStartAPI() {

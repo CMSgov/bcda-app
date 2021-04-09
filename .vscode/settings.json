@@ -6,6 +6,8 @@
         "DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "QUEUE_DATABASE_URL": "postgresql://postgres:toor@localhost:15432/bcda_test?sslmode=disable",
         "BCDA_API_CONFIG_PATH": "${workspaceFolder}/shared_files/decrypted/api.yml",
+        "SSAS_URL": "http://127.0.0.1:3004",
+        "SSAS_PUBLIC_URL": "http://127.0.0.1:3003",
         // Since we have different directory structure in our test containers, we should
         // define all files/directory paths here
         "ATO_PUBLIC_KEY_FILE": "${workspaceFolder}/shared_files/ATO_public.pem",
@@ -15,8 +17,6 @@
         "FHIR_PAYLOAD_DIR": "${workspaceFolder}/bcdaworker/data",
         "FHIR_STAGING_DIR": "${workspaceFolder}/bcdaworker/tmpdata",
         "FHIR_ARCHIVE_DIR": "${workspaceFolder}/bcdaworker/archive",
-        "JWT_PRIVATE_KEY_FILE": "${workspaceFolder}/shared_files/api_unit_test_auth_private.pem",
-        "JWT_PUBLIC_KEY_FILE": "${workspaceFolder}/shared_files/api_unit_test_auth_public.pem",
     },
     "go.testEnvFile": "${workspaceFolder}/shared_files/decrypted/local.env",
     "go.testFlags": [

@@ -20,7 +20,6 @@ import (
 )
 
 var (
-	originalProvider      string
 	originalSSASURL       string
 	originalPublicSSASURL string
 	originalSSASUseTLS    string
@@ -51,10 +50,6 @@ func (s *SSASMiddlewareTestSuite) SetupSuite() {
 	originalSSASURL = conf.GetEnv("SSAS_URL")
 	originalPublicSSASURL = conf.GetEnv("SSAS_PUBLIC_URL")
 	originalSSASUseTLS = conf.GetEnv("SSAS_USE_TLS")
-
-	originalProvider = auth.GetProviderName()
-	auth.SetProvider("ssas")
-	fmt.Println("testing with", auth.GetProviderName())
 }
 
 func (s *SSASMiddlewareTestSuite) TearDownSuite() {
@@ -62,9 +57,6 @@ func (s *SSASMiddlewareTestSuite) TearDownSuite() {
 	conf.SetEnv(s.T(), "SSAS_URL", originalSSASURL)
 	conf.SetEnv(s.T(), "SSAS_PUBLIC_URL", originalPublicSSASURL)
 	conf.SetEnv(s.T(), "SSAS_USE_TLS", originalSSASUseTLS)
-
-	fmt.Println("restoring to", originalProvider)
-	auth.SetProvider(originalProvider)
 }
 
 func (s *SSASMiddlewareTestSuite) TestSSASToken() {
