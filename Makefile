@@ -93,7 +93,7 @@ load-fixtures:
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 180 && wait-for-it -h ssas -p 3003 -t 60"
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
 
 	# Additional fixtures for postman+ssas
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
