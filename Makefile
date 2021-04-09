@@ -44,6 +44,7 @@ unit-test:
 	
 	# Since we do not have a mock auth provider, we need to ensure that we have the ssas container running
 	# This should be temporary until we can use a mock auth provider.
+	docker-compose build ssas
 	$(MAKE) load-fixtures
 
 	docker-compose -f docker-compose.test.yml build tests
