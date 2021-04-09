@@ -126,10 +126,11 @@ func CopyToTemporaryDirectory(t *testing.T, src string) (string, func()) {
 
 // GetRandomIPV4Address returns a random IPV4 address using rand.Read() to generate the values.
 func GetRandomIPV4Address(t *testing.T) string {
-	data := make([]byte, 4)
+	data := make([]byte, 3)
 	if _, err := rand.Read(data); err != nil {
 		t.Fatal(err.Error())
 	}
 
-	return fmt.Sprintf("%d.%d.%d.%d", data[0], data[1], data[2], data[3])
+	// Use static first byte to ensure that the IP address is valid
+	return fmt.Sprintf("146.%d.%d.%d", data[0], data[1], data[2])
 }

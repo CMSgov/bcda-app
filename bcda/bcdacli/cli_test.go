@@ -169,8 +169,6 @@ func (s *CLITestSuite) TestGenerateClientCredentials() {
 		s.SetupTest()
 
 		aco := postgrestest.GetACOByCMSID(s.T(), s.db, cmsID)
-		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
-		aco.AlphaSecret = ""
 		postgrestest.UpdateACO(s.T(), s.db, aco)
 
 		buf := new(bytes.Buffer)
