@@ -805,6 +805,84 @@
 			"response": []
 		},
 		{
+			"name": "Start ALR export",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.globals.get(\"alrEnabled\") != \"true\") {",
+							"    console.log(\"Skipping ALR test. ALR is not enabled.\")",
+							"    // Set the alrJobUrl to avoid pre-test validation checks (like ENOTFOUND)",
+							"    pm.environment.set(\"alrJobUrl\", \"https://bcda.cms.gov\")",
+							"    return;",
+							"}",
+							"",
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"alrJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient,Observation"
+						},
+						{
+							"key": "_typeFilter",
+							"value": "Patient?profile=ALR,Observation?profile=ALR"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Start EOB export for Deletion",
 			"event": [
 				{
@@ -865,77 +943,6 @@
 						{
 							"key": "_type",
 							"value": "ExplanationOfBenefit"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Start ALR export",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 202\", function() {",
-							"    pm.response.to.have.status(202);",
-							"});",
-							"",
-							"pm.test(\"Has Content-Location header\", function() {",
-							"    pm.response.to.have.header(\"Content-Location\");",
-							"});",
-							"",
-							"pm.environment.set(\"alrJobUrl\", pm.response.headers.get(\"Content-Location\"));"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [
-					{
-						"key": "Accept",
-						"type": "text",
-						"value": "application/fhir+json"
-					},
-					{
-						"key": "Prefer",
-						"type": "text",
-						"value": "respond-async"
-					}
-				],
-				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR",
-					"protocol": "{{scheme}}",
-					"host": [
-						"{{host}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"Patient",
-						"$export"
-					],
-					"query": [
-						{
-							"key": "_type",
-							"value": "Patient,Observation"
-						},
-						{
-							"key": "_typeFilter",
-							"value": "Patient?profile=ALR,Observation?profile=ALR"
 						}
 					]
 				}
@@ -1732,6 +1739,13 @@
 					"listen": "test",
 					"script": {
 						"exec": [
+							"if (pm.globals.get(\"alrEnabled\") != \"true\") {",
+							"    console.log(\"Skipping ALR test. ALR is not enabled.\")",
+							"    // Set the alrDataUrl to avoid pre-test validation checks (like ENOTFOUND)",
+							"    pm.environment.set(\"alrDataUrl\", \"https://bcda.cms.gov\")",
+							"    return;",
+							"}",
+							"",
 							"pm.test(\"Status code is 202 or 200\", function() {",
 							"     pm.expect(pm.response.code).to.be.oneOf([202,200]);",
 							"});",
@@ -1780,14 +1794,19 @@
 							"const retryDelay = 5000;",
 							"const maxRetries = 10;",
 							"",
-							"var eobJobReq = {",
-							"  url: pm.environment.get(\"eobJobUrl\"),",
+							"if (pm.globals.get(\"alrEnabled\") != \"true\") {",
+							"    console.log(\"Skipping pre-request ALR script. ALR is not enabled.\")",
+							"    return;",
+							"}",
+							"",
+							"var alrJobReq = {",
+							"  url: pm.environment.get(\"alrJobUrl\"),",
 							"  method: \"GET\",",
 							"  header: \"Authorization: Bearer \" + pm.environment.get(\"token\")",
 							"};",
 							"",
 							"function awaitExportJob(retryCount) {",
-							"    pm.sendRequest(eobJobReq, function (err, response) {",
+							"    pm.sendRequest(alrJobReq, function (err, response) {",
 							"        if (err) {",
 							"            console.error(err);",
 							"        } else if (response.code == 202) {",
@@ -1795,18 +1814,18 @@
 							"               pm.expect(/^(Pending|In Progress \\(\\d{1,3}%\\))$/.test(response.headers.get(\"X-Progress\"))).to.be.true;",
 							"            });",
 							"            if (retryCount < maxRetries) {",
-							"                console.log(\"ExplanationOfBenefit export still in progress. Retrying...\");",
+							"                console.log(\"ALR export still in progress. Retrying...\");",
 							"                setTimeout(function() {",
 							"                    awaitExportJob(++retryCount);",
 							"                }, retryDelay);",
 							"            } else {",
-							"                console.log(\"Retry limit reached for ExplanationOfBenefit job status.\");",
+							"                console.log(\"Retry limit reached for ALR job status.\");",
 							"                postman.setNextRequest(null);",
 							"            }",
 							"        } else if (response.code == 200) {",
-							"            console.log(\"EOB export job complete.\");",
+							"            console.log(\"ALR export job complete.\");",
 							"        } else {",
-							"            console.error(\"Unexpected response from EOB export job: \" + response.status);",
+							"            console.error(\"Unexpected response from ALR export job: \" + response.status);",
 							"        }",
 							"    });",
 							"}",
@@ -1859,6 +1878,11 @@
 					"listen": "test",
 					"script": {
 						"exec": [
+							"if (pm.globals.get(\"alrEnabled\") != \"true\") {",
+							"    console.log(\"Skipping ALR test. ALR is not enabled.\")",
+							"    return;",
+							"}",
+							"",
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
 							"});",
@@ -1866,6 +1890,15 @@
 							"pm.test(\"Body contains data\", function() {",
 							"    pm.expect(pm.response.length > 0)",
 							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
 						],
 						"type": "text/javascript"
 					}
