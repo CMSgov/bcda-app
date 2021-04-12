@@ -145,6 +145,8 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.NoError(s.T(), json.Unmarshal(bodyBytes, &respMap))
 	assert.NotEmpty(s.T(), respMap)
 	assert.Equal(s.T(), "Welcome to the Beneficiary Claims Data API!", respMap["success"])
+
+	mock.AssertExpectations(s.T())
 }
 
 func TestAuthAPITestSuite(t *testing.T) {
