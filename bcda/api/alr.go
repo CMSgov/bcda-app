@@ -120,7 +120,6 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 // Since we are overloading the Patient resource, we require the caller to provide a typeFilter
 // to specify an ALR resource.
 func isALRRequest(r *http.Request) bool {
-	//ype=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR
 	typeParam := r.URL.Query().Get("_type")
 	typeFilterParam := r.URL.Query().Get("_typeFilter")
 
