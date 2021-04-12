@@ -18,12 +18,20 @@ const (
 
 var providerName = SSAS
 var repository models.Repository
+var provider Provider
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
 
 	repository = postgres.NewRepository(database.Connection)
+
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Fatalf("no client for SSAS; %s", err.Error())
+	}
+	provider = SSASPlugin{client: c, repository: repository}
+
 }
 
 func GetProviderName() string {
@@ -31,11 +39,7 @@ func GetProviderName() string {
 }
 
 func GetProvider() Provider {
-	c, err := client.NewSSASClient()
-	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
-	}
-	return SSASPlugin{client: c, repository: repository}
+	return provider
 }
 
 type AuthData struct {

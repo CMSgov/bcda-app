@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -32,10 +33,10 @@ type TokenResponse struct {
 
 type AuthAPITestSuite struct {
 	suite.Suite
-	rr      *httptest.ResponseRecorder
-	db      *sql.DB
-	r       models.Repository
-	reset   func()
+	rr    *httptest.ResponseRecorder
+	db    *sql.DB
+	r     models.Repository
+	reset func()
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
@@ -59,13 +60,13 @@ func (s *AuthAPITestSuite) SetupTest() {
 }
 
 func (s *AuthAPITestSuite) TestAuthToken() {
-	ctx := context.Background()
-	aco, err := s.r.GetACOByUUID(ctx, uuid.Parse(constants.DevACOUUID))
-	assert.NoError(s.T(), err)
-
-	aco.AlphaSecret = ""
-	assert.NoError(s.T(), s.r.UpdateACO(ctx, aco.UUID,
-		map[string]interface{}{"alpha_secret": ""}))
+	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
+	mock := &auth.MockProvider{}
+	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
+		Return(accessToken, nil)
+	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
+		Return("", errors.New("some auth error"))
+	auth.SetMockProvider(s.T(), mock)
 
 	// Missing authorization header
 	req := httptest.NewRequest("POST", "/auth/token", nil)
@@ -93,21 +94,18 @@ func (s *AuthAPITestSuite) TestAuthToken() {
 
 	// Success!?
 	s.rr = httptest.NewRecorder()
-	t := TokenResponse{}
-	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", constants.DevACOUUID)
-	assert.Nil(s.T(), err)
-	assert.NotEmpty(s.T(), creds.ClientID)
-	assert.NotEmpty(s.T(), creds.ClientSecret)
-
 	req = httptest.NewRequest("POST", "/auth/token", nil)
-	req.SetBasicAuth(creds.ClientID, creds.ClientSecret)
+	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Add("Accept", "application/json")
 	handler = http.HandlerFunc(auth.GetAuthToken)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+
+	var t TokenResponse
 	assert.NoError(s.T(), json.NewDecoder(s.rr.Body).Decode(&t))
-	assert.NotEmpty(s.T(), t)
-	assert.NotEmpty(s.T(), t.AccessToken)
+	assert.Equal(s.T(), accessToken, t.AccessToken)
+
+	mock.AssertExpectations(s.T())
 }
 
 func (s *AuthAPITestSuite) TestWelcome() {
