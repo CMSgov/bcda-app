@@ -458,6 +458,9 @@ func setUpApp() *cli.App {
 				if err != nil {
 					return err
 				}
+				if file == nil {
+					return fmt.Errorf("no CCLF8 file found for CMS ID %s", acoCMSID)
+				}
 
 				tempFile, err := ioutil.TempFile("", "*")
 				if err != nil {

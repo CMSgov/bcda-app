@@ -971,6 +971,10 @@ func (s *CLITestSuite) TestGenerateAlrData() {
 	err := s.testApp.Run(args)
 	assert.NoError(s.T(), err)
 	assert.Greater(s.T(), postgrestest.GetALRCount(s.T(), s.db, "A9994"), initialCount)
+
+	// No CCLF file
+	err = s.testApp.Run([]string{"bcda", "generate-synthetic-alr-data", "--cms-id", "UNKNOWN_ACO"})
+	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
 }
 
 func (s *CLITestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
