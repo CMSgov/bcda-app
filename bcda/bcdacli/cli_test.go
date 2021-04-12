@@ -676,7 +676,7 @@ func (s *CLITestSuite) TestCreateACO() {
 	buf.Reset()
 
 	ACO2Name := "Unit Test ACO 2"
-	aco2ID := "A999
+	aco2ID := "A9999"
 	args = []string{"bcda", "create-aco", "--name", ACO2Name, "--cms-id", aco2ID}
 	err = s.testApp.Run(args)
 	assert.Nil(err)
