@@ -71,7 +71,13 @@ func ParseToken(next http.Handler) http.Handler {
 			// okta token
 			switch claims.Issuer {
 			case "ssas":
-				ad, _ = adFromClaims(repository, claims)
+				ad, err = adFromClaims(repository, claims)
+				if err != nil {
+					log.Error(err)
+					next.ServeHTTP(w, r)
+					return
+				}
+
 			case "okta":
 				aco, err := repository.GetACOByClientID(context.Background(), claims.ClientID)
 				if err != nil {
