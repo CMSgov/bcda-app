@@ -37,9 +37,12 @@ var (
 // to insulate API code from the differences among Provider tokens.
 func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// ParseToken is called on every request, but not every request has a token
+		// Continue serving if not Auth token is found and let RequireToken throw the error
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			respond(w, http.StatusUnauthorized)
+			next.ServeHTTP(w, r)
 			return
 		}
 
