@@ -67,7 +67,6 @@ func ParseToken(next http.Handler) http.Handler {
 
 		var ad AuthData
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
-			// okta token
 			switch claims.Issuer {
 			case "ssas":
 				ad, _ = adFromClaims(repository, claims)
