@@ -449,10 +449,13 @@ func setUpApp() *cli.App {
 					Name:        "alr-template-file",
 					Usage:       "File path for ALR template file",
 					Destination: &alrFile,
-					Value:       "./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv",
 				},
 			},
 			Action: func(c *cli.Context) error {
+				if alrFile == "" {
+					return errors.New("alr template file must be specified")
+				}
+
 				file, err := r.GetLatestCCLFFile(context.Background(), acoCMSID, 8, "Completed",
 					time.Time{}, time.Time{}, models.FileTypeDefault)
 				if err != nil {

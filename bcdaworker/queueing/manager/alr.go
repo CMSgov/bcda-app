@@ -124,5 +124,11 @@ func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, erro
 		return false, fmt.Errorf("failed to get job key count: %w", err)
 	}
 
+	if completedCount > j.JobCount {
+		q.alrLog.WithFields(logrus.Fields{
+			"jobID":    j.ID,
+			"jobCount": j.JobCount, "completedJobCount": completedCount}).
+			Warn("Excess number of jobs completed.")
+	}
 	return completedCount >= j.JobCount, nil
 }

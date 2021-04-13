@@ -12,7 +12,7 @@ type AlrRequestType uint8
 
 const (
 	DefaultAlrRequest AlrRequestType = iota
-	RunoutAlrRequest
+	RunoutAlrRequest  AlrRequestType = 2
 )
 
 type AlrRequestWindow struct {
