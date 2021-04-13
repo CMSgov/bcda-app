@@ -13,10 +13,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type mbiSupplier interface {
-	GetMBIs() ([]string, error)
-}
-
 var (
 	minBirthDate = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
 	maxBirthDate = time.Date(1950, time.December, 31, 0, 0, 0, 0, time.UTC)
@@ -76,7 +72,7 @@ var valuegen map[*regexp.Regexp]func() string = map[*regexp.Regexp]func() string
 
 // UpdateCSV uses a random generator to populate fields present in the CSV file referenced by the fileName.
 // It will generate a new row for each MBI returned by the supplier.
-func UpdateCSV(fileName string, supplier mbiSupplier) error {
+func UpdateCSV(fileName string, supplier func() (mbis []string, err error)) error {
 	file, err := os.OpenFile(filepath.Clean(fileName), os.O_RDWR|os.O_APPEND, 0600)
 	if err != nil {
 		return err
@@ -98,7 +94,7 @@ func UpdateCSV(fileName string, supplier mbiSupplier) error {
 	}
 	headers = headers[1:] // Remove MBI assumed to be first
 
-	mbis, err := supplier.GetMBIs()
+	mbis, err := supplier()
 	if err != nil {
 		return fmt.Errorf("failed to get MBIs %w", err)
 	}
