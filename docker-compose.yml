@@ -24,7 +24,7 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      - CI=true
+      - CI=${CI} # Used to determine if the API is running on a CI process
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
       - ${HOME}/.cache/go-build:/root/.cache/go-build
@@ -43,7 +43,7 @@ services:
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
-      - CI=true
+      - CI=${CI} # Used to determine if the API is running on a CI process
     volumes:
       - .:/go/src/github.com/CMSgov/bcda-app
       - ${HOME}/.cache/go-build:/root/.cache/go-build

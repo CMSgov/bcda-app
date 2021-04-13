@@ -989,6 +989,20 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 	}
 }
 
+func (s *CLITestSuite) TestGenerateAlrData() {
+	initialCount := postgrestest.GetALRCount(s.T(), s.db, "A9994")
+	args := []string{"bcda", "generate-synthetic-alr-data", "--cms-id", "A9994",
+		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"}
+	err := s.testApp.Run(args)
+	assert.NoError(s.T(), err)
+	assert.Greater(s.T(), postgrestest.GetALRCount(s.T(), s.db, "A9994"), initialCount)
+
+	// No CCLF file
+	err = s.testApp.Run([]string{"bcda", "generate-synthetic-alr-data", "--cms-id", "UNKNOWN_ACO",
+		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"})
+	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
+}
+
 func (s *CLITestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
 	j := models.Job{
 		ACOID:      s.testACO.UUID,

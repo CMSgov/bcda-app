@@ -29,15 +29,21 @@ postman:
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	$(eval BCDA_SSAS_CLIENT_ID=$(shell docker exec bcda-app_api_1 env | grep BCDA_SSAS_CLIENT_ID | cut -d'=' -f2))
-	$(eval BLACKLIST_CLIENT_ID=$(shell docker exec bcda-app_api_1 env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
-	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker exec bcda-app_api_1 env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
-	$(eval BCDA_SSAS_SECRET=$(shell docker exec bcda-app_api_1 env | grep BCDA_SSAS_SECRET | cut -d'=' -f2))
+	$(eval BLACKLIST_CLIENT_ID=$(shell docker-compose exec api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
+	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker-compose exec api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
+
+	# Set up valid client credentials
+	$(eval ACO_CMS_ID = A9994)
+	$(eval CLIENT_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
+	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
+	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
+
 	docker-compose -f docker-compose.test.yml build postman_test
 	@docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
-	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(BCDA_SSAS_CLIENT_ID) --global-var clientSecret=$(BCDA_SSAS_SECRET) \
+	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
 	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
-	--global-var v2Disabled=true
+	--global-var v2Disabled=true \
+	--global-var alrEnabled=true
 
 unit-test:
 	$(MAKE) unit-test-db
@@ -84,11 +90,15 @@ load-fixtures:
 	# Initialize schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
-	
+
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
+	
+	# Add ALR data for ACO under test. Must have attribution already set.
+	$(eval ACO_CMS_ID = A9994)
+	docker-compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id=$(ACO_CMS_ID) --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
