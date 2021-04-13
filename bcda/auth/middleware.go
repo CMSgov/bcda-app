@@ -39,7 +39,7 @@ func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -47,7 +47,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Warn("Invalid Authorization header value")
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -56,7 +56,7 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
 			log.Errorf("Unable to verify token; %s", err)
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
