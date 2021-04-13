@@ -34,7 +34,7 @@ postman:
 
 	# Set up valid client credentials
 	$(eval ACO_CMS_ID = A9994)
-	$(eval CLIENT_TEMP := $(shell docker-compose exec api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
+	$(eval CLIENT_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
