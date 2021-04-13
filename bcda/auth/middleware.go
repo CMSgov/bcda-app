@@ -74,7 +74,7 @@ func ParseToken(next http.Handler) http.Handler {
 				ad, err = adFromClaims(repository, claims)
 				if err != nil {
 					log.Error(err)
-					next.ServeHTTP(w, r)
+					respond(w, http.StatusUnauthorized)
 					return
 				}
 
@@ -82,7 +82,7 @@ func ParseToken(next http.Handler) http.Handler {
 				aco, err := repository.GetACOByClientID(context.Background(), claims.ClientID)
 				if err != nil {
 					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
-					next.ServeHTTP(w, r)
+					respond(w, http.StatusUnauthorized)
 					return
 				}
 
@@ -95,7 +95,7 @@ func ParseToken(next http.Handler) http.Handler {
 				aco, err := repository.GetACOByUUID(context.Background(), uuid.Parse(claims.ACOID))
 				if err != nil {
 					log.Errorf("no aco for ACO ID %s because %v", claims.ACOID, err)
-					next.ServeHTTP(w, r)
+					respond(w, http.StatusUnauthorized)
 					return
 				}
 				ad.TokenID = claims.UUID
