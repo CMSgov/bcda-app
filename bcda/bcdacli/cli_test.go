@@ -973,7 +973,8 @@ func (s *CLITestSuite) TestGenerateAlrData() {
 	assert.Greater(s.T(), postgrestest.GetALRCount(s.T(), s.db, "A9994"), initialCount)
 
 	// No CCLF file
-	err = s.testApp.Run([]string{"bcda", "generate-synthetic-alr-data", "--cms-id", "UNKNOWN_ACO"})
+	err = s.testApp.Run([]string{"bcda", "generate-synthetic-alr-data", "--cms-id", "UNKNOWN_ACO",
+		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"})
 	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
 }
 
