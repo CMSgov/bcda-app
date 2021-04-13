@@ -195,7 +195,7 @@ func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.Reques
 }
 
 func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *http.Request {
-	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1Patient/$export", nil)
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/Patient/$export", nil)
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
