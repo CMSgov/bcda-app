@@ -3,6 +3,8 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -70,14 +72,63 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return err
 	}
 
-	// Update DB that work is done / success
-	err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusCompleted)
+	// Since the completed count is used for reporting (not for job completion), we do not
+	// need it to succeed for moving on.
+	if err := q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID); err != nil {
+		q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
+	}
+
+	jobComplete, err := q.isJobComplete(ctx, jobArgs.ID)
 	if err != nil {
-		// This means the job did not finish for various reason
-		q.alrLog.Warnf("Failed to update job to complete for '%s' %s", job.Args, err)
-		// Re-enqueue the job
-		return nil
+		q.alrLog.Warnf("Failed to check job completion %s", err)
+		return err
+	}
+
+	if jobComplete {
+		// Finished writing all data, we can now move the data over to the payload directory
+		err := os.Rename(fmt.Sprintf("%s/%d", q.StagingDir, jobArgs.ID), fmt.Sprintf("%s/%d", q.PayloadDir, jobArgs.ID))
+		if err != nil {
+			q.alrLog.Warnf("Failed to move data to payload directory %s", err)
+			return err
+		}
+
+		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusCompleted)
+		if err != nil {
+			// This means the job did not finish for various reason
+			q.alrLog.Warnf("Failed to update job to complete for '%s' %s", job.Args, err)
+			// Re-enqueue the job
+			return err
+		}
 	}
 
 	return nil
+}
+
+func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
+	j, err := q.repository.GetJobByID(ctx, jobID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get job: %w", err)
+	}
+
+	switch j.Status {
+	case models.JobStatusCompleted:
+		return true, nil
+	case models.JobStatusCancelled, models.JobStatusFailed:
+		// Terminal status stop checking
+		q.alrLog.Warnf("Failed to mark job as completed (Job %s): %s", j.Status, err)
+		return false, nil
+	}
+
+	completedCount, err := q.repository.GetJobKeyCount(ctx, jobID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get job key count: %w", err)
+	}
+
+	if completedCount > j.JobCount {
+		q.alrLog.WithFields(logrus.Fields{
+			"jobID":    j.ID,
+			"jobCount": j.JobCount, "completedJobCount": completedCount}).
+			Warn("Excess number of jobs completed.")
+	}
+	return completedCount >= j.JobCount, nil
 }

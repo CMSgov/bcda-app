@@ -2,11 +2,11 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/go-chi/chi"
-	"github.com/pkg/errors"
 
 	"net/http"
 	"time"
@@ -78,6 +78,10 @@ func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	if isALRRequest(r) {
+		h.alrRequest(w, r, reqType)
+		return
+	}
 	h.bulkRequest(w, r, reqType)
 }
 
@@ -109,6 +113,10 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isALRRequest(r) {
+		h.alrRequest(w, r, reqType)
+		return
+	}
 	h.bulkRequest(w, r, reqType)
 }
 
@@ -172,7 +180,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	// in a transaction, we can rollback if we encounter any errors with handling the data needed for the newJob
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
-		err = errors.Wrap(err, "failed to start transaction")
+		err = fmt.Errorf("failed to start transaction: %w", err)
 		log.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.InternalErr, "")
@@ -251,7 +259,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 			oo       *fhirmodels.OperationOutcome
 			respCode int
 		)
-		if _, ok := errors.Cause(err).(service.CCLFNotFoundError); ok && reqType == service.Runout {
+		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok && reqType == service.Runout {
 			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, err.Error())
 			respCode = http.StatusNotFound

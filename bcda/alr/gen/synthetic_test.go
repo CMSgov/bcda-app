@@ -17,7 +17,7 @@ func TestUpdateCSV(t *testing.T) {
 	defer cleanup()
 
 	csvPath := filepath.Join(path, "PY21ALRTemplatePrelimProspTable1.csv")
-	err := UpdateCSV(csvPath, randomMBIGenerator{t, mbiCount})
+	err := UpdateCSV(csvPath, randomMBIGenerator{t, mbiCount}.GetMBIs)
 	assert.NoError(t, err)
 
 	file, err := os.Open(csvPath)
