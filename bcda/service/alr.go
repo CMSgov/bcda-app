@@ -12,7 +12,7 @@ type AlrRequestType uint8
 
 const (
 	DefaultAlrRequest AlrRequestType = iota
-	RunoutAlrRequest
+	RunoutAlrRequest  AlrRequestType = 2
 )
 
 type AlrRequestWindow struct {
@@ -25,6 +25,9 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrReque
 	if err != nil {
 		return nil, fmt.Errorf("failed to set time constraints: %w", err)
 	}
+
+	// Update the window based on any conditions set on the ACO
+	window = s.getWindow(cmsID, window, constraint.claimsDate, reqType)
 
 	fileType := models.FileTypeDefault
 	if reqType == RunoutAlrRequest {
@@ -51,7 +54,7 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrReque
 		}
 
 		job := &models.JobAlrEnqueueArgs{
-			CMSID:        cmsID,
+			CMSID:      cmsID,
 			LowerBound: window.LowerBound,
 			UpperBound: window.UpperBound,
 			MBIs:       make([]string, 0, s.alrMBIsPerJob),
@@ -64,6 +67,25 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrReque
 	}
 
 	return jobs, nil
+}
+
+// getWindow returns an update request window based on any time constraints that are associated with the caller
+func (s *service) getWindow(cmsID string, current AlrRequestWindow, claimsDate time.Time, req AlrRequestType) AlrRequestWindow {
+	new := current
+	if req == RunoutAlrRequest {
+		new.UpperBound = s.rp.claimThruDate
+	} else if !claimsDate.IsZero() {
+		new.UpperBound = claimsDate
+	}
+
+	for pattern, cfg := range s.acoConfig {
+		if pattern.MatchString(cmsID) && !cfg.LookbackTime().IsZero() {
+			new.LowerBound = cfg.LookbackTime()
+			break
+		}
+	}
+
+	return new
 }
 
 func partitionBenes(input []*models.CCLFBeneficiary, size uint) (part, remaining []*models.CCLFBeneficiary) {
