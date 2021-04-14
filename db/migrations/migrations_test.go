@@ -306,7 +306,29 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertColumnExists(t, false, db, "acos", "blacklisted")
 			},
 		},
-		// down migrations tests begin here with test number - 1
+		{
+			"Remove unused cclf_beneficiaries indexes",
+			func(t *testing.T) {
+				assertIndexExists(t, true, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_bb_id")
+				assertIndexExists(t, true, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_mbi")
+				migrator.runMigration(t, 13)
+				assertIndexExists(t, false, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_bb_id")
+				assertIndexExists(t, false, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_mbi")
+			},
+		},
+		// **********************************************************
+		// * down migrations tests begin here with test number - 1  *
+		// **********************************************************
+		{
+			"Restore unused cclf_beneficiaries indexes",
+			func(t *testing.T) {
+				assertIndexExists(t, false, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_bb_id")
+				assertIndexExists(t, false, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_mbi")
+				migrator.runMigration(t, 12)
+				assertIndexExists(t, true, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_bb_id")
+				assertIndexExists(t, true, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_mbi")
+			},
+		},
 		{
 			"Add ACO Blacklisted Column",
 			func(t *testing.T) {
@@ -623,6 +645,20 @@ func updateTestRow(t *testing.T, db *sql.DB, tableName string, fields map[string
 	assert.NoError(t, err)
 
 	return
+}
+
+func assertIndexExists(t *testing.T, shouldExist bool, db *sql.DB, tableName, indexName string) {
+	sb := sqlFlavor.NewSelectBuilder().Select("COUNT(1)").From("pg_indexes")
+	sb.Where(sb.Equal("tablename", tableName), sb.Equal("indexname", indexName))
+	query, args := sb.Build()
+	var count int
+	assert.NoError(t, db.QueryRow(query, args...).Scan(&count))
+
+	var expected int
+	if shouldExist {
+		expected = 1
+	}
+	assert.Equal(t, expected, count)
 }
 
 // cleanData removes all the non migration related tables

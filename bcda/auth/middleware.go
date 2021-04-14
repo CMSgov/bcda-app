@@ -36,6 +36,9 @@ var (
 // to insulate API code from the differences among Provider tokens.
 func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// ParseToken is called on every request, but not every request has a token
+		// Continue serving if not Auth token is found and let RequireToken throw the error
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			next.ServeHTTP(w, r)
@@ -46,7 +49,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Warn("Invalid Authorization header value")
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -55,7 +58,7 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
 			log.Errorf("Unable to verify token; %s", err)
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -69,7 +72,12 @@ func ParseToken(next http.Handler) http.Handler {
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
 			switch claims.Issuer {
 			case "ssas":
-				ad, _ = adFromClaims(repository, claims)
+				ad, err = adFromClaims(repository, claims)
+				if err != nil {
+					log.Error(err)
+					respond(w, http.StatusUnauthorized)
+					return
+				}
 			default:
 				log.Errorf("Unsupported claims issuer %s", claims.Issuer)
 				respond(w, http.StatusNotFound)
