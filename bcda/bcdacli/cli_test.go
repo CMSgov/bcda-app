@@ -1003,6 +1003,10 @@ func (s *CLITestSuite) TestGenerateAlrData() {
 	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
 }
 
+func (s *CLITestSuite) TestFoo() {
+	SomeuntestedFunction()
+}
+
 func (s *CLITestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
 	j := models.Job{
 		ACOID:      s.testACO.UUID,
