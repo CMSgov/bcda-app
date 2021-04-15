@@ -46,12 +46,11 @@ jobs:
       - name: Run all tests
         run: |
           make unit-test
-      - name: Print directory
-        run: |
-          ls -al
-          ls -al ./test_results/latest
-      - name: Coveralls GitHub Action
-        uses: coverallsapp/github-action@v1.1.2
+      - name: Generate codecov report
+        uses: codecov/codecov-action@v1
         with:
-          github-token: ${{ secrets.github_token }}
-          path-to-lcov: ./test_results/latest/coverage.lcov
+          files: ./test_results/latest/testcoverage.out # optional
+          flags: unittests # optional
+          name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)

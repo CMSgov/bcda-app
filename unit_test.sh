@@ -28,4 +28,3 @@ go tool cover -func test_results/${timestamp}/testcoverage.out > test_results/${
 echo TOTAL COVERAGE:  $(tail -1 test_results/${timestamp}/testcov_byfunc.out | head -1)
 go tool cover -html=test_results/${timestamp}/testcoverage.out -o test_results/${timestamp}/testcoverage.html
 cp test_results/${timestamp}/* test_results/latest
-gcov2lcov -infile test_results/latest/testcoverage.out -outfile test_results/latest/coverage.lcov
