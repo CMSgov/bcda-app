@@ -44,8 +44,13 @@ jobs:
       #   run: |
       #     make docker-bootstrap
       - name: Run all tests
-        run: |
-          make unit-test
+        steps:
+          - name: "Run unit tests"
+          - name: Upload math result for job 1
+            uses: actions/upload-artifact@v2
+            with:
+              name: coverage
+              path: ./test_results/latest/coverage.lcov
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v1.1.2
         with:
