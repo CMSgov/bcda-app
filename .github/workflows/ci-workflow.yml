@@ -51,5 +51,3 @@ jobs:
         with:
           github-token: ${{ secrets.github_token }}
           path-to-lcov: ./test_results/latest/coverage.lcov
-
-
