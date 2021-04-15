@@ -1,5 +1,6 @@
 codecov:
   require_ci_to_pass: yes
+  # disable_default_path_fixes: false
 
 coverage:
   precision: 2
@@ -15,10 +16,10 @@ parsers:
       macro: no
 
 comment:
-  layout: "diff,flags,files,footer"
+  layout: "diff,files,footer"
   behavior: new
   require_changes: false
   require_base: no
 
-fixes:
-  - "github.com/CMSgov/bcda-app/::"
+# fixes:
+#   - "github.com/CMSgov/bcda-app/::"
