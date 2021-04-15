@@ -28,7 +28,7 @@ func init() {
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Fatalf("no client for SSAS; %s", err.Error())
+		log.Errorf("no client for SSAS. no provider set; %s", err.Error())
 	}
 	provider = SSASPlugin{client: c, repository: repository}
 
