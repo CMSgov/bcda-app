@@ -40,12 +40,12 @@ jobs:
       - name: Download dependencies
         run: |
           go mod download
-      - name: Build the stack
-        run: |
-          make docker-bootstrap
+      # - name: Build the stack
+      #   run: |
+      #     make docker-bootstrap
       - name: Run all tests
         run: |
-          make test
+          make unit-test
       - name: Convert coverage to lcov
         uses: jandelgado/gcov2lcov-action@v1.0.8
         with:
