@@ -34,7 +34,7 @@ postman:
 
 	# Set up valid client credentials
 	$(eval ACO_CMS_ID = A9994)
-	$(eval CLIENT_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
+	$(eval CLIENT_TEMP := $(shell docker-compose run --rm api reset-client-credentials --cms-id $(ACO_CMS_ID) | tail -n2))
 	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
 	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
 
@@ -104,7 +104,7 @@ load-fixtures:
 	
 	# Add ALR data for ACO under test. Must have attribution already set.
 	$(eval ACO_CMS_ID = A9994)
-	docker-compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id=$(ACO_CMS_ID) --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
+	docker-compose run api generate-synthetic-alr-data --cms-id=$(ACO_CMS_ID) --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
@@ -183,5 +183,5 @@ credentials:
 	$(eval ACO_CMS_ID = A9994)
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: ACO_CMS_ID=A9993 make credentials 
-	#docker-compose run --rm api reset-client-credentials --cms-id $(ACO_CMS_ID) | tail -n2
-	@docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
+	@docker-compose run --rm api reset-client-credentials --cms-id $(ACO_CMS_ID) | tail -n2
+	#@docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2

@@ -18,7 +18,7 @@ RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' |
 COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 RUN go install
-#ENTRYPOINT ["bcda"]
-#CMD ["start-api"]
+ENTRYPOINT ["bcda"]
+CMD ["start-api"]
 
-CMD ["../watch.sh", "api", "bcda", "start-api"]
+#CMD ["../watch.sh", "api", "bcda", "start-api"]
