@@ -42,6 +42,22 @@ type queue struct {
 type masterQueue struct {
 	*queue
 	*alrQueue // This is defined in alr.go
+
+	StagingDir string `conf:"FHIR_STAGING_DIR"`
+	PayloadDir string `conf:"FHIR_PAYLOAD_DIR"`
+}
+
+func newMasterQueue(q *queue, qAlr *alrQueue) *masterQueue {
+	mq := &masterQueue{
+		queue:    q,
+		alrQueue: qAlr,
+	}
+
+	if err := conf.Checkout(mq); err != nil {
+		logrus.Fatal("Could not get data from conf for ALR.", err)
+	}
+
+	return mq
 }
 
 // StartQue creates a que-go client and begins listening for items
@@ -63,10 +79,7 @@ func StartQue(log *logrus.Logger, numWorkers int) *masterQueue {
 		alrLog:    log,
 		alrWorker: worker.NewAlrWorker(mainDB),
 	}
-	master := &masterQueue{
-		q,
-		qAlr, // ALR piggypbacks
-	}
+	master := newMasterQueue(q, qAlr)
 
 	qc := que.NewClient(q.queDB)
 	wm := que.WorkMap{

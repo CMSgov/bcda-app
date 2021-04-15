@@ -37,6 +37,9 @@ var (
 // to insulate API code from the differences among Provider tokens.
 func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// ParseToken is called on every request, but not every request has a token
+		// Continue serving if not Auth token is found and let RequireToken throw the error
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			next.ServeHTTP(w, r)
@@ -47,7 +50,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Warn("Invalid Authorization header value")
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -56,7 +59,7 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
 			log.Errorf("Unable to verify token; %s", err)
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -71,12 +74,18 @@ func ParseToken(next http.Handler) http.Handler {
 			// okta token
 			switch claims.Issuer {
 			case "ssas":
-				ad, _ = adFromClaims(repository, claims)
+				ad, err = adFromClaims(repository, claims)
+				if err != nil {
+					log.Error(err)
+					respond(w, http.StatusUnauthorized)
+					return
+				}
+
 			case "okta":
 				aco, err := repository.GetACOByClientID(context.Background(), claims.ClientID)
 				if err != nil {
 					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
-					next.ServeHTTP(w, r)
+					respond(w, http.StatusUnauthorized)
 					return
 				}
 
@@ -89,7 +98,7 @@ func ParseToken(next http.Handler) http.Handler {
 				aco, err := repository.GetACOByUUID(context.Background(), uuid.Parse(claims.ACOID))
 				if err != nil {
 					log.Errorf("no aco for ACO ID %s because %v", claims.ACOID, err)
-					next.ServeHTTP(w, r)
+					respond(w, http.StatusUnauthorized)
 					return
 				}
 				ad.TokenID = claims.UUID

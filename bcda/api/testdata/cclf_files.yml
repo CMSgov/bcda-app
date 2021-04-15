@@ -1,0 +1,32 @@
+- id: 1
+  cclf_num: 8
+  name: Requests_Regular_File
+  aco_cms_id: A0002
+  timestamp: RAW=NOW()
+  performance_year: RAW=to_char(NOW(), 'yy')::int
+  import_status: Completed
+  type: 0
+- id: 2
+  cclf_num: 8
+  name: Requests_Runout_File
+  aco_cms_id: A0002
+  timestamp: RAW=NOW()
+  performance_year: RAW=to_char(NOW(), 'yy')::int
+  import_status: Completed
+  type: 1
+- id: 3
+  cclf_num: 8
+  name: ALR
+  aco_cms_id: A0003
+  timestamp: RAW=NOW()
+  performance_year: RAW=to_char(NOW(), 'yy')::int
+  import_status: Completed
+  type: 0
+- id: 4
+  cclf_num: 8
+  name: ALR_RUNOUT
+  aco_cms_id: A0003
+  timestamp: RAW=NOW()
+  performance_year: RAW=to_char(NOW(), 'yy')::int
+  import_status: Completed
+  type: 1
