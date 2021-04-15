@@ -17,5 +17,5 @@ parsers:
 comment:
   layout: "diff,flags,files,footer"
   behavior: new
-  require_changes: no
+  require_changes: false
   require_base: no
