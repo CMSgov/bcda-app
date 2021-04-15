@@ -16,6 +16,5 @@ import (
 	_ "github.com/tsenart/vegeta"
 	_ "github.com/xo/usql"
 	_ "gotest.tools/gotestsum"
-	_ "github.com/jandelgado/gcov2lcov"
 	// end test dependencies
 )
