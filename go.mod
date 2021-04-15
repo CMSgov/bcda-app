@@ -31,6 +31,7 @@ require (
 	github.com/influxdata/tdigest v0.0.1 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.6.2+incompatible
+	github.com/jandelgado/gcov2lcov v1.0.4
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lib/pq v1.10.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

@@ -40,21 +40,16 @@ jobs:
       - name: Download dependencies
         run: |
           go mod download
-      # - name: Build the stack
-      #   run: |
-      #     make docker-bootstrap
+      - name: Build the stack
+        run: |
+          make docker-bootstrap
       - name: Run all tests
         run: |
-          make unit-test
-      - name: Convert coverage to lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.8
-        with:
-          infile: test_results/latest/testcoverage.out
-          outfile: coverage.lcov
+          make test
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v1.1.2
         with:
           github-token: ${{ secrets.github_token }}
-          path-to-lcov: coverage.lcov
+          path-to-lcov: ./test_results/latest/coverage.lcov
 
 
