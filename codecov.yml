@@ -19,3 +19,6 @@ comment:
   behavior: new
   require_changes: false
   require_base: no
+
+fixes:
+  - "github.com/CMSgov/bcda-app/::"
