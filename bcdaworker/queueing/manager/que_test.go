@@ -284,10 +284,7 @@ func TestStartAlrJob(t *testing.T) {
 		alrLog:    log,
 		alrWorker: worker.NewAlrWorker(db),
 	}
-	master := &masterQueue{
-		q,
-		qAlr, // ALR piggypbacks
-	}
+	master := newMasterQueue(q, qAlr)
 
 	// Since the worker is tested by BFD, it is not tested here
 	// and we jump straight to the work
