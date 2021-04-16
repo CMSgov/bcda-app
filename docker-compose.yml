@@ -21,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda
+      target: prod
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -36,6 +37,26 @@ services:
       - ssas
       - db
       - queue
+  # api-dev:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfiles/Dockerfile.bcda
+  #     target: dev 
+  #   env_file:
+  #     - ./shared_files/decrypted/local.env
+  #   environment:
+  #     - CI=${CI} # Used to determine if the API is running on a CI process
+  #   volumes:
+  #     - .:/go/src/github.com/CMSgov/bcda-app
+  #     - ${HOME}/.cache/go-build:/root/.cache/go-build
+  #     - ${GOPATH}/pkg/mod:/go/pkg/mod
+  #   ports:
+  #     - "3000:3000"
+  #     - "3001:3001"
+  #   depends_on:
+  #     - ssas
+  #     - db
+  #     - queue
   worker:
     build:
       context: .

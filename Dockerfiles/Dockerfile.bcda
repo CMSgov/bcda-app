@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine3.12
+FROM golang:1.15-alpine3.12 AS base
 
 RUN apk update upgrade
 RUN apk add git openssl entr bash
@@ -18,7 +18,16 @@ RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' |
 COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 RUN go install
+
+FROM alpine AS prod
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
+COPY --from=base /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
 ENTRYPOINT ["bcda"]
 CMD ["start-api"]
 
-#CMD ["../watch.sh", "api", "bcda", "start-api"]
+FROM alpine AS dev
+WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
+COPY --from=base /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
+CMD ["../watch.sh", "api", "bcda", "start-api"]
+
+
