@@ -176,68 +176,29 @@ func TestStartAlrJob(t *testing.T) {
 	// Set up data based on testfixtures
 	db := database.Connection
 	alrWorker := worker.NewAlrWorker(db)
-
-	// Create synthetic Data
-	// TODO: Replace this with Martin's testing strategy from #4239
-	// To do this, this requires bringing in worker que migrations
-
-	// Create the key value pair
-	exMap := make(map[string]string)
-	exMap["EnrollFlag1"] = "1"
-	exMap["HCC_version"] = "V12"
-	exMap["HCC_COL_1"] = "1"
-	exMap["HCC_COL_2"] = "0"
-	// ACO
-	cmsID := "A1234"
-	MBIs := []string{"abd123abd01", "abd123abd02"}
-	timestamp := time.Now()
-	timestamp2 := timestamp.Add(time.Hour * 24)
-	dob1, _ := time.Parse("01/02/2006", "01/20/1950")
-	dob2, _ := time.Parse("01/02/2006", "04/15/1950")
-	alrs := []models.Alr{
-		{
-			ID:            1, // These are set manually for testing
-			MetaKey:       1, // PostgreSQL should automatically make these
-			BeneMBI:       MBIs[0],
-			BeneHIC:       "1q2w3e4r5t6y",
-			BeneFirstName: "John",
-			BeneLastName:  "Smith",
-			BeneSex:       "1",
-			BeneDOB:       dob1,
-			BeneDOD:       time.Time{},
-			KeyValue:      exMap,
-		},
-		{
-			ID:            2,
-			MetaKey:       1,
-			BeneMBI:       MBIs[1],
-			BeneHIC:       "0p9o8i7u6y5t",
-			BeneFirstName: "Melissa",
-			BeneLastName:  "Jones",
-			BeneSex:       "2",
-			BeneDOB:       dob2,
-			BeneDOD:       time.Time{},
-			KeyValue:      exMap,
-		},
-	}
-
 	ctx := context.Background()
-
-	// Add synthetic Data above into DB
-	err := alrWorker.AlrRepository.AddAlr(ctx, cmsID, timestamp, alrs)
-	assert.NoError(t, err)
+	cmsID := "A9994"
 
 	r := postgres.NewRepository(db)
 
-	// Create data needed for models.JobAlrEnQueueArgs & models.Jobs
-	// These are two data struct involved in ALr jobs
-	acoUUID := uuid.NewRandom()
-	aco := models.ACO{UUID: acoUUID, CMSID: &cmsID}
-	// Add the ACO into aco table
-	err = r.CreateACO(ctx, aco)
+	// Retreive ACO info
+	aco, err := r.GetACOByCMSID(ctx, cmsID)
 	assert.NoError(t, err)
+
+	mbis, err := r.GetCCLFBeneficiaries(ctx, 1, []string{})
+	assert.NoError(t, err)
+
+	// just use one mbi for this test
+	twoMbis := make([]string, 2)
+	twoMbis = append(twoMbis, mbis[0].MBI)
+	twoMbis = append(twoMbis, mbis[1].MBI)
+
+	alr, err := alrWorker.GetAlr(ctx, *aco.CMSID, twoMbis, time.Time{}, time.Time{})
+	assert.NoError(t, err)
+
+	// Add the ACO into aco table
 	job := models.Job{
-		ACOID:           acoUUID,
+		ACOID:           aco.UUID,
 		RequestURL:      "",
 		Status:          models.JobStatusPending,
 		TransactionTime: time.Now(),
@@ -253,23 +214,23 @@ func TestStartAlrJob(t *testing.T) {
 		ID:         id,
 		QueueID:    1,
 		CMSID:      cmsID,
-		MBIs:       MBIs[:1],
-		LowerBound: timestamp,
-		UpperBound: timestamp2,
+		MBIs:       []string{alr[0].BeneMBI},
+		LowerBound: time.Time{},
+		UpperBound: time.Time{},
 	}
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
 		QueueID:    2,
 		CMSID:      cmsID,
-		MBIs:       MBIs[1:],
-		LowerBound: timestamp,
-		UpperBound: timestamp2,
+		MBIs:       []string{alr[1].BeneMBI},
+		LowerBound: time.Time{},
+		UpperBound: time.Time{},
 	}
 
 	// marshall jobs
 	jobArgsJson, err := json.Marshal(jobArgs)
 	assert.NoError(t, err)
-	jobArgs2Json, err := json.Marshal(jobArgs2)
+	jobArgsJson2, err := json.Marshal(jobArgs2)
 	assert.NoError(t, err)
 
 	q := &queue{
@@ -282,7 +243,7 @@ func TestStartAlrJob(t *testing.T) {
 	// Same as above, but do one for ALR
 	qAlr := &alrQueue{
 		alrLog:    log,
-		alrWorker: worker.NewAlrWorker(db),
+		alrWorker: alrWorker,
 	}
 	master := newMasterQueue(q, qAlr)
 
@@ -293,12 +254,26 @@ func TestStartAlrJob(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	err = master.startAlrJob(&que.Job{
-		Args: jobArgs2Json,
+		Args: jobArgsJson2,
 	})
 	assert.NoError(t, err)
 
 	// Check job is complete
-	alrJob, err := r.GetJobByID(ctx, id)
-	assert.NoError(t, err)
-	assert.Equal(t, alrJob.Status, models.JobStatusCompleted)
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			t.Fatal("Job not completed in alloted time.")
+			return
+		default:
+			alrJob, err := r.GetJobByID(ctx, id)
+			assert.NoError(t, err)
+			// don't wait for a job if it has a terminal status
+			if isTerminalStatus(alrJob.Status) {
+				return
+			}
+			log.Infof("Waiting on job to be completed. Current status %s.", job.Status)
+			time.Sleep(time.Second)
+		}
+	}
 }
