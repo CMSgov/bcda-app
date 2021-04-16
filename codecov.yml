@@ -2,7 +2,6 @@ codecov:
   require_ci_to_pass: yes
   notify:
     wait_for_ci: false
-  # disable_default_path_fixes: false
 
 coverage:
   precision: 2
@@ -23,6 +22,3 @@ comment:
   require_changes: false
   require_base: no
   require_head: no
-
-# fixes:
-#   - "github.com/CMSgov/bcda-app/::"

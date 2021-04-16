@@ -1003,9 +1003,9 @@ func (s *CLITestSuite) TestGenerateAlrData() {
 	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
 }
 
-// func (s *CLITestSuite) TestFoo() {
-// 	SomeuntestedFunction()
-// }
+func (s *CLITestSuite) TestFoo() {
+	SomeuntestedFunction()
+}
 func (s *CLITestSuite) TestBar() {
 	SometestedFunction()
 }

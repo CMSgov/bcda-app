@@ -901,7 +901,6 @@ func genPublicKey(publicKey io.Reader) (string, error) {
 }
 
 func SomeuntestedFunction() {
-	// LCOV_EXCL_START
 	fmt.Println("Hello")
 	fmt.Println("Hello")
 	fmt.Println("Hello")
@@ -1327,7 +1326,6 @@ func SomeuntestedFunction() {
 	fmt.Println("Hello")
 	fmt.Println("Hello")
 	fmt.Println("Hello")
-	// LCOV_EXCL_STOP
 }
 
 func SometestedFunction() {
