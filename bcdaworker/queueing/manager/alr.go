@@ -65,16 +65,6 @@ func checkIfCancelled(ctx context.Context, q *masterQueue,
 	}
 }
 
-// deleteAndRetry is a helper function that will delete previous attempt at
-// creating ndjson if the worker hit an error along the way. This is to avoid
-// serving incomplete or redundant data to user.
-func deleteAndRetry(l *logrus.Logger, dir string, id uint, file string) {
-	err := os.Remove(fmt.Sprintf("%s/%d/%s.ndjson", dir, id, file))
-	if err != nil {
-		l.Fatal("Could not remove alr ndjson.")
-	}
-}
-
 /******************************************************************************
 	Methods
 ******************************************************************************/
@@ -99,6 +89,9 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			job.Args, err)
 	}
 
+	// Check if the job was cancelled
+	go checkIfCancelled(ctx, q, cancel, jobArgs)
+
 	// Validate the job like bcdaworker/worker/worker.go#L43
 	// TODO: Abstract this into either a function or interface like the bfd worker
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
@@ -121,13 +114,21 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	}
 	// If the job was cancalled...
 	if alrJobs.Status == models.JobStatusCancelled {
-		q.alrLog.Warnf("ALR big job has been cancelled, worker will not tasked for %s",
+		q.alrLog.Warnf("ALR big job has been cancelled, worker will not be tasked for %s",
 			job.Args)
 		return nil
 	}
+	// If the job has been failed by a previous worker...
+	if alrJobs.Status == models.JobStatusFailed {
+		q.alrLog.Warnf("ALR big job has been failed, worker will not be tasked for %s",
+			job.Args)
+		return nil
+	}
+	// End of validation
 
 	// Keep track of how many times a small job has failed.
-	// If the threshold is reached, fail the job
+	// If the threshold is reached, fail the parent job
+	// This is additional logic that does not exist for BFD worker
 	if _, exists := alrJobTracker[alrJobs.ID]; !exists {
 
 		// So we have a brand new job... we will start tracking it
@@ -138,13 +139,12 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		if err != nil {
 			q.alrLog.Warnf("Failed to update job status '%s' %s.",
 				job.Args, err)
-			// unlock before returning to avoid deadlock
 			return err
 		}
 	} else {
 		// Check if this job has been retried too many times - 5 times is max
 		if job.ErrorCount > maxRetry {
-			// Fail the job
+			// Fail the job - ALL OR NOTHING
 			err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
 			if err != nil {
 				q.alrLog.Warnf("Could not mark job %d as failed in DB.",
@@ -158,9 +158,6 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		}
 
 	}
-
-	// Check if the job was cancelled
-	go checkIfCancelled(ctx, q, cancel, jobArgs)
 
 	// Run ProcessAlrJob, which is the meat of the whole operation
 	ndjsonFilename := uuid.NewRandom()
