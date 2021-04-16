@@ -1010,6 +1010,10 @@ func (s *CLITestSuite) TestBar() {
 	SometestedFunction()
 }
 
+func (s *CLITestSuite) TestBiz() {
+	SomeuntestedFunctionNoAnnotations()
+}
+
 func (s *CLITestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
 	j := models.Job{
 		ACOID:      s.testACO.UUID,
