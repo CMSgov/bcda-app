@@ -100,12 +100,13 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	}
 
 	// Validate the job like bcdaworker/worker/worker.go#L43
-	// TODO: Abstract this into either function or interface like the bfd worker
+	// TODO: Abstract this into either a function or interface like the bfd worker
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
 	if err != nil { // if this is not nil, we could not find the Job
 		// Drill down to what kind of error this is...
 		if errors.Is(err, repository.ErrJobNotFound) {
 			// Parent job is not found
+			// If parent job is not found reach maxretry, fail the job
 			if job.ErrorCount >= maxRetry {
 				q.alrLog.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
 					jobArgs.CMSID)
@@ -118,6 +119,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		// Else that job just doesn't exist
 		return fmt.Errorf("failed to valiate job: %w", err)
 	}
+	// If the job was cancalled...
 	if alrJobs.Status == models.JobStatusCancelled {
 		q.alrLog.Warnf("ALR big job has been cancelled, worker will not tasked for %s",
 			job.Args)
