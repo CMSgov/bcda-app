@@ -34,4 +34,3 @@ insert into acos(uuid, cms_id, name, client_id, termination_details)
             ('749e6e2f-c45b-41d1-9226-8b7c54f96526', 'V994', 'NG ACO Dev', '749e6e2f-c45b-41d1-9226-8b7c54f96526', null),
             ('b8abdf3c-5965-4ae5-a661-f19a8129fda5', 'A9997', 'ACO Blacklisted', 'b8abdf3c-5965-4ae5-a661-f19a8129fda5', 
                '{"TerminationDate": "2020-12-31T23:59:59Z", "CutoffDate": "2020-12-31T23:59:59Z", "BlacklistType": 0}');
-

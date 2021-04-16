@@ -54,8 +54,6 @@ func (s *CLITestSuite) SetupSuite() {
 		"medium": 25,
 		"large":  100,
 	}
-	testUtils.SetUnitTestKeysForAuth()
-	auth.InitAlphaBackend() // should be a provider thing ... inside GetProvider()?
 	origDate = conf.GetEnv("CCLF_REF_DATE")
 	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181125")
 
@@ -68,8 +66,8 @@ func (s *CLITestSuite) SetupSuite() {
 
 	s.db = database.Connection
 
-	id := uuid.NewRandom()
-	s.testACO = models.ACO{Name: id.String(), UUID: id, ClientID: id.String()}
+	cmsID := testUtils.RandomHexID()[0:4]
+	s.testACO = models.ACO{Name: uuid.New(), UUID: uuid.NewRandom(), ClientID: uuid.New(), CMSID: &cmsID}
 	postgrestest.CreateACO(s.T(), s.db, s.testACO)
 }
 
@@ -164,25 +162,30 @@ func (s *CLITestSuite) TestSavePublicKeyCLI() {
 }
 
 func (s *CLITestSuite) TestGenerateClientCredentials() {
-	assert := assert.New(s.T())
+	for idx, ips := range [][]string{nil, {testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
+		{testUtils.GetRandomIPV4Address(s.T())}, nil} {
+		s.T().Run(strconv.Itoa(idx), func(t *testing.T) {
+			mockArgs := []interface{}{s.testACO.UUID.String(), "", s.testACO.GroupID}
+			// ips argument is a variadic argument so we need to ensure that the list is expanded
+			// when supplying the ips argument to the mock
+			for _, ip := range ips {
+				mockArgs = append(mockArgs, ip)
+			}
+			m := &auth.MockProvider{}
+			m.On("RegisterSystem", mockArgs...).Return(
+				auth.Credentials{ClientName: *s.testACO.CMSID, ClientID: s.testACO.UUID.String(), ClientSecret: uuid.New()},
+				nil)
+			auth.SetMockProvider(t, m)
 
-	cmsID := "A8880"
-	for _, ips := range [][]string{nil, []string{testUtils.GetRandomIPV4Address(s.T()), testUtils.GetRandomIPV4Address(s.T())},
-		[]string{testUtils.GetRandomIPV4Address(s.T())}, []string{}} {
-		s.SetupTest()
+			buf := new(bytes.Buffer)
+			s.testApp.Writer = buf
 
-		aco := postgrestest.GetACOByCMSID(s.T(), s.db, cmsID)
-		// Clear out alpha_secret so we're able to re-generate credentials for the same ACO
-		aco.AlphaSecret = ""
-		postgrestest.UpdateACO(s.T(), s.db, aco)
-
-		buf := new(bytes.Buffer)
-		s.testApp.Writer = buf
-
-		args := []string{"bcda", "generate-client-credentials", "--cms-id", cmsID, "--ips", strings.Join(ips, ",")}
-		err := s.testApp.Run(args)
-		assert.Nil(err)
-		assert.Regexp(regexp.MustCompile(".+\n.+\n.+"), buf.String())
+			args := []string{"bcda", "generate-client-credentials", "--cms-id", *s.testACO.CMSID, "--ips", strings.Join(ips, ",")}
+			err := s.testApp.Run(args)
+			assert.Nil(t, err)
+			assert.Regexp(t, regexp.MustCompile(".+\n.+\n.+"), buf.String())
+			m.AssertExpectations(t)
+		})
 	}
 }
 
@@ -212,8 +215,15 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 
 	outputPattern := regexp.MustCompile(`.+\n(.+)\n.+`)
 
+	mock := &auth.MockProvider{}
+	mock.On("ResetSecret", s.testACO.ClientID).Return(
+		auth.Credentials{ClientName: *s.testACO.CMSID, ClientID: s.testACO.ClientID,
+			ClientSecret: uuid.New()},
+		nil)
+	auth.SetMockProvider(s.T(), mock)
+
 	// execute positive scenarios via CLI
-	args := []string{"bcda", "reset-client-credentials", "--cms-id", "A9994"}
+	args := []string{"bcda", "reset-client-credentials", "--cms-id", *s.testACO.CMSID}
 	err := s.testApp.Run(args)
 	assert.Nil(err)
 	assert.Regexp(outputPattern, buf.String())
@@ -232,6 +242,30 @@ func (s *CLITestSuite) TestResetSecretCLI() {
 	assert.Equal("flag provided but not defined: -abcd", err.Error())
 	assert.Contains(buf.String(), "Incorrect Usage: flag provided but not defined")
 
+	mock.AssertExpectations(s.T())
+}
+
+func (s *CLITestSuite) TestRevokeToken() {
+	assert := assert.New(s.T())
+
+	buf := new(bytes.Buffer)
+	s.testApp.Writer = buf
+
+	accessToken := uuid.New()
+	mock := &auth.MockProvider{}
+	mock.On("RevokeAccessToken", accessToken).Return(nil)
+	auth.SetMockProvider(s.T(), mock)
+	assert.NoError(s.testApp.Run([]string{"bcda", "revoke-token", "--access-token", accessToken}))
+	buf.Reset()
+
+	// Negative case - attempt to revoke a token passing in a blank token string
+	args := []string{"bcda", "revoke-token", "--access-token", ""}
+	err := s.testApp.Run(args)
+	assert.Equal("Access token (--access-token) must be provided", err.Error())
+	assert.Equal(0, buf.Len())
+	buf.Reset()
+
+	mock.AssertExpectations(s.T())
 }
 
 func (s *CLITestSuite) TestArchiveExpiring() {
@@ -489,30 +523,56 @@ func (s *CLITestSuite) TestCleanupFailed() {
 	}
 }
 
-func (s *CLITestSuite) TestRevokeToken() {
-	originalAuthProvider := auth.GetProviderName()
-	defer auth.SetProvider(originalAuthProvider)
-	auth.SetProvider("alpha")
-	// init
+func (s *CLITestSuite) TestCleanupCancelled() {
+	const threshold = 30
+	modified := time.Now().Add(-(time.Hour * (threshold + 1)))
+	beforePayloadJobID, beforePayload := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	beforeStagingJobID, beforeStaging := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
+	// Job is old enough, but does not match the status
+	completedJobID, completed := s.setupJobFile(modified, models.JobStatusCompleted, conf.GetEnv("FHIR_PAYLOAD_DIR"))
 
-	assert := assert.New(s.T())
+	afterPayloadJobID, afterPayload := s.setupJobFile(time.Now(), models.JobStatusCancelled, conf.GetEnv("FHIR_PAYLOAD_DIR"))
+	afterStagingJobID, afterStaging := s.setupJobFile(time.Now(), models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
 
-	buf := new(bytes.Buffer)
-	s.testApp.Writer = buf
+	// Check that we can clean up jobs that do not have data
+	noDataID, noData := s.setupJobFile(modified, models.JobStatusCancelled, conf.GetEnv("FHIR_STAGING_DIR"))
+	dir, _ := path.Split(noData.Name())
+	os.RemoveAll(dir)
+	assertFileNotExists(s.T(), noData.Name())
 
-	// Negative case - attempt to revoke a token passing in a blank token string
-	args := []string{"bcda", "revoke-token", "--access-token", ""}
-	err := s.testApp.Run(args)
-	assert.Equal("Access token (--access-token) must be provided", err.Error())
-	assert.Equal(0, buf.Len())
-	buf.Reset()
+	shouldExist := []*os.File{afterPayload, afterStaging, completed}
+	shouldNotExist := []*os.File{beforePayload, beforeStaging, noData}
 
-	// Expect (for the moment) that alpha auth does not implement
-	args = []string{"bcda", "revoke-token", "--access-token", "this-token-value-is-immaterial"}
-	err = s.testApp.Run(args)
-	assert.EqualError(err, "RevokeAccessToken is not implemented for alpha auth")
-	assert.Equal(0, buf.Len())
-	buf.Reset()
+	defer func() {
+		for _, f := range append(shouldExist, shouldNotExist...) {
+			os.Remove(f.Name())
+			f.Close()
+		}
+	}()
+
+	err := s.testApp.Run([]string{"bcda", "cleanup-cancelled", "--threshold", strconv.Itoa(threshold)})
+	assert.NoError(s.T(), err)
+
+	assert.Equal(s.T(), models.JobStatusCancelledExpired,
+		postgrestest.GetJobByID(s.T(), s.db, beforePayloadJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCancelledExpired,
+		postgrestest.GetJobByID(s.T(), s.db, noDataID).Status)
+	assert.Equal(s.T(), models.JobStatusCancelledExpired,
+		postgrestest.GetJobByID(s.T(), s.db, beforeStagingJobID).Status)
+
+	assert.Equal(s.T(), models.JobStatusCancelled,
+		postgrestest.GetJobByID(s.T(), s.db, afterPayloadJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCancelled,
+		postgrestest.GetJobByID(s.T(), s.db, afterStagingJobID).Status)
+	assert.Equal(s.T(), models.JobStatusCompleted,
+		postgrestest.GetJobByID(s.T(), s.db, completedJobID).Status)
+
+	for _, f := range shouldExist {
+		assert.FileExists(s.T(), f.Name())
+	}
+	for _, f := range shouldNotExist {
+		assertFileNotExists(s.T(), f.Name())
+	}
 }
 
 func (s *CLITestSuite) TestStartAPI() {
@@ -927,6 +987,20 @@ func (s *CLITestSuite) TestCloneCCLFZips() {
 			assert.Equal(cclfRFiles[i], f.Name)
 		}
 	}
+}
+
+func (s *CLITestSuite) TestGenerateAlrData() {
+	initialCount := postgrestest.GetALRCount(s.T(), s.db, "A9994")
+	args := []string{"bcda", "generate-synthetic-alr-data", "--cms-id", "A9994",
+		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"}
+	err := s.testApp.Run(args)
+	assert.NoError(s.T(), err)
+	assert.Greater(s.T(), postgrestest.GetALRCount(s.T(), s.db, "A9994"), initialCount)
+
+	// No CCLF file
+	err = s.testApp.Run([]string{"bcda", "generate-synthetic-alr-data", "--cms-id", "UNKNOWN_ACO",
+		"--alr-template-file", "../alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv"})
+	assert.EqualError(s.T(), err, "no CCLF8 file found for CMS ID UNKNOWN_ACO")
 }
 
 func (s *CLITestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {

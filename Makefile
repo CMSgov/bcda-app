@@ -20,52 +20,36 @@ lint:
 	--rm tests golangci-lint run --exclude="(conf\.(Un)?[S,s]etEnv)" --deadline=$(LINT_TIMEOUT) --verbose
 	docker-compose -f docker-compose.test.yml run --rm tests gosec ./...
 
-# The following vars are available to tests needing SSAS admin credentials; currently they are used in smoke-test
-# Note that these variables should only be used for smoke tests, must be set before the api starts, and cannot be changed after the api starts
-SSAS_ADMIN_CLIENT_ID ?= 31e029ef-0e97-47f8-873c-0e8b7e7f99bf
-SSAS_ADMIN_CLIENT_SECRET := $(shell docker-compose run --rm ssas sh -c 'main --reset-secret --client-id=$(SSAS_ADMIN_CLIENT_ID)'|tail -n1)
-
-#
-# The following vars are used by both smoke-test and postman to pass credentials for obtaining an access token.
-# The CLIENT_ID and CLIENT_SECRET values can be overridden by environmental variables e.g.:
-#    export CLIENT_ID=1234; export CLIENT_SECRET=abcd; make postman env=local
-# or 
-#    CLIENT_ID=1234 CLIENT_SECRET=abcd make postman env=local
-#
-# If the values for CLIENT_ID and CLIENT_SECRET are not overridden, then by default, generate-client-credentials is
-# called using ACO CMS ID "A9994" (to generate credentials for the `ACO Dev` which has a CMS ID of A9994 in our test
-# data). This can be overridden using the same technique as above (exporting the env var and running make).
-# For example:
-#    export ACO_CMS_ID=A9999; make postman env=local
-# or
-#    ACO_CMS_ID=A9999 make postman env=local
-ACO_CMS_ID ?= A9994
-clientTemp := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2)
-CLIENT_ID ?= $(shell echo $(clientTemp) |awk '{print $$1}')
-CLIENT_SECRET ?= $(shell echo $(clientTemp) |awk '{print $$2}')
-
 smoke-test:
 	docker-compose -f docker-compose.test.yml build tests
-	BCDA_SSAS_CLIENT_ID=$(SSAS_ADMIN_CLIENT_ID) BCDA_SSAS_SECRET=$(SSAS_ADMIN_CLIENT_SECRET) test/smoke_test/smoke_test.sh
+	test/smoke_test/smoke_test.sh
 
 postman:
 	# This target should be executed by passing in an argument for the environment (dev/test/sbx)
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	$(eval BLACKLIST_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id A9997'|tail -n2))
+	$(eval BLACKLIST_CLIENT_ID=$(shell docker-compose exec api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
+	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker-compose exec api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
 
-	$(eval BLACKLIST_CLIENT_ID:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$1}'))
-	$(eval BLACKLIST_CLIENT_SECRET:=$(shell echo $(BLACKLIST_TEMP) |awk '{print $$2}'))
+	# Set up valid client credentials
+	$(eval ACO_CMS_ID = A9994)
+	$(eval CLIENT_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
+	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
+	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
+
 	docker-compose -f docker-compose.test.yml build postman_test
-	docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
+	@docker-compose -f docker-compose.test.yml run --rm postman_test test/postman_test/BCDA_Tests_Sequential.postman_collection.json \
 	-e test/postman_test/$(env).postman_environment.json --global-var "token=$(token)" --global-var clientId=$(CLIENT_ID) --global-var clientSecret=$(CLIENT_SECRET) \
-	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET)
+	--global-var blacklistedClientId=$(BLACKLIST_CLIENT_ID) --global-var blacklistedClientSecret=$(BLACKLIST_CLIENT_SECRET) \
+	--global-var v2Disabled=true \
+	--global-var alrEnabled=true
 
 unit-test:
 	$(MAKE) unit-test-db
+	
 	docker-compose -f docker-compose.test.yml build tests
-	docker-compose -f docker-compose.test.yml run --rm -e BCDA_SSAS_CLIENT_ID=fake-client-id -e BCDA_SSAS_SECRET=fake-secret tests bash unit_test.sh
+	@docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
@@ -106,15 +90,22 @@ load-fixtures:
 	# Initialize schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
-	
+
 	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
+	
+	# Add ALR data for ACO under test. Must have attribution already set.
+	$(eval ACO_CMS_ID = A9994)
+	docker-compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id=$(ACO_CMS_ID) --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
 	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
+
+	# Additional fixtures for postman+ssas
+	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
 
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
@@ -170,7 +161,7 @@ bdt:
 	# supply this target with the necessary environment vars, e.g.:
 	# make bdt BDT_BASE_URL=<origin of API>
 	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt .
-	docker run --rm \
+	@docker run --rm \
 	-e BASE_URL='${BDT_BASE_URL}' \
 	-e CLIENT_ID='${CLIENT_ID}' \
 	-e SECRET='${CLIENT_SECRET}' \
@@ -183,6 +174,7 @@ documentation:
 	docker-compose up --exit-code-from openapi openapi
 
 credentials:
+	$(eval ACO_CMS_ID = A9994)
 	# Use ACO_CMS_ID to generate a local set of credentials for the ACO.
 	# For example: ACO_CMS_ID=A9993 make credentials 
-	docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2
+	@docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2

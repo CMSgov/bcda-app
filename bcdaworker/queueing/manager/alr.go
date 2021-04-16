@@ -170,56 +170,63 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return err
 	}
 
-	// Update DB that work is done / success
-	err = q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID)
+	// Since the completed count is used for reporting (not for job completion), we do not
+	// need it to succeed for moving on.
+	if err := q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID); err != nil {
+		q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
+	}
+
+	jobComplete, err := q.isJobComplete(ctx, jobArgs.ID)
 	if err != nil {
-		q.alrLog.Warnf("Failed to increment job count for '%s' %s", job.Args, err)
-		// Can't increment for some DB reason... rollback the file created and try again...
-		deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
-			string(ndjsonFilename))
+		q.alrLog.Warnf("Failed to check job completion %s", err)
 		return err
 	}
 
-	alrJobs, err = q.repository.GetJobByID(ctx, jobArgs.ID)
-	if err != nil {
-		q.alrLog.Warnf("Failed to get alr Job by id for '%s' %s", job.Args, err)
-		// Try again
-		deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
-			string(ndjsonFilename))
-		return err
-	}
-
-	// Check if the Job is done
-	if alrJobs.CompletedJobCount == alrJobs.JobCount {
-		// we're done, so move files from staging to payload
-		// First make sure there is no conflicting directory... only an issue on local
-		err := os.RemoveAll(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_PAYLOAD_DIR, jobArgs.ID))
+	if jobComplete {
+		// Finished writing all data, we can now move the data over to the payload directory
+		err := os.Rename(fmt.Sprintf("%s/%d", q.StagingDir, jobArgs.ID), fmt.Sprintf("%s/%d", q.PayloadDir, jobArgs.ID))
 		if err != nil {
-			q.alrLog.Warnf("Could not clear payload directory")
-		}
-
-		// Move the file from staging to payload
-		err = os.Rename(fmt.Sprintf("%s/%d", q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID),
-			fmt.Sprintf("%s/%d", q.alrWorker.FHIR_PAYLOAD_DIR, jobArgs.ID))
-		if err != nil {
-			q.alrLog.Warnf("Failed to rename alr dirs '%s' %s", job.Args, err)
-			deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
-				string(ndjsonFilename))
+			q.alrLog.Warnf("Failed to move data to payload directory %s", err)
 			return err
 		}
-		// mark job as done
+
 		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusCompleted)
-
 		if err != nil {
-			q.alrLog.Warnf("Failed to update job to complete '%s' %s", job.Args, err)
-			deleteAndRetry(q.alrLog, q.alrWorker.FHIR_STAGING_DIR, jobArgs.ID,
-				string(ndjsonFilename))
+			// This means the job did not finish for various reason
+			q.alrLog.Warnf("Failed to update job to complete for '%s' %s", job.Args, err)
+			// Re-enqueue the job
 			return err
 		}
-
-		// Everything went smoothly, let's clean up the tracker
-		delete(alrJobTracker, jobArgs.ID)
 	}
 
 	return nil
+}
+
+func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, error) {
+	j, err := q.repository.GetJobByID(ctx, jobID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get job: %w", err)
+	}
+
+	switch j.Status {
+	case models.JobStatusCompleted:
+		return true, nil
+	case models.JobStatusCancelled, models.JobStatusFailed:
+		// Terminal status stop checking
+		q.alrLog.Warnf("Failed to mark job as completed (Job %s): %s", j.Status, err)
+		return false, nil
+	}
+
+	completedCount, err := q.repository.GetJobKeyCount(ctx, jobID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get job key count: %w", err)
+	}
+
+	if completedCount > j.JobCount {
+		q.alrLog.WithFields(logrus.Fields{
+			"jobID":    j.ID,
+			"jobCount": j.JobCount, "completedJobCount": completedCount}).
+			Warn("Excess number of jobs completed.")
+	}
+	return completedCount >= j.JobCount, nil
 }

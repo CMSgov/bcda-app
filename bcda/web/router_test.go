@@ -6,16 +6,20 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -263,20 +267,32 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
 	apiRouter := NewAPIRouter()
 
+	// Set up
+	cmsID := testUtils.RandomHexID()[0:4]
+	aco := models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New()}
 	db := database.Connection
 
-	p := auth.GetProvider()
-	cmsID := testUtils.RandomHexID()[0:4]
-	id := uuid.NewRandom()
-	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
-	postgrestest.CreateACO(s.T(), db, *aco)
-	acoUUID := aco.UUID
+	// Set up a constant token to reference the aco under test
+	bearerString := uuid.New()
+	token := &jwt.Token{
+		Claims: &auth.CommonClaims{
+			StandardClaims: jwt.StandardClaims{
+				Issuer: "ssas",
+			},
+			ClientID: uuid.New(),
+			SystemID: uuid.New(),
+			Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
+		},
+		Raw:   uuid.New(),
+		Valid: true}
 
-	defer postgrestest.DeleteACO(s.T(), db, acoUUID)
-	c, err := p.RegisterSystem(acoUUID.String(), "", "")
-	s.NoError(err)
-	token, err := p.MakeAccessToken(c)
-	s.NoError(err)
+	mock := &auth.MockProvider{}
+	mock.On("VerifyToken", bearerString).Return(token, nil)
+	mock.On("AuthorizeAccess", token.Raw).Return(nil)
+	auth.SetMockProvider(s.T(), mock)
+
+	postgrestest.CreateACO(s.T(), db, aco)
+	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
 	configs := []struct {
 		handler http.Handler
@@ -295,7 +311,7 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			CutoffDate:      time.Date(2020, time.December, 31, 23, 59, 59, 0, time.Local),
 			BlacklistType:   models.Involuntary,
 		},
-		nil, 
+		nil,
 	}
 
 	for _, blacklistValue := range blackListValues {
@@ -303,11 +319,12 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			for _, path := range config.paths {
 				s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blacklistValue, path), func(t *testing.T) {
 					aco.TerminationDetails = blacklistValue
-					postgrestest.UpdateACO(t, db, *aco)
+					fmt.Println(aco.UUID.String())
+					postgrestest.UpdateACO(t, db, aco)
 					rr := httptest.NewRecorder()
 					req, err := http.NewRequest("GET", path, nil)
 					assert.NoError(t, err)
-					req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+					req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
 					config.handler.ServeHTTP(rr, req)
 
 					if aco.Blacklisted() {
@@ -320,6 +337,93 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			}
 		}
 	}
+
+	mock.AssertExpectations(s.T())
+}
+
+// Verifies that we have the rate limiting handlers in place for the correct environments
+func (s *RouterTestSuite) TestRateLimitRoutes() {
+	// patterns := []string{"/Group/{groupId}/$export", "/Patient/$export"}
+
+	env := conf.GetEnv("DEPLOYMENT_TARGET")
+	defer conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", env)
+
+	tests := []struct {
+		target       string
+		hasRateLimit bool
+	}{
+		{"dev", false},
+		{"prod", true},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.target, func(t *testing.T) {
+			conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", tt.target)
+			conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
+			router := NewAPIRouter().(chi.Router)
+			assert.NotNil(s.T(), router)
+
+			v1Router := getRouterForVersion("v1", router)
+			assert.NotNil(t, v1Router)
+			v2Router := getRouterForVersion("v2", router)
+			assert.NotNil(t, v2Router)
+
+			// Test all requests for all versions of the our API
+			for _, versionRouter := range []chi.Router{v1Router, v2Router} {
+				for _, ep := range []string{"/Group/{groupId}/$export", "/Patient/$export"} {
+					middlewares := getMiddlewareForHandler(ep, versionRouter)
+					assert.NotNil(t, middlewares)
+					var hasRateLimit bool
+					for _, mw := range middlewares {
+						assert.NotNil(t, mw)
+						// Use the pointer values of the middleware to check if we're
+						// using the rate limit functions.
+						// If the pointer value of the middleware matches the rate limit function, then
+						// we know that the middleware function used is the rate limit function
+						if reflect.ValueOf(mw) == reflect.ValueOf(middleware.CheckConcurrentJobs) {
+							hasRateLimit = true
+						}
+					}
+					assert.Equal(t, tt.hasRateLimit, hasRateLimit)
+				}
+			}
+		})
+	}
+}
+
+func getMiddlewareForHandler(pattern string, router chi.Router) chi.Middlewares {
+	for _, route := range router.Routes() {
+		if route.Pattern == pattern {
+			return route.Handlers["GET"].(*chi.ChainHandler).Middlewares
+		}
+		// Go through all of the children
+		if route.SubRoutes != nil {
+			middleware := getMiddlewareForHandler(pattern, route.SubRoutes.(chi.Router))
+			if middleware != nil {
+				return middleware
+			}
+		}
+	}
+	// No matches
+	return nil
+}
+
+// getRouterForVersion retrives the underlying router associated with a particular versioned endpoint
+func getRouterForVersion(version string, router chi.Router) chi.Router {
+	for _, route := range router.Routes() {
+		if route.Pattern == fmt.Sprintf("/api/%s/*", version) {
+			return route.SubRoutes.(chi.Router)
+		}
+		// Go through all of the children
+		if route.SubRoutes != nil {
+			router := getRouterForVersion(version, route.SubRoutes.(chi.Router))
+			if router != nil {
+				return router
+			}
+		}
+	}
+
+	return nil
 }
 func TestRouterTestSuite(t *testing.T) {
 	suite.Run(t, new(RouterTestSuite))

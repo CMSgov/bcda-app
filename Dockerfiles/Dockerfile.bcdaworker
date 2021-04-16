@@ -1,13 +1,19 @@
 FROM golang:1.15-alpine3.12
 
 RUN apk update upgrade
-RUN apk add git
+RUN apk add git entr bash
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
+
+# Download all dependencies
+# By pulling this step out, we can leverage Docker caching
+# since our tooling/dependencies do not frequently change.
+COPY go.mod go.sum tools.go ./
+RUN go mod download
+RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get % 
+
 COPY . .
-
-RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 RUN go install
-CMD ["bcdaworker"]
+
+CMD ["../watch.sh", "worker", "bcdaworker"]

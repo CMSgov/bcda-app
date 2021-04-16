@@ -62,7 +62,7 @@ func (s *AlrTestSuite) TestRunoutRequest() {
 	for _, job := range jobs {
 		assert.Equal(s.cmsID, job.CMSID)
 		assert.True(timeWindow.LowerBound.Equal(job.LowerBound))
-		assert.True(timeWindow.UpperBound.Equal(job.UpperBound))
+		assert.True(s.svc.(*service).rp.claimThruDate.Equal(job.UpperBound), "Runout requests should always use the claim through date")
 		mbis = append(mbis, job.MBIs...)
 	}
 	assert.Len(mbis, 5)

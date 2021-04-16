@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -11,40 +10,28 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/conf"
 )
 
 const (
-	Alpha = "alpha"
-	Okta  = "okta"
-	SSAS  = "ssas"
+	SSAS = "ssas"
 )
 
-var providerName = Alpha
+var providerName = SSAS
 var repository models.Repository
+var provider Provider
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	SetProvider(strings.ToLower(conf.GetEnv(`BCDA_AUTH_PROVIDER`)))
 
 	repository = postgres.NewRepository(database.Connection)
-}
 
-func SetProvider(name string) {
-	if name != "" {
-		switch strings.ToLower(name) {
-		case Okta:
-			providerName = name
-		case Alpha:
-			providerName = name
-		case SSAS:
-			providerName = name
-		default:
-			log.Infof(`Unknown providerName %s; using %s`, name, providerName)
-		}
+	c, err := client.NewSSASClient()
+	if err != nil {
+		log.Errorf("no client for SSAS. no provider set; %s", err.Error())
 	}
-	log.Infof(`Auth is made possible by %s`, providerName)
+	provider = SSASPlugin{client: c, repository: repository}
+
 }
 
 func GetProviderName() string {
@@ -52,20 +39,7 @@ func GetProviderName() string {
 }
 
 func GetProvider() Provider {
-	switch providerName {
-	case Alpha:
-		return AlphaAuthPlugin{repository}
-	case Okta:
-		return NewOktaAuthPlugin(client.NewOktaClient())
-	case SSAS:
-		c, err := client.NewSSASClient()
-		if err != nil {
-			log.Fatalf("no client for SSAS; %s", err.Error())
-		}
-		return SSASPlugin{client: c, repository: repository}
-	default:
-		return AlphaAuthPlugin{}
-	}
+	return provider
 }
 
 type AuthData struct {
@@ -84,6 +58,16 @@ type Credentials struct {
 	SystemID     string    `json:"system_id"`
 	Token        string    `json:"token"`
 	ExpiresAt    time.Time `json:"expires_at"`
+}
+
+type CommonClaims struct {
+	ClientID string   `json:"cid,omitempty"`
+	SystemID string   `json:"sys,omitempty"`
+	Data     string   `json:"dat,omitempty"`
+	Scopes   []string `json:"scp,omitempty"`
+	ACOID    string   `json:"aco,omitempty"`
+	UUID     string   `json:"id,omitempty"`
+	jwt.StandardClaims
 }
 
 // Provider defines operations performed through an authentication provider.

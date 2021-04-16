@@ -75,23 +75,3 @@ func operationSucceeded(data event) {
 func operationFailed(data event) {
 	mergeNonEmpty(data).WithField("event", "OperationFailed").Print(data.help)
 }
-
-func accessTokenIssued(data event) {
-	mergeNonEmpty(data).WithField("event", "AccessTokenIssued").Print(data.help)
-}
-
-func secureHashTime(data event) {
-	mergeNonEmpty(data).WithField("event", "SecureHashTime").Print(data.help)
-}
-
-func secretCreated(data event) {
-	mergeNonEmpty(data).WithField("event", "SecretCreated").Print(data.help)
-}
-
-func serviceHalted(data event) {
-	mergeNonEmpty(data).WithField("event", "ServiceHalted").Print(data.help)
-}
-
-func serviceStarted(data event) {
-	mergeNonEmpty(data).WithField("event", "ServiceStarted").Print(data.help)
-}

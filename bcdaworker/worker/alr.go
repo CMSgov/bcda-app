@@ -6,12 +6,15 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/google/fhir/go/jsonformat"
 	"github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
@@ -27,8 +30,9 @@ import (
 
 type AlrWorker struct {
 	*postgres.AlrRepository
-	FHIR_STAGING_DIR string
-	FHIR_PAYLOAD_DIR string
+	repository.Repository
+	StagingDir     string `conf:"FHIR_STAGING_DIR"`
+	ndjsonFilename string
 }
 
 //data is used to send FHIR data to a go routine to write to disk
@@ -48,8 +52,9 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 
 	// embed data struct that has method GetAlr
 	worker := AlrWorker{
-		AlrRepository:    alrR,
-		FHIR_STAGING_DIR: "",
+		AlrRepository:  alrR,
+		Repository:     workerpg.NewRepository(db),
+		ndjsonFilename: "", // Filled in later
 	}
 
 	err := conf.Checkout(&worker) // worker is already a reference, no & needed
@@ -130,13 +135,14 @@ func (a *AlrWorker) ProcessAlrJob(
 	// Set up IO operation to dump ndjson
 
 	// Created necessary directory
-	err = createDir(fmt.Sprintf("%s/%d", a.FHIR_STAGING_DIR, id))
+	err = os.MkdirAll(fmt.Sprintf("%s/%d", a.StagingDir, id), 0744)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", a.FHIR_STAGING_DIR,
-		id, ndjsonFilename))
+	a.ndjsonFilename = uuid.New()
+	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", a.StagingDir,
+		id, a.ndjsonFilename))
 	if err != nil {
 		logrus.Error(err)
 		return err
@@ -171,5 +177,22 @@ func (a *AlrWorker) ProcessAlrJob(
 	close(c)
 
 	// Wait on the go routine to finish
-	return <-result
+	if err := <-result; err != nil {
+		return fmt.Errorf("failed to write data: %w", err)
+	}
+
+	fileName := filepath.Base(f.Name())
+	// If we did not have an ALR data to write, we'll write a specific file name that indicates that the
+	// there is no data associated with this job.
+	if len(alrModels) == 0 {
+		fileName = models.BlankFileName
+	}
+
+	jk := models.JobKey{JobID: id, FileName: fileName, ResourceType: "ALR"}
+	if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
+		return fmt.Errorf("failed to create job key: %w", err)
+	}
+
+	return nil
+
 }
