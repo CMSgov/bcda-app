@@ -212,7 +212,6 @@ func TestStartAlrJob(t *testing.T) {
 	// Create JobArgs
 	jobArgs := models.JobAlrEnqueueArgs{
 		ID:         id,
-		QueueID:    1,
 		CMSID:      cmsID,
 		MBIs:       []string{alr[0].BeneMBI},
 		LowerBound: time.Time{},
@@ -220,7 +219,6 @@ func TestStartAlrJob(t *testing.T) {
 	}
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
-		QueueID:    2,
 		CMSID:      cmsID,
 		MBIs:       []string{alr[1].BeneMBI},
 		LowerBound: time.Time{},
