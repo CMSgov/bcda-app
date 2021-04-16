@@ -1763,4 +1763,5 @@ func SomeuntestedFunctionNoAnnotations() {
 	fmt.Println("Goodbye")
 	fmt.Println("Goodbye")
 	fmt.Println("Goodbye")
+	fmt.Println("Goodbye")
 }
