@@ -18,7 +18,7 @@ parsers:
 
 comment:
   layout: "reach,diff,files,footer"
-  behavior: default
+  behavior: new
   require_changes: false
   require_base: no
   require_head: no
