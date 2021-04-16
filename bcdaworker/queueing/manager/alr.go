@@ -3,13 +3,17 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+
+	// The follow two packages imported to use repository.ErrJobNotFound
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/bgentry/que-go"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
@@ -27,21 +31,12 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
-// alrJobTrackerStruct is used to track the status of the job
-type alrJobTrackerStuct struct {
-	tracker map[uint]alrJobAttempt // unint here is the big job
-	sync.Mutex
-}
+// Max number of retries either set by ENV or default value of 3
+var maxRetry = int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
 
-type alrJobAttempt struct {
-	status         models.JobStatus
-	attemptTracker map[uint]uint // 1st uint is the small job
-}
-
-// Instance at the global private level
-var alrJobTracker = alrJobTrackerStuct{
-	tracker: make(map[uint]alrJobAttempt),
-}
+// To reduce the number of pings to the DB, internal tracking of jobs
+// Pre-allocation of 512 is abitraru... seems like a good avg number
+var alrJobTracker = make(map[uint]struct{}, 512)
 
 /******************************************************************************
 	Functions
@@ -100,16 +95,28 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// If we cannot unmarshall this, it would be very problematic.
 	if err != nil {
 		// TODO: perhaps just fail the job?
-		q.alrLog.Fatalf("Failed to unmarhall job.Args '%s' %s.",
+		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s.",
 			job.Args, err)
 	}
 
-	// Check if this is already a failed job, and don't continue if it is
+	// Validate the job like bcdaworker/worker/worker.go#L43
+	// TODO: Abstract this into either function or interface like the bfd worker
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
-	if err != nil {
-		q.alrLog.Warnf("Could not get information on '%s' %s.",
-			job.Args, err)
-		return nil
+	if err != nil { // if this is not nil, we could not find the Job
+		// Drill down to what kind of error this is...
+		if errors.Is(err, repository.ErrJobNotFound) {
+			// Parent job is not found
+			if job.ErrorCount >= maxRetry {
+				q.alrLog.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
+					jobArgs.CMSID)
+				// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
+				return nil
+			}
+			q.alrLog.Warnf("No Job with ID %d ACO %s found. Will retry.", jobArgs.ID, jobArgs.CMSID)
+			return fmt.Errorf("could not retrieve job from database")
+		}
+		// Else that job just doesn't exist
+		return fmt.Errorf("failed to valiate job: %w", err)
 	}
 	if alrJobs.Status == models.JobStatusCancelled {
 		q.alrLog.Warnf("ALR big job has been cancelled, worker will not tasked for %s",
@@ -119,26 +126,22 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	// Keep track of how many times a small job has failed.
 	// If the threshold is reached, fail the job
-	alrJobTracker.Lock()
-	if _, exists := alrJobTracker.tracker[jobArgs.ID]; !exists {
+	if _, exists := alrJobTracker[alrJobs.ID]; !exists {
 
-		alrJobTracker.tracker[jobArgs.ID] = alrJobAttempt{
-			status:         models.JobStatusInProgress,
-			attemptTracker: make(map[uint]uint),
-		}
-		alrJobTracker.tracker[jobArgs.ID].attemptTracker[jobArgs.QueueID] = 0
+		// So we have a brand new job... we will start tracking it
+		alrJobTracker[alrJobs.ID] = struct{}{}
+
 		err := q.repository.UpdateJobStatus(ctx, jobArgs.ID,
 			models.JobStatusInProgress)
 		if err != nil {
 			q.alrLog.Warnf("Failed to update job status '%s' %s.",
 				job.Args, err)
 			// unlock before returning to avoid deadlock
-			alrJobTracker.Unlock()
 			return err
 		}
 	} else {
 		// Check if this job has been retried too many times - 5 times is max
-		if alrJobTracker.tracker[jobArgs.ID].attemptTracker[jobArgs.QueueID] > 4 {
+		if job.ErrorCount > maxRetry {
 			// Fail the job
 			err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
 			if err != nil {
@@ -148,13 +151,11 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			q.alrLog.Warnf("One of the job for '%d' has failed five times.",
 				jobArgs.ID)
 			// Clean up the failed job from tracker
-			delete(alrJobTracker.tracker, jobArgs.ID)
+			delete(alrJobTracker, jobArgs.ID)
 			return nil
 		}
 
-		alrJobTracker.tracker[jobArgs.ID].attemptTracker[jobArgs.QueueID]++
 	}
-	alrJobTracker.Unlock()
 
 	// Check if the job was cancelled
 	go checkIfCancelled(ctx, q, cancel, jobArgs)
@@ -217,9 +218,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		}
 
 		// Everything went smoothly, let's clean up the tracker
-		alrJobTracker.Lock()
-		delete(alrJobTracker.tracker, jobArgs.ID)
-		alrJobTracker.Unlock()
+		delete(alrJobTracker, jobArgs.ID)
 	}
 
 	return nil
