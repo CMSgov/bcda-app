@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
@@ -17,6 +18,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 
 	"github.com/stretchr/testify/assert"
+	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -58,10 +60,125 @@ func (s *AuthAPITestSuite) SetupTest() {
 	s.rr = httptest.NewRecorder()
 }
 
+func (s *AuthAPITestSuite) TestNoMatch() {
+	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
+	mock := &auth.MockProvider{}
+	// MakeAccessToken does not match on the auth.Credentials (ClientID is not set properly)
+	mock.On("MakeAccessToken", auth.Credentials{ClientID: uuid.New(), ClientSecret: clientSecret}).
+		Return(accessToken, nil)
+	auth.SetMockProvider(s.T(), mock)
+	s.rr = httptest.NewRecorder()
+
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+}
+
+func (s *AuthAPITestSuite) TestNotInvoked() {
+	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
+	mock := &auth.MockProvider{}
+	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
+		Return(accessToken, nil)
+
+	// Method below is not called
+	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
+		Return("", errors.New("some auth error"))
+
+	auth.SetMockProvider(s.T(), mock)
+	s.rr = httptest.NewRecorder()
+
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+
+	mock.AssertExpectations(s.T())
+}
+
+func (s *AuthAPITestSuite) TestDoesNotMatchFunctionArgs() {
+	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
+	mock := &auth.MockProvider{}
+	mock.On("MakeAccessToken", "Should be auth.Credentials").
+		Return(accessToken, nil)
+	auth.SetMockProvider(s.T(), mock)
+	s.rr = httptest.NewRecorder()
+
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+}
+
+func (s *AuthAPITestSuite) TestNotMatchReturn() {
+	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
+	mock := &auth.MockProvider{}
+	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
+		// Should return accessToken + error
+		Return(accessToken)
+	auth.SetMockProvider(s.T(), mock)
+	s.rr = httptest.NewRecorder()
+
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+}
+
+func (s *AuthAPITestSuite) TestArgumentCapture() {
+	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
+	mp := &auth.MockProvider{}
+	mp.On("MakeAccessToken",
+		mock.MatchedBy(func(creds auth.Credentials) bool{
+			fmt.Printf("%+v\n", creds)
+			return true
+		})).
+		Return(accessToken, nil)
+	auth.SetMockProvider(s.T(), mp)
+	s.rr = httptest.NewRecorder()
+
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+}
+
+func (s *AuthAPITestSuite) TestArgumentValidator() {
+	clientID, clientSecret, _ := uuid.New(), uuid.New(), uuid.New()
+	mp := &auth.MockProvider{}
+	call := mp.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret})
+	call.Run(func(args mock.Arguments) {
+		fmt.Printf("%v %v\n", args.Get(0), reflect.TypeOf(args.Get(0)))
+		creds := args.Get(0).(auth.Credentials)
+		call.Return(creds.ClientID, nil)
+	})
+	auth.SetMockProvider(s.T(), mp)
+	s.rr = httptest.NewRecorder()
+
+	req := httptest.NewRequest("POST", "/auth/token", nil)
+	req.SetBasicAuth(clientID, clientSecret)
+	req.Header.Add("Accept", "application/json")
+	handler := http.HandlerFunc(auth.GetAuthToken)
+	handler.ServeHTTP(s.rr, req)
+	assert.Equal(s.T(), http.StatusOK, s.rr.Code)
+}
+
 func (s *AuthAPITestSuite) TestAuthToken() {
 	clientID, clientSecret, accessToken := uuid.New(), uuid.New(), uuid.New()
 	mock := &auth.MockProvider{}
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: clientID, ClientSecret: clientSecret}).
+		Return(accessToken, nil)
+	mock.On("MakeAccessToken", auth.Credentials{ClientID: uuid.New(), ClientSecret: clientSecret}).
 		Return(accessToken, nil)
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: "not_a_client", ClientSecret: "not_a_secret"}).
 		Return("", errors.New("some auth error"))
