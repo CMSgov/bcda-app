@@ -17,9 +17,10 @@ parsers:
 
 comment:
   layout: "reach,diff,files,footer"
-  behavior: new
+  behavior: default
   require_changes: false
   require_base: no
+  require_head: no
 
 # fixes:
 #   - "github.com/CMSgov/bcda-app/::"
