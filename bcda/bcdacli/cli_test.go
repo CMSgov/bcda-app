@@ -1006,6 +1006,9 @@ func (s *CLITestSuite) TestGenerateAlrData() {
 // func (s *CLITestSuite) TestFoo() {
 // 	SomeuntestedFunction()
 // }
+func (s *CLITestSuite) TestBar() {
+	SometestedFunction()
+}
 
 func (s *CLITestSuite) setupJobFile(modified time.Time, status models.JobStatus, rootPath string) (uint, *os.File) {
 	j := models.Job{
