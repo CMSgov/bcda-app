@@ -16,7 +16,7 @@ parsers:
       macro: no
 
 comment:
-  layout: "diff,files,footer"
+  layout: "reach,diff,files,footer"
   behavior: new
   require_changes: false
   require_base: no

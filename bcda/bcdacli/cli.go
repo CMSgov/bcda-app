@@ -1330,7 +1330,6 @@ func SomeuntestedFunction() {
 	// LCOV_EXCL_STOP
 }
 
-
 func SometestedFunction() {
 	fmt.Println("Hello")
 	fmt.Println("Hello")
@@ -1757,4 +1756,11 @@ func SometestedFunction() {
 	fmt.Println("Hello")
 	fmt.Println("Hello")
 	fmt.Println("Hello")
+}
+
+func SomeuntestedFunctionNoAnnotations() {
+	fmt.Println("Goodbye")
+	fmt.Println("Goodbye")
+	fmt.Println("Goodbye")
+	fmt.Println("Goodbye")
 }
