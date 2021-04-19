@@ -316,9 +316,25 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 				assertIndexExists(t, false, db, "cclf_beneficiaries", "idx_cclf_beneficiaries_mbi")
 			},
 		},
+		{
+			"Removing alpha_secret from acos table",
+			func(t *testing.T) {
+				assertColumnExists(t, true, db, "acos", "alpha_secret")
+				migrator.runMigration(t, 14)
+				assertColumnExists(t, false, db, "acos", "alpha_secret")
+			},
+		},
 		// **********************************************************
 		// * down migrations tests begin here with test number - 1  *
 		// **********************************************************
+		{
+			"Restore alpha_secret for acos table",
+			func(t *testing.T) {
+				assertColumnExists(t, false, db, "acos", "alpha_secret")
+				migrator.runMigration(t, 13)
+				assertColumnExists(t, true, db, "acos", "alpha_secret")
+			},
+		},
 		{
 			"Restore unused cclf_beneficiaries indexes",
 			func(t *testing.T) {
