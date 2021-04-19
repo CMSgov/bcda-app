@@ -33,6 +33,12 @@ type TokenResponse struct {
 	TokenType   string `json:"token_type"`
 }
 
+type Credentials struct {
+	ClientID     string
+	ClientSecret string
+	ClientName   string
+}
+
 func init() {
 	ssasLogger = logrus.New()
 	ssasLogger.Formatter = &logrus.JSONFormatter{}

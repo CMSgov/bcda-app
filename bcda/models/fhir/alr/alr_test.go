@@ -27,7 +27,7 @@ func TestGenerateAlr(t *testing.T) {
 	p, c := testUtils.CopyToTemporaryDirectory(t, "../../../alr/gen/testdata/")
 	t.Cleanup(c)
 	csvPath := filepath.Join(p, "PY21ALRTemplatePrelimProspTable1.csv")
-	err := alrgen.UpdateCSV(csvPath, mbiSupplier{func() string { return testUtils.RandomMBI(t) }})
+	err := alrgen.UpdateCSV(csvPath, mbiSupplier{func() string { return testUtils.RandomMBI(t) }}.GetMBIs)
 	assert.NoError(t, err)
 
 	alrs, err := alrcsv.ToALR(csvPath)

@@ -94,7 +94,6 @@ func (s *WorkerTestSuite) TearDownTest() {
 }
 
 func (s *WorkerTestSuite) TearDownSuite() {
-	testUtils.SetUnitTestKeysForAuth()
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))

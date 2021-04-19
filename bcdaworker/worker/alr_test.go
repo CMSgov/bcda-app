@@ -86,13 +86,13 @@ func (s *AlrWorkerTestSuite) SetupSuite() {
 		s.FailNow(err.Error())
 	}
 
-	s.alrWorker.FHIR_STAGING_DIR = tempDir
+	s.alrWorker.StagingDir = tempDir
 }
 
 // Test NewAlrWorker returns a worker alrWorker
 func (s *AlrWorkerTestSuite) TestNewAlrWorker() {
 	newAlrWorker := NewAlrWorker(s.db)
-	assert.NotEmpty(s.T(), newAlrWorker.FHIR_STAGING_DIR)
+	assert.NotEmpty(s.T(), newAlrWorker.StagingDir)
 	assert.NotNil(s.T(), newAlrWorker.AlrRepository)
 }
 
@@ -107,5 +107,5 @@ func (s *AlrWorkerTestSuite) TestProcessAlrJob() {
 func TestAlrWorkerTestSuite(t *testing.T) {
 	d := new(AlrWorkerTestSuite)
 	suite.Run(t, d)
-	t.Cleanup(func() { os.RemoveAll(d.alrWorker.FHIR_STAGING_DIR) })
+	t.Cleanup(func() { os.RemoveAll(d.alrWorker.StagingDir) })
 }

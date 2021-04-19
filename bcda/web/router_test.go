@@ -13,12 +13,13 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -266,20 +267,32 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 	conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
 	apiRouter := NewAPIRouter()
 
+	// Set up
+	cmsID := testUtils.RandomHexID()[0:4]
+	aco := models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: uuid.NewUUID(), ClientID: uuid.New()}
 	db := database.Connection
 
-	p := auth.GetProvider()
-	cmsID := testUtils.RandomHexID()[0:4]
-	id := uuid.NewRandom()
-	aco := &models.ACO{Name: "TestRegisterSystem", CMSID: &cmsID, UUID: id, ClientID: id.String()}
-	postgrestest.CreateACO(s.T(), db, *aco)
-	acoUUID := aco.UUID
+	// Set up a constant token to reference the aco under test
+	bearerString := uuid.New()
+	token := &jwt.Token{
+		Claims: &auth.CommonClaims{
+			StandardClaims: jwt.StandardClaims{
+				Issuer: "ssas",
+			},
+			ClientID: uuid.New(),
+			SystemID: uuid.New(),
+			Data:     fmt.Sprintf(`{"cms_ids":["%s"]}`, cmsID),
+		},
+		Raw:   uuid.New(),
+		Valid: true}
 
-	defer postgrestest.DeleteACO(s.T(), db, acoUUID)
-	c, err := p.RegisterSystem(acoUUID.String(), "", "")
-	s.NoError(err)
-	token, err := p.MakeAccessToken(c)
-	s.NoError(err)
+	mock := &auth.MockProvider{}
+	mock.On("VerifyToken", bearerString).Return(token, nil)
+	mock.On("AuthorizeAccess", token.Raw).Return(nil)
+	auth.SetMockProvider(s.T(), mock)
+
+	postgrestest.CreateACO(s.T(), db, aco)
+	defer postgrestest.DeleteACO(s.T(), db, aco.UUID)
 
 	configs := []struct {
 		handler http.Handler
@@ -306,11 +319,12 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			for _, path := range config.paths {
 				s.T().Run(fmt.Sprintf("blacklist-value-%v-%s", blacklistValue, path), func(t *testing.T) {
 					aco.TerminationDetails = blacklistValue
-					postgrestest.UpdateACO(t, db, *aco)
+					fmt.Println(aco.UUID.String())
+					postgrestest.UpdateACO(t, db, aco)
 					rr := httptest.NewRecorder()
 					req, err := http.NewRequest("GET", path, nil)
 					assert.NoError(t, err)
-					req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+					req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
 					config.handler.ServeHTTP(rr, req)
 
 					if aco.Blacklisted() {
@@ -323,6 +337,8 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 			}
 		}
 	}
+
+	mock.AssertExpectations(s.T())
 }
 
 // Verifies that we have the rate limiting handlers in place for the correct environments
@@ -343,6 +359,7 @@ func (s *RouterTestSuite) TestRateLimitRoutes() {
 	for _, tt := range tests {
 		s.T().Run(tt.target, func(t *testing.T) {
 			conf.SetEnv(s.T(), "DEPLOYMENT_TARGET", tt.target)
+			conf.SetEnv(s.T(), "VERSION_2_ENDPOINT_ACTIVE", "true")
 			router := NewAPIRouter().(chi.Router)
 			assert.NotNil(s.T(), router)
 

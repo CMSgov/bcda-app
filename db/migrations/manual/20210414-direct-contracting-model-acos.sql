@@ -1,0 +1,62 @@
+-- SQL script to add Direct Contracting (DC) ACO model participants in production
+BEGIN;
+-- Since we are using Postgres 10, we need to install this extension to generate UUIDs
+CREATE EXTENSION "uuid-ossp";
+-- Use UUID v4 to match what we are doing when creating an ACO using the bcdacli.
+-- It uses uuid.NewRandom() which generates a version 4 UUID.
+INSERT INTO acos (cms_id, name, uuid) VALUES
+('D0004','Iora Health NE DCE, LLC',uuid_generate_v4()),
+('D0005','ilumed, LLC',uuid_generate_v4()),
+('D0006','Arizona Health Advantage, Inc',uuid_generate_v4()),
+('D0008','Genuine Health Direct, LLC',uuid_generate_v4()),
+('D0011','Renovis Health LLC',uuid_generate_v4()),
+('D0013','Vively Health',uuid_generate_v4()),
+('D0020','The MetroHealth System dba Collaborative Care Partners',uuid_generate_v4()),
+('D0021','ADVANCED VALUE CARE II',uuid_generate_v4()),
+('D0025','VillageMD Houston ACO, LLC',uuid_generate_v4()),
+('D0027','On Belay Health Solutions, LLC',uuid_generate_v4()),
+('D0028','CareMore Aspire Medical Innovation Partners, PC',uuid_generate_v4()),
+('D0032','Best Value Healthcare, LLC',uuid_generate_v4()),
+('D0033','Texas DCE, Inc.',uuid_generate_v4()),
+('D0036','Complete Health Accountable Care LLC',uuid_generate_v4()),
+('D0048','Pathways Accountable Care, LLC',uuid_generate_v4()),
+('D0056','Ohio DCE - Akron, Inc.',uuid_generate_v4()),
+('D0062','Oregon Medicare Direct, Inc',uuid_generate_v4()),
+('D0063','Oak Street Health Medicare Partners LLC',uuid_generate_v4()),
+('D0067','Northern Michigan Health Network',uuid_generate_v4()),
+('D0068','Physicians Healthcare Collaborative',uuid_generate_v4()),
+('D0077','Regal Medical Group',uuid_generate_v4()),
+('D0078','Central Valley Community Partners LLC',uuid_generate_v4()),
+('D0086','American Choice Healthcare, LLC',uuid_generate_v4()),
+('D0097','Advanced Illness Partners, LLC',uuid_generate_v4()),
+('D0098','Perfect Health DCE, LLC',uuid_generate_v4()),
+('D0099','VillageMD Arizona ACO, LLC',uuid_generate_v4()),
+('D0100','VillageMD Georgia ACO, LLC',uuid_generate_v4()),
+('D0102','VillageMD Primary Providers ACO, LLC',uuid_generate_v4()),
+('D0103','Saint Francis Hospital Medicare ACO, LLC',uuid_generate_v4()),
+('D0105','VillageMD Michigan ACO, LLC',uuid_generate_v4()),
+('D0106','VillageMD New Hampshire ACO, LLC',uuid_generate_v4()),
+('D0113','Pittsburgh DCE, Inc.',uuid_generate_v4()),
+('D0114','Ohio DCE - Columbus, Inc.',uuid_generate_v4()),
+('D0116','Ohio DCE - SEOH, Inc.',uuid_generate_v4()),
+('D0124','AdventHealth Senior Care, Inc',uuid_generate_v4()),
+('D0129','Assurity DCE LLC',uuid_generate_v4()),
+('D0131','CareConnectMD DCE LLC',uuid_generate_v4()),
+('D0132','Clover Health Partners LLC',uuid_generate_v4()),
+('D0141','AKOS MD IPA, LLC',uuid_generate_v4()),
+('D0142','360 Health DCE Inc',uuid_generate_v4()),
+('D0143','CenterWell Care Solutions, Inc.',uuid_generate_v4()),
+('D0148','United Physicians Association, Inc',uuid_generate_v4()),
+('D0152','PeaceHealth Direct Contracting LLC',uuid_generate_v4()),
+('D0153','Castell Direct, LLC',uuid_generate_v4()),
+('D0155','Space Coast Independent Practice Association, LLC',uuid_generate_v4()),
+('D0160','Nivano Physicians, Inc. IPA',uuid_generate_v4()),
+('D0162','NEVADA CARE CONNECT',uuid_generate_v4()),
+('D0172','Subsero Healthcare, LLC',uuid_generate_v4()),
+('D0175','Axceleran DCE1, LLC',uuid_generate_v4()),
+('D0178','Axceleran DCE2, LLC',uuid_generate_v4()),
+('D0201','Enhanz DCE',uuid_generate_v4()),
+('D0203','Humana Direct Contracting Entity, Inc.',uuid_generate_v4());
+-- Drop the extension since we no longer need to generate UUIDs
+DROP EXTENSION "uuid-ossp";
+COMMIT;

@@ -11,7 +11,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
@@ -37,6 +36,9 @@ var (
 // to insulate API code from the differences among Provider tokens.
 func ParseToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// ParseToken is called on every request, but not every request has a token
+		// Continue serving if not Auth token is found and let RequireToken throw the error
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			next.ServeHTTP(w, r)
@@ -47,7 +49,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Warn("Invalid Authorization header value")
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -56,7 +58,7 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
 			log.Errorf("Unable to verify token; %s", err)
-			next.ServeHTTP(w, r)
+			respond(w, http.StatusUnauthorized)
 			return
 		}
 
@@ -68,34 +70,18 @@ func ParseToken(next http.Handler) http.Handler {
 
 		var ad AuthData
 		if claims, ok := token.Claims.(*CommonClaims); ok && token.Valid {
-			// okta token
 			switch claims.Issuer {
 			case "ssas":
-				ad, _ = adFromClaims(repository, claims)
-			case "okta":
-				aco, err := repository.GetACOByClientID(context.Background(), claims.ClientID)
+				ad, err = adFromClaims(repository, claims)
 				if err != nil {
-					log.Errorf("no aco for clientID %s because %v", claims.ClientID, err)
-					next.ServeHTTP(w, r)
+					log.Error(err)
+					respond(w, http.StatusUnauthorized)
 					return
 				}
-
-				ad.TokenID = claims.Id
-				ad.ACOID = aco.UUID.String()
-				ad.CMSID = *aco.CMSID
-				ad.Blacklisted = aco.Blacklisted()
-
 			default:
-				aco, err := repository.GetACOByUUID(context.Background(), uuid.Parse(claims.ACOID))
-				if err != nil {
-					log.Errorf("no aco for ACO ID %s because %v", claims.ACOID, err)
-					next.ServeHTTP(w, r)
-					return
-				}
-				ad.TokenID = claims.UUID
-				ad.ACOID = claims.ACOID
-				ad.CMSID = *aco.CMSID
-				ad.Blacklisted = aco.Blacklisted()
+				log.Errorf("Unsupported claims issuer %s", claims.Issuer)
+				respond(w, http.StatusNotFound)
+				return
 			}
 		}
 		ctx := context.WithValue(r.Context(), TokenContextKey, token)

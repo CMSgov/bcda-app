@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -337,7 +339,13 @@ func MockSSASToken() (*jwt.Token, string, error) {
 			Id:        "mock-id",
 		},
 	}
+
 	t := jwt.NewWithClaims(jwt.SigningMethodRS512, claims)
-	ts, err := InitAlphaBackend().SignJwtToken(t)
+	pk, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, "", err
+	}
+
+	ts, err := t.SignedString(pk)
 	return t, ts, err
 }
