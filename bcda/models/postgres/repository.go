@@ -28,15 +28,15 @@ type Repository struct {
 }
 
 func NewRepository(db *sql.DB) *Repository {
-	return &Repository{&database.DB{db}, &database.DB{db}}
+	return &Repository{&database.DB{DB: db}, &database.DB{DB: db}}
 }
 
 func NewRepositoryTx(tx *sql.Tx) *Repository {
-	return &Repository{&database.Tx{tx}, &database.Tx{tx}}
+	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}
 }
 
 func NewRepositoryPgxTx(tx *pgx.Tx) *Repository {
-	return &Repository{&database.PgxTx{tx}, &database.PgxTx{tx}}
+	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
 }
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
