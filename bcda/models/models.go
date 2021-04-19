@@ -63,7 +63,6 @@ type ACO struct {
 	ClientID           string       `json:"client_id"`
 	GroupID            string       `json:"group_id"`
 	SystemID           string       `json:"system_id"`
-	AlphaSecret        string       `json:"alpha_secret"`
 	PublicKey          string       `json:"public_key"`
 	TerminationDetails *Termination `json:"termination"`
 }

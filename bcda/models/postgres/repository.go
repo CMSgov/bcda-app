@@ -520,19 +520,19 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 
 func (r *Repository) getACO(ctx context.Context, field string, value interface{}) (*models.ACO, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name",
-		"client_id", "group_id", "system_id", "alpha_secret", "public_key",
+		"client_id", "group_id", "system_id", "public_key",
 		"termination_details").From("acos")
 	sb.Where(sb.Equal(field, value))
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 	var (
-		aco                                                              models.ACO
-		termination                                                      termination
-		name, cmsID, clientID, alphaSecret, publicKey, groupID, systemID sql.NullString
+		aco                                                 models.ACO
+		termination                                         termination
+		name, cmsID, clientID, publicKey, groupID, systemID sql.NullString
 	)
 	err := row.Scan(&aco.ID, &aco.UUID, &cmsID, &name,
-		&clientID, &groupID, &systemID, &alphaSecret,
+		&clientID, &groupID, &systemID,
 		&publicKey, &termination)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -540,7 +540,7 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 		}
 		return nil, err
 	}
-	aco.Name, aco.ClientID, aco.AlphaSecret = name.String, clientID.String, alphaSecret.String
+	aco.Name, aco.ClientID = name.String, clientID.String
 	aco.PublicKey, aco.GroupID, aco.SystemID = publicKey.String, groupID.String, systemID.String
 	aco.CMSID = &cmsID.String
 	aco.TerminationDetails = termination.Termination
