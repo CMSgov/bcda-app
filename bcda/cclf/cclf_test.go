@@ -59,18 +59,6 @@ func (s *CCLFTestSuite) SetupSuite() {
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 
 	s.db = database.Connection
-	// tf, err := testfixtures.New(
-	// 	testfixtures.Database(s.db),
-	// 	testfixtures.Dialect("postgres"),
-	// 	testfixtures.Directory("../api/testdata/"),
-	// )
-
-	// if err != nil {
-	// 	assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
-	// }
-	// if err := tf.Load(); err != nil {
-	// 	assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
-	// }
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
@@ -190,19 +178,25 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
-	s.T().Skip("SILVIO TO RE-ENABLE ONCE WE HAVE THE DATA STAGED PROPERLY")
+	// s.T().Skip("SILVIO TO RE-ENABLE ONCE WE HAVE THE DATA STAGED PROPERLY")
 	assert := assert.New(s.T())
 
 	hook := test.NewGlobal()
 
-	acoID := "A0002"
+	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
+	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
+
+	acoID := "A0001"
+	cclfFile := &models.CCLFFile{CCLFNum: 8, ACOCMSID: acoID, Timestamp: time.Now(), PerformanceYear: 18, Name: "T.BCD.A0001.ZC8Y18.D181120.T1000009"}
+	postgrestest.CreateCCLFFile(s.T(), s.db, cclfFile)
+
 	metadata := &cclfFileMetadata{
-		name:      "Requests_Regular_File",
+		name:      cclfFile.Name,
 		env:       "test",
 		acoID:     acoID,
-		cclfNum:   8,
-		perfYear:  18,
-		timestamp: time.Now(),
+		cclfNum:   cclfFile.CCLFNum,
+		perfYear:  cclfFile.PerformanceYear,
+		timestamp: cclfFile.Timestamp,
 		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"),
 	}
 
