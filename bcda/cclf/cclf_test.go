@@ -4,18 +4,18 @@ import (
 	"archive/zip"
 	"context"
 	"database/sql"
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -60,6 +60,18 @@ func (s *CCLFTestSuite) SetupSuite() {
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
 
 	s.db = database.Connection
+	tf, err := testfixtures.New(
+		testfixtures.Database(s.db),
+		testfixtures.Dialect("postgres"),
+		testfixtures.Directory("../api/testdata/"),
+	)
+
+	if err != nil {
+		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
+	}
+	if err := tf.Load(); err != nil {
+		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
+	}
 }
 
 func (s *CCLFTestSuite) TearDownSuite() {
@@ -73,33 +85,6 @@ func (s *CCLFTestSuite) TearDownTest() {
 
 func TestCCLFTestSuite(t *testing.T) {
 	suite.Run(t, new(CCLFTestSuite))
-}
-
-func (s *CCLFTestSuite) TestImportCCLFDirectory_PriorityACOs() {
-	// The order they should be ingested in. 1 and 2 are prioritized; 3 is the other ACO in the directory.
-	// This order is computed from values inserted in the database
-	var aco1, aco2, aco3 = "A9989", "A9988", "A0001"
-
-	conf.SetEnv(s.T(), "CCLF_REF_DATE", "181201")
-
-	assert := assert.New(s.T())
-
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, aco1)
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, aco2)
-	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, aco3)
-
-	sc, f, sk, err := ImportCCLFDirectory(filepath.Join(s.basePath, "cclf/archives/valid/"))
-	assert.Nil(err)
-	assert.Equal(6, sc)
-	assert.Equal(0, f)
-	assert.Equal(1, sk)
-
-	aco1fs := postgrestest.GetCCLFFilesByCMSID(s.T(), s.db, aco1)
-	aco2fs := postgrestest.GetCCLFFilesByCMSID(s.T(), s.db, aco2)
-	aco3fs := postgrestest.GetCCLFFilesByCMSID(s.T(), s.db, aco3)
-
-	assert.True(aco1fs[0].ID < aco2fs[0].ID)
-	assert.True(aco2fs[0].ID < aco3fs[0].ID)
 }
 
 func (s *CCLFTestSuite) TestImportCCLF0() {
@@ -204,6 +189,37 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 	assert.Equal("1A69B98CD35", mbis[5])
 }
 
+func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
+	assert := assert.New(s.T())
+
+	hook := test.NewGlobal()
+
+	acoID := "A0002"
+	metadata := &cclfFileMetadata{
+		name:      "Requests_Regular_File",
+		env:       "test",
+		acoID:     acoID,
+		cclfNum:   8,
+		perfYear:  18,
+		timestamp: time.Now(),
+		filePath:  filepath.Join(s.basePath, "cclf/archives/valid/T.BCD.A0001.ZCY18.D181121.T1000000"),
+	}
+
+	err := importCCLF8(context.Background(), metadata)
+	if err != nil {
+		s.FailNow("importCCLF8() error: %s", err.Error())
+	}
+
+	var exists bool
+	for _, entry := range hook.AllEntries() {
+		if strings.Contains(entry.Message, "already exists in database, skipping import...") {
+			exists = true
+		}
+	}
+
+	assert.True(exists, "CCLF8 file should already exist and should not be imported again.")
+}
+
 func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	assert := assert.New(s.T())
 
@@ -225,43 +241,6 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	err = importCCLF8(context.Background(), metadata)
 	// This error indicates that we did not supply enough characters for the MBI
 	assert.Contains(err.Error(), "invalid byte sequence for encoding \"UTF8\": 0x00")
-}
-
-func (s *CCLFTestSuite) TestOrderACOs() {
-	var cclfMap = map[string]map[metadataKey][]*cclfFileMetadata{
-		"A1111": map[metadataKey][]*cclfFileMetadata{},
-		"A4321": map[metadataKey][]*cclfFileMetadata{},
-		"A3456": map[metadataKey][]*cclfFileMetadata{},
-		"A0246": map[metadataKey][]*cclfFileMetadata{},
-	}
-
-	acoOrder := orderACOs(cclfMap)
-
-	// A4321 duplicate has been added to test table groups as of 27 JAN 2021 to
-	// bolster testing for duplicates. Since a failure in removal of duplicate A4321
-	// pushed the index by one, check for A1111 and A0246 no longer hardcoded.
-	n := len(acoOrder) - 1
-
-	// A3456 and A8765 have been added to the database == prioritized over the other two
-	assert.Equal(s.T(), "A3456", acoOrder[0])
-	assert.Equal(s.T(), "A4321", acoOrder[1])
-	assert.Regexp(s.T(), "A1111|A0246", acoOrder[n-1]) // second to last in index
-	assert.Regexp(s.T(), "A1111|A0246", acoOrder[n])   // last in index
-
-	// Check for no duplicates
-	var dupcheck = make(map[string]bool, 4)
-	for _, v := range acoOrder {
-		// Loop through the acoOrder and place then into map with a value of true
-		// If there are no duplicates, dupcheck[v] should not return true
-		if !dupcheck[v] {
-			dupcheck[v] = true
-		} else {
-			assert.Fail(s.T(), "There was a duplicate found in the acoOrder.")
-		}
-	}
-
-	// Check for increase in number of ACOs not attributed to duplicates
-	assert.Len(s.T(), acoOrder, 4)
 }
 
 func (s *CCLFTestSuite) TestCleanupCCLF() {
@@ -321,53 +300,6 @@ func (s *CCLFTestSuite) TestCleanupCCLF() {
 	}
 	for _, file := range files {
 		assert.NotEqual("T.BCD.ACO.ZC0Y18.D181120.T0001000", file.Name())
-	}
-}
-
-func (s *CCLFTestSuite) TestGetPriorityACOs() {
-	query := regexp.QuoteMeta(`
-	SELECT trim(both '["]' from g.x_data::json->>'cms_ids') "aco_id" 
-	FROM systems s JOIN groups g ON s.group_id=g.group_id 
-	WHERE s.deleted_at IS NULL AND g.group_id IN (SELECT group_id FROM groups WHERE x_data LIKE '%A%' and x_data NOT LIKE '%A999%') AND
-	s.id IN (SELECT system_id FROM secrets WHERE deleted_at IS NULL);
-	`)
-	tests := []struct {
-		name        string
-		idsToReturn []string
-		errToReturn error
-	}{
-		{"ErrorOnQuery", nil, errors.New("Some query error")},
-		{"NoActiveACOs", nil, nil},
-		{"ActiveACOs", []string{"A", "B", "C", "123"}, nil},
-	}
-
-	for _, tt := range tests {
-		s.T().Run(tt.name, func(t *testing.T) {
-			db, mock, err := sqlmock.New()
-			assert.NoError(t, err)
-			defer func() {
-				assert.NoError(t, mock.ExpectationsWereMet())
-				db.Close()
-			}()
-
-			expected := mock.ExpectQuery(query)
-			if tt.errToReturn != nil {
-				expected.WillReturnError(tt.errToReturn)
-			} else {
-				rows := sqlmock.NewRows([]string{"cms_id"})
-				for _, id := range tt.idsToReturn {
-					rows.AddRow(id)
-				}
-				expected.WillReturnRows(rows)
-			}
-
-			result := getPriorityACOs(db)
-			if tt.errToReturn != nil {
-				assert.Nil(t, result)
-			} else {
-				assert.Equal(t, tt.idsToReturn, result)
-			}
-		})
 	}
 }
 
