@@ -176,14 +176,18 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	fmt.Printf("Importing CCLF%d file %s...\n", fileMetadata.cclfNum, fileMetadata)
 	log.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
 
-	tx, err := db.BeginTx(ctx, nil)
+	conn, err := stdlib.AcquireConn(db)
+	defer utils.CloseAndLog(log.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
+
+	tx, err := conn.BeginEx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
 		log.Error(err)
 
 		return err
 	}
-	rtx := postgres.NewRepositoryTx(tx)
+
+	rtx := postgres.NewRepositoryPgxTx(tx)
 
 	defer func() {
 		if err != nil {
@@ -191,13 +195,6 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 				log.Warnf("Failed to rollback transaction %s", err.Error())
 			}
 			return
-		}
-
-		err := rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
-		if err != nil {
-			fmt.Printf("Could not update cclf file record for file: %s. \n", fileMetadata)
-			err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata)
-			log.Error(err)
 		}
 	}()
 
@@ -267,16 +264,16 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	defer rc.Close()
 	sc := bufio.NewScanner(rc)
 
-	// Open transaction to encompass entire CCLF file ingest.
-	conn, err := stdlib.AcquireConn(db)
-	if err != nil {
-		return errors.Wrap(err, "failed to acquire connection")
-	}
-	defer utils.CloseAndLog(log.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
-
-	importedCount, err := CopyFrom(ctx, conn, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000))
+	importedCount, err := CopyFrom(ctx, tx, sc, cclfFile.ID, utils.GetEnvInt("CCLF_IMPORT_STATUS_RECORDS_INTERVAL", 10000))
 	if err != nil {
 		return errors.Wrap(err, "failed to copy data to beneficiaries table")
+	}
+
+	err = rtx.UpdateCCLFFileImportStatus(ctx, fileMetadata.fileID, constants.ImportComplete)
+	if err != nil {
+		fmt.Printf("Could not update cclf file record for file: %s. \n", fileMetadata)
+		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata)
+		log.Error(err)
 	}
 
 	if err = tx.Commit(); err != nil {

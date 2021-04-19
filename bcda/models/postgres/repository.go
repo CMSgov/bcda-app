@@ -8,19 +8,12 @@ import (
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
+	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
-
-type queryable interface {
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-}
-
-type executable interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-}
 
 const (
 	sqlFlavor = sqlbuilder.PostgreSQL
@@ -30,16 +23,20 @@ const (
 var _ models.Repository = &Repository{}
 
 type Repository struct {
-	queryable
-	executable
+	database.Queryable
+	database.Executable
 }
 
 func NewRepository(db *sql.DB) *Repository {
-	return &Repository{db, db}
+	return &Repository{&database.DB{db}, &database.DB{db}}
 }
 
 func NewRepositoryTx(tx *sql.Tx) *Repository {
-	return &Repository{tx, tx}
+	return &Repository{&database.Tx{tx}, &database.Tx{tx}}
+}
+
+func NewRepositoryPgxTx(tx *pgx.Tx) *Repository {
+	return &Repository{&database.PgxTx{tx}, &database.PgxTx{tx}}
 }
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
