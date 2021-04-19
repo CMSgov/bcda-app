@@ -178,7 +178,6 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 }
 
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
-	// s.T().Skip("SILVIO TO RE-ENABLE ONCE WE HAVE THE DATA STAGED PROPERLY")
 	assert := assert.New(s.T())
 
 	hook := test.NewGlobal()
