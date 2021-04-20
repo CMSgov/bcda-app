@@ -34,7 +34,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
-          key: ${{ runner.os }}-go-build-20210301-1-${{ github.run_id }} 
+          key: ${{ runner.os }}-go-build-20210301-1-${{ hashFiles('**/go.sum') }}
       - name: Retrieve Go mod cache
         uses: actions/cache@v2
         with:
