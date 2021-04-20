@@ -218,8 +218,6 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 	assert := assert.New(s.T())
 
 	var metadata *cclfFileMetadata
-	err := importCCLF8(context.Background(), metadata)
-	assert.EqualError(err, "CCLF file not found")
 
 	// since we do not have the correct number of characters, the import should fail.
 	fileName, cclfName := createTemporaryCCLF8ZipFile(s.T(), "A 1")
@@ -232,7 +230,7 @@ func (s *CCLFTestSuite) TestImportCCLF8_Invalid() {
 		perfYear:  20,
 		filePath:  fileName,
 	}
-	err = importCCLF8(context.Background(), metadata)
+	err := importCCLF8(context.Background(), metadata)
 	// This error indicates that we did not supply enough characters for the MBI
 	assert.Contains(err.Error(), "invalid byte sequence for encoding \"UTF8\": 0x00")
 }
