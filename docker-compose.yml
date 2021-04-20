@@ -77,7 +77,12 @@ services:
       - ATO_PUBLIC_KEY_FILE=../shared_files/ATO_public.pem
       - ATO_PRIVATE_KEY_FILE=../shared_files/ATO_private.pem
       - HTTP_ONLY=true
+      - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
+      - OKTA_EMAIL=shawn@bcda.aco-group.us
+      - OKTA_CLIENT_TOKEN=${OKTA_CLIENT_TOKEN}
       - BCDA_AUTH_PROVIDER=${BCDA_AUTH_PROVIDER}
+      - OKTA_OAUTH_SERVER_ID=${OKTA_OAUTH_SERVER_ID}
+      - OKTA_CA_CERT_FINGERPRINT=${OKTA_CA_CERT_FINGERPRINT}
       - BCDA_SSAS_CLIENT_ID=${BCDA_SSAS_CLIENT_ID}
       - BCDA_SSAS_SECRET=${BCDA_SSAS_SECRET}
       - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem

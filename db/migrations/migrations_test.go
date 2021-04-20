@@ -320,8 +320,10 @@ func (s *MigrationTestSuite) TestBCDAMigration() {
 			"Removing alpha_secret from acos table",
 			func(t *testing.T) {
 				assertColumnExists(t, true, db, "acos", "alpha_secret")
+				assertColumnExists(t, true, db, "acos", "public_key")
 				migrator.runMigration(t, 14)
 				assertColumnExists(t, false, db, "acos", "alpha_secret")
+				assertColumnExists(t, false, db, "acos", "public_key")
 			},
 		},
 		// **********************************************************
