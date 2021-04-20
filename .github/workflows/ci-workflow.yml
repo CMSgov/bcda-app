@@ -46,3 +46,11 @@ jobs:
       - name: Run all tests
         run: |
           make test
+      - name: Generate codecov report
+        uses: codecov/codecov-action@v1
+        with:
+          files: ./test_results/latest/testcoverage.out # optional
+          flags: unittests # optional
+          name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
