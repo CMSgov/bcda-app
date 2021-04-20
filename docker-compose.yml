@@ -21,7 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda
-      target: prod
+      target: dev
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -41,7 +41,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: Dockerfiles/Dockerfile.bcda
-  #     target: dev 
+  #     target: dev
   #   env_file:
   #     - ./shared_files/decrypted/local.env
   #   environment:
@@ -134,4 +134,3 @@ services:
       - "3005:3005"
     depends_on:
       - db
-
