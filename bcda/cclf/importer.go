@@ -99,7 +99,7 @@ func (importer *cclf8Importer) getMBI() string {
 
 // CopyFrom writes all of the beneficiary data captured in the scanner to the beneficiaries table.
 // It returns the number of rows written along with any error that occurred.
-func CopyFrom(ctx context.Context, conn *pgx.Conn, scanner *bufio.Scanner, fileID uint, reportInterval int) (int, error) {
+func CopyFrom(ctx context.Context, tx *pgx.Tx, scanner *bufio.Scanner, fileID uint, reportInterval int) (int, error) {
 	importer := &cclf8Importer{
 		scanner:    scanner,
 		ctx:        ctx,
@@ -109,5 +109,5 @@ func CopyFrom(ctx context.Context, conn *pgx.Conn, scanner *bufio.Scanner, fileI
 		processedMBIs:  make(map[string]struct{}),
 	}
 	tableName := pgx.Identifier([]string{"cclf_beneficiaries"})
-	return conn.CopyFrom(tableName, []string{"file_id", "mbi"}, importer)
+	return tx.CopyFrom(tableName, []string{"file_id", "mbi"}, importer)
 }
