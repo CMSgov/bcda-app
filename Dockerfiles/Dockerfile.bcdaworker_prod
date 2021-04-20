@@ -19,4 +19,4 @@ RUN go install
 FROM golang:1.15-alpine3.12 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 COPY --from=base /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
-CMD ["../watch.sh", "worker", "bcdaworker"]
+ENTRYPOINT ["bcdaworker"]
