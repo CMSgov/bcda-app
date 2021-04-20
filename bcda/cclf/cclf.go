@@ -149,17 +149,10 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 }
 
 func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error) {
-	if fileMetadata == nil {
-		err = errors.New("CCLF file not found")
-		fmt.Println(err.Error())
-		log.Error(err)
-		return err
-	}
-
 	db := database.Connection
 	repository := postgres.NewRepository(db)
 
-	e, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
+	exists, err := repository.GetCCLFFileExistsByName(ctx, fileMetadata.name)
 	if err != nil {
 		fmt.Printf("failed to check existence of CCLF%d file.\n", fileMetadata.cclfNum)
 		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
@@ -167,7 +160,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		return err
 	}
 
-	if e {
+	if exists {
 		fmt.Printf("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
 		log.Infof("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
 		return nil
