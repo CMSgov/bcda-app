@@ -65,12 +65,15 @@ func (s *AuthAPITestSuite) TestNoMatch() {
 	_, _, accessToken := uuid.New(), uuid.New(), uuid.New()
 	mock := &auth.MockProvider{}
 	// MakeAccessToken does not match on the auth.Credentials (ClientID is not set properly)
+	// This is the expectations...
 	mock.On("MakeAccessToken", auth.Credentials{ClientID: "clientA", ClientSecret: "clientSecret"}).
 		Return(accessToken, nil)
+	// Swaping the auth provider with mock provider...
 	auth.SetMockProvider(s.T(), mock)
 	s.rr = httptest.NewRecorder()
 
 	req := httptest.NewRequest("POST", "/auth/token", nil)
+	// Providing the parameters, which should not match the expectations.
 	req.SetBasicAuth("clientB", "clientSecret")
 	req.Header.Add("Accept", "application/json")
 	handler := http.HandlerFunc(auth.GetAuthToken)
