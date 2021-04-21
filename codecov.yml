@@ -1,0 +1,26 @@
+# These settings allow us to report coverage numbers as soon as possible.
+# We do not have to wait for codecov to acknowledge CI completion for the reports to be published.
+codecov:
+  require_ci_to_pass: no
+  notify:
+    wait_for_ci: false
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
+
+comment:
+  layout: "reach,diff,files,footer"
+  behavior: new
+  require_changes: false
+  require_base: no
+  require_head: no
