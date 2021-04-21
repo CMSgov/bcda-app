@@ -1,3 +1,4 @@
+# syntax = docker/dockerfile:1-experimental
 FROM golang:1.15-alpine3.12 AS base
 
 RUN apk update upgrade
@@ -8,12 +9,16 @@ WORKDIR /go/src/github.com/CMSgov/bcda-app
 # By pulling this step out, we can leverage Docker caching
 # since our tooling/dependencies do not frequently change.
 COPY go.mod go.sum tools.go ./
-RUN go mod download
-RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get % 
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \ 
+    cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get % 
 
 COPY . .
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
-RUN go install
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go install -v
 
 FROM golang:1.15-alpine3.12 AS dev
 
