@@ -232,14 +232,15 @@ func setUpApp() *cli.App {
 					return err
 				}
 
-				aco.PublicKey, err = genPublicKey(bufio.NewReader(f))
+				// This used to be aco.PublicKey... however with removal of alpha, we removed that field
+				PublicKey, err := genPublicKey(bufio.NewReader(f))
 				if err != nil {
 					fmt.Fprintf(app.Writer, "Unable to generate public key for ACO %s: %s\n", acoCMSID, err.Error())
 					return err
 				}
 
 				err = r.UpdateACO(context.Background(), aco.UUID,
-					map[string]interface{}{"public_key": aco.PublicKey})
+					map[string]interface{}{"public_key": PublicKey})
 				if err != nil {
 					fmt.Fprintf(app.Writer, "Unable to save public key for ACO %s: %s\n", acoCMSID, err.Error())
 					return err
