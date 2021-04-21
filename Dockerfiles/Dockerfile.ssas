@@ -1,17 +1,15 @@
-FROM golang:1.15-alpine3.12
+FROM golang:1.15-alpine3.12 AS base
 
 RUN apk update upgrade
-RUN apk add git openssl
-
-RUN openssl genrsa -out /var/local/private.pem 2048
-RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
+RUN apk add git
 
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
 # Download all dependencies
 # By pulling this step out, we can leverage Docker caching
 # since our tooling/dependencies do not frequently change.
-COPY tools.go .
+COPY go.mod go.sum tools.go ./
+RUN go mod download
 RUN cat tools.go | awk '/[\/\/] bcda/{flag=1; next} /[\/\/] end/{flag=0} flag' | awk -F '"' '{print $2}' | xargs -tI % go get %  
 
 COPY . .
@@ -24,8 +22,19 @@ WORKDIR /go
 RUN git clone https://github.com/CMSgov/bcda-ssas-app.git
 WORKDIR /go/bcda-ssas-app
 RUN go install ./ssas/service/main
+
+FROM golang:1.15-alpine3.12 AS prod
+
+RUN apk update upgrade
+RUN apk add openssl
+
+RUN openssl genrsa -out /var/local/private.pem 2048
+RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
+
 # Make sure we are in the directory to ensure the config files are resolved as expected
-WORKDIR /go/bcda-ssas-app/ssas
+WORKDIR /go/bcda-ssas-app/ssas/
+COPY --from=base /go/bcda-ssas-app/ssas/ /go/bcda-ssas-app/ssas/
+COPY --from=base /go/bin/ /go/bin/
 
 ENTRYPOINT ["main"]
 CMD ["--start"]
