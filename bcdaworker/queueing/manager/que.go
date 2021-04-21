@@ -45,6 +45,7 @@ type masterQueue struct {
 
 	StagingDir string `conf:"FHIR_STAGING_DIR"`
 	PayloadDir string `conf:"FHIR_PAYLOAD_DIR"`
+	MaxRetry   int32  `conf:"BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES" conf_default:"3"`
 }
 
 func newMasterQueue(q *queue, qAlr *alrQueue) *masterQueue {

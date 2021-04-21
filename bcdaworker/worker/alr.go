@@ -115,7 +115,6 @@ func goWriter(c chan data, w *bufio.Writer,
 func (a *AlrWorker) ProcessAlrJob(
 	ctx context.Context,
 	jobArgs models.JobAlrEnqueueArgs,
-	ndjsonFilename uuid.UUID,
 ) error {
 
 	// Parse the jobAlrEnqueueArgs

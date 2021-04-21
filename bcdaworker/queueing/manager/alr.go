@@ -9,13 +9,11 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 
 	// The follow two packages imported to use repository.ErrJobNotFound
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/bgentry/que-go"
-	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,10 +29,6 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
-// Max number of retries either set by ENV or default value of 3
-var maxRetry = int32(utils.GetEnvInt("BCDA_WORKER_MAX_JOB_NOT_FOUND_RETRIES", 3))
-
-// To reduce the number of pings to the DB, internal tracking of jobs
 // Pre-allocation of 512 is abitraru... seems like a good avg number
 var alrJobTracker = make(map[uint]struct{}, 512)
 
@@ -100,7 +94,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		if errors.Is(err, repository.ErrJobNotFound) {
 			// Parent job is not found
 			// If parent job is not found reach maxretry, fail the job
-			if job.ErrorCount >= maxRetry {
+			if job.ErrorCount >= q.MaxRetry {
 				q.alrLog.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
 					jobArgs.CMSID)
 				// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
@@ -143,7 +137,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		}
 	} else {
 		// Check if this job has been retried too many times - 5 times is max
-		if job.ErrorCount > maxRetry {
+		if job.ErrorCount > q.MaxRetry {
 			// Fail the job - ALL OR NOTHING
 			err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
 			if err != nil {
@@ -160,8 +154,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	}
 
 	// Run ProcessAlrJob, which is the meat of the whole operation
-	ndjsonFilename := uuid.NewRandom()
-	err = q.alrWorker.ProcessAlrJob(ctx, jobArgs, ndjsonFilename)
+	err = q.alrWorker.ProcessAlrJob(ctx, jobArgs)
 	if err != nil {
 		// This means the job did not finish
 		q.alrLog.Warnf("Failed to complete job.Args '%s' %s", job.Args, err)

@@ -10,7 +10,6 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -100,8 +99,7 @@ func (s *AlrWorkerTestSuite) TestNewAlrWorker() {
 // Test ProcessAlrJob
 func (s *AlrWorkerTestSuite) TestProcessAlrJob() {
 	ctx := context.Background()
-	ndjsonFileName := uuid.NewRandom()
-	err := s.alrWorker.ProcessAlrJob(ctx, s.jobArgs, ndjsonFileName)
+	err := s.alrWorker.ProcessAlrJob(ctx, s.jobArgs)
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
 }
