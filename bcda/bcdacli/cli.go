@@ -899,3 +899,38 @@ func genPublicKey(publicKey io.Reader) (string, error) {
 	}
 	return string(k), nil
 }
+
+func SomeTestedFunction() {
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+	fmt.Println("Hello world!")
+}
+
+func SomeUntestedFunction() {
+	fmt.Println("Goodbye world!")
+	fmt.Println("Goodbye world!")
+	fmt.Println("Goodbye world!")
+	fmt.Println("Goodbye world!")
+	fmt.Println("Goodbye world!")
+	fmt.Println("Goodbye world!")
+	fmt.Println("Goodbye world!")
+	fmt.Println("Goodbye world!")
+}

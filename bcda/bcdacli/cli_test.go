@@ -84,7 +84,9 @@ func (s *CLITestSuite) TearDownSuite() {
 	os.RemoveAll(s.pendingDeletionDir)
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 }
-
+func TestFoo(t *testing.T) {
+	SomeTestedFunction()
+}
 func TestCLITestSuite(t *testing.T) {
 	suite.Run(t, new(CLITestSuite))
 }
