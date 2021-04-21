@@ -1,6 +1,6 @@
 name: BCDA CI Workflow
 
-on: [pull_request]
+on: [push]
 
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
