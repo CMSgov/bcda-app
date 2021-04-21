@@ -34,6 +34,8 @@ type acoRepository interface {
 }
 
 type cclfFileRepository interface {
+	GetCCLFFileExistsByName(ctx context.Context, name string) (bool, error)
+
 	// GetLatest returns the latest CCLF File (most recent timestamp) that matches the search criteria.
 	// The returned CCLF file will fall between the provided time window.
 	// If any of the time values equals time.Time (default value), then the time value IS NOT used in the filtering.
