@@ -1,6 +1,6 @@
 FROM node:current-slim
 
-WORKDIR '/'
+WORKDIR /
 
 RUN apt update -y && apt install git -y
 
@@ -10,9 +10,9 @@ WORKDIR '/bdt'
 # Pinning bdt version that is compatible with FHIR R3
 RUN git checkout bc64ac546d309969034fca3c9f9a5a01d4d7563f
 
+RUN npm install
+
 COPY bdt/config.js .
 COPY bdt/run-bdt.sh .
 
-RUN npm install
-
-CMD ["./run-bdt.sh"]
+ENTRYPOINT ["./run-bdt.sh"]

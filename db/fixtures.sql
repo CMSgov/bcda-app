@@ -1,26 +1,6 @@
-insert into acos(uuid, cms_id, name, client_id, public_key)
-     values ('DBBD1CE1-AE24-435C-807D-ED45953077D3','A9995', 'ACO Lorem Ipsum', 'DBBD1CE1-AE24-435C-807D-ED45953077D3',
-'-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
-I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
-/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL
-cN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ
-lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
-XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
-HwIDAQAB
------END PUBLIC KEY-----'),
-            ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', '0c527d2e-2e8a-4808-b11d-0fa06baf8254',
-'-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArhxobShmNifzW3xznB+L
-I8+hgaePpSGIFCtFz2IXGU6EMLdeufhADaGPLft9xjwdN1ts276iXQiaChKPA2CK
-/CBpuKcnU3LhU8JEi7u/db7J4lJlh6evjdKVKlMuhPcljnIKAiGcWln3zwYrFCeL
-cN0aTOt4xnQpm8OqHawJ18y0WhsWT+hf1DeBDWvdfRuAPlfuVtl3KkrNYn1yqCgQ
-lT6v/WyzptJhSR1jxdR7XLOhDGTZUzlHXh2bM7sav2n1+sLsuCkzTJqWZ8K7k7cI
-XK354CNpCdyRYUAUvr4rORIAUmcIFjaR3J4y/Dh2JIyDToOHg7vjpCtNnNoS+ON2
-HwIDAQAB
------END PUBLIC KEY-----');
--- The above public keys are paired with the published sample private key in shared_files/ATO_private.pem and are necessary
---   for unit, smoke, and Postman tests
+insert into acos(uuid, cms_id, name, client_id)
+     values ('DBBD1CE1-AE24-435C-807D-ED45953077D3','A9995', 'ACO Lorem Ipsum', 'DBBD1CE1-AE24-435C-807D-ED45953077D3'),
+            ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', '0c527d2e-2e8a-4808-b11d-0fa06baf8254');
 
 insert into acos(uuid, cms_id, name, client_id, termination_details)
      values ('A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', 'A8880', 'ACO Sit Amet', 'A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', null),

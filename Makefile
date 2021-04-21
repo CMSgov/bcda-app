@@ -91,7 +91,7 @@ load-fixtures:
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
 
-	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
+	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
@@ -105,7 +105,7 @@ load-fixtures:
 	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
 
 	# Additional fixtures for postman+ssas
-	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
+	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
 
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
@@ -114,7 +114,7 @@ load-synthetic-cclf-data:
 		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
 	done
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
-	docker-compose run db psql "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
+	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
 	for acoSize in $(ACO_SIZES)  ; do \
 		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
 	done
@@ -127,11 +127,11 @@ load-synthetic-suppression-data:
 	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
 	# Update the suppression entries to guarantee there are qualified entries when searching for suppressed benes.
 	# See postgres#GetSuppressedMBIs for more information
-	docker-compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
+	docker-compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
 
 load-fixtures-ssas:
 	docker-compose -f docker-compose.ssas-migrate.yml run --rm ssas-migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
-	docker-compose run ssas sh -c 'main --add-fixture-data'
+	docker-compose run ssas --add-fixture-data
 
 docker-build:
 	docker-compose build --force-rm
@@ -158,8 +158,12 @@ debug-worker:
 		docker-compose -f docker-compose.yml -f docker-compose.debug.yml run --no-deps -T --rm -v $(shell pwd):/go/src/github.com/CMSgov/bcda-app worker dlv debug"
 
 bdt:
-	# supply this target with the necessary environment vars, e.g.:
-	# make bdt BDT_BASE_URL=<origin of API>
+	# Set up valid client credentials
+	$(eval ACO_CMS_ID = A9994)
+	$(eval CLIENT_TEMP := $(shell docker-compose run --rm api sh -c 'bcda reset-client-credentials --cms-id $(ACO_CMS_ID)'|tail -n2))
+	$(eval CLIENT_ID:=$(shell echo $(CLIENT_TEMP) |awk '{print $$1}'))
+	$(eval CLIENT_SECRET:=$(shell echo $(CLIENT_TEMP) |awk '{print $$2}'))
+	$(eval BDT_BASE_URL = 'http://host.docker.internal:3000')
 	docker build --no-cache -t bdt -f Dockerfiles/Dockerfile.bdt .
 	@docker run --rm \
 	-e BASE_URL='${BDT_BASE_URL}' \
