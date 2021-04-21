@@ -11,7 +11,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 
-	// The follow two packages imported to use repository.ErrJobNotFound
+	// The follow two packages imported to use repository.ErrJobNotFound etc.
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/bgentry/que-go"
 	"github.com/sirupsen/logrus"
@@ -136,9 +136,13 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	err = q.repository.UpdateJobStatusCheckStatus(ctx, jobArgs.ID, models.JobStatusPending,
 		models.JobStatusInProgress)
 	if err != nil {
-		q.alrLog.Warnf("Failed to update job status '%s' %s.",
-			job.Args, err)
-		return err
+		// This is a little confusing, but if the job is not updated b/c it's still in pending
+		// don't fail the job.
+		if !errors.Is(err, repository.ErrJobNotUpdated) {
+			q.alrLog.Warnf("Failed to update job status '%s' %s.",
+				job.Args, err)
+			return err
+		}
 	}
 
 	// Run ProcessAlrJob, which is the meat of the whole operation
