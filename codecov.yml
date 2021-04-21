@@ -19,7 +19,6 @@ parsers:
       macro: no
 
 comment:
-  after_n_builds: 0
   layout: "reach,diff,files,footer"
   behavior: new
   require_changes: false
