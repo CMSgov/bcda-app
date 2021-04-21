@@ -32,9 +32,9 @@ RUN openssl genrsa -out /var/local/private.pem 2048
 RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
 
 # Make sure we are in the directory to ensure the config files are resolved as expected
-WORKDIR /go/bcda-ssas-app/ssas/
-COPY --from=base /go/bcda-ssas-app/ssas/ /go/bcda-ssas-app/ssas/
+COPY --from=base /go/bcda-ssas-app/ /go/bcda-ssas-app/
 COPY --from=base /go/bin/ /go/bin/
+WORKDIR /go/bcda-ssas-app/ssas/
 
 ENTRYPOINT ["main"]
 CMD ["--start"]
