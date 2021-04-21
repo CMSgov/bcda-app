@@ -8,19 +8,12 @@ import (
 	"time"
 
 	"github.com/huandu/go-sqlbuilder"
+	"github.com/jackc/pgx"
 	"github.com/pborman/uuid"
 
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
-
-type queryable interface {
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-}
-
-type executable interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-}
 
 const (
 	sqlFlavor = sqlbuilder.PostgreSQL
@@ -30,16 +23,20 @@ const (
 var _ models.Repository = &Repository{}
 
 type Repository struct {
-	queryable
-	executable
+	database.Queryable
+	database.Executable
 }
 
 func NewRepository(db *sql.DB) *Repository {
-	return &Repository{db, db}
+	return &Repository{&database.DB{DB: db}, &database.DB{DB: db}}
 }
 
 func NewRepositoryTx(tx *sql.Tx) *Repository {
-	return &Repository{tx, tx}
+	return &Repository{&database.Tx{Tx: tx}, &database.Tx{Tx: tx}}
+}
+
+func NewRepositoryPgxTx(tx *pgx.Tx) *Repository {
+	return &Repository{&database.PgxTx{Tx: tx}, &database.PgxTx{Tx: tx}}
 }
 
 func (r *Repository) CreateACO(ctx context.Context, aco models.ACO) error {
@@ -91,6 +88,27 @@ func (r *Repository) UpdateACO(ctx context.Context, acoUUID uuid.UUID, fieldsAnd
 	}
 
 	return nil
+}
+
+func (r *Repository) GetCCLFFileExistsByName(ctx context.Context, name string) (bool, error) {
+	sb := sqlFlavor.NewSelectBuilder()
+	sb.Select("COUNT(*)")
+	sb.From("cclf_files")
+	sb.Where(sb.Equal("name", name))
+
+	var rc int
+
+	query, args := sb.Build()
+	row := r.QueryRowContext(ctx, query, args...)
+	if err := row.Scan(&rc); err != nil {
+		return false, err
+	}
+
+	if rc == 0 {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (r *Repository) GetLatestCCLFFile(ctx context.Context, cmsID string, cclfNum int, importStatus string, lowerBound, upperBound time.Time, fileType models.CCLFFileType) (*models.CCLFFile, error) {
@@ -520,28 +538,27 @@ func (r *Repository) getJobs(ctx context.Context, query string, args ...interfac
 
 func (r *Repository) getACO(ctx context.Context, field string, value interface{}) (*models.ACO, error) {
 	sb := sqlFlavor.NewSelectBuilder().Select("id", "uuid", "cms_id", "name",
-		"client_id", "group_id", "system_id", "alpha_secret", "public_key",
+		"client_id", "group_id", "system_id",
 		"termination_details").From("acos")
 	sb.Where(sb.Equal(field, value))
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 	var (
-		aco                                                              models.ACO
-		termination                                                      termination
-		name, cmsID, clientID, alphaSecret, publicKey, groupID, systemID sql.NullString
+		aco                                      models.ACO
+		termination                              termination
+		name, cmsID, clientID, groupID, systemID sql.NullString
 	)
 	err := row.Scan(&aco.ID, &aco.UUID, &cmsID, &name,
-		&clientID, &groupID, &systemID, &alphaSecret,
-		&publicKey, &termination)
+		&clientID, &groupID, &systemID, &termination)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("no ACO record found for %s", value)
 		}
 		return nil, err
 	}
-	aco.Name, aco.ClientID, aco.AlphaSecret = name.String, clientID.String, alphaSecret.String
-	aco.PublicKey, aco.GroupID, aco.SystemID = publicKey.String, groupID.String, systemID.String
+	aco.Name, aco.ClientID = name.String, clientID.String
+	aco.GroupID, aco.SystemID = groupID.String, systemID.String
 	aco.CMSID = &cmsID.String
 	aco.TerminationDetails = termination.Termination
 	return &aco, nil

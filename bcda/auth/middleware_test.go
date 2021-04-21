@@ -3,6 +3,7 @@ package auth_test
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/dgrijalva/jwt-go"
@@ -84,6 +84,10 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	tokenID, acoID := uuid.NewRandom().String(), uuid.NewRandom().String()
 	token := &jwt.Token{Raw: base64.StdEncoding.EncodeToString([]byte("SOME_INVALID_BEARER_TOKEN"))}
 
+	mock := &auth.MockProvider{}
+	mock.On("AuthorizeAccess", token.Raw).Return(errors.New("invalid token"))
+	auth.SetMockProvider(s.T(), mock)
+
 	ad := auth.AuthData{
 		ACOID:   acoID,
 		TokenID: tokenID,
@@ -95,13 +99,28 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
 	req = req.WithContext(ctx)
 	handler.ServeHTTP(s.rr, req)
 	assert.Equal(s.T(), 401, s.rr.Code)
+
+	mock.AssertExpectations(s.T())
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
-	creds, err := auth.GetProvider().RegisterSystem(constants.DevACOUUID, "", constants.DevACOUUID)
-	assert.NoError(s.T(), err)
-	token, err := auth.GetProvider().MakeAccessToken(creds)
-	assert.NoError(s.T(), err)
+	bearerString := uuid.New()
+	token := &jwt.Token{
+		Claims: &auth.CommonClaims{
+			StandardClaims: jwt.StandardClaims{
+				Issuer: "ssas",
+			},
+			ClientID: uuid.New(),
+			SystemID: uuid.New(),
+			Data:     `{"cms_ids":["A9994"]}`,
+		},
+		Raw:   uuid.New(),
+		Valid: true}
+
+	mock := &auth.MockProvider{}
+	mock.On("VerifyToken", bearerString).Return(token, nil)
+	mock.On("AuthorizeAccess", token.Raw).Return(nil)
+	auth.SetMockProvider(s.T(), mock)
 
 	client := s.server.Client()
 
@@ -111,13 +130,15 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
 		log.Fatal(err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerString))
 
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
 	assert.Equal(s.T(), 200, resp.StatusCode)
+
+	mock.AssertExpectations(s.T())
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
