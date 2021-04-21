@@ -1,6 +1,10 @@
 name: BCDA CI Workflow
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
 
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
@@ -10,6 +14,9 @@ jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
       - name: Retrieve Go paths
         id: go-cache-paths

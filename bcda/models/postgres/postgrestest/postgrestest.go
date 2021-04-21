@@ -50,8 +50,6 @@ func UpdateACO(t *testing.T, db *sql.DB, aco models.ACO) {
 		"client_id":           aco.ClientID,
 		"group_id":            aco.GroupID,
 		"system_id":           aco.SystemID,
-		"alpha_secret":        aco.AlphaSecret,
-		"public_key":          aco.PublicKey,
 		"termination_details": aco.TerminationDetails,
 	}
 	assert.NoError(t, r.UpdateACO(context.Background(), aco.UUID, fieldsAndValues))
