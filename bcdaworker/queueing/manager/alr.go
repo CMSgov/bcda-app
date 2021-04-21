@@ -29,9 +29,6 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
-// Pre-allocation of 512 is abitraru... seems like a good avg number
-var alrJobTracker = make(map[uint]struct{}, 512)
-
 /******************************************************************************
 	Functions
 ******************************************************************************/
@@ -120,37 +117,28 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	}
 	// End of validation
 
-	// Keep track of how many times a small job has failed.
-	// If the threshold is reached, fail the parent job
-	// This is additional logic that does not exist for BFD worker
-	if _, exists := alrJobTracker[alrJobs.ID]; !exists {
-
-		// So we have a brand new job... we will start tracking it
-		alrJobTracker[alrJobs.ID] = struct{}{}
-
-		err := q.repository.UpdateJobStatus(ctx, jobArgs.ID,
-			models.JobStatusInProgress)
+	// Before moving forward, check if this job has failed before
+	// If it has reached the maxRetry, stop the parent job
+	if job.ErrorCount > q.MaxRetry {
+		// Fail the job - ALL OR NOTHING
+		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
 		if err != nil {
-			q.alrLog.Warnf("Failed to update job status '%s' %s.",
-				job.Args, err)
-			return err
-		}
-	} else {
-		// Check if this job has been retried too many times - 5 times is max
-		if job.ErrorCount > q.MaxRetry {
-			// Fail the job - ALL OR NOTHING
-			err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
-			if err != nil {
-				q.alrLog.Warnf("Could not mark job %d as failed in DB.",
-					jobArgs.ID)
-			}
-			q.alrLog.Warnf("One of the job for '%d' has failed five times.",
+			q.alrLog.Warnf("Could not mark job %d as failed in DB.",
 				jobArgs.ID)
-			// Clean up the failed job from tracker
-			delete(alrJobTracker, jobArgs.ID)
-			return nil
 		}
+		q.alrLog.Warnf("One of the job for '%d' has failed five times.",
+			jobArgs.ID)
+		// Clean up the failed job from tracker
+		return nil
+	}
 
+	// Check the status of the job, and put it in to progess if needed
+	err = q.repository.UpdateJobStatusCheckStatus(ctx, jobArgs.ID, models.JobStatusPending,
+		models.JobStatusInProgress)
+	if err != nil {
+		q.alrLog.Warnf("Failed to update job status '%s' %s.",
+			job.Args, err)
+		return err
 	}
 
 	// Run ProcessAlrJob, which is the meat of the whole operation
