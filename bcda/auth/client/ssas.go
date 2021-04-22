@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/pkg/errors"
 )

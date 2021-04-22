@@ -3,10 +3,9 @@ package auth
 import (
 	"time"
 
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 )
-
-var logger logrus.FieldLogger
 
 type event struct {
 	clientID   string
@@ -17,8 +16,8 @@ type event struct {
 	trackingID string
 }
 
-func mergeNonEmpty(data event) *logrus.Entry {
-	var entry = logrus.NewEntry(logger)
+func mergeNonEmpty(data event) logrus.FieldLogger {
+	var entry = log.Auth
 
 	if data.clientID != "" {
 		entry = entry.WithField("clientID", data.clientID)

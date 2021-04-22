@@ -12,17 +12,13 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
-	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
 
 // https://github.com/go-chi/chi/blob/master/_examples/logging/main.go
 
 func NewStructuredLogger() func(next http.Handler) http.Handler {
-	logger := log.Logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"),
-		"api", conf.GetEnv("ENVIRONMENT"))
-
-	return middleware.RequestLogger(&StructuredLogger{Logger: logger})
+	return middleware.RequestLogger(&StructuredLogger{Logger: log.Request})
 }
 
 type StructuredLogger struct {

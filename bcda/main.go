@@ -35,15 +35,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/bcdacli"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/conf"
-
-	log "github.com/sirupsen/logrus"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 func init() {
@@ -54,25 +54,12 @@ func init() {
 		createETLDirs()
 	}
 
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetReportCaller(true)
-	filePath := conf.GetEnv("BCDA_ERROR_LOG")
-
-	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-
-	if err == nil {
-		log.SetOutput(file)
-	} else {
-		log.Info("Failed to open error log file; using default stderr")
-	}
-
 	if isEtlMode != "true" {
-		log.Info("BCDA application is running in API mode.")
+		log.API.Info("BCDA application is running in API mode.")
 		monitoring.GetMonitor()
-		log.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
+		log.API.Info(fmt.Sprintf(`Auth is made possible by %T`, auth.GetProvider()))
 	} else {
-		log.Info("BCDA application is running in ETL mode.")
+		log.API.Info("BCDA application is running in ETL mode.")
 	}
 
 }
@@ -81,7 +68,7 @@ func createAPIDirs() {
 	archive := conf.GetEnv("FHIR_ARCHIVE_DIR")
 	err := os.MkdirAll(archive, 0744)
 	if err != nil {
-		log.Fatal(err)
+		log.API.Fatal(err)
 	}
 }
 
@@ -89,7 +76,7 @@ func createETLDirs() {
 	pendingDeletionPath := conf.GetEnv("PENDING_DELETION_DIR")
 	err := os.MkdirAll(pendingDeletionPath, 0744)
 	if err != nil {
-		log.Fatal(errors.Wrap(err, "Could not create CCLF file pending deletion directory"))
+		log.API.Fatal(errors.Wrap(err, "Could not create CCLF file pending deletion directory"))
 	}
 }
 
@@ -100,6 +87,6 @@ func main() {
 		// Since the logs may be routed to a file,
 		// ensure that the error makes it at least once to stdout
 		fmt.Printf("Error occurred while executing command %s\n", err)
-		log.Fatal(err)
+		log.API.Fatal(err)
 	}
 }

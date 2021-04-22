@@ -8,32 +8,23 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
 	"github.com/CMSgov/bcda-app/conf"
-	log "github.com/sirupsen/logrus"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 func init() {
 	createWorkerDirs()
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetReportCaller(true)
-	filePath := conf.GetEnv("BCDA_WORKER_ERROR_LOG")
-
-	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-	if err == nil {
-		log.SetOutput(file)
-	} else {
-		log.Info("Failed to open worker error log file; using default stderr")
-	}
+	client.SetLogger(log.BBWorker)
 }
 
 func createWorkerDirs() {
 	staging := conf.GetEnv("FHIR_STAGING_DIR")
 	err := os.MkdirAll(staging, 0744)
 	if err != nil {
-		log.Fatal(err)
+		log.Worker.Fatal(err)
 	}
 }
 
@@ -72,7 +63,7 @@ func waitForSig() {
 
 func main() {
 	fmt.Println("Starting bcdaworker...")
-	queue := manager.StartQue(log.StandardLogger(), utils.GetEnvInt("WORKER_POOL_SIZE", 2))
+	queue := manager.StartQue(log.Worker, utils.GetEnvInt("WORKER_POOL_SIZE", 2))
 	defer queue.StopQue()
 
 	if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {

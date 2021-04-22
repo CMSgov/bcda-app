@@ -11,9 +11,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
+	"github.com/CMSgov/bcda-app/log"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
@@ -63,7 +63,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
-		log.Error(err.Error())
+		log.API.Error(err.Error())
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.InternalErr, err.Error())
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -73,16 +73,16 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 	defer func() {
 		if err != nil {
 			if rbErr := tx.Rollback(); rbErr != nil {
-				log.Warnf("Failed to rollback transaction %s", err.Error())
+				log.API.Warnf("Failed to rollback transaction %s", err.Error())
 			}
-			log.Errorf("Could not handle ALR request %s", err.Error())
+			log.API.Errorf("Could not handle ALR request %s", err.Error())
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
 		}
 
 		if err = tx.Commit(); err != nil {
-			log.Errorf("Failed to commit transaction %s", err.Error())
+			log.API.Errorf("Failed to commit transaction %s", err.Error())
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return

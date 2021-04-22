@@ -16,8 +16,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
-
-	log "github.com/sirupsen/logrus"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 var (
@@ -33,7 +32,7 @@ func init() {
 	// Needed to comply with the NDJSON format that we are using.
 	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.R4)
 	if err != nil {
-		log.Fatalf("Failed to create marshaller %s", err)
+		log.API.Fatalf("Failed to create marshaller %s", err)
 	}
 }
 
@@ -215,14 +214,14 @@ func Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 	b, err := marshaller.Marshal(resource)
 	if err != nil {
-		log.Errorf("Failed to marshal Capability Statement %s", err.Error())
+		log.API.Errorf("Failed to marshal Capability Statement %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if _, err = w.Write(b); err != nil {
-		log.Errorf("Failed to write data %s", err.Error())
+		log.API.Errorf("Failed to write data %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

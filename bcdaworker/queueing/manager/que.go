@@ -30,7 +30,7 @@ type queue struct {
 
 	worker     worker.Worker
 	repository repository.Repository
-	log        *logrus.Logger
+	log        logrus.FieldLogger
 	queDB      *pgx.ConnPool
 
 	cloudWatchEnv string
@@ -64,7 +64,7 @@ func newMasterQueue(q *queue, qAlr *alrQueue) *masterQueue {
 // StartQue creates a que-go client and begins listening for items
 // It returns immediately since all of the associated workers are started
 // in separate goroutines.
-func StartQue(log *logrus.Logger, numWorkers int) *masterQueue {
+func StartQue(log logrus.FieldLogger, numWorkers int) *masterQueue {
 	// Allocate the queue in advance to supply the correct
 	// in the workmap
 	mainDB := database.Connection

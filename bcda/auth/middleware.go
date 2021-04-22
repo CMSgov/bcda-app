@@ -11,11 +11,11 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 // Use context keys for storing/retrieving data in the http Context
@@ -48,7 +48,7 @@ func ParseToken(next http.Handler) http.Handler {
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
-			log.Warn("Invalid Authorization header value")
+			log.Auth.Warn("Invalid Authorization header value")
 			respond(w, http.StatusUnauthorized)
 			return
 		}
@@ -57,7 +57,7 @@ func ParseToken(next http.Handler) http.Handler {
 
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
-			log.Errorf("Unable to verify token; %s", err)
+			log.Auth.Errorf("Unable to verify token; %s", err)
 			respond(w, http.StatusUnauthorized)
 			return
 		}
@@ -74,12 +74,12 @@ func ParseToken(next http.Handler) http.Handler {
 			case "ssas":
 				ad, err = adFromClaims(repository, claims)
 				if err != nil {
-					log.Error(err)
+					log.Auth.Error(err)
 					respond(w, http.StatusUnauthorized)
 					return
 				}
 			default:
-				log.Errorf("Unsupported claims issuer %s", claims.Issuer)
+				log.Auth.Errorf("Unsupported claims issuer %s", claims.Issuer)
 				respond(w, http.StatusNotFound)
 				return
 			}
@@ -94,7 +94,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Context().Value(TokenContextKey)
 		if token == nil {
-			log.Error("No token found")
+			log.Auth.Error("No token found")
 			respond(w, http.StatusUnauthorized)
 			return
 		}
@@ -102,7 +102,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 		if token, ok := token.(*jwt.Token); ok {
 			err := GetProvider().AuthorizeAccess(token.Raw)
 			if err != nil {
-				log.Error(err)
+				log.Auth.Error(err)
 				respond(w, http.StatusUnauthorized)
 				return
 			}
@@ -117,7 +117,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
-			log.Error()
+			log.Auth.Error()
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "AuthData not found")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
@@ -138,7 +138,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
-			log.Error()
+			log.Auth.Error()
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "AuthData not found")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
@@ -147,7 +147,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 
 		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
-			log.Error(err)
+			log.Auth.Error(err)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, err.Error())
 			responseutils.WriteError(oo, w, http.StatusNotFound)
@@ -158,7 +158,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 
 		job, err := repository.GetJobByID(context.Background(), uint(jobID))
 		if err != nil {
-			log.Error(err)
+			log.Auth.Error(err)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "")
 			responseutils.WriteError(oo, w, http.StatusNotFound)
@@ -167,7 +167,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 
 		// ACO did not create the job
 		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
-			log.Errorf("ACO %s does not have access to job ID %d %s",
+			log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
 				ad.ACOID, job.ID, job.ACOID)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, "")

@@ -13,7 +13,7 @@ import (
 
 	"github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/constants"
@@ -22,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 type cclfFileMetadata struct {
@@ -47,18 +48,18 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 	if fileMetadata == nil {
 		fmt.Println("File CCLF0 not found.")
 		err := errors.New("file CCLF0 not found")
-		log.Error(err)
+		log.API.Error(err)
 		return nil, err
 	}
 
 	fmt.Printf("Importing CCLF0 file %s...\n", fileMetadata)
-	log.Infof("Importing CCLF0 file %s...", fileMetadata)
+	log.API.Infof("Importing CCLF0 file %s...", fileMetadata)
 
 	r, err := zip.OpenReader(filepath.Clean(fileMetadata.filePath))
 	if err != nil {
 		fmt.Printf("Could not read CCLF0 archive %s.\n", fileMetadata)
 		err := errors.Wrapf(err, "could not read CCLF0 archive %s", fileMetadata)
-		log.Error(err)
+		log.API.Error(err)
 		return nil, err
 	}
 	defer r.Close()
@@ -80,14 +81,14 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 		if f.Name == fileMetadata.name {
 			rawFile = f
 			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
-			log.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
+			log.API.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
 	}
 
 	if rawFile == nil {
 		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
 		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return nil, err
 	}
 
@@ -95,7 +96,7 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 	if err != nil {
 		fmt.Printf("Could not read file %s in CCLF0 archive %s.\n", fileMetadata.name, fileMetadata.filePath)
 		err = errors.Wrapf(err, "could not read file %s in CCLF0 archive %s", fileMetadata.name, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return nil, err
 	}
 	defer rc.Close()
@@ -113,7 +114,7 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 				if _, ok := validator[filetype]; ok {
 					fmt.Printf("Duplicate %v file type found from CCLF0 file.\n", filetype)
 					err := fmt.Errorf("duplicate %v file type found from CCLF0 file", filetype)
-					log.Error(err)
+					log.API.Error(err)
 					return nil, err
 				}
 
@@ -121,14 +122,14 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 				if err != nil {
 					fmt.Printf("Failed to parse %s record count from CCLF0 file.\n", filetype)
 					err = errors.Wrapf(err, "failed to parse %s record count from CCLF0 file", filetype)
-					log.Error(err)
+					log.API.Error(err)
 					return nil, err
 				}
 				length, err := strconv.Atoi(string(bytes.TrimSpace(b[recordLengthStart:recordLengthEnd])))
 				if err != nil {
 					fmt.Printf("Failed to parse %s record length from CCLF0 file.\n", filetype)
 					err = errors.Wrapf(err, "failed to parse %s record length from CCLF0 file", filetype)
-					log.Error(err)
+					log.API.Error(err)
 					return nil, err
 				}
 				validator[filetype] = cclfFileValidator{totalRecordCount: count, maxRecordLength: length}
@@ -139,11 +140,11 @@ func importCCLF0(ctx context.Context, fileMetadata *cclfFileMetadata) (map[strin
 	if _, ok := validator["CCLF8"]; !ok {
 		fmt.Printf("Failed to parse CCLF8 from CCLF0 file %s.\n", fileMetadata)
 		err := fmt.Errorf("failed to parse CCLF8 from CCLF0 file %s", fileMetadata)
-		log.Error(err)
+		log.API.Error(err)
 		return nil, err
 	}
 	fmt.Printf("Successfully imported CCLF0 file %s.\n", fileMetadata)
-	log.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
+	log.API.Infof("Successfully imported CCLF0 file %s.", fileMetadata)
 
 	return validator, nil
 }
@@ -156,26 +157,26 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		fmt.Printf("failed to check existence of CCLF%d file.\n", fileMetadata.cclfNum)
 		err = errors.Wrapf(err, "failed to check existence of CCLF%d file", fileMetadata.cclfNum)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
 	if exists {
 		fmt.Printf("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
-		log.Infof("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
+		log.API.Infof("CCL%d file %s already exists in database, skipping import...", fileMetadata.cclfNum, fileMetadata)
 		return nil
 	}
 
 	fmt.Printf("Importing CCLF%d file %s...\n", fileMetadata.cclfNum, fileMetadata)
-	log.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
+	log.API.Infof("Importing CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
 
 	conn, err := stdlib.AcquireConn(db)
-	defer utils.CloseAndLog(log.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
+	defer utils.CloseAndLog(logrus.WarnLevel, func() error { return stdlib.ReleaseConn(db, conn) })
 
 	tx, err := conn.BeginEx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
-		log.Error(err)
+		log.API.Error(err)
 
 		return err
 	}
@@ -185,7 +186,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	defer func() {
 		if err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
-				log.Warnf("Failed to rollback transaction %s", err.Error())
+				log.API.Warnf("Failed to rollback transaction %s", err.Error())
 			}
 			return
 		}
@@ -195,7 +196,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		fmt.Printf("Could not read CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
 		err = errors.Wrapf(err, "could not read CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 	defer r.Close()
@@ -203,7 +204,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if len(r.File) < 1 {
 		fmt.Printf("No files found in CCLF%d archive %s.\n", fileMetadata.cclfNum, fileMetadata.filePath)
 		err = fmt.Errorf("no files found in CCLF%d archive %s", fileMetadata.cclfNum, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
@@ -224,7 +225,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		fmt.Printf("Could not create CCLF%d file record.\n", fileMetadata.cclfNum)
 		err = errors.Wrapf(err, "could not create CCLF%d file record", fileMetadata.cclfNum)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
@@ -236,14 +237,14 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 		if f.Name == fileMetadata.name {
 			rawFile = f
 			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
-			log.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
+			log.API.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
 	}
 
 	if rawFile == nil {
 		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
 		err = fmt.Errorf("file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
@@ -251,7 +252,7 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		fmt.Printf("Could not read file %s for CCLF%d in archive %s.\n", cclfFile.Name, fileMetadata.cclfNum, fileMetadata.filePath)
 		err = errors.Wrapf(err, "could not read file %s for CCLF%d in archive %s", cclfFile.Name, fileMetadata.cclfNum, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 	defer rc.Close()
@@ -266,18 +267,18 @@ func importCCLF8(ctx context.Context, fileMetadata *cclfFileMetadata) (err error
 	if err != nil {
 		fmt.Printf("Could not update cclf file record for file: %s. \n", fileMetadata)
 		err = errors.Wrapf(err, "could not update cclf file record for file: %s.", fileMetadata)
-		log.Error(err)
+		log.API.Error(err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		log.Error(err.Error())
+		log.API.Error(err.Error())
 		failMsg := fmt.Sprintf("failed to commit transaction for CCLF%d import file %s", fileMetadata.cclfNum, fileMetadata)
 		return errors.Wrap(err, failMsg)
 	}
 
 	successMsg := fmt.Sprintf("Successfully imported %d records from CCLF%d file %s.", importedCount, fileMetadata.cclfNum, fileMetadata)
 	fmt.Println(successMsg)
-	log.Infof(successMsg)
+	log.API.Infof(successMsg)
 
 	return nil
 }
@@ -298,7 +299,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 	}
 
 	if len(cclfMap) == 0 {
-		log.Info("Failed to find any CCLF files in directory")
+		log.API.Info("Failed to find any CCLF files in directory")
 		return 0, 0, skipped, nil
 	}
 
@@ -318,7 +319,7 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 				cclfvalidator, err := importCCLF0(ctx, cclf0)
 				if err != nil {
 					fmt.Printf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s.\n ", cclf0, cclf8)
-					log.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
+					log.API.Errorf("Failed to import CCLF0 file: %s, Skipping CCLF8 file: %s ", cclf0, cclf8)
 					failure++
 					skipped += 2
 					continue
@@ -328,12 +329,12 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 				err = validate(ctx, cclf8, cclfvalidator)
 				if err != nil {
 					fmt.Printf("Failed to validate CCLF8 file: %s.\n", cclf8)
-					log.Errorf("Failed to validate CCLF8 file: %s", cclf8)
+					log.API.Errorf("Failed to validate CCLF8 file: %s", cclf8)
 					failure++
 				} else {
 					if err = importCCLF8(ctx, cclf8); err != nil {
 						fmt.Printf("Failed to import CCLF8 file: %s %s.\n", cclf8, err)
-						log.Errorf("Failed to import CCLF8 file: %s %s", cclf8, err)
+						log.API.Errorf("Failed to import CCLF8 file: %s %s", cclf8, err)
 						failure++
 					} else {
 						cclf8.imported = true
@@ -350,12 +351,12 @@ func ImportCCLFDirectory(filePath string) (success, failure, skipped int, err er
 		defer c()
 		return cleanUpCCLF(ctx, cclfMap)
 	}(); err != nil {
-		log.Error(err)
+		log.API.Error(err)
 	}
 
 	if failure > 0 {
 		err = errors.New("one or more files failed to import correctly")
-		log.Error(err)
+		log.API.Error(err)
 	} else {
 		err = nil
 	}
@@ -367,12 +368,12 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	if fileMetadata == nil {
 		fmt.Printf("File not found.\n")
 		err := errors.New("file not found")
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
 	fmt.Printf("Validating CCLF%d file %s...\n", fileMetadata.cclfNum, fileMetadata)
-	log.Infof("Validating CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
+	log.API.Infof("Validating CCLF%d file %s...", fileMetadata.cclfNum, fileMetadata)
 
 	var key string
 	if fileMetadata.cclfNum == 8 {
@@ -380,7 +381,7 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	} else {
 		fmt.Printf("Unknown file type when validating file: %s.\n", fileMetadata)
 		err := fmt.Errorf("unknown file type when validating file: %s", fileMetadata)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
@@ -388,7 +389,7 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	if err != nil {
 		fmt.Printf("Could not read archive %s.\n", fileMetadata.filePath)
 		err := errors.Wrapf(err, "could not read archive %s", fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 	defer r.Close()
@@ -404,14 +405,14 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 		if f.Name == fileMetadata.name {
 			rawFile = f
 			fmt.Printf("Reading file %s from archive %s.\n", fileMetadata.name, fileMetadata.filePath)
-			log.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
+			log.API.Infof("Reading file %s from archive %s", fileMetadata.name, fileMetadata.filePath)
 		}
 	}
 
 	if rawFile == nil {
 		fmt.Printf("File %s not found in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
 		err = errors.Wrapf(err, "file %s not found in archive %s", fileMetadata.name, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
@@ -419,7 +420,7 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 	if err != nil {
 		fmt.Printf("Could not read file %s in archive %s.\n", fileMetadata.name, fileMetadata.filePath)
 		err = errors.Wrapf(err, "could not read file %s in archive %s", fileMetadata.name, fileMetadata.filePath)
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 	defer rc.Close()
@@ -434,18 +435,18 @@ func validate(ctx context.Context, fileMetadata *cclfFileMetadata, cclfFileValid
 			if count > validator.totalRecordCount {
 				fmt.Printf("Maximum record count reached for file %s, Expected record count: %d, Actual record count: %d.\n", key, validator.totalRecordCount, count)
 				err := fmt.Errorf("maximum record count reached for file %s (expected: %d, actual: %d)", key, validator.totalRecordCount, count)
-				log.Error(err)
+				log.API.Error(err)
 				return err
 			}
 		} else {
 			fmt.Printf("Incorrect record length for file %s, Expected record length: %d, Actual record length: %d.\n", key, validator.maxRecordLength, bytelength)
 			err := fmt.Errorf("incorrect record length for file %s (expected: %d, actual: %d)", key, validator.maxRecordLength, bytelength)
-			log.Error(err)
+			log.API.Error(err)
 			return err
 		}
 	}
 	fmt.Printf("Successfully validated CCLF%d file %s.\n", fileMetadata.cclfNum, fileMetadata)
-	log.Infof("Successfully validated CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
+	log.API.Infof("Successfully validated CCLF%d file %s.", fileMetadata.cclfNum, fileMetadata)
 	return nil
 }
 
@@ -459,7 +460,7 @@ func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclf
 					defer close()
 
 					fmt.Printf("Cleaning up file %s.\n", cclf.filePath)
-					log.Infof("Cleaning up file %s", cclf.filePath)
+					log.API.Infof("Cleaning up file %s", cclf.filePath)
 					folderName := filepath.Base(cclf.filePath)
 					newpath := fmt.Sprintf("%s/%s", conf.GetEnv("PENDING_DELETION_DIR"), folderName)
 					if !cclf.imported {
@@ -476,10 +477,10 @@ func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclf
 								errCount++
 								errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
 								fmt.Println(errMsg)
-								log.Error(errMsg)
+								log.API.Error(errMsg)
 							} else {
 								fmt.Printf("File %s never ingested, moved to the pending deletion dir.\n", cclf.filePath)
-								log.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
+								log.API.Infof("File %s never ingested, moved to the pending deletion dir", cclf.filePath)
 							}
 						}
 					} else {
@@ -492,10 +493,10 @@ func cleanUpCCLF(ctx context.Context, cclfMap map[string]map[metadataKey][]*cclf
 							errCount++
 							errMsg := fmt.Sprintf("File %s failed to clean up properly: %v", cclf.filePath, err)
 							fmt.Println(errMsg)
-							log.Error(errMsg)
+							log.API.Error(errMsg)
 						} else {
 							fmt.Printf("File %s successfully ingested, moved to the pending deletion dir.\n", cclf.filePath)
-							log.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
+							log.API.Infof("File %s successfully ingested, moved to the pending deletion dir", cclf.filePath)
 						}
 					}
 				}()

@@ -10,12 +10,13 @@ import (
 
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
-	log "github.com/sirupsen/logrus"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 type RequestConditions struct {
@@ -78,7 +79,7 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 
 	return &service{
 		repository:        r,
-		logger:            log.StandardLogger(),
+		logger:            log.API,
 		stdCutoffDuration: cfg.cutoffDuration,
 		sp: suppressionParameters{
 			includeSuppressedBeneficiaries: false,
@@ -98,7 +99,7 @@ func NewService(r models.Repository, cfg *Config, basePath string) Service {
 type service struct {
 	repository models.Repository
 
-	logger *log.Logger
+	logger logrus.FieldLogger
 
 	stdCutoffDuration time.Duration
 	sp                suppressionParameters

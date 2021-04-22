@@ -7,9 +7,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
-	log "github.com/sirupsen/logrus"
 )
 
 // Timer provides methods for timing methods.
@@ -90,17 +90,17 @@ func GetTimer() Timer {
 	)
 
 	if err != nil {
-		log.Warnf("Failed to instantiate NeRelic application. Default to no-op timer. %s", err.Error())
+		log.API.Warnf("Failed to instantiate NeRelic application. Default to no-op timer. %s", err.Error())
 		return &noopTimer{}
 	}
 
 	timeout := time.Duration(utils.GetEnvInt("NEW_RELIC_CONNECTION_TIMEOUT_SECONDS", 30)) * time.Second
 	if err = app.WaitForConnection(timeout); err != nil {
-		log.Warnf("Failed to establish connection to New Relic server in %s. Default to no-op timer.", timeout)
+		log.API.Warnf("Failed to establish connection to New Relic server in %s. Default to no-op timer.", timeout)
 		return &noopTimer{}
 	}
 
-	log.Info("Using New Relic backed timer.")
+	log.API.Info("Using New Relic backed timer.")
 	return &timer{app}
 }
 
@@ -124,7 +124,7 @@ func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context
 func (t *timer) newChild(parentCtx context.Context, name string) (close func()) {
 	txn := newrelic.FromContext(parentCtx)
 	if txn == nil {
-		log.Warn("No transaction found. Cannot create child.")
+		log.API.Warn("No transaction found. Cannot create child.")
 		return noop
 	}
 	segment := txn.StartSegment(name)

@@ -22,7 +22,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/pkg/errors"
 
@@ -79,13 +78,6 @@ type BlueButtonClient struct {
 // Ensure BlueButtonClient satisfies the interface
 var _ APIClient = &BlueButtonClient{}
 
-func init() {
-	// Read in the application via config file since this client
-	// is shared between the API and Worker
-	logger = log.Logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
-		conf.GetEnv("APPLICATION"), conf.GetEnv("ENVIRONMENT"))
-}
-
 func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	certFile := conf.GetEnv("BB_CLIENT_CERT_FILE")
 	keyFile := conf.GetEnv("BB_CLIENT_KEY_FILE")
@@ -133,6 +125,13 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	maxTries := uint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
 	retryInterval := time.Duration(utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)) * time.Millisecond
 	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer, config.BBBasePath}, nil
+}
+
+// SetLogger sets the logger to be used in the client.
+// Since both the API and worker use the bluebutton client, we need
+// to be able to set the appropriate logger based on who is using the client.
+func SetLogger(log logrus.FieldLogger) {
+	logger = log
 }
 
 func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
@@ -388,7 +387,7 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 
 type httpLogger struct {
 	t *http.Transport
-	l *logrus.Logger
+	l logrus.FieldLogger
 }
 
 func (h *httpLogger) RoundTrip(req *http.Request) (*http.Response, error) {
