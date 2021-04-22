@@ -17,6 +17,7 @@ var (
 
 	Worker   logrus.FieldLogger
 	BBWorker logrus.FieldLogger
+	Health   logrus.FieldLogger
 )
 
 func init() {
@@ -34,6 +35,8 @@ func init() {
 	Worker = Logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"),
 		"worker", conf.GetEnv("ENVIRONMENT"))
 	BBWorker = Logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
+		"worker", conf.GetEnv("ENVIRONMENT"))
+	Health = Logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"),
 		"worker", conf.GetEnv("ENVIRONMENT"))
 }
 

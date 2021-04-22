@@ -41,12 +41,15 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/bcdacli"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
 
 func init() {
+	client.SetLogger(log.BBAPI)
+
 	isEtlMode := conf.GetEnv("BCDA_ETL_MODE")
 	if isEtlMode != "true" {
 		createAPIDirs()

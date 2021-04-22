@@ -9,10 +9,13 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing/manager"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/pborman/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -67,14 +70,13 @@ func main() {
 	defer queue.StopQue()
 
 	if hInt, err := strconv.Atoi(conf.GetEnv("WORKER_HEALTH_INT_SEC")); err == nil {
-		healthLogger := NewHealthLogger()
 		ticker := time.NewTicker(time.Duration(hInt) * time.Second)
 		quit := make(chan struct{})
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
-					healthLogger.Log()
+					logHealth()
 				case <-quit:
 					ticker.Stop()
 					return
@@ -84,4 +86,26 @@ func main() {
 	}
 
 	waitForSig()
+}
+
+func logHealth() {
+	entry := log.Health
+
+	logFields := logrus.Fields{}
+	logFields["type"] = "health"
+	logFields["id"] = uuid.NewRandom()
+
+	if health.IsDatabaseOK() {
+		logFields["db"] = "ok"
+	} else {
+		logFields["db"] = "error"
+	}
+
+	if health.IsBlueButtonOK() {
+		logFields["bb"] = "ok"
+	} else {
+		logFields["bb"] = "error"
+	}
+
+	entry.WithFields(logFields).Info()
 }
