@@ -1,10 +1,6 @@
 name: BCDA CI Workflow
 
-on:
-  push:
-    branches:
-      - master
-  pull_request:
+on: [push]
 
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
@@ -18,15 +14,6 @@ jobs:
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
-      - name: Retrieve Go paths
-        id: go-cache-paths
-        run: |
-          echo "::set-output name=go-build-cache::$(go env GOCACHE)"
-          echo "::set-output name=go-mod-cache::$(go env GOMODCACHE)" 
-      - name: Create Go paths for caches
-        run: |
-          mkdir -p ${{ steps.go-cache-paths.outputs.go-build-cache }}
-          mkdir -p ${{ steps.go-cache-paths.outputs.go-mod-cache }}
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Decrypt secrets
@@ -34,19 +21,13 @@ jobs:
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Retrieve Go build cache
+      - name: Set Up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Cache Docker Layers
         uses: actions/cache@v2
         with:
-          path: ${{ steps.go-cache-paths.outputs.go-build-cache }}
-          key: ${{ runner.os }}-go-build-20210301-1-${{ hashFiles('**/go.sum') }}
-      - name: Retrieve Go mod cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          key: ${{ runner.os }}-go-mod-20210301-1-${{ hashFiles('**/go.sum') }}
-      - name: Download dependencies
-        run: |
-          go mod download
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-20210422-01-${{ hashFiles('**/go.sum') }}
       - name: Build the stack
         run: |
           make docker-bootstrap

@@ -227,5 +227,3 @@ make load-fixtures
 
 Follow installing go + vscode [setup guide](https://marketplace.visualstudio.com/items?itemName=golang.go#getting-started).
 Additional settings found under `.vscode/settings.json` allow tests to be run within vscode.
-
-+
