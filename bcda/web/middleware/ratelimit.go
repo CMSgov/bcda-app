@@ -13,9 +13,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/log"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -46,7 +46,7 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 
 		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
 		if err != nil {
-			log.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
+			log.API.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
