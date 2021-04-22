@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,10 +12,12 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
+	workerRepo "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/bgentry/que-go"
@@ -48,12 +51,16 @@ func TestProcessJob(t *testing.T) {
 	conf.SetEnv(t, "BB_CLIENT_CA_FILE", "../../../shared_files/localhost.crt")
 
 	// Ensure we do not clutter our working directory with any data
-	tempDir, err := ioutil.TempDir("", "*")
+	tempDir1, err := ioutil.TempDir("", "*")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir)
-	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir)
+	tempDir2, err := ioutil.TempDir("", "*")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	conf.SetEnv(t, "FHIR_PAYLOAD_DIR", tempDir1)
+	conf.SetEnv(t, "FHIR_STAGING_DIR", tempDir2)
 
 	db := database.Connection
 
@@ -165,3 +172,92 @@ func TestProcessJobFailedValidation(t *testing.T) {
 }
 
 // Test ALR startAlrjob
+func TestStartAlrJob(t *testing.T) {
+	// Set up data based on testfixtures
+	db := database.Connection
+	alrWorker := worker.NewAlrWorker(db)
+	ctx := context.Background()
+	cmsID := "A9994"
+
+	r := postgres.NewRepository(db)
+
+	// Retreive ACO info
+	aco, err := r.GetACOByCMSID(ctx, cmsID)
+	assert.NoError(t, err)
+
+	mbis, err := r.GetCCLFBeneficiaries(ctx, 1, []string{})
+	assert.NoError(t, err)
+
+	// just use one mbi for this test
+	twoMbis := make([]string, 2)
+	twoMbis = append(twoMbis, mbis[0].MBI)
+	twoMbis = append(twoMbis, mbis[1].MBI)
+
+	alr, err := alrWorker.GetAlr(ctx, *aco.CMSID, twoMbis, time.Time{}, time.Time{})
+	assert.NoError(t, err)
+
+	// Add the ACO into aco table
+	job := models.Job{
+		ACOID:           aco.UUID,
+		RequestURL:      "",
+		Status:          models.JobStatusPending,
+		TransactionTime: time.Now(),
+		// JobCount is partitioned automatically, but it is done manually here
+		JobCount:          2,
+		CompletedJobCount: 0,
+	}
+	id, err := r.CreateJob(ctx, job)
+	assert.NoError(t, err)
+
+	// Create JobArgs
+	jobArgs := models.JobAlrEnqueueArgs{
+		ID:         id,
+		CMSID:      cmsID,
+		MBIs:       []string{alr[0].BeneMBI},
+		LowerBound: time.Time{},
+		UpperBound: time.Time{},
+	}
+	jobArgs2 := models.JobAlrEnqueueArgs{
+		ID:         id,
+		CMSID:      cmsID,
+		MBIs:       []string{alr[1].BeneMBI},
+		LowerBound: time.Time{},
+		UpperBound: time.Time{},
+	}
+
+	// marshal jobs
+	jobArgsJson, err := json.Marshal(jobArgs)
+	assert.NoError(t, err)
+	jobArgsJson2, err := json.Marshal(jobArgs2)
+	assert.NoError(t, err)
+
+	q := &queue{
+		worker:        worker.NewWorker(db),
+		repository:    workerRepo.NewRepository(db),
+		log:           log,
+		queDB:         database.QueueConnection,
+		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
+	}
+	// Same as above, but do one for ALR
+	qAlr := &alrQueue{
+		alrLog:    log,
+		alrWorker: alrWorker,
+	}
+	master := newMasterQueue(q, qAlr)
+
+	// Since the worker is tested by BFD, it is not tested here
+	// and we jump straight to the work
+	err = master.startAlrJob(&que.Job{
+		Args: jobArgsJson,
+	})
+	assert.NoError(t, err)
+	err = master.startAlrJob(&que.Job{
+		Args: jobArgsJson2,
+	})
+	assert.NoError(t, err)
+
+	// Check job is complete
+	alrJob, err := r.GetJobByID(ctx, id)
+	assert.NoError(t, err)
+	assert.Equal(t, models.JobStatusCompleted, alrJob.Status)
+}

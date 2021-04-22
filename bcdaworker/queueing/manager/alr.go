@@ -3,15 +3,23 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+
+	// The follow two packages imported to use repository.ErrJobNotFound etc.
+	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/bgentry/que-go"
 	"github.com/sirupsen/logrus"
 )
+
+/******************************************************************************
+	Data Structures
+******************************************************************************/
 
 // alrQueue is the data structure for jobs related to Assignment List Report
 // (ALR). ALR piggybacks Beneficiary FHIR through the masterQueue data struct.
@@ -21,52 +29,126 @@ type alrQueue struct {
 	alrWorker worker.AlrWorker
 }
 
+/******************************************************************************
+	Functions
+******************************************************************************/
+
+// checkIFCanncelled was originally a closure to check if the job was cancelled,
+// but it has been turned into a func for ALR for clarity
+func checkIfCancelled(ctx context.Context, q *masterQueue,
+	cancel context.CancelFunc, jobArgs models.JobAlrEnqueueArgs) {
+	for {
+		select {
+		case <-time.After(15 * time.Second):
+			jobStatus, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+
+			if err != nil {
+				q.alrLog.Warnf("Could not find job %d status: %s", jobArgs.ID, err)
+			}
+
+			if jobStatus.Status == models.JobStatusCancelled {
+				cancel()
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+/******************************************************************************
+	Methods
+******************************************************************************/
+
 // startALRJob is the Job that the worker will run from the pool. This function
 // has been written here (alr.go) to separate from beneficiary FHIR workflow.
 // This job is handled by the same worker pool that works on beneficiary.
 func (q *masterQueue) startAlrJob(job *que.Job) error {
-	// Creating Context for possible cancellation
+
+	// Creating Context for possible cancellation; used by checkIfCancelled fn
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Unmarchall JSON that contains the job details
-	// JSON selected for ALR for continuity... may change in the future
+	// Unmarshall JSON that contains the job details
 	var jobArgs models.JobAlrEnqueueArgs
 	err := json.Unmarshal(job.Args, &jobArgs)
+	// If we cannot unmarshall this, it would be very problematic.
 	if err != nil {
-		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s. Removing job...",
+		// TODO: perhaps just fail the job?
+		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s.",
 			job.Args, err)
-		// By returning nil to que-go, job is removed from queue
-		return nil
 	}
 
 	// Check if the job was cancelled
-	go func() {
-		for {
-			select {
-			case <-time.After(15 * time.Second):
-				jobStatus, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+	go checkIfCancelled(ctx, q, cancel, jobArgs)
 
-				if err != nil {
-					q.alrLog.Warnf("Could not find job %d status: %s", jobArgs.ID, err)
-				}
-
-				if jobStatus.Status == models.JobStatusCancelled {
-					// cancelled context will get picked up by worker.go#writeBBDataToFile
-					cancel()
-					return
-				}
-			case <-ctx.Done():
-				return
+	// Validate the job like bcdaworker/worker/worker.go#L43
+	// TODO: Abstract this into either a function or interface like the bfd worker
+	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+	if err != nil { // if this is not nil, we could not find the Job
+		// Drill down to what kind of error this is...
+		if errors.Is(err, repository.ErrJobNotFound) {
+			// Parent job is not found
+			// If parent job is not found reach maxretry, fail the job
+			if job.ErrorCount >= q.MaxRetry {
+				q.alrLog.Errorf("No job found for ID: %d acoID: %s. Retries exhausted. Removing job from queue.", jobArgs.ID,
+					jobArgs.CMSID)
+				// By returning a nil error response, we're singaling to que-go to remove this job from the jobqueue.
+				return nil
 			}
+			q.alrLog.Warnf("No Job with ID %d ACO %s found. Will retry.", jobArgs.ID, jobArgs.CMSID)
+			return fmt.Errorf("could not retrieve job from database")
 		}
-	}()
+		// Else that job just doesn't exist
+		return fmt.Errorf("failed to valiate job: %w", err)
+	}
+	// If the job was cancalled...
+	if alrJobs.Status == models.JobStatusCancelled {
+		q.alrLog.Warnf("ALR big job has been cancelled, worker will not be tasked for %s",
+			job.Args)
+		return nil
+	}
+	// If the job has been failed by a previous worker...
+	if alrJobs.Status == models.JobStatusFailed {
+		q.alrLog.Warnf("ALR big job has been failed, worker will not be tasked for %s",
+			job.Args)
+		return nil
+	}
+	// End of validation
 
-	// Do the Job
+	// Before moving forward, check if this job has failed before
+	// If it has reached the maxRetry, stop the parent job
+	if job.ErrorCount > q.MaxRetry {
+		// Fail the job - ALL OR NOTHING
+		err = q.repository.UpdateJobStatus(ctx, jobArgs.ID, models.JobStatusFailed)
+		if err != nil {
+			q.alrLog.Warnf("Could not mark job %d as failed in DB.",
+				jobArgs.ID)
+		}
+		q.alrLog.Warnf("One of the job for '%d' has failed five times.",
+			jobArgs.ID)
+		// Clean up the failed job from tracker
+		return nil
+	}
+
+	// Check the status of the job, and put it in to progess if needed
+	err = q.repository.UpdateJobStatusCheckStatus(ctx, jobArgs.ID, models.JobStatusPending,
+		models.JobStatusInProgress)
+	if err != nil {
+		// This is a little confusing, but if the job is not updated b/c it's still in pending
+		// don't fail the job.
+		if !errors.Is(err, repository.ErrJobNotUpdated) {
+			q.alrLog.Warnf("Failed to update job status '%s' %s.",
+				job.Args, err)
+			return err
+		}
+	}
+
+	// Run ProcessAlrJob, which is the meat of the whole operation
 	err = q.alrWorker.ProcessAlrJob(ctx, jobArgs)
 	if err != nil {
-		// This means the job did not finish for various reason
+		// This means the job did not finish
 		q.alrLog.Warnf("Failed to complete job.Args '%s' %s", job.Args, err)
 		// Re-enqueue the job
 		return err

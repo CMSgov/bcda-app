@@ -26,7 +26,6 @@ import (
 	Data Structures
 	-AlrWorker
 	-data
-		- Use to send FHIR data to a go routine to write to disk
 ******************************************************************************/
 
 type AlrWorker struct {
@@ -36,6 +35,7 @@ type AlrWorker struct {
 	ndjsonFilename string
 }
 
+//data is used to send FHIR data to a go routine to write to disk
 type data struct {
 	patient      *resources_go_proto.Patient
 	observations []*resources_go_proto.Observation
