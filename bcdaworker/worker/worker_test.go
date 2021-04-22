@@ -71,8 +71,6 @@ func (s *WorkerTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
-	conf.SetEnv(s.T(), "ATO_PUBLIC_KEY_FILE", "../../shared_files/ATO_public.pem")
-	conf.SetEnv(s.T(), "ATO_PRIVATE_KEY_FILE", "../../shared_files/ATO_private.pem")
 }
 
 func (s *WorkerTestSuite) SetupTest() {
