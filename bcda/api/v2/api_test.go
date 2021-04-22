@@ -12,12 +12,14 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/go-chi/chi"
 	"github.com/google/fhir/go/jsonformat"
@@ -59,6 +61,9 @@ func (s *APITestSuite) SetupSuite() {
 	enqueuer := &queueing.MockEnqueuer{}
 	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
 	h.Enq = enqueuer
+
+	// Set up the logger since we're using the real client
+	client.SetLogger(log.BBAPI)
 }
 
 func TestAPITestSuite(t *testing.T) {
