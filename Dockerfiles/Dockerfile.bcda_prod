@@ -4,9 +4,6 @@ FROM golang:1.15-alpine3.12 AS base
 RUN apk update upgrade
 RUN apk add git openssl entr bash
 
-RUN openssl genrsa -out /var/local/private.pem 2048
-RUN openssl rsa -in /var/local/private.pem -outform PEM -pubout -out /var/local/public.pem
-
 WORKDIR /go/src/github.com/CMSgov/bcda-app
 
 # Download all dependencies

@@ -10,8 +10,6 @@
         "SSAS_PUBLIC_URL": "http://127.0.0.1:3003",
         // Since we have different directory structure in our test containers, we should
         // define all files/directory paths here
-        "ATO_PUBLIC_KEY_FILE": "${workspaceFolder}/shared_files/ATO_public.pem",
-        "ATO_PRIVATE_KEY_FILE": "${workspaceFolder}/shared_files/ATO_private.pem",
         "BB_CLIENT_CERT_FILE": "${workspaceFolder}/shared_files/decrypted/bfd-dev-test-cert.pem",
         "BB_CLIENT_KEY_FILE": "${workspaceFolder}/shared_files/decrypted/bfd-dev-test-key.pem",
         "FHIR_PAYLOAD_DIR": "${workspaceFolder}/bcdaworker/data",

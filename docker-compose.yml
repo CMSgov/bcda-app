@@ -74,8 +74,6 @@ services:
       - JWT_PUBLIC_KEY_FILE=/var/local/public.pem
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
       - DEBUG=true
-      - ATO_PUBLIC_KEY_FILE=../shared_files/ATO_public.pem
-      - ATO_PRIVATE_KEY_FILE=../shared_files/ATO_private.pem
       - HTTP_ONLY=true
       - OKTA_CLIENT_ORGURL=https://cms-sandbox.oktapreview.com
       - OKTA_EMAIL=shawn@bcda.aco-group.us
