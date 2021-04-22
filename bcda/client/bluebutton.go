@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -23,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/pkg/errors"
 
@@ -32,7 +32,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-var logger *logrus.Logger
+var logger logrus.FieldLogger
 
 const (
 	clientIDHeader = "BULK-CLIENTID"
@@ -80,19 +80,10 @@ type BlueButtonClient struct {
 var _ APIClient = &BlueButtonClient{}
 
 func init() {
-	logger = logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
-	logger.SetReportCaller(true)
-	filePath := conf.GetEnv("BCDA_BB_LOG")
-
-	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-
-	if err == nil {
-		logger.SetOutput(file)
-	} else {
-		logger.Info("Failed to open Blue Button log file; using default stderr")
-	}
+	// Read in the application via config file since this client
+	// is shared between the API and Worker
+	logger = log.Logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
+		conf.GetEnv("APPLICATION"), conf.GetEnv("ENVIRONMENT"))
 }
 
 func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {

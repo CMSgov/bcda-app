@@ -8,19 +8,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	log "github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
-
-var ssasLogger *logrus.Logger
 
 // SSASClient is a client for interacting with the System-to-System Authentication Service.
 type SSASClient struct {
@@ -39,22 +36,6 @@ type Credentials struct {
 	ClientName   string
 }
 
-func init() {
-	ssasLogger = logrus.New()
-	ssasLogger.Formatter = &logrus.JSONFormatter{}
-	ssasLogger.SetReportCaller(true)
-	filePath := conf.GetEnv("BCDA_SSAS_LOG")
-
-	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	file, err := os.OpenFile(filepath.Clean(filePath), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-
-	if err == nil {
-		ssasLogger.SetOutput(file)
-	} else {
-		ssasLogger.Info("Failed to open SSAS log file; using default stderr")
-	}
-}
-
 // NewSSASClient creates and returns an SSASClient.
 func NewSSASClient() (*SSASClient, error) {
 	var (
@@ -70,7 +51,7 @@ func NewSSASClient() (*SSASClient, error) {
 
 	var timeout int
 	if timeout, err = strconv.Atoi(conf.GetEnv("SSAS_TIMEOUT_MS")); err != nil {
-		ssasLogger.Info("Could not get SSAS timeout from environment variable; using default value of 500.")
+		log.SSAS.Info("Could not get SSAS timeout from environment variable; using default value of 500.")
 		timeout = 500
 	}
 
@@ -96,7 +77,7 @@ func tlsTransport() (*http.Transport, error) {
 		return nil, errors.New("could not append CA certificate(s)")
 	}
 
-	ssasLogger.Println("Using ca cert sourced from ", filepath.Clean(caFile))
+	log.SSAS.Println("Using ca cert sourced from ", filepath.Clean(caFile))
 	tlsConfig := &tls.Config{RootCAs: caCertPool, MinVersion: tls.VersionTLS12}
 
 	return &http.Transport{TLSClientConfig: tlsConfig}, nil

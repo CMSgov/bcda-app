@@ -3,7 +3,6 @@ package logging
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -14,33 +13,24 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 // https://github.com/go-chi/chi/blob/master/_examples/logging/main.go
 
 func NewStructuredLogger() func(next http.Handler) http.Handler {
-	logger := logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
-	logger.SetReportCaller(true)
-	filePath := conf.GetEnv("BCDA_REQUEST_LOG")
+	logger := log.Logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"),
+		"api", conf.GetEnv("ENVIRONMENT"))
 
-	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-
-	if err == nil {
-		logger.SetOutput(file)
-	} else {
-		logger.Info("Failed to open request log file; using default stderr")
-	}
 	return middleware.RequestLogger(&StructuredLogger{Logger: logger})
 }
 
 type StructuredLogger struct {
-	Logger *logrus.Logger
+	Logger logrus.FieldLogger
 }
 
 func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
-	entry := &StructuredLoggerEntry{Logger: logrus.NewEntry(l.Logger)}
+	entry := &StructuredLoggerEntry{Logger: l.Logger}
 	logFields := logrus.Fields{}
 
 	logFields["ts"] = time.Now().UTC().Format(time.RFC1123)
