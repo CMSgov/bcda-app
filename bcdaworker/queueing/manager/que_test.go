@@ -225,7 +225,7 @@ func TestStartAlrJob(t *testing.T) {
 		UpperBound: time.Time{},
 	}
 
-	// marshall jobs
+	// marshal jobs
 	jobArgsJson, err := json.Marshal(jobArgs)
 	assert.NoError(t, err)
 	jobArgsJson2, err := json.Marshal(jobArgs2)
@@ -257,21 +257,7 @@ func TestStartAlrJob(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check job is complete
-	timeout := time.After(10 * time.Second)
-	for {
-		select {
-		case <-timeout:
-			t.Fatal("Job not completed in alloted time.")
-			return
-		default:
-			alrJob, err := r.GetJobByID(ctx, id)
-			assert.NoError(t, err)
-			// don't wait for a job if it has a terminal status
-			if isTerminalStatus(alrJob.Status) {
-				return
-			}
-			log.Infof("Waiting on job to be completed. Current status %s.", job.Status)
-			time.Sleep(time.Second)
-		}
-	}
+	alrJob, err := r.GetJobByID(ctx, id)
+	assert.NoError(t, err)
+	assert.Equal(t, models.JobStatusCompleted, alrJob.Status)
 }
