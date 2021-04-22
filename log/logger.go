@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/sirupsen/logrus"
 )
@@ -44,6 +45,7 @@ func Logger(logger *logrus.Logger, outputFile string,
 	application, environment string) logrus.FieldLogger {
 
 	if outputFile != "" {
+		// #nosec G302 -- 0640 permissions required for Splunk ingestion
 		if file, err := os.OpenFile(filepath.Clean(outputFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640); err == nil {
 			logger.SetOutput(file)
 		} else {
@@ -55,5 +57,6 @@ func Logger(logger *logrus.Logger, outputFile string,
 
 	return logger.WithFields(logrus.Fields{
 		"application": application,
-		"environment": environment})
+		"environment": environment,
+		"version":     constants.Version})
 }
