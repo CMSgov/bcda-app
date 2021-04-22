@@ -51,6 +51,7 @@ func Logger(logger *logrus.Logger, outputFile string,
 				outputFile, err.Error())
 		}
 	}
+	logger.SetFormatter(&logrus.JSONFormatter{DisableHTMLEscape: true})
 
 	return logger.WithFields(logrus.Fields{
 		"application": application,
