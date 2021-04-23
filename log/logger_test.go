@@ -19,7 +19,7 @@ import (
 // with the expected parameters and write to the expected files.
 func TestLoggers(t *testing.T) {
 	env := uuid.New()
-	conf.SetEnv(t, "ENVIRONMENT", env)
+	conf.SetEnv(t, "DEPLOYMENT_TARGET", env)
 
 	tests := []struct {
 		logEnv string

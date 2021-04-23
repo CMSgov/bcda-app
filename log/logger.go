@@ -29,23 +29,25 @@ func init() {
 // setup allows us to invoke it automatically (via init()) and in tests
 // In tests, we want to set up the files/environment in a consistent manner
 func setup() {
+	env := conf.GetEnv("DEPLOYMENT_TARGET")
+
 	API = logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"),
-		"api", conf.GetEnv("ENVIRONMENT"))
+		"api", env)
 	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"),
-		"api", conf.GetEnv("ENVIRONMENT"))
+		"api", env)
 	BBAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
-		"api", conf.GetEnv("ENVIRONMENT"))
+		"api", env)
 	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"),
-		"api", conf.GetEnv("ENVIRONMENT"))
+		"api", env)
 	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"),
-		"api", conf.GetEnv("ENVIRONMENT"))
+		"api", env)
 
 	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"),
-		"worker", conf.GetEnv("ENVIRONMENT"))
+		"worker", env)
 	BBWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
-		"worker", conf.GetEnv("ENVIRONMENT"))
+		"worker", env)
 	Health = logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"),
-		"worker", conf.GetEnv("ENVIRONMENT"))
+		"worker", env)
 }
 
 func logger(logger *logrus.Logger, outputFile string,
