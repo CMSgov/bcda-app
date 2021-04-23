@@ -30,6 +30,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 type WorkerTestSuite struct {
@@ -71,6 +72,9 @@ func (s *WorkerTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_CLIENT_CERT_FILE", "../../shared_files/decrypted/bfd-dev-test-cert.pem")
 	conf.SetEnv(s.T(), "BB_CLIENT_KEY_FILE", "../../shared_files/decrypted/bfd-dev-test-key.pem")
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
+
+	// Set up the logger since we're using the real client
+	client.SetLogger(log.BBWorker)
 }
 
 func (s *WorkerTestSuite) SetupTest() {

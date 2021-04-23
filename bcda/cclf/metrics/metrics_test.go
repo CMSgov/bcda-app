@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -20,13 +22,16 @@ type MetricTestSuite struct {
 }
 
 func (s *MetricTestSuite) SetupTest() {
-	s.hook = test.NewGlobal()
+	logger := testUtils.GetLogger(log.API)
+	s.hook = test.NewLocal(logger)
 
-	logrus.SetLevel(logrus.DebugLevel)
+	logger.SetLevel(logrus.DebugLevel)
 
 	nr, err := newrelic.NewApplication(
 		newrelic.ConfigEnabled(false),
-		newrelic.ConfigLogger(nrlogrus.StandardLogger()),
+		// Use the same logger as the metrics logger to allow us to leverage
+		// the same hook
+		newrelic.ConfigLogger(nrlogrus.Transform(logger)),
 	)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), nr)

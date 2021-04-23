@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 
@@ -53,7 +53,7 @@ func (s *CCLFTestSuite) SetupSuite() {
 
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
-		log.Fatal(err)
+		s.FailNow(err.Error())
 	}
 	s.pendingDeletionDir = dir
 	testUtils.SetPendingDeletionDir(s.Suite, dir)
@@ -180,7 +180,7 @@ func (s *CCLFTestSuite) TestImportCCLF8() {
 func (s *CCLFTestSuite) TestImportCCLF8_alreadyExists() {
 	assert := assert.New(s.T())
 
-	hook := test.NewGlobal()
+	hook := test.NewLocal(testUtils.GetLogger(log.API))
 
 	postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")
 	defer postgrestest.DeleteCCLFFilesByCMSID(s.T(), s.db, "A0001")

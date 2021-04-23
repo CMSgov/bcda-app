@@ -50,7 +50,7 @@ fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv
 cd ../bcdaworker
 go clean
 echo "Building bcdaworker..."
-go build
+go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcdaworker binary into RPM..."
 fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker ../bcda/models/fhir/alr/hcc_crosswalk.tsv=/etc/sv/worker/hcc_crosswalk.tsv
 

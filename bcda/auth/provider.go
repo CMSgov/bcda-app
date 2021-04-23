@@ -4,12 +4,12 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 const (
@@ -21,14 +21,11 @@ var repository models.Repository
 var provider Provider
 
 func init() {
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetReportCaller(true)
-
 	repository = postgres.NewRepository(database.Connection)
 
 	c, err := client.NewSSASClient()
 	if err != nil {
-		log.Errorf("no client for SSAS. no provider set; %s", err.Error())
+		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())
 	}
 	provider = SSASPlugin{client: c, repository: repository}
 

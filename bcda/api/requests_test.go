@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
@@ -21,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/go-chi/chi"
 	"github.com/pborman/uuid"
@@ -58,6 +60,9 @@ func (s *RequestsTestSuite) SetupSuite() {
 	if err := tf.Load(); err != nil {
 		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
 	}
+
+	// Set up the logger since we're using the real client
+	client.SetLogger(log.BBAPI)
 }
 
 func (s *RequestsTestSuite) SetupTest() {

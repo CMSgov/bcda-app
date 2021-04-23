@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/sirupsen/logrus"
 
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
@@ -133,4 +134,13 @@ func GetRandomIPV4Address(t *testing.T) string {
 
 	// Use static first byte to ensure that the IP address is valid
 	return fmt.Sprintf("146.%d.%d.%d", data[0], data[1], data[2])
+}
+
+// GetLogger returns the underlying implementation of the field logger
+func GetLogger(logger logrus.FieldLogger) *logrus.Logger {
+	if entry, ok := logger.(*logrus.Entry); ok {
+		return entry.Logger
+	}
+	// Must be a *logrus.Logger
+	return logger.(*logrus.Logger)
 }

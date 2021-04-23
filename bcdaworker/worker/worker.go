@@ -19,12 +19,12 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type Worker interface {
@@ -68,7 +68,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusPending, models.JobStatusInProgress)
 	if goerrors.Is(err, repository.ErrJobNotUpdated) {
 		// could also occur if job was marked as cancelled
-		log.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
+		log.Worker.Warnf("Failed to update job. Assume job already updated. Continuing. %s", err.Error())
 	} else if err != nil {
 		return errors.Wrap(err, "could not update job status in database")
 	}
@@ -76,7 +76,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	bb, err := client.NewBlueButtonClient(client.NewConfig(jobArgs.BBBasePath))
 	if err != nil {
 		err = errors.Wrap(err, "could not create Blue Button client")
-		log.Error(err)
+		log.Worker.Error(err)
 		return err
 	}
 
@@ -85,14 +85,14 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	payloadPath := fmt.Sprintf("%s/%s", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID)
 
 	if err = createDir(stagingPath); err != nil {
-		log.Error(err)
+		log.Worker.Error(err)
 		return err
 	}
 
 	// Create directory for job results.
 	// This will be used in the clean up later to move over processed files.
 	if err = createDir(payloadPath); err != nil {
-		log.Error(err)
+		log.Worker.Error(err)
 		return err
 	}
 
@@ -104,34 +104,34 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 		// only inProgress jobs should move to a failed status (i.e. don't move a cancelled job to failed)
 		err = w.r.UpdateJobStatusCheckStatus(ctx, job.ID, models.JobStatusInProgress, models.JobStatusFailed)
 		if goerrors.Is(err, repository.ErrJobNotUpdated) {
-			log.Warnf("Failed to update job (job cancelled): %s", err)
+			log.Worker.Warnf("Failed to update job (job cancelled): %s", err)
 			return err
 		} else if err != nil {
 			return err
 		}
 	} else {
 		if fileSize == 0 {
-			log.Warn("Empty file found in request: ", fileName)
+			log.Worker.Warn("Empty file found in request: ", fileName)
 			fileName = models.BlankFileName
 		}
 
 		jk := models.JobKey{JobID: job.ID, FileName: fileName, ResourceType: jobArgs.ResourceType}
 		if err := w.r.CreateJobKey(ctx, jk); err != nil {
-			log.Error(err)
+			log.Worker.Error(err)
 			return err
 		}
 	}
 
 	_, err = checkJobCompleteAndCleanup(ctx, w.r, job.ID)
 	if err != nil {
-		log.Error(err)
+		log.Worker.Error(err)
 		return err
 	}
 
 	// Not critical since we use the job_keys count as the authoritative list of completed jobs.
 	// CompletedJobCount is purely information and can be off.
 	if err := w.r.IncrementCompletedJobCount(ctx, job.ID); err != nil {
-		log.Warnf("Failed to update completed job count for job %d. Will continue. %s", job.ID, err.Error())
+		log.Worker.Warnf("Failed to update completed job count for job %d. Will continue. %s", job.ID, err.Error())
 	}
 
 	return nil
@@ -168,7 +168,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	fileUUID = uuid.New()
 	f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", dataDir, jobArgs.ID, fileUUID))
 	if err != nil {
-		log.Error(err)
+		log.Worker.Error(err)
 		return "", 0, err
 	}
 
@@ -207,7 +207,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}()
 
 		if err != nil {
-			log.Error(err)
+			log.Worker.Error(err)
 			errorCount++
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION, responseutils.BbErr, errMsg, jobArgs.ID)
 		}
@@ -285,17 +285,17 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 
 	if err != nil {
-		log.Error(err)
+		log.Worker.Error(err)
 	}
 
 	defer utils.CloseFileAndLogError(f)
 	if _, err := responseutils.WriteOperationOutcome(f, oo); err != nil {
-		log.Error(err)
+		log.Worker.Error(err)
 	}
 
 	// Separate any subsequent error entries
 	if _, err := f.WriteString("\n"); err != nil {
-		log.Error(err)
+		log.Worker.Error(err)
 	}
 }
 
@@ -311,14 +311,14 @@ func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmod
 		entryJSON, err := json.Marshal(entry["resource"])
 		// This is unlikely to happen because we just unmarshalled this data a few lines above.
 		if err != nil {
-			log.Error(err)
+			log.Worker.Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, fmt.Sprintf("Error marshaling %s to JSON for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 			continue
 		}
 		_, err = w.WriteString(string(entryJSON) + "\n")
 		if err != nil {
-			log.Error(err)
+			log.Worker.Error(err)
 			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, fmt.Sprintf("Error writing %s to file for beneficiary %s in ACO %s", jsonType, beneficiaryID, acoID), jobID)
 		}
@@ -336,7 +336,7 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 		return true, nil
 	case models.JobStatusCancelled, models.JobStatusFailed:
 		// don't update job, Cancelled and Failed are terminal statuses
-		log.Warnf("Failed to mark job as completed (Job %s): %s", j.Status, err)
+		log.Worker.Warnf("Failed to mark job as completed (Job %s): %s", j.Status, err)
 		return true, nil
 	}
 

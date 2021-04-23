@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -32,7 +31,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-var logger *logrus.Logger
+var logger logrus.FieldLogger
 
 const (
 	clientIDHeader = "BULK-CLIENTID"
@@ -78,22 +77,6 @@ type BlueButtonClient struct {
 
 // Ensure BlueButtonClient satisfies the interface
 var _ APIClient = &BlueButtonClient{}
-
-func init() {
-	logger = logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
-	logger.SetReportCaller(true)
-	filePath := conf.GetEnv("BCDA_BB_LOG")
-
-	/* #nosec -- 0640 permissions required for Splunk ingestion */
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-
-	if err == nil {
-		logger.SetOutput(file)
-	} else {
-		logger.Info("Failed to open Blue Button log file; using default stderr")
-	}
-}
 
 func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	certFile := conf.GetEnv("BB_CLIENT_CERT_FILE")
@@ -142,6 +125,13 @@ func NewBlueButtonClient(config BlueButtonConfig) (*BlueButtonClient, error) {
 	maxTries := uint64(utils.GetEnvInt("BB_REQUEST_MAX_TRIES", 3))
 	retryInterval := time.Duration(utils.GetEnvInt("BB_REQUEST_RETRY_INTERVAL_MS", 1000)) * time.Millisecond
 	return &BlueButtonClient{client, maxTries, retryInterval, config.BBServer, config.BBBasePath}, nil
+}
+
+// SetLogger sets the logger to be used in the client.
+// Since both the API and worker use the bluebutton client, we need
+// to be able to set the appropriate logger based on who is using the client.
+func SetLogger(log logrus.FieldLogger) {
+	logger = log
 }
 
 func (bbc *BlueButtonClient) GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
@@ -397,7 +387,7 @@ func updateParamWithLastUpdated(params *url.Values, since string, transactionTim
 
 type httpLogger struct {
 	t *http.Transport
-	l *logrus.Logger
+	l logrus.FieldLogger
 }
 
 func (h *httpLogger) RoundTrip(req *http.Request) (*http.Response, error) {

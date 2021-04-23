@@ -17,6 +17,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/client"
 	models "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -55,6 +56,9 @@ func (s *BBTestSuite) SetupSuite() {
 	conf.SetEnv(s.T(), "BB_CLIENT_CA_FILE", "../../shared_files/localhost.crt")
 	conf.SetEnv(s.T(), "BB_REQUEST_RETRY_INTERVAL_MS", "10")
 	conf.SetEnv(s.T(), "BB_TIMEOUT_MS", "2000")
+
+	// Set up the logger since we're using the real client
+	client.SetLogger(logrus.StandardLogger())
 }
 
 func (s *BBRequestTestSuite) SetupSuite() {

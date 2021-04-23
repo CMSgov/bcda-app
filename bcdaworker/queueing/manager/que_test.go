@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -28,12 +29,15 @@ import (
 )
 
 // logHook allows us to retrieve the messages emitted by the logging instance
-var log = logrus.New()
-var logHook = test.NewLocal(log)
+var logger = logrus.New()
+var logHook = test.NewLocal(logger)
 
 // TestProcessJob acts as an end-to-end verification of the process.
 // It uses the postgres/que-go backed implementations
 func TestProcessJob(t *testing.T) {
+	// Set up the logger since we're using the real client
+	client.SetLogger(logger)
+
 	// Reset our environment once we've finished with the test
 	defer func(payload, staging string) {
 		conf.SetEnv(t, "FHIR_PAYLOAD_DIR", payload)
@@ -72,7 +76,7 @@ func TestProcessJob(t *testing.T) {
 
 	defer postgrestest.DeleteACO(t, db, aco.UUID)
 
-	q := StartQue(log, 1)
+	q := StartQue(logger, 1)
 	q.cloudWatchEnv = "dev"
 	defer q.StopQue()
 	// Since the jobArgs does not have any beneIDs, the job should complete almost immediately
@@ -93,7 +97,7 @@ func TestProcessJob(t *testing.T) {
 			if isTerminalStatus(currentJob.Status) {
 				return
 			}
-			log.Infof("Waiting on job to be completed. Current status %s.", job.Status)
+			logger.Infof("Waiting on job to be completed. Current status %s.", job.Status)
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
@@ -111,7 +115,7 @@ func isTerminalStatus(status models.JobStatus) bool {
 
 func TestProcessJobInvalidArgs(t *testing.T) {
 	job := &que.Job{Args: []byte("{invalid_json")}
-	queue := &queue{log: log}
+	queue := &queue{log: logger}
 	assert.NoError(t, queue.processJob(job),
 		"No error since invalid job data should not be retried")
 	entry := logHook.LastEntry()
@@ -140,7 +144,7 @@ func TestProcessJobFailedValidation(t *testing.T) {
 			worker := &worker.MockWorker{}
 			defer worker.AssertExpectations(t)
 
-			queue := &queue{worker: worker, log: log}
+			queue := &queue{worker: worker, log: logger}
 
 			job := models.Job{ID: uint(rand.Int31())}
 			jobArgs := models.JobEnqueueArgs{ID: int(job.ID), ACOID: uuid.New()}
@@ -234,13 +238,13 @@ func TestStartAlrJob(t *testing.T) {
 	q := &queue{
 		worker:        worker.NewWorker(db),
 		repository:    workerRepo.NewRepository(db),
-		log:           log,
+		log:           logger,
 		queDB:         database.QueueConnection,
 		cloudWatchEnv: conf.GetEnv("DEPLOYMENT_TARGET"),
 	}
 	// Same as above, but do one for ALR
 	qAlr := &alrQueue{
-		alrLog:    log,
+		alrLog:    logger,
 		alrWorker: alrWorker,
 	}
 	master := newMasterQueue(q, qAlr)

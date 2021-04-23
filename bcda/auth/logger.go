@@ -1,15 +1,11 @@
 package auth
 
 import (
-	"os"
 	"time"
 
-	"github.com/CMSgov/bcda-app/conf"
-
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 )
-
-var logger *logrus.Logger
 
 type event struct {
 	clientID   string
@@ -20,30 +16,8 @@ type event struct {
 	trackingID string
 }
 
-// maybe we should just use plain standard logging and pass in json. We don't use the level
-// designation to tune logging in non-local envs, so is logrus complexity worth it?
-func init() {
-	logger = logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
-	logger.Formatter.(*logrus.JSONFormatter).TimestampFormat = time.RFC3339Nano
-
-	filePath, success := conf.LookupEnv("AUTH_LOG")
-	if success {
-		/* #nosec -- 0640 permissions required for Splunk ingestion */
-		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-
-		if err == nil {
-			logger.SetOutput(file)
-		} else {
-			logger.Info("Failed to open Auth log file; using default stderr")
-		}
-	} else {
-		logger.Info("No Auth log location provided; using default stderr")
-	}
-}
-
-func mergeNonEmpty(data event) *logrus.Entry {
-	var entry = logrus.NewEntry(logger)
+func mergeNonEmpty(data event) logrus.FieldLogger {
+	var entry = log.Auth
 
 	if data.clientID != "" {
 		entry = entry.WithField("clientID", data.clientID)

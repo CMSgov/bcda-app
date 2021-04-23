@@ -3,13 +3,15 @@ package auth
 import (
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOperationLogging(t *testing.T) {
-	testLogger := test.NewLocal(logger)
+	testLogger := test.NewLocal(testUtils.GetLogger(log.Auth))
 	operationStarted(event{op: "TestOperation", help: "A little more to the right"})
 
 	assert.Equal(t, 1, len(testLogger.Entries))
