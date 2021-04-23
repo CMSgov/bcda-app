@@ -69,13 +69,8 @@ func verifyAPILogs(t *testing.T, env, msg string, logFile *os.File) {
 	assert.Len(t, res, 2)
 	var fields logrus.Fields
 	assert.NoError(t, json.Unmarshal([]byte(res[0]), &fields))
-	assert.Equal(t, fields["msg"], msg)
 	assert.Equal(t, fields["environment"], env)
-	assert.Equal(t, fields["application"], "api")
-	assert.Equal(t, fields["version"], constants.Version)
-	assert.Contains(t, fields["func"], "github.com/CMSgov/bcda-app/log")
-	_, err = time.Parse(time.RFC3339Nano, fields["time"].(string))
-	assert.NoError(t, err)
+	verifyCommonFields(t, fields, msg)
 }
 
 func verifyWorkerLogs(t *testing.T, env, msg string, logFile *os.File) {
@@ -87,11 +82,15 @@ func verifyWorkerLogs(t *testing.T, env, msg string, logFile *os.File) {
 	assert.Len(t, res, 2)
 	var fields logrus.Fields
 	assert.NoError(t, json.Unmarshal([]byte(res[0]), &fields))
-	assert.Equal(t, fields["msg"], msg)
 	assert.Equal(t, fields["environment"], env)
+	verifyCommonFields(t, fields, msg)
+}
+
+func verifyCommonFields(t *testing.T, fields logrus.Fields, msg string) {
+	assert.Equal(t, fields["msg"], msg)
 	assert.Equal(t, fields["application"], "worker")
 	assert.Equal(t, fields["version"], constants.Version)
 	assert.Contains(t, fields["func"], "github.com/CMSgov/bcda-app/log")
-	_, err = time.Parse(time.RFC3339Nano, fields["time"].(string))
+	_, err := time.Parse(time.RFC3339Nano, fields["time"].(string))
 	assert.NoError(t, err)
 }
