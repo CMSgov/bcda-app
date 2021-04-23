@@ -30,6 +30,8 @@ jobs:
           key: ${{ runner.os }}-buildx-20210422-01-${{ hashFiles('**/go.sum') }}
       - name: Show file tree
         run: tree -dL 3 /
+      - name: Show runner temp dir
+        run: echo ${{ runner.temp }}
       # - name: Build the stack
       #   run: |
       #     make docker-bootstrap
