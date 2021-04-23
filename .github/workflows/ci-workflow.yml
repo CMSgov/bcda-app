@@ -29,7 +29,7 @@ jobs:
           path: ${{ runner.temp }}/.buildx-cache
           key: ${{ runner.os }}-buildx-20210422-01-${{ hashFiles('**/go.sum') }}
       - name: Show file tree
-        run: tree -dL 3 /home/runner/work
+        run: tree -dL 3 ${{ runner.temp }}
       - name: Show runner temp dir
         run: echo ${{ runner.temp }}
       # - name: Build the stack
