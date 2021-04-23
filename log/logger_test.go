@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
@@ -15,7 +16,7 @@ import (
 )
 
 // TestLoggers verifies that all of our loggers are set up
-// with the expected parameters.
+// with the expected parameters and write to the expected files.
 func TestLoggers(t *testing.T) {
 	env := uuid.New()
 	conf.SetEnv(t, "ENVIRONMENT", env)
@@ -72,6 +73,9 @@ func verifyAPILogs(t *testing.T, env, msg string, logFile *os.File) {
 	assert.Equal(t, fields["environment"], env)
 	assert.Equal(t, fields["application"], "api")
 	assert.Equal(t, fields["version"], constants.Version)
+	assert.Contains(t, fields["func"], "github.com/CMSgov/bcda-app/log")
+	_, err = time.Parse(time.RFC3339Nano, fields["time"].(string))
+	assert.NoError(t, err)
 }
 
 func verifyWorkerLogs(t *testing.T, env, msg string, logFile *os.File) {
@@ -87,4 +91,7 @@ func verifyWorkerLogs(t *testing.T, env, msg string, logFile *os.File) {
 	assert.Equal(t, fields["environment"], env)
 	assert.Equal(t, fields["application"], "worker")
 	assert.Equal(t, fields["version"], constants.Version)
+	assert.Contains(t, fields["func"], "github.com/CMSgov/bcda-app/log")
+	_, err = time.Parse(time.RFC3339Nano, fields["time"].(string))
+	assert.NoError(t, err)
 }

@@ -3,6 +3,7 @@ package log
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/conf"
@@ -59,7 +60,12 @@ func logger(logger *logrus.Logger, outputFile string,
 				outputFile, err.Error())
 		}
 	}
-	logger.SetFormatter(&logrus.JSONFormatter{DisableHTMLEscape: true})
+	// Disable the HTML escape so we get the raw URLs
+	logger.SetFormatter(&logrus.JSONFormatter{
+		DisableHTMLEscape: true,
+		TimestampFormat:   time.RFC3339Nano,
+	})
+	logger.SetReportCaller(true)
 
 	return logger.WithFields(logrus.Fields{
 		"application": application,
