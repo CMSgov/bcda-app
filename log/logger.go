@@ -22,26 +22,32 @@ var (
 )
 
 func init() {
-	API = Logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"),
+	setup()
+}
+
+// setup allows us to invoke it automatically (via init()) and in tests
+// In tests, we want to set up the files/environment in a consistent manner
+func setup() {
+	API = logger(logrus.New(), conf.GetEnv("BCDA_ERROR_LOG"),
 		"api", conf.GetEnv("ENVIRONMENT"))
-	Auth = Logger(logrus.New(), conf.GetEnv("AUTH_LOG"),
+	Auth = logger(logrus.New(), conf.GetEnv("AUTH_LOG"),
 		"api", conf.GetEnv("ENVIRONMENT"))
-	BBAPI = Logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
+	BBAPI = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
 		"api", conf.GetEnv("ENVIRONMENT"))
-	Request = Logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"),
+	Request = logger(logrus.New(), conf.GetEnv("BCDA_REQUEST_LOG"),
 		"api", conf.GetEnv("ENVIRONMENT"))
-	SSAS = Logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"),
+	SSAS = logger(logrus.New(), conf.GetEnv("BCDA_SSAS_LOG"),
 		"api", conf.GetEnv("ENVIRONMENT"))
 
-	Worker = Logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"),
+	Worker = logger(logrus.New(), conf.GetEnv("BCDA_WORKER_ERROR_LOG"),
 		"worker", conf.GetEnv("ENVIRONMENT"))
-	BBWorker = Logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
+	BBWorker = logger(logrus.New(), conf.GetEnv("BCDA_BB_LOG"),
 		"worker", conf.GetEnv("ENVIRONMENT"))
-	Health = Logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"),
+	Health = logger(logrus.New(), conf.GetEnv("WORKER_HEALTH_LOG"),
 		"worker", conf.GetEnv("ENVIRONMENT"))
 }
 
-func Logger(logger *logrus.Logger, outputFile string,
+func logger(logger *logrus.Logger, outputFile string,
 	application, environment string) logrus.FieldLogger {
 
 	if outputFile != "" {
