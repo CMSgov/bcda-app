@@ -26,10 +26,10 @@ jobs:
       - name: Cache Docker Layers
         uses: actions/cache@v2
         with:
-          path: /tmp/.buildx-cache
+          path: ${{ runner.temp }}/.buildx-cache
           key: ${{ runner.os }}-buildx-20210422-01-${{ hashFiles('**/go.sum') }}
       - name: Show file tree
-        run: tree -dL 3 /
+        run: tree -dL 3 /home/runner/work
       - name: Show runner temp dir
         run: echo ${{ runner.temp }}
       # - name: Build the stack
