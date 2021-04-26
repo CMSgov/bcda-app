@@ -31,7 +31,7 @@ jobs:
       - name: Show file tree
         run: tree -L 3 ${{ runner.temp }}
       - name: Show buildx file tree
-        run: tree -dL 3 /var/lib/docker
+        run: tree -L 3 /var/lib/docker
       - name: Show runner temp dir
         run: echo ${{ runner.temp }}
       # - name: Build the stack
