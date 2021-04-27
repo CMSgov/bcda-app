@@ -1,18 +1,15 @@
 package logging_test
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -20,7 +17,9 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 type LoggingMiddlewareTestSuite struct {
@@ -51,17 +50,7 @@ func contextToken(next http.Handler) http.Handler {
 }
 
 func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
-	logFile, err := ioutil.TempFile("", "")
-	s.NoError(err)
-
-	defer os.Remove(logFile.Name())
-
-	defer func(path string) {
-		conf.SetEnv(s.T(), "BCDA_REQUEST_LOG", path)
-	}(conf.GetEnv("BCDA_REQUEST_LOG"))
-
-	conf.SetEnv(s.T(), "BCDA_REQUEST_LOG", logFile.Name())
-
+	hook := test.NewLocal(testUtils.GetLogger(log.Request))
 	server := httptest.NewTLSServer(s.CreateRouter())
 	client := server.Client()
 
@@ -81,15 +70,10 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 
 	server.Close()
 
-	sc := bufio.NewScanner(logFile)
-	var logFields log.Fields
-	for i := 0; i < 2; i++ {
-		assert.True(sc.Scan())
-
-		err = json.Unmarshal(sc.Bytes(), &logFields)
-		if err != nil {
-			s.Fail("JSON unmarshal error", err)
-		}
+	assert.Len(hook.AllEntries(), 2)
+	var logFields logrus.Fields
+	for _, entry := range hook.AllEntries() {
+		logFields = entry.Data
 
 		assert.NotEmpty(logFields["ts"], "Log entry should have a value for field `ts`.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
@@ -105,8 +89,6 @@ func (s *LoggingMiddlewareTestSuite) TestLogRequest() {
 		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
 		assert.Equal("gzip", logFields["accept_encoding"])
 	}
-
-	assert.False(sc.Scan(), "There should be no additional log entries.")
 }
 
 func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
@@ -131,8 +113,7 @@ func (s *LoggingMiddlewareTestSuite) TestNoLogFile() {
 }
 
 func (s *LoggingMiddlewareTestSuite) TestPanic() {
-	reqLogPathOrig := conf.GetEnv("BCDA_REQUEST_LOG")
-	conf.SetEnv(s.T(), "BCDA_REQUEST_LOG", "bcda-req-test.log")
+	hook := test.NewLocal(testUtils.GetLogger(log.Request))
 
 	server := httptest.NewTLSServer(s.CreateRouter())
 	client := server.Client()
@@ -149,22 +130,12 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 
 	server.Close()
 
-	logFile, err := os.OpenFile(conf.GetEnv("BCDA_REQUEST_LOG"), os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		s.Fail("File read error")
-	}
-	defer logFile.Close()
-
 	assert := assert.New(s.T())
-	sc := bufio.NewScanner(logFile)
-	var logFields log.Fields
-	for i := 0; i < 2; i++ {
-		assert.True(sc.Scan())
 
-		err = json.Unmarshal(sc.Bytes(), &logFields)
-		if err != nil {
-			s.Fail("JSON unmarshal error", err)
-		}
+	assert.Len(hook.AllEntries(), 2)
+	var logFields logrus.Fields
+	for _, entry := range hook.AllEntries() {
+		logFields = entry.Data
 
 		assert.NotEmpty(logFields["ts"], "Log entry should have a value for field `ts`.")
 		// TODO: Solution for go-chi logging middleware relying on Request.TLS
@@ -178,17 +149,11 @@ func (s *LoggingMiddlewareTestSuite) TestPanic() {
 		assert.Equal("dbbd1ce1-ae24-435c-807d-ed45953077d3", logFields["aco_id"], "ACO in log entry should match the token.")
 		assert.Equal("A9995", logFields["cms_id"], "CMS ID in log entry should match the token.")
 		assert.Equal("665341c9-7d0c-4844-b66f-5910d9d0822f", logFields["token_id"], "Token ID in log entry should match the token.")
-		if i == 1 {
-			assert.Equal("Test", logFields["panic"])
-			assert.NotEmpty(logFields["stack"])
-		}
 	}
 
-	assert.False(sc.Scan(), "There should be no additional log entries.")
-
-	server.Close()
-	os.Remove("bcda-req-test.log")
-	conf.SetEnv(s.T(), "BCDA_REQUEST_LOG", reqLogPathOrig)
+	panicFields := hook.LastEntry().Data
+	assert.Equal("Test", panicFields["panic"])
+	assert.NotEmpty(panicFields["stack"])
 }
 
 func (s *LoggingMiddlewareTestSuite) TestRedact() {

@@ -25,7 +25,7 @@ import (
 // (ALR). ALR piggybacks Beneficiary FHIR through the masterQueue data struct.
 // Ensure there is no field clashes with queue data struct.
 type alrQueue struct {
-	alrLog    *logrus.Logger
+	alrLog    logrus.FieldLogger
 	alrWorker worker.AlrWorker
 }
 

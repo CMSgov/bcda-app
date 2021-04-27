@@ -32,10 +32,11 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -104,7 +105,7 @@ func setUpApp() *cli.App {
 					WriteTimeout: 5 * time.Second,
 				}
 
-				go func() { log.Fatal(srv.ListenAndServe()) }()
+				go func() { log.API.Fatal(srv.ListenAndServe()) }()
 
 				auth := &http.Server{
 					Handler:      web.NewAuthRouter(),
@@ -664,12 +665,12 @@ func revokeAccessToken(accessToken string) error {
 }
 
 func archiveExpiring(maxDate time.Time) error {
-	log.Info("Archiving expiring job files...")
+	log.API.Info("Archiving expiring job files...")
 
 	jobs, err := r.GetJobsByUpdateTimeAndStatus(context.Background(),
 		time.Time{}, maxDate, models.JobStatusCompleted)
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
@@ -684,7 +685,7 @@ func archiveExpiring(maxDate time.Time) error {
 		if jobPayloadDirExist {
 			err = os.Rename(jobPayloadDir, jobArchiveDir)
 			if err != nil {
-				log.Error(err)
+				log.API.Error(err)
 				lastJobError = err
 				continue
 			}
@@ -693,7 +694,7 @@ func archiveExpiring(maxDate time.Time) error {
 		j.Status = models.JobStatusArchived
 		err = r.UpdateJob(context.Background(), *j)
 		if err != nil {
-			log.Error(err)
+			log.API.Error(err)
 			lastJobError = err
 		}
 	}
@@ -709,24 +710,24 @@ func cleanupJob(maxDate time.Time, currentStatus, newStatus models.JobStatus, ro
 	}
 
 	if len(jobs) == 0 {
-		log.Infof("No %s job files to clean", currentStatus)
+		log.API.Infof("No %s job files to clean", currentStatus)
 		return nil
 	}
 
 	for _, job := range jobs {
 		if err := cleanupJobData(job.ID, rootDirsToClean...); err != nil {
-			log.Errorf("Unable to cleanup directories %s", err)
+			log.API.Errorf("Unable to cleanup directories %s", err)
 			continue
 		}
 
 		job.Status = newStatus
 		err = r.UpdateJob(context.Background(), *job)
 		if err != nil {
-			log.Errorf("Failed to update job status to %s %s", newStatus, err)
+			log.API.Errorf("Failed to update job status to %s %s", newStatus, err)
 			continue
 		}
 
-		log.WithFields(log.Fields{
+		log.API.WithFields(logrus.Fields{
 			"job_began":     job.CreatedAt,
 			"files_removed": time.Now(),
 			"job_id":        job.ID,
@@ -777,7 +778,7 @@ func cloneCCLFZips(path string) (int, error) {
 	for _, f := range files {
 		// Make sure to not clone non CCLF files in case the wrong directory is given
 		if !cclfregex.MatchString(f.Name()) {
-			log.Infof("Skipping file `%s`, does not match expected name... ", f.Name())
+			log.API.Infof("Skipping file `%s`, does not match expected name... ", f.Name())
 			continue
 		}
 		fn := renameCCLF(f.Name())
@@ -786,7 +787,7 @@ func cloneCCLFZips(path string) (int, error) {
 			return rcount, err
 		}
 		rcount++
-		log.Infof("Created runout file: %s", fn)
+		log.API.Infof("Created runout file: %s", fn)
 	}
 	return rcount, nil
 }

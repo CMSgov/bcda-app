@@ -13,10 +13,9 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/pkg/errors"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type metadataKey struct {
@@ -46,14 +45,14 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		var fileName = "nil"
 		err = errors.Wrapf(err, "error in sorting cclf file: %v,", fileName)
 		fmt.Println(err.Error())
-		log.Error(err)
+		log.API.Error(err)
 		return err
 	}
 
 	if info.IsDir() {
 		msg := fmt.Sprintf("Unable to sort %s: directory, not a CCLF archive.", path)
 		fmt.Println(msg)
-		log.Warn(msg)
+		log.API.Warn(msg)
 		return nil
 	}
 
@@ -62,11 +61,11 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 		p.skipped = p.skipped + 1
 		msg := fmt.Sprintf("Skipping %s: file is not a CCLF archive.", path)
 		fmt.Println(msg)
-		log.Warn(msg)
+		log.API.Warn(msg)
 		return nil
 	}
 	if err = zipReader.Close(); err != nil {
-		log.Warnf("Failed to close zip file %s", err.Error())
+		log.API.Warnf("Failed to close zip file %s", err.Error())
 	}
 
 	// validate the top level zipped folder
@@ -89,7 +88,7 @@ func (p *processor) walk(path string, info os.FileInfo, err error) error {
 			// skipping files with a bad name.  An unknown file in this dir isn't a blocker
 			msg := fmt.Sprintf("Unknown file found: %s.", f.Name)
 			fmt.Println(msg)
-			log.Error(msg)
+			log.API.Error(msg)
 			continue
 		}
 
@@ -109,12 +108,12 @@ func (p *processor) handleArchiveError(path string, info os.FileInfo, cause erro
 	p.skipped = p.skipped + 1
 	msg := fmt.Sprintf("Skipping CCLF archive (%s): %s.", info.Name(), cause)
 	fmt.Println(msg)
-	log.Warn(msg)
+	log.API.Warn(msg)
 	err := checkDeliveryDate(path, info.ModTime())
 	if err != nil {
 		err = fmt.Errorf("error moving unknown file %s to pending deletion dir", path)
 		fmt.Println(err.Error())
-		log.Error(err)
+		log.API.Error(err)
 	}
 
 	return err
@@ -127,7 +126,7 @@ func getCMSID(name string) (string, error) {
 	if len(parts) != 2 {
 		err := fmt.Errorf("invalid name ('%s') for CCLF archive, parts: %v", name, parts)
 		fmt.Println(err.Error())
-		log.Error(err.Error())
+		log.API.Error(err.Error())
 		return "", err
 	}
 
@@ -164,7 +163,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 
 	if len(parts) != 7 {
 		err := fmt.Errorf("invalid filename ('%s') for CCLF file, parts: %v", fileName, parts)
-		log.Error(err)
+		log.API.Error(err)
 		return metadata, err
 	}
 
@@ -172,7 +171,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse CCLF number from file: %s", fileName)
 		fmt.Println(err.Error())
-		log.Error(err)
+		log.API.Error(err)
 		return metadata, err
 	}
 
@@ -180,7 +179,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	if err != nil {
 		err = errors.Wrapf(err, "failed to parse performance year from file: %s", fileName)
 		fmt.Println(err.Error())
-		log.Error(err)
+		log.API.Error(err)
 		return metadata, err
 	}
 
@@ -189,7 +188,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	if err != nil || t.IsZero() {
 		err = errors.Wrapf(err, "failed to parse date '%s' from file: %s", filenameDate, fileName)
 		fmt.Println(err.Error())
-		log.Error(err)
+		log.API.Error(err)
 		return metadata, err
 	}
 
@@ -206,7 +205,7 @@ func getCCLFFileMetadata(cmsID, fileName string) (cclfFileMetadata, error) {
 	if t.Before(filesNotBefore) || t.After(filesNotAfter) {
 		err = errors.New(fmt.Sprintf("date '%s' from file %s out of range; comparison date %s", filenameDate, fileName, refDate.Format("060102")))
 		fmt.Println(err.Error())
-		log.Error(err)
+		log.API.Error(err)
 		return metadata, err
 	}
 

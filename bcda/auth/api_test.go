@@ -22,7 +22,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/testUtils"
 )
 
 type TokenResponse struct {
@@ -35,23 +34,11 @@ type AuthAPITestSuite struct {
 	rr    *httptest.ResponseRecorder
 	db    *sql.DB
 	r     models.Repository
-	reset func()
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
-	private := testUtils.SetAndRestoreEnvKey("JWT_PRIVATE_KEY_FILE", "../../shared_files/api_unit_test_auth_private.pem")
-	public := testUtils.SetAndRestoreEnvKey("JWT_PUBLIC_KEY_FILE", "../../shared_files/api_unit_test_auth_public.pem")
-	s.reset = func() {
-		private()
-		public()
-	}
-
 	s.db = database.Connection
 	s.r = postgres.NewRepository(s.db)
-}
-
-func (s *AuthAPITestSuite) TearDownSuite() {
-	s.reset()
 }
 
 func (s *AuthAPITestSuite) SetupTest() {

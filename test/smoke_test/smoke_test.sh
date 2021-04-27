@@ -19,7 +19,6 @@ PIDS=()
 for CMS_ID in "${CMS_IDs[@]}"
 do
         ACO_ID=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda create-aco --name "Smoke Test ACO" --cms-id ${CMS_ID}' | tail -n1 | tr -d '\r')
-        SAVE_KEY_RESULT=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda save-public-key --cms-id ${CMS_ID} --key-file "../shared_files/ATO_public.pem"' | tail -n1)
         GROUP_ID=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda create-group --id ${CMS_ID} --name "Smoke Test Group" --aco-id ${CMS_ID}' | tail -n1 | tr -d '\r')
         CREDS=($(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda generate-client-credentials --cms-id ${CMS_ID}' | tail -n2 | tr -d '\r'))
         CLIENT_ID=${CREDS[0]}

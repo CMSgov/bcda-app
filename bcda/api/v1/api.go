@@ -15,7 +15,6 @@ import (
 	"github.com/go-chi/chi"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -26,6 +25,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 var h *api.Handler
@@ -116,7 +116,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
@@ -124,7 +124,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 
 	job, jobKeys, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
 		// So returning a StatusNotFound may be a misnomer
@@ -253,7 +253,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
 		return
@@ -267,7 +267,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 			responseutils.WriteError(oo, w, http.StatusGone)
 			return
 		default:
-			log.Error(err)
+			log.API.Error(err)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, err.Error())
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
@@ -371,7 +371,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	respMap["version"] = constants.Version
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -380,7 +380,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(respBytes)
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return

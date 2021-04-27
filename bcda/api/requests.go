@@ -15,7 +15,6 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
@@ -28,6 +27,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 type Handler struct {
@@ -59,7 +59,7 @@ func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
 
 	cfg, err := service.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load service config. Err: %v", err)
+		log.API.Fatalf("Failed to load service config. Err: %v", err)
 	}
 
 	repository := postgres.NewRepository(db)
@@ -155,7 +155,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -181,7 +181,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 			responseutils.InternalErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
@@ -193,7 +193,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	defer func() {
 		if err != nil {
 			if err1 := tx.Rollback(); err1 != nil {
-				log.Warnf("Failed to rollback transaction %s", err.Error())
+				log.API.Warnf("Failed to rollback transaction %s", err.Error())
 			}
 			// We've already written out the HTTP response so we can return after we've rolled back the transaction
 			return
@@ -210,7 +210,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		// This does introduce an error scenario where we have queuejobs but no parent job.
 		// We've added logic into the worker to handle this situation.
 		if err = tx.Commit(); err != nil {
-			log.Error(err.Error())
+			log.API.Error(err.Error())
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)
 			return
@@ -223,7 +223,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -232,7 +232,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	// request a fake patient in order to acquire the bundle's lastUpdated metadata
 	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -254,7 +254,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
 	if err != nil {
-		log.Error(err)
+		log.API.Error(err)
 		var (
 			oo       *fhirmodels.OperationOutcome
 			respCode int
@@ -275,7 +275,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	// We've now computed all of the fields necessary to populate a fully defined job
 	if err = rtx.UpdateJob(ctx, newJob); err != nil {
-		log.Error(err.Error())
+		log.API.Error(err.Error())
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 		responseutils.WriteError(oo, w, http.StatusInternalServerError)
 		return
@@ -289,7 +289,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		jobPriority := h.Svc.GetJobPriority(conditions.CMSID, j.ResourceType, sinceParam) // first argument is the CMS ID, not the ACO uuid
 
 		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {
-			log.Error(err)
+			log.API.Error(err)
 			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.InternalErr, "")
 			responseutils.WriteError(oo, w, http.StatusInternalServerError)

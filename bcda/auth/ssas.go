@@ -12,6 +12,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 // SSASPlugin is an implementation of Provider that uses the SSAS API.
@@ -106,7 +107,7 @@ func (s SSASPlugin) RevokeSystemCredentials(ssasID string) error {
 func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
 	ts, err := s.client.GetToken(client.Credentials{ClientID: credentials.ClientID, ClientSecret: credentials.ClientSecret})
 	if err != nil {
-		logger.Errorf("Failed to get token; %s", err.Error())
+		log.SSAS.Errorf("Failed to get token; %s", err.Error())
 		return "", err
 	}
 
@@ -117,7 +118,7 @@ func (s SSASPlugin) MakeAccessToken(credentials Credentials) (string, error) {
 func (s SSASPlugin) RevokeAccessToken(tokenString string) error {
 	err := s.client.RevokeAccessToken(tokenString)
 	if err != nil {
-		logger.Errorf("Failed to revoke token; %s", err.Error())
+		log.SSAS.Errorf("Failed to revoke token; %s", err.Error())
 		return err
 	}
 
@@ -194,7 +195,7 @@ func (s SSASPlugin) AuthorizeAccess(tokenString string) error {
 func (s SSASPlugin) VerifyToken(tokenString string) (*jwt.Token, error) {
 	b, err := s.client.VerifyPublicToken(tokenString)
 	if err != nil {
-		logger.Errorf("Failed to verify token; %s", err.Error())
+		log.SSAS.Errorf("Failed to verify token; %s", err.Error())
 		return nil, err
 	}
 	var ir map[string]interface{}

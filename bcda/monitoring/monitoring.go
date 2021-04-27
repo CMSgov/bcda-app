@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
-	log "github.com/sirupsen/logrus"
 )
 
 var a *apm
@@ -47,7 +47,7 @@ func GetMonitor() *apm {
 			},
 		)
 		if err != nil {
-			log.Error(err)
+			log.API.Error(err)
 		}
 		a = &apm{
 			App: app,

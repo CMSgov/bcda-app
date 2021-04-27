@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 )
 
@@ -107,7 +107,7 @@ func (sm *ServiceMux) Serve() {
 func (sm *ServiceMux) serveHTTPS(tlsCertPath, tlsKeyPath string) {
 	certificate, err := tls.LoadX509KeyPair(tlsCertPath, tlsKeyPath)
 	if err != nil {
-		log.Panic(err)
+		log.API.Panic(err)
 	}
 
 	sm.TLSConfig = tls.Config{
@@ -155,7 +155,7 @@ func (sm *ServiceMux) serveHTTP() {
 func (sm *ServiceMux) Close() {
 	err := sm.Listener.Close()
 	if err != nil {
-		log.Panic(err)
+		log.API.Panic(err)
 	}
 }
 
