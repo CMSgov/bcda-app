@@ -17,7 +17,7 @@ services:
       - ${HOME}/.cache/go-build:/root/.cache/go-build
       - ${GOPATH}/pkg/mod:/go/pkg/mod
   db-unit-test:
-    image: postgres:10
+    image: postgres:13
     environment:
       - POSTGRES_PASSWORD=toor
       - POSTGRES_DB=bcda_test
