@@ -2,14 +2,14 @@ version: "3"
 
 services:
   queue:
-    image: postgres
+    image: postgres:10
     environment:
       - POSTGRES_DB=bcda_queue
       - POSTGRES_PASSWORD=toor
     ports:
       - "5433:5432"
   db:
-    image: postgres
+    image: postgres:10
     environment:
       - POSTGRES_DB=bcda
       - POSTGRES_PASSWORD=toor
