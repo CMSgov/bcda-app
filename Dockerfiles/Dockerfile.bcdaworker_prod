@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1-experimental
 FROM golang:1.15-alpine3.12 
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
-COPY --from=bcda-app_worker_builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
-COPY --from=bcda-app_worker_builder /go/bin/ /go/bin/
+COPY --from=bcda-app_worker_builder:latest /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
+COPY --from=bcda-app_worker_builder:latest /go/bin/ /go/bin/
 ENTRYPOINT ["bcdaworker"]
