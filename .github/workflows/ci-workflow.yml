@@ -23,17 +23,11 @@ jobs:
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Set Up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      - name: Cache Docker Layers
-        uses: actions/cache@v2
-        with:
-          path: ${{ runner.temp }}/.buildx-cache
-          key: ${{ runner.os }}-buildx-20210422-01-${{ hashFiles('**/go.sum') }}
-      # - name: Show file tree
-      #   run: tree -L 3 ${{ runner.temp }}
-      # - name: Show buildx file tree
-      #   run: tree -L 3 /var/lib/docker
-      # - name: Show runner temp dir
-      #   run: echo ${{ runner.temp }}
+      # - name: Cache Docker Layers
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: ${{ runner.temp }}/.buildx-cache
+      #     key: ${{ runner.os }}-buildx-20210422-01-${{ hashFiles('**/go.sum') }}
       - name: Build the stack
         run: |
           make docker-bootstrap
