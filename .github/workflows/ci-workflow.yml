@@ -1,6 +1,10 @@
 name: BCDA CI Workflow
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
 
 env:
   COMPOSE_INTERACTIVE_NO_CLI: 1
@@ -21,13 +25,8 @@ jobs:
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Set Up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      # - name: Cache Docker Layers
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: ${{ runner.temp }}/.buildx-cache
-      #     key: ${{ runner.os }}-buildx-20210422-01-${{ hashFiles('**/go.sum') }}
       - name: Build the stack
         run: |
           make docker-bootstrap
