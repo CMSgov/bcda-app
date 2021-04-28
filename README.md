@@ -17,41 +17,54 @@ To get started, install some dependencies:
 The files committed in the `shared_files/encrypted` directory hold secret information, and are encrypted with [Ansible Vault](https://docs.ansible.com/ansible/2.4/vault.html).
 
 ### Setup
+
 #### Password
+
 - See a team member for the Ansible Vault password
 - Create a file named `.vault_password` in the root directory of the repository
 - Place the Ansible Vault password in this file
 
 #### Git hook
+
 To avoid committing and pushing unencrypted secret files, use the included `scripts/pre-commit` git pre-commit hook by running the following script from the repository root directory:
+
 ```
 cp ops/pre-commit .git/hooks
 ```
+
 The pre-commit hook will also ensure that any added, copied, or modified go files are formatted properly.
 
 ### Managing encrypted files
-* Temporarily decrypt files by running the following command from the repository root directory:
+
+- Temporarily decrypt files by running the following command from the repository root directory:
+
 ```
 ./ops/secrets --decrypt
 ```
-* While files are decrypted, copy the files in this directory to the sibling directory `shared_files/decrypted`
-* Encrypt changed files with:
+
+- While files are decrypted, copy the files in this directory to the sibling directory `shared_files/decrypted`
+- Encrypt changed files with:
+
 ```
 ./ops/secrets --encrypt <filename>
 ```
+
 ## Go Modules
 
-The project uses [Go Modules](https://golang.org/ref/mod) allowing you to clone the repo outside of the `$GOPATH`. This also means that running `go get` inside the repo will add the dependency to the project, not globally.  
+The project uses [Go Modules](https://golang.org/ref/mod) allowing you to clone the repo outside of the `$GOPATH`. This also means that running `go get` inside the repo will add the dependency to the project, not globally.
+
 ## Build / Start
 
 Build the images and start the containers:
 
 1. Build the images and load with fixture data
+
 ```sh
 make docker-bootstrap
 ```
 
 2. Start the containers
+
 ```sh
 docker-compose up
 ```
@@ -61,36 +74,43 @@ docker-compose up
 Run tests and produce test metrics.
 The items identified above in the `Build/Start` section are prerequisites to running tests.
 In order to keep the test feedback loop optimized, the following items must be handled by the caller (and are not handled by the test targets):
+
 - Ensuring the compose stack is up and running
 - Ensuring the database has been seeded
 - Managing images/containers (if Dockerfile changes have occurred, an image rebuild is required and won't occur as part of the test targets)
 
 1. Run golang linter and gosec:
+
 ```sh
 make lint
 ```
 
 2. Run unit tests (this places results and a coverage report in test_results/<timestamp>):
+
 ```sh
 make unit-test
 ```
 
 3. Run postman integration tests:
+
 ```sh
 make postman env=local
 ```
 
 4. Run smoke tests:
+
 ```sh
 make smoke-test
 ```
 
 5. Run full test suite (executes all of items in 1-4 above):
+
 ```sh
 make test
 ```
 
 6. Run performance tests (primarily to be utilized by Jenkins in AWS):
+
 ```sh
 make performance-test
 ```
@@ -99,6 +119,7 @@ make performance-test
 
 After the user has finished updating the Postgres db used for unit testing with the new data, the user can update
 the seed data by running the following comamnd:
+
 ```sh
 make unit-test-db-snapshot
 ```
@@ -114,9 +135,9 @@ The updated `dump.pgdata` should be committed with the other associated changes.
 ### Running unit tests locally
 
 1. Spin up the Postgres unit test container
-    ```sh
-    $ make unit-test-db
-    ```
+   ```sh
+   $ make unit-test-db
+   ```
 2. Source the required environment variables from the `./.vscode/settings.json` (under go.testEnvVars) and `./shared_files/decrypted/local.env`.
 
    **NOTE:** Since we're connecting to Postgres externally, we need to use the local host/port instead.
@@ -125,9 +146,10 @@ The updated `dump.pgdata` should be committed with the other associated changes.
 
 ### Auto-generating mock implementations
 
-Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md).  Mockery uses interfaces to generate the mocks.  In the example below, the Repository interface in `repository.go` will be used to generate the mocks.
+Testify mocks can be automatically be generated using [mockery](https://github.com/vektra/mockery). Installation and other runtime instructions can be found [here](https://github.com/vektra/mockery/blob/master/README.md). Mockery uses interfaces to generate the mocks. In the example below, the Repository interface in `repository.go` will be used to generate the mocks.
 
 Example:
+
 ```sh
 mockery --name Repository --inpackage --case snake
 ```
@@ -138,14 +160,16 @@ See: [API documentation](https://bcda.cms.gov/sandbox/user-guide/)
 
 ## Handling secrets
 
-### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE!  INSTEAD, USE THE STRATEGY OUTLINED HERE**
+### **NEVER PUT PASSWORDS, KEYS, OR SECRETS OF ANY KIND IN APPLICATION CODE! INSTEAD, USE THE STRATEGY OUTLINED HERE**
 
 In the project root `bcda-app/` directory, create a file called `.env.sh`. This file is ignored by git and will not be committed
+
 ```
 $ touch .env.sh
 ```
 
 Next, edit `.env.sh` to include the bash shebang and any necessary environment variables like this
+
 ```
 #!/bin/bash
 export BCDA_AUTH_PROVIDER=okta
@@ -155,19 +179,23 @@ export OKTA_CLIENT_SECRET="<clientSecret>"
 ```
 
 Lastly, source the file to add the variables to your local development environment
+
 ```
 $ source .env.sh
 ```
 
 You're good to go! Use the environment variables in application code like this
+
 ```
 apiKey := os.Getenv("OKTA_CLIENT_TOKEN")
 ```
 
 Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line
+
 ```
 source [src-path]/bcda-app/.env.sh
 ```
+
 where `[src-path]` is your relative path to the bcda-app repo.
 
 ## Environment variables
@@ -206,6 +234,7 @@ BB_TIMEOUT_MS <integer>
 ## Other things you can do
 
 Use docker to look at the api database with psql:
+
 ```sh
 docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U postgres bcda
 ```
@@ -213,19 +242,20 @@ docker run --rm --network bcda-app_default -it postgres psql -h bcda-app_db_1 -U
 See docker-compose.yml for the password.
 
 Use docker to run the CLI against an API instance
+
 ```
 docker exec -it bcda-app_api_1 sh -c 'bcda -h'
 ```
 
 If you have no data in your database, you can load the fixture data with
+
 ```sh
 make load-fixtures
 ```
 
 # IDE Setup
+
 ## vscode
 
 Follow installing go + vscode [setup guide](https://marketplace.visualstudio.com/items?itemName=golang.go#getting-started).
 Additional settings found under `.vscode/settings.json` allow tests to be run within vscode.
-
-+
