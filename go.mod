@@ -77,5 +77,7 @@ replace (
 	github.com/soheilhy/cmux => github.com/soheilhy/cmux v0.1.4
 	github.com/tsenart/vegeta => github.com/tsenart/vegeta v12.1.0+incompatible
 	github.com/urfave/cli => github.com/urfave/cli v1.20.1-0.20180226030253-8e01ec4cd3e2
+	github.com/xo/usql => github.com/xo/usql v0.8.2
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
+
 )
