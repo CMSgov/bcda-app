@@ -18,6 +18,8 @@ import (
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -32,6 +34,9 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
+
+var logHook *test.Hook
+var oldLogger logrus.FieldLogger
 
 type WorkerTestSuite struct {
 	suite.Suite
@@ -75,6 +80,7 @@ func (s *WorkerTestSuite) SetupSuite() {
 
 	// Set up the logger since we're using the real client
 	client.SetLogger(log.BBWorker)
+	oldLogger = log.Worker
 }
 
 func (s *WorkerTestSuite) SetupTest() {
@@ -88,6 +94,14 @@ func (s *WorkerTestSuite) SetupTest() {
 	if err := os.MkdirAll(s.stagingDir, os.ModePerm); err != nil {
 		s.FailNow(err.Error())
 	}
+
+	// Due to test not being able to handle a FieldLogger and our log package not storing the logger,
+	// we have to recreate the logger so we have access to both
+	logger := logrus.New()
+	log.Worker = logger.WithFields(logrus.Fields{
+		"unitTest": true,
+	})
+	logHook = test.NewLocal(logger)
 }
 
 func (s *WorkerTestSuite) TearDownTest() {
@@ -99,6 +113,9 @@ func (s *WorkerTestSuite) TearDownSuite() {
 	postgrestest.DeleteACO(s.T(), s.db, s.testACO.UUID)
 	os.RemoveAll(conf.GetEnv("FHIR_STAGING_DIR"))
 	os.RemoveAll(conf.GetEnv("FHIR_PAYLOAD_DIR"))
+
+	// Reset worker logger to original logger
+	log.Worker = oldLogger
 }
 
 func TestWorkerTestSuite(t *testing.T) {
@@ -248,13 +265,18 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsBelowFailureThreshold(
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef10000 in ACO %s"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI abcdef11000 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 
 	// Since our error file ends with a new line character, we need
 	// to remove it in order so split OperationOutcome responses by newline character
 	fData = fData[:len(fData)-1]
 	assertEqualErrorFiles(s.T(), ooResp, string(fData))
+
+	// Assert cmsID and jobID fields are being added to the logs
+	assert.Equal(s.T(), 2, len(logHook.Entries))
+	assert.Equal(s.T(), logHook.Entries[0].Data["cmsID"], "A1B2C")
+	assert.Contains(s.T(), logHook.Entries[0].Data, "jobID")
 
 	bbc.AssertExpectations(s.T())
 }
@@ -295,13 +317,18 @@ func (s *WorkerTestSuite) TestWriteEOBDataToFileWithErrorsAboveFailureThreshold(
 	fData, err := ioutil.ReadFile(errorFilePath)
 	assert.NoError(s.T(), err)
 
-	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}}]}
-{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"exception","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
+	ooResp := fmt.Sprintf(`{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000089833 in ACO %s"}}]}
+{"resourceType":"OperationOutcome","issue":[{"severity":"error","code":"not-found","details":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/operation-outcome","code":"Blue Button Error","display":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}],"text":"Error retrieving ExplanationOfBenefit for beneficiary MBI a1000065301 in ACO %s"}}]}`, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID, s.testACO.UUID)
 
 	// Since our error file ends with a new line character, we need
 	// to remove it in order so split OperationOutcome responses by newline character
 	fData = fData[:len(fData)-1]
 	assertEqualErrorFiles(s.T(), ooResp, string(fData))
+
+	// Assert cmsID and jobID fields are being added to the logs
+	assert.Equal(s.T(), 2, len(logHook.Entries))
+	assert.Equal(s.T(), logHook.Entries[0].Data["cmsID"], "A1B2C")
+	assert.Contains(s.T(), logHook.Entries[0].Data, "jobID")
 
 	bbc.AssertExpectations(s.T())
 	// should not have requested third beneficiary EOB because failure threshold was reached after second
