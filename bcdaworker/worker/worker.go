@@ -20,6 +20,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
+	"github.com/sirupsen/logrus"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -187,29 +188,32 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			break
 		}
 
-		errMsg, err := func() (string, error) {
+		errMsg, code, err := func() (string, fhircodes.IssueTypeCode_Value, error) {
 			id, err := strconv.ParseUint(beneID, 10, 64)
 			if err != nil {
-				return fmt.Sprintf("Error failed to convert %s to uint", beneID), err
+				return fmt.Sprintf("Error failed to convert %s to uint", beneID), fhircodes.IssueTypeCode_EXCEPTION, err
 			}
 
 			bene, err := getBeneficiary(ctx, r, uint(id), bb)
 			if err != nil {
-				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), err
+				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
 
 			b, err := bundleFunc(bene.BlueButtonID)
 			if err != nil {
-				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), err
+				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
 			fhirBundleToResourceNDJSON(ctx, w, b, jobArgs.ResourceType, beneID, cmsID, fileUUID, jobArgs.ID)
-			return "", nil
+			return "", 0, nil
 		}()
 
 		if err != nil {
-			log.Worker.Error(err)
+			log.Worker.WithFields(logrus.Fields{
+				"jobID": jobArgs.ID,
+				"cmsID": cmsID,
+			}).Error(err)
 			errorCount++
-			appendErrorToFile(ctx, fileUUID, fhircodes.IssueTypeCode_EXCEPTION, responseutils.BbErr, errMsg, jobArgs.ID)
+			appendErrorToFile(ctx, fileUUID, code, responseutils.BbErr, errMsg, jobArgs.ID)
 		}
 
 		failPct := (float64(errorCount) / totalBeneIDs) * 100
