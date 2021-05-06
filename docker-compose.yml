@@ -100,7 +100,6 @@ services:
       - JWT_PRIVATE_KEY_FILE=/var/local/private.pem
       - DEBUG=true
       - HTTP_ONLY=true
-      - BCDA_AUTH_PROVIDER=${BCDA_AUTH_PROVIDER}
       - BCDA_SSAS_CLIENT_ID=${BCDA_SSAS_CLIENT_ID}
       - BCDA_SSAS_SECRET=${BCDA_SSAS_SECRET}
       - SSAS_ADMIN_SIGNING_KEY_PATH=../shared_files/ssas/admin_test_signing_key.pem

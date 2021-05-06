@@ -172,7 +172,6 @@ Next, edit `.env.sh` to include the bash shebang and any necessary environment v
 
 ```
 #!/bin/bash
-export BCDA_AUTH_PROVIDER=ssas
 export BCDA_SSAS_CLIENT_ID="<clientID>"
 export BCDA_SSAS_SECRET="<clientSecret>"
 ```
@@ -183,11 +182,7 @@ Lastly, source the file to add the variables to your local development environme
 $ source .env.sh
 ```
 
-You're good to go! Use the environment variables in application code like this
-
-```
-authProvider := os.Getenv("BCDA_AUTH_PROVIDER")
-```
+You're good to go! 
 
 Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line
 
