@@ -172,10 +172,9 @@ Next, edit `.env.sh` to include the bash shebang and any necessary environment v
 
 ```
 #!/bin/bash
-export BCDA_AUTH_PROVIDER=okta
-export OKTA_OAUTH_SERVER_ID="<serverID>"
-export OKTA_CLIENT_TOKEN="<apiKey>"
-export OKTA_CLIENT_SECRET="<clientSecret>"
+export BCDA_AUTH_PROVIDER=ssas
+export BCDA_SSAS_CLIENT_ID="<clientID>"
+export BCDA_SSAS_SECRET="<clientSecret>"
 ```
 
 Lastly, source the file to add the variables to your local development environment
@@ -187,7 +186,7 @@ $ source .env.sh
 You're good to go! Use the environment variables in application code like this
 
 ```
-apiKey := os.Getenv("OKTA_CLIENT_TOKEN")
+authProvider := os.Getenv("BCDA_AUTH_PROVIDER")
 ```
 
 Optionally, you can edit your `~/.zshrc` or `~/.bashrc` file to eliminate the need to source the file for each shell start by appending this line
@@ -208,13 +207,9 @@ Configure the `bcda` and `bcdaworker` apps by setting the following environment 
 BCDA_ERROR_LOG <file_path>
 BCDA_REQUEST_LOG <file_path>
 BCDA_BB_LOG <file_path>
-BCDA_OKTA_LOG <file_path>
 BB_CLIENT_CERT_FILE <file_path>
 BB_CLIENT_KEY_FILE <file_path>
 BB_SERVER_LOCATION <url>
-OKTA_CLIENT_TOKEN <api_key>
-OKTA_CLIENT_ORGURL <url>
-OKTA_EMAIL <test_account>
 FHIR_PAYLOAD_DIR <directory_path>
 JWT_EXPIRATION_DELTA <integer> (time in hours that JWT access tokens are valid for)
 ```
