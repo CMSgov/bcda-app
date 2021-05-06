@@ -72,12 +72,6 @@ type Provider interface {
 	// RegisterSystem adds a software client for the ACO identified by localID.
 	RegisterSystem(localID, publicKey, groupID string, ips ...string) (Credentials, error)
 
-	// UpdateSystem changes data associated with the registered software client identified by clientID
-	UpdateSystem(params []byte) ([]byte, error)
-
-	// DeleteSystem deletes the registered software client identified by clientID, revoking an active tokens
-	DeleteSystem(clientID string) error
-
 	// ResetSecret new or replace existing Credentials for the given clientID
 	ResetSecret(clientID string) (Credentials, error)
 
