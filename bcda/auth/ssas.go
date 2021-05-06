@@ -61,16 +61,6 @@ func (s SSASPlugin) RegisterSystem(localID, publicKey, groupID string, ips ...st
 	return creds, nil
 }
 
-// UpdateSystem changes data associated with the registered software client identified by clientID.
-func (s SSASPlugin) UpdateSystem(params []byte) ([]byte, error) {
-	return nil, errors.New("not yet implemented")
-}
-
-// DeleteSystem deletes the registered software client identified by clientID, revoking any active tokens.
-func (s SSASPlugin) DeleteSystem(clientID string) error {
-	return errors.New("Not supported")
-}
-
 // GetVersion gets the version of the SSAS client
 func (s SSASPlugin) GetVersion() (string, error) {
 	return s.client.GetVersion()
