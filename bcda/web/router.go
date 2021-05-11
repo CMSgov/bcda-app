@@ -30,7 +30,7 @@ func NewAPIRouter() http.Handler {
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
 
 	var requestValidators = []func(http.Handler) http.Handler{
-		middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+		middleware.IsACOEnabled, middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
 	}
 
 	if conf.GetEnv("DEPLOYMENT_TARGET") != "prod" {
