@@ -56,6 +56,8 @@ type ACOConfig struct {
 	Pattern            string `conf:"name_pattern"`
 	PerfYearTransition string `conf:"performance_year_transition"`
 	LookbackYears      int    `conf:"lookback_period"`
+	Disabled           bool   `conf:"disabled" conf_default:"false"`
+
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp
 	perfYear   time.Time
@@ -113,6 +115,16 @@ func (cfg *Config) computeFields() (err error) {
 	}
 
 	return nil
+}
+
+func (config *Config) IsACODisabled(CMSID string) bool {
+	for _, ACOcfg := range config.ACOConfigs {
+		if ACOcfg.patternExp.MatchString(CMSID) {
+			return ACOcfg.Disabled
+		}
+	}
+	// If the ACO does not exist in our config they are automatically disabled
+	return true
 }
 
 // LookbackTime returns the timestamp that we should use as the lookback time associated with the ACO.
