@@ -17,7 +17,7 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, err
 	}
 
-	if err := cfg.computeFields(); err != nil {
+	if err := cfg.ComputeFields(); err != nil {
 		return nil, err
 	}
 
@@ -84,7 +84,7 @@ func toJSON(config interface{}) string {
 }
 
 // Parse un-exported fields using the fields loaded via the config
-func (cfg *Config) computeFields() (err error) {
+func (cfg *Config) ComputeFields() (err error) {
 	const (
 		// YYYY-MM-DD
 		claimThruLayout = "2006-01-02"
