@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -127,7 +126,7 @@ func mockTLSServerContext() context.Context {
 	return ctx
 }
 
-func (s *MiddlewareTestSuite) TestIsACOEnabled() {
+func (s *MiddlewareTestSuite) TestACOEnabled() {
 	tests := []struct {
 		name          string
 		cmsid         string
@@ -156,10 +155,4 @@ func testRequest(rp RequestParameters, cmsid string) *http.Request {
 	ctx = NewRequestParametersContext(ctx, rp)
 	// Since we're supplying the request parameters in the context, the actual req URL does not matter
 	return httptest.NewRequest("GET", "/api/v1/metadata", nil).WithContext(ctx)
-}
-
-func compileRegex(t *testing.T, pattern string) *regexp.Regexp {
-	patternExp, err := regexp.Compile(pattern)
-	assert.NoError(t, err)
-	return patternExp
 }
