@@ -6,8 +6,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/go-chi/chi"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +33,6 @@ func (s *MiddlewareTestSuite) SetupTest() {
 
 	s.server = httptest.NewServer(router)
 }
-
 
 func (s *MiddlewareTestSuite) TestConnectionCloseHeader() {
 	router := chi.NewRouter()
@@ -123,4 +125,41 @@ func mockTLSServerContext() context.Context {
 	ctx := context.WithValue(baseCtx, http.ServerContextKey, srv)
 
 	return ctx
+}
+
+func (s *MiddlewareTestSuite) TestIsACOEnabled() {
+	tests := []struct {
+		name          string
+		cmsid         string
+		ACOconfig     service.ACOConfig
+		expected_code int
+	}{
+		{"ACOIsEnabled", "TEST01234", service.ACOConfig{Pattern: `TEST\d{4}`, Disabled: false}, http.StatusOK},
+		{"ACOIsDisabled", "TEST01234", service.ACOConfig{Pattern: `TEST\d{4}`, Disabled: true}, http.StatusUnauthorized},
+		{"ACODNE", "Not_An_ACO", service.ACOConfig{Pattern: `TEST\d{4}`, Disabled: false}, http.StatusUnauthorized},
+	}
+
+	for _, tt := range tests {
+		cfg := &service.Config{AlrJobSize: 1000, RunoutConfig: service.RunoutConfig{CutoffDurationDays: 180, ClaimThruDate: "2020-12-31"}, ACOConfigs: []service.ACOConfig{tt.ACOconfig}}
+		assert.NoError(s.T(), cfg.ComputeFields())
+
+		rr := httptest.NewRecorder()
+		ACOMiddleware := ACOEnabled(cfg)
+		ACOMiddleware(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {})).
+			ServeHTTP(rr, testRequest(RequestParameters{}, tt.cmsid))
+		assert.Equal(s.T(), tt.expected_code, rr.Code)
+	}
+}
+
+func testRequest(rp RequestParameters, cmsid string) *http.Request {
+	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid})
+	ctx = NewRequestParametersContext(ctx, rp)
+	// Since we're supplying the request parameters in the context, the actual req URL does not matter
+	return httptest.NewRequest("GET", "/api/v1/metadata", nil).WithContext(ctx)
+}
+
+func compileRegex(t *testing.T, pattern string) *regexp.Regexp {
+	patternExp, err := regexp.Compile(pattern)
+	assert.NoError(t, err)
+	return patternExp
 }
