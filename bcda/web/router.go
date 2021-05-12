@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/logging"
 	"github.com/CMSgov/bcda-app/bcda/monitoring"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/conf"
@@ -29,8 +31,13 @@ func NewAPIRouter() http.Handler {
 	// Serve up the swagger ui folder
 	FileServer(r, "/api/v1/swagger", http.Dir("./swaggerui/v1"))
 
+	cfg, err := service.LoadConfig()
+	if err != nil {
+		panic(fmt.Errorf("could not load service config file: %w", err))
+	}
+
 	var requestValidators = []func(http.Handler) http.Handler{
-		middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
+		middleware.ACOEnabled(cfg), middleware.ValidateRequestURL, middleware.ValidateRequestHeaders,
 	}
 
 	if conf.GetEnv("DEPLOYMENT_TARGET") != "prod" {

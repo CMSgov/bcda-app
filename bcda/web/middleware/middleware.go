@@ -1,9 +1,15 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
+	"github.com/CMSgov/bcda-app/log"
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 )
 
 func ConnectionClose(next http.Handler) http.Handler {
@@ -23,4 +29,26 @@ func SecurityHeader(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ad, ok := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+			if !ok {
+				panic("AuthData should be set before calling this handler")
+			}
+
+			if cfg.IsACODisabled(ad.CMSID) {
+				log.API.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
+				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+					responseutils.InternalErr, "")
+				responseutils.WriteError(oo, w, http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
 }

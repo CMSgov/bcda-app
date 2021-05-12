@@ -3,6 +3,7 @@ package service
 import (
 	"math/rand"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
@@ -30,6 +31,24 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(t, cfg.RunoutConfig.CutoffDurationDays, 180)
 	t.Log(cfg.String())
 	t.Log(cfg.RunoutConfig.String())
+}
+
+func TestIsACODisabled(t *testing.T) {
+	tests := []struct {
+		name     string
+		cmsID    string
+		expected bool
+		cfg      *Config
+	}{
+		{"ACOIsDisabled", "TEST1234", true, &Config{ACOConfigs: []ACOConfig{{patternExp: compileRegex(t, "TEST\\d{4}"), Disabled: true}}}},
+		{"ACOIsEnabled", "TEST1234", false, &Config{ACOConfigs: []ACOConfig{{patternExp: compileRegex(t, "TEST\\d{4}"), Disabled: false}}}},
+		{"ACODoesNotExist", "DNE1234", true, &Config{ACOConfigs: []ACOConfig{{patternExp: compileRegex(t, "TEST\\d{4}"), Disabled: false}}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.cfg.IsACODisabled(tt.cmsID))
+		})
+	}
 }
 
 func TestLookbackTime(t *testing.T) {
@@ -63,4 +82,10 @@ func TestLookbackTime(t *testing.T) {
 
 func expectedPerfYear(base time.Time, minusYears int) time.Time {
 	return time.Date(base.Year()-minusYears, base.Month(), base.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func compileRegex(t *testing.T, pattern string) *regexp.Regexp {
+	patternExp, err := regexp.Compile(pattern)
+	assert.NoError(t, err)
+	return patternExp
 }
