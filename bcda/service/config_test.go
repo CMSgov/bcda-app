@@ -42,7 +42,7 @@ func TestIsACODisabled(t *testing.T) {
 	}{
 		{"ACOIsDisabled", "TEST1234", true, &Config{ACOConfigs: []ACOConfig{{patternExp: compileRegex(t, "TEST\\d{4}"), Disabled: true}}}},
 		{"ACOIsEnabled", "TEST1234", false, &Config{ACOConfigs: []ACOConfig{{patternExp: compileRegex(t, "TEST\\d{4}"), Disabled: false}}}},
-		{"ACOIsDoesNotExist", "DNE1234", true, &Config{ACOConfigs: []ACOConfig{{patternExp: compileRegex(t, "TEST\\d{4}"), Disabled: false}}}},
+		{"ACODoesNotExist", "DNE1234", true, &Config{ACOConfigs: []ACOConfig{{patternExp: compileRegex(t, "TEST\\d{4}"), Disabled: false}}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
