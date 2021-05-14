@@ -459,7 +459,7 @@ func setUpApp() *cli.App {
 				s, f, sk, err := suppression.ImportSuppressionDirectory(filePath)
 				logStatement := fmt.Sprintf("Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				insights.PutEvent("import-suppression-directory", logStatement)
-				fmt.Fprintf(app.Writer, logStatement)
+				fmt.Fprint(app.Writer, logStatement)
 				return err
 			},
 		},
