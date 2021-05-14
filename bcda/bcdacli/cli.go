@@ -24,6 +24,7 @@ import (
 	cclfUtils "github.com/CMSgov/bcda-app/bcda/cclf/testutils"
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/insights"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/service"
@@ -456,6 +457,7 @@ func setUpApp() *cli.App {
 			},
 			Action: func(c *cli.Context) error {
 				s, f, sk, err := suppression.ImportSuppressionDirectory(filePath)
+				insights.PutRecord("import-suppression-directory", "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				return err
 			},

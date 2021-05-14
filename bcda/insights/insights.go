@@ -6,14 +6,13 @@ import (
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/firehose"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 type Event struct {
@@ -44,18 +43,16 @@ func PutEvent(name string, event string) {
 		b, err := json.Marshal(data)
 
 		if err != nil {
-			log.Printf("Error: %v", err)
-			os.Exit(1)
+			log.API.Error(err)
 		}
 
 		record := &firehose.Record{Data: b}
 		recordInput = recordInput.SetRecord(record)
 
-		resp, err := firehoseService.PutRecord(recordInput)
+		_, err := firehoseService.PutRecord(recordInput)
+
 		if err != nil {
-			fmt.Printf("PutRecord err: %v\n", err)
-		} else {
-			fmt.Printf("PutRecord: %v\n", resp)
+			log.API.Error(err)
 		}
 	}
 }
