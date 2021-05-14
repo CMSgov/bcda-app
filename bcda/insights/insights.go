@@ -2,8 +2,6 @@ package insights
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -49,7 +47,7 @@ func PutEvent(name string, event string) {
 		record := &firehose.Record{Data: b}
 		recordInput = recordInput.SetRecord(record)
 
-		_, err := firehoseService.PutRecord(recordInput)
+		_, err = firehoseService.PutRecord(recordInput)
 
 		if err != nil {
 			log.API.Error(err)
