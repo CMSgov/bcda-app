@@ -2,16 +2,29 @@ package insights
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/firehose"
+	"github.com/aws/aws-sdk-go/service/firehose/firehoseiface"
 
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
+
+var instance *firehose.Firehose
+var once sync.Once
+
+func GetFirehose() *firehose.Firehose {
+	once.Do(func() {
+		sess := session.Must(session.NewSession())
+		instance = firehose.New(sess, aws.NewConfig().WithRegion("us-east-1"))
+	})
+	return instance
+}
 
 type Event struct {
 	Name      string    `json:"name"`
@@ -19,15 +32,12 @@ type Event struct {
 	Result    string    `json:"json_result"`
 }
 
-func PutEvent(name string, event string) {
+func PutEvent(svc firehoseiface.FirehoseAPI, name string, event string) {
 
 	if utils.GetEnvBool("BCDA_ENABLE_INSIGHTS_EVENTS", true) {
 
 		targetEnv := conf.GetEnv("DEPLOYMENT_TARGET")
 		streamName := "bfd-insights-bcda-" + targetEnv + "-" + name
-
-		sess := session.Must(session.NewSession())
-		firehoseService := firehose.New(sess, aws.NewConfig().WithRegion("us-east-1"))
 
 		recordInput := &firehose.PutRecordInput{}
 		recordInput = recordInput.SetDeliveryStreamName(streamName)
@@ -47,7 +57,7 @@ func PutEvent(name string, event string) {
 		record := &firehose.Record{Data: b}
 		recordInput = recordInput.SetRecord(record)
 
-		_, err = firehoseService.PutRecord(recordInput)
+		_, err = svc.PutRecord(recordInput)
 
 		if err != nil {
 			log.API.Error(err)
