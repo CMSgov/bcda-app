@@ -62,8 +62,7 @@ func PutEvent(svc firehoseiface.FirehoseAPI, name string, event string) {
 		if err != nil {
 			log.API.Error(err)
 		}
-	}
-	else {
+	} else {
 		log.API.Info("Insights is not enabled for the application.  No data was sent to BFD.")
 	}
 }
