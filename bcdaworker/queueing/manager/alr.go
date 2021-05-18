@@ -76,6 +76,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// If we cannot unmarshall this, it would be very problematic.
 	if err != nil {
 		// TODO: perhaps just fail the job?
+		// Currently, we retry it
 		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s.",
 			job.Args, err)
 	}
@@ -103,7 +104,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		// Else that job just doesn't exist
 		return fmt.Errorf("failed to valiate job: %w", err)
 	}
-	// If the job was cancalled...
+	// If the job was cancelled...
 	if alrJobs.Status == models.JobStatusCancelled {
 		q.alrLog.Warnf("ALR big job has been cancelled, worker will not be tasked for %s",
 			job.Args)

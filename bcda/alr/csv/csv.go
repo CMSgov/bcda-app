@@ -11,6 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// These are field in the ALR data that we have assumed to be constant from
+// submission to submission
 const (
 	mbi   = "BENE_MBI_ID"
 	hic   = "BENE_HIC_NUM"
@@ -21,17 +23,19 @@ const (
 	death = "BENE_DEATH_DT"
 )
 
-// Fields the must be present in an ALR file
-var requiredFields []string = []string{
-	mbi, hic,
-	first, last,
+var requiredFields = [...]string{
+	mbi,
+	hic,
+	first,
+	last,
 	sex,
-	birth, death,
+	birth,
+	death,
 }
 
 // Fields that will be used to join multiple dataframes together
 // To merge two rows in a dataframe, all of the required fields must match.
-var joinFields = requiredFields
+var joinFields = requiredFields[:]
 
 // ToALR reads in a CSV file(s) and unmarshals the data into an ALR model.
 // CSV files are joined based on a predetermined list of fields
@@ -42,7 +46,7 @@ func ToALR(csvPaths ...string) ([]*models.Alr, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create dataframe: %w", err)
 		}
-		if err := validate(df); err != nil {
+		if err := checkRequireVars(df); err != nil {
 			return nil, fmt.Errorf("dataframe from %s is not valid: %w",
 				csvPath, err)
 		}
@@ -50,14 +54,17 @@ func ToALR(csvPaths ...string) ([]*models.Alr, error) {
 		if len(mergedDF.Names()) == 0 {
 			mergedDF = df
 		} else {
+			// TODO:	We may lose data with innerJoin since table 1-6 has benes
+			//			that may not be in 1-1.
 			mergedDF = mergedDF.InnerJoin(df, joinFields...)
 		}
 	}
 
 	records := mergedDF.Records()
-	return toALR(records[0], records[1:])
+	return toAlrModels(records[0], records[1:])
 }
 
+// Take the csv and turn it into a dataframe
 func toDataFrame(csvPath string) (dataframe.DataFrame, error) {
 	f, err := os.Open(filepath.Clean(csvPath))
 	if err != nil {
@@ -79,7 +86,8 @@ func toDataFrame(csvPath string) (dataframe.DataFrame, error) {
 	return df, df.Err
 }
 
-func validate(df dataframe.DataFrame) error {
+// Go through the dataframe field by field and make sure the required fields there
+func checkRequireVars(df dataframe.DataFrame) error {
 	fields := df.Names()
 	m := make(map[string]struct{}, len(fields))
 	for _, field := range fields {
@@ -95,7 +103,8 @@ func validate(df dataframe.DataFrame) error {
 	return nil
 }
 
-func toALR(headers []string, rows [][]string) ([]*models.Alr, error) {
+// Take the merged DF, and turn it into slice of models.Alr
+func toAlrModels(headers []string, rows [][]string) ([]*models.Alr, error) {
 	setters := getALRSetters(headers)
 	alrs := make([]*models.Alr, 0, len(rows))
 	for _, row := range rows {

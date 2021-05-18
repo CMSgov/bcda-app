@@ -20,7 +20,9 @@ type AlrRequestWindow struct {
 	UpperBound time.Time
 }
 
-func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error) {
+// Get the MBIs and put them into jobs
+func (s *service) GetAlrJobs(ctx context.Context, cmsID string,
+	reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error) {
 	constraint, err := s.timeConstraints(ctx, cmsID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set time constraints: %w", err)
@@ -48,7 +50,7 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string, reqType AlrReque
 	jobs := make([]*models.JobAlrEnqueueArgs, 0, len(benes)/int(s.alrMBIsPerJob))
 	for {
 		var part []*models.CCLFBeneficiary
-		part, benes = partitionBenes(benes, s.alrMBIsPerJob)
+		part, benes = partitionBenes(benes, s.alrMBIsPerJob) // default @ 1000 jobs
 		if len(part) == 0 {
 			break
 		}
