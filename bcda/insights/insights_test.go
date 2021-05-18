@@ -1,9 +1,11 @@
 package insights
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 
 	"github.com/aws/aws-sdk-go/service/firehose"
 	"github.com/aws/aws-sdk-go/service/firehose/firehoseiface"
@@ -24,12 +26,12 @@ func (s *InsightsTestSuite) SetupTest() {
 	s.mockSvc = &mockFirehoseClient{}
 }
 
-func InsightsTestSuite(t *testing.T) {
+func TestInsightsTestSuite(t *testing.T) {
 	suite.Run(t, new(InsightsTestSuite))
 }
 
 func PutRecord(*firehose.PutRecordInput) (*firehose.PutRecordOutput, error) {
-	// TODO
+	
 }
 
 func (s *InsightsTestSuite) TestInsightsDisabled() {
@@ -40,7 +42,11 @@ func (s *InsightsTestSuite) TestInsightsDisabled() {
 		conf.SetEnv(s.T(), "BCDA_ENABLE_INSIGHTS_EVENTS", origSetting)
 	})
 
+	buf := new(bytes.Buffer)
+	log.API.SetOutput(&buf)
+
 	PutEvent(s.mockSvc, "TestInsightsDisabledName", "TestInsightsDisabledEvent")
 
-	// TODO: assert
+	assert.Contains(buf.String(), "Insights is not enabled for the application.  No data was sent to BFD.")
+	buf.Reset()	
 }
