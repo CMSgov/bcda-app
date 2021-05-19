@@ -89,6 +89,62 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+	swagger:route GET /api/v1/jobs/{jobId} job jobStatus
+
+	Get job status
+
+	Returns the current status of an export job.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: jobStatusResponse
+		200: completedJobResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		404: notFoundResponse
+		410: goneResponse
+		500: errorResponse
+*/
+func JobStatus(w http.ResponseWriter, r *http.Request) {
+	h.JobStatus(w, r)
+}
+
+/*
+	swagger:route DELETE /api/v1/jobs/{jobId} job deleteJob
+
+	Cancel a job
+
+	Cancels a currently running job.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: deleteJobResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		404: notFoundResponse
+		410: goneResponse
+		500: errorResponse
+*/
+
+func DeleteJob(w http.ResponseWriter, r *http.Request) {
+	h.DeleteJob(w, r)
+}
+
+/*
 	swagger:route GET /api/v2/metadata metadataV2 metadata
 
 	Get metadata

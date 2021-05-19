@@ -43,7 +43,7 @@ func init() {
 	flag.StringVar(&apiVersion, "apiVersion", "v1", "resourceType to test")
 	flag.IntVar(&timeout, "timeout", 300, "amount of time to wait for file to be ready and downloaded.")
 	flag.StringVar(&endpoint, "endpoint", "", "base type of request endpoint in the format of Patient or Group/all or Group/new")
-	flag.IntVar(&httpRetry, "httpRetry", 3, "amount of times to retry an http request")
+	flag.IntVar(&httpRetry, "httpRetry", 4, "amount of times to retry an http request")
 	flag.Parse()
 }
 
