@@ -45,7 +45,7 @@ func PutEvent(svc firehoseiface.FirehoseAPI, name string, event string) {
 		data := Event{
 			Name:      name,
 			Timestamp: time.Now().UnixNano() / 1e6,
-			Result:    "{ \"event\":" + event + "}",
+			Result:    "{\"event\":\"" + event + "\"}",
 		}
 
 		b, err := json.Marshal(data)
