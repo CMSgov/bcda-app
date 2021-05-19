@@ -37,7 +37,7 @@ func PutEvent(svc firehoseiface.FirehoseAPI, name string, event string) {
 	if utils.GetEnvBool("BCDA_ENABLE_INSIGHTS_EVENTS", true) {
 
 		targetEnv := conf.GetEnv("DEPLOYMENT_TARGET")
-		streamName := "bfd-insights-bcda-" + targetEnv + "-" + name
+		streamName := "bfd-insights-bcda-" + targetEnv + "-event_processor"
 
 		recordInput := &firehose.PutRecordInput{}
 		recordInput = recordInput.SetDeliveryStreamName(streamName)

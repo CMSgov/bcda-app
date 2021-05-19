@@ -79,5 +79,5 @@ func (s *InsightsTestSuite) TestInsightsEnabled() {
 	PutEvent(s.mockSvc, "TestInsightsEnabledName", "TestInsightsEnabledEvent")
 	assert.Contains(s.T(), buf.String(), "TestInsightsEnabledName")
 	assert.Contains(s.T(), buf.String(), "TestInsightsEnabledEvent")
-	assert.Contains(s.T(), buf.String(), "bfd-insights-bcda-unit-test-TestInsightsEnabledName")
+	assert.Contains(s.T(), buf.String(), "bfd-insights-bcda-unit-test-event_processor")
 }
