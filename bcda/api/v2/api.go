@@ -89,7 +89,7 @@ func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route GET /api/v1/jobs/{jobId} job jobStatus
+	swagger:route GET /api/v2/jobs/{jobId} jobV2 jobStatusV2
 
 	Get job status
 
@@ -117,7 +117,7 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-	swagger:route DELETE /api/v1/jobs/{jobId} job deleteJob
+	swagger:route DELETE /api/v2/jobs/{jobId} jobV2 deleteJobV2
 
 	Cancel a job
 
