@@ -32,7 +32,7 @@ type JsonResult struct {
 
 type Event struct {
 	Name      string     `json:"name"`
-	Timestamp time.Time  `json:"timestamp"`
+	Timestamp int64      `json:"timestamp"`
 	Result    JsonResult `json:"json_result"`
 }
 
@@ -52,7 +52,7 @@ func PutEvent(svc firehoseiface.FirehoseAPI, name string, event string) {
 
 		data := Event{
 			Name:      name,
-			Timestamp: time.Now(),
+			Timestamp: time.Now().UnixNano() / 1e6,
 			Result:    eventMsg,
 		}
 
