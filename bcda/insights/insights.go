@@ -26,10 +26,14 @@ func GetFirehose() *firehose.Firehose {
 	return instance
 }
 
+type JsonResult struct {
+	EventMsg string `json:"event"`
+}
+
 type Event struct {
-	Name      string    `json:"name"`
-	Timestamp time.Time `json:"timestamp"`
-	Result    string    `json:"json_result"`
+	Name      string     `json:"name"`
+	Timestamp time.Time  `json:"timestamp"`
+	Result    JsonResult `json:"json_result"`
 }
 
 func PutEvent(svc firehoseiface.FirehoseAPI, name string, event string) {
@@ -42,10 +46,14 @@ func PutEvent(svc firehoseiface.FirehoseAPI, name string, event string) {
 		recordInput := &firehose.PutRecordInput{}
 		recordInput = recordInput.SetDeliveryStreamName(streamName)
 
+		eventMsg := JsonResult{
+			EventMsg: event,
+		}
+
 		data := Event{
 			Name:      name,
 			Timestamp: time.Now(),
-			Result:    event,
+			Result:    eventMsg,
 		}
 
 		b, err := json.Marshal(data)
