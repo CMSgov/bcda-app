@@ -70,9 +70,10 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan data, fileMap map[string
 
 	writerPool := make([]*bufio.Writer, len(fileMap))
 
-	for _, file := range fileMap {
+	for i, n := range resourceTypes {
+		file := fileMap[n]
 		w := bufio.NewWriter(file)
-		writerPool = append(writerPool, w)
+		writerPool[i] = w
 		defer utils.CloseFileAndLogError(file)
 	}
 
@@ -100,15 +101,21 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan data, fileMap map[string
 
 		alrResources := []string{patients, observation}
 
-		// IO operation
+		if len(alrResources) != len(writerPool) {
+			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
+		}
+
+		// IO operations
 		for n, resource := range alrResources {
 
-			_, err = writerPool[n].WriteString(resource)
+			w := writerPool[n]
+
+			_, err = w.WriteString(resource)
 			if err != nil {
 				result <- err
 				return
 			}
-			err = writerPool[n].Flush()
+			err = w.Flush()
 			if err != nil {
 				result <- err
 				return
@@ -166,7 +173,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	// Get the number FHIR resource types we are using for ALR
 	// This is temporary until the resource types become more permanent
 	fieldNum := len(resources)
-	files := make(map[string]*os.File, fieldNum)
+	fileMap := make(map[string]*os.File, fieldNum)
 
 	for i := 0; i < fieldNum; i++ {
 
@@ -174,7 +181,7 @@ func (a *AlrWorker) ProcessAlrJob(
 		f, err := os.Create(fmt.Sprintf("%s/%d/%s.ndjson", a.StagingDir,
 			id, ndjsonFilename))
 
-		files[resources[i]] = f
+		fileMap[resources[i]] = f
 
 		if err != nil {
 			logrus.Error(err)
@@ -198,7 +205,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	// A go routine that will streamed data to write to disk.
 	// Reason for a go routine is to not block when writing, since disk writing is
 	// generally slower than memory access. We are streaming to keep mem lower.
-	go goWriter(ctx, a, c, files, marshaller, result, resources[:], id)
+	go goWriter(ctx, a, c, fileMap, marshaller, result, resources[:], id)
 
 	// Marshall into JSON and send it over the channel
 	for i := range alrModels {
@@ -206,7 +213,7 @@ func (a *AlrWorker) ProcessAlrJob(
 		c <- data{patient, observations}
 	}
 
-	// close channel c since we no longer writing to it
+	// close channel c since we are no longer writing to it
 	close(c)
 
 	// Wait on the go routine to finish
