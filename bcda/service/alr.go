@@ -42,6 +42,8 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string,
 		timeConstraint: constraint,
 	}
 
+    // ALR at the current state still depends on CCLF file to get the attribution data
+    // This may be removed in the future, where we relay on table 1-1
 	benes, err := s.getBeneficiaries(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retreive beneficiaries: %w", err)

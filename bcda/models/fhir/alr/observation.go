@@ -9,17 +9,6 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
-var assignmentPattern, enrollmentPattern, exclusionPattern, riskFlagsPattern, riskScoresPattern *regexp.Regexp
-
-func init() {
-	assignmentPattern = regexp.MustCompile(`^(IN_VA_MAX)|(CBA_FLAG)|(ASSIGNMENT_TYPE)|(ASSIGNED_BEFORE)|(ASG_STATUS)$`)
-	enrollmentPattern = regexp.MustCompile(`^EnrollFlag\d+$`)
-	exclusionPattern = regexp.MustCompile(`^(EXCLUDED)|(DECEASED_EXCLUDED)|(MISSING_ID_EXCLUDED)|(PART_A_B_ONLY_EXCLUDED)|` +
-		`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)$`)
-	riskFlagsPattern = regexp.MustCompile(`^(HCC_version)|(HCC_COL_\d+)$`)
-	riskScoresPattern = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|(DIS)|(AGDU)|(AGND)|(DEM_ESRD)|(DEM_DIS)|(DEM_AGDU)|(DEM_AGND))_SCORE)$`)
-}
-
 func observations(alr *models.Alr) []*fhirmodels.Observation {
 	mbi := alr.BeneMBI
 	assignmentFields := make(map[string]string)
