@@ -1,35 +1,15 @@
 package alr
 
 import (
-	"fmt"
 	"regexp"
+	"strconv"
 
+	"github.com/CMSgov/bcda-app/log"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
 // This part of the package houses the logical to create group resource type data
-
-var groupExtensions = [...]string{
-	"changeType",
-	"changeReason",
-	"claimsBasedAssignmentFlag",
-	"claimsBasedAssignmentStep",
-	"newlyAssignedBeneficiaryFlag",
-	"pervAssignedBeneficiaryFlag",
-	"voluntaryAlignmentFlag",
-}
-
-// The order of this const must match the order of the array above
-const (
-	changeType uint8 = iota
-	changeReason
-	claimsBasedAssignmentFlag
-	claimsBasedAssignmentStep
-	newlyAssignedBeneficiaryFlag
-	pervAssignedBeneficiaryFlag
-	voluntaryAlignmentFlag
-)
 
 // Further break down of groupPattern; the order does not matter
 var (
@@ -45,41 +25,148 @@ var (
 )
 
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
-func group(mbi string, keyValue map[string]string) *fhirmodels.Group {
+func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 	group := &fhirmodels.Group{}
-	group.Member = []*fhirmodels.Group_Member{{
-		Extension: make([]*fhirdatatypes.Extension, len(groupExtensions)),
-	}}
+	group.Member = []*fhirmodels.Group_Member{{}}
+	extension := []*fhirdatatypes.Extension{}
 
-	for k, v := range keyValue {
-        fmt.Println(k, v)
+	for _, kv := range keyValue {
 		switch {
-		// ext - changeType
-		case changeTypeP.MatchString(k):
+		case changeTypeP.MatchString(kv.key):
+			// ext - changeType
+			var val = "nochange"
+			// Mapping to DaVinci ATR
+			if kv.value == "1" {
+				val = "dropped"
+			}
 
+			ext := extensionMaker("http://hl7.org/fhir/us/davinci-atr/STU1/StructureDefinition-ext-changeType.html",
+				"", "", "", "")
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Code{
+					Code: &fhirdatatypes.Code{Value: val},
+				},
+			}
+
+			extension = append(extension, ext)
+		case changeReasonP.MatchString(kv.key):
 			// ext - changeReason
-		case changeReasonP.MatchString(k):
+			ext := extensionMaker("reasonCode",
+				"", kv.key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", "")
+			// TODO: Need to put in diplay when figure out how to
 
+			extension = append(extension, ext)
+		case claimsBasedAssignmentFlagP.MatchString(kv.key):
 			// ext - claimsBasedAssignmentFlag
-		case claimsBasedAssignmentFlagP.MatchString(k):
+			var val = true
+			if kv.value == "0" {
+				val = false
+			}
 
+			ext := extensionMaker("http://alr.cms.gov/ig/StructureDefinition/ext-claimsBasedAssignmentFlag",
+				"", "", "", "")
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Boolean{
+					Boolean: &fhirdatatypes.Boolean{Value: val},
+				},
+			}
+
+			extension = append(extension, ext)
+		case claimsBasedAssignmentStepP.MatchString(kv.key):
 			// ext - claimsBasedAssignmentStep
-		case claimsBasedAssignmentStepP.MatchString(k):
 
+			val, err := strconv.Atoi(kv.value)
+			if err != nil {
+				log.API.Warnf("Could convert string to int for {}: {}", mbi, err)
+			}
+			ext := extensionMaker("http://alr.cms.gov/ig/StructureDefinition/ext-claimsBasedAssignmentStep",
+				"", "", "", "")
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Integer{
+					Integer: &fhirdatatypes.Integer{Value: int32(val)},
+				},
+			}
+		case newlyAssignedBeneficiaryFlagP.MatchString(kv.key):
 			// ext - newlyAssignedBeneficiaryFlag
-		case newlyAssignedBeneficiaryFlagP.MatchString(k):
+			var val = true
+			if kv.value == "0" {
+				val = false
+			}
 
+			ext := extensionMaker("http://alr.cms.gov/ig/StructureDefinition/ext-newlyAssignedBeneficiaryFlag",
+				"", "", "", "")
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Boolean{
+					Boolean: &fhirdatatypes.Boolean{Value: val},
+				},
+			}
+		case pervAssignedBeneficiaryFlagP.MatchString(kv.key):
 			// ext - pervAssignedBeneficiaryFlag
-		case pervAssignedBeneficiaryFlagP.MatchString(k):
+			var val = true
+			if kv.value == "0" {
+				val = false
+			}
 
+			ext := extensionMaker("http://alr.cms.gov/ig/StructureDefinition/ext-prevAssignedBeneficiaryFlag",
+				"", "", "", "")
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Boolean{
+					Boolean: &fhirdatatypes.Boolean{Value: val},
+				},
+			}
+		case voluntaryAlignmentFlagP.MatchString(kv.key):
 			// ext - voluntaryAlignmentFlag
-		case voluntaryAlignmentFlagP.MatchString(k):
+			var val = true
+			if kv.value == "0" {
+				val = false
+			}
 
-		default:
-			// If 99 is returned, we could not match and log as error
+			ext := extensionMaker("http://alr.cms.gov/ig/StructureDefinition/ext-newlyAssignedBeneficiaryFlag",
+				"", "", "", "")
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Boolean{
+					Boolean: &fhirdatatypes.Boolean{Value: val},
+				},
+			}
 		}
 
 	}
 
+	// NOTE: there is only one element in Member slice
+	group.Member[0].Extension = extension
+	group.Member[0].Entity = &fhirdatatypes.Reference{Id: &fhirdatatypes.String{Value: mbi}}
+
 	return group
+}
+
+// This is an extension resource constructor. Since values in FHIR can differ,
+// this is not included in the parameter
+func extensionMaker(url, reference, key, sys, disp string) *fhirdatatypes.Extension {
+	extension := &fhirdatatypes.Extension{}
+	// URL
+	extension.Url = &fhirdatatypes.Uri{Value: url}
+	// Reference
+	if reference != "" {
+		extension.Value = &fhirdatatypes.Extension_ValueX{
+			Choice: &fhirdatatypes.Extension_ValueX_Reference{
+				Reference: &fhirdatatypes.Reference{
+					Reference: &fhirdatatypes.Reference_Uri{Uri: &fhirdatatypes.String{Value: reference}},
+				},
+			},
+		}
+	}
+
+	if key != "" && reference == "" {
+		extension.Value = &fhirdatatypes.Extension_ValueX{
+			Choice: &fhirdatatypes.Extension_ValueX_Coding{
+				Coding: &fhirdatatypes.Coding{
+					System:  &fhirdatatypes.Uri{Value: sys},
+					Code:    &fhirdatatypes.Code{Value: key},
+					Display: fhirString(disp),
+				},
+			},
+		}
+	}
+
+	return extension
 }

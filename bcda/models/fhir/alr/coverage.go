@@ -19,8 +19,6 @@ func coverage(mbi string, keyValue map[string]string) *fhirmodels.Coverage {
 		Uri{{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Coverage"}}
 	coverage.Extension = make([]*fhirdatatypes.Extension, len(keyValue))
 
-	extension := coverage.Extension
-
 	var cnt uint = 0
 	for k, v := range keyValue {
 		// FHIR does not include empty K:V pairs
@@ -29,7 +27,7 @@ func coverage(mbi string, keyValue map[string]string) *fhirmodels.Coverage {
 			continue
 		}
 
-		ext := extension[cnt]
+		ext := coverage.Extension[cnt]
 		ext.Url = fhirURI(k)
 		ext.Value = &fhirdatatypes.Extension_ValueX{
 			Choice: &fhirdatatypes.Extension_ValueX_StringValue{

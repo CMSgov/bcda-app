@@ -10,18 +10,29 @@ import (
 // models.Alr into respective categories depicted in kvMap struct.
 // Note, a models.Alr represents a single row from a dataframe.
 
-type kvMap struct {
-	assignment   map[string]string
-	enrollment   map[string]string
-	exclusion    map[string]string
-	riskFlag     map[string]string
-	riskScore    map[string]string
-	groupPattern map[string]string
+type kvArena struct {
+	assignment   []kvPair
+	enrollment   []kvPair
+	exclusion    []kvPair
+	riskFlag     []kvPair
+	riskScore    []kvPair
+	groupPattern []kvPair
+}
+
+type kvPair struct {
+	key   string
+	value string
 }
 
 // These are regexp patterns used for mapping fields from ALR data
-var assignmentPattern, enrollmentPattern, exclusionPattern, riskFlagsPattern,
-	riskScoresPattern, groupPattern *regexp.Regexp
+var (
+	assignmentPattern,
+	enrollmentPattern,
+	exclusionPattern,
+	riskFlagsPattern,
+	riskScoresPattern,
+	groupPattern *regexp.Regexp
+)
 
 func init() {
 	assignmentPattern = regexp.MustCompile(`^(IN_VA_MAX)|(CBA_FLAG)|(ASSIGNMENT_TYPE)` +
@@ -45,30 +56,33 @@ func init() {
 }
 
 // keyValueMapper take the K:V pair from models.Alr and puts them into one of
-// five maps in the kvMap struct. kvMap struct is then used to generate FHIR data.
-func keyValueMapper(alr *models.Alr) kvMap {
+// various maps in the kvArena struct. kvMap struct is then used to generate FHIR data.
+func keyValueMapper(alr *models.Alr) kvArena {
 
-	assignmentFields := make(map[string]string)
-	enrollmentFields := make(map[string]string)
-	exclusionFields := make(map[string]string)
-	riskFlagFields := make(map[string]string)
-	riskScoreFields := make(map[string]string)
+	assignmentFields := []kvPair{}
+	enrollmentFields := []kvPair{}
+	exclusionFields := []kvPair{}
+	riskFlagFields := []kvPair{}
+	riskScoreFields := []kvPair{}
+	groupFields := []kvPair{}
 
 	for k, v := range alr.KeyValue {
 		if assignmentPattern.MatchString(k) {
-			assignmentFields[k] = v
+			assignmentFields = append(assignmentFields, kvPair{k, v})
 		} else if enrollmentPattern.MatchString(k) {
-			enrollmentFields[k] = v
+			enrollmentFields = append(enrollmentFields, kvPair{k, v})
 		} else if exclusionPattern.MatchString(k) {
-			exclusionFields[k] = v
+			exclusionFields = append(exclusionFields, kvPair{k, v})
 		} else if riskFlagsPattern.MatchString(k) {
-			riskFlagFields[k] = v
+			riskFlagFields = append(riskFlagFields, kvPair{k, v})
 		} else if riskScoresPattern.MatchString(k) {
-			riskScoreFields[k] = v
+			riskScoreFields = append(riskScoreFields, kvPair{k, v})
+		} else if groupPattern.MatchString(k) {
+			groupFields = append(groupFields, kvPair{k, v})
 		}
 	}
 
-	return kvMap{
+	return kvArena{
 		assignment: assignmentFields,
 		enrollment: enrollmentFields,
 		exclusion:  exclusionFields,
