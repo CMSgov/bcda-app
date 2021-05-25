@@ -738,6 +738,82 @@
 			"response": []
 		},
 		{
+			"name": "Start Patient export v2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+							"",
+							"if (v2Disabled) {",
+							"    pm.test(\"Status code is 404\", function() {",
+							"        pm.response.to.have.status(404);",
+							"    });",
+							"    return;",
+							"}",
+							"",
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Patient",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Patient"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Start Coverage export",
 			"event": [
 				{
@@ -791,6 +867,82 @@
 					"path": [
 						"api",
 						"v1",
+						"Patient",
+						"$export"
+					],
+					"query": [
+						{
+							"key": "_type",
+							"value": "Coverage"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Start Coverage export v2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var v2Disabled = pm.globals.get(\"v2Disabled\") == \"true\"",
+							"",
+							"if (v2Disabled) {",
+							"    pm.test(\"Status code is 404\", function() {",
+							"        pm.response.to.have.status(404);",
+							"    });",
+							"    return;",
+							"}",
+							"",
+							"pm.test(\"Status code is 202\", function() {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"pm.test(\"Has Content-Location header\", function() {",
+							"    pm.response.to.have.header(\"Content-Location\");",
+							"});",
+							"",
+							"pm.environment.set(\"coverageJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+					{
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/Patient/$export?_type=Coverage",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
 						"Patient",
 						"$export"
 					],
