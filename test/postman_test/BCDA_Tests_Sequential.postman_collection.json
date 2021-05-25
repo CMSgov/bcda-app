@@ -761,7 +761,7 @@
 							"    pm.response.to.have.header(\"Content-Location\");",
 							"});",
 							"",
-							"pm.environment.set(\"patientJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+							"pm.environment.set(\"patientv2JobUrl\", pm.response.headers.get(\"Content-Location\"));"
 						],
 						"type": "text/javascript"
 					}
@@ -904,7 +904,7 @@
 							"    pm.response.to.have.header(\"Content-Location\");",
 							"});",
 							"",
-							"pm.environment.set(\"coverageJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+							"pm.environment.set(\"coveragev2JobUrl\", pm.response.headers.get(\"Content-Location\"));"
 						],
 						"type": "text/javascript"
 					}
@@ -1242,7 +1242,7 @@
 							"    pm.response.to.have.header(\"Content-Location\");",
 							"});",
 							"",
-							"pm.environment.set(\"eobJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+							"pm.environment.set(\"eobv2JobUrl\", pm.response.headers.get(\"Content-Location\"));"
 						],
 						"type": "text/javascript"
 					}
@@ -1318,7 +1318,7 @@
 							"    pm.response.to.have.header(\"Content-Location\");",
 							"});",
 							"",
-							"pm.environment.set(\"eobJobUrl\", pm.response.headers.get(\"Content-Location\"));"
+							"pm.environment.set(\"allv2JobUrl\", pm.response.headers.get(\"Content-Location\"));"
 						],
 						"type": "text/javascript"
 					}
