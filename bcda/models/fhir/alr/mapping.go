@@ -11,12 +11,11 @@ import (
 // Note, a models.Alr represents a single row from a dataframe.
 
 type kvArena struct {
-	assignment   []kvPair
-	enrollment   []kvPair
-	exclusion    []kvPair
-	riskFlag     []kvPair
-	riskScore    []kvPair
-	groupPattern []kvPair
+	enrollment []kvPair
+	riskFlag   []kvPair
+	riskScore  []kvPair
+	group      []kvPair
+	hccVersion []kvPair
 }
 
 type kvPair struct {
@@ -31,62 +30,61 @@ var (
 	exclusionPattern,
 	riskFlagsPattern,
 	riskScoresPattern,
+	hccVersion,
 	groupPattern *regexp.Regexp
 )
 
 func init() {
-	assignmentPattern = regexp.MustCompile(`^(IN_VA_MAX)|(CBA_FLAG)|(ASSIGNMENT_TYPE)` +
-		`|(ASSIGNED_BEFORE)|(ASG_STATUS)$`)
+	// There should be one field in table 1-1 that tells use what HCC version
+	// is used for that particular ALR
+	hccVersion = regexp.MustCompile(`^HCC_version$`)
 
+	// These are for coverage
 	enrollmentPattern = regexp.MustCompile(`^EnrollFlag\d+$`)
 
-	exclusionPattern = regexp.MustCompile(`^(EXCLUDED)|(DECEASED_EXCLUDED)|` +
-		`(MISSING_ID_EXCLUDED)|(PART_A_B_ONLY_EXCLUDED)|` +
-		`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)$`)
-
-	riskFlagsPattern = regexp.MustCompile(`^(HCC_version)|(HCC_COL_\d+)$`)
-
-	riskScoresPattern = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|` +
-		`(DIS)|(AGDU)|(AGND)|(DEM_ESRD)|(DEM_DIS)|(DEM_AGDU)|(DEM_AGND))_SCORE)$`)
-
+	// These are for groups
 	groupPattern = regexp.MustCompile(`^(IN_VA_MAX)|(CBA_FLAG)|(ASSIGNMENT_TYPE)` +
 		`|(ASSIGNED_BEFORE)|(ASG_STATUS)|(EXCLUDED)|(DECEASED_EXCLUDED)|` +
 		`(MISSING_ID_EXCLUDED)|(PART_A_B_ONLY_EXCLUDED)|` +
 		`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)$`)
+
+	// These are risk scores, which current go under observation
+	riskFlagsPattern = regexp.MustCompile(`^HCC_COL_\d+$`)
+
+	// These are for risk assessment
+	riskScoresPattern = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|` +
+		`(DIS)|(AGDU)|(AGND)|(DEM_ESRD)|(DEM_DIS)|(DEM_AGDU)|(DEM_AGND))_SCORE)$`)
 }
 
 // keyValueMapper take the K:V pair from models.Alr and puts them into one of
 // various maps in the kvArena struct. kvMap struct is then used to generate FHIR data.
 func keyValueMapper(alr *models.Alr) kvArena {
 
-	assignmentFields := []kvPair{}
+	hccVersionFields := []kvPair{}
 	enrollmentFields := []kvPair{}
-	exclusionFields := []kvPair{}
+	groupFields := []kvPair{}
 	riskFlagFields := []kvPair{}
 	riskScoreFields := []kvPair{}
-	groupFields := []kvPair{}
 
 	for k, v := range alr.KeyValue {
-		if assignmentPattern.MatchString(k) {
-			assignmentFields = append(assignmentFields, kvPair{k, v})
-		} else if enrollmentPattern.MatchString(k) {
+		if enrollmentPattern.MatchString(k) {
 			enrollmentFields = append(enrollmentFields, kvPair{k, v})
-		} else if exclusionPattern.MatchString(k) {
-			exclusionFields = append(exclusionFields, kvPair{k, v})
 		} else if riskFlagsPattern.MatchString(k) {
 			riskFlagFields = append(riskFlagFields, kvPair{k, v})
 		} else if riskScoresPattern.MatchString(k) {
 			riskScoreFields = append(riskScoreFields, kvPair{k, v})
 		} else if groupPattern.MatchString(k) {
 			groupFields = append(groupFields, kvPair{k, v})
+		} else if hccVersion.MatchString(k) {
+			hccVersionFields = append(hccVersionFields, kvPair{k, v})
 		}
 	}
 
 	return kvArena{
-		assignment: assignmentFields,
-		enrollment: enrollmentFields,
-		exclusion:  exclusionFields,
-		riskFlag:   riskFlagFields,
-		riskScore:  riskFlagFields,
+		enrollment:   enrollmentFields,
+		riskFlag:     riskFlagFields,
+		riskScore:    riskScoreFields,
+		hccVersion:   hccVersionFields,
+		group: groupFields,
 	}
 }

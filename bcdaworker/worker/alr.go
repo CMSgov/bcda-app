@@ -5,10 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -17,9 +13,11 @@ import (
 	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/google/fhir/go/jsonformat"
-	"github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 /******************************************************************************
@@ -34,13 +32,7 @@ type AlrWorker struct {
 	StagingDir string `conf:"FHIR_STAGING_DIR"`
 }
 
-//data is used to send FHIR data to a go routine to write to disk
-type data struct {
-	patient      *resources_go_proto.Patient
-	observations []*resources_go_proto.Observation
-}
-
-var resources = [...]string{"patient", "observations"}
+var resources = [...]string{"patient", "coverage", "group", "risk", "observations"}
 
 /******************************************************************************
 	Functions
@@ -65,7 +57,7 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 	return worker
 }
 
-func goWriter(ctx context.Context, a *AlrWorker, c chan data, fileMap map[string]*os.File,
+func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
 	marshaller *jsonformat.Marshaller, result chan error, resourceTypes []string, id uint) {
 
 	writerPool := make([]*bufio.Writer, len(fileMap))
@@ -78,28 +70,60 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan data, fileMap map[string
 	}
 
 	for i := range c {
-		// marshall
-		patientb, err := marshaller.MarshalResource(i.patient)
-		patients := string(patientb) + "\n"
+		// marshalling structs into JSON
+
+		//PATIENT
+		patientb, err := marshaller.MarshalResource(i.Patient)
 		if err != nil {
 			// Make sure to send err back to the other thread
 			result <- err
 			return
 		}
-		var observations []string
+		patients := string(patientb) + "\n"
 
-		for _, observation := range i.observations {
-			obsMarshalled, err := marshaller.MarshalResource(observation)
+		// COVERAGE
+		coverageb, err := marshaller.MarshalResource(i.Coverage)
+		if err != nil {
+			// Make sure to send err back to the other thread
+			result <- err
+			return
+		}
+		coverage := string(coverageb) + "\n"
+
+		// GROUP
+		groupb, err := marshaller.MarshalResource(i.Group)
+		if err != nil {
+			// Make sure to send err back to the other thread
+			result <- err
+			return
+		}
+		group := string(groupb) + "\n"
+
+		// RISK
+		var riskAssessment = []string{}
+
+		for _, r := range i.Risk {
+
+			riskb, err := marshaller.MarshalResource(r)
 			if err != nil {
+				// Make sure to send err back to the other thread
 				result <- err
 				return
 			}
-			observations = append(observations, string(obsMarshalled))
+			risk := string(riskb) + "\n"
+			riskAssessment = append(riskAssessment, risk)
 		}
+		risk := strings.Join(riskAssessment, "\n")
 
-		observation := strings.Join(observations, "\n")
+		// OBSERVATION
+		observationb, err := marshaller.MarshalResource(i.Observation)
+		if err != nil {
+			result <- err
+			return
+		}
+		observation := string(observationb) + "\n"
 
-		alrResources := []string{patients, observation}
+		alrResources := []string{patients, observation, coverage, group, risk}
 
 		if len(alrResources) != len(writerPool) {
 			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
@@ -198,7 +222,7 @@ func (a *AlrWorker) ProcessAlrJob(
 
 	// Creating channels for go routine
 	// c is buffered b/c IO operation is slower than unmarshalling
-	c := make(chan data, 1000) // 1000 rows before blocking
+	c := make(chan *alr.AlrFhirBulk, 1000) // 1000 rows before blocking
 	result := make(chan error)
 
 	// A go routine that will streamed data to write to disk.
@@ -208,8 +232,13 @@ func (a *AlrWorker) ProcessAlrJob(
 
 	// Marshall into JSON and send it over the channel
 	for i := range alrModels {
-		patient, observations := alr.ToFHIR(&alrModels[i], alrModels[i].Timestamp)
-		c <- data{patient, observations}
+		fhirBulk := alr.ToFHIR(&alrModels[i]) // Removed timestamp, but can be added back here
+
+        if fhirBulk == nil {
+            continue
+        }
+
+		c <- fhirBulk
 	}
 
 	// close channel c since we are no longer writing to it

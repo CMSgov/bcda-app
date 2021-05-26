@@ -193,12 +193,13 @@ func TestStartAlrJob(t *testing.T) {
 	assert.NoError(t, err)
 
 	// just use one mbi for this test
-	twoMbis := make([]string, 2)
+	twoMbis := []string{}
 	twoMbis = append(twoMbis, mbis[0].MBI)
 	twoMbis = append(twoMbis, mbis[1].MBI)
 
 	alr, err := alrWorker.GetAlr(ctx, *aco.CMSID, twoMbis, time.Time{}, time.Time{})
 	assert.NoError(t, err)
+	fmt.Println("!!!", alr)
 
 	// Add the ACO into aco table
 	job := models.Job{

@@ -53,7 +53,7 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 			// ext - changeReason
 			ext := extensionMaker("reasonCode",
 				"", kv.key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", "")
-			// TODO: Need to put in diplay when figure out how to
+			// TODO: Need to put in diplay when we figure out best way
 
 			extension = append(extension, ext)
 		case claimsBasedAssignmentFlagP.MatchString(kv.key):

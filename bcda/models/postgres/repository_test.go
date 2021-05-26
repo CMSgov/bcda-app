@@ -870,8 +870,16 @@ func (r *RepositoryTestSuite) TestAlr() {
 
 	// Generate some data
 	exMap := make(map[string]string)
-	exMap["test1"] = "Test 01!"
-	exMap["test2"] = "Test 02!"
+	exMap["HCC_version"] = "V12"
+	exMap["EnrollFlag1"] = "1"
+	exMap["VA_TIN"] = "123456789"
+	exMap["CBA_FLAG"] = "1"
+	exMap["EXCLUDED"] = "0"
+	exMap["BENE_RSK_R_SCRE_01"] = "1.2345"
+	exMap["ESRD_SCORE"] = "1.2345"
+	exMap["DEM_AGDU_SCORE"] = "1.2345"
+	exMap["HCC_COL_1"] = "1"
+	exMap["HCC_COL_2"] = "0"
 	aco := "A1234"
 	MBIs := []string{"abd123abd01", "abd123abd02"}
 	timestamp := time.Now()
@@ -941,8 +949,8 @@ func (r *RepositoryTestSuite) TestAlr() {
 	assert.EqualValues(r.T(), alrs[0].BeneFirstName, rn[0].BeneFirstName)
 
 	// Double check if you can get value from map
-	assert.EqualValues(r.T(), nobounds[0].KeyValue["test1"], "Test 01!")
-	assert.EqualValues(r.T(), nobounds[0].KeyValue["test2"], "Test 02!")
+	assert.EqualValues(r.T(), nobounds[0].KeyValue["BENE_RSK_R_SCRE_01"], "1.2345")
+	assert.EqualValues(r.T(), nobounds[0].KeyValue["ESRD_SCORE"], "1.2345")
 
 	// Check if the MBI filter worker
 	mbi, err := alrRepo.GetAlr(ctx, aco, MBIs[:1], time.Time{}, time.Time{})

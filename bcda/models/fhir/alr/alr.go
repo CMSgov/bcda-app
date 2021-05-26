@@ -1,22 +1,40 @@
 package alr
 
 import (
-	"time"
-
 	"github.com/CMSgov/bcda-app/bcda/models"
-	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+	"github.com/CMSgov/bcda-app/log"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
+type AlrFhirBulk struct {
+	Patient     *fhirmodels.Patient
+	Coverage    *fhirmodels.Coverage
+	Group       *fhirmodels.Group
+	Risk        []*fhirmodels.RiskAssessment
+	Observation *fhirmodels.Observation
+}
+
 // ToFHIR encodes the models.Alr into a FHIR Patient and N FHIR Observation resources
-func ToFHIR(alr *models.Alr, lastUpdated time.Time) (*fhirmodels.Patient, []*fhirmodels.Observation) {
-	p := patient(alr)
-	p.Meta = &fhirdatatypes.Meta{LastUpdated: fhirInstant(lastUpdated)}
+func ToFHIR(alr *models.Alr) *AlrFhirBulk {
 
-	obs := observations(alr)
-	for _, o := range obs {
-		o.Meta = &fhirdatatypes.Meta{LastUpdated: fhirInstant(lastUpdated)}
-	}
+	kvArenaInstance := keyValueMapper(alr)
+	hccVersion := kvArenaInstance.hccVersion
+	if len(hccVersion) < 1 {
+		log.API.Warnf("Could not get HCC version.")
+		return nil
+    }
 
-	return p, obs
+	sub := patient(alr)
+	cov := coverage(alr.BeneMBI, kvArenaInstance.enrollment)
+	group := group(alr.BeneMBI, kvArenaInstance.group)
+	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.riskFlag)
+	obs := observations(hccVersion[0].value, alr.BeneMBI, kvArenaInstance.riskScore)
+
+	return &AlrFhirBulk{
+        Patient: sub,
+        Coverage: cov,
+        Group: group,
+        Risk: risk,
+        Observation: obs,
+    }
 }
