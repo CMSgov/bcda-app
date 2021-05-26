@@ -25,9 +25,7 @@ type kvPair struct {
 
 // These are regexp patterns used for mapping fields from ALR data
 var (
-	assignmentPattern,
 	enrollmentPattern,
-	exclusionPattern,
 	riskFlagsPattern,
 	riskScoresPattern,
 	hccVersion,

@@ -1,24 +1,27 @@
 package alr_test
 
 import (
+	"bufio"
 	"flag"
-	//"io"
-	//"io/ioutil"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
-	//"strings"
+	"strings"
 	"testing"
-	//"time"
 
 	alrcsv "github.com/CMSgov/bcda-app/bcda/alr/csv"
 	alrgen "github.com/CMSgov/bcda-app/bcda/alr/gen"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	//"github.com/google/fhir/go/jsonformat"
-	//fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/google/fhir/go/jsonformat"
+	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 var output = flag.Bool("output", false, "write FHIR resources to a file")
+var resources = [...]string{"patient", "coverage", "group", "risk", "observations"}
 
 // TestGenerateAlr uses our synthetic data generation tool to produce the associated FHIR resources
 // To write to the FHIR resources to a file:
@@ -44,52 +47,88 @@ func TestGenerateAlr(t *testing.T) {
 		return
 	}
 
-	//dir := writeToFile(t, patient, obs)
-	//t.Logf("FHIR resources written to: %s", dir)
+	dir := writeToFile(t, fhirBulk)
+	t.Logf("FHIR resources written to: %s", dir)
 }
 
 // writeToFile writes the patient and observation resources to a file returning the directory
-//func writeToFile(t *testing.T, patient *fhirmodels.Patient, observations []*fhirmodels.Observation) string {
-	//tempDir, err := ioutil.TempDir("", "alr_fhir")
-	//assert.NoError(t, err)
+func writeToFile(t *testing.T, fhirBulk *alr.AlrFhirBulk) string {
+	tempDir, err := ioutil.TempDir("", "alr_fhir")
+	assert.NoError(t, err)
 
-	//marshaller, err := jsonformat.NewPrettyMarshaller(jsonformat.STU3)
-	//assert.NoError(t, err)
+	marshaller, err := jsonformat.NewPrettyMarshaller(jsonformat.STU3)
+	assert.NoError(t, err)
 
-	//pFile, err := ioutil.TempFile(tempDir, "patient")
-	//assert.NoError(t, err)
-	//defer pFile.Close()
-	//writeResource(t, pFile, marshaller, &fhirmodels.ContainedResource{
-		//OneofResource: &fhirmodels.ContainedResource_Patient{Patient: patient}})
+	fieldNum := len(resources)
+	writerPool := make([]*bufio.Writer, fieldNum)
 
-	//for _, observation := range observations {
-		//func() {
-			//// File name contains the specific observation details
-			//name := strings.ReplaceAll(observation.Code.Coding[1].Code.Value, " ", "_")
-			//file, err := ioutil.TempFile(tempDir, name)
-			//assert.NoError(t, err)
-			//defer file.Close()
-			//resource := &fhirmodels.ContainedResource{
-				//OneofResource: &fhirmodels.ContainedResource_Observation{Observation: observation}}
-			//assert.NoError(t, err)
-			//writeResource(t, file, marshaller, resource)
-		//}()
-	//}
+	for i := 0; i < fieldNum; i++ {
+		ndjsonFilename := uuid.New()
+		f, err := os.Create(fmt.Sprintf("%s/%s.ndjson", tempDir, ndjsonFilename))
+		assert.NoError(t, err)
 
-	//return tempDir
-//}
+		file := f
+		w := bufio.NewWriter(file)
+		writerPool[i] = w
+		defer utils.CloseFileAndLogError(file)
+	}
 
-//func writeResource(t *testing.T, w io.Writer, marshaller *jsonformat.Marshaller, resource *fhirmodels.ContainedResource) {
-	//data, err := marshaller.Marshal(resource)
-	//assert.NoError(t, err)
-	//_, err = w.Write(data)
-	//assert.NoError(t, err)
-//}
+	// marshalling structs into JSON
+
+	//PATIENT
+	patientb, err := marshaller.MarshalResource(fhirBulk.Patient)
+	assert.NoError(t, err)
+	patients := string(patientb) + "\n"
+
+	// COVERAGE
+	coverageb, err := marshaller.MarshalResource(fhirBulk.Coverage)
+	assert.NoError(t, err)
+	coverage := string(coverageb) + "\n"
+
+	// GROUP
+	groupb, err := marshaller.MarshalResource(fhirBulk.Group)
+	assert.NoError(t, err)
+	group := string(groupb) + "\n"
+
+	// RISK
+	var riskAssessment = []string{}
+
+	for _, r := range fhirBulk.Risk {
+
+		riskb, err := marshaller.MarshalResource(r)
+		assert.NoError(t, err)
+		risk := string(riskb) + "\n"
+		riskAssessment = append(riskAssessment, risk)
+	}
+	risk := strings.Join(riskAssessment, "\n")
+
+	// OBSERVATION
+	observationb, err := marshaller.MarshalResource(fhirBulk.Observation)
+	assert.NoError(t, err)
+
+	observation := string(observationb) + "\n"
+
+	alrResources := []string{patients, observation, coverage, group, risk}
+
+	// IO operations
+	for n, resource := range alrResources {
+
+		w := writerPool[n]
+
+		_, err = w.WriteString(resource)
+		assert.NoError(t, err)
+		err = w.Flush()
+		assert.NoError(t, err)
+
+	}
+
+	return tempDir
+}
 
 type mbiSupplier struct {
-    mbiGen func() string
+	mbiGen func() string
 }
 
 func (m mbiSupplier) GetMBIs() ([]string, error) {
-    return []string{m.mbiGen()}, nil
+	return []string{m.mbiGen()}, nil
 }

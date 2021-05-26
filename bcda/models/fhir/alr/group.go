@@ -75,7 +75,7 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 		case claimsBasedAssignmentStepP.MatchString(kv.key):
 			// ext - claimsBasedAssignmentStep
 
-			val, err := strconv.Atoi(kv.value)
+			val, err := strconv.ParseInt(kv.value, 10, 32)
 			if err != nil {
 				log.API.Warnf("Could convert string to int for {}: {}", mbi, err)
 			}

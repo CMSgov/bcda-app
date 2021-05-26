@@ -134,6 +134,8 @@ func monthlyRiskScoreMaker(mbi string, keyValue []kvPair) *fhirmodels.RiskAssess
 		})
 	}
 
+    risk.Prediction = prediction
+
 	return risk
 }
 
