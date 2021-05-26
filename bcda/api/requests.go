@@ -52,13 +52,15 @@ type Handler struct {
 	supportedResources map[string]struct{}
 
 	bbBasePath string
+
+	apiVersion string
 }
 
-func NewHandler(resources []string, basePath string) *Handler {
-	return newHandler(resources, basePath, database.Connection)
+func NewHandler(resources []string, basePath string, apiVersion string) *Handler {
+	return newHandler(resources, basePath, apiVersion, database.Connection)
 }
 
-func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
+func newHandler(resources []string, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -78,6 +80,7 @@ func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
 	}
 
 	h.bbBasePath = basePath
+	h.apiVersion = apiVersion
 
 	return h
 }
@@ -357,7 +360,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		}
 
 		// We've successfully created the job
-		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
+		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, h.apiVersion, newJob.ID))
 		w.WriteHeader(http.StatusAccepted)
 	}()
 

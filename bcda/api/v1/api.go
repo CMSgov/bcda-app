@@ -24,7 +24,7 @@ import (
 var h *api.Handler
 
 func init() {
-	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit", "Observation"}, "/v1/fhir")
+	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit", "Observation"}, "/v1/fhir", "v1")
 }
 
 /*
