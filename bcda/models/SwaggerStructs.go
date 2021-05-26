@@ -167,7 +167,7 @@ type ResourceTypeParamV2 struct {
 	// style: form
 	// explode: false
 	// required: true
-	// items.enum: Coverage,Patient
+	// items.enum: Coverage,Patient,ExplanationOfBenefit
 	ResourceType []string `json:"_type"`
 }
 
