@@ -198,6 +198,8 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/metadata")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 }
@@ -212,6 +214,8 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	res := s.getAPIRoute("/api/v2/Patient/$export")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/metadata")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)

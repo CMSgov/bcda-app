@@ -27,7 +27,7 @@ var (
 func init() {
 	var err error
 
-	h = api.NewHandler([]string{"Patient", "Coverage"}, "/v2/fhir")
+	h = api.NewHandler([]string{"Patient", "Coverage"}, "/v2/fhir", "v2")
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
 	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.R4)
@@ -86,6 +86,62 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkGroupRequest(w, r)
+}
+
+/*
+	swagger:route GET /api/v2/jobs/{jobId} jobV2 jobStatusV2
+
+	Get job status
+
+	Returns the current status of an export job.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: jobStatusResponse
+		200: completedJobResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		404: notFoundResponse
+		410: goneResponse
+		500: errorResponse
+*/
+func JobStatus(w http.ResponseWriter, r *http.Request) {
+	h.JobStatus(w, r)
+}
+
+/*
+	swagger:route DELETE /api/v2/jobs/{jobId} jobV2 deleteJobV2
+
+	Cancel a job
+
+	Cancels a currently running job.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: deleteJobResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		404: notFoundResponse
+		410: goneResponse
+		500: errorResponse
+*/
+
+func DeleteJob(w http.ResponseWriter, r *http.Request) {
+	h.DeleteJob(w, r)
 }
 
 /*

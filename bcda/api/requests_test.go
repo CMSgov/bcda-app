@@ -96,7 +96,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			}
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
-			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", s.db)
+			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
 			h.Svc = mockSvc
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
@@ -135,7 +135,7 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 
-	h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", s.db)
+	h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
 	enqueuer := &queueing.MockEnqueuer{}

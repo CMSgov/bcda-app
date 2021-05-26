@@ -61,6 +61,8 @@ func NewAPIRouter() http.Handler {
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
+			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v2.JobStatus))
+			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler("/jobs/{jobID}", v2.DeleteJob))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
 		})
 	}
