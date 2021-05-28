@@ -27,7 +27,8 @@ var (
 func init() {
 	var err error
 
-	h = api.NewHandler([]string{"Patient", "Coverage"}, "/v2/fhir", "v2")
+	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit"}, "/v2/fhir", "v2")
+
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
 	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.R4)
