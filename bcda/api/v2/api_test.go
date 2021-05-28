@@ -429,8 +429,8 @@ func (s *APITestSuite) TestResourceTypes() {
 		{"Supported type - Patient", []string{"Patient"}, http.StatusAccepted},
 		{"Supported type - Coverage", []string{"Coverage"}, http.StatusAccepted},
 		{"Supported type - Patient,Coverage", []string{"Patient", "Coverage"}, http.StatusAccepted},
-		{"Unsupported type - EOB", []string{"ExplanationOfBenefit"}, http.StatusAccepted},
-		{"Unsupported type - default", nil, http.StatusAccepted},
+		{"Supported type - EOB", []string{"ExplanationOfBenefit"}, http.StatusAccepted},
+		{"Supported type - default", nil, http.StatusAccepted},
 	}
 
 	for idx, handler := range []http.HandlerFunc{BulkGroupRequest, BulkPatientRequest} {
