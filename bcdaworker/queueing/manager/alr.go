@@ -155,10 +155,9 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return err
 	}
 
-	// Since the completed count is used for reporting (not for job completion), we do not
-	// need it to succeed for moving on.
 	if err := q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID); err != nil {
 		q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
+        return err
 	}
 
 	jobComplete, err := q.isJobComplete(ctx, jobArgs.ID)

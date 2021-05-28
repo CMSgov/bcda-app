@@ -18,27 +18,28 @@ func coverage(mbi string, keyValue []kvPair) *fhirmodels.Coverage {
 		Profile: []*fhirdatatypes.
 			Uri{{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Coverage"}},
 	}
-	coverage.Extension = make([]*fhirdatatypes.Extension, len(keyValue))
+	coverage.Extension = []*fhirdatatypes.Extension{}
     coverage.Beneficiary = &fhirdatatypes.Reference{
         Reference: &fhirdatatypes.Reference_BasicId{
             BasicId: &fhirdatatypes.ReferenceId{Value: mbi},
         },
     }
 
-	for i, kv := range keyValue {
+	for _, kv := range keyValue {
 		// FHIR does not include empty K:V pairs
-		if kv.value != "" {
-			continue
-		}
+        if kv.value == "" {
+            continue
+        }
 
-		coverage.Extension[i] = &fhirdatatypes.Extension{}
-        ext := coverage.Extension[i]
+        ext := &fhirdatatypes.Extension{}
 		ext.Url = &fhirdatatypes.Uri{Value: kv.key}
 		ext.Value = &fhirdatatypes.Extension_ValueX{
 			Choice: &fhirdatatypes.Extension_ValueX_StringValue{
 				StringValue: fhirString(kv.value),
 			},
 		}
+
+        coverage.Extension = append(coverage.Extension, ext)
 	}
 
 	return coverage
