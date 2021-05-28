@@ -1,12 +1,17 @@
 package api
 
 import (
+	"context"
 	"database/sql"
-	"errors"
+	"encoding/json"
+	goerrors "errors"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi"
+	"github.com/pkg/errors"
 
 	"net/http"
 	"time"
@@ -27,6 +32,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
+	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
 
@@ -46,13 +52,15 @@ type Handler struct {
 	supportedResources map[string]struct{}
 
 	bbBasePath string
+
+	apiVersion string
 }
 
-func NewHandler(resources []string, basePath string) *Handler {
-	return newHandler(resources, basePath, database.Connection)
+func NewHandler(resources []string, basePath string, apiVersion string) *Handler {
+	return newHandler(resources, basePath, apiVersion, database.Connection)
 }
 
-func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
+func newHandler(resources []string, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -72,6 +80,7 @@ func newHandler(resources []string, basePath string, db *sql.DB) *Handler {
 	}
 
 	h.bbBasePath = basePath
+	h.apiVersion = apiVersion
 
 	return h
 }
@@ -118,6 +127,140 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.bulkRequest(w, r, reqType)
+}
+
+func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
+	jobIDStr := chi.URLParam(r, "jobID")
+
+	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
+	if err != nil {
+		err = errors.Wrap(err, "cannot convert jobID to uint")
+		log.API.Error(err)
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
+	job, jobKeys, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
+	if err != nil {
+		log.API.Error(err)
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
+		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
+		// So returning a StatusNotFound may be a misnomer
+		responseutils.WriteError(oo, w, http.StatusNotFound)
+		return
+	}
+
+	switch job.Status {
+
+	case models.JobStatusFailed, models.JobStatusFailedExpired:
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
+		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+	case models.JobStatusPending, models.JobStatusInProgress:
+		w.Header().Set("X-Progress", job.StatusMessage())
+		w.WriteHeader(http.StatusAccepted)
+		return
+	case models.JobStatusCompleted:
+		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
+		if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
+			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.NotFoundErr, "")
+			responseutils.WriteError(oo, w, http.StatusGone)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
+		scheme := "http"
+		if servicemux.IsHTTPS(r) {
+			scheme = "https"
+		}
+
+		rb := BulkResponseBody{
+			TransactionTime:     job.TransactionTime,
+			RequestURL:          job.RequestURL,
+			RequiresAccessToken: true,
+			Files:               []FileItem{},
+			Errors:              []FileItem{},
+			JobID:               job.ID,
+		}
+
+		for _, jobKey := range jobKeys {
+			// data files
+			fi := FileItem{
+				Type: jobKey.ResourceType,
+				URL:  fmt.Sprintf("%s://%s/data/%d/%s", scheme, r.Host, jobID, strings.TrimSpace(jobKey.FileName)),
+			}
+			rb.Files = append(rb.Files, fi)
+
+			// error files
+			errFileName := strings.Split(jobKey.FileName, ".")[0]
+			errFilePath := fmt.Sprintf("%s/%d/%s-error.ndjson", conf.GetEnv("FHIR_PAYLOAD_DIR"), jobID, errFileName)
+			if _, err := os.Stat(errFilePath); !os.IsNotExist(err) {
+				errFI := FileItem{
+					Type: "OperationOutcome",
+					URL:  fmt.Sprintf("%s://%s/data/%d/%s-error.ndjson", scheme, r.Host, jobID, errFileName),
+				}
+				rb.Errors = append(rb.Errors, errFI)
+			}
+		}
+
+		jsonData, err := json.Marshal(rb)
+		if err != nil {
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, "")
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+
+		_, err = w.Write([]byte(jsonData))
+		if err != nil {
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+				responseutils.InternalErr, "")
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	case models.JobStatusArchived, models.JobStatusExpired:
+		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
+			responseutils.NotFoundErr, "")
+		responseutils.WriteError(oo, w, http.StatusGone)
+	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND,
+			responseutils.NotFoundErr, "Job has been cancelled.")
+		responseutils.WriteError(oo, w, http.StatusNotFound)
+	}
+}
+
+func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
+	jobIDStr := chi.URLParam(r, "jobID")
+
+	jobID, err := strconv.ParseUint(jobIDStr, 10, 64)
+	if err != nil {
+		err = errors.Wrap(err, "cannot convert jobID to uint")
+		log.API.Error(err)
+		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
+		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		return
+	}
+
+	_, err = h.Svc.CancelJob(context.Background(), uint(jobID))
+	if err != nil {
+		switch err {
+		case service.ErrJobNotCancellable:
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DeletedErr, err.Error())
+			responseutils.WriteError(oo, w, http.StatusGone)
+			return
+		default:
+			log.API.Error(err)
+			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, err.Error())
+			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
@@ -217,7 +360,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		}
 
 		// We've successfully created the job
-		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/v1/jobs/%d", scheme, r.Host, newJob.ID))
+		w.Header().Set("Content-Location", fmt.Sprintf("%s://%s/api/%s/jobs/%d", scheme, r.Host, h.apiVersion, newJob.ID))
 		w.WriteHeader(http.StatusAccepted)
 	}()
 
@@ -259,7 +402,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 			oo       *fhirmodels.OperationOutcome
 			respCode int
 		)
-		if ok := errors.As(err, &service.CCLFNotFoundError{}); ok && reqType == service.Runout {
+		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok && reqType == service.Runout {
 			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
 				responseutils.NotFoundErr, err.Error())
 			respCode = http.StatusNotFound
@@ -313,7 +456,7 @@ func readAuthData(r *http.Request) (data auth.AuthData, err error) {
 	var ok bool
 	data, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 	if !ok {
-		err = errors.New("no auth data in context")
+		err = goerrors.New("no auth data in context")
 	}
 	return
 }
