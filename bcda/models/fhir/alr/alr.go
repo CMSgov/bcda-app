@@ -22,19 +22,19 @@ func ToFHIR(alr *models.Alr) *AlrFhirBulk {
 	if len(hccVersion) < 1 {
 		log.API.Warnf("Could not get HCC version.")
 		return nil
-    }
+	}
 
 	sub := patient(alr)
 	cov := coverage(alr.BeneMBI, kvArenaInstance.enrollment)
 	group := group(alr.BeneMBI, kvArenaInstance.group)
-	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.riskFlag)
-	obs := observations(hccVersion[0].value, alr.BeneMBI, kvArenaInstance.riskScore)
+	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.riskScore)
+	obs := observations(hccVersion[0].value, alr.BeneMBI, kvArenaInstance.riskFlag)
 
 	return &AlrFhirBulk{
-        Patient: sub,
-        Coverage: cov,
-        Group: group,
-        Risk: risk,
-        Observation: obs,
-    }
+		Patient:     sub,
+		Coverage:    cov,
+		Group:       group,
+		Risk:        risk,
+		Observation: obs,
+	}
 }

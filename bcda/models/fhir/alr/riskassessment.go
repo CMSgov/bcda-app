@@ -30,6 +30,11 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 	mrsCollection := []kvPair{}
 
 	for _, kv := range keyValue {
+
+		if kv.value == "" {
+			continue
+		}
+
 		switch {
 		case monthlyRiskScore.MatchString(kv.key):
 			// All monthlyRiskScore need to be in one RiskAssessment
@@ -134,7 +139,7 @@ func monthlyRiskScoreMaker(mbi string, keyValue []kvPair) *fhirmodels.RiskAssess
 		})
 	}
 
-    risk.Prediction = prediction
+	risk.Prediction = prediction
 
 	return risk
 }

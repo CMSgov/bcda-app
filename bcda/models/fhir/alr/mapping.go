@@ -79,10 +79,10 @@ func keyValueMapper(alr *models.Alr) kvArena {
 	}
 
 	return kvArena{
-		enrollment:   enrollmentFields,
-		riskFlag:     riskFlagFields,
-		riskScore:    riskScoreFields,
-		hccVersion:   hccVersionFields,
-		group: groupFields,
+		enrollment: enrollmentFields,
+		riskFlag:   riskFlagFields,
+		riskScore:  riskScoreFields,
+		hccVersion: hccVersionFields,
+		group:      groupFields,
 	}
 }
