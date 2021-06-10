@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -104,6 +105,25 @@ func (s *CLITestSuite) TestSetup() {
 	app := setUpApp()
 	assert.Equal(s.T(), app.Name, Name)
 	assert.Equal(s.T(), app.Usage, Usage)
+}
+
+func (s *CLITestSuite) TestIgnoreSignals() {
+	// 1. Start the signal handler and retrieve the signal channel.
+	// 2. Retrieve the process which allows access to Signal handling.
+	// 3. Sending both SIGINT and SIGTERM signals to verify the signals are being handled (ignored).
+	// 4. Assert that the signal channel is empty, meaning both signals have been handled.
+	sigs := ignoreSignals()
+	defer close(sigs)
+
+	process, err := os.FindProcess(os.Getpid())
+	assert.NoError(s.T(), err)
+
+	process.Signal(syscall.SIGINT)
+	process.Signal(syscall.SIGTERM)
+
+	time.Sleep(50 * time.Millisecond) // Assure both signal requests have a chance to be handled
+
+	assert.Equal(s.T(), 0, len(sigs), "ignoreSignals has not pulled the signal from sigs channel")
 }
 
 func (s *CLITestSuite) TestGenerateClientCredentials() {
