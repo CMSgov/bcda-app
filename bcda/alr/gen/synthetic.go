@@ -86,6 +86,9 @@ var valueGenerator = [...]regexpClosurePair{
 	}},
 	{regexp.MustCompile("^CBA_FLAG$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
 	{regexp.MustCompile("^ASSIGNMENT_TYPE$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
+	{regexp.MustCompile("^MASTER_ID$"), func() string { return randomdata.Alphanumeric(3) }},
+	{regexp.MustCompile("^NPI_USED$"), func() string { return randomdata.Alphanumeric(10) }},
+	{regexp.MustCompile("^PCS_COUNT$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
 }
 
 // UpdateCSV uses a random generator to populate fields present in the CSV file referenced by the fileName.

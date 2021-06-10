@@ -20,8 +20,8 @@ func coverage(mbi string, keyValue []kvPair) *fhirmodels.Coverage {
 	}
 	coverage.Extension = []*fhirdatatypes.Extension{}
 	coverage.Beneficiary = &fhirdatatypes.Reference{
-		Reference: &fhirdatatypes.Reference_BasicId{
-			BasicId: &fhirdatatypes.ReferenceId{Value: mbi},
+		Reference: &fhirdatatypes.Reference_OrganizationId{
+			OrganizationId: &fhirdatatypes.ReferenceId{Value: mbi},
 		},
 	}
 
