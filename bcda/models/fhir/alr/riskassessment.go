@@ -48,7 +48,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-esrd",
 				"https://bluebutton.cms.gov/resources/variables/alr/esrd-score",
-				kv.key, "")
+				kv.key, "CMS-HCC Risk Score for ESRD")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -57,7 +57,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-disabled",
 				"https://bluebutton.cms.gov/resources/variables/alr/disabled-score",
-				kv.key, "")
+				kv.key, "CMS-HCC Risk Score for disabled")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -66,7 +66,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-aged-dual",
 				"https://bluebutton.cms.gov/resources/variables/alr/aged-dual-score",
-				kv.key, "")
+				kv.key, "CMS-HCC Risk Score for Aged/Dual")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -75,7 +75,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-aged-non-dual",
 				"https://bluebutton.cms.gov/resources/variables/alr/aged-non-dual-score",
-				kv.key, "")
+				kv.key, "CMS-HCC Risk Score for Aged/Non-dual Status")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -84,7 +84,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-demo-esrd",
 				"https://bluebutton.cms.gov/resources/variables/alr/demo-esrd-score",
-				kv.key, "")
+				kv.key, "Demographic Risk Score for ESRD Status")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -92,7 +92,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-demo-disabled",
 				"https://bluebutton.cms.gov/resources/variables/alr/demo-disabled-score",
-				kv.key, "")
+				kv.key, "Demographic Risk Score for Disabled Status")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -100,7 +100,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-demo-aged-dual",
 				"https://bluebutton.cms.gov/resources/variables/alr/demo-aged-dual-score",
-				kv.key, "")
+				kv.key, "Demographic Risk Score for Aged/Dual Status")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -108,7 +108,7 @@ func riskAssessment(mbi string, keyValue []kvPair) []*fhirmodels.RiskAssessment 
 
 			risk := riskMaker(mbi, "example-id-risk-score-demo-aged-non-dual",
 				"https://bluebutton.cms.gov/resources/variables/alr/demo-aged-non-dual-score",
-				kv.key, "")
+				kv.key, "Demographic Risk Score for Aged/Non-dual Status")
 			risk.Prediction = predictionMaker(kv.key, kv.value)
 
 			ra = append(ra, risk)
@@ -125,7 +125,7 @@ func monthlyRiskScoreMaker(mbi string, keyValue []kvPair) *fhirmodels.RiskAssess
 
 	risk := riskMaker(mbi, "example-id-monthly-risk-score",
 		"https://bluebutton.cms.gov/resources/variables/alr/bene_rsk_r_scre",
-		"BENE_RSK_R_SCRE", "")
+		"BENE_RSK_R_SCRE", "CMS-HCC Monthly Risk Scores")
 	prediction := []*fhirmodels.RiskAssessment_Prediction{}
 
 	for _, kv := range keyValue {
