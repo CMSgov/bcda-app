@@ -118,8 +118,10 @@ func (s *CLITestSuite) TestIgnoreSignals() {
 	process, err := os.FindProcess(os.Getpid())
 	assert.NoError(s.T(), err)
 
-	process.Signal(syscall.SIGINT)
-	process.Signal(syscall.SIGTERM)
+	err = process.Signal(syscall.SIGINT)
+	assert.NoError(s.T(), err)
+	err = process.Signal(syscall.SIGTERM)
+	assert.NoError(s.T(), err)
 
 	time.Sleep(50 * time.Millisecond) // Assure both signal requests have a chance to be handled
 
