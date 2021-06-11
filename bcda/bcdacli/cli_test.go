@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -113,7 +114,7 @@ func (s *CLITestSuite) TestIgnoreSignals() {
 	// 3. Sending both SIGINT and SIGTERM signals to verify the signals are being handled (ignored).
 	// 4. Assert that the signal channel is empty, meaning both signals have been handled.
 	sigs := ignoreSignals()
-	defer close(sigs)
+	defer signal.Stop(sigs)
 
 	process, err := os.FindProcess(os.Getpid())
 	assert.NoError(s.T(), err)
@@ -123,7 +124,7 @@ func (s *CLITestSuite) TestIgnoreSignals() {
 	err = process.Signal(syscall.SIGTERM)
 	assert.NoError(s.T(), err)
 
-	time.Sleep(50 * time.Millisecond) // Assure both signal requests have a chance to be handled
+	time.Sleep(100 * time.Millisecond) // Assure both signal requests have a chance to be handled
 
 	assert.Equal(s.T(), 0, len(sigs), "ignoreSignals has not pulled the signal from sigs channel")
 }
