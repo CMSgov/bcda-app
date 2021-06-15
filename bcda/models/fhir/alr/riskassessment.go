@@ -11,7 +11,7 @@ import (
 
 // Further break down of Risk...
 var (
-	monthlyRiskScore  = regexp.MustCompile(`^BENE_RSK_R_SCRE\d+$`)
+	monthlyRiskScore  = regexp.MustCompile(`^BENE_RSK_R_SCRE_\d+$`)
 	esrdRiskScore     = regexp.MustCompile(`^ESRD_SCORE$`)
 	disabledRiskScore = regexp.MustCompile(`^DIS_SCORE$`)
 	ageduRiskScore    = regexp.MustCompile(`^AGDU_SCORE$`)
