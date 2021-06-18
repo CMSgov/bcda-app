@@ -32,6 +32,8 @@ var (
 	groupPattern *regexp.Regexp
 )
 
+var groupPatternDescriptions map[string]string
+
 func init() {
 	// There should be one field in table 1-1 that tells use what HCC version
 	// is used for that particular ALR
@@ -52,6 +54,16 @@ func init() {
 	// These are for risk assessment
 	riskScoresPattern = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|` +
 		`(DIS)|(AGDU)|(AGND)|(DEM_ESRD)|(DEM_DIS)|(DEM_AGDU)|(DEM_AGND))_SCORE)$`)
+
+	// Possibly temporary, but storing some field name from the data dictionary
+	groupPatternDescriptions = map[string]string{
+		"DECEASED_EXCLUDED":      "Beneficiary had a date of death prior to the start of the performance year",
+		"MISSING_ID_EXCLUDED":    "Beneficiary identifier is missing",
+		"PART_A_B_ONLY_EXCLUDED": "Beneficiary had at least one month of Part A-only Or Part B-only Coverage",
+		"GHP_EXCLUDED":           "Beneficiary had at least one month in a Medicare Health Plan",
+		"OUTSIDE_US_EXCLUDED":    "Beneficiary does not reside in the United States",
+		"OTHER_SHARED_SAV_INIT":   "Beneficiary included in other Shared Savings Initiatives",
+	}
 }
 
 // keyValueMapper take the K:V pair from models.Alr and puts them into one of
