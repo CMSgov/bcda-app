@@ -51,8 +51,12 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 			extension = append(extension, ext)
 		case changeReasonP.MatchString(kv.key):
 			// ext - changeReason
+
+			// get the variable name from the map set in mapping.go
+			display := groupPatternDescriptions[kv.key]
+
 			ext := extensionMaker("reasonCode",
-				"", kv.key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", "")
+				"", kv.key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
 			// TODO: Need to put in diplay when we figure out best way
 
 			extension = append(extension, ext)

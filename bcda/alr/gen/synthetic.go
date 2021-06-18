@@ -37,6 +37,9 @@ type regexpClosurePair struct {
 	fn    func() string
 }
 
+// This is an internal veriable to disable the weighted randomEmpty during testing
+var isTesting bool
+
 // Links header fields to a generator that produces a string value.
 // The generators used are based on the 2021 ALR data dictionary.
 // NOTE: We currently only have definitions for ALR Table 1-1.
@@ -91,6 +94,11 @@ var valueGenerator = [...]regexpClosurePair{
 	{regexp.MustCompile("^PCS_COUNT$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
 	{regexp.MustCompile("^REV_LINE_CNT$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
 	{regexp.MustCompile("^B_EM_LINE_CNT_T$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
+	{regexp.MustCompile("^ASSIGNED_BEFORE$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
+}
+
+func init(){
+    isTesting = false
 }
 
 // UpdateCSV uses a random generator to populate fields present in the CSV file referenced by the fileName.
@@ -149,7 +157,7 @@ func UpdateCSV(fileName string, supplier func() (mbis []string, err error)) erro
 
 // randomEmpty uses the weight value to check if we should return an empty string
 func randomEmpty(w weight, supplier func() string) string {
-	if float64(w) >= randomdata.Decimal(1) {
+	if float64(w) >= randomdata.Decimal(1) || !isTesting {
 		return supplier()
 	}
 	return ""
