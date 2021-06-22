@@ -30,6 +30,41 @@ func TestResponseUtilsWriterTestSuite(t *testing.T) {
 	suite.Run(t, new(ResponseUtilsWriterTestSuite))
 }
 
+func (s *ResponseUtilsWriterTestSuite) TestResponseWriterException() {
+	rw := NewResponseWriter()
+	rw.Exception(s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterExcepton")
+
+	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	assert.NoError(s.T(), err)
+	cr := res.(*fhirmodels.ContainedResource)
+	respOO := cr.GetOperationOutcome()
+
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_EXCEPTION, respOO.Issue[0].Code.Value)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Coding[0].Display.Value)
+	assert.Equal(s.T(), "TestResponseWriterExcepton", respOO.Issue[0].Details.Text.Value)
+	assert.Equal(s.T(), RequestErr, respOO.Issue[0].Details.Coding[0].Code.Value)
+}
+
+func (s *ResponseUtilsWriterTestSuite) TestResponseWriterNotFound() {
+	rw := NewResponseWriter()
+
+	rw.NotFound(s.rr, http.StatusAccepted, RequestErr, "TestResponseWriterNotFound")
+
+	res, err := s.unmarshaller.Unmarshal(s.rr.Body.Bytes())
+	assert.NoError(s.T(), err)
+	cr := res.(*fhirmodels.ContainedResource)
+	respOO := cr.GetOperationOutcome()
+
+	assert.Equal(s.T(), http.StatusAccepted, s.rr.Code)
+	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, respOO.Issue[0].Severity.Value)
+	assert.Equal(s.T(), fhircodes.IssueTypeCode_NOT_FOUND, respOO.Issue[0].Code.Value)
+	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Details.Coding[0].Display.Value)
+	assert.Equal(s.T(), "TestResponseWriterNotFound", respOO.Issue[0].Details.Text.Value)
+	assert.Equal(s.T(), RequestErr, respOO.Issue[0].Details.Coding[0].Code.Value)
+}
+
 func (s *ResponseUtilsWriterTestSuite) TestCreateOpOutcome() {
 	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, RequestErr, "TestCreateOpOutcome")
 	assert.Equal(s.T(), fhircodes.IssueSeverityCode_ERROR, oo.Issue[0].Severity.Value)
