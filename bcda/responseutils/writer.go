@@ -27,6 +27,22 @@ func init() {
 	}
 }
 
+type ResponseWriter struct{}
+
+func NewResponseWriter() ResponseWriter {
+	return ResponseWriter{}
+}
+
+func (r ResponseWriter) Exception(w http.ResponseWriter, statusCode int, errType, errMsg string) {
+	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, errType, errMsg)
+	WriteError(oo, w, statusCode)
+}
+
+func (r ResponseWriter) NotFound(w http.ResponseWriter, statusCode int, errType, errMsg string) {
+	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND, errType, errMsg)
+	WriteError(oo, w, statusCode)
+}
+
 func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
 
