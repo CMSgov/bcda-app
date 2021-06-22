@@ -19,6 +19,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
+	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
@@ -127,6 +128,7 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	req := s.genGroupRequest("runout", middleware.RequestParameters{})
 	w := httptest.NewRecorder()
 	h := &Handler{}
+	h.RespWriter = responseutils.NewResponseWriter()
 	h.BulkGroupRequest(w, req)
 
 	resp := w.Result()
