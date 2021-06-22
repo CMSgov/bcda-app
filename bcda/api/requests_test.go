@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +12,6 @@ import (
 	"time"
 
 	"github.com/go-testfixtures/testfixtures/v3"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -81,10 +82,14 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 		errToReturn error
 		respCode    int
+		apiVersion  string
 	}{
-		{"Successful", nil, http.StatusAccepted},
-		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound},
-		{"Some other error", errors.New("Some other error"), http.StatusInternalServerError},
+		{"Successful", nil, http.StatusAccepted, "v1"},
+		{"Successful v2", nil, http.StatusAccepted, "v2"},
+		{"No CCLF file found", service.CCLFNotFoundError{}, http.StatusNotFound, "v1"},
+		{"No CCLF file found v2", service.CCLFNotFoundError{}, http.StatusNotFound, "v2"},
+		{"Some other error", errors.New("Some other error"), http.StatusInternalServerError, "v1"},
+		{"Some other error v2", errors.New("Some other error"), http.StatusInternalServerError, "v2"},
 	}
 
 	for _, tt := range tests {
@@ -96,7 +101,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			}
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
-			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
+			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
