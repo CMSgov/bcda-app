@@ -63,6 +63,8 @@ type APIClient interface {
 	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
+	GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
+	GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 }
 
 type BlueButtonClient struct {
@@ -169,6 +171,34 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since stri
 	updateParamWithLastUpdated(&params, since, transactionTime)
 
 	u, err := bbc.getURL("Coverage", params)
+	if err != nil {
+		return nil, err
+	}
+
+	return bbc.getBundleData(u, jobID, cmsID, nil)
+}
+
+func (bbc *BlueButtonClient) GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+	mbiHash := HashIdentifier(mbi)
+	params := GetDefaultParams()
+	params.Set("mbi", mbiHash)
+	updateParamWithLastUpdated(&params, since, transactionTime)
+
+	u, err := bbc.getURL("Claim", params)
+	if err != nil {
+		return nil, err
+	}
+
+	return bbc.getBundleData(u, jobID, cmsID, nil)
+}
+
+func (bbc *BlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+	mbiHash := HashIdentifier(mbi)
+	params := GetDefaultParams()
+	params.Set("mbi", mbiHash)
+	updateParamWithLastUpdated(&params, since, transactionTime)
+
+	u, err := bbc.getURL("ClaimResponse", params)
 	if err != nil {
 		return nil, err
 	}
