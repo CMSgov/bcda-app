@@ -10,10 +10,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/alr/csv"
@@ -353,6 +355,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
+				ignoreSignals()
 				success, failure, skipped, err := cclf.ImportCCLFDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed CCLF import.  Successfully imported %v files.  Failed to import %v files.  Skipped %v files.  See logs for more details.", success, failure, skipped)
 				return err
@@ -455,6 +458,7 @@ func setUpApp() *cli.App {
 				},
 			},
 			Action: func(c *cli.Context) error {
+				ignoreSignals()
 				s, f, sk, err := suppression.ImportSuppressionDirectory(filePath)
 				fmt.Fprintf(app.Writer, "Completed 1-800-MEDICARE suppression data import.\nFiles imported: %v\nFiles failed: %v\nFiles skipped: %v\n", s, f, sk)
 				return err
@@ -829,4 +833,20 @@ func cloneCCLFZip(src, dst string) error {
 	}
 
 	return nil
+}
+
+func ignoreSignals() chan os.Signal {
+	sigs := make(chan os.Signal, 1)
+
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		fmt.Println("Ignoring SIGTERM/SIGINT to allow work to finish.")
+
+		for range sigs {
+			fmt.Println("SIGTERM/SIGINT signal received; ignoring to finish work...")
+		}
+	}()
+
+	return sigs
 }
