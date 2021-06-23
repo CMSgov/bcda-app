@@ -45,14 +45,7 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
-		rw, err := getRespWriter(r.URL.Path)
-		if err != nil {
-			// Since ParseToken is called on all requests, there is a chance it can be called outside
-			// of the API version scope (i.e. /_version). Though these endpoints dont require a token it
-			// will still process one if provided. In these cases we default to the v1 fhir response.
-			rw = responseutils.NewResponseWriter()
-			return
-		}
+		rw := getRespWriter(r.URL.Path)
 
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
@@ -101,12 +94,7 @@ func ParseToken(next http.Handler) http.Handler {
 
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw, err := getRespWriter(r.URL.Path)
-		if err != nil {
-			// Cannot discern API Version; default non fhir error response
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		rw := getRespWriter(r.URL.Path)
 
 		token := r.Context().Value(TokenContextKey)
 		if token == nil {
@@ -131,12 +119,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 // CheckBlacklist checks the auth data is associated with a blacklisted entity
 func CheckBlacklist(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw, err := getRespWriter(r.URL.Path)
-		if err != nil {
-			// Cannot discern API Version; default non fhir error response
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		rw := getRespWriter(r.URL.Path)
 
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
@@ -155,12 +138,7 @@ func CheckBlacklist(next http.Handler) http.Handler {
 
 func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw, err := getRespWriter(r.URL.Path)
-		if err != nil {
-			// Cannot discern API Version; default non fhir error response
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		rw := getRespWriter(r.URL.Path)
 
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
@@ -201,12 +179,14 @@ type fhirResponseWriter interface {
 	NotFound(http.ResponseWriter, int, string, string)
 }
 
-func getRespWriter(path string) (fhirResponseWriter, error) {
+func getRespWriter(path string) fhirResponseWriter {
 	if strings.Contains(path, "/v1/") {
-		return responseutils.NewResponseWriter(), nil
+		return responseutils.NewResponseWriter()
 	} else if strings.Contains(path, "/v2/") {
-		return responseutilsv2.NewResponseWriter(), nil
+		return responseutilsv2.NewResponseWriter()
 	} else {
-		return nil, fmt.Errorf("unexpected API version in: %s", path)
+		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
+		// In the cases we cannot discern a version we default to v1
+		return responseutils.NewResponseWriter()
 	}
 }
