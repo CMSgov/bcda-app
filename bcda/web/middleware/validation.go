@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
+	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 )
 
 var supportedOutputFormats = map[string]struct{}{
@@ -45,13 +45,28 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var rp RequestParameters
 
+		// Get API version
+		version, err := getVersion(r.URL.Path)
+		if err != nil {
+			// If we cannot discern the version, we cannot discern what fhir response to build so we default.
+			// This should never come up as we require a version in the route for all that use this middleware.
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		rp.Version = version
+
+		rw, err := getRespWriter(version)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		//validate "_outputFormat" parameter
 		params, ok := r.URL.Query()["_outputFormat"]
 		if ok {
 			if _, found := supportedOutputFormats[params[0]]; !found {
 				errMsg := fmt.Sprintf("_outputFormat parameter must be one of %v", getKeys(supportedOutputFormats))
-				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, errMsg)
-				responseutils.WriteError(oo, w, http.StatusBadRequest)
+				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, errMsg)
 				return
 			}
 		}
@@ -59,8 +74,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		// we do not support "_elements" parameter
 		_, ok = r.URL.Query()["_elements"]
 		if ok {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			rw.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "Invalid parameter: this server does not support the _elements parameter.")
 			return
 		}
 
@@ -68,8 +82,7 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		// e.g. /api/v1/Patient/$export?_type=ExplanationOfBenefit&?_since=2020-09-13T08:00:00.000-05:00
 		for key := range r.URL.Query() {
 			if strings.HasPrefix(key, "?") {
-				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
-				responseutils.WriteError(oo, w, http.StatusBadRequest)
+				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Invalid parameter: query parameters cannot start with ?")
 				return
 			}
 		}
@@ -79,12 +92,10 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 		if ok {
 			sinceDate, err := time.Parse(time.RFC3339Nano, params[0])
 			if err != nil {
-				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
-				responseutils.WriteError(oo, w, http.StatusBadRequest)
+				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Invalid date format supplied in _since parameter.  Date must be in FHIR Instant format.")
 				return
 			} else if sinceDate.After(time.Now()) {
-				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
-				responseutils.WriteError(oo, w, http.StatusBadRequest)
+				rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Invalid date format supplied in _since parameter. Date must be a date that has already passed")
 				return
 			}
 			rp.Since = sinceDate
@@ -100,22 +111,12 @@ func ValidateRequestURL(next http.Handler) http.Handler {
 					resourceMap[resource] = struct{}{}
 				} else {
 					errMsg := fmt.Sprintf("Repeated resource type %s", resource)
-					oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, errMsg)
-					responseutils.WriteError(oo, w, http.StatusBadRequest)
+					rw.Exception(w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
 					return
 				}
 			}
 			rp.ResourceTypes = resourceTypes
 		}
-
-		// Get API version
-		version, err := getVersion(r.URL.Path)
-		if err != nil {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, err.Error())
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
-			return
-		}
-		rp.Version = version
 
 		ctx := NewRequestParametersContext(r.Context(), rp)
 
@@ -130,23 +131,33 @@ func ValidateRequestHeaders(next http.Handler) http.Handler {
 		acceptHeader := h.Get("Accept")
 		preferHeader := h.Get("Prefer")
 
+		// Get API version
+		version, err := getVersion(r.URL.Path)
+		if err != nil {
+			// If we cannot discern the version, we cannot discern what fhir response to build so we default.
+			// This should never come up as we require a version in the route for all that use this middleware.
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		rw, err := getRespWriter(version)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		if acceptHeader == "" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Accept header is required")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Accept header is required")
 			return
 		} else if acceptHeader != "application/fhir+json" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "application/fhir+json is the only supported response format")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "application/fhir+json is the only supported response format")
 			return
 		}
 
 		if preferHeader == "" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Prefer header is required")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Prefer header is required")
 			return
 		} else if preferHeader != "respond-async" {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_STRUCTURE, responseutils.FormatErr, "Only asynchronous responses are supported")
-			responseutils.WriteError(oo, w, http.StatusBadRequest)
+			rw.Exception(w, http.StatusBadRequest, responseutils.FormatErr, "Only asynchronous responses are supported")
 			return
 		}
 
@@ -170,4 +181,20 @@ func getVersion(path string) (string, error) {
 		return "", fmt.Errorf("cannot retrieve version")
 	}
 	return parts[1], nil
+}
+
+type fhirResponseWriter interface {
+	Exception(http.ResponseWriter, int, string, string)
+	NotFound(http.ResponseWriter, int, string, string)
+}
+
+func getRespWriter(version string) (fhirResponseWriter, error) {
+	switch version {
+	case "v1":
+		return responseutils.NewResponseWriter(), nil
+	case "v2":
+		return responseutilsv2.NewResponseWriter(), nil
+	default:
+		return nil, fmt.Errorf("unexpected API version: %s", version)
+	}
 }
