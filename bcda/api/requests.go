@@ -93,7 +93,7 @@ func newHandler(resources []string, basePath string, apiVersion string, db *sql.
 	case "v2":
 		h.RespWriter = responseutilsv2.NewResponseWriter()
 	default:
-		log.API.Fatalf("Unexpected API version: %s", h.apiVersion)
+		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
 	}
 
 	return h
