@@ -153,6 +153,5 @@ func (s *MiddlewareTestSuite) TestACOEnabled() {
 func testRequest(rp RequestParameters, cmsid string) *http.Request {
 	ctx := context.WithValue(context.Background(), auth.AuthDataContextKey, auth.AuthData{CMSID: cmsid})
 	ctx = NewRequestParametersContext(ctx, rp)
-	// Since we're supplying the request parameters in the context, the actual req URL does not matter
-	return httptest.NewRequest("GET", "/api/v1/metadata", nil).WithContext(ctx)
+	return httptest.NewRequest("GET", "/api/v1/Patient", nil).WithContext(ctx)
 }
