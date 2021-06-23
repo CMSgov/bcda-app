@@ -239,6 +239,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.API.Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -246,6 +247,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.API.Error(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 }
 
