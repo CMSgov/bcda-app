@@ -1,4 +1,4 @@
-package alr
+package v1
 
 import (
 	"regexp"

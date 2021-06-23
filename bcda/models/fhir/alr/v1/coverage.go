@@ -1,4 +1,4 @@
-package alr
+package v1
 
 import (
 	//"github.com/CMSgov/bcda-app/bcda/models"
@@ -10,7 +10,7 @@ import (
 // This part of the package houses the logical to create coverage resource type data
 
 // coverage takes a beneficiary and their respective K:V enrollment and returns FHIR
-func coverage(mbi string, keyValue []kvPair) *fhirmodels.Coverage {
+func Coverage(mbi string, keyValue []kvPair) *fhirmodels.Coverage {
 
 	coverage := &fhirmodels.Coverage{}
 	coverage.Id = &fhirdatatypes.Id{Value: mbi}

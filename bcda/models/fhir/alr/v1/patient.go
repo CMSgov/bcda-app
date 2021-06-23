@@ -1,16 +1,18 @@
-package alr
+package v1
 
 import (
 	"strconv"
 	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/models"
+    "github.com/CMSgov/bcda-app/bcda/models"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
-func patient(alr *models.Alr) *fhirmodels.Patient {
+// Version 1:
+
+func Patient(alr *models.Alr) *fhirmodels.Patient {
 	p := &fhirmodels.Patient{}
 	p.Name = []*fhirdatatypes.HumanName{{Given: []*fhirdatatypes.String{fhirString(alr.BeneFirstName)},
 		Family: fhirString(alr.BeneLastName)}}
