@@ -9,9 +9,13 @@ import (
 	"github.com/CMSgov/bcda-app/conf"
 
 	"github.com/google/fhir/go/jsonformat"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
-	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+
+	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
+	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
+	fhirmodelCR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
+	fhirmodelCS "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/capability_statement_go_proto"
+	fhirmodelOO "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/operation_outcome_go_proto"
+	fhirvaluesets "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/valuesets_go_proto"
 )
 
 var marshaller *jsonformat.Marshaller
@@ -21,7 +25,7 @@ func init() {
 
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
-	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.STU3)
+	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.R4)
 	if err != nil {
 		log.Fatalf("Failed to create marshaller %s", err)
 	}
@@ -44,13 +48,13 @@ func (r ResponseWriter) NotFound(w http.ResponseWriter, statusCode int, errType,
 }
 
 func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
-	detailsCode, detailsDisplay string) *fhirmodels.OperationOutcome {
+	detailsCode, detailsDisplay string) *fhirmodelOO.OperationOutcome {
 
-	return &fhirmodels.OperationOutcome{
-		Issue: []*fhirmodels.OperationOutcome_Issue{
+	return &fhirmodelOO.OperationOutcome{
+		Issue: []*fhirmodelOO.OperationOutcome_Issue{
 			{
-				Severity: &fhircodes.IssueSeverityCode{Value: severity},
-				Code:     &fhircodes.IssueTypeCode{Value: code},
+				Severity: &fhirmodelOO.OperationOutcome_Issue_SeverityCode{Value: severity},
+				Code:     &fhirmodelOO.OperationOutcome_Issue_CodeType{Value: code},
 				Details: &fhirdatatypes.CodeableConcept{
 					Coding: []*fhirdatatypes.Coding{
 						{
@@ -68,7 +72,7 @@ func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.
 	}
 }
 
-func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, code int) {
+func WriteError(outcome *fhirmodelOO.OperationOutcome, w http.ResponseWriter, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_, err := WriteOperationOutcome(w, outcome)
@@ -77,9 +81,9 @@ func WriteError(outcome *fhirmodels.OperationOutcome, w http.ResponseWriter, cod
 	}
 }
 
-func WriteOperationOutcome(w io.Writer, outcome *fhirmodels.OperationOutcome) (int, error) {
-	resource := &fhirmodels.ContainedResource{
-		OneofResource: &fhirmodels.ContainedResource_OperationOutcome{OperationOutcome: outcome},
+func WriteOperationOutcome(w io.Writer, outcome *fhirmodelOO.OperationOutcome) (int, error) {
+	resource := &fhirmodelCR.ContainedResource{
+		OneofResource: &fhirmodelCR.ContainedResource_OperationOutcome{OperationOutcome: outcome},
 	}
 	outcomeJSON, err := marshaller.Marshal(resource)
 	if err != nil {
@@ -89,22 +93,22 @@ func WriteOperationOutcome(w io.Writer, outcome *fhirmodels.OperationOutcome) (i
 	return w.Write(outcomeJSON)
 }
 
-func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodels.CapabilityStatement {
+func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *fhirmodelCS.CapabilityStatement {
 	bbServer := conf.GetEnv("BB_SERVER_LOCATION")
-	statement := &fhirmodels.CapabilityStatement{
-		Status: &fhircodes.PublicationStatusCode{Value: fhircodes.PublicationStatusCode_ACTIVE},
+	statement := &fhirmodelCS.CapabilityStatement{
+		Status: &fhirmodelCS.CapabilityStatement_StatusCode{Value: fhircodes.PublicationStatusCode_ACTIVE},
 		Date: &fhirdatatypes.DateTime{
 			ValueUs:   reldate.UTC().UnixNano() / int64(time.Microsecond),
 			Timezone:  time.UTC.String(),
 			Precision: fhirdatatypes.DateTime_SECOND,
 		},
 		Publisher: &fhirdatatypes.String{Value: "Centers for Medicare & Medicaid Services"},
-		Kind:      &fhircodes.CapabilityStatementKindCode{Value: fhircodes.CapabilityStatementKindCode_INSTANCE},
-		Instantiates: []*fhirdatatypes.Uri{
+		Kind:      &fhirmodelCS.CapabilityStatement_KindCode{Value: fhircodes.CapabilityStatementKindCode_INSTANCE},
+		Instantiates: []*fhirdatatypes.Canonical{
 			{Value: bbServer + "/baseDstu3/metadata/"},
 			{Value: "http://hl7.org/fhir/uv/bulkdata/CapabilityStatement/bulk-data"},
 		},
-		Software: &fhirmodels.CapabilityStatement_Software{
+		Software: &fhirmodelCS.CapabilityStatement_Software{
 			Name:    &fhirdatatypes.String{Value: "Beneficiary Claims Data API"},
 			Version: &fhirdatatypes.String{Value: relversion},
 			ReleaseDate: &fhirdatatypes.DateTime{
@@ -113,20 +117,19 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 				Precision: fhirdatatypes.DateTime_SECOND,
 			},
 		},
-		Implementation: &fhirmodels.CapabilityStatement_Implementation{
+		Implementation: &fhirmodelCS.CapabilityStatement_Implementation{
 			Description: &fhirdatatypes.String{Value: "The Beneficiary Claims Data API (BCDA) enables Accountable Care Organizations (ACOs) participating in the Shared Savings Program to retrieve Medicare Part A, Part B, and Part D claims data for their prospectively assigned or assignable beneficiaries."},
-			Url:         &fhirdatatypes.Uri{Value: baseurl},
+			Url:         &fhirdatatypes.Url{Value: baseurl},
 		},
-		FhirVersion:   &fhirdatatypes.Id{Value: "3.0.1"},
-		AcceptUnknown: &fhircodes.UnknownContentCodeCode{Value: fhircodes.UnknownContentCodeCode_EXTENSIONS},
-		Format: []*fhirdatatypes.MimeTypeCode{
+		FhirVersion: &fhirmodelCS.CapabilityStatement_FhirVersionCode{Value: fhircodes.FHIRVersionCode_V_3_0_1},
+		Format: []*fhirmodelCS.CapabilityStatement_FormatCode{
 			{Value: "application/json"},
 			{Value: "application/fhir+json"},
 		},
-		Rest: []*fhirmodels.CapabilityStatement_Rest{
+		Rest: []*fhirmodelCS.CapabilityStatement_Rest{
 			{
-				Mode: &fhircodes.RestfulCapabilityModeCode{Value: fhircodes.RestfulCapabilityModeCode_SERVER},
-				Security: &fhirmodels.CapabilityStatement_Rest_Security{
+				Mode: &fhirmodelCS.CapabilityStatement_Rest_ModeCode{Value: fhircodes.RestfulCapabilityModeCode_SERVER},
+				Security: &fhirmodelCS.CapabilityStatement_Rest_Security{
 					Cors: &fhirdatatypes.Boolean{Value: true},
 					Service: []*fhirdatatypes.CodeableConcept{
 						{
@@ -156,29 +159,25 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 						},
 					},
 				},
-				Interaction: []*fhirmodels.CapabilityStatement_Rest_SystemInteraction{
+				Interaction: []*fhirmodelCS.CapabilityStatement_Rest_SystemInteraction{
 					{
-						Code: &fhircodes.SystemRestfulInteractionCode{Value: fhircodes.SystemRestfulInteractionCode_BATCH},
+						Code: &fhirmodelCS.CapabilityStatement_Rest_SystemInteraction_CodeType{Value: fhirvaluesets.SystemRestfulInteractionValueSet_BATCH},
 					},
 					{
-						Code: &fhircodes.SystemRestfulInteractionCode{Value: fhircodes.SystemRestfulInteractionCode_SEARCH_SYSTEM},
+						Code: &fhirmodelCS.CapabilityStatement_Rest_SystemInteraction_CodeType{Value: fhirvaluesets.SystemRestfulInteractionValueSet_SEARCH_SYSTEM},
 					},
 				},
-				Operation: []*fhirmodels.CapabilityStatement_Rest_Operation{
+				Operation: []*fhirmodelCS.CapabilityStatement_Rest_Resource_Operation{
 					{
 						Name: &fhirdatatypes.String{Value: "patient-export"},
-						Definition: &fhirdatatypes.Reference{
-							Reference: &fhirdatatypes.Reference_Uri{
-								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export"},
-							},
+						Definition: &fhirdatatypes.Canonical{
+							Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/patient-export",
 						},
 					},
 					{
 						Name: &fhirdatatypes.String{Value: "group-export"},
-						Definition: &fhirdatatypes.Reference{
-							Reference: &fhirdatatypes.Reference_Uri{
-								Uri: &fhirdatatypes.String{Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export"},
-							},
+						Definition: &fhirdatatypes.Canonical{
+							Value: "http://hl7.org/fhir/uv/bulkdata/OperationDefinition/group-export",
 						},
 					},
 				},
@@ -187,9 +186,9 @@ func CreateCapabilityStatement(reldate time.Time, relversion, baseurl string) *f
 	}
 	return statement
 }
-func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.ResponseWriter) {
-	resource := &fhirmodels.ContainedResource{
-		OneofResource: &fhirmodels.ContainedResource_CapabilityStatement{CapabilityStatement: statement},
+func WriteCapabilityStatement(statement *fhirmodelCS.CapabilityStatement, w http.ResponseWriter) {
+	resource := &fhirmodelCR.ContainedResource{
+		OneofResource: &fhirmodelCR.ContainedResource_CapabilityStatement{CapabilityStatement: statement},
 	}
 	statementJSON, err := marshaller.Marshal(resource)
 	if err != nil {

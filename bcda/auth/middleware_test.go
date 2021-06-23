@@ -36,7 +36,7 @@ type MiddlewareTestSuite struct {
 func (s *MiddlewareTestSuite) CreateRouter() http.Handler {
 	router := chi.NewRouter()
 	router.Use(auth.ParseToken)
-	router.With(auth.RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+	router.With(auth.RequireTokenAuth).Get("/v1/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Test router"))
 		if err != nil {
 			log.Fatal(err)
@@ -59,7 +59,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidSignature() {
 	client := s.server.Client()
 	badToken := "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.cJOP_w-hBqnyTsBm3T6lOE5WpcHaAkLuQGAs1QO-lg2eWs8yyGW8p9WagGjxgvx7h9X72H7pXmXqej3GdlVbFmhuzj45A9SXDOAHZ7bJXwM1VidcPi7ZcrsMSCtP1hiN"
 
-	req, err := http.NewRequest("GET", s.server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidSignature() {
 }
 
 func (s *MiddlewareTestSuite) TestRequireTokenAuthWithInvalidToken() {
-	req, err := http.NewRequest("GET", s.server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithValidToken() {
 	client := s.server.Client()
 
 	// Valid token should return a 200 response
-	req, err := http.NewRequest("GET", s.server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenAuthWithEmptyToken() {
 	client := s.server.Client()
 
 	// Valid token should return a 200 response
-	req, err := http.NewRequest("GET", s.server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithMistmatchingData() {
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("jobID", tt.jobID)
 
-			req, err := http.NewRequest("GET", s.server.URL, nil)
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 			assert.NoError(t, err)
 
 			ad := auth.AuthData{
@@ -217,7 +217,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenJobMatchWithRightACO() {
 	postgrestest.CreateJobs(s.T(), db, &j)
 	jobID := strconv.Itoa(int(j.ID))
 
-	req, err := http.NewRequest("GET", s.server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func (s *MiddlewareTestSuite) TestRequireTokenACOMatchInvalidToken() {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("jobID", jobID)
 
-	req, err := http.NewRequest("GET", s.server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -290,7 +290,7 @@ func (s *MiddlewareTestSuite) TestCheckBlacklist() {
 			if tt.ad != nil {
 				ctx = context.WithValue(ctx, auth.AuthDataContextKey, *tt.ad)
 			}
-			req, err := http.NewRequestWithContext(ctx, "GET", "", nil)
+			req, err := http.NewRequestWithContext(ctx, "GET", "/v1/", nil)
 			assert.NoError(t, err)
 			handler.ServeHTTP(rr, req)
 

@@ -9,7 +9,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 )
 
 func ConnectionClose(next http.Handler) http.Handler {
@@ -39,11 +38,20 @@ func ACOEnabled(cfg *service.Config) func(next http.Handler) http.Handler {
 				panic("AuthData should be set before calling this handler")
 			}
 
+			version, err := getVersion(r.URL.Path)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			rw, err := getRespWriter(version)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
 			if cfg.IsACODisabled(ad.CMSID) {
 				log.API.Error(fmt.Sprintf("failed to complete request, CMSID %s is not enabled", ad.CMSID))
-				oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-					responseutils.InternalErr, "")
-				responseutils.WriteError(oo, w, http.StatusUnauthorized)
+				rw.Exception(w, http.StatusUnauthorized, responseutils.InternalErr, "")
 				return
 			}
 			next.ServeHTTP(w, r)
