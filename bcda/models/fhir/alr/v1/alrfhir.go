@@ -16,10 +16,8 @@ type AlrBulkV1 struct {
 	Observation *fhirmodels.Observation
 }
 
-type AlrV1 struct {}
-
 // ToFHIR encodes the models.Alr into a FHIR Patient and N FHIR Observation resources
-func (_ *AlrV1) ToFHIR(alr *models.Alr) *AlrBulkV1 {
+func ToFHIRV1(alr *models.Alr) *AlrBulkV1 {
 
 	kvArenaInstance := utils.KeyValueMapper(alr)
 	hccVersion := kvArenaInstance.HccVersion

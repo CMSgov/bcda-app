@@ -20,9 +20,7 @@ type AlrBulkV2 struct {
 	Observation *r4Obs.Observation
 }
 
-type AlrV2 struct {}
-
-func (_ *AlrV2) ToFHIR(alr *models.Alr) *AlrBulkV2 {
+func ToFHIRV2(alr *models.Alr) *AlrBulkV2 {
 
 	kvArenaInstance := utils.KeyValueMapper(alr)
 	hccVersion := kvArenaInstance.HccVersion
@@ -33,10 +31,10 @@ func (_ *AlrV2) ToFHIR(alr *models.Alr) *AlrBulkV2 {
 	}
 
 	sub := patient(alr)
-	cov := coverage(alr.BeneMBI, kvArenaInstance.enrollment)
-	group := group(alr.BeneMBI, kvArenaInstance.group)
-	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.riskScore)
-	obs := observations(hccVersion[0].value, alr.BeneMBI, kvArenaInstance.riskFlag)
+	cov := coverage(alr.BeneMBI, kvArenaInstance.Enrollment)
+	group := group(alr.BeneMBI, kvArenaInstance.Group)
+	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.RiskScore)
+	obs := observations(hccVersion[0].Value, alr.BeneMBI, kvArenaInstance.RiskFlag)
 
 	return &AlrBulkV2{
 		Patient:     sub,
