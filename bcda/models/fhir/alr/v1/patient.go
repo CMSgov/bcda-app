@@ -12,7 +12,7 @@ import (
 
 // Version 1:
 
-func Patient(alr *models.Alr) *fhirmodels.Patient {
+func patient(alr *models.Alr) *fhirmodels.Patient {
 	p := &fhirmodels.Patient{}
 	p.Name = []*fhirdatatypes.HumanName{{Given: []*fhirdatatypes.String{fhirString(alr.BeneFirstName)},
 		Family: fhirString(alr.BeneLastName)}}

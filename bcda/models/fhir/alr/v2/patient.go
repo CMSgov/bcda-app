@@ -11,7 +11,7 @@ import (
 )
 
 // Version 2:
-func Patient(alr *models.Alr) *r4Models.Patient {
+func patient(alr *models.Alr) *r4Models.Patient {
 	p := &r4Models.Patient{}
     p.Name = []*r4Datatypes.HumanName{{
         Given: []*r4Datatypes.String{{ Value: alr.BeneFirstName }},

@@ -1,4 +1,4 @@
-package alr_test
+package v1
 
 import (
 	"bufio"

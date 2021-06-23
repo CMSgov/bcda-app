@@ -2,11 +2,12 @@ package v1
 
 import (
 	"github.com/CMSgov/bcda-app/log"
+    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
-func observations(version, mbi string, keyValue []kvPair) *fhirmodels.Observation {
+func observations(version, mbi string, keyValue []utils.KvPair) *fhirmodels.Observation {
 	obs := &fhirmodels.Observation{}
 	obs.Id = &fhirdatatypes.Id{Id: &fhirdatatypes.String{
 		Value: "example-id-hcc-risk-flags",
@@ -38,12 +39,12 @@ func observations(version, mbi string, keyValue []kvPair) *fhirmodels.Observatio
 	for _, kv := range keyValue {
 
 		// Get information from HCC Crosswalk
-		hccinfo := hccData(version, kv.key)
+		hccinfo := utils.HccData(version, kv.Key)
 
 		if hccinfo == nil {
 			// If a nil is returned, we could not give the field in the crosswalk...
 			// for now will skip
-			log.API.Warnf("We would not find %s in the crosswalk for %s. with value %s", kv.key, version, kv.value)
+			log.API.Warnf("We would not find %s in the crosswalk for %s. with value %s", kv.Key, version, kv.Value)
 			continue
 		}
 
@@ -52,13 +53,13 @@ func observations(version, mbi string, keyValue []kvPair) *fhirmodels.Observatio
 			Coding: []*fhirdatatypes.Coding{{
 				System:  &fhirdatatypes.Uri{Value: "https://bluebutton.cms.gov/resources/variables/alr/hcc-risk-flags"},
 				Version: &fhirdatatypes.String{Value: version},
-				Code:    &fhirdatatypes.Code{Value: hccinfo.flag},
-				Display: &fhirdatatypes.String{Value: hccinfo.description},
+				Code:    &fhirdatatypes.Code{Value: hccinfo.Flag},
+				Display: &fhirdatatypes.String{Value: hccinfo.Description},
 			}},
 		}
 		comp.Value = &fhirmodels.Observation_Component_Value{
 			Value: &fhirmodels.Observation_Component_Value_StringValue{
-				StringValue: &fhirdatatypes.String{Value: kv.value},
+				StringValue: &fhirdatatypes.String{Value: kv.Value},
 			},
 		}
 

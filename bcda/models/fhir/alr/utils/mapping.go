@@ -1,4 +1,4 @@
-package alr
+package utils
 
 import (
 	"regexp"
@@ -10,53 +10,53 @@ import (
 // models.Alr into respective categories depicted in kvMap struct.
 // Note, a models.Alr represents a single row from a dataframe.
 
-type kvArena struct {
-	enrollment []kvPair
-	riskFlag   []kvPair
-	riskScore  []kvPair
-	group      []kvPair
-	hccVersion []kvPair
+type KvArena struct {
+	Enrollment []KvPair
+	RiskFlag   []KvPair
+	RiskScore  []KvPair
+	Group      []KvPair
+	HccVersion []KvPair
 }
 
-type kvPair struct {
-	key   string
-	value string
+type KvPair struct {
+    Key   string
+	Value string
 }
 
 // These are regexp patterns used for mapping fields from ALR data
 var (
-	enrollmentPattern,
-	riskFlagsPattern,
-	riskScoresPattern,
-	hccVersion,
-	groupPattern *regexp.Regexp
+	EnrollmentPattern,
+	RiskFlagsPattern,
+	RiskScoresPattern,
+	HccVersion,
+	GroupPattern *regexp.Regexp
 )
 
-var groupPatternDescriptions map[string]string
+var GroupPatternDescriptions map[string]string
 
 func init() {
 	// There should be one field in table 1-1 that tells use what HCC version
 	// is used for that particular ALR
-	hccVersion = regexp.MustCompile(`^HCC_version$`)
+	HccVersion = regexp.MustCompile(`^HCC_version$`)
 
 	// These are for coverage
-	enrollmentPattern = regexp.MustCompile(`^EnrollFlag\d+$`)
+	EnrollmentPattern = regexp.MustCompile(`^EnrollFlag\d+$`)
 
 	// These are for groups
-	groupPattern = regexp.MustCompile(`^(IN_VA_MAX)|(CBA_FLAG)|(ASSIGNMENT_TYPE)` +
+	GroupPattern = regexp.MustCompile(`^(IN_VA_MAX)|(CBA_FLAG)|(ASSIGNMENT_TYPE)` +
 		`|(ASSIGNED_BEFORE)|(ASG_STATUS)|(EXCLUDED)|(DECEASED_EXCLUDED)|` +
 		`(MISSING_ID_EXCLUDED)|(PART_A_B_ONLY_EXCLUDED)|` +
 		`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)$`)
 
 	// These are risk scores, which current go under observation
-	riskFlagsPattern = regexp.MustCompile(`^HCC_COL_\d+$`)
+	RiskFlagsPattern = regexp.MustCompile(`^HCC_COL_\d+$`)
 
 	// These are for risk assessment
-	riskScoresPattern = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|` +
+	RiskScoresPattern = regexp.MustCompile(`^(BENE_RSK_R_SCRE_\d{2,})|(((ESRD)|` +
 		`(DIS)|(AGDU)|(AGND)|(DEM_ESRD)|(DEM_DIS)|(DEM_AGDU)|(DEM_AGND))_SCORE)$`)
 
 	// Possibly temporary, but storing some field name from the data dictionary
-	groupPatternDescriptions = map[string]string{
+	GroupPatternDescriptions = map[string]string{
 		"DECEASED_EXCLUDED":      "Beneficiary had a date of death prior to the start of the performance year",
 		"MISSING_ID_EXCLUDED":    "Beneficiary identifier is missing",
 		"PART_A_B_ONLY_EXCLUDED": "Beneficiary had at least one month of Part A-only Or Part B-only Coverage",
@@ -68,33 +68,33 @@ func init() {
 
 // keyValueMapper take the K:V pair from models.Alr and puts them into one of
 // various maps in the kvArena struct. kvMap struct is then used to generate FHIR data.
-func keyValueMapper(alr *models.Alr) kvArena {
+func KeyValueMapper(alr *models.Alr) KvArena {
 
-	hccVersionFields := []kvPair{}
-	enrollmentFields := []kvPair{}
-	groupFields := []kvPair{}
-	riskFlagFields := []kvPair{}
-	riskScoreFields := []kvPair{}
+	hccVersionFields := []KvPair{}
+	enrollmentFields := []KvPair{}
+	groupFields := []KvPair{}
+	riskFlagFields := []KvPair{}
+	riskScoreFields := []KvPair{}
 
 	for k, v := range alr.KeyValue {
-		if enrollmentPattern.MatchString(k) {
-			enrollmentFields = append(enrollmentFields, kvPair{k, v})
-		} else if riskFlagsPattern.MatchString(k) {
-			riskFlagFields = append(riskFlagFields, kvPair{k, v})
-		} else if riskScoresPattern.MatchString(k) {
-			riskScoreFields = append(riskScoreFields, kvPair{k, v})
-		} else if groupPattern.MatchString(k) {
-			groupFields = append(groupFields, kvPair{k, v})
-		} else if hccVersion.MatchString(k) {
-			hccVersionFields = append(hccVersionFields, kvPair{k, v})
+		if EnrollmentPattern.MatchString(k) {
+			enrollmentFields = append(enrollmentFields, KvPair{k, v})
+		} else if RiskFlagsPattern.MatchString(k) {
+			riskFlagFields = append(riskFlagFields, KvPair{k, v})
+		} else if RiskScoresPattern.MatchString(k) {
+			riskScoreFields = append(riskScoreFields, KvPair{k, v})
+		} else if GroupPattern.MatchString(k) {
+			groupFields = append(groupFields, KvPair{k, v})
+		} else if HccVersion.MatchString(k) {
+			hccVersionFields = append(hccVersionFields, KvPair{k, v})
 		}
 	}
 
-	return kvArena{
-		enrollment: enrollmentFields,
-		riskFlag:   riskFlagFields,
-		riskScore:  riskScoreFields,
-		hccVersion: hccVersionFields,
-		group:      groupFields,
+	return KvArena{
+		Enrollment: enrollmentFields,
+		RiskFlag:   riskFlagFields,
+		RiskScore:  riskScoreFields,
+		HccVersion: hccVersionFields,
+		Group:      groupFields,
 	}
 }

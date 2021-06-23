@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/log"
+    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
@@ -25,18 +26,18 @@ var (
 )
 
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
-func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
+func group(mbi string, keyValue []utils.KvPair) *fhirmodels.Group {
 	group := &fhirmodels.Group{}
 	group.Member = []*fhirmodels.Group_Member{{}}
 	extension := []*fhirdatatypes.Extension{}
 
 	for _, kv := range keyValue {
 		switch {
-		case changeTypeP.MatchString(kv.key):
+		case changeTypeP.MatchString(kv.Key):
 			// ext - changeType
 			var val = "nochange"
 			// Mapping to DaVinci ATR
-			if kv.value == "1" {
+			if kv.Value == "1" {
 				val = "dropped"
 			}
 
@@ -49,21 +50,21 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 			}
 
 			extension = append(extension, ext)
-		case changeReasonP.MatchString(kv.key):
+		case changeReasonP.MatchString(kv.Key):
 			// ext - changeReason
 
 			// get the variable name from the map set in mapping.go
-			display := groupPatternDescriptions[kv.key]
+			display := utils.GroupPatternDescriptions[kv.Key]
 
 			ext := extensionMaker("reasonCode",
-				"", kv.key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
+				"", kv.Key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
 			// TODO: Need to put in diplay when we figure out best way
 
 			extension = append(extension, ext)
-		case claimsBasedAssignmentFlagP.MatchString(kv.key):
+		case claimsBasedAssignmentFlagP.MatchString(kv.Key):
 			// ext - claimsBasedAssignmentFlag
 			var val = true
-			if kv.value == "0" {
+			if kv.Value == "0" {
 				val = false
 			}
 
@@ -76,10 +77,10 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 			}
 
 			extension = append(extension, ext)
-		case claimsBasedAssignmentStepP.MatchString(kv.key):
+		case claimsBasedAssignmentStepP.MatchString(kv.Key):
 			// ext - claimsBasedAssignmentStep
 
-			val, err := strconv.ParseInt(kv.value, 10, 32)
+			val, err := strconv.ParseInt(kv.Value, 10, 32)
 			if err != nil {
 				log.API.Warnf("Could convert string to int for {}: {}", mbi, err)
 			}
@@ -90,10 +91,10 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 					Integer: &fhirdatatypes.Integer{Value: int32(val)},
 				},
 			}
-		case newlyAssignedBeneficiaryFlagP.MatchString(kv.key):
+		case newlyAssignedBeneficiaryFlagP.MatchString(kv.Key):
 			// ext - newlyAssignedBeneficiaryFlag
 			var val = true
-			if kv.value == "0" {
+			if kv.Value == "0" {
 				val = false
 			}
 
@@ -104,10 +105,10 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 					Boolean: &fhirdatatypes.Boolean{Value: val},
 				},
 			}
-		case pervAssignedBeneficiaryFlagP.MatchString(kv.key):
+		case pervAssignedBeneficiaryFlagP.MatchString(kv.Key):
 			// ext - pervAssignedBeneficiaryFlag
 			var val = true
-			if kv.value == "0" {
+			if kv.Value == "0" {
 				val = false
 			}
 
@@ -118,10 +119,10 @@ func group(mbi string, keyValue []kvPair) *fhirmodels.Group {
 					Boolean: &fhirdatatypes.Boolean{Value: val},
 				},
 			}
-		case voluntaryAlignmentFlagP.MatchString(kv.key):
+		case voluntaryAlignmentFlagP.MatchString(kv.Key):
 			// ext - voluntaryAlignmentFlag
 			var val = true
-			if kv.value == "0" {
+			if kv.Value == "0" {
 				val = false
 			}
 

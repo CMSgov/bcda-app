@@ -1,9 +1,8 @@
-package v1
+package v2
 
 import (
 	//"github.com/CMSgov/bcda-app/bcda/models"
 	//fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
@@ -11,7 +10,7 @@ import (
 // This part of the package houses the logical to create coverage resource type data
 
 // coverage takes a beneficiary and their respective K:V enrollment and returns FHIR
-func coverage(mbi string, keyValue []utils.KvPair) *fhirmodels.Coverage {
+func coverage(mbi string, keyValue []kvPair) *fhirmodels.Coverage {
 
 	coverage := &fhirmodels.Coverage{}
 	coverage.Id = &fhirdatatypes.Id{Value: mbi}
@@ -28,15 +27,15 @@ func coverage(mbi string, keyValue []utils.KvPair) *fhirmodels.Coverage {
 
 	for _, kv := range keyValue {
 		// FHIR does not include empty K:V pairs
-		if kv.Value == "" {
+		if kv.value == "" {
 			continue
 		}
 
 		ext := &fhirdatatypes.Extension{}
-		ext.Url = &fhirdatatypes.Uri{Value: kv.Key}
+		ext.Url = &fhirdatatypes.Uri{Value: kv.key}
 		ext.Value = &fhirdatatypes.Extension_ValueX{
 			Choice: &fhirdatatypes.Extension_ValueX_StringValue{
-				StringValue: fhirString(kv.Value),
+				StringValue: fhirString(kv.value),
 			},
 		}
 

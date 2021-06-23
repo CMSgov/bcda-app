@@ -1,4 +1,4 @@
-package alr
+package utils
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type hcc struct {
-	flag        string
-	description string
+type Hcc struct {
+	Flag        string
+	Description string
 }
 
 type hccKey struct {
@@ -19,7 +19,7 @@ type hccKey struct {
 	columnPosition string
 }
 
-var crosswalk map[hccKey]hcc
+var crosswalk map[hccKey]Hcc
 
 // Populates the crosswalk with
 func init() {
@@ -34,7 +34,7 @@ func init() {
 	paths := []string{
 		"./hcc_crosswalk.tsv",
 		"/etc/sv/api/hcc_crosswalk.tsv",
-		os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/hcc_crosswalk.tsv",
+		os.Getenv("GOPATH") + "/src/github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils/hcc_crosswalk.tsv",
 		"/etc/sv/worker/hcc_crosswalk.tsv",
 		"/etc/sv/nfs/hcc_crosswalk.tsv",
 	}
@@ -68,15 +68,15 @@ func init() {
 		panic(fmt.Sprintf("No crosswalk file found. Tried %v.", paths))
 	}
 
-	crosswalk = make(map[hccKey]hcc)
+	crosswalk = make(map[hccKey]Hcc)
 	for _, record := range df.Maps() {
 		key := hccKey{version: record[version].(string), columnPosition: record[columnPosition].(string)}
-		value := hcc{flag: record[flag].(string), description: record[description].(string)}
+		value := Hcc{Flag: record[flag].(string), Description: record[description].(string)}
 		crosswalk[key] = value
 	}
 }
 
-func hccData(version, column string) *hcc {
+func HccData(version, column string) *Hcc {
 	res, ok := crosswalk[hccKey{version: version, columnPosition: column}]
 	if !ok {
 		return nil
