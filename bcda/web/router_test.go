@@ -76,7 +76,7 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 	}
 	// Need a new router because the one in the test setup does not use the environment variable set in this test.
 	s.apiRouter = NewAPIRouter()
-	res := s.getAPIRoute("/")
+	res := s.getAPIRoute("/v1/")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 	err = conf.UnsetEnv(s.T(), "DEPLOYMENT_TARGET")
