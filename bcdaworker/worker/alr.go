@@ -73,7 +73,7 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 		// marshalling structs into JSON
 
 		//PATIENT
-		patientb, err := marshaller.MarshalResource(i.Patient)
+		patientb, err := marshaller.MarshalResource(i.AlrBulkV1.Patient)
 		if err != nil {
 			// Make sure to send err back to the other thread
 			result <- err
@@ -82,7 +82,7 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 		patients := string(patientb) + "\n"
 
 		// COVERAGE
-		coverageb, err := marshaller.MarshalResource(i.Coverage)
+		coverageb, err := marshaller.MarshalResource(i.AlrBulkV1.Coverage)
 		if err != nil {
 			// Make sure to send err back to the other thread
 			result <- err
@@ -91,7 +91,7 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 		coverage := string(coverageb) + "\n"
 
 		// GROUP
-		groupb, err := marshaller.MarshalResource(i.Group)
+		groupb, err := marshaller.MarshalResource(i.AlrBulkV1.Group)
 		if err != nil {
 			// Make sure to send err back to the other thread
 			result <- err
@@ -102,7 +102,7 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 		// RISK
 		var riskAssessment = []string{}
 
-		for _, r := range i.Risk {
+		for _, r := range i.AlrBulkV1.Risk {
 
 			riskb, err := marshaller.MarshalResource(r)
 			if err != nil {
@@ -116,7 +116,112 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 		risk := strings.Join(riskAssessment, "\n")
 
 		// OBSERVATION
-		observationb, err := marshaller.MarshalResource(i.Observation)
+		observationb, err := marshaller.MarshalResource(i.AlrBulkV1.Observation)
+		if err != nil {
+			result <- err
+			return
+		}
+		observation := string(observationb) + "\n"
+
+		alrResources := []string{patients, observation, coverage, group, risk}
+
+		if len(alrResources) != len(writerPool) {
+			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
+		}
+
+		// IO operations
+		for n, resource := range alrResources {
+
+			w := writerPool[n]
+
+			_, err = w.WriteString(resource)
+			if err != nil {
+				result <- err
+				return
+			}
+			err = w.Flush()
+			if err != nil {
+				result <- err
+				return
+			}
+
+		}
+	}
+
+	// update the jobs keys
+	for resource, path := range fileMap {
+		filename := filepath.Base(path.Name())
+		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
+		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
+			result <- fmt.Errorf("failed to create job key: %w", err)
+			return
+		}
+	}
+
+	result <- nil
+}
+
+
+func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
+	marshaller *jsonformat.Marshaller, result chan error, resourceTypes []string, id uint) {
+
+	writerPool := make([]*bufio.Writer, len(fileMap))
+
+	for i, n := range resourceTypes {
+		file := fileMap[n]
+		w := bufio.NewWriter(file)
+		writerPool[i] = w
+		defer utils.CloseFileAndLogError(file)
+	}
+
+	for i := range c {
+		// marshalling structs into JSON
+
+		//PATIENT
+		patientb, err := marshaller.MarshalResource(i.AlrBulkV2.Patient)
+		if err != nil {
+			// Make sure to send err back to the other thread
+			result <- err
+			return
+		}
+		patients := string(patientb) + "\n"
+
+		// COVERAGE
+		coverageb, err := marshaller.MarshalResource(i.AlrBulkV2.Coverage)
+		if err != nil {
+			// Make sure to send err back to the other thread
+			result <- err
+			return
+		}
+		coverage := string(coverageb) + "\n"
+
+		// GROUP
+		groupb, err := marshaller.MarshalResource(i.AlrBulkV2.Group)
+		if err != nil {
+			// Make sure to send err back to the other thread
+			result <- err
+			return
+		}
+		group := string(groupb) + "\n"
+
+		// RISK
+		var riskAssessment = []string{}
+
+		for _, r := range i.AlrBulkV2.Risk {
+
+			riskb, err := marshaller.MarshalResource(r)
+			if err != nil {
+				// Make sure to send err back to the other thread
+				result <- err
+				return
+			}
+			risk := string(riskb) + "\n"
+			riskAssessment = append(riskAssessment, risk)
+		}
+		risk := strings.Join(riskAssessment, "\n")
+
+		// OBSERVATION
+		observationb, err := marshaller.MarshalResource(i.AlrBulkV2.Observation)
 		if err != nil {
 			result <- err
 			return
@@ -176,6 +281,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	aco := jobArgs.CMSID
 	id := jobArgs.ID
 	MBIs := jobArgs.MBIs
+    BBBasePath := jobArgs.BBBasePath
 	lowerBound := jobArgs.LowerBound
 	upperBound := jobArgs.UpperBound
 
@@ -232,7 +338,7 @@ func (a *AlrWorker) ProcessAlrJob(
 
 	// Marshall into JSON and send it over the channel
 	for i := range alrModels {
-		fhirBulk := alr.ToFHIR(&alrModels[i]) // Removed timestamp, but can be added back here
+		fhirBulk := alr.ToFHIR(&alrModels[i], BBBasePath) // Removed timestamp, but can be added back here
 
         if fhirBulk == nil {
             continue
