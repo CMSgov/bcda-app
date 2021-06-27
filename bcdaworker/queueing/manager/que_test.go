@@ -219,12 +219,14 @@ func TestStartAlrJob(t *testing.T) {
 		ID:         id,
 		CMSID:      cmsID,
 		MBIs:       []string{alr[0].BeneMBI},
+        BBBasePath: "fhir/v1",
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},
 	}
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
+        BBBasePath: "fhir/v1",
 		MBIs:       []string{alr[1].BeneMBI},
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},

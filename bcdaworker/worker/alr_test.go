@@ -83,6 +83,7 @@ func (s *AlrWorkerTestSuite) SetupSuite() {
 		ID:         1,
 		CMSID:      aco,
 		MBIs:       MBIs,
+        BBBasePath: "fhir/v1",
 		LowerBound: timestamp,
 		UpperBound: timestamp2,
 	}
