@@ -1,12 +1,25 @@
 package v1
 
 import (
-	"github.com/CMSgov/bcda-app/bcda/models"
-    "github.com/CMSgov/bcda-app/log"
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
+	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
+	"github.com/CMSgov/bcda-app/log"
+
+	"github.com/google/fhir/go/jsonformat"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
+
+var marshaller *jsonformat.Marshaller
+
+func init() {
+    var err error
+    marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.STU3)
+    if err != nil {
+        log.API.Panic("Could not get JSON FHIR marshaller for STU3.")
+    }
+}
 
 type AlrBulkV1 struct {
 	Patient     *fhirmodels.Patient
@@ -40,5 +53,62 @@ func ToFHIRV1(alr *models.Alr) *AlrBulkV1 {
 		Risk:        risk,
 		Observation: obs,
 	}
+}
+
+
+func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
+    
+    patientb, err := marshaller.MarshalResource(bulk.Patient)
+    if err != nil {
+        // Make sure to send err back to the other thread
+        log.API.Errorf("Could not convert patient fhir to json.")
+        return nil, err
+    }
+    patients := string(patientb) + "\n"
+
+    // COVERAGE
+    coverageb, err := marshaller.MarshalResource(bulk.Coverage)
+    if err != nil {
+        // Make sure to send err back to the other thread
+        log.API.Errorf("Could not convert patient fhir to json.")
+        return nil, err
+    }
+    coverage := string(coverageb) + "\n"
+
+    // GROUP
+    groupb, err := marshaller.MarshalResource(bulk.Group)
+    if err != nil {
+        // Make sure to send err back to the other thread
+        log.API.Errorf("Could not convert patient fhir to json.")
+        return nil, err
+    }
+    group := string(groupb) + "\n"
+
+    // RISK
+    var riskAssessment = []string{}
+
+    for _, r := range bulk.Risk {
+
+        riskb, err := marshaller.MarshalResource(r)
+        if err != nil {
+            // Make sure to send err back to the other thread
+            log.API.Errorf("Could not convert patient fhir to json.")
+            return nil, err
+        }
+        risk := string(riskb) + "\n"
+        riskAssessment = append(riskAssessment, risk)
+    }
+    risk := strings.Join(riskAssessment, "\n")
+
+    // OBSERVATION
+    observationb, err := marshaller.MarshalResource(bulk.Observation)
+    if err != nil {
+        log.API.Errorf("Could not convert patient fhir to json.")
+        return nil, err
+    }
+    observation := string(observationb) + "\n"
+
+    return []string{patients, observation, coverage, group, risk}, nil
+
 }
 

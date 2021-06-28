@@ -12,12 +12,10 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/google/fhir/go/jsonformat"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 /******************************************************************************
@@ -57,8 +55,8 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 	return worker
 }
 
-func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
-	marshaller *jsonformat.Marshaller, result chan error, resourceTypes []string, id uint) {
+func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
+	result chan error, resourceTypes []string, id uint) {
 
 	writerPool := make([]*bufio.Writer, len(fileMap))
 
@@ -71,59 +69,11 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 
 	for i := range c {
 		// marshalling structs into JSON
-
-		//PATIENT
-		patientb, err := marshaller.MarshalResource(i.AlrBulkV1.Patient)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
-		}
-		patients := string(patientb) + "\n"
-
-		// COVERAGE
-		coverageb, err := marshaller.MarshalResource(i.AlrBulkV1.Coverage)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
-		}
-		coverage := string(coverageb) + "\n"
-
-		// GROUP
-		groupb, err := marshaller.MarshalResource(i.AlrBulkV1.Group)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
-		}
-		group := string(groupb) + "\n"
-
-		// RISK
-		var riskAssessment = []string{}
-
-		for _, r := range i.AlrBulkV1.Risk {
-
-			riskb, err := marshaller.MarshalResource(r)
-			if err != nil {
-				// Make sure to send err back to the other thread
-				result <- err
-				return
-			}
-			risk := string(riskb) + "\n"
-			riskAssessment = append(riskAssessment, risk)
-		}
-		risk := strings.Join(riskAssessment, "\n")
-
-		// OBSERVATION
-		observationb, err := marshaller.MarshalResource(i.AlrBulkV1.Observation)
+		alrResources, err := i.AlrBulkV1.FhirToString()
 		if err != nil {
 			result <- err
 			return
 		}
-		observation := string(observationb) + "\n"
-
-		alrResources := []string{patients, observation, coverage, group, risk}
 
 		if len(alrResources) != len(writerPool) {
 			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
@@ -161,9 +111,8 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 	result <- nil
 }
 
-
 func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
-	marshaller *jsonformat.Marshaller, result chan error, resourceTypes []string, id uint) {
+	result chan error, resourceTypes []string, id uint) {
 
 	writerPool := make([]*bufio.Writer, len(fileMap))
 
@@ -176,59 +125,11 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 
 	for i := range c {
 		// marshalling structs into JSON
-
-		//PATIENT
-		patientb, err := marshaller.MarshalResource(i.AlrBulkV2.Patient)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
-		}
-		patients := string(patientb) + "\n"
-
-		// COVERAGE
-		coverageb, err := marshaller.MarshalResource(i.AlrBulkV2.Coverage)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
-		}
-		coverage := string(coverageb) + "\n"
-
-		// GROUP
-		groupb, err := marshaller.MarshalResource(i.AlrBulkV2.Group)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
-		}
-		group := string(groupb) + "\n"
-
-		// RISK
-		var riskAssessment = []string{}
-
-		for _, r := range i.AlrBulkV2.Risk {
-
-			riskb, err := marshaller.MarshalResource(r)
-			if err != nil {
-				// Make sure to send err back to the other thread
-				result <- err
-				return
-			}
-			risk := string(riskb) + "\n"
-			riskAssessment = append(riskAssessment, risk)
-		}
-		risk := strings.Join(riskAssessment, "\n")
-
-		// OBSERVATION
-		observationb, err := marshaller.MarshalResource(i.AlrBulkV2.Observation)
+		alrResources, err := i.AlrBulkV1.FhirToString()
 		if err != nil {
 			result <- err
 			return
 		}
-		observation := string(observationb) + "\n"
-
-		alrResources := []string{patients, observation, coverage, group, risk}
 
 		if len(alrResources) != len(writerPool) {
 			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
@@ -281,7 +182,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	aco := jobArgs.CMSID
 	id := jobArgs.ID
 	MBIs := jobArgs.MBIs
-    BBBasePath := jobArgs.BBBasePath
+	BBBasePath := jobArgs.BBBasePath
 	lowerBound := jobArgs.LowerBound
 	upperBound := jobArgs.UpperBound
 
@@ -319,13 +220,6 @@ func (a *AlrWorker) ProcessAlrJob(
 
 	}
 
-	// Serialize data into JSON
-	marshaller, err := jsonformat.NewMarshaller(false, "", "", jsonformat.STU3)
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-
 	// Creating channels for go routine
 	// c is buffered b/c IO operation is slower than unmarshalling
 	c := make(chan *alr.AlrFhirBulk, 1000) // 1000 rows before blocking
@@ -334,15 +228,19 @@ func (a *AlrWorker) ProcessAlrJob(
 	// A go routine that will streamed data to write to disk.
 	// Reason for a go routine is to not block when writing, since disk writing is
 	// generally slower than memory access. We are streaming to keep mem lower.
-	go goWriter(ctx, a, c, fileMap, marshaller, result, resources[:], id)
+    if jobArgs.BBBasePath == "fhir/v1" {
+        go goWriterV1(ctx, a, c, fileMap, result, resources[:], id)
+    } else {
+        go goWriterV2(ctx, a, c, fileMap, result, resources[:], id)
+    }
 
 	// Marshall into JSON and send it over the channel
 	for i := range alrModels {
 		fhirBulk := alr.ToFHIR(&alrModels[i], BBBasePath) // Removed timestamp, but can be added back here
 
-        if fhirBulk == nil {
-            continue
-        }
+		if fhirBulk == nil {
+			continue
+		}
 
 		c <- fhirBulk
 	}

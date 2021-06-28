@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	alrcsv "github.com/CMSgov/bcda-app/bcda/alr/csv"
@@ -17,7 +16,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v2"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
-	"github.com/google/fhir/go/jsonformat"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,7 +49,7 @@ func TestGenerateAlr(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, alrs, 1)
 
-	//lastUpdated := time.Now().Round(time.Second)
+    // FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
 	fhirBulk1 := alr.ToFHIR(alrs[0], "fhir/v1")
 	assert.NotNil(t, fhirBulk1.AlrBulkV1)
 
@@ -85,9 +83,6 @@ func writeToFileV1(t *testing.T, fhirBulk *v1.AlrBulkV1) string {
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
-	marshaller, err := jsonformat.NewPrettyMarshaller(jsonformat.STU3)
-	assert.NoError(t, err)
-
 	fieldNum := len(resources)
 	writerPool := make([]*bufio.Writer, fieldNum)
 
@@ -103,41 +98,8 @@ func writeToFileV1(t *testing.T, fhirBulk *v1.AlrBulkV1) string {
 	}
 
 	// marshalling structs into JSON
-
-	//PATIENT
-	patientb, err := marshaller.MarshalResource(fhirBulk.Patient)
+    alrResources, err := fhirBulk.FhirToString()
 	assert.NoError(t, err)
-	patients := string(patientb) + "\n"
-
-	// COVERAGE
-	coverageb, err := marshaller.MarshalResource(fhirBulk.Coverage)
-	assert.NoError(t, err)
-	coverage := string(coverageb) + "\n"
-
-	// GROUP
-	groupb, err := marshaller.MarshalResource(fhirBulk.Group)
-	assert.NoError(t, err)
-	group := string(groupb) + "\n"
-
-	// RISK
-	var riskAssessment = []string{}
-
-	for _, r := range fhirBulk.Risk {
-
-		riskb, err := marshaller.MarshalResource(r)
-		assert.NoError(t, err)
-		risk := string(riskb) + "\n"
-		riskAssessment = append(riskAssessment, risk)
-	}
-	risk := strings.Join(riskAssessment, "\n")
-
-	// OBSERVATION
-	observationb, err := marshaller.MarshalResource(fhirBulk.Observation)
-	assert.NoError(t, err)
-
-	observation := string(observationb) + "\n"
-
-	alrResources := []string{patients, observation, coverage, group, risk}
 
 	// IO operations
 	for n, resource := range alrResources {
@@ -158,9 +120,6 @@ func writeToFileV2(t *testing.T, fhirBulk *v2.AlrBulkV2) string {
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
-	marshaller, err := jsonformat.NewPrettyMarshaller(jsonformat.R4)
-	assert.NoError(t, err)
-
 	fieldNum := len(resources)
 	writerPool := make([]*bufio.Writer, fieldNum)
 
@@ -177,40 +136,8 @@ func writeToFileV2(t *testing.T, fhirBulk *v2.AlrBulkV2) string {
 
 	// marshalling structs into JSON
 
-	//PATIENT
-	patientb, err := marshaller.MarshalResource(fhirBulk.Patient)
+    alrResources, err := fhirBulk.FhirToString()
 	assert.NoError(t, err)
-	patients := string(patientb) + "\n"
-
-	// COVERAGE
-	coverageb, err := marshaller.MarshalResource(fhirBulk.Coverage)
-	assert.NoError(t, err)
-	coverage := string(coverageb) + "\n"
-
-	// GROUP
-	groupb, err := marshaller.MarshalResource(fhirBulk.Group)
-	assert.NoError(t, err)
-	group := string(groupb) + "\n"
-
-	// RISK
-	var riskAssessment = []string{}
-
-	for _, r := range fhirBulk.Risk {
-
-		riskb, err := marshaller.MarshalResource(r)
-		assert.NoError(t, err)
-		risk := string(riskb) + "\n"
-		riskAssessment = append(riskAssessment, risk)
-	}
-	risk := strings.Join(riskAssessment, "\n")
-
-	// OBSERVATION
-	observationb, err := marshaller.MarshalResource(fhirBulk.Observation)
-	assert.NoError(t, err)
-
-	observation := string(observationb) + "\n"
-
-	alrResources := []string{patients, observation, coverage, group, risk}
 
 	// IO operations
 	for n, resource := range alrResources {
