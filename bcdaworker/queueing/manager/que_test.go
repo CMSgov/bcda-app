@@ -199,7 +199,6 @@ func TestStartAlrJob(t *testing.T) {
 
 	alr, err := alrWorker.GetAlr(ctx, *aco.CMSID, twoMbis, time.Time{}, time.Time{})
 	assert.NoError(t, err)
-	fmt.Println("!!!", alr)
 
 	// Add the ACO into aco table
 	job := models.Job{

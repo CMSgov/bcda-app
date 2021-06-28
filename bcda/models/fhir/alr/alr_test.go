@@ -81,7 +81,7 @@ func TestGenerateAlr(t *testing.T) {
 
 }
 
-// writeToFile writes the patient and observation resources to a file returning the directory
+// writeToFile writes the FHIR resources to a file returning the directory
 func writeToFileV1(t *testing.T, fhirBulk *v1.AlrBulkV1) string {
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)

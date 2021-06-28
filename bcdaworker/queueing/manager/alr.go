@@ -157,7 +157,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 
 	if err := q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID); err != nil {
 		q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
-        return err
+		return err
 	}
 
 	jobComplete, err := q.isJobComplete(ctx, jobArgs.ID)
@@ -211,7 +211,7 @@ func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, erro
 		q.alrLog.WithFields(logrus.Fields{
 			"jobID":    j.ID,
 			"jobCount": j.JobCount, "completedJobCount": j.CompletedJobCount}).
-			Warn("Excess number of jobs completed.")
+			Println("Excess number of jobs completed.")
 		return true, nil
 	}
 	return false, nil
