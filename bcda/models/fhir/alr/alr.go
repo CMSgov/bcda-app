@@ -18,9 +18,9 @@ func ToFHIR(alr *models.Alr, version string) *AlrFhirBulk {
 	bulk := &AlrFhirBulk{}
 
 	switch version {
-	case "fhir/v1":
+	case "/v1/fhir":
 		bulk.AlrBulkV1 = v1.ToFHIRV1(alr)
-	case "fhir/v2":
+	case "/v2/fhir":
 		bulk.AlrBulkV2 = v2.ToFHIRV2(alr)
 	default:
 		log.API.Errorf("Version endpoint %d not supported.", version)

@@ -125,7 +125,7 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 
 	for i := range c {
 		// marshalling structs into JSON
-		alrResources, err := i.AlrBulkV1.FhirToString()
+		alrResources, err := i.AlrBulkV2.FhirToString()
 		if err != nil {
 			result <- err
 			return
@@ -228,7 +228,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	// A go routine that will streamed data to write to disk.
 	// Reason for a go routine is to not block when writing, since disk writing is
 	// generally slower than memory access. We are streaming to keep mem lower.
-    if jobArgs.BBBasePath == "fhir/v1" {
+    if jobArgs.BBBasePath == "/v1/fhir" {
         go goWriterV1(ctx, a, c, fileMap, result, resources[:], id)
     } else {
         go goWriterV2(ctx, a, c, fileMap, result, resources[:], id)

@@ -50,18 +50,21 @@ func TestGenerateAlr(t *testing.T) {
 	assert.Len(t, alrs, 1)
 
     // FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
-	fhirBulk1 := alr.ToFHIR(alrs[0], "fhir/v1")
+	fhirBulk1 := alr.ToFHIR(alrs[0], "/v1/fhir")
 	assert.NotNil(t, fhirBulk1.AlrBulkV1)
 
-	fhirBulk2 := alr.ToFHIR(alrs[0], "fhir/v2")
+	fhirBulk2 := alr.ToFHIR(alrs[0], "/v2/fhir")
 	assert.NotNil(t, fhirBulk2.AlrBulkV2)
+
+    missing := alr.ToFHIR(alrs[0], "fhir/Not Supported")
+    assert.Nil(t, missing)
 
 	// Do not write the FHIR resources to a file
 	if !*output {
 		//Test models.Alr where hccVersion is empty
 		delete(alrs[0].KeyValue, "HCC_version")
-		fhirBulk1 = alr.ToFHIR(alrs[0], "fhir/v1")
-		fhirBulk2 = alr.ToFHIR(alrs[0], "fhir/v2")
+		fhirBulk1 = alr.ToFHIR(alrs[0], "/v1/fhir")
+		fhirBulk2 = alr.ToFHIR(alrs[0], "/v2/fhir")
 		assert.Nil(t, fhirBulk1.AlrBulkV1)
 		assert.Nil(t, fhirBulk2.AlrBulkV2)
 		return
