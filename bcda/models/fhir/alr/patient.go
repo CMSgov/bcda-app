@@ -1,6 +1,7 @@
 package alr
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -18,7 +19,103 @@ func patient(alr *models.Alr) *fhirmodels.Patient {
 	p.Deceased = getDeceased(alr.BeneDOD)
 	p.Address = getAddress(alr.KeyValue)
 	p.Identifier = getIdentifiers(alr)
+
+	// Extensions...
+	extention := []*fhirdatatypes.Extension{}
+	// TIN
+	master := alr.KeyValue["MASTER_ID"]
+	val := alr.KeyValue["B_EM_LINE_CNT_T"]
+	if val != "" {
+		field := makeSecondaryExt("serviceCount", val)
+		if master != "" && field != nil {
+			extSlice := []*fhirdatatypes.Extension{}
+			tin := makeMainExt("http://terminology.hl7.org/CodeSystem/v2-0203",
+				"TAX", "TAX ID Number", val)
+			extSlice = append(extSlice, tin, field)
+			extention = append(extention, &fhirdatatypes.Extension{
+				Extension: extSlice,
+				Url:       &fhirdatatypes.Uri{Value: "http://alr.cms.gov/ig/St…tion/ext-serviceCountTIN"},
+			})
+		}
+	}
+	// CCN
+	val = alr.KeyValue["REV_LINE_CNT"]
+	if val != "" {
+		field := makeSecondaryExt("serviceCount", val)
+		if master != "" && field != nil {
+			extSlice := []*fhirdatatypes.Extension{}
+			ccn := makeMainExt("https://bluebutton.cms.g…rces/variables/prvdr_num",
+				"CCN", "CCN number", val)
+			extSlice = append(extSlice, ccn, field)
+			extention = append(extention, &fhirdatatypes.Extension{
+				Extension: extSlice,
+				Url:       &fhirdatatypes.Uri{Value: "http://alr.cms.gov/ig/St…tion/ext-serviceCountCCN"},
+			})
+		}
+	}
+	// TIN-NPI
+	npi := alr.KeyValue["NPI_USED"]
+	val = alr.KeyValue["PCS_COUNT"]
+	if val != "" {
+		field := makeSecondaryExt("serviceCount", val)
+		if master != "" && field != nil {
+			extSlice := []*fhirdatatypes.Extension{}
+			tin := makeMainExt("http://terminology.hl7.org/CodeSystem/v2-0203",
+				"TAX", "TAX ID Number", val)
+			tinNPI := makeMainExt("http://hl7.org/fhir/sid/us-npi",
+				"NPI", "NPI Number", npi)
+			extSlice = append(extSlice, tin, tinNPI, field)
+			extention = append(extention, &fhirdatatypes.Extension{
+				Extension: extSlice,
+				Url:       &fhirdatatypes.Uri{Value: "http://alr.cms.gov/ig/St…tion/ext-serviceCountTIN"},
+			})
+		}
+	}
+
+	p.Extension = extention
+
 	return p
+}
+
+func makeMainExt(system, code, display, value string) *fhirdatatypes.Extension {
+
+	ext := &fhirdatatypes.Extension{
+		Value: &fhirdatatypes.Extension_ValueX{
+			Choice: &fhirdatatypes.Extension_ValueX_Identifier{
+				Identifier: &fhirdatatypes.Identifier{
+					Type: &fhirdatatypes.CodeableConcept{
+						Coding: []*fhirdatatypes.Coding{{
+							System:  &fhirdatatypes.Uri{Value: system},
+							Code:    &fhirdatatypes.Code{Value: code},
+							Display: &fhirdatatypes.String{Value: display},
+						}},
+					},
+					Value: &fhirdatatypes.String{Value: value},
+				},
+			},
+		},
+	}
+
+	return ext
+}
+
+func makeSecondaryExt(url, value string) *fhirdatatypes.Extension {
+	val, err := strconv.ParseInt(value, 10, 32)
+
+	if err != nil {
+		return nil
+	}
+
+	ext := &fhirdatatypes.Extension{
+		Url: &fhirdatatypes.Uri{Value: url},
+		Value: &fhirdatatypes.Extension_ValueX{
+			Choice: &fhirdatatypes.Extension_ValueX_Integer{
+				Integer: &fhirdatatypes.Integer{Value: int32(val)},
+			},
+		},
+	}
+
+	return ext
 }
 
 func getGender(gender string) *fhircodes.AdministrativeGenderCode {

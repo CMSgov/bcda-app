@@ -30,8 +30,14 @@ func (s *AlrWorkerTestSuite) SetupSuite() {
 	// Create synthetic Data
 	// TODO: Replace this with Martin's testing strategy from #4239
 	exMap := make(map[string]string)
-	exMap["EnrollFlag1"] = "1"
 	exMap["HCC_version"] = "V12"
+	exMap["EnrollFlag1"] = "1"
+	exMap["VA_TIN"] = "123456789"
+	exMap["CBA_FLAG"] = "1"
+	exMap["EXCLUDED"] = "0"
+	exMap["BENE_RSK_R_SCRE_01"] = "1.2345"
+	exMap["ESRD_SCORE"] = "1.2345"
+	exMap["DEM_AGDU_SCORE"] = "1.2345"
 	exMap["HCC_COL_1"] = "1"
 	exMap["HCC_COL_2"] = "0"
 	aco := "A1234"
