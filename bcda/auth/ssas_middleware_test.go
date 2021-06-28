@@ -36,7 +36,7 @@ type SSASMiddlewareTestSuite struct {
 func (s *SSASMiddlewareTestSuite) createRouter() http.Handler {
 	router := chi.NewRouter()
 	router.Use(auth.ParseToken)
-	router.With(auth.RequireTokenAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+	router.With(auth.RequireTokenAuth).Get("/v1/", func(w http.ResponseWriter, r *http.Request) {
 		ad := r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 		render.JSON(w, r, ad)
 	})
@@ -60,7 +60,7 @@ func (s *SSASMiddlewareTestSuite) TearDownSuite() {
 }
 
 func (s *SSASMiddlewareTestSuite) TestSSASToken() {
-	req, err := http.NewRequest("GET", s.server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", s.server.URL), nil)
 	require.NotNil(s.T(), req, "req not created; ", err)
 
 	s.ad = auth.AuthData{}

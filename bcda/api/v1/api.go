@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 
 	"github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -239,8 +238,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	respBytes, err := json.Marshal(respMap)
 	if err != nil {
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -248,8 +246,7 @@ func GetVersion(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(respBytes)
 	if err != nil {
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 }

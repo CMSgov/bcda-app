@@ -16,9 +16,6 @@ import (
 	"net/http"
 	"time"
 
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
-
 	"github.com/pborman/uuid"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
@@ -26,7 +23,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
+	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/utils"
@@ -54,6 +52,13 @@ type Handler struct {
 	bbBasePath string
 
 	apiVersion string
+
+	RespWriter fhirResponseWriter
+}
+
+type fhirResponseWriter interface {
+	Exception(http.ResponseWriter, int, string, string)
+	NotFound(http.ResponseWriter, int, string, string)
 }
 
 func NewHandler(resources []string, basePath string, apiVersion string) *Handler {
@@ -81,6 +86,15 @@ func newHandler(resources []string, basePath string, apiVersion string, db *sql.
 
 	h.bbBasePath = basePath
 	h.apiVersion = apiVersion
+
+	switch h.apiVersion {
+	case "v1":
+		h.RespWriter = responseutils.NewResponseWriter()
+	case "v2":
+		h.RespWriter = responseutilsv2.NewResponseWriter()
+	default:
+		log.API.Fatalf("unexpected API version: %s", h.apiVersion)
+	}
 
 	return h
 }
@@ -117,8 +131,7 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		fallthrough
 	default:
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, "Invalid group ID")
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
 		return
 	}
 
@@ -136,26 +149,23 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
 	job, jobKeys, err := h.Svc.GetJobAndKeys(context.Background(), uint(jobID))
 	if err != nil {
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
 		// NOTE: This is a catch all and may not necessarily mean that the job was not found.
 		// So returning a StatusNotFound may be a misnomer
-		responseutils.WriteError(oo, w, http.StatusNotFound)
+		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.DbErr, "")
 		return
 	}
 
 	switch job.Status {
 
 	case models.JobStatusFailed, models.JobStatusFailedExpired:
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "Service encountered numerous errors.  Unable to complete the request.")
 	case models.JobStatusPending, models.JobStatusInProgress:
 		w.Header().Set("X-Progress", job.StatusMessage())
 		w.WriteHeader(http.StatusAccepted)
@@ -164,9 +174,7 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		// If the job should be expired, but the cleanup job hasn't run for some reason, still respond with 410
 		if job.UpdatedAt.Add(h.JobTimeout).Before(time.Now()) {
 			w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.NotFoundErr, "")
-			responseutils.WriteError(oo, w, http.StatusGone)
+			h.RespWriter.Exception(w, http.StatusGone, responseutils.NotFoundErr, "")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -207,30 +215,23 @@ func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
 
 		jsonData, err := json.Marshal(rb)
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 
 		_, err = w.Write([]byte(jsonData))
 		if err != nil {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
 	case models.JobStatusArchived, models.JobStatusExpired:
 		w.Header().Set("Expires", job.UpdatedAt.Add(h.JobTimeout).String())
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-			responseutils.NotFoundErr, "")
-		responseutils.WriteError(oo, w, http.StatusGone)
+		h.RespWriter.Exception(w, http.StatusGone, responseutils.NotFoundErr, "")
 	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND,
-			responseutils.NotFoundErr, "Job has been cancelled.")
-		responseutils.WriteError(oo, w, http.StatusNotFound)
+		h.RespWriter.NotFound(w, http.StatusNotFound, responseutils.NotFoundErr, "Job has been cancelled.")
+
 	}
 }
 
@@ -241,8 +242,7 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.Wrap(err, "cannot convert jobID to uint")
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr, err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
@@ -250,13 +250,11 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case service.ErrJobNotCancellable:
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DeletedErr, err.Error())
-			responseutils.WriteError(oo, w, http.StatusGone)
+			h.RespWriter.Exception(w, http.StatusGone, responseutils.DeletedErr, err.Error())
 			return
 		default:
 			log.API.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, err.Error())
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, err.Error())
 			return
 		}
 	}
@@ -273,8 +271,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	)
 
 	if ad, err = readAuthData(r); err != nil {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.TokenErr, "")
-		responseutils.WriteError(oo, w, http.StatusUnauthorized)
+		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 		return
 	}
 
@@ -290,18 +287,14 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 
 	if err = h.validateRequest(resourceTypes); err != nil {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-			err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 
 	bb, err := client.NewBlueButtonClient(client.NewConfig(h.bbBasePath))
 	if err != nil {
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-			responseutils.InternalErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 
@@ -325,9 +318,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	if err != nil {
 		err = fmt.Errorf("failed to start transaction: %w", err)
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-			responseutils.InternalErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 		return
 	}
 	// Use a transaction backed repository to ensure all of our upserts are encapsulated into a single transaction
@@ -354,8 +345,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		// We've added logic into the worker to handle this situation.
 		if err = tx.Commit(); err != nil {
 			log.API.Error(err.Error())
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 			return
 		}
 
@@ -367,8 +357,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
 	if err != nil {
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
 
@@ -376,8 +365,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	b, err := bb.GetPatient("FAKE_PATIENT", strconv.FormatUint(uint64(newJob.ID), 10), acoID.String(), "", time.Now())
 	if err != nil {
 		log.API.Error(err)
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.FormatErr, "Failure to retrieve transactionTime metadata from FHIR Data Server.")
 		return
 	}
 	newJob.TransactionTime = b.Meta.LastUpdated
@@ -399,19 +387,17 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	if err != nil {
 		log.API.Error(err)
 		var (
-			oo       *fhirmodels.OperationOutcome
 			respCode int
+			errType  string
 		)
 		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok && reqType == service.Runout {
-			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.NotFoundErr, err.Error())
 			respCode = http.StatusNotFound
+			errType = responseutils.NotFoundErr
 		} else {
-			oo = responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, err.Error())
 			respCode = http.StatusInternalServerError
+			errType = responseutils.InternalErr
 		}
-		responseutils.WriteError(oo, w, respCode)
+		h.RespWriter.Exception(w, respCode, errType, err.Error())
 		return
 	}
 	newJob.JobCount = len(queJobs)
@@ -419,8 +405,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	// We've now computed all of the fields necessary to populate a fully defined job
 	if err = rtx.UpdateJob(ctx, newJob); err != nil {
 		log.API.Error(err.Error())
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.DbErr, "")
-		responseutils.WriteError(oo, w, http.StatusInternalServerError)
+		h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.DbErr, "")
 		return
 	}
 
@@ -433,9 +418,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 		if err = h.Enq.AddJob(*j, int(jobPriority)); err != nil {
 			log.API.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 	}
@@ -445,7 +428,7 @@ func (h *Handler) validateRequest(resourceTypes []string) error {
 
 	for _, resourceType := range resourceTypes {
 		if _, ok := h.supportedResources[resourceType]; !ok {
-			return fmt.Errorf("Invalid resource type %s. Supported types %s.", resourceType, h.supportedResources)
+			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResources)
 		}
 	}
 
