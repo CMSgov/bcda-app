@@ -14,7 +14,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/log"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	"github.com/pborman/uuid"
 )
 
@@ -42,14 +41,23 @@ func CheckConcurrentJobs(next http.Handler) http.Handler {
 			panic("RequestParameters should be set before calling this handler")
 		}
 
+		version, err := getVersion(r.URL.Path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		rw, err := getRespWriter(version)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		acoID := uuid.Parse(ad.ACOID)
 
 		pendingAndInProgressJobs, err := repository.GetJobs(r.Context(), acoID, models.JobStatusInProgress, models.JobStatusPending)
 		if err != nil {
 			log.API.Error(fmt.Errorf("failed to lookup pending and in-progress jobs: %w", err))
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.InternalErr, "")
-			responseutils.WriteError(oo, w, http.StatusInternalServerError)
+			rw.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
 			return
 		}
 		if len(pendingAndInProgressJobs) > 0 {

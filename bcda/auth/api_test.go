@@ -31,9 +31,9 @@ type TokenResponse struct {
 
 type AuthAPITestSuite struct {
 	suite.Suite
-	rr    *httptest.ResponseRecorder
-	db    *sql.DB
-	r     models.Repository
+	rr *httptest.ResponseRecorder
+	db *sql.DB
+	r  models.Repository
 }
 
 func (s *AuthAPITestSuite) SetupSuite() {
@@ -105,10 +105,10 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	// Expect failure with invalid token
 	router := chi.NewRouter()
 	router.Use(auth.ParseToken)
-	router.With(auth.RequireTokenAuth).Get("/", auth.Welcome)
+	router.With(auth.RequireTokenAuth).Get("/v1/", auth.Welcome)
 	server := httptest.NewServer(router)
 	client := server.Client()
-	req, err := http.NewRequest("GET", server.URL, nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/", server.URL), nil)
 	assert.NoError(s.T(), err)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", badToken))
 	req.Header.Add("Accept", "application/json")
@@ -117,7 +117,7 @@ func (s *AuthAPITestSuite) TestWelcome() {
 	assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
 	// Expect success with valid token
-	req, err = http.NewRequest("GET", server.URL, nil)
+	req, err = http.NewRequest("GET", fmt.Sprintf("%s/v1/", server.URL), nil)
 	if err != nil {
 		assert.FailNow(s.T(), err.Error())
 	}
