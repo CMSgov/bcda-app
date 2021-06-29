@@ -57,7 +57,7 @@ func (s *AlrTestSuite) TestAlrRequest() {
 	enqueuer := &queueing.MockEnqueuer{}
 	enqueuer.On("AddAlrJob", mock.Anything, mock.Anything).Return(nil)
 
-	h := newHandler([]string{"Patient", "Observation"}, "v1", "v1", s.db)
+	h := newHandler([]string{"Patient", "Observation"}, "v1/fhir", "v1", s.db)
 	h.Enq = enqueuer
 
 	// Set up request with the correct context scoped values
