@@ -50,17 +50,17 @@ func TestGenerateAlr(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, alrs, 1)
 
-    // FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
-    // Timestamp comes from alrRequest fro api package, but manually set here
-    alrs[0].Timestamp = time.Now()
+	// FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
+	// Timestamp comes from alrRequest fro api package, but manually set here
+	alrs[0].Timestamp = time.Now()
 	fhirBulk1 := alr.ToFHIR(alrs[0], "/v1/fhir")
 	assert.NotNil(t, fhirBulk1.AlrBulkV1)
 
 	fhirBulk2 := alr.ToFHIR(alrs[0], "/v2/fhir")
 	assert.NotNil(t, fhirBulk2.AlrBulkV2)
 
-    missing := alr.ToFHIR(alrs[0], "fhir/Not Supported")
-    assert.Nil(t, missing)
+	missing := alr.ToFHIR(alrs[0], "fhir/Not Supported")
+	assert.Nil(t, missing)
 
 	// Do not write the FHIR resources to a file
 	if !*output {
@@ -75,7 +75,7 @@ func TestGenerateAlr(t *testing.T) {
 
 	if *version == 1 {
 		dir := writeToFileV1(t, fhirBulk1.AlrBulkV1)
-		t.Logf("FHIR STU4 resources written to: %s", dir)
+		t.Logf("FHIR STU3 resources written to: %s", dir)
 		return
 	}
 
@@ -104,7 +104,7 @@ func writeToFileV1(t *testing.T, fhirBulk *v1.AlrBulkV1) string {
 	}
 
 	// marshalling structs into JSON
-    alrResources, err := fhirBulk.FhirToString()
+	alrResources, err := fhirBulk.FhirToString()
 	assert.NoError(t, err)
 
 	// IO operations
@@ -142,7 +142,7 @@ func writeToFileV2(t *testing.T, fhirBulk *v2.AlrBulkV2) string {
 
 	// marshalling structs into JSON
 
-    alrResources, err := fhirBulk.FhirToString()
+	alrResources, err := fhirBulk.FhirToString()
 	assert.NoError(t, err)
 
 	// IO operations
