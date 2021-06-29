@@ -3,9 +3,10 @@ package v1
 import (
 	"regexp"
 	"strconv"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
@@ -26,10 +27,17 @@ var (
 )
 
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
-func group(mbi string, keyValue []utils.KvPair) *fhirmodels.Group {
+func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Group {
 	group := &fhirmodels.Group{}
 	group.Member = []*fhirmodels.Group_Member{{}}
 	extension := []*fhirdatatypes.Extension{}
+
+	group.Meta = &fhirdatatypes.Meta{
+		LastUpdated: &fhirdatatypes.Instant{
+			Precision: fhirdatatypes.Instant_SECOND,
+			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
+		},
+	}
 
 	for _, kv := range keyValue {
 		switch {

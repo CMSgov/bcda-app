@@ -3,11 +3,12 @@ package v2
 import (
 	"regexp"
 	"strconv"
+	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
-    r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
-    r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/group_go_proto"
+	r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
+	r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/group_go_proto"
 )
 
 // This part of the package houses the logical to create group resource type data
@@ -26,10 +27,17 @@ var (
 )
 
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
-func group(mbi string, keyValue []utils.KvPair) *r4Models.Group {
+func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models.Group {
 	group := &r4Models.Group{}
 	group.Member = []*r4Models.Group_Member{{}}
 	extension := []*r4Datatypes.Extension{}
+
+	group.Meta = &r4Datatypes.Meta{
+		LastUpdated: &r4Datatypes.Instant{
+			Precision: r4Datatypes.Instant_SECOND,
+			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
+		},
+	}
 
 	for _, kv := range keyValue {
 		switch {

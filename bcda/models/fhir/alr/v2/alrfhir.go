@@ -44,10 +44,10 @@ func ToFHIRV2(alr *models.Alr) *AlrBulkV2 {
 	}
 
 	sub := patient(alr)
-	cov := coverage(alr.BeneMBI, kvArenaInstance.Enrollment)
-	group := group(alr.BeneMBI, kvArenaInstance.Group)
-	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.RiskScore)
-	obs := observations(hccVersion[0].Value, alr.BeneMBI, kvArenaInstance.RiskFlag)
+	cov := coverage(alr.BeneMBI, kvArenaInstance.Enrollment, alr.Timestamp)
+	group := group(alr.BeneMBI, kvArenaInstance.Group, alr.Timestamp)
+	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.RiskScore, alr.Timestamp)
+	obs := observations(hccVersion[0].Value, alr.BeneMBI, kvArenaInstance.RiskFlag, alr.Timestamp)
 
 	return &AlrBulkV2{
 		Patient:     sub,
@@ -97,7 +97,7 @@ func (bulk *AlrBulkV2) FhirToString() ([]string, error) {
             log.API.Errorf("Could not convert patient fhir to json.")
             return nil, err
         }
-        risk := string(riskb) + "\n"
+        risk := string(riskb)
         riskAssessment = append(riskAssessment, risk)
     }
     risk := strings.Join(riskAssessment, "\n")

@@ -1,13 +1,15 @@
 package v2
 
 import (
+	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
-    r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
-    r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/observation_go_proto"
+	r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
+	r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/observation_go_proto"
 )
 
-func observations(version, mbi string, keyValue []utils.KvPair) *r4Models.Observation {
+func observations(version, mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models.Observation {
 	obs := &r4Models.Observation{}
 	obs.Id = &r4Datatypes.Id{Id: &r4Datatypes.String{
 		Value: "example-id-hcc-risk-flags",
@@ -16,6 +18,10 @@ func observations(version, mbi string, keyValue []utils.KvPair) *r4Models.Observ
 		Profile: []*r4Datatypes.Canonical{{
 			Value: "http://alr.cms.gov/ig/StructureDefinition/alr-HccRiskFlag",
 		}},
+		LastUpdated: &r4Datatypes.Instant{
+			Precision: r4Datatypes.Instant_SECOND,
+			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
+		},
 	}
 	obs.Code = &r4Datatypes.CodeableConcept{
 		Coding: []*r4Datatypes.Coding{{

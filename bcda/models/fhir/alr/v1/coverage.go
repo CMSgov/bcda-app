@@ -1,7 +1,9 @@
 package v1
 
 import (
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
+	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
@@ -9,7 +11,7 @@ import (
 // This part of the package houses the logical to create coverage resource type data
 
 // coverage takes a beneficiary and their respective K:V enrollment and returns FHIR
-func coverage(mbi string, keyValue []utils.KvPair) *fhirmodels.Coverage {
+func coverage(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Coverage {
 
 	coverage := &fhirmodels.Coverage{}
 	coverage.Id = &fhirdatatypes.Id{Value: mbi}
@@ -21,6 +23,12 @@ func coverage(mbi string, keyValue []utils.KvPair) *fhirmodels.Coverage {
 	coverage.Beneficiary = &fhirdatatypes.Reference{
 		Reference: &fhirdatatypes.Reference_OrganizationId{
 			OrganizationId: &fhirdatatypes.ReferenceId{Value: mbi},
+		},
+	}
+	coverage.Meta = &fhirdatatypes.Meta{
+		LastUpdated: &fhirdatatypes.Instant{
+			Precision: fhirdatatypes.Instant_SECOND,
+			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
 		},
 	}
 

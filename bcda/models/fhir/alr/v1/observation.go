@@ -1,13 +1,15 @@
 package v1
 
 import (
+	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
-func observations(version, mbi string, keyValue []utils.KvPair) *fhirmodels.Observation {
+func observations(version, mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Observation {
 	obs := &fhirmodels.Observation{}
 	obs.Id = &fhirdatatypes.Id{Id: &fhirdatatypes.String{
 		Value: "example-id-hcc-risk-flags",
@@ -16,6 +18,10 @@ func observations(version, mbi string, keyValue []utils.KvPair) *fhirmodels.Obse
 		Profile: []*fhirdatatypes.Uri{{
 			Value: "http://alr.cms.gov/ig/StructureDefinition/alr-HccRiskFlag",
 		}},
+		LastUpdated: &fhirdatatypes.Instant{
+			Precision: fhirdatatypes.Instant_SECOND,
+			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
+		},
 	}
 	obs.Code = &fhirdatatypes.CodeableConcept{
 		Coding: []*fhirdatatypes.Coding{{

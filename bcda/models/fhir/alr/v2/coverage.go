@@ -3,16 +3,18 @@ package v2
 import (
 	//"github.com/CMSgov/bcda-app/bcda/models"
 	//fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-    "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
-    
-    r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
-    r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/coverage_go_proto"
+	"time"
+
+	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
+
+	r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
+	r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/coverage_go_proto"
 )
 
 // This part of the package houses the logical to create coverage resource type data
 
 // coverage takes a beneficiary and their respective K:V enrollment and returns FHIR
-func coverage(mbi string, keyValue []utils.KvPair) *r4Models.Coverage {
+func coverage(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models.Coverage {
 
 	coverage := &r4Models.Coverage{}
 	coverage.Id = &r4Datatypes.Id{Value: mbi}
@@ -25,6 +27,12 @@ func coverage(mbi string, keyValue []utils.KvPair) *r4Models.Coverage {
 	coverage.Beneficiary = &r4Datatypes.Reference{
 		Reference: &r4Datatypes.Reference_OrganizationId{
 			OrganizationId: &r4Datatypes.ReferenceId{Value: mbi},
+		},
+	}
+	coverage.Meta = &r4Datatypes.Meta{
+		LastUpdated: &r4Datatypes.Instant{
+			Precision: r4Datatypes.Instant_SECOND,
+			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
 		},
 	}
 
