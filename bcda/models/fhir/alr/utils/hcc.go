@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/go-gota/gota/dataframe"
-	"github.com/sirupsen/logrus"
 )
 
 type Hcc struct {
@@ -52,14 +52,14 @@ func init() {
 			df = dataframe.ReadCSV(f, dataframe.HasHeader(true), dataframe.DetectTypes(false),
 				dataframe.WithDelimiter('\t'))
 			if df.Err != nil {
-				logrus.Warnf("Failed to parse CSV to data frame. Skipping. Err: %s", df.Err)
+				log.API.Warnf("Failed to parse CSV to data frame. Skipping. Err: %s", df.Err)
 				continue
 			}
 
-			logrus.Debugf("Successfully loaded dataframe from %s.", path)
+			log.API.Debugf("Successfully loaded dataframe from %s.", path)
 			break
 		} else {
-			logrus.Warnf("Failed to read file at %s. Skipping. Err: %s",
+			log.API.Warnf("Failed to read file at %s. Skipping. Err: %s",
 				path, err.Error())
 		}
 	}

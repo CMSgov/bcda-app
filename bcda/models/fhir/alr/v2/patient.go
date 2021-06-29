@@ -13,15 +13,21 @@ import (
 // Version 2:
 func patient(alr *models.Alr) *r4Models.Patient {
 	p := &r4Models.Patient{}
-    p.Name = []*r4Datatypes.HumanName{{
-        Given: []*r4Datatypes.String{{ Value: alr.BeneFirstName }},
-        Family: &r4Datatypes.String{ Value: alr.BeneLastName },
-    }}
-    p.Gender = &r4Models.Patient_GenderCode{ Value: getGenderV2(alr.BeneSex) }
+	p.Name = []*r4Datatypes.HumanName{{
+		Given:  []*r4Datatypes.String{{Value: alr.BeneFirstName}},
+		Family: &r4Datatypes.String{Value: alr.BeneLastName},
+	}}
+	p.Gender = &r4Models.Patient_GenderCode{Value: getGenderV2(alr.BeneSex)}
 	p.BirthDate = fhirDateV2(alr.BeneDOB)
 	p.Deceased = getDeceasedV2(alr.BeneDOD)
 	p.Address = getAddressV2(alr.KeyValue)
 	p.Identifier = getIdentifiersV2(alr)
+	p.Meta = &r4Datatypes.Meta{
+		LastUpdated: &r4Datatypes.Instant{
+			Precision: r4Datatypes.Instant_SECOND,
+			ValueUs:   alr.Timestamp.UnixNano() / int64(time.Microsecond),
+		},
+	}
 
 	// Extensions...
 	extention := []*r4Datatypes.Extension{}
@@ -80,15 +86,14 @@ func patient(alr *models.Alr) *r4Models.Patient {
 	return p
 }
 
-
 func getGenderV2(gender string) r4Codes.AdministrativeGenderCode_Value {
 	switch gender {
 	case "0":
-        return r4Codes.AdministrativeGenderCode_UNKNOWN
+		return r4Codes.AdministrativeGenderCode_UNKNOWN
 	case "1":
-        return r4Codes.AdministrativeGenderCode_MALE
+		return r4Codes.AdministrativeGenderCode_MALE
 	case "2":
-        return r4Codes.AdministrativeGenderCode_FEMALE
+		return r4Codes.AdministrativeGenderCode_FEMALE
 	default:
 		return r4Codes.AdministrativeGenderCode_INVALID_UNINITIALIZED
 	}
@@ -104,18 +109,18 @@ func getDeceasedV2(death time.Time) *r4Models.Patient_DeceasedX {
 		return nil
 	}
 
-    deceased := &r4Models.Patient_DeceasedX{}
-    
-    dateTime := &r4Datatypes.DateTime{
-        ValueUs: death.UnixNano() / int64(time.Microsecond),
-        Precision: r4Datatypes.DateTime_DAY,
-    }
+	deceased := &r4Models.Patient_DeceasedX{}
 
-    deceased.Choice = &r4Models.Patient_DeceasedX_DateTime{
-        DateTime: dateTime,
-    }
+	dateTime := &r4Datatypes.DateTime{
+		ValueUs:   death.UnixNano() / int64(time.Microsecond),
+		Precision: r4Datatypes.DateTime_DAY,
+	}
 
-    return deceased
+	deceased.Choice = &r4Models.Patient_DeceasedX_DateTime{
+		DateTime: dateTime,
+	}
+
+	return deceased
 }
 
 func getAddressV2(kv map[string]string) []*r4Datatypes.Address {
@@ -124,12 +129,12 @@ func getAddressV2(kv map[string]string) []*r4Datatypes.Address {
 	address.District = &r4Datatypes.String{Value: kv["GEO_SSA_CNTY_CD_NAME"]}
 
 	if val := kv["STATE_COUNTY_CD"]; len(val) > 0 {
-        address.Extension = []*r4Datatypes.Extension{{
-                Url: &r4Datatypes.Uri{Value:"https://hl7.org/fhir/STU3/valueset-fips-county.html"},
-            Value: &r4Datatypes.Extension_ValueX{Choice: &r4Datatypes.Extension_ValueX_StringValue{
-                StringValue: &r4Datatypes.String{Value: val},
-				}},
-			}}
+		address.Extension = []*r4Datatypes.Extension{{
+			Url: &r4Datatypes.Uri{Value: "https://hl7.org/fhir/STU3/valueset-fips-county.html"},
+			Value: &r4Datatypes.Extension_ValueX{Choice: &r4Datatypes.Extension_ValueX_StringValue{
+				StringValue: &r4Datatypes.String{Value: val},
+			}},
+		}}
 	}
 	return []*r4Datatypes.Address{address}
 }
@@ -138,21 +143,21 @@ func getIdentifiersV2(alr *models.Alr) []*r4Datatypes.Identifier {
 	var ids []*r4Datatypes.Identifier
 	ids = append(ids, mbiIdentifierV2(alr.BeneMBI))
 	if len(alr.BeneHIC) > 0 {
-        ids = append(ids, &r4Datatypes.Identifier{
-            System: &r4Datatypes.Uri{Value:"http://hl7.org/fhir/sid/us-hicn"},
-            Value:  &r4Datatypes.String{Value: alr.BeneHIC},
+		ids = append(ids, &r4Datatypes.Identifier{
+			System: &r4Datatypes.Uri{Value: "http://hl7.org/fhir/sid/us-hicn"},
+			Value:  &r4Datatypes.String{Value: alr.BeneHIC},
 		})
 	}
 	if val := alr.KeyValue["VA_TIN"]; len(val) > 0 {
 		ids = append(ids, &r4Datatypes.Identifier{
-            System: &r4Datatypes.Uri{Value:"http://hl7.org/fhir/sid/us-tin"},
-            Value:  &r4Datatypes.String{Value: val},
+			System: &r4Datatypes.Uri{Value: "http://hl7.org/fhir/sid/us-tin"},
+			Value:  &r4Datatypes.String{Value: val},
 		})
 	}
 	if val := alr.KeyValue["VA_NPI"]; len(val) > 0 {
 		ids = append(ids, &r4Datatypes.Identifier{
-            System: &r4Datatypes.Uri{Value:"http://hl7.org/fhir/sid/us-npi"},
-            Value:  &r4Datatypes.String{Value: val},
+			System: &r4Datatypes.Uri{Value: "http://hl7.org/fhir/sid/us-npi"},
+			Value:  &r4Datatypes.String{Value: val},
 		})
 	}
 	return ids
@@ -160,11 +165,10 @@ func getIdentifiersV2(alr *models.Alr) []*r4Datatypes.Identifier {
 
 func mbiIdentifierV2(mbi string) *r4Datatypes.Identifier {
 	return &r4Datatypes.Identifier{
-        System: &r4Datatypes.Uri{Value:"http://hl7.org/fhir/sid/us-mbi"},
-        Value:  &r4Datatypes.String{Value: mbi},
+		System: &r4Datatypes.Uri{Value: "http://hl7.org/fhir/sid/us-mbi"},
+		Value:  &r4Datatypes.String{Value: mbi},
 	}
 }
-
 
 func makeMainExtV2(system, code, display, value string) *r4Datatypes.Extension {
 
@@ -204,5 +208,5 @@ func makeSecondaryExtV2(url, value string) *r4Datatypes.Extension {
 		},
 	}
 
-    return ext
+	return ext
 }

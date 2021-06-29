@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	alrcsv "github.com/CMSgov/bcda-app/bcda/alr/csv"
 	alrgen "github.com/CMSgov/bcda-app/bcda/alr/gen"
@@ -50,6 +51,8 @@ func TestGenerateAlr(t *testing.T) {
 	assert.Len(t, alrs, 1)
 
     // FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
+    // Timestamp comes from alrRequest fro api package, but manually set here
+    alrs[0].Timestamp = time.Now()
 	fhirBulk1 := alr.ToFHIR(alrs[0], "/v1/fhir")
 	assert.NotNil(t, fhirBulk1.AlrBulkV1)
 

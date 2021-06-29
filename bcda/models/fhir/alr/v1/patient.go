@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-    "github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
@@ -21,6 +21,12 @@ func patient(alr *models.Alr) *fhirmodels.Patient {
 	p.Deceased = getDeceased(alr.BeneDOD)
 	p.Address = getAddress(alr.KeyValue)
 	p.Identifier = getIdentifiers(alr)
+	p.Meta = &fhirdatatypes.Meta{
+		LastUpdated: &fhirdatatypes.Instant{
+			Precision: fhirdatatypes.Instant_SECOND,
+			ValueUs:   alr.Timestamp.UnixNano() / int64(time.Microsecond),
+		},
+	}
 
 	// Extensions...
 	extention := []*fhirdatatypes.Extension{}

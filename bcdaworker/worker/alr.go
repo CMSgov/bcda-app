@@ -5,6 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -12,10 +15,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
-	"github.com/sirupsen/logrus"
-	"os"
-	"path/filepath"
 )
 
 /******************************************************************************
@@ -49,7 +50,7 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 
 	err := conf.Checkout(&worker)
 	if err != nil {
-		logrus.Fatal("Could not get data from conf for ALR.", err)
+		log.Worker.Fatal("Could not get data from conf for ALR.", err)
 	}
 
 	return worker
@@ -189,7 +190,7 @@ func (a *AlrWorker) ProcessAlrJob(
 	// Pull the data from ALR tables (alr & alr_meta)
 	alrModels, err := a.GetAlr(ctx, aco, MBIs, lowerBound, upperBound)
 	if err != nil {
-		logrus.Error(err)
+		log.Worker.Error(err)
 		return err
 	}
 
@@ -214,7 +215,7 @@ func (a *AlrWorker) ProcessAlrJob(
 		fileMap[resources[i]] = f
 
 		if err != nil {
-			logrus.Error(err)
+			log.Worker.Error(err)
 			return err
 		}
 
