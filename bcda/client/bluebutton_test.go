@@ -222,6 +222,7 @@ func (s *BBRequestTestSuite) TestGetPatient_500() {
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), p)
 }
+
 func (s *BBRequestTestSuite) TestGetCoverage() {
 	c, err := s.bbClient.GetCoverage("012345", "543210", "A0000", since, now)
 	assert.Nil(s.T(), err)
@@ -244,6 +245,30 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefit() {
 
 func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 	e, err := s.bbClient.GetExplanationOfBenefit("012345", "543210", "A0000", "", now, client.ClaimsWindow{})
+	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
+	assert.Nil(s.T(), e)
+}
+
+func (s *BBRequestTestSuite) TestGetClaim() {
+	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 1, len(e.Entries))
+}
+
+func (s *BBRequestTestSuite) TestGetClaim_500() {
+	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now)
+	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
+	assert.Nil(s.T(), e)
+}
+
+func (s *BBRequestTestSuite) TestGetClaimResponse() {
+	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), 1, len(e.Entries))
+}
+
+func (s *BBRequestTestSuite) TestGetClaimResponse_500() {
+	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now)
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
@@ -570,6 +595,10 @@ func handlerFunc(w http.ResponseWriter, r *http.Request, useGZIP bool) {
 		file, err = os.Open("./testdata/Metadata.json")
 	} else if strings.Contains(path, "Patient") {
 		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Patient")
+	} else if strings.Contains(path, "ClaimResponse") {
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/ClaimResponse")
+	} else if strings.Contains(path, "Claim") {
+		file, err = os.Open("../../shared_files/synthetic_beneficiary_data/Claim")
 	} else {
 		err = fmt.Errorf("Unrecognized path supplied %s", path)
 		http.Error(w, err.Error(), http.StatusBadRequest)

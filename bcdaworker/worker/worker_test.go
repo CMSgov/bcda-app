@@ -138,6 +138,8 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 			claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 		bbc.On("GetCoverage", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
 		bbc.On("GetPatient", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
+		bbc.On("Claim", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since).Return(bbc.GetBundleData("Claim", beneID))
+		bbc.On("ClaimResponse", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since).Return(bbc.GetBundleData("ClaimResponse", beneID))
 	}
 
 	tests := []struct {
@@ -148,6 +150,8 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		{"ExplanationOfBenefit", 66, false},
 		{"Coverage", 6, false},
 		{"Patient", 2, false},
+		{"Claim", 1, false},
+		{"ClaimResponse", 1, false},
 		{"SomeUnsupportedResource", 0, true},
 	}
 
