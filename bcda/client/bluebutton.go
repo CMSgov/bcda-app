@@ -219,9 +219,6 @@ func (bbc *BlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, t
 }
 
 func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
-	// ServiceDate only uses yyyy-mm-dd
-	const svcDateFmt = "2006-01-02"
-
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()

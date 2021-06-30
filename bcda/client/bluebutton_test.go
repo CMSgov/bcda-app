@@ -250,25 +250,25 @@ func (s *BBRequestTestSuite) TestGetExplanationOfBenefit_500() {
 }
 
 func (s *BBRequestTestSuite) TestGetClaim() {
-	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
 func (s *BBRequestTestSuite) TestGetClaim_500() {
-	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetClaim("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse() {
-	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Nil(s.T(), err)
 	assert.Equal(s.T(), 1, len(e.Entries))
 }
 
 func (s *BBRequestTestSuite) TestGetClaimResponse_500() {
-	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now)
+	e, err := s.bbClient.GetClaimResponse("1234567890hashed", "543210", "A0000", "", now, client.ClaimsWindow{})
 	assert.Regexp(s.T(), `blue button request failed \d+ time\(s\) failed to get bundle response`, err.Error())
 	assert.Nil(s.T(), e)
 }
