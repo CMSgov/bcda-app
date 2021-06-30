@@ -163,11 +163,17 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		}
 	case "Claim":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
-			return bb.GetClaim(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+			cw := client.ClaimsWindow{
+				LowerBound: jobArgs.ClaimsWindow.LowerBound,
+				UpperBound: jobArgs.ClaimsWindow.UpperBound}
+			return bb.GetClaim(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
 		}
 	case "ClaimResponse":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
-			return bb.GetClaimResponse(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+			cw := client.ClaimsWindow{
+				LowerBound: jobArgs.ClaimsWindow.LowerBound,
+				UpperBound: jobArgs.ClaimsWindow.UpperBound}
+			return bb.GetClaimResponse(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
 		}
 	default:
 		return "", 0, fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)

@@ -128,6 +128,7 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 	claimsWindow := client.ClaimsWindow{LowerBound: time.Now().Add(-365 * 24 * time.Hour), UpperBound: time.Now().Add(-180 * 24 * time.Hour)}
 
 	var cclfBeneficiaryIDs []string
+	// This will cause the expected counts to be doubled
 	for _, beneID := range []string{"a1000003701", "a1000050699"} {
 		bbc.MBI = &beneID
 		cclfBeneficiary := models.CCLFBeneficiary{FileID: s.cclfFile.ID, MBI: beneID, BlueButtonID: beneID}
@@ -138,8 +139,10 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 			claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ExplanationOfBenefit", beneID))
 		bbc.On("GetCoverage", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Coverage", beneID))
 		bbc.On("GetPatient", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Patient", beneID))
-		bbc.On("GetClaim", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("Claim", beneID))
-		bbc.On("GetClaimResponse", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime).Return(bbc.GetBundleData("ClaimResponse", beneID))
+		bbc.On("GetClaim", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime,
+			claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("Claim", beneID))
+		bbc.On("GetClaimResponse", beneID, strconv.Itoa(s.jobID), *s.testACO.CMSID, since, transactionTime,
+			claimsWindowMatcher(claimsWindow.LowerBound, claimsWindow.UpperBound)).Return(bbc.GetBundleData("ClaimResponse", beneID))
 	}
 
 	tests := []struct {
@@ -147,11 +150,12 @@ func (s *WorkerTestSuite) TestWriteResourceToFile() {
 		expectedCount  int
 		expectZeroSize bool
 	}{
+		// The expected count is double what a single request returns because we're checking 2 different benes
 		{"ExplanationOfBenefit", 66, false},
 		{"Coverage", 6, false},
 		{"Patient", 2, false},
-		{"Claim", 1, false},
-		{"ClaimResponse", 1, false},
+		{"Claim", 2, false},
+		{"ClaimResponse", 2, false},
 		{"SomeUnsupportedResource", 0, true},
 	}
 

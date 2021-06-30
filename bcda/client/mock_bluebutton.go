@@ -41,12 +41,12 @@ func (bbc *MockBlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since 
 	return args.Get(0).(*models.Bundle), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+func (bbc *MockBlueButtonClient) GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
 	args := bbc.Called(mbi, jobID, cmsID, since, transactionTime)
 	return args.Get(0).(*models.Bundle), args.Error(1)
 }
 
-func (bbc *MockBlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error) {
+func (bbc *MockBlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
 	args := bbc.Called(mbi, jobID, cmsID, since, transactionTime)
 	return args.Get(0).(*models.Bundle), args.Error(1)
 }
