@@ -11,59 +11,58 @@ env:
   VAULT_PW: ${{ secrets.VAULT_PW }}
 
 jobs:
-  job1:
-    build:
-      name: Build and Test
-      runs-on: ubuntu-latest
-      env:
-        DOCKER_BUILDKIT: 1
-        COMPOSE_DOCKER_CLI_BUILD: 1
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v2
-        - name: Decrypt secrets
-          run: |
-            echo $VAULT_PW > .vault_password
-            bash ops/secrets --decrypt
-            mv -fv shared_files/encrypted/* shared_files/decrypted/
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v1
-        - name: Build the stack
-          run: |
-            make docker-bootstrap
-  job2:
-    test:
-      needs: job1
-      steps:
-        - name: Run Lint
-          run: |
-            make lint
-  job3:
-    test:
-      needs: job1
-      steps:
-        - name: Run Unit-Test and Generate Codecov Report
-          run: |
-            make unit-test
-        - name: Generate codecov report
-          uses: codecov/codecov-action@v1
-          with:
-            files: ./test_results/latest/testcoverage.out # optional
-            flags: unittests # optional
-            name: codecov-umbrella # optional
-            fail_ci_if_error: true # optional (default = false)
-            verbose: true # optional (default = false)
-  job4:
-    test:
-      needs: job1
-      steps:
-        - name: Run Unit-Test and Generate Codecov Report
-          run: |
-            make postman env=local
-  job5:
-    test:
-      needs: job1
-      steps:
-        - name: Run Unit-Test and Generate Codecov Report
-          run: |
-            make smoke-test
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Build the stack
+        run: |
+          make docker-bootstrap
+  lint:
+    name: Testing Lint
+    needs: build
+    steps:
+      - name: Run Lint
+        run: |
+          make lint
+  unittest:
+    name: Unit Test
+    needs: build
+    steps:
+      - name: Run Unit-Test and Generate Codecov Report
+        run: |
+          make unit-test
+      - name: Generate codecov report
+        uses: codecov/codecov-action@v1
+        with:
+          files: ./test_results/latest/testcoverage.out # optional
+          flags: unittests # optional
+          name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
+  postman:
+    name: Postman
+    needs: build
+    steps:
+      - name: Run Unit-Test and Generate Codecov Report
+        run: |
+          make postman env=local
+  smoketest:
+    name: Smoke Test
+    needs: build
+    steps:
+      - name: Run Unit-Test and Generate Codecov Report
+        run: |
+          make smoke-test
