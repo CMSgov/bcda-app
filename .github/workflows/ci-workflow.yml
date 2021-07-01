@@ -31,15 +31,15 @@ jobs:
         run: |
           make docker-bootstrap
   lint:
-    name: Testing Lint
     needs: build
+    name: Testing Lint
     steps:
       - name: Run Lint
         run: |
           make lint
   unittest:
-    name: Unit Test
     needs: build
+    name: Unit Test
     steps:
       - name: Run Unit-Test and Generate Codecov Report
         run: |
@@ -53,15 +53,15 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
   postman:
-    name: Postman
     needs: build
+    name: Postman
     steps:
       - name: Run Unit-Test and Generate Codecov Report
         run: |
           make postman env=local
   smoketest:
-    name: Smoke Test
     needs: build
+    name: Smoke Test
     steps:
       - name: Run Unit-Test and Generate Codecov Report
         run: |
