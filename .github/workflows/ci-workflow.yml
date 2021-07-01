@@ -32,6 +32,7 @@ jobs:
           make docker-bootstrap
   lint:
     needs: build
+    runs-on: ubuntu-latest
     name: Testing Lint
     steps:
       - name: Run Lint
@@ -39,6 +40,7 @@ jobs:
           make lint
   unittest:
     needs: build
+    runs-on: ubuntu-latest
     name: Unit Test
     steps:
       - name: Run Unit-Test and Generate Codecov Report
@@ -54,6 +56,7 @@ jobs:
           verbose: true # optional (default = false)
   postman:
     needs: build
+    runs-on: ubuntu-latest
     name: Postman
     steps:
       - name: Run Unit-Test and Generate Codecov Report
@@ -61,6 +64,7 @@ jobs:
           make postman env=local
   smoketest:
     needs: build
+    runs-on: ubuntu-latest
     name: Smoke Test
     steps:
       - name: Run Unit-Test and Generate Codecov Report
