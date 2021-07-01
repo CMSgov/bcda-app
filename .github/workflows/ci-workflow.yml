@@ -6,8 +6,8 @@ on:
       - master
   pull_request:
 
-    env:
-      COMPOSE_INTERACTIVE_NO_CLI: 1
+env:
+  COMPOSE_INTERACTIVE_NO_CLI: 1
   VAULT_PW: ${{ secrets.VAULT_PW }}
 
 jobs:
