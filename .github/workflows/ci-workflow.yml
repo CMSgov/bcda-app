@@ -31,7 +31,6 @@ jobs:
         run: |
           make lint
   unittest:
-    needs: build
     runs-on: ubuntu-latest
     name: Unit Test
     steps:
@@ -59,7 +58,6 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
   postman:
-    needs: build
     runs-on: ubuntu-latest
     name: Postman
     steps:
@@ -79,7 +77,6 @@ jobs:
         run: |
           make postman env=local
   smoketest:
-    needs: build
     runs-on: ubuntu-latest
     name: Smoke Test
     steps:
