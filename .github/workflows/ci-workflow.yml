@@ -37,6 +37,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Run Lint
         run: |
           make lint
@@ -47,6 +52,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Run Unit-Test and Generate Codecov Report
         run: |
           make unit-test
@@ -65,6 +75,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Run Unit-Test and Generate Codecov Report
         run: |
           make postman env=local
@@ -75,6 +90,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Decrypt secrets
+        run: |
+          echo $VAULT_PW > .vault_password
+          bash ops/secrets --decrypt
+          mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Run Unit-Test and Generate Codecov Report
         run: |
           make smoke-test
