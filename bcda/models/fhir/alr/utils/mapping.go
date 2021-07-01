@@ -11,15 +11,16 @@ import (
 // Note, a models.Alr represents a single row from a dataframe.
 
 type KvArena struct {
-	Enrollment []KvPair
-	RiskFlag   []KvPair
-	RiskScore  []KvPair
-	Group      []KvPair
-	HccVersion []KvPair
+	Enrollment    []KvPair
+	RiskFlag      []KvPair
+	RiskScore     []KvPair
+	Group         []KvPair
+	HccVersion    []KvPair
+	CovidEpsisode []KvPair
 }
 
 type KvPair struct {
-    Key   string
+	Key   string
 	Value string
 }
 
@@ -29,7 +30,8 @@ var (
 	RiskFlagsPattern,
 	RiskScoresPattern,
 	HccVersion,
-	GroupPattern *regexp.Regexp
+	GroupPattern,
+	CovidPattern *regexp.Regexp
 )
 
 var GroupPatternDescriptions map[string]string
@@ -62,8 +64,11 @@ func init() {
 		"PART_A_B_ONLY_EXCLUDED": "Beneficiary had at least one month of Part A-only Or Part B-only Coverage",
 		"GHP_EXCLUDED":           "Beneficiary had at least one month in a Medicare Health Plan",
 		"OUTSIDE_US_EXCLUDED":    "Beneficiary does not reside in the United States",
-		"OTHER_SHARED_SAV_INIT":   "Beneficiary included in other Shared Savings Initiatives",
+		"OTHER_SHARED_SAV_INIT":  "Beneficiary included in other Shared Savings Initiatives",
 	}
+	// Covid fields, all except MBI go under Episode of Care
+	CovidPattern = regexp.MustCompile(`^((COVID19_EPISODE)|(COVID19_MONTH(0[1-9]|1[0-2]))` +
+		`|(ADMISSION_DT)|(DISCHARGE_DT)|(U071)|(B9729)|(BENE_MBI_ID))$`)
 }
 
 // keyValueMapper take the K:V pair from models.Alr and puts them into one of
@@ -75,6 +80,7 @@ func KeyValueMapper(alr *models.Alr) KvArena {
 	groupFields := []KvPair{}
 	riskFlagFields := []KvPair{}
 	riskScoreFields := []KvPair{}
+	covidFields := []KvPair{}
 
 	for k, v := range alr.KeyValue {
 		if EnrollmentPattern.MatchString(k) {
@@ -87,14 +93,17 @@ func KeyValueMapper(alr *models.Alr) KvArena {
 			groupFields = append(groupFields, KvPair{k, v})
 		} else if HccVersion.MatchString(k) {
 			hccVersionFields = append(hccVersionFields, KvPair{k, v})
+		} else if CovidPattern.MatchString(k) {
+			covidFields = append(covidFields, KvPair{k, v})
 		}
 	}
 
 	return KvArena{
-		Enrollment: enrollmentFields,
-		RiskFlag:   riskFlagFields,
-		RiskScore:  riskScoreFields,
-		HccVersion: hccVersionFields,
-		Group:      groupFields,
+		Enrollment:    enrollmentFields,
+		RiskFlag:      riskFlagFields,
+		RiskScore:     riskScoreFields,
+		HccVersion:    hccVersionFields,
+		Group:         groupFields,
+		CovidEpsisode: covidFields,
 	}
 }
