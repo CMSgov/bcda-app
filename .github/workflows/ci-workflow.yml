@@ -33,8 +33,10 @@ jobs:
   lint:
     needs: build
     runs-on: ubuntu-latest
-    name: Testing Lint
+    name: Lint
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Run Lint
         run: |
           make lint
@@ -43,6 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Unit Test
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Run Unit-Test and Generate Codecov Report
         run: |
           make unit-test
@@ -59,6 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Postman
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Run Unit-Test and Generate Codecov Report
         run: |
           make postman env=local
@@ -67,6 +73,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Smoke Test
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Run Unit-Test and Generate Codecov Report
         run: |
           make smoke-test
