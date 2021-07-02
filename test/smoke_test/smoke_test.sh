@@ -15,7 +15,6 @@ function cleanup() {
 }
 trap cleanup EXIT
 
-PIDS=()
 for CMS_ID in "${CMS_IDs[@]}"
 do
         ACO_ID=$(docker-compose exec -T -e CMS_ID=${CMS_ID} api sh -c 'bcda create-aco --name "Smoke Test ACO" --cms-id ${CMS_ID}' | tail -n1 | tr -d '\r')
@@ -28,10 +27,6 @@ do
         if [ ${CMS_ID} = "A9996" ]; then
                 testFile=bulk_data_requests.sh
         fi
-        docker-compose -f docker-compose.test.yml run --rm -e CLIENT_ID=${CLIENT_ID} -e CLIENT_SECRET=${CLIENT_SECRET} -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh ${testFile} &
-        PIDS+=($!)
+        docker-compose -f docker-compose.test.yml run --rm -e CLIENT_ID=${CLIENT_ID} -e CLIENT_SECRET=${CLIENT_SECRET} -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests bash ${testFile}
 done
 
-for PID in "${PIDS[@]}"; do
-   wait "$PID"
-done
