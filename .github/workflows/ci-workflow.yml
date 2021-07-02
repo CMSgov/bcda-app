@@ -48,6 +48,7 @@ jobs:
           mv -fv shared_files/encrypted/* shared_files/decrypted/
 
       - uses: satackey/action-docker-layer-caching@v0.0.11
+      - name: Build Stack
         run:
           docker compose up -d
       - name: Run Lint
@@ -69,6 +70,7 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: satackey/action-docker-layer-caching@v0.0.11
+      - name: Build Stack
         run:
           docker compose up -d
           make load-fixtures
@@ -99,6 +101,7 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: satackey/action-docker-layer-caching@v0.0.11
+      - name: Build Stack
         run:
           docker compose up -d
           make load-fixtures
@@ -121,6 +124,7 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: satackey/action-docker-layer-caching@v0.0.11
+      - name: Build Stack
         run:
           docker compose up -d
           make load-fixtures
