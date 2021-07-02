@@ -27,6 +27,6 @@ do
         if [ ${CMS_ID} = "A9996" ]; then
                 testFile=bulk_data_requests.sh
         fi
-        docker-compose -f docker-compose.test.yml run --rm -e CLIENT_ID=${CLIENT_ID} -e CLIENT_SECRET=${CLIENT_SECRET} -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests sh ${testFile}
+        docker-compose -f docker-compose.test.yml run --rm -e CLIENT_ID=${CLIENT_ID} -e CLIENT_SECRET=${CLIENT_SECRET} -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests bash ${testFile}
 done
 
