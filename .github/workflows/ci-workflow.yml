@@ -26,7 +26,7 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - name: Pull Images need for build
-        run: docker compose pull
+        run: docker-compose pull
       - uses: satackey/action-docker-layer-caching@v0.0.11
         continue-on-error: true
       - run: |
@@ -50,7 +50,7 @@ jobs:
       - uses: satackey/action-docker-layer-caching@v0.0.11
       - name: Build Stack
         run:
-          docker compose up -d
+          docker-compose up -d
       - name: Run Lint
         run: |
           make lint
@@ -72,7 +72,7 @@ jobs:
       - uses: satackey/action-docker-layer-caching@v0.0.11
       - name: Build Stack
         run:
-          docker compose up -d
+          docker-compose up -d
           make load-fixtures
       - name: Run Unit-Test and Generate Codecov Report
         run: |
@@ -103,7 +103,7 @@ jobs:
       - uses: satackey/action-docker-layer-caching@v0.0.11
       - name: Build Stack
         run:
-          docker compose up -d
+          docker-compose up -d
           make load-fixtures
       - name: Run Postman
         run: |
@@ -126,7 +126,7 @@ jobs:
       - uses: satackey/action-docker-layer-caching@v0.0.11
       - name: Build Stack
         run:
-          docker compose up -d
+          docker-compose up -d
           make load-fixtures
       - name: Run Smoke Test
         run: |
