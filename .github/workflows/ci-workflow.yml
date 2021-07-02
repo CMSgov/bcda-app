@@ -25,12 +25,12 @@ jobs:
           echo $VAULT_PW > .vault_password
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
-      - name: Pull Images need for build
-        run: docker-compose pull
       - uses: satackey/action-docker-layer-caching@v0.0.11
         continue-on-error: true
-      - run: |
-          make docker-bootstrap
+      - name: Build Stack
+        run: |
+        docker-compose build --force-rm
+        docker-compose -f docker-compose.test.yml build --force-rm
   lint:
     runs-on: ubuntu-latest
     needs: build
@@ -48,7 +48,7 @@ jobs:
           mv -fv shared_files/encrypted/* shared_files/decrypted/
 
       - uses: satackey/action-docker-layer-caching@v0.0.11
-      - name: Build Stack
+      - name: Stand Up Containers
         run:
           docker-compose up -d
       - name: Run Lint
@@ -70,8 +70,8 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: satackey/action-docker-layer-caching@v0.0.11
-      - name: Build Stack
-        run:
+      - name: Stand Up Containers and Load Fixtures
+        run: |
           docker-compose up -d
           make load-fixtures
       - name: Run Unit-Test and Generate Codecov Report
@@ -101,8 +101,8 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: satackey/action-docker-layer-caching@v0.0.11
-      - name: Build Stack
-        run:
+      - name: Stand Up Containers and Load Fixtures
+        run: |
           docker-compose up -d
           make load-fixtures
       - name: Run Postman
@@ -124,8 +124,8 @@ jobs:
           bash ops/secrets --decrypt
           mv -fv shared_files/encrypted/* shared_files/decrypted/
       - uses: satackey/action-docker-layer-caching@v0.0.11
-      - name: Build Stack
-        run:
+      - name: Stand Up Containers and Load Fixtures
+        run: |
           docker-compose up -d
           make load-fixtures
       - name: Run Smoke Test
