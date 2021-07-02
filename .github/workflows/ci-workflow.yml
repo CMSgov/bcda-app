@@ -82,7 +82,7 @@ jobs:
       - name: Build the stack
         run: |
           make docker-bootstrap
-      - name: Run Unit-Test and Generate Codecov Report
+      - name: Run Postman
         run: |
           make postman env=local
   smoketest:
@@ -104,6 +104,6 @@ jobs:
       - name: Build the stack
         run: |
           make docker-bootstrap
-      - name: Run Unit-Test and Generate Codecov Report
+      - name: Run Smoke Test
         run: |
           make smoke-test
