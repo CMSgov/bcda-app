@@ -29,8 +29,8 @@ jobs:
         continue-on-error: true
       - name: Build Stack
         run: |
-          docker-compose build --force-rm
-          docker-compose -f docker-compose.test.yml build --force-rm
+          docker-compose up --build --force-rm
+          docker-compose -f docker-compose.test.yml up --build --force-rm
   lint:
     runs-on: ubuntu-latest
     needs: build
