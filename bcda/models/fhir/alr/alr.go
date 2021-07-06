@@ -19,6 +19,8 @@ func ToFHIR(alr *models.Alr) *AlrFhirBulk {
 
 	kvArenaInstance := keyValueMapper(alr)
 	hccVersion := kvArenaInstance.hccVersion
+
+    // there should only be one entry in the slice, and here we just check for at least one
 	if len(hccVersion) < 1 {
 		log.API.Warnf("Could not get HCC version.")
 		return nil

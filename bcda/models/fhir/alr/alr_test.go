@@ -44,6 +44,11 @@ func TestGenerateAlr(t *testing.T) {
 
 	// Do not write the FHIR resources to a file
 	if !*output {
+		//Test models.Alr where hccVersion is empty
+		delete(alrs[0].KeyValue, "HCC_version")
+		fhirBulk = alr.ToFHIR(alrs[0])
+		assert.Nil(t, fhirBulk)
+
 		return
 	}
 
