@@ -95,10 +95,14 @@ var valueGenerator = [...]regexpClosurePair{
 	{regexp.MustCompile("^REV_LINE_CNT$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
 	{regexp.MustCompile("^B_EM_LINE_CNT_T$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
 	{regexp.MustCompile("^ASSIGNED_BEFORE$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
+	{regexp.MustCompile("^COVID_EPISODE$"), func() string { return strconv.Itoa(randomdata.Number(1)) }},
+	{regexp.MustCompile("^COVID19_MONTH(0[1-9]|1[0-2])$"), func() string { return strconv.Itoa(randomdata.Number(1)) }},
+	{regexp.MustCompile("^(ADMISSION_DT)|(DISCHARGE_DT)$"), func() string { return randomDate(minBirthDate, maxBirthDate) }},
+	{regexp.MustCompile("^(U071)|(B9729)$"), func() string { return strconv.Itoa(randomdata.Number(1)) }},
 }
 
-func init(){
-    isTesting = false
+func init() {
+	isTesting = false
 }
 
 // UpdateCSV uses a random generator to populate fields present in the CSV file referenced by the fileName.

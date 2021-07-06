@@ -66,9 +66,9 @@ func init() {
 		"OUTSIDE_US_EXCLUDED":    "Beneficiary does not reside in the United States",
 		"OTHER_SHARED_SAV_INIT":  "Beneficiary included in other Shared Savings Initiatives",
 	}
-	// Covid fields, all except MBI go under Episode of Care
+	// These are for Covid19 Episode of Care
 	CovidPattern = regexp.MustCompile(`^((COVID19_EPISODE)|(COVID19_MONTH(0[1-9]|1[0-2]))` +
-		`|(ADMISSION_DT)|(DISCHARGE_DT)|(U071)|(B9729)|(BENE_MBI_ID))$`)
+		`|(ADMISSION_DT)|(DISCHARGE_DT)|(U071)|(B9729))$`)
 }
 
 // keyValueMapper take the K:V pair from models.Alr and puts them into one of
