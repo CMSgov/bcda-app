@@ -20,7 +20,7 @@ type KvArena struct {
 }
 
 type KvPair struct {
-    Key   string
+	Key   string
 	Value string
 }
 
@@ -63,7 +63,7 @@ func init() {
 		"PART_A_B_ONLY_EXCLUDED": "Beneficiary had at least one month of Part A-only Or Part B-only Coverage",
 		"GHP_EXCLUDED":           "Beneficiary had at least one month in a Medicare Health Plan",
 		"OUTSIDE_US_EXCLUDED":    "Beneficiary does not reside in the United States",
-		"OTHER_SHARED_SAV_INIT":   "Beneficiary included in other Shared Savings Initiatives",
+		"OTHER_SHARED_SAV_INIT":  "Beneficiary included in other Shared Savings Initiatives",
 	}
 }
 
