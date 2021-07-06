@@ -123,5 +123,4 @@ func (bulk *AlrBulkV2) FhirToString() ([]string, error) {
 	covidEpisode := string(covidb) + "\n"
 
 	return []string{patients, observation, coverage, group, risk, covidEpisode}, nil
-
 }
