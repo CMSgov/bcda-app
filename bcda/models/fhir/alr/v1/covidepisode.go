@@ -1,13 +1,12 @@
-package v2
+package v1
 
 import (
 	"regexp"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
-
-	r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
-	r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/episode_of_care_go_proto"
+	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
+	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
 var (
@@ -18,24 +17,24 @@ var (
 	month       = regexp.MustCompile(`^(COVID19_MONTH(0[1-9]|1[0-2])$`)
 )
 
-func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models.EpisodeOfCare {
-	covidEpisode := &r4Models.EpisodeOfCare{}
-	covidEpisode.Meta = &r4Datatypes.Meta{
-		LastUpdated: &r4Datatypes.Instant{
-			Precision: r4Datatypes.Instant_SECOND,
+func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.EpisodeOfCare {
+	covidEpisode := &fhirmodels.EpisodeOfCare{}
+	covidEpisode.Meta = &fhirdatatypes.Meta{
+		LastUpdated: &fhirdatatypes.Instant{
+			Precision: fhirdatatypes.Instant_SECOND,
 			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
 		},
-		Profile: []*r4Datatypes.Canonical{{
+		Profile: []*fhirdatatypes.Uri{{
 			Value: "http://alr.cms.gov/ig/StructureDefinition/alr-covidEpisode",
 		}},
 	}
-	covidEpisode.Patient = &r4Datatypes.Reference{
-		Reference: &r4Datatypes.Reference_PatientId{
-			PatientId: &r4Datatypes.ReferenceId{Value: mbi},
+	covidEpisode.Patient = &fhirdatatypes.Reference{
+		Reference: &fhirdatatypes.Reference_PatientId{
+			PatientId: &fhirdatatypes.ReferenceId{Value: mbi},
 		},
 	}
-	covidEpisode.Period = &r4Datatypes.Period{}
-	covidEpisode.Extension = []*r4Datatypes.Extension{}
+	covidEpisode.Period = &fhirdatatypes.Period{}
+	covidEpisode.Extension = []*fhirdatatypes.Extension{}
 
 	for _, kv := range keyValue {
 		// FHIR does not include empty K:V pairs
@@ -62,33 +61,33 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 
 		// one of 12 flags corresponding to a calendar month
 		case month.MatchString(kv.Key):
-			ext := &r4Datatypes.Extension{}
-			ext.Url = &r4Datatypes.Uri{Value: kv.Key}
-			ext.Value = &r4Datatypes.Extension_ValueX{
-				Choice: &r4Datatypes.Extension_ValueX_StringValue{
-					StringValue: &r4Datatypes.String{Value: kv.Value},
+			ext := &fhirdatatypes.Extension{}
+			ext.Url = &fhirdatatypes.Uri{Value: kv.Key}
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_StringValue{
+					StringValue: &fhirdatatypes.String{Value: kv.Value},
 				},
 			}
 
 		// covid episode extension
 		case episode.MatchString(kv.Key):
-			ext := &r4Datatypes.Extension{}
-			ext.Url = &r4Datatypes.Uri{Value: kv.Key}
-			ext.Value = &r4Datatypes.Extension_ValueX{
-				Choice: &r4Datatypes.Extension_ValueX_StringValue{
-					StringValue: &r4Datatypes.String{Value: kv.Value},
+			ext := &fhirdatatypes.Extension{}
+			ext.Url = &fhirdatatypes.Uri{Value: kv.Key}
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_StringValue{
+					StringValue: &fhirdatatypes.String{Value: kv.Value},
 				},
 			}
 		// one of two diagnosis codes (B9729 or U071)
 		case diagnosis.MatchString(kv.Key):
-			episodeDiagnosis := []*r4Models.EpisodeOfCare_Diagnosis{}
-			diagnosis := &r4Models.EpisodeOfCare_Diagnosis{
-				Condition: &r4Datatypes.Reference{
-					Identifier: &r4Datatypes.Identifier{
-						System: &r4Datatypes.Uri{
+			episodeDiagnosis := []*fhirmodels.EpisodeOfCare_Diagnosis{}
+			diagnosis := &fhirmodels.EpisodeOfCare_Diagnosis{
+				Condition: &fhirdatatypes.Reference{
+					Identifier: &fhirdatatypes.Identifier{
+						System: &fhirdatatypes.Uri{
 							Value: "http://hl7.org/fhir/sid/icd-10",
 						},
-						Value: &r4Datatypes.String{
+						Value: &fhirdatatypes.String{
 							Value: kv.Value,
 						},
 					},
@@ -102,14 +101,14 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 
 }
 
-func stringToFhirDate(timeString string) (*r4Datatypes.DateTime, error) {
+func stringToFhirDate(timeString string) (*fhirdatatypes.DateTime, error) {
 	timestamp, err := time.Parse("2006-01-02T15:04:05.000-07:00", timeString)
 	if err != nil {
 		return nil, err
 	}
-	fhirTimestamp := &r4Datatypes.DateTime{
+	fhirTimestamp := &fhirdatatypes.DateTime{
 		ValueUs:   timestamp.UnixNano() / int64(time.Microsecond),
-		Precision: r4Datatypes.DateTime_DAY,
+		Precision: fhirdatatypes.DateTime_DAY,
 	}
 	return fhirTimestamp, nil
 }
