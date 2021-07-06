@@ -29,8 +29,8 @@ postman:
 	# and if needed a token.
 	# Use env=local to bring up a local version of the app and test against it
 	# For example: make postman env=test token=<MY_TOKEN>
-	$(eval BLACKLIST_CLIENT_ID=$(shell docker-compose exec api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
-	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker-compose exec api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
+	$(eval BLACKLIST_CLIENT_ID=$(shell docker-compose exec -T api env | grep BLACKLIST_CLIENT_ID | cut -d'=' -f2))
+	$(eval BLACKLIST_CLIENT_SECRET=$(shell docker-compose exec -T api env | grep BLACKLIST_CLIENT_SECRET | cut -d'=' -f2))
 
 	# Set up valid client credentials
 	$(eval ACO_CMS_ID = A9994)
@@ -140,10 +140,10 @@ docker-build:
 docker-bootstrap: docker-build documentation load-fixtures
 
 api-shell:
-	docker-compose exec api bash
+	docker-compose exec -T api bash
 
 worker-shell:
-	docker-compose exec worker bash
+	docker-compose exec -T worker bash
 
 debug-api:
 	docker-compose start db queue worker
