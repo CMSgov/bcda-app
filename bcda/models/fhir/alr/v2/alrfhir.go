@@ -22,7 +22,7 @@ func init() {
 	var err error
 	marshaller, err = jsonformat.NewMarshaller(false, "", "", jsonformat.R4)
 	if err != nil {
-		log.API.Panic("Could not get JSON FHIR marshaller for STU3.")
+		log.API.Panic("Could not get JSON FHIR marshaller for R4.")
 	}
 }
 
