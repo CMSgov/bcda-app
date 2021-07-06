@@ -5,6 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -12,12 +15,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/google/fhir/go/jsonformat"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
-	"github.com/sirupsen/logrus"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 /******************************************************************************
@@ -51,14 +50,14 @@ func NewAlrWorker(db *sql.DB) AlrWorker {
 
 	err := conf.Checkout(&worker)
 	if err != nil {
-		logrus.Fatal("Could not get data from conf for ALR.", err)
+		log.Worker.Fatal("Could not get data from conf for ALR.", err)
 	}
 
 	return worker
 }
 
-func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
-	marshaller *jsonformat.Marshaller, result chan error, resourceTypes []string, id uint) {
+func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
+	result chan error, resourceTypes []string, id uint) {
 
 	writerPool := make([]*bufio.Writer, len(fileMap))
 
@@ -71,59 +70,67 @@ func goWriter(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMa
 
 	for i := range c {
 		// marshalling structs into JSON
-
-		//PATIENT
-		patientb, err := marshaller.MarshalResource(i.Patient)
+		alrResources, err := i.AlrBulkV1.FhirToString()
 		if err != nil {
-			// Make sure to send err back to the other thread
 			result <- err
 			return
 		}
-		patients := string(patientb) + "\n"
 
-		// COVERAGE
-		coverageb, err := marshaller.MarshalResource(i.Coverage)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
+		if len(alrResources) != len(writerPool) {
+			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
 		}
-		coverage := string(coverageb) + "\n"
 
-		// GROUP
-		groupb, err := marshaller.MarshalResource(i.Group)
-		if err != nil {
-			// Make sure to send err back to the other thread
-			result <- err
-			return
-		}
-		group := string(groupb) + "\n"
+		// IO operations
+		for n, resource := range alrResources {
 
-		// RISK
-		var riskAssessment = []string{}
+			w := writerPool[n]
 
-		for _, r := range i.Risk {
-
-			riskb, err := marshaller.MarshalResource(r)
+			_, err = w.WriteString(resource)
 			if err != nil {
-				// Make sure to send err back to the other thread
 				result <- err
 				return
 			}
-			risk := string(riskb) + "\n"
-			riskAssessment = append(riskAssessment, risk)
-		}
-		risk := strings.Join(riskAssessment, "\n")
+			err = w.Flush()
+			if err != nil {
+				result <- err
+				return
+			}
 
-		// OBSERVATION
-		observationb, err := marshaller.MarshalResource(i.Observation)
+		}
+	}
+
+	// update the jobs keys
+	for resource, path := range fileMap {
+		filename := filepath.Base(path.Name())
+		jk := models.JobKey{JobID: id, FileName: filename, ResourceType: resource}
+		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
+			result <- fmt.Errorf("failed to create job key: %w", err)
+			return
+		}
+	}
+
+	result <- nil
+}
+
+func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, fileMap map[string]*os.File,
+	result chan error, resourceTypes []string, id uint) {
+
+	writerPool := make([]*bufio.Writer, len(fileMap))
+
+	for i, n := range resourceTypes {
+		file := fileMap[n]
+		w := bufio.NewWriter(file)
+		writerPool[i] = w
+		defer utils.CloseFileAndLogError(file)
+	}
+
+	for i := range c {
+		// marshalling structs into JSON
+		alrResources, err := i.AlrBulkV2.FhirToString()
 		if err != nil {
 			result <- err
 			return
 		}
-		observation := string(observationb) + "\n"
-
-		alrResources := []string{patients, observation, coverage, group, risk}
 
 		if len(alrResources) != len(writerPool) {
 			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
@@ -176,13 +183,14 @@ func (a *AlrWorker) ProcessAlrJob(
 	aco := jobArgs.CMSID
 	id := jobArgs.ID
 	MBIs := jobArgs.MBIs
+	BBBasePath := jobArgs.BBBasePath
 	lowerBound := jobArgs.LowerBound
 	upperBound := jobArgs.UpperBound
 
 	// Pull the data from ALR tables (alr & alr_meta)
 	alrModels, err := a.GetAlr(ctx, aco, MBIs, lowerBound, upperBound)
 	if err != nil {
-		logrus.Error(err)
+		log.Worker.Error(err)
 		return err
 	}
 
@@ -207,17 +215,10 @@ func (a *AlrWorker) ProcessAlrJob(
 		fileMap[resources[i]] = f
 
 		if err != nil {
-			logrus.Error(err)
+			log.Worker.Error(err)
 			return err
 		}
 
-	}
-
-	// Serialize data into JSON
-	marshaller, err := jsonformat.NewMarshaller(false, "", "", jsonformat.STU3)
-	if err != nil {
-		logrus.Error(err)
-		return err
 	}
 
 	// Creating channels for go routine
@@ -228,15 +229,19 @@ func (a *AlrWorker) ProcessAlrJob(
 	// A go routine that will streamed data to write to disk.
 	// Reason for a go routine is to not block when writing, since disk writing is
 	// generally slower than memory access. We are streaming to keep mem lower.
-	go goWriter(ctx, a, c, fileMap, marshaller, result, resources[:], id)
+    if jobArgs.BBBasePath == "/v1/fhir" {
+        go goWriterV1(ctx, a, c, fileMap, result, resources[:], id)
+    } else {
+        go goWriterV2(ctx, a, c, fileMap, result, resources[:], id)
+    }
 
 	// Marshall into JSON and send it over the channel
 	for i := range alrModels {
-		fhirBulk := alr.ToFHIR(&alrModels[i]) // Removed timestamp, but can be added back here
+		fhirBulk := alr.ToFHIR(&alrModels[i], BBBasePath) // Removed timestamp, but can be added back here
 
-        if fhirBulk == nil {
-            continue
-        }
+		if fhirBulk == nil {
+			continue
+		}
 
 		c <- fhirBulk
 	}
