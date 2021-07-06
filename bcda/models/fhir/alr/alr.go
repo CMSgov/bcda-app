@@ -4,8 +4,8 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/log"
 
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v1"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v2"
+	v1 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v1"
+	v2 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v2"
 )
 
 type AlrFhirBulk struct {
@@ -29,4 +29,3 @@ func ToFHIR(alr *models.Alr, version string) *AlrFhirBulk {
 
 	return bulk
 }
-
