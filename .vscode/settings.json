@@ -26,11 +26,5 @@
     "go.lintFlags": [
         "--fast",
         "--exclude=\"(conf\\.(Un)?[S,s]etEnv)\"",
-    ],
-    "go.lintOnSave": "package",
-    "go.vetOnSave": "package",
-    "go.buildFlags": [],
-    "go.vetFlags": [],
-    "go.coverOnSave": false,
-    "go.useCodeSnippetsOnFunctionSuggest": false,
+    ]
 }
