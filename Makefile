@@ -59,7 +59,7 @@ unit-test-db:
 	docker-compose -f docker-compose.test.yml up -d db-unit-test
 	
 	# Wait for the database to be ready
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait wait-for-it -h db-unit-test -p 5432 -t 60
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait wait-for-it -h db-unit-test -p 5432 -t 75
 	
 	# Perform migrations to ensure matching schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
@@ -85,7 +85,7 @@ load-fixtures:
 
 	docker-compose up -d db queue
 	echo "Wait for databases to be ready..."
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h db -p 5432 -t 60 && wait-for-it -h queue -p 5432 -t 60"
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h db -p 5432 -t 75 && wait-for-it -h queue -p 5432 -t 75"
 
 	# Initialize schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
@@ -102,7 +102,7 @@ load-fixtures:
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 60 && wait-for-it -h ssas -p 3003 -t 60"
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 75 && wait-for-it -h ssas -p 3003 -t 75"
 
 	# Additional fixtures for postman+ssas
 	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
