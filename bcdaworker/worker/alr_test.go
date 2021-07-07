@@ -122,6 +122,9 @@ func (s *AlrWorkerTestSuite) TestProcessAlrJob() {
 	err = s.alrWorker.ProcessAlrJob(ctx, s.jobArgs[1])
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
+	err = s.alrWorker.ProcessAlrJob(ctx, s.jobArgs[1])
+	// Check Job is processed with no errors
+	assert.NoError(s.T(), err)
 }
 
 func TestAlrWorkerTestSuite(t *testing.T) {

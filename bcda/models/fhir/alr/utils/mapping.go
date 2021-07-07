@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 // This part of the package is responsible for divvying up the the K:V pair in
@@ -95,6 +96,10 @@ func KeyValueMapper(alr *models.Alr) KvArena {
 			hccVersionFields = append(hccVersionFields, KvPair{k, v})
 		} else if CovidPattern.MatchString(k) {
 			covidFields = append(covidFields, KvPair{k, v})
+		} else {
+			// The k:v from ALR has not been mapped. For now, we do not include them into FHIR and log.
+			// TODO: Should we include these "novel" fields in a catch all resource like observation?
+			log.API.Warnf("Could not map key %s with value %s to a FHIR resource. Ignoring this field.", k, v)
 		}
 	}
 
