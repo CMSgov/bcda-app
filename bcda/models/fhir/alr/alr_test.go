@@ -13,8 +13,8 @@ import (
 	alrcsv "github.com/CMSgov/bcda-app/bcda/alr/csv"
 	alrgen "github.com/CMSgov/bcda-app/bcda/alr/gen"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v1"
-	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v2"
+	v1 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v1"
+	v2 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v2"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/pborman/uuid"
@@ -23,7 +23,7 @@ import (
 
 var output *bool = flag.Bool("output", false, "write FHIR resources to a file")
 var version *int = flag.Int("version", 1, "version of FHIR resources")
-var resources = [...]string{"patient", "coverage", "group", "risk", "observations"}
+var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 
 // TestGenerateAlr uses our synthetic data generation tool to produce the associated FHIR resources
 // To write to the FHIR resources to a file:

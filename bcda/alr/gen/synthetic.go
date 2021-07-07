@@ -42,7 +42,6 @@ var isTesting bool
 
 // Links header fields to a generator that produces a string value.
 // The generators used are based on the 2021 ALR data dictionary.
-// NOTE: We currently only have definitions for ALR Table 1-1.
 // Any addtions, add here...
 var valueGenerator = [...]regexpClosurePair{
 	{regexp.MustCompile("HIC_NUM"), func() string { return randomdata.Alphanumeric(12) }},

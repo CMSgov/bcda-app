@@ -15,7 +15,7 @@ var (
 	dischargeDt = regexp.MustCompile(`^(DISCHARGE_DT)$`)
 	diagnosis   = regexp.MustCompile(`^(U071)|(B9729)$`)
 	episode     = regexp.MustCompile(`^(COVID19_EPISODE)$`)
-	month       = regexp.MustCompile(`^(COVID19_MONTH(0[1-9]|1[0-2])$`)
+	month       = regexp.MustCompile(`^(COVID19_MONTH(0[1-9]|1[0-2]))$`)
 )
 
 func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models.EpisodeOfCare {
