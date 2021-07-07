@@ -35,7 +35,8 @@ then
   exit 1
 fi
 
-if [ ! -f ../bcda/models/fhir/alr/hcc_crosswalk.tsv ]
+#TODO: This file should live in worker S3 mount dir. Perhaps remove this.
+if [ ! -f ../bcda/models/fhir/alr/utils/hcc_crosswalk.tsv ]
 then
   echo "Crosswalk file must exist prior to creating package."
   exit 1
