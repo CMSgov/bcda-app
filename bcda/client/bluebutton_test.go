@@ -517,6 +517,202 @@ func (s *BBRequestTestSuite) TestValidateRequest() {
 				noIncludeTaxNumbersChecker,
 			},
 		},
+		{
+			"GetClaim",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				noServiceDateChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimNoSinceChecker",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaim("beneID1", jobID, cmsID, "", now, client.ClaimsWindow{})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				noSinceChecker,
+				nowChecker,
+				noServiceDateChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimNoServiceDateUpperBound",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				serviceDateLowerBoundChecker,
+				noServiceDateUpperBoundChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimNoServiceDateLowerBound",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				noServiceDateLowerBoundChecker,
+				serviceDateUpperBoundChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimWithUpperAndLowerBoundServiceDate",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaim("beneID1", jobID, cmsID, since, now, claimsDate)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				serviceDateLowerBoundChecker,
+				serviceDateUpperBoundChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimResponse",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				noServiceDateChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimResponseNoSinceChecker",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, "", now, client.ClaimsWindow{})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				noSinceChecker,
+				nowChecker,
+				noServiceDateChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimResponseNoServiceDateUpperBound",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{LowerBound: claimsDate.LowerBound})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				serviceDateLowerBoundChecker,
+				noServiceDateUpperBoundChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimResponseNoServiceDateLowerBound",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, client.ClaimsWindow{UpperBound: claimsDate.UpperBound})
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				noServiceDateLowerBoundChecker,
+				serviceDateUpperBoundChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
+		{
+			"GetClaimResponseWithUpperAndLowerBoundServiceDate",
+			func(bbClient *client.BlueButtonClient, jobID, cmsID string) (interface{}, error) {
+				return bbClient.GetClaimResponse("beneID1", jobID, cmsID, since, now, claimsDate)
+			},
+			func(t *testing.T, payload interface{}) {
+				result, ok := payload.(*models.Bundle)
+				assert.True(t, ok)
+				assert.NotEmpty(t, result.Entries)
+			},
+			[]func(*testing.T, *http.Request){
+				sinceChecker,
+				nowChecker,
+				serviceDateLowerBoundChecker,
+				serviceDateUpperBoundChecker,
+				excludeSAMHSAChecker,
+				includeTaxNumbersChecker,
+				noIncludeAddressFieldsChecker,
+			},
+		},
 	}
 
 	for _, tt := range tests {
