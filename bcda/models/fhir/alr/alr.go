@@ -1,22 +1,31 @@
 package alr
 
 import (
-	"time"
-
 	"github.com/CMSgov/bcda-app/bcda/models"
-	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
-	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
+	"github.com/CMSgov/bcda-app/log"
+
+	v1 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v1"
+	v2 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v2"
 )
 
-// ToFHIR encodes the models.Alr into a FHIR Patient and N FHIR Observation resources
-func ToFHIR(alr *models.Alr, lastUpdated time.Time) (*fhirmodels.Patient, []*fhirmodels.Observation) {
-	p := patient(alr)
-	p.Meta = &fhirdatatypes.Meta{LastUpdated: fhirInstant(lastUpdated)}
+type AlrFhirBulk struct {
+	*v1.AlrBulkV1
+	*v2.AlrBulkV2
+}
 
-	obs := observations(alr)
-	for _, o := range obs {
-		o.Meta = &fhirdatatypes.Meta{LastUpdated: fhirInstant(lastUpdated)}
+func ToFHIR(alr *models.Alr, version string) *AlrFhirBulk {
+
+	bulk := &AlrFhirBulk{}
+
+	switch version {
+	case "/v1/fhir":
+		bulk.AlrBulkV1 = v1.ToFHIRV1(alr)
+	case "/v2/fhir":
+		bulk.AlrBulkV2 = v2.ToFHIRV2(alr)
+	default:
+		log.API.Errorf("Version endpoint %d not supported.", version)
+		return nil
 	}
 
-	return p, obs
+	return bulk
 }

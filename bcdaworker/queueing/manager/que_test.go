@@ -193,7 +193,7 @@ func TestStartAlrJob(t *testing.T) {
 	assert.NoError(t, err)
 
 	// just use one mbi for this test
-	twoMbis := make([]string, 2)
+	twoMbis := []string{}
 	twoMbis = append(twoMbis, mbis[0].MBI)
 	twoMbis = append(twoMbis, mbis[1].MBI)
 
@@ -218,12 +218,14 @@ func TestStartAlrJob(t *testing.T) {
 		ID:         id,
 		CMSID:      cmsID,
 		MBIs:       []string{alr[0].BeneMBI},
+        BBBasePath: "/v1/fhir",
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},
 	}
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
+        BBBasePath: "/v1/fhir",
 		MBIs:       []string{alr[1].BeneMBI},
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},

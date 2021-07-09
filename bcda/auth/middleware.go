@@ -10,11 +10,11 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi"
-	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
-	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	responseutils "github.com/CMSgov/bcda-app/bcda/responseutils"
+	responseutilsv2 "github.com/CMSgov/bcda-app/bcda/responseutils/v2"
 	"github.com/CMSgov/bcda-app/log"
 )
 
@@ -45,11 +45,13 @@ func ParseToken(next http.Handler) http.Handler {
 			return
 		}
 
+		rw := getRespWriter(r.URL.Path)
+
 		authRegexp := regexp.MustCompile(`^Bearer (\S+)$`)
 		authSubmatches := authRegexp.FindStringSubmatch(authHeader)
 		if len(authSubmatches) < 2 {
 			log.Auth.Warn("Invalid Authorization header value")
-			respond(w, http.StatusUnauthorized)
+			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 			return
 		}
 
@@ -58,7 +60,7 @@ func ParseToken(next http.Handler) http.Handler {
 		token, err := GetProvider().VerifyToken(tokenString)
 		if err != nil {
 			log.Auth.Errorf("Unable to verify token; %s", err)
-			respond(w, http.StatusUnauthorized)
+			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 			return
 		}
 
@@ -75,12 +77,12 @@ func ParseToken(next http.Handler) http.Handler {
 				ad, err = adFromClaims(repository, claims)
 				if err != nil {
 					log.Auth.Error(err)
-					respond(w, http.StatusUnauthorized)
+					rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 					return
 				}
 			default:
 				log.Auth.Errorf("Unsupported claims issuer %s", claims.Issuer)
-				respond(w, http.StatusNotFound)
+				rw.Exception(w, http.StatusNotFound, responseutils.TokenErr, "")
 				return
 			}
 		}
@@ -92,10 +94,12 @@ func ParseToken(next http.Handler) http.Handler {
 
 func RequireTokenAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := getRespWriter(r.URL.Path)
+
 		token := r.Context().Value(TokenContextKey)
 		if token == nil {
 			log.Auth.Error("No token found")
-			respond(w, http.StatusUnauthorized)
+			rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 			return
 		}
 
@@ -103,7 +107,7 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 			err := GetProvider().AuthorizeAccess(token.Raw)
 			if err != nil {
 				log.Auth.Error(err)
-				respond(w, http.StatusUnauthorized)
+				rw.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
 				return
 			}
 
@@ -115,19 +119,17 @@ func RequireTokenAuth(next http.Handler) http.Handler {
 // CheckBlacklist checks the auth data is associated with a blacklisted entity
 func CheckBlacklist(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := getRespWriter(r.URL.Path)
+
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Auth.Error()
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.NotFoundErr, "AuthData not found")
-			responseutils.WriteError(oo, w, http.StatusNotFound)
+			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
 			return
 		}
 
 		if ad.Blacklisted {
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
-			responseutils.WriteError(oo, w, http.StatusForbidden)
+			rw.Exception(w, http.StatusForbidden, responseutils.UnauthorizedErr, fmt.Sprintf("ACO (CMS_ID: %s) is unauthorized", ad.CMSID))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -136,21 +138,19 @@ func CheckBlacklist(next http.Handler) http.Handler {
 
 func RequireTokenJobMatch(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := getRespWriter(r.URL.Path)
+
 		ad, ok := r.Context().Value(AuthDataContextKey).(AuthData)
 		if !ok {
 			log.Auth.Error()
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.NotFoundErr, "AuthData not found")
-			responseutils.WriteError(oo, w, http.StatusNotFound)
+			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "AuthData not found")
 			return
 		}
 
 		jobID, err := strconv.ParseUint(chi.URLParam(r, "jobID"), 10, 64)
 		if err != nil {
 			log.Auth.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.NotFoundErr, err.Error())
-			responseutils.WriteError(oo, w, http.StatusNotFound)
+			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, err.Error())
 			return
 		}
 
@@ -159,9 +159,7 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		job, err := repository.GetJobByID(context.Background(), uint(jobID))
 		if err != nil {
 			log.Auth.Error(err)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.NotFoundErr, "")
-			responseutils.WriteError(oo, w, http.StatusNotFound)
+			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
 			return
 		}
 
@@ -169,16 +167,26 @@ func RequireTokenJobMatch(next http.Handler) http.Handler {
 		if !strings.EqualFold(ad.ACOID, job.ACOID.String()) {
 			log.Auth.Errorf("ACO %s does not have access to job ID %d %s",
 				ad.ACOID, job.ID, job.ACOID)
-			oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION,
-				responseutils.NotFoundErr, "")
-			responseutils.WriteError(oo, w, http.StatusNotFound)
+			rw.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-func respond(w http.ResponseWriter, status int) {
-	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.TokenErr, "")
-	responseutils.WriteError(oo, w, status)
+type fhirResponseWriter interface {
+	Exception(http.ResponseWriter, int, string, string)
+	NotFound(http.ResponseWriter, int, string, string)
+}
+
+func getRespWriter(path string) fhirResponseWriter {
+	if strings.Contains(path, "/v1/") {
+		return responseutils.NewResponseWriter()
+	} else if strings.Contains(path, "/v2/") {
+		return responseutilsv2.NewResponseWriter()
+	} else {
+		// CommonAuth is used in requests not exclusive to v1 or v2 (ie data requests or /_version).
+		// In the cases we cannot discern a version we default to v1
+		return responseutils.NewResponseWriter()
+	}
 }

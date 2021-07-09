@@ -1,10 +1,19 @@
 package csv
 
+/******************************************************************************
+This package is responsible for data wrangling and ingesting ALR data.
+Contents:
+1. alr.go
+2. csv.go
+Dependencies:
+1. models/alr.go
+******************************************************************************/
+
 import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/sirupsen/logrus"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 // Wrap models.Alr to allow us to create setter that will allow us to incrementally build
@@ -38,10 +47,9 @@ func (a *alr) setBirth(birth string) {
 		return
 	}
 
-	const layout = "01/02/2006"
-	t, err := time.Parse(layout, birth)
+	t, err := time.Parse("01/02/2006", birth)
 	if err != nil {
-		logrus.Warnf("Could not parse birth date %s %s. Will leave value unset.",
+		log.API.Warnf("Could not parse birth date %s %s. Will leave value unset.",
 			birth, err.Error())
 		return
 	}
@@ -53,10 +61,9 @@ func (a *alr) setDeath(death string) {
 		return
 	}
 
-	const layout = "01/02/2006"
-	t, err := time.Parse(layout, death)
+	t, err := time.Parse("01/02/2006", death)
 	if err != nil {
-		logrus.Warnf("Could not parse death date %s %s. Will leave value unset.",
+		log.API.Warnf("Could not parse death date %s %s. Will leave value unset.",
 			death, err.Error())
 		return
 	}

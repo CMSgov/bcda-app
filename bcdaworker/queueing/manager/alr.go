@@ -76,6 +76,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// If we cannot unmarshall this, it would be very problematic.
 	if err != nil {
 		// TODO: perhaps just fail the job?
+		// Currently, we retry it
 		q.alrLog.Warnf("Failed to unmarhall job.Args '%s' %s.",
 			job.Args, err)
 	}
@@ -103,7 +104,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		// Else that job just doesn't exist
 		return fmt.Errorf("failed to valiate job: %w", err)
 	}
-	// If the job was cancalled...
+	// If the job was cancelled...
 	if alrJobs.Status == models.JobStatusCancelled {
 		q.alrLog.Warnf("ALR big job has been cancelled, worker will not be tasked for %s",
 			job.Args)
@@ -154,10 +155,9 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return err
 	}
 
-	// Since the completed count is used for reporting (not for job completion), we do not
-	// need it to succeed for moving on.
 	if err := q.repository.IncrementCompletedJobCount(ctx, jobArgs.ID); err != nil {
 		q.alrLog.Warnf("Failed to increment completed count %s", err.Error())
+		return err
 	}
 
 	jobComplete, err := q.isJobComplete(ctx, jobArgs.ID)
@@ -201,16 +201,18 @@ func (q *masterQueue) isJobComplete(ctx context.Context, jobID uint) (bool, erro
 		return false, nil
 	}
 
-	completedCount, err := q.repository.GetJobKeyCount(ctx, jobID)
-	if err != nil {
-		return false, fmt.Errorf("failed to get job key count: %w", err)
-	}
+	// Possible source of error
+	//completedCount, err := q.repository.GetJobKeyCount(ctx, jobID)
+	//if err != nil {
+	//return false, fmt.Errorf("failed to get job key count: %w", err)
+	//}
 
-	if completedCount > j.JobCount {
+	if j.CompletedJobCount >= j.JobCount {
 		q.alrLog.WithFields(logrus.Fields{
 			"jobID":    j.ID,
-			"jobCount": j.JobCount, "completedJobCount": completedCount}).
-			Warn("Excess number of jobs completed.")
+			"jobCount": j.JobCount, "completedJobCount": j.CompletedJobCount}).
+			Println("Excess number of jobs completed.")
+		return true, nil
 	}
-	return completedCount >= j.JobCount, nil
+	return false, nil
 }

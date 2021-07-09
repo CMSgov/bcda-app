@@ -19,11 +19,13 @@ import (
 func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	ctx := r.Context()
 
+	// retrieve ACO & cms_id data from the context through value
 	ad, err := readAuthData(r)
 	if err != nil {
 		panic("Auth data must be set prior to calling this handler.")
 	}
 
+	// retrieve resourceType requested from context
 	rp, ok := middleware.RequestParametersFromContext(ctx)
 	if !ok {
 		panic("Request parameters must be set prior to calling this handler.")
@@ -92,7 +94,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 		w.WriteHeader(http.StatusAccepted)
 	}()
 
-	// Use a transaction to guarantee that the job only gets created iff we queue all of the alrJobs
+	// Use a transaction to guarantee that the job only gets created if we queue all of the alrJobs
 	rtx := postgres.NewRepositoryTx(tx)
 
 	alrJobs, err := h.Svc.GetAlrJobs(ctx, ad.CMSID, req, service.AlrRequestWindow{LowerBound: rp.Since})

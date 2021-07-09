@@ -44,7 +44,7 @@ func NewAPIRouter() http.Handler {
 		r.Get("/", userGuideRedirect)
 		r.Get(`/{:(user_guide|encryption|decryption_walkthrough).html}`, userGuideRedirect)
 	} else {
-		// Apply rate limiting on prodcution only
+		// Apply rate limiting on production only
 		requestValidators = append(requestValidators, middleware.CheckConcurrentJobs)
 	}
 
