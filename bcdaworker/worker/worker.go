@@ -143,23 +143,37 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	segment := getSegment(ctx, "writeBBDataToFile")
 	defer segment.End()
 
-	var bundleFunc func(bbID string) (*fhirmodels.Bundle, error)
+	var bundleFunc func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error)
 	switch jobArgs.ResourceType {
 	case "Coverage":
-		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
-			return bb.GetCoverage(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+			return bb.GetCoverage(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
 	case "ExplanationOfBenefit":
-		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
 			cw := client.ClaimsWindow{
 				LowerBound: jobArgs.ClaimsWindow.LowerBound,
 				UpperBound: jobArgs.ClaimsWindow.UpperBound}
-			return bb.GetExplanationOfBenefit(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime,
+			return bb.GetExplanationOfBenefit(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime,
 				cw)
 		}
 	case "Patient":
-		bundleFunc = func(bbID string) (*fhirmodels.Bundle, error) {
-			return bb.GetPatient(bbID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+			return bb.GetPatient(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
+		}
+	case "Claim":
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+			cw := client.ClaimsWindow{
+				LowerBound: jobArgs.ClaimsWindow.LowerBound,
+				UpperBound: jobArgs.ClaimsWindow.UpperBound}
+			return bb.GetClaim(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
+		}
+	case "ClaimResponse":
+		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
+			cw := client.ClaimsWindow{
+				LowerBound: jobArgs.ClaimsWindow.LowerBound,
+				UpperBound: jobArgs.ClaimsWindow.UpperBound}
+			return bb.GetClaimResponse(bene.MBI, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime, cw)
 		}
 	default:
 		return "", 0, fmt.Errorf("unsupported resource type %s", jobArgs.ResourceType)
@@ -199,7 +213,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
 
-			b, err := bundleFunc(bene.BlueButtonID)
+			b, err := bundleFunc(bene)
 			if err != nil {
 				return fmt.Sprintf("Error retrieving %s for beneficiary MBI %s in ACO %s", jobArgs.ResourceType, bene.MBI, jobArgs.ACOID), fhircodes.IssueTypeCode_NOT_FOUND, err
 			}
