@@ -63,6 +63,8 @@ type APIClient interface {
 	GetPatient(patientID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetCoverage(beneficiaryID, jobID, cmsID, since string, transactionTime time.Time) (*models.Bundle, error)
 	GetPatientByIdentifierHash(hashedIdentifier string) (string, error)
+	GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error)
+	GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error)
 }
 
 type BlueButtonClient struct {
@@ -176,23 +178,54 @@ func (bbc *BlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since stri
 	return bbc.getBundleData(u, jobID, cmsID, nil)
 }
 
-func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
-	// ServiceDate only uses yyyy-mm-dd
-	const svcDateFmt = "2006-01-02"
+func (bbc *BlueButtonClient) GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
+	header := make(http.Header)
+	header.Add("IncludeTaxNumbers", "true")
 
+	mbiHash := HashIdentifier(mbi)
+	params := GetDefaultParams()
+	params.Set("mbi", mbiHash)
+	params.Set("excludeSAMHSA", "true")
+
+	updateParamWithServiceDate(&params, claimsWindow)
+	updateParamWithLastUpdated(&params, since, transactionTime)
+
+	u, err := bbc.getURL("Claim", params)
+	if err != nil {
+		return nil, err
+	}
+
+	return bbc.getBundleData(u, jobID, cmsID, header)
+}
+
+func (bbc *BlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
+	header := make(http.Header)
+	header.Add("IncludeTaxNumbers", "true")
+
+	mbiHash := HashIdentifier(mbi)
+	params := GetDefaultParams()
+	params.Set("mbi", mbiHash)
+	params.Set("excludeSAMHSA", "true")
+
+	updateParamWithServiceDate(&params, claimsWindow)
+	updateParamWithLastUpdated(&params, since, transactionTime)
+
+	u, err := bbc.getURL("ClaimResponse", params)
+	if err != nil {
+		return nil, err
+	}
+
+	return bbc.getBundleData(u, jobID, cmsID, header)
+}
+
+func (bbc *BlueButtonClient) GetExplanationOfBenefit(patientID, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
 	header := make(http.Header)
 	header.Add("IncludeTaxNumbers", "true")
 	params := GetDefaultParams()
 	params.Set("patient", patientID)
 	params.Set("excludeSAMHSA", "true")
 
-	if !claimsWindow.LowerBound.IsZero() {
-		params.Add("service-date", fmt.Sprintf("ge%s", claimsWindow.LowerBound.Format(svcDateFmt)))
-	}
-	if !claimsWindow.UpperBound.IsZero() {
-		params.Add("service-date", fmt.Sprintf("le%s", claimsWindow.UpperBound.Format(svcDateFmt)))
-	}
-
+	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, since, transactionTime)
 
 	u, err := bbc.getURL("ExplanationOfBenefit", params)
@@ -373,6 +406,19 @@ func HashIdentifier(toHash string) (hashedValue string) {
 		return ""
 	}
 	return hex.EncodeToString(pbkdf2.Key([]byte(toHash), pepper, blueButtonIter, 32, sha256.New))
+}
+
+func updateParamWithServiceDate(params *url.Values, claimsWindow ClaimsWindow) {
+	// ServiceDate only uses yyyy-mm-dd
+	const isoDate = "2006-01-02"
+
+	if !claimsWindow.LowerBound.IsZero() {
+		params.Add("service-date", fmt.Sprintf("ge%s", claimsWindow.LowerBound.Format(isoDate)))
+	}
+
+	if !claimsWindow.UpperBound.IsZero() {
+		params.Add("service-date", fmt.Sprintf("le%s", claimsWindow.UpperBound.Format(isoDate)))
+	}
 }
 
 func updateParamWithLastUpdated(params *url.Values, since string, transactionTime time.Time) {
