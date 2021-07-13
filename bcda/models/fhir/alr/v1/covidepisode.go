@@ -2,6 +2,8 @@ package v1
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
@@ -59,25 +61,75 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 			}
 			covidEpisode.Period.End = fhirTimestamp
 
-		// one of 12 flags corresponding to a calendar month
+		// one of 12 columns corresponding to a calendar month
 		case month.MatchString(kv.Key):
-			ext := &fhirdatatypes.Extension{}
-			ext.Url = &fhirdatatypes.Uri{Value: kv.Key}
-			ext.Value = &fhirdatatypes.Extension_ValueX{
-				Choice: &fhirdatatypes.Extension_ValueX_StringValue{
-					StringValue: &fhirdatatypes.String{Value: kv.Value},
+			val, err := strconv.ParseInt(kv.Value, 10, 32)
+			if err != nil {
+				return nil
+			}
+
+			// this will hold both the flag and period sub-extensions
+			// see http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag for reference
+			covidFlagExt := []*fhirdatatypes.Extension{}
+
+			// flag sub-extension
+			extFlag := &fhirdatatypes.Extension{}
+			extFlag.Url = &fhirdatatypes.Uri{Value: "flag"}
+			extFlag.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Integer{
+					Integer: &fhirdatatypes.Integer{Value: int32(val)},
 				},
 			}
 
-		// covid episode extension
-		case episode.MatchString(kv.Key):
-			ext := &fhirdatatypes.Extension{}
-			ext.Url = &fhirdatatypes.Uri{Value: kv.Key}
-			ext.Value = &fhirdatatypes.Extension_ValueX{
-				Choice: &fhirdatatypes.Extension_ValueX_StringValue{
-					StringValue: &fhirdatatypes.String{Value: kv.Value},
+			// period sub-extension
+			extPeriod := &fhirdatatypes.Extension{}
+			extPeriod.Url = &fhirdatatypes.Uri{Value: "period"}
+
+			// determine the period start and end dates based on the column header
+			// (e.g. COVID19_MONTH10 outputs 10/01/2020, 10/31/2020)
+			startDt, endDt := getFlagPeriodFromHeader(kv.Key)
+
+			start, _ := stringToFhirDate(startDt)
+			end, _ := stringToFhirDate(endDt)
+
+			extPeriod.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Period{
+					Period: &fhirdatatypes.Period{
+						Start: start,
+						End:   end,
+					},
 				},
 			}
+
+			covidFlagExt = append(covidFlagExt, extFlag, extPeriod)
+
+			fullExt := &fhirdatatypes.Extension{}
+			fullExt.Url = &fhirdatatypes.Uri{
+				Value: "http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag",
+			}
+			fullExt.Extension = covidFlagExt
+
+			ext := covidEpisode.Extension
+			ext = append(ext, fullExt)
+
+			covidEpisode.Extension = ext
+
+			// covid episode extension
+		case episode.MatchString(kv.Key):
+			val, err := strconv.ParseInt(kv.Value, 10, 32)
+			if err != nil {
+				return nil
+			}
+
+			ext := &fhirdatatypes.Extension{}
+			ext.Url = &fhirdatatypes.Uri{Value: "http://alr.cms.gov/ig/StructureDefinition/ext-covidEpisode"}
+			ext.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Integer{
+					Integer: &fhirdatatypes.Integer{Value: int32(val)},
+				},
+			}
+			covidEpisode.Extension = append(covidEpisode.Extension, ext)
+
 		// one of two diagnosis codes (B9729 or U071)
 		case diagnosis.MatchString(kv.Key):
 			episodeDiagnosis := []*fhirmodels.EpisodeOfCare_Diagnosis{}
@@ -102,7 +154,8 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 }
 
 func stringToFhirDate(timeString string) (*fhirdatatypes.DateTime, error) {
-	timestamp, err := time.Parse("2006-01-02T15:04:05.000-07:00", timeString)
+	timestamp, err := time.Parse("01/02/2006", timeString)
+
 	if err != nil {
 		return nil, err
 	}
@@ -111,4 +164,26 @@ func stringToFhirDate(timeString string) (*fhirdatatypes.DateTime, error) {
 		Precision: fhirdatatypes.DateTime_DAY,
 	}
 	return fhirTimestamp, nil
+}
+
+// determines the start and end dates for a month given the calendar number (01-12)
+func getFlagPeriodFromHeader(header string) (startDt string, endDt string) {
+	split := strings.Split(header, "_")
+	monthString := split[1]
+	monthNum := monthString[len(monthString)-2:]
+
+	var endNum string
+	switch monthNum {
+	case "01", "03", "05", "07", "08", "10", "12":
+		endNum = "31"
+	case "04", "06", "09", "11":
+		endNum = "30"
+	case "02":
+		endNum = "29"
+	}
+
+	startDate := monthNum + `/01/2020`
+	endDate := monthNum + `/` + endNum + `/2020`
+
+	return startDate, endDate
 }
