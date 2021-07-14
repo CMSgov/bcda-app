@@ -2,6 +2,8 @@ package v2
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
@@ -60,15 +62,53 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 			}
 			covidEpisode.Period.End = fhirTimestamp
 
-		// one of 12 flags corresponding to a calendar month
+		// CovidFlag extension
+		// one of 12 columns corresponding to a calendar month;
+		// has a value of either 0 or 1 indicating that month meets
+		// the criteria for a covid episode
 		case month.MatchString(kv.Key):
-			ext := &r4Datatypes.Extension{}
-			ext.Url = &r4Datatypes.Uri{Value: kv.Key}
-			ext.Value = &r4Datatypes.Extension_ValueX{
-				Choice: &r4Datatypes.Extension_ValueX_StringValue{
-					StringValue: &r4Datatypes.String{Value: kv.Value},
+			val, err := strconv.ParseInt(kv.Value, 10, 32)
+			if err != nil {
+				return nil
+			}
+			// this will hold both the flag and period sub-extensions
+			// see http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag for reference
+			covidFlagExt := []*r4Datatypes.Extension{}
+
+			// flag sub-extension
+			subExtFlag := &r4Datatypes.Extension{}
+			subExtFlag.Url = &r4Datatypes.Uri{Value: "flag"}
+			subExtFlag.Value = &r4Datatypes.Extension_ValueX{
+				Choice: &r4Datatypes.Extension_ValueX_Integer{
+					Integer: &r4Datatypes.Integer{Value: int32(val)},
 				},
 			}
+
+			// period sub-extension
+			subExtMonth := &r4Datatypes.Extension{}
+			subExtMonth.Url = &r4Datatypes.Uri{Value: "monthNum"}
+
+			monthNum := getMonthNumFromHeader(kv.Key)
+
+			subExtMonth.Value = &r4Datatypes.Extension_ValueX{
+				Choice: &r4Datatypes.Extension_ValueX_Integer{
+					Integer: &r4Datatypes.Integer{
+						Value: monthNum,
+					},
+				},
+			}
+
+			covidFlagExt = append(covidFlagExt, subExtFlag, subExtMonth)
+
+			// this is the CovidFlag extension, plus it's corresponding URL
+			// see http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag for reference
+			fullExt := &r4Datatypes.Extension{}
+			fullExt.Url = &r4Datatypes.Uri{
+				Value: "http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag",
+			}
+			fullExt.Extension = covidFlagExt
+
+			covidEpisode.Extension = append(covidEpisode.Extension, fullExt)
 
 		// covid episode extension
 		case episode.MatchString(kv.Key):
@@ -103,7 +143,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 }
 
 func stringToFhirDate(timeString string) (*r4Datatypes.DateTime, error) {
-	timestamp, err := time.Parse("2006-01-02T15:04:05.000-07:00", timeString)
+	timestamp, err := time.Parse("01/02/2006", timeString)
 	if err != nil {
 		return nil, err
 	}
@@ -112,4 +152,14 @@ func stringToFhirDate(timeString string) (*r4Datatypes.DateTime, error) {
 		Precision: r4Datatypes.DateTime_DAY,
 	}
 	return fhirTimestamp, nil
+}
+
+// extracts the month value as an integer from the ALR column header
+func getMonthNumFromHeader(header string) (num int32) {
+	split := strings.Split(header, "_")
+	monthString := split[1]
+	monthNum := monthString[len(monthString)-2:]
+	month, _ := strconv.ParseInt(monthNum, 10, 32)
+
+	return int32(month)
 }

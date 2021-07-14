@@ -61,7 +61,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 			}
 			covidEpisode.Period.End = fhirTimestamp
 
-		// CovidFlag extension7z
+		// CovidFlag extension
 		// one of 12 columns corresponding to a calendar month;
 		// has a value of either 0 or 1 indicating that month meets
 		// the criteria for a covid episode
