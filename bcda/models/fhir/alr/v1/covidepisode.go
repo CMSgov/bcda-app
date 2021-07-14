@@ -61,7 +61,10 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 			}
 			covidEpisode.Period.End = fhirTimestamp
 
-		// one of 12 columns corresponding to a calendar month
+		// CovidFlag extension7z
+		// one of 12 columns corresponding to a calendar month;
+		// has a value of either 0 or 1 indicating that month meets
+		// the criteria for a covid episode
 		case month.MatchString(kv.Key):
 			val, err := strconv.ParseInt(kv.Value, 10, 32)
 			if err != nil {
@@ -73,48 +76,41 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 			covidFlagExt := []*fhirdatatypes.Extension{}
 
 			// flag sub-extension
-			extFlag := &fhirdatatypes.Extension{}
-			extFlag.Url = &fhirdatatypes.Uri{Value: "flag"}
-			extFlag.Value = &fhirdatatypes.Extension_ValueX{
+			subExtFlag := &fhirdatatypes.Extension{}
+			subExtFlag.Url = &fhirdatatypes.Uri{Value: "flag"}
+			subExtFlag.Value = &fhirdatatypes.Extension_ValueX{
 				Choice: &fhirdatatypes.Extension_ValueX_Integer{
 					Integer: &fhirdatatypes.Integer{Value: int32(val)},
 				},
 			}
 
 			// period sub-extension
-			extPeriod := &fhirdatatypes.Extension{}
-			extPeriod.Url = &fhirdatatypes.Uri{Value: "period"}
+			subExtMonth := &fhirdatatypes.Extension{}
+			subExtMonth.Url = &fhirdatatypes.Uri{Value: "monthNum"}
 
-			// determine the period start and end dates based on the column header
-			// (e.g. COVID19_MONTH10 outputs 10/01/2020, 10/31/2020)
-			startDt, endDt := getFlagPeriodFromHeader(kv.Key)
+			monthNum := getMonthNumFromHeader(kv.Key)
 
-			start, _ := stringToFhirDate(startDt)
-			end, _ := stringToFhirDate(endDt)
-
-			extPeriod.Value = &fhirdatatypes.Extension_ValueX{
-				Choice: &fhirdatatypes.Extension_ValueX_Period{
-					Period: &fhirdatatypes.Period{
-						Start: start,
-						End:   end,
+			subExtMonth.Value = &fhirdatatypes.Extension_ValueX{
+				Choice: &fhirdatatypes.Extension_ValueX_Integer{
+					Integer: &fhirdatatypes.Integer{
+						Value: monthNum,
 					},
 				},
 			}
 
-			covidFlagExt = append(covidFlagExt, extFlag, extPeriod)
+			covidFlagExt = append(covidFlagExt, subExtFlag, subExtMonth)
 
+			// this is the CovidFlag extension, plus it's corresponding URL
+			// see http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag for reference
 			fullExt := &fhirdatatypes.Extension{}
 			fullExt.Url = &fhirdatatypes.Uri{
 				Value: "http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag",
 			}
 			fullExt.Extension = covidFlagExt
 
-			ext := covidEpisode.Extension
-			ext = append(ext, fullExt)
+			covidEpisode.Extension = append(covidEpisode.Extension, fullExt)
 
-			covidEpisode.Extension = ext
-
-			// covid episode extension
+		// CovidEpisode extension
 		case episode.MatchString(kv.Key):
 			val, err := strconv.ParseInt(kv.Value, 10, 32)
 			if err != nil {
@@ -166,24 +162,12 @@ func stringToFhirDate(timeString string) (*fhirdatatypes.DateTime, error) {
 	return fhirTimestamp, nil
 }
 
-// determines the start and end dates for a month given the calendar number (01-12)
-func getFlagPeriodFromHeader(header string) (startDt string, endDt string) {
+// extracts the month value as an integer from the ALR column header
+func getMonthNumFromHeader(header string) (num int32) {
 	split := strings.Split(header, "_")
 	monthString := split[1]
 	monthNum := monthString[len(monthString)-2:]
+	month, _ := strconv.ParseInt(monthNum, 10, 32)
 
-	var endNum string
-	switch monthNum {
-	case "01", "03", "05", "07", "08", "10", "12":
-		endNum = "31"
-	case "04", "06", "09", "11":
-		endNum = "30"
-	case "02":
-		endNum = "29"
-	}
-
-	startDate := monthNum + `/01/2020`
-	endDate := monthNum + `/` + endNum + `/2020`
-
-	return startDate, endDate
+	return int32(month)
 }
