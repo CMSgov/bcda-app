@@ -24,6 +24,7 @@ var (
 	newlyAssignedBeneficiaryFlagP = regexp.MustCompile(`^ASG_STATUS$`)
 	pervAssignedBeneficiaryFlagP  = regexp.MustCompile(`^ASSIGNED_BEFORE$`)
 	voluntaryAlignmentFlagP       = regexp.MustCompile(`^IN_VA_MAX$`)
+	vaSelectionOnlyP              = regexp.MustCompile(`^VA_SELECTION_ONLY$`)
 )
 
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
@@ -135,6 +136,20 @@ func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models
 			}
 
 			ext := extensionMaker("http://alr.cms.gov/ig/StructureDefinition/ext-newlyAssignedBeneficiaryFlag",
+				"", "", "", "")
+			ext.Value = &r4Datatypes.Extension_ValueX{
+				Choice: &r4Datatypes.Extension_ValueX_Boolean{
+					Boolean: &r4Datatypes.Boolean{Value: val},
+				},
+			}
+		case vaSelectionOnlyP.MatchString(kv.Key):
+			// ext - vaSelectionOnlyFlag
+			var val = true
+			if kv.Value == "0" {
+				val = false
+			}
+
+			ext := extensionMaker("http://alr.cms.gov/ig/StructureDefinition/ext-vaSelectionOnlyFlag",
 				"", "", "", "")
 			ext.Value = &r4Datatypes.Extension_ValueX{
 				Choice: &r4Datatypes.Extension_ValueX_Boolean{
