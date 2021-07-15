@@ -1,0 +1,32 @@
+{
+  "contact" : [{
+    "relationship" : [{}],
+    "name" : "",
+    "telecom" : [{}],
+    "address" : "",
+    "gender" : "",
+    "organization" : "",
+    "period" : ""
+  }],
+  "identifier" : [{}],
+  "active" : "",
+  "name" : [{}],
+  "telecom" : [{}],
+  "gender" : "",
+  "birthDate" : "",
+  "deceasedBoolean" : "",
+  "deceasedDateTime" : "",
+  "address" : [{}],
+  "maritalStatus" : "",
+  "multipleBirthBoolean" : "",
+  "multipleBirthInteger" : "",
+  "photo" : [{}],
+
+  "communication" : [{}],
+  "generalPractitioner" : [{}],
+  "managingOrganization" : "",
+  "link" : {
+    "other" : "",
+    "type" : ""
+  }
+}
