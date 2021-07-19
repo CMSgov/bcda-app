@@ -10,6 +10,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/stdlib"
@@ -54,7 +55,7 @@ func NewAlrRepo(db *sql.DB) *AlrRepository {
 func getPgxConn(db *sql.DB) *pgx.Conn {
 	conn, err := stdlib.AcquireConn(db)
 	if err != nil {
-		logrus.Warn(err, "failed to acquire connection")
+        log.API.Warn(err, "failed to acquire connection")
 	}
 	return conn
 }
@@ -80,7 +81,7 @@ func decoder(byteMap []byte) (map[string]string, error) {
 
 func rollBack(tx *pgx.Tx) {
 	if err := tx.Rollback(); err != nil {
-		logrus.Warnf("Failed to rollback transaction %s", err.Error())
+		log.API.Warnf("Failed to rollback transaction %s", err.Error())
 	}
 }
 

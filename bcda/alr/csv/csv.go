@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/log"
 	"github.com/dimchansky/utfbom"
 	"github.com/go-gota/gota/dataframe"
-	"github.com/sirupsen/logrus"
 )
 
 // These are field in the ALR data that we have assumed to be constant from
@@ -72,7 +72,7 @@ func toDataFrame(csvPath string) (dataframe.DataFrame, error) {
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			logrus.Warnf("Failed to close file %s", err.Error())
+			log.API.Warnf("Failed to close file %s", err.Error())
 		}
 	}()
 

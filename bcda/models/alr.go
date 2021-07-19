@@ -30,6 +30,7 @@ type JobAlrEnqueueArgs struct {
 	ID         uint
 	CMSID      string
 	MBIs       []string
+	BBBasePath string
 	LowerBound time.Time
 	UpperBound time.Time
 }
