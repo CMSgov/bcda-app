@@ -7,13 +7,6 @@ from functools import reduce
 
 import pandas as pd
 
-"""
-Create the environment:
-    python3 -m venv env
-    source ./env/bin/activate
-    pip install pandas
-"""
-
 def flatten(data, parent_key='', sep='.'):
     items = []
     for k, v in data.items():
