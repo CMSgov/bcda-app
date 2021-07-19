@@ -41,6 +41,16 @@ func (bbc *MockBlueButtonClient) GetCoverage(beneficiaryID, jobID, cmsID, since 
 	return args.Get(0).(*models.Bundle), args.Error(1)
 }
 
+func (bbc *MockBlueButtonClient) GetClaim(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
+	args := bbc.Called(mbi, jobID, cmsID, since, transactionTime, claimsWindow)
+	return args.Get(0).(*models.Bundle), args.Error(1)
+}
+
+func (bbc *MockBlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, transactionTime time.Time, claimsWindow ClaimsWindow) (*models.Bundle, error) {
+	args := bbc.Called(mbi, jobID, cmsID, since, transactionTime, claimsWindow)
+	return args.Get(0).(*models.Bundle), args.Error(1)
+}
+
 // Returns copy of a static json file (From Blue Button Sandbox originally) after replacing the patient ID of 20000000000001 with the requested identifier
 // This is private in the real function and should remain so, but in the test client it makes maintenance easier to expose it.
 func (bbc *MockBlueButtonClient) GetData(endpoint, patientID string) (string, error) {

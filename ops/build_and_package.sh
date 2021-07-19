@@ -35,7 +35,8 @@ then
   exit 1
 fi
 
-if [ ! -f ../bcda/models/fhir/alr/hcc_crosswalk.tsv ]
+#TODO: This file should live in worker S3 mount dir. Perhaps remove this.
+if [ ! -f ../bcda/models/fhir/alr/utils/hcc_crosswalk.tsv ]
 then
   echo "Crosswalk file must exist prior to creating package."
   exit 1
@@ -46,13 +47,13 @@ go clean
 echo "Building bcda binary..." 
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcda binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api models/fhir/alr/hcc_crosswalk.tsv=/etc/sv/api/hcc_crosswalk.tsv models/fhir/alr/hcc_crosswalk.tsv=/etc/sv/nfs/hcc_crosswalk.tsv
+fpm -v $VERSION -s dir -t rpm -n bcda bcda=/usr/local/bin/bcda swaggerui=/etc/sv/api models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/api/hcc_crosswalk.tsv models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/nfs/hcc_crosswalk.tsv
 cd ../bcdaworker
 go clean
 echo "Building bcdaworker..."
 go build -ldflags "-X github.com/CMSgov/bcda-app/bcda/constants.Version=$VERSION"
 echo "Packaging bcdaworker binary into RPM..."
-fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker ../bcda/models/fhir/alr/hcc_crosswalk.tsv=/etc/sv/worker/hcc_crosswalk.tsv
+fpm -v $VERSION -s dir -t rpm -n bcdaworker bcdaworker=/usr/local/bin/bcdaworker ../bcda/models/fhir/alr/utils/hcc_crosswalk.tsv=/etc/sv/worker/hcc_crosswalk.tsv
 
 #Sign RPMs
 echo "Importing GPG Key files"

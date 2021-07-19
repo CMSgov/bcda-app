@@ -1,4 +1,4 @@
-package alr
+package v1
 
 import (
 	"strconv"
@@ -10,6 +10,8 @@ import (
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
+// Version 1:
+
 func patient(alr *models.Alr) *fhirmodels.Patient {
 	p := &fhirmodels.Patient{}
 	p.Name = []*fhirdatatypes.HumanName{{Given: []*fhirdatatypes.String{fhirString(alr.BeneFirstName)},
@@ -19,6 +21,12 @@ func patient(alr *models.Alr) *fhirmodels.Patient {
 	p.Deceased = getDeceased(alr.BeneDOD)
 	p.Address = getAddress(alr.KeyValue)
 	p.Identifier = getIdentifiers(alr)
+	p.Meta = &fhirdatatypes.Meta{
+		LastUpdated: &fhirdatatypes.Instant{
+			Precision: fhirdatatypes.Instant_SECOND,
+			ValueUs:   alr.Timestamp.UnixNano() / int64(time.Microsecond),
+		},
+	}
 
 	// Extensions...
 	extention := []*fhirdatatypes.Extension{}

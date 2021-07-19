@@ -61,6 +61,7 @@ func (s *service) GetAlrJobs(ctx context.Context, cmsID string,
 			CMSID:      cmsID,
 			LowerBound: window.LowerBound,
 			UpperBound: window.UpperBound,
+            BBBasePath: s.bbBasePath,
 			MBIs:       make([]string, 0, s.alrMBIsPerJob),
 		}
 

@@ -19,7 +19,7 @@ type AlrWorkerTestSuite struct {
 	suite.Suite
 	alrWorker AlrWorker
 	db        *sql.DB
-	jobArgs   models.JobAlrEnqueueArgs
+	jobArgs   []models.JobAlrEnqueueArgs
 }
 
 // Initial Setup
@@ -79,13 +79,24 @@ func (s *AlrWorkerTestSuite) SetupSuite() {
 	_ = s.alrWorker.AlrRepository.AddAlr(ctx, aco, timestamp2, alrs[1:2])
 
 	// Create JobArgs
-	s.jobArgs = models.JobAlrEnqueueArgs{
+    // Test V1
+	s.jobArgs = []models.JobAlrEnqueueArgs{{
 		ID:         1,
 		CMSID:      aco,
 		MBIs:       MBIs,
+        BBBasePath: "/v1/fhir",
 		LowerBound: timestamp,
 		UpperBound: timestamp2,
-	}
+	}}
+    // Test V2
+    s.jobArgs = append(s.jobArgs, models.JobAlrEnqueueArgs{
+		ID:         2,
+		CMSID:      aco,
+		MBIs:       MBIs,
+        BBBasePath: "/v2/fhir",
+		LowerBound: timestamp,
+		UpperBound: timestamp2,
+    })
 
 	tempDir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -105,9 +116,12 @@ func (s *AlrWorkerTestSuite) TestNewAlrWorker() {
 // Test ProcessAlrJob
 func (s *AlrWorkerTestSuite) TestProcessAlrJob() {
 	ctx := context.Background()
-	err := s.alrWorker.ProcessAlrJob(ctx, s.jobArgs)
+	err := s.alrWorker.ProcessAlrJob(ctx, s.jobArgs[0])
 	// Check Job is processed with no errors
 	assert.NoError(s.T(), err)
+    err = s.alrWorker.ProcessAlrJob(ctx, s.jobArgs[1])
+    // Check Job is processed with no errors
+    assert.NoError(s.T(), err)
 }
 
 func TestAlrWorkerTestSuite(t *testing.T) {

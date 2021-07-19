@@ -12,6 +12,9 @@ import (
 )
 
 func TestUpdateCSV(t *testing.T) {
+
+    isTesting = true
+
 	mbiCount := rand.Intn(1000)
 	path, cleanup := testUtils.CopyToTemporaryDirectory(t, "testdata")
 	defer cleanup()
