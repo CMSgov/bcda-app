@@ -12,13 +12,24 @@ def flatten(data, parent_key='', sep='.'):
     for k, v in data.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, dict):
-            items.extend(flatten(v, new_key, sep=sep).items())
+            items.extend(flatten(v, new_key, sep).items())
         elif isinstance(v, str):
             items.append((new_key, v))
         elif isinstance(v, list):
             if not isinstance(v[0], str):
-                for item in v:
-                    items.extend(flatten(item, new_key, sep=sep).items())
+                if len(v) > 1:
+                    for index, item in zip(range(len(v)), v):
+                        if index > 0:
+                            items.extend(flatten(
+                                item,
+                                '{}{}'.format(new_key, index+1),
+                                sep
+                            ).items())
+                        else:
+                            items.extend(flatten(item, new_key, sep).items())
+                else:
+                    for item in v:
+                        items.extend(flatten(item, new_key, sep).items())
             else:
                 items.append((new_key, ' '.join(v)))
         else:
@@ -45,7 +56,10 @@ if __name__=='__main__':
         ]
         output = reduce(lambda x, y: x.append(y), list_dataframes)  # Merge DataFrames
         
-        output_filename = '{}_{}.csv'.format(filename, datetime.datetime.today().date())
+        output_filename = '{}_{}.csv'.format(
+            filename,
+            datetime.datetime.today().date()
+        )
         output.to_csv(output_filename, index=False)
 
         print("File converted successfully. Output file '{}'".format(output_filename))
