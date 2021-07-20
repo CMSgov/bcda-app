@@ -1,6 +1,6 @@
 # Beneficiary Claims Data API
 
-[![Build Status](https://travis-ci.org/CMSgov/bcda-app.svg?branch=master)](https://travis-ci.org/CMSgov/bcda-app)
+[![Build Status](https://github.com/CMSgov/bcda-app/actions/workflows/ci-workflow.yml/badge.svg?branch=master)](https://github.com/CMSgov/bcda-app/actions?query=branch%3Amaster)
 
 ## Dependencies
 
