@@ -5,7 +5,7 @@ This python script can be used to generate a CSV from NDJSON data. It is underst
 
 ## Setup
 ### Install Python
-Running this script requires that you have Python 3 installed on your machine. Mac OS ships with Python 2 and 3, but Windows users will need to manually install.
+Running this script requires that you have Python 3 installed on your machine. Mac OS ships with Python 3, but Windows users may need to manually install.
 
 You can download the most recent version of Python at [python.org/downloads](https://www.python.org/downloads/).
 
@@ -15,7 +15,7 @@ You can verify that Python has been installed correctly by opening a Command Pro
 python3 --version
 ```
 
-Your maching should output the active version of Python.
+Your machine should output the active version of Python.
 
 ```
 >> python3 --version
@@ -44,6 +44,10 @@ source ./env/bin/activate
 - Install the Python library Pandas.
 ```
 pip install pandas
+```
+- Install the Python library TQDM.
+```
+pip install tqdm
 ```
 
 ### Running the Script

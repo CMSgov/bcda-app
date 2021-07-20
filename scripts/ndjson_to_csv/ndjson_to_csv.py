@@ -5,6 +5,7 @@ import json
 
 from functools import reduce
 
+from tqdm import tqdm
 import pandas as pd
 
 def flatten(data, parent_key='', sep='.'):
@@ -13,10 +14,8 @@ def flatten(data, parent_key='', sep='.'):
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, dict):
             items.extend(flatten(v, new_key, sep).items())
-        elif isinstance(v, str):
-            items.append((new_key, v))
         elif isinstance(v, list):
-            if not isinstance(v[0], str):
+            if not isinstance(v[0], (str, int)):
                 if len(v) > 1:
                     for index, item in zip(range(len(v)), v):
                         if index > 0:
@@ -31,7 +30,10 @@ def flatten(data, parent_key='', sep='.'):
                     for item in v:
                         items.extend(flatten(item, new_key, sep).items())
             else:
-                items.append((new_key, ' '.join(v)))
+                if isinstance(v, int):
+                    items.append((new_key, ' '.join(str(v))))
+                else:
+                    items.append((new_key, ' '.join(v)))
         else:
             items.append((new_key, v))
     return dict(items)
@@ -50,16 +52,19 @@ if __name__=='__main__':
         data = json.loads(string_json)
 
         list_data_dict = [flatten(obj) for obj in data]  # Flatten data
+        print("Creating DataFrames")
         list_dataframes = [  # Create DataFrames
             pd.DataFrame(obj, index=[list_data_dict.index(obj)])
-            for obj in list_data_dict
+            for obj in tqdm(list_data_dict)
         ]
-        output = reduce(lambda x, y: x.append(y), list_dataframes)  # Merge DataFrames
+        print("Merging DataFrames")
+        output = reduce(lambda x, y: x.append(y), tqdm(list_dataframes))  # Merge DataFrames
         
         output_filename = '{}_{}.csv'.format(
             filename,
             datetime.datetime.today().date()
         )
+        print("Creating CSV")
         output.to_csv(output_filename, index=False)
 
         print("File converted successfully. Output file '{}'".format(output_filename))
