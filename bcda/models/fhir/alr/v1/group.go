@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"time"
@@ -18,7 +19,8 @@ var (
 	changeTypeP   = regexp.MustCompile(`^EXCLUDED$`)
 	changeReasonP = regexp.MustCompile(`^(DECEASED_EXCLUDED)|` +
 		`(MISSING_ID_EXCLUDED)|(PART_A_B_ONLY_EXCLUDED)|` +
-		`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)$`)
+		`(GHP_EXCLUDED)|(OUTSIDE_US_EXCLUDED)|(OTHER_SHARED_SAV_INIT)|` +
+		`(PLUR_R05)|(AB_R01)|(HMO_R03)|(NO_US_R02)|(MDM_R04)|(NOFND_R06)$`)
 	claimsBasedAssignmentFlagP    = regexp.MustCompile(`^CBA_FLAG$`)
 	claimsBasedAssignmentStepP    = regexp.MustCompile(`^ASSIGNMENT_TYPE$`)
 	newlyAssignedBeneficiaryFlagP = regexp.MustCompile(`^ASG_STATUS$`)
@@ -62,14 +64,16 @@ func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmode
 		case changeReasonP.MatchString(kv.Key):
 			// ext - changeReason
 
-			// get the variable name from the map set in mapping.go
-			display := utils.GroupPatternDescriptions[kv.Key]
+			// Data with a value of 0 should not be included in the FHIR resource
+			if kv.Value != "0" {
+				// get the variable name from the map set in mapping.go
+				display := utils.GroupPatternDescriptions[kv.Key]
 
-			ext := extensionMaker("reasonCode",
-				"", kv.Key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
-			// TODO: Need to put in diplay when we figure out best way
+				ext := extensionMaker("reasonCode",
+					"", kv.Key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
 
-			extension = append(extension, ext)
+				extension = append(extension, ext)
+			}
 		case claimsBasedAssignmentFlagP.MatchString(kv.Key):
 			// ext - claimsBasedAssignmentFlag
 			var val = true
@@ -183,8 +187,9 @@ func extensionMaker(url, reference, key, sys, disp string) *fhirdatatypes.Extens
 			},
 		}
 	}
-
+	fmt.Println(disp)
 	if key != "" && reference == "" {
+		fmt.Println(disp)
 		extension.Value = &fhirdatatypes.Extension_ValueX{
 			Choice: &fhirdatatypes.Extension_ValueX_Coding{
 				Coding: &fhirdatatypes.Coding{

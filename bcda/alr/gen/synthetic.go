@@ -66,6 +66,9 @@ var valueGenerator = [...]regexpClosurePair{
 	{regexp.MustCompile("VA_TIN"), func() string { return randomdata.StringNumberExt(1, "", 9) }},
 	{regexp.MustCompile("VA_NPI"), func() string { return randomdata.StringNumberExt(1, "", 10) }},
 	{regexp.MustCompile("VA_SELECTION_ONLY"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
+	{regexp.MustCompile("^(PLUR_R05)|(AB_R01)|(HMO_R03)|(NO_US_R02)|(MDM_R04)|(NOFND_R06)$"), func() string {
+		return strconv.Itoa(randomdata.Number(2))
+	}},
 	{regexp.MustCompile("EnrollFlag"), func() string {
 		return randomEmpty(half,
 			func() string { return strconv.Itoa(randomdata.Number(5)) })

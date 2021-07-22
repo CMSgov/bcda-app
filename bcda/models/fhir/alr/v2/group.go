@@ -62,14 +62,16 @@ func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models
 		case changeReasonP.MatchString(kv.Key):
 			// ext - changeReason
 
-			// get the variable name from the map set in mapping.go
-			display := utils.GroupPatternDescriptions[kv.Key]
+			// Data with a value of 0 should not be included in the FHIR resource
+			if kv.Value != "0" {
+				// get the variable name from the map set in mapping.go
+				display := utils.GroupPatternDescriptions[kv.Key]
 
-			ext := extensionMaker("reasonCode",
-				"", kv.Key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
-			// TODO: Need to put in diplay when we figure out best way
+				ext := extensionMaker("reasonCode",
+					"", kv.Key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
 
-			extension = append(extension, ext)
+				extension = append(extension, ext)
+			}
 		case claimsBasedAssignmentFlagP.MatchString(kv.Key):
 			// ext - claimsBasedAssignmentFlag
 			var val = true
