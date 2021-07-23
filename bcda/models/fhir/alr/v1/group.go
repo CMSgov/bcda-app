@@ -187,7 +187,7 @@ func extensionMaker(url, reference, key, sys, disp string) *fhirdatatypes.Extens
 			},
 		}
 	}
-	fmt.Println(disp)
+
 	if key != "" && reference == "" {
 		fmt.Println(disp)
 		extension.Value = &fhirdatatypes.Extension_ValueX{
