@@ -30,10 +30,8 @@ def flatten(data, parent_key='', sep='.'):
                     for item in v:
                         items.extend(flatten(item, new_key, sep).items())
             else:
-                if isinstance(v, int):
-                    items.append((new_key, ' '.join(str(v))))
-                else:
-                    items.append((new_key, ' '.join(v)))
+                list_strings = [str(item) for item in v]
+                items.append((new_key, ' '.join(list_strings)))
         else:
             items.append((new_key, v))
     return dict(items)
@@ -47,7 +45,10 @@ if __name__=='__main__':
         f = open(filename, 'r')
         
         # Format data
-        string_json = '[' + f.read()[0:-1] + ']'
+        string_json = f.read()
+        if string_json[-1:] == '\n':  # Handle possible trailing new line
+            string_json = string_json[0:-1]
+        string_json = '[' + string_json + ']'
         string_json = string_json.replace('\n', ',')
         data = json.loads(string_json)
 
