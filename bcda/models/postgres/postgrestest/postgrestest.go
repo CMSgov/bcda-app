@@ -97,6 +97,28 @@ func GetCCLFFilesByName(t *testing.T, db *sql.DB, name string) []models.CCLFFile
 	return cclfFiles
 }
 
+func GetLatestCCLFFileByCMSIDAndType(t *testing.T, db *sql.DB, cmsID string, fileType models.CCLFFileType) models.CCLFFile {
+	sb := sqlFlavor.NewSelectBuilder().
+		Select("id", "cclf_num", "name", "aco_cms_id", "timestamp", "performance_year", "import_status", "type").
+		From("cclf_files")
+	sb.Where(
+		sb.Equal("aco_cms_id", cmsID),
+		sb.Equal("type", fileType),
+	)
+	sb.OrderBy("timestamp").Desc().Limit(1)
+
+	query, args := sb.Build()
+	row := db.QueryRow(query, args...)
+
+	var cclfFile models.CCLFFile
+	err := row.Scan(&cclfFile.ID, &cclfFile.CCLFNum, &cclfFile.Name,
+		&cclfFile.ACOCMSID, &cclfFile.Timestamp, &cclfFile.PerformanceYear,
+		&cclfFile.ImportStatus, &cclfFile.Type)
+	assert.NoError(t, err)
+
+	return cclfFile
+}
+
 // DeleteCCLFFilesByCMSID deletes all CCLFFile associated with a particular ACO represented by cmsID
 // Since (as of 2021-01-13), we have foreign key ties to this table, we'll
 // also delete any relational ties (e.g. CCLFBeneficiary)
