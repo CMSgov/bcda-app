@@ -264,12 +264,12 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 type AttributionFileStatus struct {
 	Name      string    `json:"name"`
 	Timestamp time.Time `json:"timestamp"`
-	CCLFNum   int       `json:"cclfNumber"`
-	Type      string    `json:"cclfFileType"`
+	CCLFNum   int       `json:"cclf_number"`
+	Type      string    `json:"cclf_file_type"`
 }
 
 type AttributionFileStatusResponse struct {
-	CCLFFiles []AttributionFileStatus `json:"cclfFiles"`
+	CCLFFiles []AttributionFileStatus `json:"cclf_files"`
 }
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
