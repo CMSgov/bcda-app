@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
+	"github.com/CMSgov/bcda-app/log"
 
 	r4Datatypes "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/datatypes_go_proto"
 	r4Models "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/episode_of_care_go_proto"
@@ -50,7 +51,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 		case admissionDt.MatchString(kv.Key):
 			fhirTimestamp, err := stringToFhirDate(kv.Value)
 			if err != nil {
-				continue
+				log.API.Warnf("Could not parse date string:", err)
 			}
 			covidEpisode.Period.Start = fhirTimestamp
 
@@ -58,7 +59,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 		case dischargeDt.MatchString(kv.Key):
 			fhirTimestamp, err := stringToFhirDate(kv.Value)
 			if err != nil {
-				continue
+				log.API.Warnf("Could not parse date string:", err)
 			}
 			covidEpisode.Period.End = fhirTimestamp
 
@@ -69,7 +70,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 		case month.MatchString(kv.Key):
 			val, err := strconv.ParseInt(kv.Value, 10, 32)
 			if err != nil {
-				return nil
+				log.API.Warnf("Could convert string to int for {}: {}", kv.Value, err)
 			}
 			// this will hold both the flag and period sub-extensions
 			// see http://alr.cms.gov/ig/StructureDefinition/ext-covidFlag for reference
@@ -110,32 +111,42 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r
 
 			covidEpisode.Extension = append(covidEpisode.Extension, fullExt)
 
-		// covid episode extension
+		// CovidEpisod extension
 		case episode.MatchString(kv.Key):
+			val, err := strconv.ParseInt(kv.Value, 10, 32)
+			if err != nil {
+				log.API.Warnf("Could convert string to int for {}: {}", kv.Value, err)
+			}
+
 			ext := &r4Datatypes.Extension{}
-			ext.Url = &r4Datatypes.Uri{Value: kv.Key}
+			ext.Url = &r4Datatypes.Uri{Value: "http://alr.cms.gov/ig/StructureDefinition/ext-covidEpisode"}
 			ext.Value = &r4Datatypes.Extension_ValueX{
-				Choice: &r4Datatypes.Extension_ValueX_StringValue{
-					StringValue: &r4Datatypes.String{Value: kv.Value},
+				Choice: &r4Datatypes.Extension_ValueX_Integer{
+					Integer: &r4Datatypes.Integer{Value: int32(val)},
 				},
 			}
+			covidEpisode.Extension = append(covidEpisode.Extension, ext)
+
 		// one of two diagnosis codes (B9729 or U071)
 		case diagnosis.MatchString(kv.Key):
-			episodeDiagnosis := []*r4Models.EpisodeOfCare_Diagnosis{}
-			diagnosis := &r4Models.EpisodeOfCare_Diagnosis{
-				Condition: &r4Datatypes.Reference{
-					Identifier: &r4Datatypes.Identifier{
-						System: &r4Datatypes.Uri{
-							Value: "http://hl7.org/fhir/sid/icd-10",
-						},
-						Value: &r4Datatypes.String{
-							Value: kv.Value,
+			// Data with a value of 0 should not be included in the FHIR resource
+			if kv.Value != "0" {
+				episodeDiagnosis := []*r4Models.EpisodeOfCare_Diagnosis{}
+				diagnosis := &r4Models.EpisodeOfCare_Diagnosis{
+					Condition: &r4Datatypes.Reference{
+						Identifier: &r4Datatypes.Identifier{
+							System: &r4Datatypes.Uri{
+								Value: "http://hl7.org/fhir/sid/icd-10",
+							},
+							Value: &r4Datatypes.String{
+								Value: kv.Value,
+							},
 						},
 					},
-				},
+				}
+				episodeDiagnosis = append(episodeDiagnosis, diagnosis)
+				covidEpisode.Diagnosis = episodeDiagnosis
 			}
-			episodeDiagnosis = append(episodeDiagnosis, diagnosis)
-			covidEpisode.Diagnosis = episodeDiagnosis
 		}
 	}
 	return covidEpisode

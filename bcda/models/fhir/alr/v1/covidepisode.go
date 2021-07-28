@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
+	"github.com/CMSgov/bcda-app/log"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
@@ -49,7 +50,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 		case admissionDt.MatchString(kv.Key):
 			fhirTimestamp, err := stringToFhirDate(kv.Value)
 			if err != nil {
-				continue
+				log.API.Warnf("Could not parse date string:", err)
 			}
 			covidEpisode.Period.Start = fhirTimestamp
 
@@ -57,7 +58,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 		case dischargeDt.MatchString(kv.Key):
 			fhirTimestamp, err := stringToFhirDate(kv.Value)
 			if err != nil {
-				continue
+				log.API.Warnf("Could not parse date string:", err)
 			}
 			covidEpisode.Period.End = fhirTimestamp
 
@@ -68,7 +69,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 		case month.MatchString(kv.Key):
 			val, err := strconv.ParseInt(kv.Value, 10, 32)
 			if err != nil {
-				return nil
+				log.API.Warnf("Could convert string to int for {}: {}", kv.Value, err)
 			}
 
 			// this will hold both the flag and period sub-extensions
@@ -114,7 +115,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 		case episode.MatchString(kv.Key):
 			val, err := strconv.ParseInt(kv.Value, 10, 32)
 			if err != nil {
-				return nil
+				log.API.Warnf("Could convert string to int for {}: {}", kv.Value, err)
 			}
 
 			ext := &fhirdatatypes.Extension{}
@@ -128,21 +129,24 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 
 		// one of two diagnosis codes (B9729 or U071)
 		case diagnosis.MatchString(kv.Key):
-			episodeDiagnosis := []*fhirmodels.EpisodeOfCare_Diagnosis{}
-			diagnosis := &fhirmodels.EpisodeOfCare_Diagnosis{
-				Condition: &fhirdatatypes.Reference{
-					Identifier: &fhirdatatypes.Identifier{
-						System: &fhirdatatypes.Uri{
-							Value: "http://hl7.org/fhir/sid/icd-10",
-						},
-						Value: &fhirdatatypes.String{
-							Value: kv.Value,
+			// Data with a value of 0 should not be included in the FHIR resource
+			if kv.Value != "0" {
+				episodeDiagnosis := []*fhirmodels.EpisodeOfCare_Diagnosis{}
+				diagnosis := &fhirmodels.EpisodeOfCare_Diagnosis{
+					Condition: &fhirdatatypes.Reference{
+						Identifier: &fhirdatatypes.Identifier{
+							System: &fhirdatatypes.Uri{
+								Value: "http://hl7.org/fhir/sid/icd-10",
+							},
+							Value: &fhirdatatypes.String{
+								Value: kv.Value,
+							},
 						},
 					},
-				},
+				}
+				episodeDiagnosis = append(episodeDiagnosis, diagnosis)
+				covidEpisode.Diagnosis = episodeDiagnosis
 			}
-			episodeDiagnosis = append(episodeDiagnosis, diagnosis)
-			covidEpisode.Diagnosis = episodeDiagnosis
 		}
 	}
 	return covidEpisode
@@ -151,7 +155,6 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 
 func stringToFhirDate(timeString string) (*fhirdatatypes.DateTime, error) {
 	timestamp, err := time.Parse("01/02/2006", timeString)
-
 	if err != nil {
 		return nil, err
 	}

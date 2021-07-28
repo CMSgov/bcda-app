@@ -107,10 +107,7 @@ var valueGenerator = [...]regexpClosurePair{
 		return randomEmpty(less,
 			func() string { return randomDate(maxCovidDate, time.Now()) })
 	}},
-	{regexp.MustCompile("^(U071)|(B9729)$"), func() string {
-		return randomEmpty(less,
-			func() string { return randomStringOption([]string{"U071", "B9729"}) })
-	}},
+	{regexp.MustCompile("^(U071)|(B9729)$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
 }
 
 func init() {
