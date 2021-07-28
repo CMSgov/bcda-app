@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	fhirmodels "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
@@ -108,6 +110,24 @@ type AuthResponse struct {
 type MetadataResponse struct {
 	// in: body
 	Body fhirmodels.CapabilityStatement `json:"body,omitempty"`
+}
+
+// JSON object containing a cclf_files field
+// swagger:response AttributionFileStatusResponse
+type AttributionFileStatusResponse struct {
+	// in: body
+	Body CCLFFilesParam
+}
+
+type CCLFFilesParam struct {
+	CCLFFiles []CCLFFilesStatusParam `json:"cclfFiles"`
+}
+
+type CCLFFilesStatusParam struct {
+	Name      string    `json:"name"`
+	Timestamp time.Time `json:"timestamp"`
+	CCLFNum   int       `json:"cclfNumber"`
+	Type      string    `json:"cclfFileType"`
 }
 
 // File of newline-delimited JSON FHIR objects
