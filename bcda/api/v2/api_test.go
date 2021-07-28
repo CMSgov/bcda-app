@@ -489,6 +489,7 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	assert.Equal(s.T(), "default", resp.CCLFFiles[0].Type)
 	assert.Equal(s.T(), cclfFile.CCLFNum, resp.CCLFFiles[0].CCLFNum)
 	assert.Equal(s.T(), cclfFile.Name, resp.CCLFFiles[0].Name)
+	assert.Equal(s.T(), cclfFile.Timestamp.String(), resp.CCLFFiles[0].Timestamp.String())
 }
 
 func (s *APITestSuite) getAuthData() (data auth.AuthData) {
