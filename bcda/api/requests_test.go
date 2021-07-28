@@ -184,7 +184,8 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
 			case http.StatusOK:
 				var resp AttributionFileStatusResponse
-				json.Unmarshal(rr.Body.Bytes(), &resp)
+				err := json.Unmarshal(rr.Body.Bytes(), &resp)
+				assert.NoError(s.T(), err)
 
 				count := 0
 				for _, fileStatus := range resp.CCLFFiles {
