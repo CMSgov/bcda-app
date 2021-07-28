@@ -480,7 +480,8 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	assert.Equal(s.T(), http.StatusOK, rr.Code)
 
 	var resp api.AttributionFileStatusResponse
-	json.Unmarshal(rr.Body.Bytes(), &resp)
+	err := json.Unmarshal(rr.Body.Bytes(), &resp)
+	assert.NoError(s.T(), err)
 
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoUnderTest)
 	cclfFile := postgrestest.GetLatestCCLFFileByCMSIDAndType(s.T(), s.db, *aco.CMSID, models.FileTypeDefault)
