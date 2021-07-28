@@ -34,6 +34,11 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
+type ResourceType struct {
+	Adjudicated    bool
+	PreAdjudicated bool
+}
+
 type Handler struct {
 	JobTimeout time.Duration
 
@@ -47,7 +52,7 @@ type Handler struct {
 	r  models.Repository
 	db *sql.DB
 
-	supportedResources map[string]struct{}
+	supportedResources map[string]ResourceType
 
 	bbBasePath string
 
@@ -61,11 +66,11 @@ type fhirResponseWriter interface {
 	NotFound(http.ResponseWriter, int, string, string)
 }
 
-func NewHandler(resources []string, basePath string, apiVersion string) *Handler {
+func NewHandler(resources map[string]ResourceType, basePath string, apiVersion string) *Handler {
 	return newHandler(resources, basePath, apiVersion, database.Connection)
 }
 
-func newHandler(resources []string, basePath string, apiVersion string, db *sql.DB) *Handler {
+func newHandler(resources map[string]ResourceType, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -79,10 +84,7 @@ func newHandler(resources []string, basePath string, apiVersion string, db *sql.
 	h.db, h.r = db, repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 
-	h.supportedResources = make(map[string]struct{}, len(resources))
-	for _, r := range resources {
-		h.supportedResources[r] = struct{}{}
-	}
+	h.supportedResources = resources
 
 	h.bbBasePath = basePath
 	h.apiVersion = apiVersion
@@ -280,13 +282,9 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	resourceTypes := rp.ResourceTypes
-	// If caller does not supply resource types, we default to all supported resource types
-	if len(resourceTypes) == 0 {
-		resourceTypes = []string{"Patient", "ExplanationOfBenefit", "Coverage"}
-	}
+	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 
-	if err = h.validateRequest(resourceTypes); err != nil {
+	if err = h.validateRequest(resourceTypes, ad.CMSID); err != nil { //TODO: Validate type of claim & resource data for user
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -424,15 +422,59 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 }
 
-func (h *Handler) validateRequest(resourceTypes []string) error {
+func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsId string) []string {
+	resourceTypes := parameters.ResourceTypes
+
+	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
+	if len(resourceTypes) == 0 {
+		if acoConfig, found := h.Svc.GetACOConfigForId(cmsId); found {
+			if contains(acoConfig.Data, "adjudicated") {
+				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+			}
+
+			if contains(acoConfig.Data, "preadjudicated") {
+				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
+			}
+		}
+	}
+
+	return resourceTypes
+}
+
+func (h *Handler) validateRequest(resourceTypes []string, cmsId string) error {
 
 	for _, resourceType := range resourceTypes {
-		if _, ok := h.supportedResources[resourceType]; !ok {
+		resource, ok := h.supportedResources[resourceType]
+
+		if !ok {
 			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResources)
+		}
+
+		if !h.authorizedResourceAccess(resource, cmsId) {
+			return fmt.Errorf("unauthorized resource type %s", resourceType)
 		}
 	}
 
 	return nil
+}
+
+func (h *Handler) authorizedResourceAccess(resource ResourceType, cmsId string) bool {
+	if cfg, ok := h.Svc.GetACOConfigForId(cmsId); ok {
+		return (resource.Adjudicated && contains(cfg.Data, "adjudicated")) ||
+			(resource.PreAdjudicated && contains(cfg.Data, "preadjudicated"))
+	}
+
+	return false
+}
+
+func contains(array []string, str string) bool {
+	for _, a := range array {
+		if a == str {
+			return true
+		}
+	}
+
+	return false
 }
 
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {

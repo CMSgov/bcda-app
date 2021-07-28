@@ -64,6 +64,8 @@ type Service interface {
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
+
+	GetACOConfigForId(cmsId string) (*ACOConfig, bool)
 }
 
 const (
@@ -454,6 +456,16 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 		priority = int16(100) // default priority level for jobs
 	}
 	return priority
+}
+
+func (s *service) GetACOConfigForId(cmsId string) (*ACOConfig, bool) {
+	for pattern, cfg := range s.acoConfig {
+		if pattern.MatchString(cmsId) {
+			return cfg, true
+		}
+	}
+
+	return nil, false
 }
 
 // Checks to see if an ACO is priority ACO based on a regex pattern provided by an
