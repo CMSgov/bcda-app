@@ -140,9 +140,12 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 		410: goneResponse
 		500: errorResponse
 */
-
 func DeleteJob(w http.ResponseWriter, r *http.Request) {
 	h.DeleteJob(w, r)
+}
+
+func AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	h.AttributionStatus(w, r)
 }
 
 /*

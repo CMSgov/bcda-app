@@ -470,6 +470,27 @@ func (s *APITestSuite) TestResourceTypes() {
 	}
 }
 
+func (s *APITestSuite) TestGetAttributionStatus() {
+	req := httptest.NewRequest("GET", "/api/v1/attribution_status", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	AttributionStatus(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+
+	var resp api.AttributionFileStatusResponse
+	json.Unmarshal(rr.Body.Bytes(), &resp)
+
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoUnderTest)
+	cclfFile := postgrestest.GetLatestCCLFFileByCMSIDAndType(s.T(), s.db, *aco.CMSID, models.FileTypeDefault)
+
+	assert.Equal(s.T(), "default", resp.CCLFFiles[0].Type)
+	assert.Equal(s.T(), cclfFile.CCLFNum, resp.CCLFFiles[0].CCLFNum)
+	assert.Equal(s.T(), cclfFile.Name, resp.CCLFFiles[0].Name)
+	assert.Equal(s.T(), cclfFile.Timestamp, resp.CCLFFiles[0].Timestamp)
+}
+
 func (s *APITestSuite) getAuthData() (data auth.AuthData) {
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoUnderTest)
 	return auth.AuthData{ACOID: acoUnderTest.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
