@@ -142,6 +142,10 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 	h.DeleteJob(w, r)
 }
 
+func AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	h.AttributionStatus(w, r)
+}
+
 /*
 	swagger:route GET /data/{jobId}/{filename} job serveData
 
