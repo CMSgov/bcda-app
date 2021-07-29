@@ -188,11 +188,3 @@ func randomDate(min, max time.Time) string {
 
 	return t.Format(layout)
 }
-
-// randomStringOption returns a random string from a provided slice of string values
-func randomStringOption(options []string) string {
-	count := len(options)
-	randomIdx := randomdata.Number(count)
-
-	return options[randomIdx]
-}
