@@ -53,10 +53,11 @@ type RunoutConfig struct {
 
 type ACOConfig struct {
 	Model              string
-	Pattern            string `conf:"name_pattern"`
-	PerfYearTransition string `conf:"performance_year_transition"`
-	LookbackYears      int    `conf:"lookback_period"`
-	Disabled           bool   `conf:"disabled" conf_default:"false"`
+	Pattern            string   `conf:"name_pattern"`
+	PerfYearTransition string   `conf:"performance_year_transition"`
+	LookbackYears      int      `conf:"lookback_period"`
+	Disabled           bool     `conf:"disabled" conf_default:"false"`
+	Data               []string `conf:"data"`
 
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp
