@@ -138,10 +138,10 @@ func (_m *MockService) GetACOConfigForId(cmsId string) (*ACOConfig, bool) {
 	}
 
 	var r1 bool
-	if rf, ok := ret.Get(0).(func(string) bool); ok {
+	if rf, ok := ret.Get(1).(func(string) bool); ok {
 		r1 = rf(cmsId)
 	} else {
-		r1 = ret.Get(0).(bool)
+		r1 = ret.Get(1).(bool)
 	}
 
 	return r0, r1
