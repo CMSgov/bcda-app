@@ -154,6 +154,9 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	Schemes: http, https
 
+	Security:
+		bearer_token:
+
 	Responses:
 		200: AttributionFileStatusResponse
 		404: notFoundResponse
