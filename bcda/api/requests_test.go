@@ -107,7 +107,8 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 			resourceMap["ExplanationOfBenefit"] = ResourceType{Adjudicated: true}
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
-			mockSvc.On("GetACOConfigForId", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&service.ACOConfig{Data: []string{"adjudicated"}}, true)
+			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
+			mockSvc.On("GetACOConfigForId", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
 
