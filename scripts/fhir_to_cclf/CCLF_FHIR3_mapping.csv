@@ -1,0 +1,837 @@
+CCLF File,CCLF Claim Field Label,Claim Field Name,Claim Field Description,FHIR R3 - Mapping,FHIR R3 Additional Info,FHIR R3 - See Also,Data Type,CCW SHORT SAS NAME,CCW LONG SAS NAME
+CCLF1,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim.,Not mapped,The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLF1,PRVDR_OSCAR_NUM,Provider OSCAR Number,"A facility’s Medicare/Medicaid identification number. It is also known as a Medicare/Medicaid Provider Number, or CCN. This number verifies that a provider has been Medicare certified for a particular type of service.","Eob.provider.identifier.value
+","identifier.system = ""https://bluebutton.cms.gov/resources/variables/prvdr_num""",,CHAR,PROVIDER,PRVDR_NUM
+CCLF1,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary.,"Patient.identifier[N].value
+
+","Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+
+
+Eob.patient.reference provides logical reference to the corresponding Patient resource (e.g. /Patient/123).  The identifer in the reference (e.g. ""123"") maps to Patient.id
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,,
+CCLF1,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is not provided,,CHAR,N/A,N/A
+CCLF1,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs. ,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLF1,CLM_FROM_DT,Claim From Date,"The first day on the billing statement that covers services rendered to the beneficiary. AKA ""Statement Covers From Date.""",Eob.billablePeriod.start,,,DATE,FROM_DT,CLM_FROM_DT
+CCLF1,CLM_THRU_DT,Claim Thru Date,"The last day on the billing statement that covers services rendered to the beneficiary. AKA ""Statement Covers Through Date.""",Eob.billablePeriod.end,,,DATE,THRU_DT,CLM_THRU_DT
+CCLF1,CLM_BILL_FAC_TYPE_CD,Claim Bill Facility Type Code,"The first digit of the type of bill (TOB1) is used to identify the type of facility that provided care to the beneficiary (e.g., hospital or SNF). ","Eob.facility.extension[N].valueCoding.code
+","Discriminator =  Eob.facility.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/clm_fac_type_cd""
+
+
+
+valueCoding.sytem = ""https://bluebutton.cms.gov/resources/variables/clm_fac_type_cd""
+
+valueCoding.display = {corresponding description from valueset specified in .system}
+
+Extension definition can be found at: ""https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-snf-clm-fac-type-cd-extension.html""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,FAC_TYPE,CLM_FAC_TYPE_CD
+CCLF1,CLM_BILL_CLSFCTN_CD,Claim Bill Classification Code,"The second digit of the type of bill (TOB2) is used to indicate with greater specificity where the service was provided (e.g., a department within a hospital). ","Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/clm_srvc_clsfctn_type_cd""
+
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,TYPESRVC,CLM_SRVC_CLSFCTN_TYPE_CD
+CCLF1,PRNCPL_DGNS_CD,Principal Diagnosis Code,The ICD-9/10 diagnosis code identifies the beneficiary’s principal illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding[X].code,"Discriminator =  Eob.diagnosis[N].type.coding.code = ""principal""
+
+When DGNS_PRCDR_ICD_IND=""9"", coding[X].system = ""http://hl7.org/fhir/sid/icd-9-cm""
+
+When DGNS_PRCDR_ICD_IND=""0"", coding[X].system = ""http://hl7.org/fhir/sid/icd-10-cm""
+
+When DGNS_PRCDR_ICD_IND=""U"", coding[X].system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" 
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,PRNCPAL_DGNS_CD,PRNCPAL_DGNS_CD
+CCLF1,ADMTG_DGNS_CD,Admitting Diagnosis Code,The ICD-9/10 diagnosis code identifies the illness or disability for which the beneficiary was admitted.,Eob.diagnosis[N].diagnosisCodeableConcept.coding[X].code,"Discriminator =  Eob.diagnosis[N].type.coding.code = ""admitting""
+
+
+
+When DGNS_PRCDR_ICD_IND=""9"", coding[X].code.system = ""http://hl7.org/fhir/sid/icd-9-cm""
+
+When DGNS_PRCDR_ICD_IND=""0"", coding[X].code.system = ""http://hl7.org/fhir/sid/icd-10-cm""
+
+When DGNS_PRCDR_ICD_IND=""U"", coding[X].system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" 
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ADMTG_DGNS_CD,ADMTG_DGNS_CD
+CCLF1,CLM_MDCR_NPMT_RSN_CD,Claim Medicare Non-Payment Reason Code,Indicates the reason payment on an institutional claim is denied. ,Eob.extension[N].valueCoding.code,"Discriminator =  extension.url  = ""https://bluebutton.cms.gov/resources/variables/clm_mdcr_non_pmt_rsn_cd""
+
+extension[N].valueCoding.system=""https://bluebutton.cms.gov/resources/variables/clm_mdcr_non_pmt_rsn_cd""
+
+ Eob.entry[N].extension[N].valueCoding.display = {corresponding description from valueset specified in .system}
+
+Extension definition can be found at ""https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-snf-clm-mdcr-non-pmt-rsn-cd-extension.html""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,NOPAY_CD,CLM_MDCR_NON_PMT_RSN_CD
+CCLF1,CLM_PMT_AMT,Claim Payment Amount,Amount that Medicare paid on the claim.,Eob.payment.amount.value,"Eob.payment.amount.system=""urn:iso:std:iso:4217""
+
+Eob.payment.amount.code=""USD""",,NUM,PMT_AMT,CLM_PMT_AMT
+CCLF1,CLM_NCH_PRMRY_PYR_CD,Claim NCH Primary Payer Code,"If a payer other than Medicare has primary responsibility for payment of the beneficiary’s health insurance bills, this code indicates the responsible primary payer. If this field is blank, Medicare is the primary payer for the beneficiary.","Eob.information[N].code.coding.code
+","Discriminator =  Eob.information[N].code.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_prmry_pyr_cd/""
+
+
+
+Eob.information[N].code.coding.display = {corresponding description from valueset specified in .system}
+
+Eob.information[N].category.coding.code= ""https://bluebutton.cms.gov/resources/variables/nch_prmry_pyr_cd/""
+
+Eob.information[N].category.coding.system= ""https://bluebutton.cms.gov/resources/variables/nch_prmry_pyr_cd/""
+
+Eob.information[N].category.coding.display=""Claim NCH Primary Payer Code""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,PRPAY_CD,NCH_PRMRY_PYR_CD
+CCLF1,PRVDR_FAC_FIPS_ST_CD,Federal Information Processing Standards (FIPS) State Code,Identifies the state where the facility providing services is located.,"Eob.item[N].locationAddress.state
+",,,CHAR,PRSTATE,PRVDR_STATE_CD
+CCLF1,BENE_PTNT_STUS_CD,Beneficiary Patient Status Code,"Indicates the patient's discharge status as of the Claim Through Date. For example, it may indicate where a patient was discharged to (e.g., home, another facility) or the circumstances of a discharge (e.g., against medical advice, or patient death).",Eob.information[N].code.coding.code,"Discriminator =  Eob.information[N].code.coding.system = ""https://bluebutton.cms.gov/resources/variables/ptnt_dschrg_stus_cd""
+
+
+
+Eob.information[N].code.coding.display = {corresponding description from valueset specified in .system}
+
+Eob.information[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/ptnt_dschrg_stus_cd""
+
+Eob.information[N].category.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/information""
+
+Eob.information[N].category.coding.display = ""Patient Discharge Status Code""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,STUS_CD,PTNT_DSCHRG_STUS_CD
+CCLF1,DGNS_DRG_CD,Diagnosis Related Group Code,Indicates the diagnostic related group to which a hospital claim belongs for prospective payment purposes.,Eob.diagnosis[N].packageCode.coding.value,"Discriminator =  Eob.diagnosis[N].packageCode.coding.system = ""https://bluebutton.cms.gov/resources/variables/clm_drg_cd""
+
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,DRG_CD,CLM_DRG_CD
+CCLF1,CLM_OP_SRVC_TYPE_CD,Claim Outpatient Service Type Code,"A code reported by the provider that indicates the specific type of claim (Inpatient, Outpatient, etc.).","Eob.type.coding[N].code
+","Discriminator =  Eob.type.coding[N].system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+
+Note that the code reported in CCLF (1=inpatient, 2=SNF, 3=outpatient, etc) does not appear here.  Instead, the equivalent codes from the valueset specified in .system can be used.  See https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd for the code listing
+
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,,"NCH_CLM_TYPE_CD, CLM_SRVC_CLSFCTN_TYPE_CD"
+CCLF1,FAC_PRVDR_NPI_NUM,Facility Provider NPI Number,Identifies the facility associated with the claim. Each facility is assigned its own unique NPI.,Eob.facility.identifier.value,"Eob.facility.identifier.system = ""http://hl7.org/fhir/sid/us-npi""",,NUM,ORGNPINM,ORG_NPI_NUM
+CCLF1,OPRTG_PRVDR_NPI_NUM,Operating Provider NPI Number,Identifies the operating provider associated with the claim. Each provider is assigned its own unique NPI.,Eob.careTeam[N].provider.identifier.value,"Discriminator =  
+Eob.careTeam[N].role.coding.code=""assist""
+
+Eob.careTeam[N].role.coding.system = ""http://hl7.org/fhir/claimcareteamrole""
+
+Eob.careTeam[N].provider.identifier.system = ""http://hl7.org/fhir/sid/us-npi""
+
+Eob.careTeam[N].role.coding.display = ""Assisting Provider""
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,OP_NPI,OP_PHYSN_NPI
+CCLF1,ATNDG_PRVDR_NPI_NUM,Attending Provider NPI Number,Identifies the attending provider associated with the claim. Each provider is assigned its own unique NPI.,Eob.careTeam[N].provider.identifier.value,"Discriminator =  
+Eob.careTeam[N].role.coding.code=""attending""
+
+
+
+Eob.careTeam[N].provider.identifier.system = ""http://hl7.org/fhir/sid/us-npi""
+
+Eob.careTeam[N].role.coding.display = ""Attending Provider""
+
+Eob.careTeam[N].role.coding.system = ""http://hl7.org/fhir/claimcareteamrole""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,AT_NPI,AT_PHYSN_NPI
+CCLF1,OTHR_PRVDR_NPI_NUM,Other Provider NPI Number,Identifies the other providers associated with the claim. Each provider is assigned its own unique NPI.,Eob.careTeam[N].provider.identifier.value,"Discriminator =  
+Eob.careTeam[N].role.coding.code=""other""
+
+
+
+Eob.careTeam[N].provider.identifier.system = ""http://hl7.org/fhir/sid/us-npi""
+
+Eob.careTeam[N].role.coding.display = ""Other Provider""
+
+Eob.careTeam[N].role.coding.system = ""http://hl7.org/fhir/claimcareteamrole""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,OT_NPI,OT_PHYSN_NPI
+CCLF1,CLM_ADJSMT_TYPE_CD,Claim Adjustment Type Code,"Indicates whether the claim is an original, cancelation, or adjustment claim. ",Eob.status,,,CHAR,N/A,N/A
+CCLF1,CLM_EFCTV_DT,Claim Effective Date,Date the claim was processed and added to the NCH. Also referred to as the NCH Weekly Processing Date.,Eob.information[N].timingDate,"Discriminator =  information[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/nch_wkly_proc_dt/""
+
+.information[a].category.coding[a].system = https://bluebutton.cms.gov/resources/codesystem/information","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",DATE,WKLY_DT,NCH_WKLY_PROC_DT
+CCLF1,CLM_IDR_LD_DT,Claim IDR Load Date,When the claim was loaded into the IDR.,Not mapped,,,DATE,N/A,N/A
+CCLF1,BENE_EQTBL_BIC_HICN_NUM,Beneficiary Equitable BIC HICN Number,"This number is an “umbrella” HICN that groups certain HICNs together at the beneficiary level. For example, if a beneficiary’s spouse becomes widowed, the HICN will change, but the Beneficiary Equitable BIC HICN will not. This groups the pre- and post-widow status HICNs together. Note that the ONLY use of this field is to link together claims that all represent the same event, using the natural key.",Not mapped,HICN is not provided,,CHAR,N/A,N/A
+CCLF1,CLM_ADMSN_TYPE_CD,Claim Admission Type Code,Indicates the type and priority of inpatient services,"Eob.information[N].code.coding.code
+","Discriminator =  Eob.information[N].code.coding.system = ""https://bluebutton.cms.gov/resources/variables/clm_ip_admsn_type_cd""
+
+Eob.information[N].code.coding.display = {corresponding description from valueset specified in .system}
+
+Eob.information[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/clm_ip_admsn_type_cd""
+
+Eob.information[N].category.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/information""
+ Eob.information[N].category.coding.display = ""Claim Inpatient Admission Type Code""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,TYPE_ADM,CLM_IP_ADMSN_TYPE_CD
+CCLF1,CLM_ADMSN_SRC_CD,Claim Admission Source Code,"Indicates the source of the beneficiary's referral for admission or visit (e.g., a physician or another facility).",Eob.information[N].code.coding.code,"Discriminator =  Eob.information[N].code.coding.system = ""https://bluebutton.cms.gov/resources/variables/clm_src_ip_admsn_cd""
+
+Eob.information[N].code.coding.display = {corresponding description from valueset specified in .system}
+
+Eob.information[N].category.coding.code=""https://bluebutton.cms.gov/resources/variables/clm_src_ip_admsn_cd"" 
+ 
+Eob.information[N].category.coding.system=""https://bluebutton.cms.gov/resources/codesystem/information""
+
+Eob.information[N].category.coding.display=""Claim Admission Source Code""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,SRC_ADMS,CLM_SRC_IP_ADMSN_CD
+CCLF1,CLM_BILL_FREQ_CD,Claim Bill Frequency Code,"The third digit of the type of bill (TOB3) code. It indicates the sequence of the claim in the beneficiary's current episode of care (e.g., interim or voided).",Eob.information[N].code.coding.code,"Discriminator =   Eob.information[N].code.coding.system = ""https://bluebutton.cms.gov/resources/variables/clm_freq_cd""
+
+Eob.information[N].code.coding.display = {corresponding description from valueset specified in .system}
+
+Eob.information[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/clm_freq_cd""
+
+Eob.information[N].category.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/information""
+
+Eob.information[N].category.coding.display = ""Claim Bill Frequency Code""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,FREQ_CD,CLM_FREQ_CD
+CCLF1,CLM_QUERY_CD,Claim Query Code,"Indicates the type of claim record being processed with respect to payment (e.g., debit/credit indicator or interim/final indicator).", Eob.billablePeriod.extension[1].valueCoding.code,"Extension cardinality is 1..1
+
+Eob.billablePeriod.extension[1].url = ""https://bluebutton.cms.gov/resources/variables/claim_query_cd""
+
+Eob.billablePeriod.extension[N].valueCoding.display = {corresponding description from valueset specified in .system}
+
+Eob.billablePeriod.extension[N].valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/claim_query_cd""
+
+Extension definition can be found at: https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-inpatient-claim-query-cd-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,QUERY_CD,CLAIM_QUERY_CODE
+CCLF1,DGNS_PRCDR_ICD_IND,ICD Version Indicator,"9=ICD-9; 0=ICD-10, U=any value other than 9 or 0 in the source data",Eob.diagnosis[N].diagnosisCodeableConcept.coding[X].system,"When DGNS_PRCDR_ICD_IND=""9"", coding[X].system = ""http://hl7.org/fhir/sid/icd-9-cm""
+
+When DGNS_PRCDR_ICD_IND=""0"", coding[X].system = ""http://hl7.org/fhir/sid/icd-10-cm""
+
+When DGNS_PRCDR_ICD_IND=""U"", coding[X].system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" 
+
+",,,ICD_DGNS_VRSN_CD1,ICD_DGNS_VRSN_CD1
+CCLF1,CLM_MDCR_INSTNL_TOT_CHRG_AMT,Total Claim Charge Amount,"Effective with NCH Version G, the total charges for all services included on the institutional claim. This field is redundant with revenue center code 0001/total charges.",Eob.totalCost.value,"Eob.totalCost.system = ""urn:iso:std:iso:4217"" 
+Eob.totalCost.code = ""USD""",,NUM,TOT_CHRG,CLM_TOT_CHRG_AMT
+CCLF1,CLM_MDCR_IP_PPS_CPTL_IME_AMT,Claim Capital Indirect Medical Education Amount,The amount of the indirect medical education (IME) (reimbursable amount for teaching hospitals only; an added amount passed by Congress to augment normal Prospective Payment System [PPS] payments for teaching hospitals to compensate them for higher patient costs resulting from medical education programs for interns and residents) portion of the PPS payment for capital. Note: Applicable for claim type = 60 and total calculated based on debit credit methodology.,"Eob.extension[N].valueMoney.value
+
+","Discriminator =  Eob.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/clm_pps_cptl_ime_amt""
+
+Eob.resource.extension[N].valueMoney.code = ""USD""
+ Eob.resource.extension[N].valueMoney.system = ""urn:iso:std:iso:4217""
+
+Extension definition can be found at: https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-snf-clm-pps-cptl-ime-amt-extension.html
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",NUM,IME_AMT,CLM_PPS_CPTL_IME_AMT
+CCLF1,CLM_OPRTNL_IME_AMT,Claim Operational Indirect Medical Education Amount,The indirect medical education amount applicable to the bill.  Note: Applicable for claim type = 60 and total calculated based on debit credit methodology.,"Eob.extension[N].valueMoney.value
+
+","Discriminator =  Eob.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/ime_op_clm_val_amt""
+
+Eob.resource.extension[N].valueMoney.code = ""USD""
+ Eob.resource.extension[N].valueMoney.system = ""urn:iso:std:iso:4217""
+
+Extension definition can be found at:
+https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-inpatient-ime-op-clm-val-amt-extension.html
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",NUM,IME_OP,IME_OP_CLM_VAL_AMT
+CCLF1,CLM_MDCR_IP_PPS_DSPRPRTNT_AMT,Claim Capital Disproportionate Amount,"Effective 3/2/92, the amount of disproportionate share (rate reflecting indigent population served) portion of the PPS payment for capital. Note: Applicable for claim type = 60 and total calculated based on debit credit methodology.",Eob.extension[N].valueMoney.value,"Discriminator =  Eob.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/clm_pps_cptl_dsprprtnt_shr_amt""
+
+Eob.extension[N].valueMoney.code=""USD""
+ Eob.extension[N].valueMoney.system=""urn:iso:std:iso:4217""
+
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",NUM,DISP_SHR,CLM_PPS_CPTL_DSPRPRTNT_SHR_AMT
+CCLF1,CLM_HIPPS_UNCOMPD_CARE_AMT,Claim Health Insurance Prospective Payment System Uncompensated Care Amount,"This is a payment for DSH hospitals as part of Section 3133 of ACA. It represents the uncompensated care amount of the payment. Note: Applicable for claim types = (10, 20, 30, 40, 50, 60) and total calculated based on debit credit methodology.",Eob.extension[N].valueMoney.value,"Discriminator =  Eob.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/clm_uncompd_care_pmt_amt""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",NUM,CLM_UNCOMPD_CARE_PMT_AMT,CLM_UNCOMPD_CARE_PMT_AMT
+CCLF1,CLM_OPRTNL_DSPRTNT_AMT,Claim Operational disproportionate Amount,The disproportionate share amount applicable to the bill. Use the amount provided by the disproportionate share field in PRICER.  Note: Applicable for claim type = 60 and total calculated based on debit credit methodology.,Eob.extension[N].valueMoney.value,"Discriminator =  Eob.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/dsh_op_clm_val_amt/""
+
+Eob.extension[N].valueMoney.code=""USD""
+ Eob.extension[N].valueMoney.system=""urn:iso:std:iso:4217""
+
+Extension definition can be found at: https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-inpatient-dsh-op-clm-val-amt-extension.html
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",NUM,DSH_OP,DSH_OP_CLM_VAL_AMT
+,,,,,,,,,
+CCLF2,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim.,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLF2,CLM_LINE_NUM,Claim Line Number,A sequential number that identifies a specific claim line.,Eob.item.sequence,,,NUM,CLM_LN,CLM_LINE_NUM
+CCLF2,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary.,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,BENE_ID1,BENE_ID
+CCLF2,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is no longer provided,,CHAR,N/A,N/A
+CCLF2,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs.,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLF2,CLM_LINE_FROM_DT,Claim Line From date,The date the service associated with the line item began.,Eob.item[N].servicedPeriod.start,,,DATE,FROM_DT,CLM_FROM_DT
+CCLF2,CLM_LINE_THRU_DT,Claim Line Thru Date,The date the service associated with the line item ended.,Eob.item[N].servicedPeriod.end,,,DATE,THRU_DT,CLM_THRU_DT
+CCLF2,CLM_LINE_PROD_REV_CTR_CD,Product Revenue Center Code,"The number a provider assigns to the cost center to which a particular charge is billed (e.g., accommodations or supplies). A cost center is a division or unit within a hospital (e.g., radiology, emergency room, pathology). Revenue center code 0001 represents the total of all revenue centers included on the claim.  ",Eob.item[N].revenue.coding.code,"Eob.item.revenue.coding.display = {corresponding description from valueset specified in .system}
+
+ Eob.item.revenue.coding.system = ""https://bluebutton.cms.gov/resources/variables/rev_cntr""",,CHAR,REV_CNTR,REV_CNTR
+CCLF2,CLM_LINE_INSTNL_REV_CTR_DT,Claim Line Institutional Revenue Center Date,The date that applies to the service associated with the Revenue Center code.,Eob.item.servicedDate,,,DATE,REV_DT,REV_CNTR_DT
+CCLF2,CLM_LINE_HCPCS_CD,HCPCS Code,"The HCPCS code representing the procedure, supply, product, and/or service provided to the beneficiary.  ","Eob.item[N].service.coding.code
+","Eob.item.service.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""
+
+Eob.item.service.coding.version = ""0""
+",,CHAR,HCPCS_CD,HCPCS_CD
+CCLF2,BENE_EQTBL_BIC_HICN_NUM,Beneficiary Equitable BIC HICN Number,"This number is an “umbrella” HICN that groups certain HICNs together at the beneficiary level. For example, if a beneficiary’s spouse becomes widowed, the HICN will change, but the Beneficiary Equitable BIC HICN will not. This groups the pre- and post-widow status HICNs together. Note that the ONLY use of this field is to link together claims that all represent the same event using the natural key.",Not mapped,HICN is not provided,,CHAR,N/A,N/A
+CCLF2,PRVDR_OSCAR_NUM,Provider OSCAR Number,"A facility’s Medicare/Medicaid identification number, also known as a Medicare/Medicaid Provider Number, or CCN. This number verifies that a provider has been Medicare certified for a particular type of services.","Eob.provider.identifier.value
+","identifier.system = ""https://bluebutton.cms.gov/resources/variables/prvdr_num""",,CHAR,PROVIDER,PRVDR_NUM
+CCLF2,CLM_FROM_DT,Claim From Date,"The first day on the billing statement that covers services rendered to the beneficiary. (AKA ""statement covers from date"")",Eob.billablePeriod.start,,,DATE,FROM_DT,CLM_FROM_DT
+CCLF2,CLM_THRU_DT,Claim Thru Date,"The last day on the billing statement that covers services rendered to the beneficiary. (AKA ""statement covers through date"")",Eob.billablePeriod.end,,,DATE,THRU_DT,CLM_THRU_DT
+CCLF2,CLM_LINE_SRVC_UNIT_QTY,Claim Line Service Unit Quantity,"Count of total units, at the line-item level, associated with services needing unit reporting (e.g., anesthesia time units and blood units).",Eob.item[N].quantity.value,,,NUM,REV_UNIT,REV_CNTR_UNIT_CNT
+CCLF2,CLM_LINE_CVRD_PD_AMT,Claim Line Covered Paid Amount,The amount Medicare reimbursed the provider for covered services associated with the claim-line. ,Eob.item[N].adjudication.amount.value,"Discriminator = 
+
+Eob.item[N].adjudication.category.code = ""https://bluebutton.cms.gov/resources/variables/line_prvdr_pmt_amt"" 
+
+AND 
+
+Eob.item[N].adjudication.category.system = ""https://bluebutton.cms.gov/resources/codesystem/adjudication""
+
+Eob.item[N].adjudication.amount.category.code = ""USD""
+
+Eob.item[N].adjudication.category.display = ""Line Provider Payment Amount""",,NUM,?,?
+CCLF2,HCPCS_1_MDFR_CD,HCPCS First Modifier Code,The first code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,Eob.item[N].modifier.coding.code,"Eob.item[N].modifier.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""
+
+
+",,CHAR,MDFR_CD1,HCPCS_1ST_MDFR_CD
+CCLF2,HCPCS_2_MDFR_CD,HCPCS Second Modifier Code,The second code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,See HCPCS_1_MDFR_CD above,See HCPCS_1_MDFR_CD above,,CHAR,MDFR_CD2,HCPCS_2ND_MDFR_CD
+CCLF2,HCPCS_3_MDFR_CD,HCPCS Third Modifier Code,The third code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,See HCPCS_1_MDFR_CD above,See HCPCS_1_MDFR_CD above,,CHAR,MDFR_CD3,HCPCS_3RD_MDFR_CD
+CCLF2,HCPCS_4_MDFR_CD,HCPCS Fourth Modifier Code,The fourth code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,See HCPCS_1_MDFR_CD above,See HCPCS_1_MDFR_CD above,,CHAR,MDFR_CD4,HCPCS_4TH_MDFR_CD
+CCLF2,HCPCS_5_MDFR_CD,HCPCS Fifth Modifier Code,The fifth code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,See HCPCS_1_MDFR_CD above,See HCPCS_1_MDFR_CD above,,CHAR,MDFR_CD5,HCPCS_5TH_MDFR_CD
+CCLF2,CLM_REV_APC_HIPPS_CD,Claim Revenue APC HIPPS Code ,APC group for outpatient claim type,Eob.item[N].revenue.coding.code,"Discriminator = eob.item[N].revenue.coding.sytem = ""https://bluebutton.cms.gov/resources/variables/rev_cntr/""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+See also https://resdac.org/cms-data/variables/revenue-center-apc-or-hipps-code",CHAR,APCHIPPS,REV_CNTR_APC_HIPPS_CD
+,,,,,,,,,
+CCLF3,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim.,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLF3,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary.,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,BENE_ID1,BENE_ID1
+CCLF3,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim",Not mapped,HICN is not provided,,CHAR,N/A,N/A
+CCLF3,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs. ,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLF3,CLM_VAL_SQNC_NUM,Claim Value Sequence Number,An arbitrary sequential number that uniquely identifies a procedure code record within the claim.,Eob.procedure[N].sequence,,,NUM,N/A,N/A
+CCLF3,CLM_PRCDR_CD,Procedure Code,The ICD-9/10 code that indicates the procedure performed during the period covered by the claim. ,Eob.procedure[N].procedureCodeableConcept.coding.code,"IF DGNS_PRCDR_ICD_IND = ""9"" then Eob.procedure[N}.procedureCodeableConcept.coding.system = ""http://hl7.org/fhir/sid/icd-9""
+
+IF DGNS_PRCDR_ICD_IND = ""10"" then Eob.procedure[N].procedureCodeableConcept.coding.system = ""http://hl7.org/fhir/sid/icd-10""
+
+IF DGNS_PRCDR_ICD_IND = ""U"" then Eob.procedure[N].procedureCodeableConcept.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" ",,CHAR,ICD_PRCDR_CD1,ICD_PRCDR_CD1
+CCLF3,CLM_PRCDR_PRFRM_DT,Procedure Performed Date,The date the indicated procedure was performed.,Eob.procedure[N].procedure.date,,,DATE,PRCDR_DT1,PRCDR_DT1
+CCLF3,BENE_EQTBL_BIC_HICN_NUM,Beneficiary Equitable BIC HICN Number,"This number is an “umbrella” HICN that groups certain HICNs together at the beneficiary level. For example, if a beneficiary’s spouse becomes widowed, the HICN will change, but the Beneficiary Equitable BIC HICN will not. This groups the pre- and post-widow status HICNs together. Note that the ONLY use of this field is to link together claims that all represent the same event using the natural key.",Not mapped,HICN is not provided,,NUM,N/A,N/A
+CCLF3,PRVDR_OSCAR_NUM,Provider OSCAR Number,"A facility’s Medicare/Medicaid identification number. It is also known as a Medicare/Medicaid Provider Number, or CCN. This number verifies that a provider has been Medicare certified for a particular type of services.","Eob.provider.identifier.value
+","identifier.system = ""https://bluebutton.cms.gov/resources/variables/prvdr_num""",,CHAR,PROVIDER,PRVDR_NUM
+CCLF3,CLM_FROM_DT,Claim From Date,"The first day on the billing statement that covers services rendered to the beneficiary. (AKA ""statement covers from date"")",Eob.billablePeriod.start,,,DATE,FROM_DT,CLM_FROM_DT
+CCLF3,CLM_THRU_DT,Claim Thru Date,"The last day on the billing statement that covers services rendered to the beneficiary. (AKA ""statement covers thru date"")",Eob.billablePeriod.end,,,DATE,THRU_DT,CLM_THRU_DT
+CCLF3,DGNS_PRCDR_ICD_IND,ICD Version Indicator,"9=ICD-9; 0=ICD-10, U=any value other than 9 or 0 in the source data",Eob.diagnosis[N].diagnosisCodeableConcept.coding[X].system,"When DGNS_PRCDR_ICD_IND=""9"", coding[X].system = ""http://hl7.org/fhir/sid/icd-9-cm""
+
+When DGNS_PRCDR_ICD_IND=""0"", coding[X].system = ""http://hl7.org/fhir/sid/icd-10-cm""
+
+When DGNS_PRCDR_ICD_IND=""U"", coding[X].system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" 
+
+",,CHAR,,LINE_ICD_DGNS_VRSN_CD
+,,,,,,,,,
+CCLF4,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim. ,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLF4,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary.,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,BENE_ID1,BENE_ID
+CCLF4,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is not provided,,CHAR,N/A,N/A
+CCLF4,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs.,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLF4,CLM_PROD_TYPE_CD,Diagnosis Code,Code classifying the diagnosis category.,"Eob.diagnosis[N].type.coding.code
+","Discriminator =  Eob.diagnosis[N].type.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type""
+
+Eob.diagnosis[N].type.coding.display = {corresponding description from valueset specified in .system}
+
+Only the first diagnosis in the list has the type element populated","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",,?,?
+CCLF4,CLM_VAL_SQNC_NUM,Claim Value Sequence Number,An arbitrary sequential number that uniquely identifies a procedure code record within the claim.,Eob.diagnosis[N].sequence,,,,N/A,N/A
+CCLF4,CLM_DGNS_CD,Diagnosis Code,The ICD-9/10 diagnosis code identifying the beneficiary’s illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding[X].code,"Discriminator =  Eob.diagnosis[N].type.coding.code = ""principal"" 
+
+When DGNS_PRCDR_ICD_IND=""9"", coding[X].system = ""http://hl7.org/fhir/sid/icd-9-cm""
+
+When DGNS_PRCDR_ICD_IND=""0"", coding[X].system = ""http://hl7.org/fhir/sid/icd-10-cm""
+
+When DGNS_PRCDR_ICD_IND=""U"", coding[X].system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" 
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD1,ICD_DGNS_CD1
+CCLF4,BENE_EQTBL_BIC_HICN_NUM,Beneficiary Equitable BIC HICN Number,"This number is an ""umbrella"" HICN that groups certain HICNs together at the beneficiary level. For example, if a beneficiary's spouse becomes widowed, the HICN will change, but the Beneficiary Equitable BIC HICN will not. This groups the pre- and post-widow status HICNs together. Note that the ONLY use of this field is to link together claims that all represent the same event using the natural key. ",Not mapped,HICN is not provided,,NUM,N/A,N/A
+CCLF4,PRVDR_OSCAR_NUM,Provider OSCAR Number,"The OSCAR is a facility’s Medicare/Medicaid identification number. It is also known as a Medicare/Medicaid Provider Number, or CCN. This number verifies that a provider has been Medicare certified for a particular type of services.","Eob.careTeam[N].provider.identifier.value
+","identifier.system = ""https://bluebutton.cms.gov/resources/variables/prvdr_num""",,CHAR,PROVIDER,PRVDR_NUM
+CCLF4,CLM_FROM_DT,Claim From Date,The first day on the billing statement that covers services rendered to the beneficiary.,Eob.billablePeriod.start,,,DATE,FROM_DT,CLM_FROM_DT
+CCLF4,CLM_THRU_DT,Claim Thru Date,The last day on the billing statement that covers services rendered to the beneficiary,Eob.billablePeriod.end,,,DATE,THRU_DT,CLM_THRU_DT
+CCLF4,CLM_POA_IND,Claim Present-on-Admission Indicator,Indicates whether a patient had the condition listed on the claim line at the time of admission to the facility.,"Eob.diagnosis[N].extension.valueCoding.code
+","Eob.diagnosis.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/clm_poa_ind_sw1""
+
+Eob.diagnosis.extension.valueCoding.display = {corresponding description from valueset indicated in .system}
+
+Eob.diagnosis.extension.valueCoding.system = ""https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-inpatient-clm-poa-ind-sw1-extension""
+
+Extension definition located at: https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-inpatient-clm-poa-ind-sw1-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,CLM_POA_IND_SW1,CLM_POA_IND_SW1
+CCLF4,DGNS_PRCDR_ICD_IND,ICD Version Indicator,"9=ICD-9; 0=ICD-10, U=any value other than 9 or 0 in the source data",Eob.diagnosis[N].diagnosisCodeableConcept.coding[X].system,"When DGNS_PRCDR_ICD_IND=""9"", coding[X].system = ""http://hl7.org/fhir/sid/icd-9-cm""
+
+When DGNS_PRCDR_ICD_IND=""0"", coding[X].system = ""http://hl7.org/fhir/sid/icd-10-cm""
+
+When DGNS_PRCDR_ICD_IND=""U"", coding[X].system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" 
+
+",,CHAR,,LINE_ICD_DGNS_VRSN_CD
+,,,,,,,,,
+CCLF5,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim.,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLF5,CLM_LINE_NUM,Claim Line Number,A sequential number that identifies a specific claim line within a given claim.,Eob.item.sequence,,,NUM,CLM_LN,CLM_LINE_NUM
+CCLF5,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary. ,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,BENE_ID,BENE_ID
+CCLF5,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is not provided,"For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,N/A,N/A
+CCLF5,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs.,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLF5,CLM_FROM_DT,Claim From Date,The first day on the billing statement that covers services rendered to the beneficiary. ,Eob.billablePeriod.start,,,DATE,FROM_DT,CLM_FROM_DT
+CCLF5,CLM_THRU_DT,Claim Thru Date,The last day on the billing statement that covers services rendered to the beneficiary.,Eob.billablePeriod.end,,,DATE,THRU_DT,CLM_THRU_DT
+CCLF5,RNDRG_PRVDR_TYPE_CD,Rendering Provider Type Code,Indicates the type of provider who provided the service associated with this line item on the claim.  ,"Eob.careTeam.extension[N].valueCoding.code
+","Discriminator =  Eob.careTeam.extension[N].valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/carr_line_prvdr_type_cd/""
+
+Eob.careTeam.extension[N].valueCoding.display = {corresponding description from valueset specified in .system}
+
+Extension definition located at https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-carrier-carr-line-prvdr-type-cd-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,PRV_TYPE,CARR_LINE_PRVDR_TYPE_CD
+CCLF5,RNDRG_PRVDR_FIPS_ST_CD,Rendering Provider FIPS State Code,Identifies the state that the provider providing the service is located in.,"Eob.item[N].locationCodeableConcept.extension[N].valueCoding.code
+","discriminator =  Eob.item.locationCodeableConcept.extension.valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/prvdr_state_cd""
+
+Eob.item.locationCodeableConcept.extension[N].valueCoding.display = {corresponding description from valueset specified in .system}
+
+Extension defintion located at: https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-carrier-prvdr-state-cd-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,PRVSTATE,PRVDR_STATE_CD
+CCLF5,CLM_PRVDR_SPCLTY_CD,Claim-Line Provider Specialty Code,Indicates the CMS specialty code associated with the provider of services. CMS used this number to price the service on the line-item.  ,Eob.careTeam[N].qualification.coding.code,"Eob.careTeam[N].qualification.coding.system = ""https://bluebutton.cms.gov/resources/variables/prvdr_spclty""
+
+Eob.careTeam[N].qualification.coding.display = {corresponding description from valueset specified in .system}
+",,CHAR,HCFASPCL,PRVDR_SPCLTY
+CCLF5,CLM_FED_TYPE_SRVC_CD,Claim Federal Type Service Code,"Indicates the type of service (e.g., consultation, surgery) provided to the beneficiary. Types of Service Code are defined in the Medicare Carrier Manual.",Eob.item[N].category.coding.code,"Eob.item[N].category.coding.system = ""https://bluebutton.cms.gov/resources/variables/line_cms_type_srvc_cd""
+
+Eob.item.category[N].coding.display = {corresponding description from valueset specified in .system}
+",,CHAR,TYPSRVCB,LINE_CMS_TYPE_SRVC_CD
+CCLF5,CLM_POS_CD,Claim Place of Service Code,"Indicates the place where the indicated service was provided (e.g., ambulance, school). Places of service are defined in the Medicare Carrier Manual. ",Eob.item[N].locationCodeableConcept.coding.code,"Eob.item.locationCodeableConcept.coding.system = ""https://bluebutton.cms.gov/resources/variables/line_place_of_srvc_cd""
+
+Eob.item.locationCodeableConcept.coding.display = {corresponding description from valueset specfied in .system}
+",,CHAR,PLCSRVC,LINE_PLACE_OF_SRVC_CD
+CCLF5,CLM_LINE_FROM_DT,Claim Line From Date,The date the service associated with the line item began.,Eob.item[N].servicedPeriod.start,,,DATE,EXPNSDT1,LINE_1ST_EXPNS_DT
+CCLF5,CLM_LINE_THRU_DT,Claim Line Thru Date,The date the service associated with the line item ended.,Eob.item[N].servicedPeriod.end,,,DATE,EXPNSDT2,LINE_LAST_EXPNS_DT
+CCLF5,CLM_LINE_HCPCS_CD,HCPCS Code,"The HCPCS code representing the procedure, supply, product, and/or service provided to the beneficiary.","Eob.item[N].service.coding.code
+","Discriminator = Eob.item[N].service.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,HCPCS_CD,HCPCS_CD
+CCLF5,CLM_LINE_CVRD_PD_AMT,Claim Line NCH Payment Amount,The amount of payment made by Medicare on behalf of the beneficiary for the indicated service after deductible and coinsurance amounts have been paid.,Eob.item[N].adjudication[N].amount,"discriminator = Eob.item.adjudication.category.coding.code = ""https://bluebutton.cms.gov/resources/variables/line_nch_pmt_amt""
+
+Eob.item.adjudication.category.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/adjudication""
+
+ Eob.item.adjudication.category.display = ""Line NCH Medicare Payment Amount""
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",NUM,LINEPMT,LINE_NCH_PMT_AMT
+CCLF5,CLM_LINE_PRMRY_PYR_CD,Claim Primary Payer Code,"If a payer other than Medicare has primary responsibility for payment of the service indicated on the claim line, this code indicates the primary payer. This field is also known as the Line Beneficiary Primary Payer Code. If blank, Medicare is the primary payer for the beneficiary.","Eob.item[N].extension[N].valueCoding.code
+","discriminator = Eob.item.extension.url = ""https://bluebutton.cms.gov/resources/variables/line_bene_prmry_pyr_cd""
+
+Eob.item.extension.valueCoding.system=""https://bluebutton.cms.gov/resources/variables/line_bene_prmry_pyr_cd""
+
+Eob.item.extension.valueCoding.display = {corresponding description from valuset identified in .system}
+
+Extension definition located at https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-dme-line-bene-prmry-pyr-cd-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,LPRPAYCD,LINE_BENE_PRMRY_PYR_CD
+CCLF5,CLM_LINE_DGNS_CD,Diagnosis Code,The ICD-9/10 diagnosis code identifying the beneficiary's principal illness or disability. ,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,Each line item refers to corresponding diagnosis via the link in the line item element e.g. Eob.item[N].diagnosisLinkId ,,CHAR,LINE_ICD_DGNS_CD,LINE_ICD_DGNS_CD
+CCLF5,CLM_RNDRG_PRVDR_TAX_NUM,Claim Provider Tax Number,The SSN or Employee Identification Number (EIN) of the provider of the indicated service. This number identifies who receives payment for the indicated service. ,"Eob.careTeam.provider.identifier.value
+","discriminator = Eob.careTeam.provider.identifier.system = ""http://terminology.hl7.org/CodeSystem/v2-0203""
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,TAX_NUM,TAX_NUM
+CCLF5,RNDRG_PRVDR_NPI_NUM,Rendering Provider NPI Number,A number that identifies the provider rendering the indicated service on the claim line. Each provider is assigned its own unique NPI.,Eob.careTeam[N].provider.identifier.value,"Discriminator =  
+Eob.careTeam[N].role.coding.code=""performing""
+
+Eob.careTeam[N].provider.identifier.system=""http://hl7.org/fhir/sid/us-npi""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,PRFNPI,PRF_PHYSN_NPI
+CCLF5,CLM_CARR_PMT_DNL_CD,Claim Carrier Payment Denial Code,"Indicates to whom payment was made (e.g., physician, beneficiary), or if the claim was denied.","Eob.extension[N].valueCoding.code
+","Discriminator =   Eob.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/carr_clm_pmt_dnl_cd""
+
+Eob.extension[N].valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/carr_clm_pmt_dnl_cd""
+
+Eob.extension[N].valueCoding.display = {corresponding description from valueset specified in .system}","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,PMTDNLCD,CARR_CLM_PMT_DNL_CD
+CCLF5,CLM_PRCSG_IND_CD,Claim-Line Processing Indicator Code,Indicates whether the service indicated on the claim line was allowed or the reason it was denied.,Eob.item[N].adjudication[N].reason.coding.code,"discriminator = Eob.item.adjudication.reason.coding.system = ""https://bluebutton.cms.gov/resources/variables/line_prcsg_ind_cd""
+
+Eob.item.adjudication.category.code = ""https://bluebutton.cms.gov/resources/variables/line_prcsg_ind_cd""
+ Eob.item[N].adjudication[N].reason.coding.display = {corresponding description from valueset specified in .system}
+ Eob.item[N].adjudication[N].category.display = ""Line Processing Indicator Code""
+
+Eob.item[N].adjudication[N].category.system=""https://bluebutton.cms.gov/resources/codesystem/adjudication""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,PRCNGIND,LINE_PRCSG_IND_CD
+CCLF5,CLM_ADJSMT_TYPE_CD,Claim Adjustment Type Code,"Indicates whether the claim an original, cancelation, or adjustment claim.",Eob.status,,,CHAR,N/A,N/A
+CCLF5,CLM_EFCTV_DT,Claim Effective Date,The date the claim was processed and added to the NCH. This is also referred to as the NCH Weekly Processing Date.,Eob.information[N].timingDate,"Discriminator =  information[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/nch_wkly_proc_dt/""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",DATE,WKLY_DT,NCH_WKLY_PROC_DT
+CCLF5,CLM_IDR_LD_DT,Claim IDR Load Date,When the claim was loaded into the IDR.,Not mapped,,,DATE,N/A,N/A
+CCLF5,CLM_CNTL_NUM,Claim Control Number,A unique number assigned to a claim by the Medicare carrier. This number allows CMS to associate each line item with its respective claim.,"Eob.identifier[N].value
+","Discriminator =  Eob.identifier[N].system = ""https://bluebutton.cms.gov/resources/variables/clm_id""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",NUM,CLM_ID,CLM_ID
+CCLF5,BENE_EQTBL_BIC_HICN_NUM,Beneficiary Equitable BIC HICN Number,"This number is an ""umbrella"" HICN that groups certain HICNs together at the beneficiary level. For example, if a beneficiary's spouse becomes widowed, the HICN will change, but the Beneficiary Equitable BIC HICN will not. This groups the pre- and post-widow status HICNs together. Note that the ONLY use of this field is to link together claims that all represent the same event using the natural key. ",Not mapped,HICN is not provided,,NUM,N/A,N/A
+CCLF5,CLM_LINE_ALOWD_CHRG_AMT,Claim Line Allowed Charges Amount,The amount Medicare approved for payment to the provider.,Eob.item[N].adjudication[N].amount.value,"discriminator = Eob.item[N].adjudication[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/line_alowd_chrg_amt""
+
+Eob.item[N].adjudication[N].amount.system = ""urn:iso:std:iso:4217"" 
+
+Eob.item[N].adjudication[N].amount.code = ""USD""
+ 
+Eob.item[N].adjudication[N].category.system = ""https://bluebutton.cms.gov/resources/codesystem/adjudication""
+ Eob.item[N].adjudication[N].category.display = ""Line Allowed Charge Amount""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",NUM,LALOWCHG,LINE_ALOWD_CHRG_AMT
+CCLF5,CLM_LINE_SRVC_UNIT_QTY,Claim Line Service Unit Quantity,"Count of total units, at the line-item level, associated with services needing unit reporting (e.g., anesthesia time units and blood units).",Eob.item[N].quantity.value,,,NUM,SRVC_CNT,LINE_SRVC_CNT
+CCLF5,HCPCS_1_MDFR_CD,HCPCS First Modifier Code,The first code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,"Eob.item[N].modifier[N].coding.code
+ ","Discriminator =  Eob.item[N].modifier[N].coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,MDFR_CD1,HCPCS_1ST_MDFR_CD
+CCLF5,HCPCS_2_MDFR_CD,HCPCS Second Modifier Code,The second code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,"Eob.item[N].modifier[N].coding.code
+ ","Discriminator =  Eob.item[N].modifier[N].coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,MDFR_CD2,HCPCS_2ND_MDFR_CD
+CCLF5,HCPCS_3_MDFR_CD,HCPCS Third Modifier Code,The third code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,"Eob.item[N].modifier[N].coding.code
+ ","Discriminator =  Eob.item[N].modifier[N].coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,MDFR_CD3,HCPCS_3RD_MDFR_CD
+CCLF5,HCPCS_4_MDFR_CD,HCPCS Fourth Modifier Code,The fourth code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,"Eob.item[N].modifier[N].coding.code
+ ","Discriminator =  Eob.item[N].modifier[N].coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,MDFR_CD4,HCPCS_4TH_MDFR_CD
+CCLF5,HCPCS_5_MDFR_CD,HCPCS Fifth Modifier Code,The fifth code to modify the HCPCS procedure code associated with the claim-line. This provides more specific procedure identification for the line item service.,"Eob.item[N].modifier[N].coding.code
+ ","Discriminator =  Eob.item[N].modifier[N].coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,MDFR_CD5,HCPCS_5TH_MDFR_CD
+CCLF5,CLM_DISP_CD,Claim Disposition Code,"Information regarding payment actions on the claim. (01=accepted, 02=accepted (automatic adjustment), 03=cancel accepted)",Eob.disposition,,,CHAR,DISP_CD,CLM_DISP_CD
+CCLF5,CLM_DGNS_1_CD,Claim Diagnosis First Code,The first of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary’s illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 1","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD1,ICD_DGNS_CD1
+CCLF5,CLM_DGNS_2_CD,Claim Diagnosis Second Code,The second of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 2","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD2,ICD_DGNS_CD2
+CCLF5,CLM_DGNS_3_CD,Claim Diagnosis Third Code,The third of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 3","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD3,ICD_DGNS_CD3
+CCLF5,CLM_DGNS_4_CD,Claim Diagnosis Fourth Code,The fourth of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 4","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD4,ICD_DGNS_CD4
+CCLF5,CLM_DGNS_5_CD,Claim Diagnosis Fifth Code,The fifth of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 5","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD5,ICD_DGNS_CD5
+CCLF5,CLM_DGNS_6_CD,Claim Diagnosis Sixth Code,The sixth of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 6","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD6,ICD_DGNS_CD6
+CCLF5,CLM_DGNS_7_CD,Claim Diagnosis Seventh Code,The seventh of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 7","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD7,ICD_DGNS_CD7
+CCLF5,CLM_DGNS_8_CD,Claim Diagnosis Eighth Code,The eighth of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column B}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 8","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD8,ICD_DGNS_CD8
+CCLF5,DGNS_PRCDR_ICD_IND,ICD Version Indicator,"9=ICD-9; 0=ICD-10, U=any value other than 9 or 0 in the source data",Eob.diagnosis[N].diagnosisCodeableConcept.coding[X].system,"When DGNS_PRCDR_ICD_IND=""9"", coding[X].system = ""http://hl7.org/fhir/sid/icd-9-cm""
+
+When DGNS_PRCDR_ICD_IND=""0"", coding[X].system = ""http://hl7.org/fhir/sid/icd-10-cm""
+
+When DGNS_PRCDR_ICD_IND=""U"", coding[X].system = ""https://bluebutton.cms.gov/resources/codesystem/diagnosis-type"" 
+
+",,CHAR,ICD_DGNS_VRSN_CD1,ICD_DGNS_VRSN_CD1
+CCLF5,CLM_DGNS_9_CD,Claim Diagnosis Ninth Code,The ninth of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column A}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 1","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD9,ICD_DGNS_CD9
+CCLF5,CLM_DGNS_10_CD,Claim Diagnosis Tenth Code,The tenth of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column A}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 1","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD10,ICD_DGNS_CD10
+CCLF5,CLM_DGNS_11_CD,Claim Diagnosis Eleventh Code,The eleventh of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column A}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 1","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD11,ICD_DGNS_CD11
+CCLF5,CLM_DGNS_12_CD,Claim Diagnosis Twelfth Code,The twelfth of 12 allowable ICD-9/10 diagnosis code identifying the beneficiary's illness or disability.,Eob.diagnosis[N].diagnosisCodeableConcept.coding.code,"Discriminator =  Eob.diagnosis[N].sequence = {corresponding number in column A}.  For example, CLM_DGNS_1_CD = Eob.diagnosis[N].sequence = 1","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,ICD_DGNS_CD12,ICD_DGNS_CD12
+CCLF5,HCPCS_BETOS_CD,HCPCS BETOS Code,A code representing a clinical category. The Berenson-Eggers Type of Service (BETOS) code.,"Eob.item[N].extension[N].valueCoding.code
+ ","discriminatory =  Eob.item[N].extension[N].url =""https://bluebutton.cms.gov/resources/variables/betos_cd""
+
+Eob.item.extension.valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/betos_cd""
+ Eob.item.extension.valueCoding.display = {corresponding description from valueset identified in .system}
+
+Extension definition is at https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-dme-betos-cd-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,BETOS,BETOS_CD
+,,,,,,,,,
+CCLF6,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim.,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLF6,CLM_LINE_NUM,Claim Line Number,A sequential number that identifies a specific claim line within a given claim.,Eob.item.sequence,Eob.item.sequence,,NUM,CLM_LN,CLM_LINE_NUM
+CCLF6,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary. ,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,BENE_ID,BENE_ID
+CCLF6,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is not provided,"For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,N/A,N/A
+CCLF6,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs.,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLF6,CLM_FROM_DT,Claim From Date,The first day on the billing statement that covers services rendered to the beneficiary. ,Eob.billablePeriod.start,,,DATE,FROM_DT,CLM_FROM_DT
+CCLF6,CLM_THRU_DT,Claim Thru Date,The last day on the billing statement that covers services rendered to the beneficiary.,Eob.billablePeriod.end,,,DATE,THRU_DT,CLM_THRU_DT
+CCLF6,CLM_FED_TYPE_SRVC_CD,Claim Federal Type Service Code,"Indicates the type of service (e.g., consultation, surgery), provided to the beneficiary.  Types of Service Code are defined in the Medicare Carrier Manual. ",Eob.item[N].category.coding.code,"Eob.item[N].category.coding.system = https://bluebutton.cms.gov/resources/variables/line_cms_type_srvc_cd""
+
+Eob.item[N].category.coding.display = {corresponding description from valueset identified in .system}",,CHAR,TYPSRVCB,LINE_CMS_TYPE_SRVC_CD
+CCLF6,CLM_POS_CD,Claim Place of Service Code,"Indicates place where the indicated service was provided (e.g., ambulance, school).",Eob.item[N].locationCodeableConcept.coding.code,"Eob.item.locationCodeableConcept.coding.system = ""https://bluebutton.cms.gov/resources/variables/line_place_of_srvc_cd""
+
+Eob.item.locationCodeableConcept.coding.display = {corresponding description from valueset specfied in .system}
+",,CHAR,PLCSRVC,LINE_PLACE_OF_SRVC_CD
+CCLF6,CLM_LINE_FROM_DT,Claim Line From Date,The date the service associated with the line item began.,Eob.item[N].servicedPeriod.start,,,DATE,EXPNSDT1,LINE_1ST_EXPNS_DT
+CCLF6,CLM_LINE_THRU_DT,Claim Line Thru Date,The date the service associated with the line item ended.,Eob.item.servicedPeriod.end,,,DATE,EXPNSDT2,LINE_LAST_EXPNS_DT
+CCLF6,CLM_LINE_HCPCS_CD,HCPCS Code,"The HCPCS code representing the procedure, supply, product, and/or service provided to the beneficiary.","Eob.item[N].service.coding.code
+","Eob.item.service.coding.system = ""https://bluebutton.cms.gov/resources/codesystem/hcpcs""",,CHAR,HCPCS_CD,HCPCS_CD
+CCLF6,CLM_LINE_CVRD_PD_AMT,Claim Line NCH Payment Amount,The amount of payment made by Medicare on behalf of the beneficiary for the indicated service after deductible and coinsurance amounts have been paid.,Eob.item.adjudication.amount.value,"Eob.item.adjudication.amount.code = ""USD""
+ Eob.item.adjudication.amount.system = ""urn:iso:std:iso:4217""
+ Eob.item.adjudication.amount.category.code = "" https://bluebutton.cms.gov/resources/variables/line_nch_pmt_amt""
+ Eob.item.adjudication.amount.category.display = ""Line NCH Medicare Payment Amount""
+
+Eob.item.adjudication.amount.category.system = ""https://bluebutton.cms.gov/resources/codesystem/adjudication""",,NUM,LINEPMT,LINE_NCH_PMT_AMT
+CCLF6,CLM_PRMRY_PYR_CD,Claim Primary Payer Code,"If a payer other than Medicare has primary responsibility for payment of the service indicated on the claim line, this code indicates the primary payer. This field is also known as the Line Beneficiary Primary Payer Code. If this field is blank, Medicare is the primary payer for the beneficiary.",Eob.item.extension[N].valueCoding.code,"Discriminator =  Eob.item.extension[N].url=""https://bluebutton.cms.gov/resources/variables/line_bene_prmry_pyr_cd""
+
+Eob.item.extension[N].valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/line_bene_prmry_pyr_cd""
+ Eob.item.extension[N].valueCoding.display = {corresponding description from valueset specified in .system}
+
+
+Extension definition located at https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-dme-line-bene-prmry-pyr-cd-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,LPRPAYCD,LINE_BENE_PRMRY_PYR_CD
+CCLF6,PAYTO_PRVDR_NPI_NUM,Pay-to Provider NPI Number,A number that identifies the provider billing for the indicated service on the claim line. Each provider is assigned its own unique NPI.,"Eob.careTeam[N].provider.identifier.value
+","Discriminator =  
+Eob.careTeam[N].provider.role.coding.code = ""operating""
+
+Eob.careTeam[N].provider.identifier.system = ""http://hl7.org/fhir/sid/us-npi""
+ ","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,SUP_NPI,PRVDR_NPI
+CCLF6,ORDRG_PRVDR_NPI_NUM,Ordering Provider NPI Number,A number that identifies the provider ordering the indicated service on the claim line. Each provider is assigned its own unique NPI.,Eob.careTeam[N].provider.identifier.value,"Eob.careTeam[N].provider.identifier.system=""http://hl7.org/fhir/sid/us-npi""
+ Eob.careTeam[N].provider.role.coding.code = ""other""",,CHAR,RFR_NPI,RFR_PHYSN_NPI
+CCLF6,CLM_CARR_PMT_DNL_CD,Claim Carrier Payment Denial Code,"Indicates to whom payment was made (e.g., physician, beneficiary) or if the claim was denied","Eob.extension[N].valueCoding.code
+","Discriminator =   Eob.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/carr_clm_pmt_dnl_cd""
+
+Eob.extension[N].valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/carr_clm_pmt_dnl_cd""
+
+Eob.extension[N].valueCoding.display = {corresponding description from valueset specified in .system}","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,PMTDNLCD,CARR_CLM_PMT_DNL_CD
+CCLF6,CLM_PRCSG_IND_CD,Claim Processing Indicator Code,Indicates whether the service indicated on the claim line was allowed or the reason it was denied.,Eob.item[N].adjudication[N].reason.coding.code,"discriminator = Eob.item.adjudication.reason.coding.system = ""https://bluebutton.cms.gov/resources/variables/line_prcsg_ind_cd""
+
+Eob.item.adjudication.category.code = ""https://bluebutton.cms.gov/resources/variables/line_prcsg_ind_cd""
+ Eob.item[N].adjudication[N].reason.coding.display = {corresponding description from valueset specified in .system}
+ Eob.item[N].adjudication[N].category.display = ""Line Processing Indicator Code""
+
+Eob.item[N].adjudication[N].category.system=""https://bluebutton.cms.gov/resources/codesystem/adjudication""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,PRCNGIND,LINE_PRCSG_IND_CD
+CCLF6,CLM_ADJSMT_TYPE_CD,Claim Adjustment Type Code,"Indicates whether the claim an original, cancelation, or adjustment claim.",,,,CHAR,N/A,N/A
+CCLF6,CLM_EFCTV_DT,Claim Effective Date,The date the claim was processed and added to the NCH. (AKA NCH Weekly Processing Date),Eob.information[N].timingDate,"Discriminator =  information[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/nch_wkly_proc_dt/""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",DATE,WKLY_DT,NCH_WKLY_PROC_DT
+CCLF6,CLM_IDR_LD_DT,Claim IDR Load Date,When the claim was loaded into the IDR.,Not mapped,,,DATE,N/A,N/A
+CCLF6,CLM_CNTL_NUM,Claim Control Number,"A unique number assigned to a claim by the Medicare carrier.
+ This number allows CMS to associate each line item with its respective claim.","Eob.identifier[N].value
+","Discriminator =  Eob.identifier[N].system = ""https://bluebutton.cms.gov/resources/variables/clm_id""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",NUM,CLM_ID,CLM_ID
+CCLF6,BENE_EQTBL_BIC_HICN_NUM,Beneficiary Equitable BIC HICN Number,"This number is an “umbrella” HICN that groups certain HICNs together at the beneficiary level. For example, if a beneficiary’s spouse becomes widowed, the HICN will change, but the Beneficiary Equitable BIC HICN will not. This groups the pre- and post-widow status HICNs together. Note that the ONLY use of this field is to link together claims that all represent the same event using the natural key.",Not mapped,HICN is not provided,,NUM,N/A,N/A
+CCLF6,CLM_LINE_ALOWD_CHRG_AMT,Claim Line Allowed Charges Amount,The amount Medicare approved for payment to the provider.,Eob.item[N].adjudication[N].amount.value,"discriminator =  Eob.item[N].adjudication[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/line_alowd_chrg_amt""
+
+Eob.item[N].adjudication[N].amount.system = ""urn:iso:std:iso:4217"" 
+
+Eob.item[N].adjudication[N].amount.code = ""USD""
+ 
+Eob.item[N].adjudication[N].category.system = ""https://bluebutton.cms.gov/resources/codesystem/adjudication""
+ Eob.item[N].adjudication[N].category.display = ""Line Allowed Charge Amount""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",NUM,LALOWCHG,LINE_ALOWD_CHRG_AMT
+CCLF6,CLM_DISP_CD,Claim Disposition Code,"Information regarding payment actions on the claim. (01=accepted, 02=accepted (automatic adjustment), 03=cancel accepted)",Eob.disposition,,,CHAR,DISP_CD,CLM_DISP_CD
+,,,,,,,,,
+CCLF7,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim. ,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,PDE_ID,PDE_ID
+CCLF7,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary.,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,BENE_ID,BENE_ID
+CCLF7,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is not provided,,CHAR,N/A,N/A
+CCLF7,CLM_LINE_NDC_CD,NDC Code,A universal unique product identifier for human drugs.,"Eob.item.service.coding.code
+ "," Eob.item.service.coding.system = ""http://hl7.org/fhir/sid/ndc""
+
+",,CHAR,PRDSRVID,PROD_SRVC_ID
+CCLF7,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs.,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLF7,CLM_LINE_FROM_DT,Claim Line From Date,The date the service associated with the line item began (ie date on which prescription was filled),Eob.item[N].servicedPeriod.start,,,DATE,SRVC_DT,SRVC_DT
+CCLF7,PRVDR_SRVC_ID_QLFYR_CD,Provider Service Identifier Qualifier Code,Indicates the type of number used to identify the pharmacy providing the services.,"Not mapped - see Additional info
+","The codes for this field are defined here: https://resdac.org/cms-data/variables/service-provider-identification-number-qualifier-code.  In FHIR, the type of a provider identiifer can be determined by inspecting the corresponding .system attribute e.g. ""http://hl7.org/fhir/sid/us-npi""",,CHAR,PRSCQLFR,PRSCRBR_ID_QLFYR_CD
+CCLF7,CLM_SRVC_PRVDR_GNRC_ID_NUM,Claim Service Provider Generic ID Number,The number associated with the indicated code in the Provider Service Identification Qualifier Code,Explanation of Benefit.careTeam[N].provider,"Discriminator =  
+Eob.careTeam[N].role.coding.code=""prescribing""
+
+Eob.careTeam[N].provider.identifier.system=""http://hl7.org/fhir/sid/us-npi""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,PRSCRBID,PRSCRBR_ID
+CCLF7,CLM_DSPNSNG_STUS_CD,Claim Dispensing Status Code,"Indicates the status of prescription fulfillment (P=partially filled, C=completely filled)","Not mapped - see Additional Info
+",This field has been retired.  See https://resdac.org/cms-data/variables/dispensing-status-code for more information,,CHAR,DSPNSTCD,DSPNSNG_STUS_CD
+CCLF7,CLM_DAW_PROD_SLCTN_CD,Claim Dispense as Written (DAW) Product Selection Code,Indicates prescriber's instructions regarding generic substitution or how those instructions were followed.,Eob.information[N].code.coding.code,"Discriminator =  
+Eob.information[N].category.coding.system = ""https://bluebutton.cms.gov/resources/variables/daw_prod_slctn_cd""
+
+Eob.information[N].code.coding.system = ""https://bluebutton.cms.gov/resources/variables/daw_prod_slctn_cd""
+ Eob.information[N].code.coding.display= {corresponding description from valueset identified in .system}
+ ","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,DAWPS_CD,DAW_PROD_SLCTN_CD
+CCLF7,CLM_LINE_SRVC_UNIT_QTY,Claim Line Service Unit Quantity,"Count of total units, at the line-item level, associated with services needing unit reporting (e.g., anesthesia time units and blood units).",Eob.item[N].quantity.value,,,NUM,QTYDSPNS,QTY_DSPNSD_NUM
+CCLF7,CLM_LINE_DAYS_SUPLY_QTY,Claim Line Days’ Supply Quantity,The number of days the supply of medication dispensed by the pharmacy will cover.,Eob.item[N].quantity.extension[N].valueQuantity.value,"discriminator = Eob.item[N].quantity.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/days_suply_num""
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",NUM,DAYSSPLY,DAYS_SUPLY_NUM
+CCLF7,PRVDR_PRSBNG_ID_QLFYR_CD,Provider Prescribing ID Qualifier Code,Indicates the type of number used to identify the prescribing provider,"Not mapped
+","All identifiers are NPI, so code is not needed (e.g. 06=UPIN; 07=NCPDP Number; 08=State License, etc)",,CHAR,PRVDQLFR,SRVC_PRVDR_ID_QLFYR_CD
+CCLF7,CLM_PRSBNG_PRVDR_GNRC_ID_NUM,Claim Prescribing Provider Generic ID Number,The number associated with the indicated code in the Provider Prescribing Service Identification Qualifier Code field.,"Eob.facility.identifer.value
+","Eob.facility.identifier.type = ""http://hl7.org/fhir/sid/us-npi""
+
+NOTE, all identifiers are NPI.  See PRVDR_PRSBNG_ID_QLFYR_CD above",,CHAR,PRVDR_ID,SRVC_PRVDR_ID
+CCLF7,CLM_LINE_BENE_PMT_AMT,Claim Line Beneficiary Payment Amount,"The dollar amount paid by the beneficiary that is not reimbursed by a third party (e.g., copayments, coinsurance, deductible or other patient pay amounts).",Eob.item[N].adjudication[N].amount.value,"Discriminator =  Eob.item[N].adjudication[N].caegory.coding.code = ""https://bluebutton.cms.gov/resources/variables/ptnt_pay_amt""
+
+Eob.item[N].adjudication[N].amount.code = ""USD""
+ Eob.item[N].adjudication[N].amount.system = ""urn:iso:std:iso:4217""",,NUM,PTPAYAMT,PTNT_PAY_AMT
+CCLF7,CLM_ADJSMT_TYPE_CD,Claim Adjustment Type Code,"Indicates whether the claim was an original, cancellation, or adjustment claim.",Eob.status,,,CHAR,N/A,N/A
+CCLF7,CLM_EFCTV_DT,Claim Effective Date,Date claim processed and added to NCH (AKA NCH Weekly Processing Date),Eob.information[N].timingDate,"Discriminator =  information[N].category.coding.code = ""https://bluebutton.cms.gov/resources/variables/nch_wkly_proc_dt/""
+
+.information[a].category.coding[a].system = https://bluebutton.cms.gov/resources/codesystem/information","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",DATE,WKLY_DT,NCH_WKLY_PROC_DT
+CCLF7,CLM_IDR_LD_DT,Claim IDR Load Date,When the claim was loaded into the IDR,Not mapped,,,DATE,N/A,N/A
+CCLF7,CLM_LINE_RX_SRVC_RFRNC_NUM,Claim Line Prescription Service Reference Number,Identifies a prescription dispensed by a particular service provider on a particular service date.,"Eob.identifier[N].value
+","Discriminator =  
+Eob.resource.identifier.system = ""https://bluebutton.cms.gov/resources/variables/rx_srvc_rfrnc_num""
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",NUM,SRVRFNUM,RX_SRVC_RFRNC_NUM
+CCLF7,CLM_LINE_RX_FILL_NUM,Claim Line Prescription Fill Number,Assigned to the current dispensed supply by the pharmacy. It designates the sequential order of the original fill or subsequent refills of a prescription.,Eob.item[N].extension[N].value,"extension[N] distiguished by Eob.item.extension.url = ""https://bluebutton.cms.gov/resources/variables/fill_num""","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",NUM,FILL_NUM,FILL_NUM
+CCLF7,CLM_PHRMCY_SRVC_TYPE_CD,Claim Pharmacy Service Type Code,A unique identifier of a type of service being performed by a pharmacy when different contractual terms exist between a payer and the pharmacy or when benefits are based upon the type of service performed. ,"Eob.facility.extension.valueCoding.code
+","Eob.facility.extension.url = ""https://bluebutton.cms.gov/resources/variables/phrmcy_srvc_type_cd""
+
+Eob.facility.extension.valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/phrmcy_srvc_type_cd""","For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,PHRMCY_SRVC_TYPE_CD,PHRMCY_SRVC_TYPE_CD
+,,,,,,,,,
+CCLF8,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary. ,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,BENE_ID1,BENE_ID
+CCLF8,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is not provided,,CHAR,N/A,N/A
+CCLF8,BENE_FIPS_STATE_CD,Beneficiary FIPS State Code,Identifies the state where the beneficiary receiving services resides.,Patient.address.state,,,CHAR,,PRVDR_STATE_CD
+CCLF8,BENE_FIPS_CNTY_CD,Beneficiary FIPS County Code,Identifies the county where the beneficiary receiving services resides.,"No longer Mapped, use Beneficiary mailing addresses to get county information",,,CHAR,N/A,N/A
+CCLF8,BENE_ZIP_CD,Beneficiary ZIP Code,The beneficiary's ZIP code as indicated in their medicare enrollment record,Patient.address.postalCode,,,CHAR,BENE_ZIP,BENE_ZIP_CD
+CCLF8,BENE_DOB,Beneficiary Date of Birth,"The month, day, and year of the beneficiary's birth.",patient.birthDate,,,DATE,BENE_BIRTH_DT,BENE_BIRTH_DT
+CCLF8,BENE_SEX_CD,Beneficiary Sex Code,The beneficiary's sex.,Patient.gender,,,CHAR,BENE_SEX_IDENT_CD,BENE_SEX_IDENT_CD
+CCLF8,BENE_RACE_CD,Beneficiary Race Code,The beneficiary's race.,"Patient.extension[N].valueCoding.code
+","Discriminator =  Patient.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/race""
+ Patient.extension[N].valueCoding.system=""https://bluebutton.cms.gov/resources/variables/race""
+
+Patient.extension[N].valueCoding.display = {corresponding description from valueset specified in .system}
+
+Extension defined at https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-patient-race-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,RACE,BENE_RACE_CD
+CCLF8,BENE_AGE,Beneficiary Age,"The beneficiary’s current age, as calculated by subtracting the beneficiary’s date of birth from the current date.",Not mapped,Recommendation is to use Beneficiary Date of Birth to calculate age,,CHAR,N/A,N/A
+CCLF8,BENE_MDCR_STUS_CD,Beneficiary Medicare Status Code,Indicates the reason for a beneficiary's entitlement to Medicare benefits as of a particular date.,Coverage.extension[N].valueCoding.code,"Discriminator =  Coverage.extension.url=""https://bluebutton.cms.gov/resources/variables/ms_cd""
+
+Coverage.extension.valueCoding.system=""https://bluebutton.cms.gov/resources/variables/ms_cd""
+
+Coverage.extension.valueCoding.display = {corresponding description from valueset specified in .system}
+
+Extension defintion at https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-coverage-ms-cd-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,MS_CD,BENE_MDCR_STATUS_CD
+CCLF8,BENE_DUAL_STUS_CD,Beneficiary Dual Status Code,"Identifies the most recent entitlement status of beneficiaries eligible for a program(s) in addition to Medicare (e.g., Medicaid).",Coverage.extension[N].valueCoding.code,"Discriminator =  Coverage.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/dual_01""
+
+","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,DUAL_01,DUAL_STUS_CD_01
+CCLF8,BENE_DEATH_DT,Beneficiary Death Date,"The month, day, and year of a beneficiary's death",Patient.deceased[x],,,DATE,,BENE_DEATH_DT
+CCLF8,BENE_RNG_BGN_DT,Date beneficiary enrolled in Hospice,The date the beneficiary enrolled in hospice.,Eob.hospitalization.start,For hospice claims,,DATE,N/A,CLM_HOSPC_START_DT_ID
+CCLF8,BENE_RNG_END_DT,Date beneficiary ended Hospice,The date the beneficiary disenrolled in hospice.,Eob.hospitalization.end,For hospice claims,,DATE,N/A,N/A
+CCLF8,BENE_1ST_NAME,Beneficiary First Name,The first name of the beneficiary.,Patient.name.given[N],,,CHAR,BENE_GVN_NAME,BENE_GVN_NAME
+CCLF8,BENE_MIDL_NAME,Beneficiary Middle Name,The middle name of the beneficiary.,Patient.name.given[N],,,CHAR,BENE_MDL_NAME,BENE_MDL_NAME
+CCLF8,BENE_LAST_NAME,Beneficiary Last Name,The last name of the beneficiary.,Patient.name.family,,,CHAR,BENE_SRNM_NAME,BENE_SRNM_NAME
+CCLF8,BENE_ORGNL_ENTLMT_RSN_CD,Beneficiary Original Entitlement Reason Code,The reason for the beneficiary's original entitlement to Medicare benefits.,"Coverage.extension[N].valueCoding.code
+
+","Discriminator =  Coverage.extension[N].url = ""https://bluebutton.cms.gov/resources/variables/orec""
+
+Coverage.extension[N].valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/orec""
+
+Coverage.extension.valueCoding.display = {corresponding description from valueset specified in .system}
+
+Extension definition at https://bluebutton.cms.gov/assets/ig/StructureDefinition-bluebutton-coverage-orec-extension.html","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,OREC,ENTLMT_RSN_ORIG
+CCLF8,BENE_ENTLMT_BUYIN_IND,Beneficiary Entitlement Buy-in Indicator,"Indicates for each month of the denominator reference year, the entitlement of the beneficiary to Medicare Part A, Medicare Part B, or Medicare Parts A and B both, as well as whether or not the beneficiary's state of residence was liable and paid for the beneficiary's Medicare Part B monthly premiums. "," Coverage.extension[N].valueCoding.code
+
+","Discriminator =  Coverage.extension.url = ""https://bluebutton.cms.gov/resources/variables/buyin01""
+ Coverage.extension.valueCoding.system = ""https://bluebutton.cms.gov/resources/variables/buyin01""
+
+Coverage.extension.valueCoding.display = {corresponding description from valueset specified in .system}","For information about list elements and discriminators, see ""Slicing"" in the Glossary tab
+
+For information about extensions, see ""Extensions"" in the Glossary tab",CHAR,BUYIN01,MDCR_ENTLMT_BUYIN_IND_01
+CCLF8,BENE_PART_A_ENRLMT_BGN_DT,Bene Entitlement Part A Begin Date,The date that a beneficiary is entitled for Medicare Part A benefits.,Coverage[N].period.start,,,DATE,N/A,N/A
+CCLF8,BENE_PART_B_ENRLMT_BGN_DT,Bene Entitlement Part B Begin Date,The date that a beneficiary is entitled for Medicare Part B benefits.,Coverage[N].period.start,,,DATE,N/A,N/A
+CCLF8,BENE_LINE_1_ADR,Beneficiary Derived Mailing Line One Address,The first line of the street address. ,Patient.address.line[N],,,CHAR,N/A,N/A
+CCLF8,BENE_LINE_2_ADR,Beneficiary Derived Mailing Line Two Address,The second line of the street address. ,Patient.address.line[N],,,CHAR,N/A,N/A
+CCLF8,BENE_LINE_3_ADR,Beneficiary Derived Mailing Line Three Address,The third line of the street address. ,Patient.address.line[N],,,CHAR,N/A,N/A
+CCLF8,BENE_LINE_4_ADR,Beneficiary Derived Mailing Line Four Address,The fourth line of the street address. ,Patient.address.line[N],,,CHAR,N/A,N/A
+CCLF8,BENE_LINE_5_ADR,Beneficiary Derived Mailing Line Five Address,The fifth line of the street address. ,Patient.address.line[N],,,CHAR,N/A,N/A
+CCLF8,BENE_LINE_6_ADR,Beneficiary Derived Mailing Line Six Address,The sixth line of the street address. ,Patient.address.line[N],,,CHAR,N/A,N/A
+CCLF8,GEO_ZIP_PLC_NAME,Beneficiary City,The name of the city. ,Patient.address.city,,,CHAR,N/A,N/A
+CCLF8,GEO_USPS_STATE_CD,Beneficiary State,State code used by the United States Postal Service to identify a state. I,Patient.address.state,,,CHAR,STATE_CD,BENE_STATE_CD
+CCLF8,GEO_ZIP5_CD,Beneficiary Zip Code,The US Postal Service code that is associated with a geographical area. I,Patient.address.postalCode,,https://bluebutton.cms.gov/assets/ig/ValueSet-prvdr-state-cd.html,CHAR,BENE_ZIP,BENE_ZIP
+CCLF8,GEO_ZIP4_CD,Beneficiary Zip Code Ext.,A four digit extension to a ZIP Code that represents a subdivision for mailing purposes of the ZIP Code. I,"Patient.address.postalCode[N]=Patient.address.postalCode[1] ""-"" GEO_ZIP4_CD",,,CHAR,BENE_ZIP,BENE_ZIP
+,,,,,,,,,
+CCLF9,HICN_MBI_XREF_IND,HICN/MBI XREF Indicator,An indicator that denotes whether the values in the corresponding CRNT_NUM and PRVS_NUM fields represent the beneficiary's Medicare HICN or the MBI. (H/M),Eob.patient.identifier.type,,,CHAR,N/A,N/A
+CCLF9,CRNT_NUM,Current Beneficiary Identifier,Current Beneficiary Number.,"Patient.identifier[N].value
+","Discriminator =  Patient.identifier.system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+",,NUM,Bene_ID1,Bene_ID
+CCLF9,PRVS_NUM,Previous Beneficiary Identifier,Previous Beneficiary Number,"Patient.identifier[N].value
+","Discriminator =  Patient.identifier.system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""historic""
+",,NUM,Bene_ID1,Bene_ID
+CCLF9,PRVS_ID_EFCTV_DT,Previous Identifier Effective Date,The date the previous identifier became active.,Not mapped,,,DATE,,EFFCTV_BGN_DT
+CCLF9,PRVS_ID_OBSLT_DT,Previous Identifier Obsolete Date,The date the previous identifier ceased to be active.,Not mapped,,,DATE,,EFFCTV_END_DT
+CCLF9,BENE_RRB_NUM,Beneficiary Railroad Board Number,The external (to Medicare) MBI for beneficiaries that are RRB members.,Not mapped,,,NUM,N/A,N/A
+,,,,,,,,,
+CCLFA,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim.,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLFA,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary.,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+",,CHAR,BENE_ID,BENE_ID
+CCLFA,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. This HICN is the beneficiary's current HICN, not necessarily the HICN used to process the claim.",Not mapped,HICN is not provided,,NUM,N/A,N/A
+CCLFA,CLM_TYPE_CD,Claim type code,Signifies the type of claim being submitted through the Medicare or Medicaid programs.,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
+CCLFA,CLM_ACTV_CARE_FROM_DT,Claim Admission Date,"On an institutional claim, the date the beneficiary was admitted to the hospital, skilled nursing facility, or Christian science sanatorium.",Eob.hospitalization.start,,,DATE,ADMSN_DT,CLM_ADMSN_DT
+,,,,,,,,,
+CCLFB,CUR_CLM_UNIQ_ID,Current Claim Unique Identifier,A unique identification number assigned to the claim.,"Not mapped
+",The values displayed for Current Claim Unique Identifier in CCLF files are unique to CCLF. There is no direct mapping of CUR_CLM_UNIQ_ID (CCLF) to FHIR ,,CHAR,CLM_ID,CLM_ID
+CCLFB,CLM_LINE_NUM,Claim Line Number,A sequential number that identifies a specific claim line within a given claim.,Eob.item.sequence,,,NUM,CLM_LN,CLM_LINE_NUM
+CCLFB,BENE_MBI_ID,Medicare Beneficiary Identifier,A Medicare Beneficiary Identifier assigned to a beneficiary.,Patient.identifier[N].value,"Discriminator =  Patient.identifier[N].system = ""http://hl7.org/fhir/sid/us-mbi"" and Patient.extension[N].valueCoding.code = ""current""
+
+Eob.patient.reference provides logical reference to corresponding Patient resource e.g. /Patient/123.  
+
+",,CHAR,BENE_ID,BENE_ID
+CCLFB,BENE_HIC_NUM,Beneficiary HIC Number,"A beneficiary identifier. The HICN that appears in this field is the beneficiary’s current HICN, not necessarily the HICN that was used to process the claim.",Not mapped,HICN is not provided,,NUM,N/A,N/A
+CCLFB,CLM_TYPE_CD,Claim Type Code,Signifies the type of claim being submitted through the Medicare or Medicaid programs,"Eob.type.coding[N].code
+","Discriminator =  type.coding.system = ""https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd""
+OR
+""https://bluebutton.cms.gov/resources/codesystem/eob-type""
+OR
+http://hl7.org/fhir/ex-claimtype
+
+
+
+type.coding.display = {corresponding description from valueset specified in .system}","See https://bluebutton.cms.gov/resources/codesystem/eob-type/
+
+For information about list elements and discriminators, see ""Slicing"" in the Glossary tab",CHAR,CLM_TYPE,NCH_CLM_TYPE_CD
