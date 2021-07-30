@@ -116,7 +116,7 @@ type MetadataResponse struct {
 // swagger:response AttributionFileStatusResponse
 type AttributionFileStatusResponse struct {
 	// in: body
-	Body CCLFFilesParam
+	Body CCLFFilesParam `json:"body,omitempty"`
 }
 
 type CCLFFilesParam struct {
