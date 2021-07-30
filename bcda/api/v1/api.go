@@ -28,8 +28,6 @@ func init() {
 	resources["Coverage"] = api.ResourceType{Adjudicated: true}
 	resources["ExplanationOfBenefit"] = api.ResourceType{Adjudicated: true}
 	resources["Observation"] = api.ResourceType{Adjudicated: true}
-	resources["Claim"] = api.ResourceType{Adjudicated: false, PreAdjudicated: true}
-	resources["ClaimResponse"] = api.ResourceType{Adjudicated: false, PreAdjudicated: true}
 	h = api.NewHandler(resources, "/v1/fhir", "v1")
 }
 

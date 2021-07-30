@@ -458,6 +458,7 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 	return priority
 }
 
+//GetACOConfigForId gets any currently loaded ACOConfig for the related cmsId
 func (s *service) GetACOConfigForId(cmsId string) (*ACOConfig, bool) {
 	for pattern, cfg := range s.acoConfig {
 		if pattern.MatchString(cmsId) {

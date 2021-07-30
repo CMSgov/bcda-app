@@ -34,6 +34,7 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
+//ResourceType is used to identify the type of data returned by each resource
 type ResourceType struct {
 	Adjudicated    bool
 	PreAdjudicated bool
@@ -284,7 +285,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 
-	if err = h.validateRequest(resourceTypes, ad.CMSID); err != nil { //TODO: Validate type of claim & resource data for user
+	if err = h.validateRequest(resourceTypes, ad.CMSID); err != nil {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -428,11 +429,11 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
 	if len(resourceTypes) == 0 {
 		if acoConfig, found := h.Svc.GetACOConfigForId(cmsId); found {
-			if contains(acoConfig.Data, "adjudicated") {
+			if utils.ContainsString(acoConfig.Data, "adjudicated") {
 				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 			}
 
-			if contains(acoConfig.Data, "preadjudicated") {
+			if utils.ContainsString(acoConfig.Data, "preadjudicated") {
 				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
 			}
 		}
@@ -447,7 +448,11 @@ func (h *Handler) validateRequest(resourceTypes []string, cmsId string) error {
 		resource, ok := h.supportedResources[resourceType]
 
 		if !ok {
-			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResources)
+			resources := make([]string, 0, len(h.supportedResources))
+			for k := range h.supportedResources {
+				resources = append(resources, k)
+			}
+			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, resources)
 		}
 
 		if !h.authorizedResourceAccess(resource, cmsId) {
@@ -460,18 +465,8 @@ func (h *Handler) validateRequest(resourceTypes []string, cmsId string) error {
 
 func (h *Handler) authorizedResourceAccess(resource ResourceType, cmsId string) bool {
 	if cfg, ok := h.Svc.GetACOConfigForId(cmsId); ok {
-		return (resource.Adjudicated && contains(cfg.Data, "adjudicated")) ||
-			(resource.PreAdjudicated && contains(cfg.Data, "preadjudicated"))
-	}
-
-	return false
-}
-
-func contains(array []string, str string) bool {
-	for _, a := range array {
-		if a == str {
-			return true
-		}
+		return (resource.Adjudicated && utils.ContainsString(cfg.Data, "adjudicated")) ||
+			(resource.PreAdjudicated && utils.ContainsString(cfg.Data, "preadjudicated"))
 	}
 
 	return false
