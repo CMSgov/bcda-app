@@ -26,6 +26,6 @@ CMD mkdir -p swaggerui/v2 && \
     mkdir -p swaggerui/v1 && \
     cp -r /tmp/swagger-ui-${swaggerVersion}/dist/* swaggerui/v1/ && \
     cp -r /tmp/swagger-ui-${swaggerVersion}/dist/* swaggerui/v2/ && \
-    swagger generate spec -o swaggerui/v1/swagger.json -m --include-tag metadata --include-tag bulkData --include-tag auth --include-tag job && --include-tag attributionStatus \
-    swagger generate spec -o swaggerui/v2/swagger.json -m --include-tag metadataV2 --include-tag bulkDataV2 --include-tag auth --include-tag jobV2 && --include-tag attributionStatusV2 \
+    swagger generate spec -o swaggerui/v1/swagger.json -m --include-tag metadata --include-tag bulkData --include-tag auth --include-tag job --include-tag attributionStatus && \
+    swagger generate spec -o swaggerui/v2/swagger.json -m --include-tag metadataV2 --include-tag bulkDataV2 --include-tag auth --include-tag jobV2 --include-tag attributionStatusV2 && \
     swagger generate spec -o swaggerui/swagger.json -m
