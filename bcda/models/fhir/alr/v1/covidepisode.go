@@ -139,7 +139,7 @@ func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *f
 								Value: "http://hl7.org/fhir/sid/icd-10",
 							},
 							Value: &fhirdatatypes.String{
-								Value: kv.Value,
+								Value: kv.Key,
 							},
 						},
 					},
