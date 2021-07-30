@@ -471,7 +471,7 @@ func (s *APITestSuite) TestResourceTypes() {
 }
 
 func (s *APITestSuite) TestGetAttributionStatus() {
-	req := httptest.NewRequest("GET", "/api/v1/attribution_status", nil)
+	req := httptest.NewRequest("GET", "/api/v2/attribution_status", nil)
 	ad := s.makeContextValues(acoUnderTest)
 	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
 	rr := httptest.NewRecorder()
