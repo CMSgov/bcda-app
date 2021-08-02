@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"os"
 	"strconv"
 	"strings"
@@ -429,11 +430,11 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
 	if len(resourceTypes) == 0 {
 		if acoConfig, found := h.Svc.GetACOConfigForId(cmsId); found {
-			if utils.ContainsString(acoConfig.Data, "adjudicated") {
+			if utils.ContainsString(acoConfig.Data, constants.Adjudicated) {
 				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 			}
 
-			if utils.ContainsString(acoConfig.Data, "preadjudicated") {
+			if utils.ContainsString(acoConfig.Data, constants.PreAdjudicated) {
 				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
 			}
 		}
@@ -465,8 +466,8 @@ func (h *Handler) validateRequest(resourceTypes []string, cmsId string) error {
 
 func (h *Handler) authorizedResourceAccess(resource ResourceType, cmsId string) bool {
 	if cfg, ok := h.Svc.GetACOConfigForId(cmsId); ok {
-		return (resource.Adjudicated && utils.ContainsString(cfg.Data, "adjudicated")) ||
-			(resource.PreAdjudicated && utils.ContainsString(cfg.Data, "preadjudicated"))
+		return (resource.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
+			(resource.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))
 	}
 
 	return false
