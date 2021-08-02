@@ -23,7 +23,7 @@ import (
 
 var output *bool = flag.Bool("output", false, "write FHIR resources to a file")
 var version *int = flag.Int("version", 1, "version of FHIR resources")
-var resources = [...]string{"patient", "coverage", "group", "risk", "observations"}
+var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 
 // TestGenerateAlr uses our synthetic data generation tool to produce the associated FHIR resources
 // To write to the FHIR resources to a file:
