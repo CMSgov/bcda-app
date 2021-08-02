@@ -148,6 +148,29 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+	swagger:route GET /api/v1/attribution_status attributionStatus attributionStatus
+
+	Get attribution status
+
+	Returns the attribution status of the latest cclf 8 and cclf 8 runout files. This will contain the name of the file, the timestamp it was ingested, the cclf number type, and the type (default or runout)
+
+	Produces:
+	- application/json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		200: AttributionFileStatusResponse
+		404: notFoundResponse
+*/
+func AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	h.AttributionStatus(w, r)
+}
+
+/*
 	swagger:route GET /data/{jobId}/{filename} job serveData
 
 	Get data file

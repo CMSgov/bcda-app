@@ -53,6 +53,7 @@ func NewAPIRouter() http.Handler {
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler("/jobs/{jobID}", v1.DeleteJob))
+		r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v1.AttributionStatus))
 		r.Get(m.WrapHandler("/metadata", v1.Metadata))
 	})
 
@@ -63,6 +64,7 @@ func NewAPIRouter() http.Handler {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v2.JobStatus))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler("/jobs/{jobID}", v2.DeleteJob))
+			r.With(commonAuth...).Get(m.WrapHandler("/attribution_status", v2.AttributionStatus))
 			r.Get(m.WrapHandler("/metadata", v2.Metadata))
 		})
 	}
