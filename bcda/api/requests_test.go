@@ -179,7 +179,12 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 			}
 
-			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
+			resourceMap := map[string]ResourceType{
+				"Patient":              ResourceType{Adjudicated: true},
+				"Coverage":             ResourceType{Adjudicated: true},
+				"ExplanationOfBenefit": ResourceType{Adjudicated: true},
+			}
+			h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
