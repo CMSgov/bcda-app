@@ -5,7 +5,8 @@ package main
 import (
 	// bcda/worker/ssas dependencies
 	_ "github.com/BurntSushi/toml"
-	_ "github.com/go-delve/delve/cmd/dlv"
+	// incompatible with our current go compiler. This can be uncommented once its been ugraded.
+	// _ "github.com/go-delve/delve/cmd/dlv"
 	_ "github.com/howeyc/fsnotify"
 	_ "github.com/mattn/go-colorable"
 
