@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/sirupsen/logrus"
 )
 
 func LoadConfig() (cfg *Config, err error) {
@@ -21,7 +20,6 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, err
 	}
 
-	logrus.Infof("Successfully loaded config %+v.", cfg)
 	return cfg, nil
 }
 

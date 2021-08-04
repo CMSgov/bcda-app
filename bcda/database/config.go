@@ -31,6 +31,5 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, errors.New("invalid config, QueueDatabaseURL must be set")
 	}
 
-	logrus.Infof("Successfully loaded config %+v.", cfg)
 	return cfg, nil
 }
