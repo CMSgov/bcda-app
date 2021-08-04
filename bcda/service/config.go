@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 func LoadConfig() (cfg *Config, err error) {
@@ -19,6 +20,8 @@ func LoadConfig() (cfg *Config, err error) {
 	if err := cfg.ComputeFields(); err != nil {
 		return nil, err
 	}
+
+	log.API.Info("Successfully loaded configuration for Service.")
 
 	return cfg, nil
 }
