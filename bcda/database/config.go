@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/sirupsen/logrus"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 type Config struct {
@@ -31,6 +31,7 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, errors.New("invalid config, QueueDatabaseURL must be set")
 	}
 
-	logrus.Infof("Successfully loaded config %+v.", cfg)
+	log.API.Info("Successfully loaded configuration for Database.")
+
 	return cfg, nil
 }
