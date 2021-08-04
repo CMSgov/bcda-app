@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/CMSgov/bcda-app/bcda/constants"
 
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
@@ -265,6 +266,96 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+type AttributionFileStatus struct {
+	Name      string    `json:"name"`
+	Timestamp time.Time `json:"timestamp"`
+	CCLFNum   int       `json:"cclf_number"`
+	Type      string    `json:"cclf_file_type"`
+}
+
+type AttributionFileStatusResponse struct {
+	CCLFFiles []AttributionFileStatus `json:"cclf_files"`
+}
+
+func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var (
+		ad   auth.AuthData
+		err  error
+		resp AttributionFileStatusResponse
+	)
+
+	if ad, err = readAuthData(r); err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	// Retrieve the most recent cclf 8 file we have successfully ingested
+	asd, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeDefault)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// Retrieve the most recent cclf 8 runout file we have successfully ingested
+	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if asd == nil && asr == nil {
+		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
+		return
+	}
+
+	if asd != nil {
+		resp.CCLFFiles = append(resp.CCLFFiles, *asd)
+	}
+
+	if asr != nil {
+		resp.CCLFFiles = append(resp.CCLFFiles, *asr)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fileType models.CCLFFileType) (*AttributionFileStatus, error) {
+	cclfFile, err := h.Svc.GetLatestCCLFFile(ctx, CMSID, fileType)
+	if err != nil {
+		log.API.Error(err)
+
+		if ok := goerrors.As(err, &service.CCLFNotFoundError{}); ok {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+
+	status := &AttributionFileStatus{
+		Name:      cclfFile.Name,
+		Timestamp: cclfFile.Timestamp,
+		CCLFNum:   cclfFile.CCLFNum,
+	}
+
+	switch fileType {
+	case models.FileTypeDefault:
+		status.Type = "default"
+	case models.FileTypeRunout:
+		status.Type = "runout"
+	}
+
+	return status, nil
+}
+
 func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
 	// Create context to encapsulate the entire workflow. In the future, we can define child context's for timing.
 	ctx := r.Context()
@@ -424,12 +515,12 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 }
 
-func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsId string) []string {
+func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
 	resourceTypes := parameters.ResourceTypes
 
 	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
 	if len(resourceTypes) == 0 {
-		if acoConfig, found := h.Svc.GetACOConfigForId(cmsId); found {
+		if acoConfig, found := h.Svc.GetACOConfigForID(cmsID); found {
 			if utils.ContainsString(acoConfig.Data, constants.Adjudicated) {
 				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 			}
@@ -443,7 +534,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 	return resourceTypes
 }
 
-func (h *Handler) validateRequest(resourceTypes []string, cmsId string) error {
+func (h *Handler) validateRequest(resourceTypes []string, cmsID string) error {
 
 	for _, resourceType := range resourceTypes {
 		resource, ok := h.supportedResources[resourceType]
@@ -456,7 +547,7 @@ func (h *Handler) validateRequest(resourceTypes []string, cmsId string) error {
 			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, resources)
 		}
 
-		if !h.authorizedResourceAccess(resource, cmsId) {
+		if !h.authorizedResourceAccess(resource, cmsID) {
 			return fmt.Errorf("unauthorized resource type %s", resourceType)
 		}
 	}
@@ -464,8 +555,8 @@ func (h *Handler) validateRequest(resourceTypes []string, cmsId string) error {
 	return nil
 }
 
-func (h *Handler) authorizedResourceAccess(resource ResourceType, cmsId string) bool {
-	if cfg, ok := h.Svc.GetACOConfigForId(cmsId); ok {
+func (h *Handler) authorizedResourceAccess(resource ResourceType, cmsID string) bool {
+	if cfg, ok := h.Svc.GetACOConfigForID(cmsID); ok {
 		return (resource.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
 			(resource.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))
 	}

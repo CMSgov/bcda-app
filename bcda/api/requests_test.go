@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -21,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
@@ -108,7 +110,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
-			mockSvc.On("GetACOConfigForId", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
 			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
 
@@ -125,6 +127,86 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				assert.NotEmpty(t, resp.Header.Get("Content-Location"))
 			} else {
 				assert.Contains(t, string(body), tt.errToReturn.Error())
+			}
+		})
+	}
+}
+
+func (s *RequestsTestSuite) TestAttributionStatus() {
+	tests := []struct {
+		name string
+
+		errToReturn error
+		respCode    int
+		fileNames   []string
+		fileTypes   []string
+	}{
+		{"Successful with both files", nil, http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"default", "runout"}},
+		{"Successful with default file", nil, http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"default", ""}},
+		{"Successful with runout file", nil, http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "runout"}},
+		{"No CCLF files found", nil, http.StatusNotFound, []string{"", ""}, []string{"", ""}},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			mockSvc := &service.MockService{}
+
+			for i, name := range tt.fileNames {
+				fileType := models.FileTypeDefault
+				if i == 1 {
+					fileType = models.FileTypeRunout
+				}
+				switch name {
+				case "":
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, fileType).Return(
+						nil,
+						service.CCLFNotFoundError{
+							FileNumber: 8,
+							CMSID:      "",
+							FileType:   0,
+							CutoffTime: time.Time{}},
+					)
+				default:
+					mockSvc.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, fileType).Return(
+						&models.CCLFFile{
+							ID:        1,
+							Name:      tt.fileNames[i],
+							Timestamp: time.Time{},
+							CCLFNum:   8,
+						},
+						nil,
+					)
+				}
+			}
+
+			resourceMap := map[string]ResourceType{
+				"Patient":              ResourceType{Adjudicated: true},
+				"Coverage":             ResourceType{Adjudicated: true},
+				"ExplanationOfBenefit": ResourceType{Adjudicated: true},
+			}
+			h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
+			h.Svc = mockSvc
+
+			rr := httptest.NewRecorder()
+			req := s.genASRequest()
+			h.AttributionStatus(rr, req)
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+			case http.StatusOK:
+				var resp AttributionFileStatusResponse
+				err := json.Unmarshal(rr.Body.Bytes(), &resp)
+				assert.NoError(s.T(), err)
+
+				count := 0
+				for _, fileStatus := range resp.CCLFFiles {
+					if tt.fileNames[count] != "" {
+						assert.Equal(s.T(), tt.fileTypes[count], fileStatus.Type)
+						assert.Equal(s.T(), tt.fileNames[count], fileStatus.Name)
+						count += 1
+					}
+				}
 			}
 		})
 	}
@@ -225,6 +307,16 @@ func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *
 
 	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 	ctx = middleware.NewRequestParametersContext(ctx, rp)
+
+	return req.WithContext(ctx)
+}
+
+func (s *RequestsTestSuite) genASRequest() *http.Request {
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/attribution_status", nil)
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
+
+	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
 
 	return req.WithContext(ctx)
 }

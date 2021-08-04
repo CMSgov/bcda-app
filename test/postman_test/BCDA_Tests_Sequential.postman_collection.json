@@ -253,6 +253,80 @@
 			"response": []
 		},
 		{
+			"name": "Get Attribution Status v1, no token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"",
+							"pm.test(\"Status code is 401\", function() {",
+							"    pm.response.to.have.status(401);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/attribution_status",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"attribution_status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Attribution Status v2, no token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"",
+							"pm.test(\"Status code is 401\", function() {",
+							"    pm.response.to.have.status(401);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/attribution_status",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
+						"attribution_status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Start EOB export, no token",
 			"event": [
 				{
@@ -968,6 +1042,164 @@
 					"path": [
 						"auth",
 						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Attribution Status v1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"",
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Content-Type is application/json\", function() {",
+							"    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"const schema = {",
+							"    \"properties\": {",
+							"        \"cclf_files\": {",
+							"            \"type\": \"array\",",
+							"            \"items\": [{",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"name\": {",
+							"                        \"type\": \"string\"",
+							"                    },",
+							"                    \"timestamp\": {",
+							"                        \"type\": \"string\"",
+							"                    },",
+							"                    \"cclf_number\": {",
+							"                        \"type\": \"integer\"",
+							"                    },",
+							"                    \"cclf_file_type\": {",
+							"                        \"type\": \"string\"",
+							"                    }",
+							"                }",
+							"            }]",
+							"        }",
+							"    }",
+							"};",
+							"",
+							"pm.test(\"Schema is valid\", function() {",
+							"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/attribution_status",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"attribution_status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Attribution Status v2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"",
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Content-Type is application/json\", function() {",
+							"    pm.response.to.have.header(\"Content-Type\", \"application/json\");",
+							"});",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"const schema = {",
+							"    \"properties\": {",
+							"        \"cclf_files\": {",
+							"            \"type\": \"array\",",
+							"            \"items\": [{",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"name\": {",
+							"                        \"type\": \"string\"",
+							"                    },",
+							"                    \"timestamp\": {",
+							"                        \"type\": \"string\"",
+							"                    },",
+							"                    \"cclf_number\": {",
+							"                        \"type\": \"integer\"",
+							"                    },",
+							"                    \"cclf_file_type\": {",
+							"                        \"type\": \"string\"",
+							"                    }",
+							"                }",
+							"            }]",
+							"        }",
+							"    }",
+							"};",
+							"",
+							"pm.test(\"Schema is valid\", function() {",
+							"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/attribution_status",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
+						"attribution_status"
 					]
 				}
 			},
