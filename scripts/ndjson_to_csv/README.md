@@ -39,11 +39,7 @@ python3 -m venv venv
 ```
 - Activate the virtual environment.
 ```
-source ./env/bin/activate
-```
-- Install the Python library Pandas.
-```
-pip install pandas
+source ./venv/bin/activate
 ```
 - Install the Python library TQDM.
 ```

@@ -16,4 +16,4 @@ bcda/pending_delete_dir/*
 shared_files/decrypted/*
 !shared_files/decrypted/README.md
 
-scripts/ndjson_to_csv/env/
+scripts/venv/
