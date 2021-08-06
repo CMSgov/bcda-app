@@ -1,11 +1,8 @@
 # /usr/bin/python3
 
 import csv, json, sys, tempfile
-
-from functools import reduce
 from pathlib import Path
 
-import pandas as pd
 from tqdm import tqdm
 
 
