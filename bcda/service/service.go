@@ -64,6 +64,8 @@ type Service interface {
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
+
+	GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error)
 }
 
 const (
@@ -511,6 +513,19 @@ func IsSupportedACO(cmsID string) bool {
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
+}
+
+func (s *service) GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error) {
+	cclfFile, err := s.repository.GetLatestCCLFFile(ctx, cmsID, cclf8FileNum, constants.ImportComplete, time.Time{}, time.Time{}, fileType)
+	if err != nil {
+		return nil, err
+	}
+
+	if cclfFile == nil {
+		return nil, CCLFNotFoundError{8, cmsID, fileType, time.Time{}}
+	}
+
+	return cclfFile, nil
 }
 
 type CCLFNotFoundError struct {
