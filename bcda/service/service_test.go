@@ -736,6 +736,32 @@ func (s *ServiceTestSuite) TestGetJobPriority() {
 	}
 }
 
+func (s *ServiceTestSuite) TestGetLatestCCLFFile() {
+	repository := &models.MockRepository{}
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+
+	serviceInstance := NewService(repository, &Config{}, "").(*service)
+
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), uint(1), cclfFile.ID)
+}
+
+func (s *ServiceTestSuite) TestGetLatestCCLFFileNotFound() {
+	repository := &models.MockRepository{}
+	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+
+	serviceInstance := NewService(repository, &Config{}, "").(*service)
+
+	cclfFile, err := serviceInstance.GetLatestCCLFFile(context.Background(), "Z9999", models.FileTypeDefault)
+	assert.Nil(s.T(), cclfFile)
+	assert.Error(s.T(), err)
+	assert.Equal(s.T(), 8, err.(CCLFNotFoundError).FileNumber)
+	assert.Equal(s.T(), models.FileTypeDefault, err.(CCLFNotFoundError).FileType)
+	assert.Equal(s.T(), "Z9999", err.(CCLFNotFoundError).CMSID)
+	assert.Equal(s.T(), time.Time{}, err.(CCLFNotFoundError).CutoffTime)
+}
+
 func getCCLFFile(id uint) *models.CCLFFile {
 	return &models.CCLFFile{
 		ID: id,

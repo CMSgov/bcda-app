@@ -1,12 +1,10 @@
 # /usr/bin/python3
 
-import datetime
-import json
-
-from functools import reduce
+import argparse, csv, datetime, json
+from pathlib import Path
 
 from tqdm import tqdm
-import pandas as pd
+
 
 def flatten(data, parent_key='', sep='.'):
     items = []
@@ -38,37 +36,63 @@ def flatten(data, parent_key='', sep='.'):
 
 
 if __name__=='__main__':
-    print("This tool can convert FHIR data stored in an NDJSON file to a CSV format.")
-    while True:
-        # Ingest the report results
-        filename = input("Enter the name of the NDJSON file you wish to convert: ")
-        f = open(filename, 'r')
-        
-        # Format data
-        string_json = f.read()
-        if string_json[-1:] == '\n':  # Handle possible trailing new line
-            string_json = string_json[0:-1]
-        string_json = '[' + string_json + ']'
-        string_json = string_json.replace('\n', ',')
-        data = json.loads(string_json)
+    parser = argparse.ArgumentParser(description='Convert FHIR data stored in an NDJSON file to a CSV format.')
+    parser.add_argument('input', metavar='<inputfile>', type=str, nargs=1,
+                    help='Source file to be converted (.json, .ndjson, .txt)')
+    parser.add_argument('output', metavar='<output_filename>', type=str, nargs='?',
+                    default=f'flat_fhir_output_{datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")}.csv',
+                    help='Optional desired output filename')
+    
+    args = parser.parse_args()
+    inputfile, outputfile = args.input[0], args.output
+    
+    if outputfile[-4:] != '.csv':
+        outputfile = f'{outputfile}.csv'    
 
-        list_data_dict = [flatten(obj) for obj in data]  # Flatten data
-        print("Creating DataFrames")
-        list_dataframes = [  # Create DataFrames
-            pd.DataFrame(obj, index=[list_data_dict.index(obj)])
-            for obj in tqdm(list_data_dict)
-        ]
-        print("Merging DataFrames")
-        output = reduce(lambda x, y: x.append(y), tqdm(list_dataframes))  # Merge DataFrames
-        
-        output_filename = '{}_{}.csv'.format(
-            filename,
-            datetime.datetime.today().date()
-        )
-        print("Creating CSV")
-        output.to_csv(output_filename, index=False)
+    # Error handling
+    if not Path(inputfile).is_file():
+        print(f'Source file "{inputfile}" does not exist.')
+        exit()
+    if Path(outputfile).is_file():
+        print(f'A file with the name "{outputfile}" already exists in this directory.')
+        exit()
 
-        print("File converted successfully. Output file '{}'".format(output_filename))
-        if input("Would you like to convert another file? (y/n) ") == 'n':
-            print("Goodbye.")
-            exit()
+    counter = 0
+
+    print(f'Determining file size...')
+    with open(inputfile, 'r') as source_file:
+        for line in source_file:  # Count lines to build progress indicator
+            counter += 1
+        source_file.seek(0)
+        
+        print(f'Flattening "{inputfile}"...')
+        col_headers = set()
+        for x in tqdm(range(counter)):
+            line = source_file.readline()
+            if line[-1:] == '\n':
+                line = line[0:-1]
+            data = flatten(json.loads(line))
+            col_headers.update(data.keys())
+
+    # Merge data referencing headers
+    print('Merging data and creating CSV...')
+    list_headers = sorted(list(col_headers))
+    with open(outputfile, "x") as output_file:
+        with open(inputfile, 'r') as source_file:
+            csvwriter = csv.writer(output_file)
+            csvwriter.writerow(list_headers)
+            for x in tqdm(range(counter)):
+                row = []
+                line = source_file.readline()
+                if line[-1:] == '\n':
+                    line = line[0:-1]
+                data = flatten(json.loads(line))
+                for col in list_headers:
+                    try:
+                        row.append(data[col])
+                    except:
+                        row.append('')
+                csvwriter.writerow(row)
+
+    print(f'File flattened successfully. Output file "{outputfile}"')
+    exit()

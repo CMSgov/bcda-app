@@ -22,6 +22,8 @@ var (
 	minBirthDate = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
 	maxBirthDate = time.Date(1950, time.December, 31, 0, 0, 0, 0, time.UTC)
 	minDeathDate = time.Date(2016, time.January, 1, 0, 0, 0, 0, time.UTC)
+	minCovidDate = time.Date(2019, time.December, 1, 0, 0, 0, 0, time.UTC)
+	maxCovidDate = time.Date(2020, time.December, 1, 0, 0, 0, 0, time.UTC)
 )
 
 const (
@@ -42,7 +44,6 @@ var isTesting bool
 
 // Links header fields to a generator that produces a string value.
 // The generators used are based on the 2021 ALR data dictionary.
-// NOTE: We currently only have definitions for ALR Table 1-1.
 // Any addtions, add here...
 var valueGenerator = [...]regexpClosurePair{
 	{regexp.MustCompile("HIC_NUM"), func() string { return randomdata.Alphanumeric(12) }},
@@ -64,6 +65,10 @@ var valueGenerator = [...]regexpClosurePair{
 	}},
 	{regexp.MustCompile("VA_TIN"), func() string { return randomdata.StringNumberExt(1, "", 9) }},
 	{regexp.MustCompile("VA_NPI"), func() string { return randomdata.StringNumberExt(1, "", 10) }},
+	{regexp.MustCompile("VA_SELECTION_ONLY"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
+	{regexp.MustCompile("^(PLUR_R05)|(AB_R01)|(HMO_R03)|(NO_US_R02)|(MDM_R04)|(NOFND_R06)$"), func() string {
+		return strconv.Itoa(randomdata.Number(2))
+	}},
 	{regexp.MustCompile("EnrollFlag"), func() string {
 		return randomEmpty(half,
 			func() string { return strconv.Itoa(randomdata.Number(5)) })
@@ -95,10 +100,18 @@ var valueGenerator = [...]regexpClosurePair{
 	{regexp.MustCompile("^REV_LINE_CNT$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
 	{regexp.MustCompile("^B_EM_LINE_CNT_T$"), func() string { return strconv.Itoa(randomdata.Number(3)) }},
 	{regexp.MustCompile("^ASSIGNED_BEFORE$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
+	{regexp.MustCompile("^COVID19_EPISODE$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
+	{regexp.MustCompile("^COVID19_MONTH(0[1-9]|1[0-2])$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
+	{regexp.MustCompile("^(ADMISSION_DT)$"), func() string { return randomDate(minCovidDate, maxCovidDate) }},
+	{regexp.MustCompile("^(DISCHARGE_DT)$"), func() string {
+		return randomEmpty(less,
+			func() string { return randomDate(maxCovidDate, time.Now()) })
+	}},
+	{regexp.MustCompile("^(U071)|(B9729)$"), func() string { return strconv.Itoa(randomdata.Number(2)) }},
 }
 
-func init(){
-    isTesting = false
+func init() {
+	isTesting = false
 }
 
 // UpdateCSV uses a random generator to populate fields present in the CSV file referenced by the fileName.

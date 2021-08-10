@@ -31,7 +31,7 @@ type AlrWorker struct {
 	StagingDir string `conf:"FHIR_STAGING_DIR"`
 }
 
-var resources = [...]string{"patient", "coverage", "group", "risk", "observations"}
+var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 
 /******************************************************************************
 	Functions
@@ -229,11 +229,11 @@ func (a *AlrWorker) ProcessAlrJob(
 	// A go routine that will streamed data to write to disk.
 	// Reason for a go routine is to not block when writing, since disk writing is
 	// generally slower than memory access. We are streaming to keep mem lower.
-    if jobArgs.BBBasePath == "/v1/fhir" {
-        go goWriterV1(ctx, a, c, fileMap, result, resources[:], id)
-    } else {
-        go goWriterV2(ctx, a, c, fileMap, result, resources[:], id)
-    }
+	if jobArgs.BBBasePath == "/v1/fhir" {
+		go goWriterV1(ctx, a, c, fileMap, result, resources[:], id)
+	} else {
+		go goWriterV2(ctx, a, c, fileMap, result, resources[:], id)
+	}
 
 	// Marshall into JSON and send it over the channel
 	for i := range alrModels {

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/CMSgov/bcda-app/conf"
-	"github.com/sirupsen/logrus"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 func LoadConfig() (cfg *Config, err error) {
@@ -21,7 +21,8 @@ func LoadConfig() (cfg *Config, err error) {
 		return nil, err
 	}
 
-	logrus.Infof("Successfully loaded config %+v.", cfg)
+	log.API.Info("Successfully loaded configuration for Service.")
+
 	return cfg, nil
 }
 
@@ -53,10 +54,11 @@ type RunoutConfig struct {
 
 type ACOConfig struct {
 	Model              string
-	Pattern            string `conf:"name_pattern"`
-	PerfYearTransition string `conf:"performance_year_transition"`
-	LookbackYears      int    `conf:"lookback_period"`
-	Disabled           bool   `conf:"disabled" conf_default:"false"`
+	Pattern            string   `conf:"name_pattern"`
+	PerfYearTransition string   `conf:"performance_year_transition"`
+	LookbackYears      int      `conf:"lookback_period"`
+	Disabled           bool     `conf:"disabled" conf_default:"false"`
+	Data               []string `conf:"data"`
 
 	// Un-exported fields that are computed using the exported ones above
 	patternExp *regexp.Regexp
