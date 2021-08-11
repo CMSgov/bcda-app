@@ -36,8 +36,8 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
-//ResourceType is used to identify the type of data returned by each resource
-type ResourceType struct {
+//DataType is used to identify the type of data returned by each resource
+type DataType struct {
 	Adjudicated    bool
 	PreAdjudicated bool
 }
@@ -55,7 +55,9 @@ type Handler struct {
 	r  models.Repository
 	db *sql.DB
 
-	supportedResources map[string]ResourceType
+	supportedDataTypes map[string]DataType
+
+	supportedResourceTypes []string
 
 	bbBasePath string
 
@@ -69,11 +71,11 @@ type fhirResponseWriter interface {
 	NotFound(http.ResponseWriter, int, string, string)
 }
 
-func NewHandler(resources map[string]ResourceType, basePath string, apiVersion string) *Handler {
-	return newHandler(resources, basePath, apiVersion, database.Connection)
+func NewHandler(dataTypes map[string]DataType, basePath string, apiVersion string) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, database.Connection)
 }
 
-func newHandler(resources map[string]ResourceType, basePath string, apiVersion string, db *sql.DB) *Handler {
+func newHandler(dataTypes map[string]DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -87,7 +89,13 @@ func newHandler(resources map[string]ResourceType, basePath string, apiVersion s
 	h.db, h.r = db, repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 
-	h.supportedResources = resources
+	h.supportedDataTypes = dataTypes
+
+	// Build string array of supported Resource types
+	h.supportedResourceTypes = make([]string, 0, len(h.supportedDataTypes))
+	for k := range h.supportedDataTypes {
+		h.supportedResourceTypes = append(h.supportedResourceTypes, k)
+	}
 
 	h.bbBasePath = basePath
 	h.apiVersion = apiVersion
@@ -537,17 +545,13 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 func (h *Handler) validateRequest(resourceTypes []string, cmsID string) error {
 
 	for _, resourceType := range resourceTypes {
-		resource, ok := h.supportedResources[resourceType]
+		dataType, ok := h.supportedDataTypes[resourceType]
 
 		if !ok {
-			resources := make([]string, 0, len(h.supportedResources))
-			for k := range h.supportedResources {
-				resources = append(resources, k)
-			}
-			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, resources)
+			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResourceTypes)
 		}
 
-		if !h.authorizedResourceAccess(resource, cmsID) {
+		if !h.authorizedResourceAccess(dataType, cmsID) {
 			return fmt.Errorf("unauthorized resource type %s", resourceType)
 		}
 	}
@@ -555,10 +559,10 @@ func (h *Handler) validateRequest(resourceTypes []string, cmsID string) error {
 	return nil
 }
 
-func (h *Handler) authorizedResourceAccess(resource ResourceType, cmsID string) bool {
+func (h *Handler) authorizedResourceAccess(dataType DataType, cmsID string) bool {
 	if cfg, ok := h.Svc.GetACOConfigForID(cmsID); ok {
-		return (resource.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
-			(resource.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))
+		return (dataType.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
+			(dataType.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))
 	}
 
 	return false

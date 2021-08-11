@@ -23,11 +23,12 @@ import (
 var h *api.Handler
 
 func init() {
-	resources := make(map[string]api.ResourceType, 6)
-	resources["Patient"] = api.ResourceType{Adjudicated: true}
-	resources["Coverage"] = api.ResourceType{Adjudicated: true}
-	resources["ExplanationOfBenefit"] = api.ResourceType{Adjudicated: true}
-	resources["Observation"] = api.ResourceType{Adjudicated: true}
+	resources := map[string]api.DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Observation":          {Adjudicated: true},
+	}
 	h = api.NewHandler(resources, "/v1/fhir", "v1")
 }
 

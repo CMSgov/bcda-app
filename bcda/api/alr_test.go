@@ -57,9 +57,9 @@ func (s *AlrTestSuite) TestAlrRequest() {
 	enqueuer := &queueing.MockEnqueuer{}
 	enqueuer.On("AddAlrJob", mock.Anything, mock.Anything).Return(nil)
 
-	resourceMap := make(map[string]ResourceType, 3)
-	resourceMap["Patient"] = ResourceType{Adjudicated: true}
-	resourceMap["Observation"] = ResourceType{Adjudicated: true}
+	resourceMap := make(map[string]DataType, 3)
+	resourceMap["Patient"] = DataType{Adjudicated: true}
+	resourceMap["Observation"] = DataType{Adjudicated: true}
 
 	h := newHandler(resourceMap, "v1/fhir", "v1", s.db)
 	h.Enq = enqueuer

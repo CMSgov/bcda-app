@@ -103,10 +103,11 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				jobs = qj
 			}
 
-			resourceMap := make(map[string]ResourceType, 3)
-			resourceMap["Patient"] = ResourceType{Adjudicated: true}
-			resourceMap["Coverage"] = ResourceType{Adjudicated: true}
-			resourceMap["ExplanationOfBenefit"] = ResourceType{Adjudicated: true}
+			resourceMap := map[string]DataType{
+				"Patient":              {Adjudicated: true},
+				"Coverage":             {Adjudicated: true},
+				"ExplanationOfBenefit": {Adjudicated: true},
+			}
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
@@ -179,10 +180,10 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 			}
 
-			resourceMap := map[string]ResourceType{
-				"Patient":              ResourceType{Adjudicated: true},
-				"Coverage":             ResourceType{Adjudicated: true},
-				"ExplanationOfBenefit": ResourceType{Adjudicated: true},
+			resourceMap := map[string]DataType{
+				"Patient":              {Adjudicated: true},
+				"Coverage":             {Adjudicated: true},
+				"ExplanationOfBenefit": {Adjudicated: true},
 			}
 			h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 			h.Svc = mockSvc
@@ -231,10 +232,11 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 
-	resourceMap := make(map[string]ResourceType, 6)
-	resourceMap["Patient"] = ResourceType{Adjudicated: true}
-	resourceMap["Coverage"] = ResourceType{Adjudicated: true}
-	resourceMap["ExplanationOfBenefit"] = ResourceType{Adjudicated: true}
+	resourceMap := map[string]DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+	}
 
 	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 
