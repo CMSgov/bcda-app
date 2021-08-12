@@ -103,8 +103,16 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				jobs = qj
 			}
 
+			resourceMap := map[string]service.DataType{
+				"Patient":              {Adjudicated: true},
+				"Coverage":             {Adjudicated: true},
+				"ExplanationOfBenefit": {Adjudicated: true},
+			}
+
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
-			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
+			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
+			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+			h := newHandler(resourceMap, fmt.Sprintf("/%s/fhir", tt.apiVersion), tt.apiVersion, s.db)
 			h.Svc = mockSvc
 
 			req := s.genGroupRequest("runout", middleware.RequestParameters{})
@@ -172,7 +180,12 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 			}
 
-			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
+			resourceMap := map[string]service.DataType{
+				"Patient":              {Adjudicated: true},
+				"Coverage":             {Adjudicated: true},
+				"ExplanationOfBenefit": {Adjudicated: true},
+			}
+			h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
@@ -219,7 +232,13 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 
-	h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
+	resourceMap := map[string]service.DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+	}
+
+	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
 	enqueuer := &queueing.MockEnqueuer{}

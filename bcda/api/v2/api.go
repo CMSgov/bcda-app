@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"net/http"
 	"time"
 
@@ -27,7 +28,19 @@ var (
 func init() {
 	var err error
 
-	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit"}, "/v2/fhir", "v2")
+	resources, ok := service.GetDataTypes([]string{
+		"Patient",
+		"Coverage",
+		"ExplanationOfBenefit",
+		"Claim",
+		"ClaimResponse",
+	}...)
+
+	if ok {
+		h = api.NewHandler(resources, "/v2/fhir", "v2")
+	} else {
+		//Throw error
+	}
 
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.

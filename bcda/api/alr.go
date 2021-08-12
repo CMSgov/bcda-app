@@ -31,7 +31,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	if err := h.validateRequest(rp.ResourceTypes); err != nil {
+	if err := h.validateRequest(rp.ResourceTypes, ad.CMSID); err != nil {
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
 			err.Error())
 		responseutils.WriteError(oo, w, http.StatusBadRequest)

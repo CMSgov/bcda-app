@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
+
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 
@@ -47,7 +49,9 @@ type Handler struct {
 	r  models.Repository
 	db *sql.DB
 
-	supportedResources map[string]struct{}
+	supportedDataTypes map[string]service.DataType
+
+	supportedResourceTypes []string
 
 	bbBasePath string
 
@@ -61,11 +65,11 @@ type fhirResponseWriter interface {
 	NotFound(http.ResponseWriter, int, string, string)
 }
 
-func NewHandler(resources []string, basePath string, apiVersion string) *Handler {
-	return newHandler(resources, basePath, apiVersion, database.Connection)
+func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, database.Connection)
 }
 
-func newHandler(resources []string, basePath string, apiVersion string, db *sql.DB) *Handler {
+func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -79,9 +83,12 @@ func newHandler(resources []string, basePath string, apiVersion string, db *sql.
 	h.db, h.r = db, repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 
-	h.supportedResources = make(map[string]struct{}, len(resources))
-	for _, r := range resources {
-		h.supportedResources[r] = struct{}{}
+	h.supportedDataTypes = dataTypes
+
+	h.supportedResourceTypes = make([]string, 0, len(h.supportedDataTypes))
+
+	for k := range h.supportedDataTypes {
+		h.supportedResourceTypes = append(h.supportedResourceTypes, k)
 	}
 
 	h.bbBasePath = basePath
@@ -370,13 +377,9 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	resourceTypes := rp.ResourceTypes
-	// If caller does not supply resource types, we default to all supported resource types
-	if len(resourceTypes) == 0 {
-		resourceTypes = []string{"Patient", "ExplanationOfBenefit", "Coverage"}
-	}
+	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 
-	if err = h.validateRequest(resourceTypes); err != nil {
+	if err = h.validateRequest(resourceTypes, ad.CMSID); err != nil {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -514,15 +517,49 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 }
 
-func (h *Handler) validateRequest(resourceTypes []string) error {
+func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
+	resourceTypes := parameters.ResourceTypes
+
+	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
+	if len(resourceTypes) == 0 {
+		if acoConfig, found := h.Svc.GetACOConfigForID(cmsID); found {
+			if utils.ContainsString(acoConfig.Data, constants.Adjudicated) {
+				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+			}
+
+			if utils.ContainsString(acoConfig.Data, constants.PreAdjudicated) {
+				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
+			}
+		}
+	}
+
+	return resourceTypes
+}
+
+func (h *Handler) validateRequest(resourceTypes []string, cmsID string) error {
 
 	for _, resourceType := range resourceTypes {
-		if _, ok := h.supportedResources[resourceType]; !ok {
-			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResources)
+		dataType, ok := h.supportedDataTypes[resourceType]
+
+		if !ok {
+			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResourceTypes)
+		}
+
+		if !h.authorizedResourceAccess(dataType, cmsID) {
+			return fmt.Errorf("unauthorized resource type %s", resourceType)
 		}
 	}
 
 	return nil
+}
+
+func (h *Handler) authorizedResourceAccess(dataType service.DataType, cmsID string) bool {
+	if cfg, ok := h.Svc.GetACOConfigForID(cmsID); ok {
+		return (dataType.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
+			(dataType.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))
+	}
+
+	return false
 }
 
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {

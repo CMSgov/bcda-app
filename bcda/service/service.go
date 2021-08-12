@@ -66,6 +66,8 @@ type Service interface {
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 
 	GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error)
+
+	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 }
 
 const (
@@ -249,19 +251,39 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 			rowCount++
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				enqueueArgs := models.JobEnqueueArgs{
-					ID:              int(conditions.JobID),
-					ACOID:           conditions.ACOID.String(),
-					BeneficiaryIDs:  jobIDs,
-					ResourceType:    rt,
-					Since:           sinceArg,
-					TransactionTime: conditions.TransactionTime,
-					BBBasePath:      s.bbBasePath,
+				var acoConfig *ACOConfig
+
+				for pattern, cfg := range s.acoConfig {
+					if pattern.MatchString(conditions.CMSID) {
+						acoConfig = cfg
+						break
+					}
 				}
 
-				s.setClaimsDate(&enqueueArgs, conditions)
+				validTypes := []string{
+					constants.Adjudicated,
+					constants.PreAdjudicated,
+				}
 
-				jobs = append(jobs, &enqueueArgs)
+				for _, dataType := range acoConfig.Data {
+					if utils.ContainsString(validTypes, dataType) && GetDataType(rt).SupportsDataType(dataType) {
+						enqueueArgs := models.JobEnqueueArgs{
+							ID:              int(conditions.JobID),
+							ACOID:           conditions.ACOID.String(),
+							BeneficiaryIDs:  jobIDs,
+							ResourceType:    rt,
+							Since:           sinceArg,
+							TransactionTime: conditions.TransactionTime,
+							BBBasePath:      s.bbBasePath,
+							DataType:        dataType,
+						}
+
+						s.setClaimsDate(&enqueueArgs, conditions)
+
+						jobs = append(jobs, &enqueueArgs)
+					}
+				}
+
 				jobIDs = make([]string, 0, maxBeneficiaries)
 			}
 		}
@@ -458,6 +480,17 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 	return priority
 }
 
+// Gets any currently loaded ACOConfig for the matching cmsID
+func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
+	for pattern, cfg := range s.acoConfig {
+		if pattern.MatchString(cmsID) {
+			return cfg, true
+		}
+	}
+
+	return nil, false
+}
+
 // Checks to see if an ACO is priority ACO based on a regex pattern provided by an
 // environment variable.
 func isPriorityACO(acoID string) bool {
@@ -473,9 +506,11 @@ func isPriorityACO(acoID string) bool {
 
 func getMaxBeneCount(requestType string) (int, error) {
 	const (
-		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT      = 200
-		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT  = 5000
-		BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
+		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT           = 200
+		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT       = 5000
+		BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT      = 4000
+		BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT         = 200
+		BCDA_FHIR_MAX_RECORDS_CLAIMRESPONSE_DEFAULT = 200
 	)
 	var envVar string
 	var defaultVal int
@@ -490,6 +525,12 @@ func getMaxBeneCount(requestType string) (int, error) {
 	case "Coverage":
 		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
 		defaultVal = BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
+	case "Claim":
+		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		defaultVal = BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT
+	case "ClaimResponse":
+		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		defaultVal = BCDA_FHIR_MAX_RECORDS_CLAIMRESPONSE_DEFAULT
 	default:
 		err := errors.New("invalid request type")
 		return -1, err
