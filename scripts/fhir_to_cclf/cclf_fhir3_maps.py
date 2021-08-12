@@ -202,44 +202,59 @@ cclf7 = {
     'CLM_PHRMCY_SRVC_TYPE_CD'       : 'Eob.facility.extension.valueCoding.code',
 }
 
-def get_current(obj):
+def get_from_list(obj, key, str_match):
     for item in obj:
-        if item['ValueCoding'] == 'current':
+        if item[key] == str_match:
             return item
 
 cclf8 = {
-    "BENE_MBI_ID"               : ('patient', lambda obj: get_current(obj)['value']),  # Patient.identifier[N].value
-    "BENE_HIC_NUM"              : "Not mapped",
-    "BENE_FIPS_STATE_CD"        : ('patient', lambda obj: obj['address'][0]['state']),  # Patient.address.state
-    # "BENE_FIPS_CNTY_CD"         : "No longer Mapped, use Beneficiary mailing addresses to get county information",
-    "BENE_FIPS_CNTY_CD"         : "Not mapped",
-    "BENE_ZIP_CD"               : ('patient', lambda obj: obj['address'][0]['postalCode']),  # Patient.address.postalCode
-    "BENE_DOB"                  : ('patient', lambda obj: obj['birthDate']),  # "patient.birthDate"
-    "BENE_SEX_CD"               : ('patient', lambda obj: obj['gender']),  # "Patient.gender"
-    "BENE_RACE_CD"              : "Patient.extension[N].valueCoding.code",
-    "BENE_AGE"                  : "Not mapped",
-    "BENE_MDCR_STUS_CD"         : "Coverage.extension[N].valueCoding.code",
-    "BENE_DUAL_STUS_CD"         : "Coverage.extension[N].valueCoding.code",
-    "BENE_DEATH_DT"             : ('patient', lambda obj: obj['deceased']),  # Patient.deceased[x]
-    "BENE_RNG_BGN_DT"           : ('eob', lambda obj: obj['hospitalization'][0]['start']),  # Eob.hospitalization.start
-    "BENE_RNG_END_DT"           : ('eob', lambda obj: obj['hospitalization'][0]['end']),  # Eob.hospitalization.end
-    "BENE_1ST_NAME"             : ('patient', lambda obj: obj['name'][0]['given'][0]),  # Patient.name.given[N]
-    "BENE_MIDL_NAME"            : ('patient', lambda obj: obj['name'][0]['given'][1]),  # Patient.name.given[N]
-    "BENE_LAST_NAME"            : ('patient', lambda obj: obj['name'][0]['family']),  # Patient.name.family
-    "BENE_ORGNL_ENTLMT_RSN_CD"  : "Coverage.extension[N].valueCoding.code",
-    "BENE_ENTLMT_BUYIN_IND"     : "Coverage.extension[N].valueCoding.code",
-    "BENE_PART_A_ENRLMT_BGN_DT" : "Coverage[N].period.start",
-    "BENE_PART_B_ENRLMT_BGN_DT" : "Coverage[N].period.start",
-    "BENE_LINE_1_ADR"           : ('patient', lambda obj: obj['address'][0]['line'][0]),  # Patient.address.line[N]
-    "BENE_LINE_2_ADR"           : ('patient', lambda obj: obj['address'][0]['line'][1]),  # Patient.address.line[N]
-    "BENE_LINE_3_ADR"           : ('patient', lambda obj: obj['address'][0]['line'][2]),  # Patient.address.line[N]
-    "BENE_LINE_4_ADR"           : ('patient', lambda obj: obj['address'][0]['line'][3]),  # Patient.address.line[N]
-    "BENE_LINE_5_ADR"           : ('patient', lambda obj: obj['address'][0]['line'][4]),  # Patient.address.line[N]
-    "BENE_LINE_6_ADR"           : ('patient', lambda obj: obj['address'][0]['line'][5]),  # Patient.address.line[N]
-    "GEO_ZIP_PLC_NAME"          : ('patient', lambda obj: obj['address'][0]['city']),  # Patient.address.city
-    "GEO_USPS_STATE_CD"         : ('patient', lambda obj: obj['address'][0]['state']),  # Patient.address.state
-    "GEO_ZIP5_CD"               : ('patient', lambda obj: obj['address'][0]['postalCode']),  # Patient.address.postalCode
-    "GEO_ZIP4_CD"               : ('patient', lambda obj: obj['address'][0]['postalCode']),  # Patient.address.postalCode[N]=Patient.address.postalCode[1] - GEO_ZIP4_CD
+    'BENE_MBI_ID'               : ('patient', lambda obj: get_from_list(obj, 'ValueCoding', 'current')['value']),  # Patient.identifier[N].value
+    'BENE_HIC_NUM'              : 'Not mapped',
+    'BENE_FIPS_STATE_CD'        : ('patient', lambda obj: obj['address'][0]['state']),  # Patient.address.state
+    'BENE_FIPS_CNTY_CD'         : 'Not mapped',  # No longer Mapped, use Beneficiary mailing addresses to get county information
+    'BENE_ZIP_CD'               : ('patient', lambda obj: obj['address'][0]['postalCode']),  # Patient.address.postalCode
+    'BENE_DOB'                  : ('patient', lambda obj: obj['birthDate']),  # Patient.birthDate
+    'BENE_SEX_CD'               : ('patient', lambda obj: obj['gender']),  # Patient.gender
+    'BENE_RACE_CD'              : ('patient', lambda obj: obj['valueCoding']['code']),  # Patient.extension[N].valueCoding.code
+    'BENE_AGE'                  : 'Not mapped',
+    'BENE_MDCR_STUS_CD'         : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
+                                        obj['extension'],
+                                        'url',
+                                        'https://bluebutton.cms.gov/resources/variables/ms_cd',
+                                        )['valueCoding']['code']),
+    'BENE_DUAL_STUS_CD'         : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
+                                        obj,
+                                        'extension',
+                                        'https://bluebutton.cms.gov/resources/variables/dual_01',
+                                        )['valueCoding']['code']),  
+    'BENE_DEATH_DT'             : ('patient', lambda obj: obj['deceased']),  # Patient.deceased[x]
+    'BENE_RNG_BGN_DT'           : ('eob', lambda obj: obj['hospitalization']['start']),  # Eob.hospitalization.start
+    'BENE_RNG_END_DT'           : ('eob', lambda obj: obj['hospitalization']['end']),  # Eob.hospitalization.end
+    'BENE_1ST_NAME'             : ('patient', lambda obj: obj['name'][0]['given'][0]),  # Patient.name.given[N]
+    'BENE_MIDL_NAME'            : ('patient', lambda obj: obj['name'][0]['given'][1]),  # Patient.name.given[N]
+    'BENE_LAST_NAME'            : ('patient', lambda obj: obj['name'][0]['family']),  # Patient.name.family
+    'BENE_ORGNL_ENTLMT_RSN_CD'  : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
+                                        obj,
+                                        'extension',
+                                        'https://bluebutton.cms.gov/resources/variables/orec',
+                                        )['valueCoding']['code']),
+    'BENE_ENTLMT_BUYIN_IND'     : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
+                                        obj,
+                                        'extension',
+                                        'https://bluebutton.cms.gov/resources/variables/buyin01',
+                                        )['valueCoding']['code']),
+    'BENE_PART_A_ENRLMT_BGN_DT' : ('coverage', lambda obj: obj['period']['start']),  # Coverage[N].period.start
+    'BENE_PART_B_ENRLMT_BGN_DT' : ('coverage', lambda obj: obj['period']['start']),  # Coverage[N].period.start
+    'BENE_LINE_1_ADR'           : ('patient', lambda obj: obj['address'][0]['line'][0]),  # Patient.address.line[N]
+    'BENE_LINE_2_ADR'           : ('patient', lambda obj: obj['address'][0]['line'][1]),  # Patient.address.line[N]
+    'BENE_LINE_3_ADR'           : ('patient', lambda obj: obj['address'][0]['line'][2]),  # Patient.address.line[N]
+    'BENE_LINE_4_ADR'           : ('patient', lambda obj: obj['address'][0]['line'][3]),  # Patient.address.line[N]
+    'BENE_LINE_5_ADR'           : ('patient', lambda obj: obj['address'][0]['line'][4]),  # Patient.address.line[N]
+    'BENE_LINE_6_ADR'           : ('patient', lambda obj: obj['address'][0]['line'][5]),  # Patient.address.line[N]
+    'GEO_ZIP_PLC_NAME'          : ('patient', lambda obj: obj['address'][0]['city']),  # Patient.address.city
+    'GEO_USPS_STATE_CD'         : ('patient', lambda obj: obj['address'][0]['state']),  # Patient.address.state
+    'GEO_ZIP5_CD'               : ('patient', lambda obj: obj['address'][0]['postalCode']),  # Patient.address.postalCode
+    'GEO_ZIP4_CD'               : ('patient', lambda obj: obj['address'][0]['postalCode']),  # Patient.address.postalCode[N]=Patient.address.postalCode[1] - GEO_ZIP4_CD
 }
 
 cclf9 = {
