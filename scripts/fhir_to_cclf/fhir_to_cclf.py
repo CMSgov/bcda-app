@@ -7,18 +7,24 @@ from tqdm import tqdm
 
 import cclf_fhir3_maps
 
-def process_ndjson(string_data: str):
-    """
-    Turn 
-    """
-    if string_data[-1:] == '\n':
-        string_data = string_data[0:-1]
-    string_data = '[' + string_data + ']'
-    string_data = string_data.replace('\n', ',')
-    return json.loads(string_data)
+
+def get_file_length(filename: str) -> int:
+    """Return the number of lines in a file."""
+    counter = 0
+    with open(filename, 'r') as source:
+        for line in source:
+            counter += 1
+    return counter
+
+def get_matching_row(filename: str, key: str, reference: str) -> dict:
+    with open(filename, 'r') as source:
+        for line in source:
+            obj = json.loads(line)
+            if obj[key]['reference'] == reference:
+                return obj
 
 
-def build_cclf8(patient, coverage, eob):
+def build_cclf8(patient_filename: str, coverage_filename: str, eob_filename: str, output_filename:str):
     """
     This function maps bene data to the CCLF8 using objects from the Patient Resource as
     the primary reference.
@@ -26,79 +32,80 @@ def build_cclf8(patient, coverage, eob):
     The CCLF8 provides identifying information for beneficiaries and can be used as a
     unifier to help build the rest of the CCLF file structure.
     """
-    cclf8 = []
+    print("Building CCLF8...")
     cclf8_headers = [k for k in cclf8_map]
-    cclf8.append(cclf8_headers)
+    counter = get_file_length(patient_filename)
 
-    for beneficiary in tqdm(patient):
-        row = []
-        bene_id = beneficiary['id']
-        for column in cclf8_headers:
-            try:
-                if cclf8_map[column] == 'Not mapped':
-                    row.append('Not mapped')
-                elif cclf8_map[column][0] == 'patient':
-                    row.append(cclf8_map[column][1](beneficiary))
-                elif cclf8_map[column][0] == 'eob':
-                    # TODO: Confirm regex is actually needed.
-                    # Not sure if the '-' is a symptom of seed data.
-                    pattern = re.compile('[\W_]+')
-                    patient_ref = f"Patient/{pattern.sub('', bene_id)}"
-                    for obj in eob:
-                        if obj['patient']['reference'] == patient_ref:
-                            row.append(cclf8_map[column][1](obj))
-                elif cclf8_map[column][0] == 'coverage':
-                    for obj in coverage:
+    with open(patient_filename, 'r') as patient, open(f'cclf8_{output_filename}.csv', 'w') as cclf8:
+        csvwriter = csv.writer(cclf8)
+        csvwriter.writerow(cclf8_headers)
+        for x in tqdm(range(counter)):
+            line = patient.readline()
+            row = []
+            bene = json.loads(line)
+            bene_id = bene['id']
+
+            for column in cclf8_headers:
+                try:
+                    if (nm := cclf8_map[column]) == 'Not mapped': row.append(nm)
+
+                    elif cclf8_map[column][0] == 'patient':
+                        row.append(cclf8_map[column][1](bene))
+
+                    elif cclf8_map[column][0] == 'eob':
+                        # TODO: Confirm regex is actually needed.
+                        # Not sure if the '-' is a symptom of seed data.
+                        pattern = re.compile('[\W_]+')
+                        patient_ref = f"Patient/{pattern.sub('', bene_id)}"
+                        obj = get_matching_row(eob_filename, 'patient', patient_ref)
+                        row.append(cclf8_map[column][1](obj))
+
+                    elif cclf8_map[column][0] == 'coverage':
                         patient_ref = f"Patient/{bene_id})"
-                        if obj['beneficiary']['reference'] == patient_ref:
-                            row.append(cclf8_map[column][1](obj))
-                else:
-                    row.append(column)    
-            except:
-                row.append('')
-        cclf8.append(row)
-    
-    # Write CSV
-    report_file = open('cclf8.csv', 'w')
-    csvwriter = csv.writer(report_file)
-    for item in cclf8:
-        csvwriter.writerow(item)
-    report_file.close()
+                        obj = get_matching_row(coverage_filename, 'beneficiary', patient_ref)
+                        row.append(cclf8_map[column][1](obj))
 
+                except:  # Not every field will be present
+                    row.append('')
+            csvwriter.writerow(row)
+
+def error_handling(patient, coverage, eob, output):
+    # Confirm all data sources are valid
+    if not Path(patient).is_file():
+        print(f'Source file "{patient}" does not exist.')
+        exit()
+    if not Path(coverage).is_file():
+        print(f'Source file "{coverage}" does not exist.')
+        exit()
+    if not Path(eob).is_file():
+        print(f'Source file "{eob}" does not exist.')
+        exit()
+    
+    # Verify no output filename conflicts will exist
+    if Path(output).is_file():
+        print(f'A file with the name "{output}" already exists in this directory.')
+        exit()
 
 
 if __name__=='__main__':
-    # parser = argparse.ArgumentParser(description='Convert FHIR data stored in an NDJSON file to CCLF format.')
-    # parser.add_argument('input', metavar='<inputfile>', type=str, nargs=1,
-    #                 help='Source file to be converted (.json, .ndjson, .txt)')
-    # parser.add_argument('output', metavar='<output_filename>', type=str, nargs='?',
-    #                 default=f'flat_fhir_output_{datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")}.csv',
-    #                 help='Optional desired output filename')
+    parser = argparse.ArgumentParser(description='Convert FHIR data stored in an NDJSON file to CCLF format.')
+    parser.add_argument('patient', metavar='<patient>', type=str, nargs=1,
+                    help='Patient Resource source file to be converted (.json, .ndjson, .txt)')
+    parser.add_argument('coverage', metavar='<coverage>', type=str, nargs=1,
+                    help='Coverage Resource source file to be converted (.json, .ndjson, .txt)')
+    parser.add_argument('eob', metavar='<eob>', type=str, nargs=1,
+                    help='Explanatino of Benefits source file to be converted (.json, .ndjson, .txt)')
+    parser.add_argument('-f', '--fhir', metavar='<version>', type=str, nargs=1, required=True,
+                    help='The version of FHIR represented in your data (3, 4)')
+    parser.add_argument('output', metavar='<output_filename>', type=str, nargs='?',
+                    default=f'{datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")}',
+                    help='Optional desired output filename. Each report name will be prepended. Ex: cclf8_my_file_name.csv')
     
-    # args = parser.parse_args()
-    # inputfile, outputfile = args.input[0], args.output
+    args = parser.parse_args()
+    patient, coverage, eob, output = args.patient[0], args.coverage[0], args.eob[0], args.output
+    error_handling(patient, coverage, eob, output)
 
-    # # Error handling
-    # if not Path(inputfile).is_file():
-    #     print(f'Source file "{inputfile}" does not exist.')
-    #     exit()
-    # if Path(outputfile).is_file():
-    #     print(f'A file with the name "{outputfile}" already exists in this directory.')
-    #     exit()
-
-    # TODO: User must indicate which version of FHIR
+    # TODO: User must indicate FHIR 3/4
     cclf8_map = cclf_fhir3_maps.cclf8  # FHIR 3 CCLF8
 
-    # Read in data sources
-    # TODO: User must indicate data sources
-    print("Ingesting FHIR data.")
-    patient = open('sources/patient.ndjson', 'r').read()
-    patient = process_ndjson(patient)
-    
-    coverage = open('sources/coverage.ndjson', 'r').read()
-    coverage = process_ndjson(coverage)
-
-    eob = open('sources/benefit.ndjson', 'r').read()
-    eob = process_ndjson(eob)
-
-    build_cclf8(patient, coverage, eob)
+    build_cclf8(patient, coverage, eob, output)
