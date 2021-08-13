@@ -61,6 +61,8 @@ type Service interface {
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 
+	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
+
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
@@ -206,6 +208,28 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 	}
 
 	return j, nonEmptyKeys, nil
+}
+
+func (s *service) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {
+	jobs, err := s.repository.GetJobs(ctx, acoID, statuses...)
+	if err != nil {
+		return nil, err
+	}
+
+	if jobs == nil {
+		return nil, JobsNotFoundError{acoID, statuses}
+	}
+	return jobs, nil
+}
+
+type JobsNotFoundError struct {
+	ACOID       uuid.UUID
+	StatusTypes []models.JobStatus
+}
+
+func (e JobsNotFoundError) Error() string {
+	return fmt.Sprintf("no Jobs found for acoID %s with job statuses %s",
+		e.ACOID, e.StatusTypes)
 }
 
 func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
