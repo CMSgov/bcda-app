@@ -736,6 +736,35 @@ func (s *ServiceTestSuite) TestGetJobPriority() {
 	}
 }
 
+func (s *ServiceTestSuite) TestGetJobs() {
+	repository := &models.MockRepository{}
+	repository.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(getJobs(1), nil)
+
+	serviceInstance := NewService(repository, &Config{}, "").(*service)
+
+	jobs, err := serviceInstance.GetJobs(context.Background(), uuid.NewUUID(), models.JobStatusCompleted)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 1, len(jobs))
+	assert.Equal(s.T(), uint(1), jobs[0].ID)
+}
+
+func (s *ServiceTestSuite) TestGetJobsNotFound() {
+	repository := &models.MockRepository{}
+	repository.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
+
+	serviceInstance := NewService(repository, &Config{}, "").(*service)
+
+	acoID := uuid.NewUUID()
+	jobs, err := serviceInstance.GetJobs(context.Background(), acoID, models.JobStatusCompleted)
+	assert.Nil(s.T(), jobs)
+	assert.Error(s.T(), err)
+	assert.Equal(s.T(), acoID, err.(JobsNotFoundError).ACOID)
+
+	statuses := make([]models.JobStatus, 1)
+	statuses[0] = models.JobStatusCompleted
+	assert.Equal(s.T(), statuses, err.(JobsNotFoundError).StatusTypes)
+}
+
 func (s *ServiceTestSuite) TestGetLatestCCLFFile() {
 	repository := &models.MockRepository{}
 	repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
@@ -773,6 +802,15 @@ func getCCLFBeneficiary(id uint, mbi string) *models.CCLFBeneficiary {
 		ID:  id,
 		MBI: mbi,
 	}
+}
+
+func getJobs(id uint) []*models.Job {
+	jobs := make([]*models.Job, 1)
+	jobs[0] = &models.Job{
+		ID: id,
+	}
+
+	return jobs
 }
 
 func timeIsSetMatcher(t time.Time) bool {
