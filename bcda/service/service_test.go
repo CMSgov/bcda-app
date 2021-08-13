@@ -760,7 +760,7 @@ func (s *ServiceTestSuite) TestGetJobsNotFound() {
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), acoID, err.(JobsNotFoundError).ACOID)
 
-	statuses := make([]models.JobStatus, 1)
+	statuses := []models.JobStatus{models.JobStatusCompleted}
 	statuses[0] = models.JobStatusCompleted
 	assert.Equal(s.T(), statuses, err.(JobsNotFoundError).StatusTypes)
 }
@@ -805,12 +805,11 @@ func getCCLFBeneficiary(id uint, mbi string) *models.CCLFBeneficiary {
 }
 
 func getJobs(id uint) []*models.Job {
-	jobs := make([]*models.Job, 1)
-	jobs[0] = &models.Job{
-		ID: id,
+	return []*models.Job{
+		{
+			ID: id,
+		},
 	}
-
-	return jobs
 }
 
 func timeIsSetMatcher(t time.Time) bool {
