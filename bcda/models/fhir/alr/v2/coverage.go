@@ -18,21 +18,26 @@ func coverage(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Mod
 
 	coverage := &r4Models.Coverage{}
 	coverage.Id = &r4Datatypes.Id{Value: mbi}
-	coverage.Meta = &r4Datatypes.Meta{
-        Profile: []*r4Datatypes.Canonical{{
-            Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Coverage",
-        }},
-	}
 	coverage.Extension = []*r4Datatypes.Extension{}
 	coverage.Beneficiary = &r4Datatypes.Reference{
-		Reference: &r4Datatypes.Reference_OrganizationId{
-			OrganizationId: &r4Datatypes.ReferenceId{Value: mbi},
+		Reference: &r4Datatypes.Reference_PatientId{
+			PatientId: &r4Datatypes.ReferenceId{Value: mbi},
 		},
 	}
+	// coverage.Payor = []*r4Datatypes.Reference{}
+	// payorRef := &r4Datatypes.Reference{
+	// 	Reference: &r4Datatypes.Reference_OrganizationId{
+	// 		OrganizationId: &r4Datatypes.ReferenceId{Value: "example-org-id"},
+	// 	}}
+	// coverage.Payor = append(coverage.Payor, payorRef)
+
 	coverage.Meta = &r4Datatypes.Meta{
 		LastUpdated: &r4Datatypes.Instant{
 			Precision: r4Datatypes.Instant_SECOND,
 			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
+		},
+		Profile: []*r4Datatypes.Canonical{
+			{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Coverage"},
 		},
 	}
 
@@ -41,16 +46,19 @@ func coverage(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Mod
 		if kv.Value == "" {
 			continue
 		}
+		subExt := &r4Datatypes.Extension{}
 
 		ext := &r4Datatypes.Extension{}
 		ext.Url = &r4Datatypes.Uri{Value: kv.Key}
 		ext.Value = &r4Datatypes.Extension_ValueX{
-            Choice: &r4Datatypes.Extension_ValueX_StringValue{
-                StringValue: &r4Datatypes.String{ Value: kv.Value },
+			Choice: &r4Datatypes.Extension_ValueX_StringValue{
+				StringValue: &r4Datatypes.String{Value: kv.Value},
 			},
 		}
+		subExt.Extension = append(subExt.Extension, ext)
+		subExt.Url = &r4Datatypes.Uri{Value: "http://alr.cms.gov/ig/StructureDefinition/ext-enrollmentFlag"}
 
-		coverage.Extension = append(coverage.Extension, ext)
+		coverage.Extension = append(coverage.Extension, subExt)
 	}
 
 	return coverage
