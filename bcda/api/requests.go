@@ -188,7 +188,7 @@ func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jobs, err := h.Svc.GetJobs(context.Background(), uuid.UUID(ad.ACOID), statusTypes...)
+	jobs, err := h.Svc.GetJobs(context.Background(), uuid.Parse(ad.ACOID), statusTypes...)
 	if err != nil {
 		log.API.Error(err)
 
