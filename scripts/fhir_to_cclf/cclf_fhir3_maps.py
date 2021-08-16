@@ -1,6 +1,21 @@
 """
 Dictionaries that map FHIR 3 to CCLF
+
+... and the helper functions that get the information!
 """
+
+def _get_from_list(obj, keys: list, str_match: str):
+    if len(keys) > 1:
+        return get_from_list(obj[keys[0]], keys[1:], str_match)
+    elif obj[keys[0]] == str_match:
+        return obj
+
+def get_from_list(obj, keys: list, str_match: str) -> dict:
+    if isinstance(obj, list):
+        for item in obj:
+            return _get_from_list(item[keys[0]], keys[1:], str_match)
+    else:  # obj is dict
+        return _get_from_list(obj[keys[0]], keys[1:], str_match)
 
 cclf1 = {
     'CUR_CLM_UNIQ_ID'                 : 'Not mapped',
@@ -202,13 +217,8 @@ cclf7 = {
     'CLM_PHRMCY_SRVC_TYPE_CD'       : 'Eob.facility.extension.valueCoding.code',
 }
 
-def get_from_list(obj, key, str_match):
-    for item in obj:
-        if item[key] == str_match:
-            return item
-
 cclf8 = {
-    'BENE_MBI_ID'               : ('patient', lambda obj: get_from_list(obj, 'ValueCoding', 'current')['value']),  # Patient.identifier[N].value
+    'BENE_MBI_ID'               : ('patient', lambda obj: get_from_list(obj, ['ValueCoding'], 'current')['value']),  # Patient.identifier[N].value
     'BENE_HIC_NUM'              : 'Not mapped',
     'BENE_FIPS_STATE_CD'        : ('patient', lambda obj: obj['address'][0]['state']),  # Patient.address.state
     'BENE_FIPS_CNTY_CD'         : 'Not mapped',  # No longer Mapped, use Beneficiary mailing addresses to get county information
@@ -219,12 +229,12 @@ cclf8 = {
     'BENE_AGE'                  : 'Not mapped',
     'BENE_MDCR_STUS_CD'         : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
                                         obj['extension'],
-                                        'url',
+                                        ['url'],
                                         'https://bluebutton.cms.gov/resources/variables/ms_cd',
                                         )['valueCoding']['code']),
     'BENE_DUAL_STUS_CD'         : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
                                         obj,
-                                        'extension',
+                                        ['extension'],
                                         'https://bluebutton.cms.gov/resources/variables/dual_01',
                                         )['valueCoding']['code']),  
     'BENE_DEATH_DT'             : ('patient', lambda obj: obj['deceased']),  # Patient.deceased[x]
@@ -235,12 +245,12 @@ cclf8 = {
     'BENE_LAST_NAME'            : ('patient', lambda obj: obj['name'][0]['family']),  # Patient.name.family
     'BENE_ORGNL_ENTLMT_RSN_CD'  : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
                                         obj,
-                                        'extension',
+                                        ['extension'],
                                         'https://bluebutton.cms.gov/resources/variables/orec',
                                         )['valueCoding']['code']),
     'BENE_ENTLMT_BUYIN_IND'     : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
                                         obj,
-                                        'extension',
+                                        ['extension'],
                                         'https://bluebutton.cms.gov/resources/variables/buyin01',
                                         )['valueCoding']['code']),
     'BENE_PART_A_ENRLMT_BGN_DT' : ('coverage', lambda obj: obj['period']['start']),  # Coverage[N].period.start
@@ -258,9 +268,16 @@ cclf8 = {
 }
 
 cclf9 = {
-    'HICN_MBI_XREF_IND' : 'Eob.patient.identifier.type',
-    'CRNT_NUM'          : 'Patient.identifier[N].value',
-    'PRVS_NUM'          : 'Patient.identifier[N].value',
+    # 'HICN_MBI_XREF_IND' : ('eob', lambda obj: obj),  # Eob.patient.identifier.type
+    # TODO: this item is reliant on information from 2 different places.
+    # Clarify this with Bill.
+    
+    # Patient.identifier[N].value, and Patient.extension[N].valueCoding.code = "current"
+    'CRNT_NUM'          : ('patient', lambda obj: get_from_list(obj['identifier'], ['system'], 'http://hl7.org/fhir/sid/us-mbi',
+                                )['value'] if get_from_list(obj['extension'], ['valueCoding', 'code'], 'current') else ''),
+    # Patient.identifier[N].value, and Patient.extension[N].valueCoding.code = "historic"
+    'PRVS_NUM'          : ('patient', lambda obj: get_from_list( obj['identifier'], ['system'], 'http://hl7.org/fhir/sid/us-mbi',
+                                )['value'] if get_from_list(obj['extension'], ['valueCoding', 'code'], 'historic') else ''),
     'PRVS_ID_EFCTV_DT'  : 'Not mapped',
     'PRVS_ID_OBSLT_DT'  : 'Not mapped',
     'BENE_RRB_NUM'      : 'Not mapped',

@@ -26,26 +26,27 @@ def get_matching_row(filename: str, key: str, reference: str) -> dict:
 
 def build_cclf8(patient_filename: str, coverage_filename: str, eob_filename: str, output_filename:str):
     """
-    This function maps bene data to the CCLF8 using objects from the Patient Resource as
+    This function maps beneficiary data to the CCLF8 using objects from the Patient Resource as
     the primary reference.
     
     The CCLF8 provides identifying information for beneficiaries and can be used as a
     unifier to help build the rest of the CCLF file structure.
     """
     print("Building CCLF8...")
-    cclf8_headers = [k for k in cclf8_map]
+    cclf8_map = cclf_fhir3_maps.cclf8
+    headers = [k for k in cclf8_map]
     counter = get_file_length(patient_filename)
 
     with open(patient_filename, 'r') as patient, open(f'cclf8_{output_filename}.csv', 'w') as cclf8:
         csvwriter = csv.writer(cclf8)
-        csvwriter.writerow(cclf8_headers)
+        csvwriter.writerow(headers)
         for x in tqdm(range(counter)):
             line = patient.readline()
             row = []
             bene = json.loads(line)
             bene_id = bene['id']
 
-            for column in cclf8_headers:
+            for column in headers:
                 try:
                     if (nm := cclf8_map[column]) == 'Not mapped': row.append(nm)
 
@@ -65,6 +66,30 @@ def build_cclf8(patient_filename: str, coverage_filename: str, eob_filename: str
                         obj = get_matching_row(coverage_filename, 'beneficiary', patient_ref)
                         row.append(cclf8_map[column][1](obj))
 
+                except:  # Not every field will be present
+                    row.append('')
+            csvwriter.writerow(row)
+
+def build_cclf9(patient_filename: str, eob_filename: str, output_filename:str):
+    """
+    This function maps FHIR Data to the CCLF9
+    """
+    print("Building CCLF9...")
+    cclf9_map = cclf_fhir3_maps.cclf9
+    headers = [k for k in cclf9_map]
+    counter = get_file_length(patient_filename)
+    with open(patient_filename, 'r') as patient, open(f'cclf9_{output_filename}.csv', 'w') as cclf9:
+        csvwriter = csv.writer(cclf9)
+        csvwriter.writerow(headers)
+        for x in tqdm(range(counter)):
+            line = patient.readline()
+            row = []
+            bene = json.loads(line)
+            bene_id = bene['id']
+
+            for column in headers:
+                try:
+                    if (nm := cclf9_map[column]) == 'Not mapped': row.append(nm)
                 except:  # Not every field will be present
                     row.append('')
             csvwriter.writerow(row)
@@ -105,7 +130,6 @@ if __name__=='__main__':
     patient, coverage, eob, output = args.patient[0], args.coverage[0], args.eob[0], args.output
     error_handling(patient, coverage, eob, output)
 
-    # TODO: User must indicate FHIR 3/4
-    cclf8_map = cclf_fhir3_maps.cclf8  # FHIR 3 CCLF8
-
+    # TODO: FHIR Version indication should impact conversion
     build_cclf8(patient, coverage, eob, output)
+    build_cclf9(patient, eob, output)
