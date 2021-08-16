@@ -441,6 +441,88 @@ func (s *APITestSuite) TestJobStatusWithWrongACO() {
 	assert.Equal(s.T(), http.StatusNotFound, s.rr.Code)
 }
 
+func (s *APITestSuite) TestJobsStatus() {
+	req := httptest.NewRequest("GET", "/api/v1/jobs", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusCompleted,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusNotFound() {
+	req := httptest.NewRequest("GET", "/api/v1/jobs", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
+	req := httptest.NewRequest("GET", "/api/v1/jobs?_status=Failed", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusCompleted,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusWithStatus() {
+	req := httptest.NewRequest("GET", "/api/v1/jobs?_status=Failed", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusFailed,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusWithStatuses() {
+	req := httptest.NewRequest("GET", "/api/v1/jobs?_status=Completed,Failed", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v1/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusFailed,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+}
+
 func (s *APITestSuite) TestHealthCheck() {
 	req, err := http.NewRequest("GET", "/_health", nil)
 	assert.Nil(s.T(), err)
