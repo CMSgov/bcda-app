@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,12 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/google/fhir/go/jsonformat"
+	fhircodesv2 "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
+	fhirmodelv2CR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
+	fhircodesv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	fhirmodelsv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
 type RequestsTestSuite struct {
@@ -125,19 +132,191 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}
 }
 
+func (s *RequestsTestSuite) TestJobsStatusV1() {
+	apiVersion := "v1"
+
+	tests := []struct {
+		name string
+
+		respCode int
+		statuses []models.JobStatus
+		codes    []fhircodesv1.TaskStatusCode_Value
+	}{
+		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
+		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
+		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_FAILED}},
+		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			mockSvc := &service.MockService{}
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+					nil, service.JobsNotFoundError{},
+				)
+			case http.StatusOK:
+				var jobs []*models.Job
+				switch len(tt.statuses) {
+				case 0:
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						jobs, nil,
+					)
+				case 1:
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+						jobs, nil,
+					)
+				case 2:
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					jobs = s.addNewJob(jobs, uint(2), models.JobStatusFailed, apiVersion)
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything).Return(
+						jobs, nil,
+					)
+				}
+			}
+
+			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
+			h.Svc = mockSvc
+
+			rr := httptest.NewRecorder()
+			req := s.genGetJobsRequest(tt.statuses)
+			h.JobsStatus(rr, req)
+
+			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+			assert.NoError(s.T(), err)
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+			case http.StatusOK:
+				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
+
+				resp, err := unmarshaller.Unmarshal(rr.Body.Bytes())
+				assert.NoError(s.T(), err)
+
+				bundle := resp.(*fhirmodelsv1.ContainedResource)
+				respB := bundle.GetBundle()
+				assert.Equal(s.T(), http.StatusOK, rr.Code)
+				assert.Equal(s.T(), uint32(len(respB.Entry)), respB.Total.Value)
+
+				for k, entry := range respB.Entry {
+					respT := entry.GetResource().GetTask()
+					assert.Equal(s.T(), respT.Status.Value, tt.codes[k])
+					assert.Equal(s.T(), respT.Input[0].Value.GetStringValue().Value, "GET https://bcda.test.gov/v1/this-is-a-test")
+				}
+			}
+		})
+	}
+}
+
+func (s *RequestsTestSuite) TestJobsStatusV2() {
+	apiVersion := "v2"
+
+	tests := []struct {
+		name string
+
+		respCode int
+		statuses []models.JobStatus
+		codes    []fhircodesv2.TaskStatusCode_Value
+	}{
+		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
+		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
+		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}},
+		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			mockSvc := &service.MockService{}
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+					nil, service.JobsNotFoundError{},
+				)
+			case http.StatusOK:
+				var jobs []*models.Job
+				switch len(tt.statuses) {
+				case 0:
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+						jobs, nil,
+					)
+				case 1:
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+						jobs, nil,
+					)
+				case 2:
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					jobs = s.addNewJob(jobs, uint(2), models.JobStatusFailed, apiVersion)
+					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything).Return(
+						jobs, nil,
+					)
+				}
+			}
+
+			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v2/fhir", "v2", s.db)
+			h.Svc = mockSvc
+
+			rr := httptest.NewRecorder()
+			req := s.genGetJobsRequest(tt.statuses)
+			h.JobsStatus(rr, req)
+
+			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
+			assert.NoError(s.T(), err)
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+			case http.StatusOK:
+				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
+
+				resp, err := unmarshaller.Unmarshal(rr.Body.Bytes())
+				assert.NoError(s.T(), err)
+
+				bundle := resp.(*fhirmodelv2CR.ContainedResource)
+				respB := bundle.GetBundle()
+				assert.Equal(s.T(), http.StatusOK, rr.Code)
+				assert.Equal(s.T(), uint32(len(respB.Entry)), respB.Total.Value)
+
+				for k, entry := range respB.Entry {
+					respT := entry.GetResource().GetTask()
+					assert.Equal(s.T(), respT.Status.Value, tt.codes[k])
+					assert.Equal(s.T(), respT.Input[0].Value.GetStringValue().Value, "GET https://bcda.test.gov/v2/this-is-a-test")
+				}
+			}
+		})
+	}
+}
+
+func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models.JobStatus, apiVersion string) []*models.Job {
+	return append(jobs, &models.Job{
+		ID:         id,
+		ACOID:      uuid.NewUUID(),
+		Status:     status,
+		RequestURL: "https://bcda.test.gov/" + apiVersion + "/this-is-a-test",
+		CreatedAt:  time.Now().Add(-24 * time.Hour),
+		UpdatedAt:  time.Now(),
+	})
+}
+
 func (s *RequestsTestSuite) TestAttributionStatus() {
 	tests := []struct {
 		name string
 
-		errToReturn error
-		respCode    int
-		fileNames   []string
-		fileTypes   []string
+		respCode  int
+		fileNames []string
+		fileTypes []string
 	}{
-		{"Successful with both files", nil, http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"default", "runout"}},
-		{"Successful with default file", nil, http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"default", ""}},
-		{"Successful with runout file", nil, http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "runout"}},
-		{"No CCLF files found", nil, http.StatusNotFound, []string{"", ""}, []string{"", ""}},
+		{"Successful with both files", http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"default", "runout"}},
+		{"Successful with default file", http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"default", ""}},
+		{"Successful with runout file", http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "runout"}},
+		{"No CCLF files found", http.StatusNotFound, []string{"", ""}, []string{"", ""}},
 	}
 
 	for _, tt := range tests {
@@ -296,6 +475,25 @@ func (s *RequestsTestSuite) genPatientRequest(rp middleware.RequestParameters) *
 
 func (s *RequestsTestSuite) genASRequest() *http.Request {
 	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/attribution_status", nil)
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
+
+	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
+
+	return req.WithContext(ctx)
+}
+
+func (s *RequestsTestSuite) genGetJobsRequest(statuses []models.JobStatus) *http.Request {
+	target := "http://bcda.cms.gov/api/v2/jobs"
+	if statuses != nil {
+		target = target + "?_status="
+		for _, status := range statuses {
+			target = target + string(status) + ","
+		}
+		target = strings.TrimRight(target, ",")
+	}
+	req := httptest.NewRequest("GET", target, nil)
+
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
 
