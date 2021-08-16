@@ -117,6 +117,10 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	h.JobStatus(w, r)
 }
 
+func JobsStatus(w http.ResponseWriter, r *http.Request) {
+	h.JobsStatus(w, r)
+}
+
 /*
 	swagger:route DELETE /api/v2/jobs/{jobId} jobV2 deleteJobV2
 
