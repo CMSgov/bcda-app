@@ -3021,6 +3021,8 @@
 					"listen": "test",
 					"script": {
 						"exec": [
+                            "console.log(pm.response.json())",
+                            "",
 							"pm.test(\"Status code is 200\", function() {",
 							"    pm.response.to.have.status(200);",
 							"});",
@@ -3115,7 +3117,14 @@
 					]
 				},
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json",
+						"disabled": true
+					}
+				],
 				"url": {
 					"raw": "{{scheme}}://{{host}}/api/v1/jobs?_status=Completed",
 					"protocol": "{{scheme}}",
