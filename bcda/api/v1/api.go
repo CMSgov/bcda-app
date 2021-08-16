@@ -106,6 +106,10 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	h.JobStatus(w, r)
 }
 
+func JobsStatus(w http.ResponseWriter, r *http.Request) {
+	h.JobsStatus(w, r)
+}
+
 type gzipResponseWriter struct {
 	io.Writer
 	http.ResponseWriter
