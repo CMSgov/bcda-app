@@ -3121,8 +3121,12 @@
 					{
 						"key": "Accept",
 						"type": "text",
-						"value": "application/fhir+json",
-						"disabled": true
+						"value": "application/fhir+json"
+					},
+                    {
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
 					}
 				],
 				"url": {
