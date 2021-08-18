@@ -128,6 +128,14 @@ func (s *RouterTestSuite) TestEOBExportRoute() {
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
+	res = s.getAPIRoute("/api/v1/ALRPatient/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/ALRPatients/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// TODO: Write Route Tests for V1/2
+
 	// group all
 	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)

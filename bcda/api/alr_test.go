@@ -62,7 +62,8 @@ func (s *AlrTestSuite) TestAlrRequest() {
 
 	// Set up request with the correct context scoped values
 	req := httptest.NewRequest("GET",
-		"http://bcda.cms.gov/api/v1/Patient/$export?type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR",
+		// "http://bcda.cms.gov/api/v1/Patient/$export?type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR",
+		"http://bcda.cms.gov/api/v1/alr/Patient/$export?type=Patient,Observation&_typeFilter=Patient",
 		nil)
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
 	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}

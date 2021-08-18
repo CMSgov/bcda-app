@@ -110,14 +110,22 @@ func (h *Handler) BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
-	h.bulkRequest(_BuildBulkGroupRequest(w, r))
+	reqType, err := h.buildBulkGroupRequest(r)
+	if (err != nil){
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+	}
+	h.bulkRequest(w, r, reqType)
 }
 
 func (h *Handler) BulkALRGroupRequest(w http.ResponseWriter, r *http.Request) {
-	h.alrRequest(_BuildBulkGroupRequest(w, r))
+	reqType, err := h.buildBulkGroupRequest(r)
+	if (err != nil){
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+	}
+	h.alrRequest(w, r, reqType)
 }
 
-func (h *Handler) _BuildBulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) buildBulkGroupRequest(r *http.Request) (service.RequestType, error){
 	const (
 		groupAll    = "all"
 		groupRunout = "runout"
@@ -140,10 +148,9 @@ func (h *Handler) _BuildBulkGroupRequest(w http.ResponseWriter, r *http.Request)
 		}
 		fallthrough
 	default:
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
-		return
+		return 0, fmt.Errorf("Invalid group ID")
 	}
-	return w, r, reqType
+	return reqType, nil
 }
 
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
