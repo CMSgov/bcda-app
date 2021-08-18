@@ -62,7 +62,6 @@ func (s *AlrTestSuite) TestAlrRequest() {
 
 	// Set up request with the correct context scoped values
 	req := httptest.NewRequest("GET",
-		// "http://bcda.cms.gov/api/v1/Patient/$export?type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR",
 		"http://bcda.cms.gov/api/v1/alr/Patient/$export?type=Patient,Observation&_typeFilter=Patient",
 		nil)
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
@@ -83,25 +82,3 @@ func (s *AlrTestSuite) TestAlrRequest() {
 
 	assert.True(s.T(), enqueuer.AssertNumberOfCalls(s.T(), "AddAlrJob", 2), "We should've enqueued two ALR jobs")
 }
-
-// func (s *AlrTestSuite) TestIsALRRequest() {
-// 	tests := []struct {
-// 		qp    string
-// 		isALR bool
-// 	}{
-// 		{"_type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR", true},
-// 		{"_type=Observation,Patient&_typeFilter=Patient?profile=ALR,Observation?profile=ALR", true},
-// 		{"_type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR", true},
-// 		{"_type=Observation,Patient&_typeFilter=Observation?profile=ALR,Patient?profile=ALR", true},
-// 		{"", false},
-// 		{"_type=Patient", false},
-// 		{"_typeFilter=Patient?profile=BMS", false},
-// 	}
-
-// 	for _, tt := range tests {
-// 		s.T().Run(tt.qp, func(t *testing.T) {
-// 			r := httptest.NewRequest("GET", "http://bcda.com?"+tt.qp, nil)
-// 			assert.Equal(t, tt.isALR, isALRRequest(r))
-// 		})
-// 	}
-// }

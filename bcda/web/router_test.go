@@ -128,19 +128,25 @@ func (s *RouterTestSuite) TestEOBExportRoute() {
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	res = s.getAPIRoute("/api/v1/ALRPatient/$export?_type=ExplanationOfBenefit")
+	// ALR Patient
+	res = s.getAPIRoute("/api/v1/alr/Patient/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
-	res = s.getAPIRoute("/api/v1/ALRPatients/$export?_type=ExplanationOfBenefit")
+	res = s.getAPIRoute("/api/v1/alr/Patients/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
-	// TODO: Write Route Tests for V1/2
 
 	// group all
 	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// ALR Group
+	res = s.getAPIRoute("/api/v1/alr/Group/all/$export?_type=ExplanationOfBenefit")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/alr/Groups/all/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 	// group new
@@ -158,11 +164,25 @@ func (s *RouterTestSuite) TestPatientExportRoute() {
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
+	// ALR Patient
+	res = s.getAPIRoute("/api/v1/alr/Patient/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/alr/Patients/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
 	// group all
 	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// ALR Group
+	res = s.getAPIRoute("/api/v1/alr/Group/all/$export?_type=Patient")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/alr/Groups/all/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 	// group new
@@ -180,11 +200,25 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
+	// ALR Patient
+	res = s.getAPIRoute("/api/v1/alr/Patient/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/alr/Patients/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
 	// group all
 	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+
+	// ALR Group
+	res = s.getAPIRoute("/api/v1/alr/Group/all/$export?_type=Coverage")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/alr/Groups/all/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 	// group all
@@ -206,6 +240,10 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/alr/Patient/all/$export")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/alr/Group/all/$export")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/metadata")
@@ -222,6 +260,10 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	res := s.getAPIRoute("/api/v2/Patient/$export")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/alr/Patient/all/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/alr/Group/all/$export")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
