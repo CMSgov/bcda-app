@@ -256,6 +256,8 @@ type StatusParam struct {
 	// in: query
 	// style: form
 	// explode: false
+	// required: false
+	// items.enum: Completed,Archived,Expired,Failed,FailedExpired,Pending,In Progress,Cancelled,CancelledExpired
 	Status []JobStatus `json:"_status"`
 }
 
