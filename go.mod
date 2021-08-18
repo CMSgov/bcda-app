@@ -18,7 +18,6 @@ require (
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/go-chi/chi v4.0.3-0.20190508141739-08c92af09aaf+incompatible
 	github.com/go-chi/render v1.0.1
-	github.com/go-delve/delve v1.6.0
 	github.com/go-gota/gota v0.10.1
 	github.com/go-testfixtures/testfixtures/v3 v3.5.0
 	github.com/golang-migrate/migrate/v4 v4.14.1
