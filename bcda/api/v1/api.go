@@ -106,6 +106,40 @@ func JobStatus(w http.ResponseWriter, r *http.Request) {
 	h.JobStatus(w, r)
 }
 
+/*
+	swagger:route GET /api/v1/jobs job jobsStatus
+
+	Get jobs statuses
+
+	Returns the current statuses of export jobs. Supported status types are Completed, Archived, Expired, Failed, FailedExpired,
+	In Progress, Pending, Cancelled, and CancelledExpired. No status will return all jobs.
+
+	Note on job status to fhir task resource status mapping:
+	Due to the fhir task status field having a smaller set of values, the following statuses will be set to different fhir values in the response
+
+	Archived, Expired -> Completed
+	FailedExpired -> Failed
+	Pending -> In Progress
+	CancelledExpired -> Cancelled
+
+	Though the status name has been remapped the response will still only contain jobs pertaining to the provided job status in the request.
+
+	Produces:
+	- application/fhir+json
+
+	Schemes: http, https
+
+	Security:
+		bearer_token:
+
+	Responses:
+		200: jobsStatusResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		404: notFoundResponse
+		410: goneResponse
+		500: errorResponse
+*/
 func JobsStatus(w http.ResponseWriter, r *http.Request) {
 	h.JobsStatus(w, r)
 }
