@@ -111,21 +111,23 @@ func (h *Handler) BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) 
 
 func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	reqType, err := h.buildBulkGroupRequest(r)
-	if (err != nil){
+	if err != nil {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		return
 	}
 	h.bulkRequest(w, r, reqType)
 }
 
 func (h *Handler) BulkALRGroupRequest(w http.ResponseWriter, r *http.Request) {
 	reqType, err := h.buildBulkGroupRequest(r)
-	if (err != nil){
+	if err != nil {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		return
 	}
 	h.alrRequest(w, r, reqType)
 }
 
-func (h *Handler) buildBulkGroupRequest(r *http.Request) (service.RequestType, error){
+func (h *Handler) buildBulkGroupRequest(r *http.Request) (service.RequestType, error) {
 	const (
 		groupAll    = "all"
 		groupRunout = "runout"
