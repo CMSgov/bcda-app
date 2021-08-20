@@ -16,7 +16,10 @@ environment=$1
 filetype=$2
 shift;shift
 
-# For some reason, the `bcda` command only works if executed within the bcda directory
+# The project root contains a migrations directory named `db`.  V3 of jackc/pgx has
+# a bug that causes the specified DB connection to be ignored when CWD has a directory
+# like this.  To get around this we must execute the `bcda` binary from a directory
+# that does not have a `db` directory.  https://github.com/jackc/pgx/issues/661
 cd bcda
 for size in "${@}"
 do
