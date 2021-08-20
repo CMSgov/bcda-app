@@ -132,7 +132,7 @@ load-synthetic-suppression-data:
 	docker-compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
 
 load-fixtures-ssas:
-	docker-compose -f docker-compose.ssas-migrate.yml run --rm ssas-migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
+	docker run --rm --network prototype-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#master' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
 	docker-compose run ssas --add-fixture-data
 
 docker-build:
