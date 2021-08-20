@@ -145,6 +145,11 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
 		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
 		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_FAILED}},
+		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
+			[]fhircodesv1.TaskStatusCode_Value{
+				fhircodesv1.TaskStatusCode_IN_PROGRESS, fhircodesv1.TaskStatusCode_IN_PROGRESS, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_FAILED, fhircodesv1.TaskStatusCode_CANCELLED, fhircodesv1.TaskStatusCode_FAILED, fhircodesv1.TaskStatusCode_CANCELLED,
+			},
+		},
 		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
 	}
 
@@ -158,25 +163,27 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 					nil, service.JobsNotFoundError{},
 				)
 			case http.StatusOK:
-				var jobs []*models.Job
-				switch len(tt.statuses) {
-				case 0:
+				var (
+					jobs     []*models.Job
+					mockArgs []interface{}
+				)
+
+				mockArgs = append(mockArgs, testUtils.CtxMatcher, mock.Anything)
+				if tt.statuses == nil {
 					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
-					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-						jobs, nil,
-					)
-				case 1:
-					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
-					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
-						jobs, nil,
-					)
-				case 2:
-					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
-					jobs = s.addNewJob(jobs, uint(2), models.JobStatusFailed, apiVersion)
-					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything).Return(
-						jobs, nil,
-					)
+					for range models.AllJobStatuses {
+						mockArgs = append(mockArgs, mock.Anything)
+					}
+				} else {
+					for k := range tt.statuses {
+						mockArgs = append(mockArgs, mock.Anything)
+						jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
+					}
 				}
+
+				mockSvc.On("GetJobs", mockArgs...).Return(
+					jobs, nil,
+				)
 			}
 
 			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v1/fhir", "v1", s.db)
@@ -226,6 +233,11 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
 		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
 		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}},
+		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
+			[]fhircodesv2.TaskStatusCode_Value{
+				fhircodesv2.TaskStatusCode_IN_PROGRESS, fhircodesv2.TaskStatusCode_IN_PROGRESS, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED,
+			},
+		},
 		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
 	}
 
@@ -239,25 +251,27 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 					nil, service.JobsNotFoundError{},
 				)
 			case http.StatusOK:
-				var jobs []*models.Job
-				switch len(tt.statuses) {
-				case 0:
+				var (
+					jobs     []*models.Job
+					mockArgs []interface{}
+				)
+
+				mockArgs = append(mockArgs, testUtils.CtxMatcher, mock.Anything)
+				if tt.statuses == nil {
 					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
-					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
-						jobs, nil,
-					)
-				case 1:
-					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
-					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
-						jobs, nil,
-					)
-				case 2:
-					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
-					jobs = s.addNewJob(jobs, uint(2), models.JobStatusFailed, apiVersion)
-					mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything).Return(
-						jobs, nil,
-					)
+					for range models.AllJobStatuses {
+						mockArgs = append(mockArgs, mock.Anything)
+					}
+				} else {
+					for k := range tt.statuses {
+						mockArgs = append(mockArgs, mock.Anything)
+						jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
+					}
 				}
+
+				mockSvc.On("GetJobs", mockArgs...).Return(
+					jobs, nil,
+				)
 			}
 
 			h := newHandler([]string{"ExplanationOfBenefit", "Coverage", "Patient"}, "/v2/fhir", "v2", s.db)
@@ -492,6 +506,8 @@ func (s *RequestsTestSuite) genGetJobsRequest(statuses []models.JobStatus) *http
 		}
 		target = strings.TrimRight(target, ",")
 	}
+	target = strings.ReplaceAll(target, " ", "%20") // Remove possible spaces in query parameter
+
 	req := httptest.NewRequest("GET", target, nil)
 
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
