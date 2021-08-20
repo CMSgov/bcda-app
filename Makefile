@@ -49,7 +49,7 @@ unit-test:
 	$(MAKE) unit-test-db
 	
 	docker-compose -f docker-compose.test.yml build tests
-	@docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
+	@docker-compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
