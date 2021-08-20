@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda_prod
+      args:
+        ENVIRONMENT: development
     entrypoint: ""
     command: ["../watch.sh", "api", "bcda", "start-api"]
     env_file:
@@ -42,6 +44,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcdaworker_prod
+      args:
+        ENVIRONMENT: development
     entrypoint: ""
     command: ["../watch.sh", "worker", "bcdaworker"]
     env_file:

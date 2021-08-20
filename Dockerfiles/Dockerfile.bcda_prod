@@ -22,7 +22,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 # syntax = docker/dockerfile:1-experimental
 FROM golang:1.15-alpine3.12 
-RUN apk add git openssl entr bash
+ARG ENVIRONMENT
+# only add dev packages if the environment argument was set to development
+RUN [ "$ENVIRONMENT" = "development" ] || apk add git openssl entr bash
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcda
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcda/ /go/src/github.com/CMSgov/bcda-app/bcda/
 COPY --from=builder /go/bin/ /go/bin/
