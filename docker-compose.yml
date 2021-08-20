@@ -17,22 +17,12 @@ services:
       - "5432:5432"
     volumes:
       - ./db:/var/db
-  api_builder:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.bcda_builder
-    env_file:
-      - ./shared_files/decrypted/local.env
-    environment:
-      - CI=${CI} # Used to determine if the API is running on a CI process
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
   api:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.bcda
+      dockerfile: Dockerfiles/Dockerfile.bcda_prod
+    entrypoint: /go/src/github.com/CMSgov/bcda-app/watch.sh
+    command: ["api", "bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -45,26 +35,15 @@ services:
       - "3000:3000"
       - "3001:3001"
     depends_on:
-      - api_builder
       - ssas
       - db
       - queue
-  worker_builder:
-    build:
-      context: .
-      dockerfile: Dockerfiles/Dockerfile.bcdaworker_builder
-    env_file:
-      - ./shared_files/decrypted/local.env
-    environment:
-      - CI=${CI} # Used to determine if the API is running on a CI process
-    volumes:
-      - .:/go/src/github.com/CMSgov/bcda-app
-      - ${HOME}/.cache/go-build:/root/.cache/go-build
-      - ${GOPATH}/pkg/mod:/go/pkg/mod
   worker:
     build:
       context: .
-      dockerfile: Dockerfiles/Dockerfile.bcdaworker
+      dockerfile: Dockerfiles/Dockerfile.bcdaworker_prod
+    entrypoint: /go/src/github.com/CMSgov/bcda-app/watch.sh
+    command: ["worker", "bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
