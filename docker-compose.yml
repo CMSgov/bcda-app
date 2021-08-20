@@ -21,8 +21,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcda_prod
-    entrypoint: /go/src/github.com/CMSgov/bcda-app/watch.sh
-    command: ["api", "bcda", "start-api"]
+    entrypoint: ""
+    command: ["../watch.sh", "api", "bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -42,8 +42,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.bcdaworker_prod
-    entrypoint: /go/src/github.com/CMSgov/bcda-app/watch.sh
-    command: ["worker", "bcdaworker"]
+    entrypoint: ""
+    command: ["../watch.sh", "worker", "bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
