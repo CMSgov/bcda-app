@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM golang:1.15-alpine3.12 
 ARG ENVIRONMENT
 # only add dev packages if the environment argument was set to development
-RUN [ "$ENVIRONMENT" = "development" ] || apk add git openssl entr bash
+RUN [ "$ENVIRONMENT" = "development" ] && apk add git openssl entr bash
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 COPY --from=builder /go/src/github.com/CMSgov/bcda-app/bcdaworker/ /go/src/github.com/CMSgov/bcda-app/bcdaworker/
 COPY --from=builder /go/bin/ /go/bin/
