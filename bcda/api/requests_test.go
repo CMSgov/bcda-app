@@ -190,7 +190,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
-			req := s.genGetJobsRequest(tt.statuses)
+			req := s.genGetJobsRequest("v1", tt.statuses)
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
@@ -278,7 +278,7 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 			h.Svc = mockSvc
 
 			rr := httptest.NewRecorder()
-			req := s.genGetJobsRequest(tt.statuses)
+			req := s.genGetJobsRequest("v2", tt.statuses)
 			h.JobsStatus(rr, req)
 
 			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
@@ -497,8 +497,8 @@ func (s *RequestsTestSuite) genASRequest() *http.Request {
 	return req.WithContext(ctx)
 }
 
-func (s *RequestsTestSuite) genGetJobsRequest(statuses []models.JobStatus) *http.Request {
-	target := "http://bcda.cms.gov/api/v2/jobs"
+func (s *RequestsTestSuite) genGetJobsRequest(version string, statuses []models.JobStatus) *http.Request {
+	target := fmt.Sprintf("http://bcda.cms.gov/api/%s/jobs", version)
 	if statuses != nil {
 		target = target + "?_status="
 		for _, status := range statuses {
