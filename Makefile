@@ -103,7 +103,7 @@ load-fixtures:
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
-	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 75
+	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 120
 	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 75
 
 	# Additional fixtures for postman+ssas
