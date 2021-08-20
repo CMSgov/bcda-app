@@ -110,3 +110,6 @@ services:
     depends_on:
       - db
 
+networks:
+  default:
+    name: bcda-app-net
