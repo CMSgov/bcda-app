@@ -195,26 +195,35 @@ cclf6 = {
 
 cclf7 = {
     'CUR_CLM_UNIQ_ID'               : 'Not mapped',
-    'BENE_MBI_ID'                   : 'Patient.identifier[N].value',
+
+# Discriminator = Patient.identifier[N].system = "http://hl7.org/fhir/sid/us-mbi"
+# AND
+# Patient.identifier.type.coding.extension[N].valueCoding.code = "current"
+# AND
+# Patient.identifier.type.coding.system = "http://terminology.hl7.org/CodeSystem/v2-0203"
+# AND
+# Patient.identifier.type.coding.code = "MC"
+    'BENE_MBI_ID'                   : ('patient', lambda obj: get_from_list( obj['identifier'], ['system'], 'http://hl7.org/fhir/sid/us-mbi',
+                                )['value'] if get_from_list(obj['extension'], ['valueCoding', 'code'], 'historic') else ''),  # Patient.identifier[N].value
     'BENE_HIC_NUM'                  : 'Not mapped',
-    'CLM_LINE_NDC_CD'               : 'Eob.item.service.coding.code',
-    'CLM_TYPE_CD'                   : 'Eob.type.coding[N].code',
-    'CLM_LINE_FROM_DT'              : 'Eob.item[N].servicedPeriod.start',
-    'PRVDR_SRVC_ID_QLFYR_CD'        : 'Not mapped - see Additional info',
-    'CLM_SRVC_PRVDR_GNRC_ID_NUM'    : 'Explanation of Benefit.careTeam[N].provider',
-    'CLM_DSPNSNG_STUS_CD'           : 'Not mapped - see Additional Info',
-    'CLM_DAW_PROD_SLCTN_CD'         : 'Eob.information[N].code.coding.code',
-    'CLM_LINE_SRVC_UNIT_QTY'        : 'Eob.item[N].quantity.value',
-    'CLM_LINE_DAYS_SUPLY_QTY'       : 'Eob.item[N].quantity.extension[N].valueQuantity.value',
+    'CLM_LINE_NDC_CD'               : (),  # Eob.item.service.coding.code
+    'CLM_TYPE_CD'                   : (),  # Eob.type.coding[N].code
+    'CLM_LINE_FROM_DT'              : (),  # Eob.item[N].servicedPeriod.start
+    'PRVDR_SRVC_ID_QLFYR_CD'        : (),  # Not mapped - see Additional info
+    'CLM_SRVC_PRVDR_GNRC_ID_NUM'    : (),  # Explanation of Benefit.careTeam[N].provider
+    'CLM_DSPNSNG_STUS_CD'           : 'Not mapped',  # Not mapped - see Additional Info
+    'CLM_DAW_PROD_SLCTN_CD'         : (),  # Eob.information[N].code.coding.code
+    'CLM_LINE_SRVC_UNIT_QTY'        : (),  # Eob.item[N].quantity.value
+    'CLM_LINE_DAYS_SUPLY_QTY'       : (),  # Eob.item[N].quantity.extension[N].valueQuantity.value
     'PRVDR_PRSBNG_ID_QLFYR_CD'      : 'Not mapped',
-    'CLM_PRSBNG_PRVDR_GNRC_ID_NUM'  : 'Eob.facility.identifer.value',
-    'CLM_LINE_BENE_PMT_AMT'         : 'Eob.item[N].adjudication[N].amount.value',
-    'CLM_ADJSMT_TYPE_CD'            : 'Eob.status',
-    'CLM_EFCTV_DT'                  : 'Eob.information[N].timingDate',
+    'CLM_PRSBNG_PRVDR_GNRC_ID_NUM'  : (),  # Eob.facility.identifer.value
+    'CLM_LINE_BENE_PMT_AMT'         : (),  # Eob.item[N].adjudication[N].amount.value
+    'CLM_ADJSMT_TYPE_CD'            : (),  # Eob.status
+    'CLM_EFCTV_DT'                  : (),  # Eob.information[N].timingDate
     'CLM_IDR_LD_DT'                 : 'Not mapped',
-    'CLM_LINE_RX_SRVC_RFRNC_NUM'    : 'Eob.identifier[N].value',
-    'CLM_LINE_RX_FILL_NUM'          : 'Eob.item[N].extension[N].value',
-    'CLM_PHRMCY_SRVC_TYPE_CD'       : 'Eob.facility.extension.valueCoding.code',
+    'CLM_LINE_RX_SRVC_RFRNC_NUM'    : (),  # Eob.identifier[N].value
+    'CLM_LINE_RX_FILL_NUM'          : (),  # Eob.item[N].extension[N].value
+    'CLM_PHRMCY_SRVC_TYPE_CD'       : (),  # Eob.facility.extension.valueCoding.code
 }
 
 cclf8 = {

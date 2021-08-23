@@ -16,29 +16,33 @@ def get_file_length(filename: str) -> int:
             counter += 1
     return counter
 
-def get_matching_row(filename: str, key: str, reference: str) -> dict:
+def get_matching_rows(filename: str, key: str, reference: str) -> list:
     with open(filename, 'r') as source:
+        matches = []
         for line in source:
             obj = json.loads(line)
             if obj[key]['reference'] == reference:
                 return obj
+    #             matches.append(obj)
+    # return matches
 
-
-def build_cclf8(patient_filename: str, coverage_filename: str, eob_filename: str, output_filename:str):
+def build_cclf(
+        cclf_name: str,
+        cclf_map: dict,
+        patient_filename: str,
+        coverage_filename: str,
+        eob_filename: str,
+        output_filename:str,
+    ):
     """
     This function maps beneficiary data to the CCLF8 using objects from the Patient Resource as
     the primary reference.
-    
-    The CCLF8 provides identifying information for beneficiaries and can be used as a
-    unifier to help build the rest of the CCLF file structure.
     """
-    print("Building CCLF8...")
-    cclf8_map = cclf_fhir3_maps.cclf8
-    headers = [k for k in cclf8_map]
+    print(f'Building {cclf_name.upper()}...')
+    headers = [k for k in cclf_map]
     counter = get_file_length(patient_filename)
-
-    with open(patient_filename, 'r') as patient, open(f'cclf8_{output_filename}.csv', 'w') as cclf8:
-        csvwriter = csv.writer(cclf8)
+    with open(patient_filename, 'r') as patient, open(f'{cclf_name}_{output_filename}.csv', 'w') as cclf:
+        csvwriter = csv.writer(cclf)
         csvwriter.writerow(headers)
         for x in tqdm(range(counter)):
             line = patient.readline()
@@ -48,48 +52,29 @@ def build_cclf8(patient_filename: str, coverage_filename: str, eob_filename: str
 
             for column in headers:
                 try:
-                    if (nm := cclf8_map[column]) == 'Not mapped': row.append(nm)
+                    if (nm := cclf_map[column]) == 'Not mapped': row.append(nm)
 
-                    elif cclf8_map[column][0] == 'patient':
-                        row.append(cclf8_map[column][1](bene))
+                    elif cclf_map[column][0] == 'patient':
+                        row.append(cclf_map[column][1](bene))
 
-                    elif cclf8_map[column][0] == 'eob':
-                        # TODO: Confirm regex is actually needed.
-                        # Not sure if the '-' is a symptom of seed data.
+                    elif cclf_map[column][0] == 'eob':
+                        # TODO: Regex is not actually needed. '-' is a symptom of seed data.
                         pattern = re.compile('[\W_]+')
                         patient_ref = f"Patient/{pattern.sub('', bene_id)}"
-                        obj = get_matching_row(eob_filename, 'patient', patient_ref)
-                        row.append(cclf8_map[column][1](obj))
+                        obj = get_matching_rows(eob_filename, 'patient', patient_ref)
+                        row.append(cclf_map[column][1](obj))
 
-                    elif cclf8_map[column][0] == 'coverage':
-                        patient_ref = f"Patient/{bene_id})"
-                        obj = get_matching_row(coverage_filename, 'beneficiary', patient_ref)
-                        row.append(cclf8_map[column][1](obj))
+                    elif cclf_map[column][0] == 'coverage':
+                        patient_ref = f"Patient/{bene_id}"
+                        # TODO: Need to confirm how to match Patient to other resources in all cases
+                        # EX: BENE_MDCR_STUS_CD in CCLF8 has multiple matches
 
-                except:  # Not every field will be present
-                    row.append('')
-            csvwriter.writerow(row)
+                        # matches = get_matching_rows(coverage_filename, 'beneficiary', patient_ref)
+                        # for obj in matches:
 
-def build_cclf9(patient_filename: str, eob_filename: str, output_filename:str):
-    """
-    This function maps FHIR Data to the CCLF9
-    """
-    print("Building CCLF9...")
-    cclf9_map = cclf_fhir3_maps.cclf9
-    headers = [k for k in cclf9_map]
-    counter = get_file_length(patient_filename)
-    with open(patient_filename, 'r') as patient, open(f'cclf9_{output_filename}.csv', 'w') as cclf9:
-        csvwriter = csv.writer(cclf9)
-        csvwriter.writerow(headers)
-        for x in tqdm(range(counter)):
-            line = patient.readline()
-            row = []
-            bene = json.loads(line)
-            bene_id = bene['id']
+                        obj = get_matching_rows(coverage_filename, 'beneficiary', patient_ref)
+                        row.append(cclf_map[column][1](obj))
 
-            for column in headers:
-                try:
-                    if (nm := cclf9_map[column]) == 'Not mapped': row.append(nm)
                 except:  # Not every field will be present
                     row.append('')
             csvwriter.writerow(row)
@@ -131,5 +116,16 @@ if __name__=='__main__':
     error_handling(patient, coverage, eob, output)
 
     # TODO: FHIR Version indication should impact conversion
-    build_cclf8(patient, coverage, eob, output)
-    build_cclf9(patient, eob, output)
+
+
+    build_cclf('cclf8', cclf_fhir3_maps.cclf8, patient, coverage, eob, output)
+    build_cclf('cclf9', cclf_fhir3_maps.cclf9, patient, coverage, eob, output)
+    # build_cclf('cclf7', cclf_fhir3_maps.cclf7, patient, coverage, eob, output)
+    # build_cclf('cclf1', cclf_fhir3_maps.cclf1, patient, coverage, eob, output)
+    # build_cclf('cclf2', cclf_fhir3_maps.cclf2, patient, coverage, eob, output)
+    # build_cclf('cclf3', cclf_fhir3_maps.cclf3, patient, coverage, eob, output)
+    # build_cclf('cclf4', cclf_fhir3_maps.cclf4, patient, coverage, eob, output)
+    # build_cclf('cclf5', cclf_fhir3_maps.cclf5, patient, coverage, eob, output)
+    # build_cclf('cclf6', cclf_fhir3_maps.cclf6, patient, coverage, eob, output)
+    # build_cclf('cclf_A', cclf_fhir3_maps.cclfA, patient, coverage, eob, output)
+    # build_cclf('cclf_B', cclf_fhir3_maps.cclfB, patient, coverage, eob, output)
