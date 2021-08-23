@@ -232,10 +232,10 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 }
 
 func (s *RequestsTestSuite) TestDataTypeAuthorization() {
-	acoA, _ := regexp.Compile("A\\d{4}")
-	acoB, _ := regexp.Compile("B\\d{4}")
-	acoC, _ := regexp.Compile("C\\d{4}")
-	acoD, _ := regexp.Compile("D\\d{4}")
+	acoA, _ := regexp.Compile(`A\d{4}`)
+	acoB, _ := regexp.Compile(`B\d{4}`)
+	acoC, _ := regexp.Compile(`C\d{4}`)
+	acoD, _ := regexp.Compile(`D\d{4}`)
 
 	dataTypeMap := map[string]DataType{
 		"Coverage":             {Adjudicated: true},
