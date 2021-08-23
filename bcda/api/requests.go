@@ -109,14 +109,33 @@ func newHandler(resources []string, basePath string, apiVersion string, db *sql.
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	if isALRRequest(r) {
-		h.alrRequest(w, r, reqType)
+	h.bulkRequest(w, r, reqType)
+}
+
+func (h *Handler) BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) {
+	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	h.alrRequest(w, r, reqType)
+}
+
+func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	reqType, err := h.buildBulkGroupRequest(r)
+	if err != nil {
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 	h.bulkRequest(w, r, reqType)
 }
 
-func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) BulkALRGroupRequest(w http.ResponseWriter, r *http.Request) {
+	reqType, err := h.buildBulkGroupRequest(r)
+	if err != nil {
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		return
+	}
+	h.alrRequest(w, r, reqType)
+}
+
+func (h *Handler) buildBulkGroupRequest(r *http.Request) (service.RequestType, error) {
 	const (
 		groupAll    = "all"
 		groupRunout = "runout"
@@ -139,15 +158,9 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		fallthrough
 	default:
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
-		return
+		return 0, fmt.Errorf("Invalid group ID")
 	}
-
-	if isALRRequest(r) {
-		h.alrRequest(w, r, reqType)
-		return
-	}
-	h.bulkRequest(w, r, reqType)
+	return reqType, nil
 }
 
 func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {

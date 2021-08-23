@@ -118,17 +118,3 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 
 	// Commit handled in defer
 }
-
-// Since we are overloading the Patient resource, we require the caller to provide a typeFilter
-// to specify an ALR resource.
-func isALRRequest(r *http.Request) bool {
-	typeParam := r.URL.Query().Get("_type")
-	typeFilterParam := r.URL.Query().Get("_typeFilter")
-
-	hasType := typeParam == "Patient,Observation" ||
-		typeParam == "Observation,Patient"
-	hasTypeFilter := typeFilterParam == "Patient?profile=ALR,Observation?profile=ALR" ||
-		typeFilterParam == "Observation?profile=ALR,Patient?profile=ALR"
-
-	return hasType && hasTypeFilter
-}
