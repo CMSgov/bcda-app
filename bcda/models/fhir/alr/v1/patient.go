@@ -21,11 +21,16 @@ func patient(alr *models.Alr) *fhirmodels.Patient {
 	p.Deceased = getDeceased(alr.BeneDOD)
 	p.Address = getAddress(alr.KeyValue)
 	p.Identifier = getIdentifiers(alr)
+	p.Id = &fhirdatatypes.Id{Id: &fhirdatatypes.String{
+		Value: "example-id-patient",
+	}}
 	p.Meta = &fhirdatatypes.Meta{
 		LastUpdated: &fhirdatatypes.Instant{
 			Precision: fhirdatatypes.Instant_SECOND,
 			ValueUs:   alr.Timestamp.UnixNano() / int64(time.Microsecond),
 		},
+		Profile: []*fhirdatatypes.Uri{
+			{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Patient"}},
 	}
 
 	// Extensions...
@@ -102,6 +107,7 @@ func makeMainExt(system, code, display, value string) *fhirdatatypes.Extension {
 				},
 			},
 		},
+		Url: &fhirdatatypes.Uri{Value: "participant"},
 	}
 
 	return ext
