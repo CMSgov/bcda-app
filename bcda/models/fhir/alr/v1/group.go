@@ -32,13 +32,20 @@ var (
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
 func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Group {
 	group := &fhirmodels.Group{}
+	group.Id = &fhirdatatypes.Id{Value: "example-id-group"}
 	group.Member = []*fhirmodels.Group_Member{{}}
 	extension := []*fhirdatatypes.Extension{}
-
+	reasonCodes := &fhirdatatypes.Extension{
+		Url: &fhirdatatypes.Uri{
+			Value: "http://alr.cms.gov/ig/StructureDefinition/ext-changeReason",
+		}}
 	group.Meta = &fhirdatatypes.Meta{
 		LastUpdated: &fhirdatatypes.Instant{
 			Precision: fhirdatatypes.Instant_SECOND,
 			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
+		},
+		Profile: []*fhirdatatypes.Uri{
+			{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Group"},
 		},
 	}
 
@@ -69,10 +76,10 @@ func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmode
 				// get the variable name from the map set in mapping.go
 				display := utils.GroupPatternDescriptions[kv.Key]
 
-				ext := extensionMaker("reasonCode",
+				subExt := extensionMaker("reasonCode",
 					"", kv.Key, "https://bluebutton.cms.gov/resources/variables/alr/changeReason/", display)
 
-				extension = append(extension, ext)
+				reasonCodes.Extension = append(reasonCodes.Extension, subExt)
 			}
 		case claimsBasedAssignmentFlagP.MatchString(kv.Key):
 			// ext - claimsBasedAssignmentFlag
@@ -163,10 +170,13 @@ func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmode
 		}
 
 	}
+	extension = append(extension, reasonCodes)
 
 	// NOTE: there is only one element in Member slice
 	group.Member[0].Extension = extension
-	group.Member[0].Entity = &fhirdatatypes.Reference{Id: &fhirdatatypes.String{Value: mbi}}
+	group.Member[0].Entity = &fhirdatatypes.Reference{Reference: &fhirdatatypes.Reference_PatientId{
+		PatientId: &fhirdatatypes.ReferenceId{Value: mbi},
+	}}
 
 	return group
 }
