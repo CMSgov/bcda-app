@@ -120,7 +120,7 @@ if __name__=='__main__':
 
     build_cclf('cclf8', cclf_fhir3_maps.cclf8, patient, coverage, eob, output)
     build_cclf('cclf9', cclf_fhir3_maps.cclf9, patient, coverage, eob, output)
-    # build_cclf('cclf7', cclf_fhir3_maps.cclf7, patient, coverage, eob, output)
+    build_cclf('cclf7', cclf_fhir3_maps.cclf7, patient, coverage, eob, output)
     # build_cclf('cclf1', cclf_fhir3_maps.cclf1, patient, coverage, eob, output)
     # build_cclf('cclf2', cclf_fhir3_maps.cclf2, patient, coverage, eob, output)
     # build_cclf('cclf3', cclf_fhir3_maps.cclf3, patient, coverage, eob, output)

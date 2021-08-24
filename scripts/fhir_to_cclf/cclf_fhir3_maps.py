@@ -203,11 +203,14 @@ cclf7 = {
 # Patient.identifier.type.coding.system = "http://terminology.hl7.org/CodeSystem/v2-0203"
 # AND
 # Patient.identifier.type.coding.code = "MC"
-    'BENE_MBI_ID'                   : ('patient', lambda obj: get_from_list( obj['identifier'], ['system'], 'http://hl7.org/fhir/sid/us-mbi',
-                                )['value'] if get_from_list(obj['extension'], ['valueCoding', 'code'], 'historic') else ''),  # Patient.identifier[N].value
+    'BENE_MBI_ID'                   : ('patient', lambda obj: get_from_list( obj['identifier'], ['system'], 'http://hl7.org/fhir/sid/us-mbi')['value']   # Patient.identifier[N].value
+                                            if get_from_list(obj['identifier']['type']['coding']['extension'], ['valueCoding', 'code'], 'current')
+                                            and get_from_list(obj['identifier']['type']['coding'], ['system'], 'http://terminology.hl7.org/CodeSystem/v2-0203')
+                                            and get_from_list(obj['identifier']['type']['coding'], ['code'], 'MC') else ''),
     'BENE_HIC_NUM'                  : 'Not mapped',
-    'CLM_LINE_NDC_CD'               : (),  # Eob.item.service.coding.code
-    'CLM_TYPE_CD'                   : (),  # Eob.type.coding[N].code
+    'CLM_LINE_NDC_CD'               : ('eob', lambda obj: get_from_list(obj['item'] ['productOrService', 'coding', 'system'], 'http://hl7.org/fhir/sid/ndc')),  # Eob.item.service.coding.code
+    'CLM_TYPE_CD'                   : ('eob', lambda obj: obj['code']
+                                            if get_from_list(obj, [], '') else ''),  # Eob.type.coding[N].code
     'CLM_LINE_FROM_DT'              : (),  # Eob.item[N].servicedPeriod.start
     'PRVDR_SRVC_ID_QLFYR_CD'        : (),  # Not mapped - see Additional info
     'CLM_SRVC_PRVDR_GNRC_ID_NUM'    : (),  # Explanation of Benefit.careTeam[N].provider
