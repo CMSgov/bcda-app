@@ -1392,7 +1392,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/alr/Patient/$export?_type=Patient,Observation",
+					"raw": "{{scheme}}://{{host}}/api/v1/alr/$export?_type=Patient,Observation",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
