@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -82,8 +83,10 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 	var archiveName string
 
 	now := time.Now()
-	dateStr := fmt.Sprintf("%s.D%s.T%s0", now.Format("06"), now.Format("060102"), now.Format("150405"))
-	suffix := fmt.Sprintf("%s.%s.%s%s", environment, acoSize, fileType, dateStr)
+	rand.Seed(now.UnixNano())
+	jitter := rand.Intn(100)
+	dateStr := fmt.Sprintf("%02d.D%s.T%s0", jitter, now.Format("060102"), now.Format("150405"))
+	suffix := fmt.Sprintf("%s%s", fileType, dateStr)
 	for _, file := range files {
 		var filename string
 		archiveName = fmt.Sprintf("T.BCD.%s.ZC%s", info.cmsID, suffix)
