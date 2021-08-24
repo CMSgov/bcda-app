@@ -24,5 +24,4 @@ cd bcda
 for size in "${@}"
 do
     bcda import-synthetic-cclf-package --acoSize=$size --environment=$environment --fileType=$filetype
-    sleep 1
 done
