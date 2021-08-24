@@ -290,17 +290,15 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		},
 	}
 
-	w := httptest.NewRecorder()
-
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
 	jsonBytes, _ := json.Marshal("{}")
 
-	testParameters := []struct {
-		TestName     string
-		CMSID        string
-		Resources    []string
-		ExpectedCode int
+	tests := []struct {
+		name         string
+		cmsId        string
+		resources    []string
+		expectedCode int
 	}{
 		{"Auth Adj/Pre-Adj, Request Adj/Pre-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted},
 		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted},
@@ -311,23 +309,26 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		{"Auth None, Request Pre-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest},
 	}
 
-	for _, params := range testParameters {
-		r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
+	for _, test := range tests {
+		s.T().Run(test.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
 
-		r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
-			ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
-			CMSID: params.CMSID,
-		}))
+			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
+				ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
+				CMSID: test.cmsId,
+			}))
 
-		r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
-			Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
-			ResourceTypes: params.Resources,
-			Version:       "v2",
-		}))
+			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
+				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
+				ResourceTypes: test.resources,
+				Version:       "v2",
+			}))
 
-		h.bulkRequest(w, r, service.DefaultRequest)
+			h.bulkRequest(w, r, service.DefaultRequest)
 
-		assert.Equal(s.T(), params.ExpectedCode, w.Code)
+			assert.Equal(s.T(), test.expectedCode, w.Code)
+		})
 	}
 }
 
