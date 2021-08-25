@@ -1380,7 +1380,7 @@
 					}
 				],
 				"url": {
-					"raw": "{{scheme}}://{{host}}/api/v1/Patient/$export?_type=Patient,Observation&_typeFilter=Patient?profile=ALR,Observation?profile=ALR",
+					"raw": "{{scheme}}://{{host}}/api/v1/alr/Patient/$export?_type=Patient,Observation",
 					"protocol": "{{scheme}}",
 					"host": [
 						"{{host}}"
@@ -1388,6 +1388,7 @@
 					"path": [
 						"api",
 						"v1",
+						"alr",
 						"Patient",
 						"$export"
 					],
@@ -1395,10 +1396,6 @@
 						{
 							"key": "_type",
 							"value": "Patient,Observation"
-						},
-						{
-							"key": "_typeFilter",
-							"value": "Patient?profile=ALR,Observation?profile=ALR"
 						}
 					]
 				}

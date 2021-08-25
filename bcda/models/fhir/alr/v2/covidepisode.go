@@ -23,6 +23,7 @@ var (
 
 func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models.EpisodeOfCare {
 	covidEpisode := &r4Models.EpisodeOfCare{}
+	covidEpisode.Id = &r4Datatypes.Id{Value: "example-id-episode"}
 	covidEpisode.Meta = &r4Datatypes.Meta{
 		LastUpdated: &r4Datatypes.Instant{
 			Precision: r4Datatypes.Instant_SECOND,
