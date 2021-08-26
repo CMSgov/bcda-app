@@ -273,9 +273,8 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 					}
 
 					jobIDs = make([]string, 0, maxBeneficiaries)
-				} else {
-					// This should not be possible, invalid CMSIDs should be rejected before this point.
 				}
+				// else { This should not be possible, invalid CMSIDs should be rejected before this point. }
 			}
 		}
 	}
