@@ -39,7 +39,7 @@ func init() {
 	if ok {
 		h = api.NewHandler(resources, "/v2/fhir", "v2")
 	} else {
-		//Throw error
+		panic("Failed to configure resource DataTypes")
 	}
 
 	// Ensure that we write the serialized FHIR resources as a single line.

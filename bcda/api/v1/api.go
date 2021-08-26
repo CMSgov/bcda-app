@@ -34,7 +34,7 @@ func init() {
 	if ok {
 		h = api.NewHandler(resources, "/v1/fhir", "v1")
 	} else {
-		//Throw error
+		panic("Failed to configure resource DataTypes")
 	}
 }
 
