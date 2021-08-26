@@ -254,27 +254,34 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 				if acoConfig, ok := s.GetACOConfigForID(conditions.CMSID); ok {
 					// Create separate jobs for each data type if needed
 					for _, dataType := range acoConfig.Data {
-						if GetDataType(rt).SupportsDataType(dataType) {
-							enqueueArgs := models.JobEnqueueArgs{
-								ID:              int(conditions.JobID),
-								ACOID:           conditions.ACOID.String(),
-								BeneficiaryIDs:  jobIDs,
-								ResourceType:    rt,
-								Since:           sinceArg,
-								TransactionTime: conditions.TransactionTime,
-								BBBasePath:      s.bbBasePath,
-								DataType:        dataType,
+						if resource, ok := GetDataType(rt); ok {
+							if resource.SupportsDataType(dataType) {
+								enqueueArgs := models.JobEnqueueArgs{
+									ID:              int(conditions.JobID),
+									ACOID:           conditions.ACOID.String(),
+									BeneficiaryIDs:  jobIDs,
+									ResourceType:    rt,
+									Since:           sinceArg,
+									TransactionTime: conditions.TransactionTime,
+									BBBasePath:      s.bbBasePath,
+									DataType:        dataType,
+								}
+
+								s.setClaimsDate(&enqueueArgs, conditions)
+
+								jobs = append(jobs, &enqueueArgs)
 							}
-
-							s.setClaimsDate(&enqueueArgs, conditions)
-
-							jobs = append(jobs, &enqueueArgs)
+						} else {
+							// This should never be possible, would have returned earlier
+							return nil, errors.New("Invalid resource type: " + rt)
 						}
 					}
 
 					jobIDs = make([]string, 0, maxBeneficiaries)
+				} else {
+					// This should never be possible, would have returned earlier
+					return nil, errors.New("Invalid ACO")
 				}
-				// else { This should not be possible, invalid CMSIDs should be rejected before this point. }
 			}
 		}
 	}

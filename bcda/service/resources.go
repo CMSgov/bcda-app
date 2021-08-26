@@ -35,10 +35,10 @@ func init() {
 }
 
 // GetDataType gets the DataType associated with the given resourceName
-func GetDataType(resourceName string) DataType {
-	resource, _ := dataTypeMap[resourceName]
+func GetDataType(resourceName string) (DataType, bool) {
+	resource, ok := dataTypeMap[resourceName]
 
-	return resource
+	return resource, ok
 }
 
 // GetDataTypes creates a map of the given resourceNames with their associated DataType objects
