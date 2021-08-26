@@ -85,6 +85,7 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 
 	h.supportedDataTypes = dataTypes
 
+	// Build string array of supported Resource types
 	h.supportedResourceTypes = make([]string, 0, len(h.supportedDataTypes))
 
 	for k := range h.supportedDataTypes {

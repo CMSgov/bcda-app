@@ -456,12 +456,22 @@ func (s *ServiceTestSuite) TestGetBeneficiaries() {
 func (s *ServiceTestSuite) TestGetQueJobs() {
 	defaultACOID, lookbackACOID := "SOME_ACO_ID", "LOOKBACK_ACO"
 
-	acoCfg := ACOConfig{
+	defaultACO := ACOConfig{
+		patternExp: regexp.MustCompile(defaultACOID),
+		Data:       []string{constants.Adjudicated},
+	}
+
+	lookbackACO := ACOConfig{
 		patternExp:    regexp.MustCompile(lookbackACOID),
 		LookbackYears: 3,
 		perfYear:      time.Now(),
+		Data:          []string{constants.Adjudicated},
 	}
-	acoCfgs := map[*regexp.Regexp]*ACOConfig{acoCfg.patternExp: &acoCfg}
+
+	acoCfgs := map[*regexp.Regexp]*ACOConfig{
+		defaultACO.patternExp:  &defaultACO,
+		lookbackACO.patternExp: &lookbackACO,
+	}
 
 	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
 	allBenes := [][]*models.CCLFBeneficiary{benes1, benes2}
@@ -534,8 +544,8 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 		{"New Benes With Since Before Termination", defaultACOID, RetrieveNewBeneHistData, sinceBeforeTermination, claimsWindow{}, append(benes1, benes2...), nil, terminationLatest},
 
 		// ACO with lookback period
-		{"ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: acoCfg.LookbackTime()}, benes1, nil, nil},
-		{"Terminated ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: acoCfg.LookbackTime(), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
+		{"ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime()}, benes1, nil, nil},
+		{"Terminated ACO with lookback", lookbackACOID, DefaultRequest, time.Time{}, claimsWindow{LowerBound: lookbackACO.LookbackTime(), UpperBound: terminationHistorical.ClaimsDate()}, benes1, nil, terminationHistorical},
 	}
 
 	// Add all combinations of resource types

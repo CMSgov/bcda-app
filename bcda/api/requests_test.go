@@ -244,6 +244,15 @@ func (s *RequestsTestSuite) TestRequests() {
 	enqueuer := &queueing.MockEnqueuer{}
 	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
 	h.Enq = enqueuer
+	mockSvc := service.MockService{}
+
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockAco := service.ACOConfig{
+		Data: []string{"adjudicated"},
+	}
+	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+
+	h.Svc = &mockSvc
 
 	// Test Group and Patient
 	// Patient, Coverage, and ExplanationOfBenefit

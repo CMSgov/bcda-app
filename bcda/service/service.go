@@ -251,40 +251,31 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 			rowCount++
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				var acoConfig *ACOConfig
+				if acoConfig, ok := s.GetACOConfigForID(conditions.CMSID); ok {
+					// Create separate jobs for each data type if needed
+					for _, dataType := range acoConfig.Data {
+						if GetDataType(rt).SupportsDataType(dataType) {
+							enqueueArgs := models.JobEnqueueArgs{
+								ID:              int(conditions.JobID),
+								ACOID:           conditions.ACOID.String(),
+								BeneficiaryIDs:  jobIDs,
+								ResourceType:    rt,
+								Since:           sinceArg,
+								TransactionTime: conditions.TransactionTime,
+								BBBasePath:      s.bbBasePath,
+								DataType:        dataType,
+							}
 
-				for pattern, cfg := range s.acoConfig {
-					if pattern.MatchString(conditions.CMSID) {
-						acoConfig = cfg
-						break
-					}
-				}
+							s.setClaimsDate(&enqueueArgs, conditions)
 
-				validTypes := []string{
-					constants.Adjudicated,
-					constants.PreAdjudicated,
-				}
-
-				for _, dataType := range acoConfig.Data {
-					if utils.ContainsString(validTypes, dataType) && GetDataType(rt).SupportsDataType(dataType) {
-						enqueueArgs := models.JobEnqueueArgs{
-							ID:              int(conditions.JobID),
-							ACOID:           conditions.ACOID.String(),
-							BeneficiaryIDs:  jobIDs,
-							ResourceType:    rt,
-							Since:           sinceArg,
-							TransactionTime: conditions.TransactionTime,
-							BBBasePath:      s.bbBasePath,
-							DataType:        dataType,
+							jobs = append(jobs, &enqueueArgs)
 						}
-
-						s.setClaimsDate(&enqueueArgs, conditions)
-
-						jobs = append(jobs, &enqueueArgs)
 					}
-				}
 
-				jobIDs = make([]string, 0, maxBeneficiaries)
+					jobIDs = make([]string, 0, maxBeneficiaries)
+				} else {
+					// This should not be possible, invalid CMSIDs should be rejected before this point.
+				}
 			}
 		}
 	}
@@ -480,7 +471,7 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 	return priority
 }
 
-// Gets any currently loaded ACOConfig for the matching cmsID
+// GetACOConfigForID gets any currently loaded ACOConfig for the matching cmsID
 func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
 	for pattern, cfg := range s.acoConfig {
 		if pattern.MatchString(cmsID) {
