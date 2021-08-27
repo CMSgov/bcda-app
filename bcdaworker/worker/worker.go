@@ -7,12 +7,12 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/constants"
 	"io/ioutil"
 	"os"
 	"strconv"
 
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"

@@ -46,17 +46,15 @@ func GetDataType(resourceName string) (DataType, bool) {
 func GetDataTypes(resourceNames ...string) (map[string]DataType, bool) {
 	foundAll := true
 
+	returnMap := make(map[string]DataType, len(resourceNames))
+
 	if len(resourceNames) == 0 {
 		// If no resource specified, return copy of full map
-		returnMap := make(map[string]DataType, len(dataTypeMap))
-
 		for name, entry := range dataTypeMap {
 			returnMap[name] = entry
 		}
 	} else {
 		// If resources specified, return map subset
-		returnMap := make(map[string]DataType, len(resourceNames))
-
 		for _, name := range resourceNames {
 			if entry, ok := dataTypeMap[name]; ok {
 				returnMap[name] = entry
@@ -66,5 +64,5 @@ func GetDataTypes(resourceNames ...string) (map[string]DataType, bool) {
 		}
 	}
 
-	return dataTypeMap, foundAll
+	return returnMap, foundAll
 }

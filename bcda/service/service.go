@@ -506,8 +506,8 @@ func getMaxBeneCount(requestType string) (int, error) {
 		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT           = 200
 		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT       = 5000
 		BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT      = 4000
-		BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT         = 200
-		BCDA_FHIR_MAX_RECORDS_CLAIMRESPONSE_DEFAULT = 200
+		BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT         = 4000
+		BCDA_FHIR_MAX_RECORDS_CLAIMRESPONSE_DEFAULT = 4000
 	)
 	var envVar string
 	var defaultVal int
@@ -523,10 +523,10 @@ func getMaxBeneCount(requestType string) (int, error) {
 		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
 		defaultVal = BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
 	case "Claim":
-		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		envVar = "BCDA_FHIR_MAX_RECORDS_CLAIM"
 		defaultVal = BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT
 	case "ClaimResponse":
-		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		envVar = "BCDA_FHIR_MAX_RECORDS_CLAIM_RESPONSE"
 		defaultVal = BCDA_FHIR_MAX_RECORDS_CLAIMRESPONSE_DEFAULT
 	default:
 		err := errors.New("invalid request type")

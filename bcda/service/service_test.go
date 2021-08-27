@@ -80,6 +80,8 @@ func TestGetMaxBeneCount(t *testing.T) {
 		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_EOB")
 		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_PATIENT")
 		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_COVERAGE")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_CLAIM")
+		conf.UnsetEnv(t, "BCDA_FHIR_MAX_RECORDS_CLAIM_RESPONSE")
 	}()
 
 	getEnvVar := func(resourceType string) string {
@@ -90,6 +92,10 @@ func TestGetMaxBeneCount(t *testing.T) {
 			return "BCDA_FHIR_MAX_RECORDS_PATIENT"
 		case "Coverage":
 			return "BCDA_FHIR_MAX_RECORDS_COVERAGE"
+		case "Claim":
+			return "BCDA_FHIR_MAX_RECORDS_CLAIM"
+		case "ClaimResponse":
+			return "BCDA_FHIR_MAX_RECORDS_CLAIM_RESPONSE"
 		default:
 			return ""
 		}
@@ -114,6 +120,10 @@ func TestGetMaxBeneCount(t *testing.T) {
 		{"MaxPatient", "Patient", 10, setter},
 		{"DefaultCoverage", "Coverage", 4000, clearer},
 		{"MaxCoverage", "Coverage", 15, setter},
+		{"defaultClaim", "Claim", 4000, clearer},
+		{"MaxClaim", "Claim", 20, setter},
+		{"defaultClaimResponse", "ClaimResponse", 4000, clearer},
+		{"MaxClaimResponse", "ClaimResponse", 25, setter},
 	}
 
 	for _, tt := range tests {
@@ -770,6 +780,51 @@ func (s *ServiceTestSuite) TestGetLatestCCLFFileNotFound() {
 	assert.Equal(s.T(), models.FileTypeDefault, err.(CCLFNotFoundError).FileType)
 	assert.Equal(s.T(), "Z9999", err.(CCLFNotFoundError).CMSID)
 	assert.Equal(s.T(), time.Time{}, err.(CCLFNotFoundError).CutoffTime)
+}
+
+func (s *ServiceTestSuite) TestGetACOConfigForID() {
+	repository := &models.MockRepository{}
+
+	validACOPattern, _ := regexp.Compile(`A\d{4}`)
+
+	validACO := ACOConfig{
+		Model:      "Model A",
+		patternExp: validACOPattern,
+	}
+
+	cfg := &Config{
+		ACOConfigs: []ACOConfig{validACO},
+	}
+
+	service := NewService(repository, cfg, "")
+
+	tests := []struct {
+		name           string
+		cmsID          string
+		expectedConfig *ACOConfig
+		expectedOk     bool
+	}{
+		{
+			"Valid CMSID",
+			"A0000",
+			&validACO,
+			true,
+		},
+		{
+			"Invalid CMSID",
+			"B0000",
+			nil,
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			actualConfig, actualOk := service.GetACOConfigForID(tt.cmsID)
+			assert.Equal(t, tt.expectedConfig, actualConfig)
+			assert.Equal(t, tt.expectedOk, actualOk)
+		})
+	}
 }
 
 func getCCLFFile(id uint) *models.CCLFFile {
