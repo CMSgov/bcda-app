@@ -201,7 +201,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	Get attribution status
 
-	Returns the attribution status of the latest cclf 8 and cclf 8 runout files. This will contain the name of the file, the timestamp it was ingested, the cclf number type, and the type (default or runout)
+	Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the Type to identify which ingestion and a Timestamp for the last time it was updated.
 
 	Produces:
 	- application/json
