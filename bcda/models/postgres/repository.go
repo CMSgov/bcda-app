@@ -563,3 +563,30 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	aco.TerminationDetails = termination.Termination
 	return &aco, nil
 }
+
+// GetAlrMBIs takes cms_id and returns all the MBIs associated with the ACO's quarterly ALR
+func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) ([]string, error) {
+	sb := sqlFlavor.NewSelectBuilder().
+		Select("id", "aco", "timestamp").From("alr_meta")
+	sb.Where(sb.LessEqualThan("timestamp", time.Now().String)).
+		OrderBy("timestamp").Desc()
+
+	query, args := sb.Build()
+	row := r.QueryRowContext(ctx, query, args...)
+
+	var (
+		id        int64
+		aco       sql.NullString
+		timestamp sql.NullTime
+	)
+
+	err := row.Scan(&id, &aco, &timestamp)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("No ALR MBI records found for %s", cmsID)
+		}
+		return nil, err
+	}
+
+	return nil, nil
+}
