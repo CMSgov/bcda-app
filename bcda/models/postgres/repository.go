@@ -13,6 +13,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 const (
@@ -565,17 +566,22 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 }
 
 // GetAlrMBIs takes cms_id and returns all the MBIs associated with the ACO's quarterly ALR
-func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) ([]string, error) {
+func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string, partition int) ([]models.AlrMBIGroup, error) {
 	sb := sqlFlavor.NewSelectBuilder().
 		Select("id", "aco", "timestamp").From("alr_meta")
-	sb.Where(sb.LessEqualThan("timestamp", time.Now().String)).
+	sb.Where(
+		sb.And(
+			sb.LessEqualThan("timestamp", time.Now().String),
+			sb.Equal("aco", cmsID),
+		),
+	).
 		OrderBy("timestamp").Desc()
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 
 	var (
-		id        int64
+		id        uint
 		aco       sql.NullString
 		timestamp sql.NullTime
 	)
@@ -583,10 +589,53 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) ([]string, er
 	err := row.Scan(&id, &aco, &timestamp)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("No ALR MBI records found for %s", cmsID)
+			return nil, fmt.Errorf("No ALR meta data found for %s", cmsID)
 		}
 		return nil, err
 	}
 
-	return nil, nil
+	sb = sqlFlavor.NewSelectBuilder().
+		Select("metakey", "mbi").From("alr").
+		Where(sb.Equal("metakey", id))
+
+	query, args = sb.Build()
+	rows, err := r.QueryContext(ctx, query, args...)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("No ALR MBIs found for %s with id %d", cmsID, id)
+		}
+		return nil, err
+	}
+
+	var metakey uint
+	var mbi sql.NullString
+	var mbiGrouping []string
+	var alrMBIGrouping []models.AlrMBIGroup
+
+	for rows.Next() {
+		if err := rows.Scan(&metakey, &mbi); err != nil {
+			return nil, err
+		}
+		if !mbi.Valid {
+			log.API.Warnf("An MBI for %s has a value of Null, skipping this row.", cmsID)
+			continue
+		}
+		mbiGrouping = append(mbiGrouping, mbi.String)
+	}
+
+	loop := len(mbiGrouping) / partition
+
+	for i := 0; i < loop; i++ {
+		alrMBIGrouping = append(alrMBIGrouping, models.AlrMBIGroup{MetaKey: metakey, MBIs: mbiGrouping[:partition]})
+		// push the slice
+		mbiGrouping = mbiGrouping[partition:]
+	}
+
+	if len(mbiGrouping)%partition != 0 {
+		// There is more MBIs, unless than the partition
+		alrMBIGrouping = append(alrMBIGrouping, models.AlrMBIGroup{MetaKey: metakey, MBIs: mbiGrouping})
+	}
+
+	return alrMBIGrouping, nil
 }

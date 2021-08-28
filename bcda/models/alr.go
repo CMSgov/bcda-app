@@ -25,12 +25,19 @@ type AlrMetaData struct {
 	Timestamp time.Time
 }
 
+type AlrMBIGroup struct {
+	MetaKey uint
+	MBIs    []string
+}
+
 // There is no AlrJobs struct because ALR uses Job struct from BFD
 type JobAlrEnqueueArgs struct {
-	ID         uint
-	CMSID      string
-	MBIs       []string
-	BBBasePath string
-	LowerBound time.Time
-	UpperBound time.Time
+	ID           uint
+	CMSID        string
+	MBIs         []string
+	ResourceType []string
+	metaKey      int64
+	BBBasePath   string
+	LowerBound   time.Time
+	UpperBound   time.Time
 }
