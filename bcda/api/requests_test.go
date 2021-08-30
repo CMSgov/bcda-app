@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -227,6 +228,106 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 	s.NoError(err)
 	s.Equal(http.StatusBadRequest, resp.StatusCode)
 	s.Contains(string(body), "Invalid group ID")
+}
+
+func (s *RequestsTestSuite) TestDataTypeAuthorization() {
+	acoA := &service.ACOConfig{
+		Model:              "Model A",
+		Pattern:            "A\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated", "pre-adjudicated"},
+	}
+	acoB := &service.ACOConfig{
+		Model:              "Model B",
+		Pattern:            "B\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated"},
+	}
+	acoC := &service.ACOConfig{
+		Model:              "Model C",
+		Pattern:            "C\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"pre-adjudicated"},
+	}
+	acoD := &service.ACOConfig{
+		Model:              "Model D",
+		Pattern:            "D\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{},
+	}
+
+	dataTypeMap := map[string]service.DataType{
+		"Coverage":             {Adjudicated: true},
+		"Patient":              {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Claim":                {Adjudicated: false, PreAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+	}
+
+	h := NewHandler(dataTypeMap, "/v2/fhir/", "v2")
+
+	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
+	enqueuer := &queueing.MockEnqueuer{}
+	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
+	h.Enq = enqueuer
+	h.supportedDataTypes = dataTypeMap
+
+	client.SetLogger(log.API) // Set logger so we don't get errors later
+
+	jsonBytes, _ := json.Marshal("{}")
+
+	tests := []struct {
+		name         string
+		cmsId        string
+		resources    []string
+		expectedCode int
+		acoConfig    *service.ACOConfig
+	}{
+		{"Auth Adj/Pre-Adj, Request Adj/Pre-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA},
+		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB},
+		{"Auth Adj, Request Pre-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB},
+		{"Auth Pre-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC},
+		{"Auth Pre-Adj, Request Pre-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC},
+		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD},
+		{"Auth None, Request Pre-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD},
+	}
+
+	for _, test := range tests {
+		s.T().Run(test.name, func(t *testing.T) {
+			mockSvc := service.MockService{}
+
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(test.acoConfig, true)
+
+			h.Svc = &mockSvc
+
+			w := httptest.NewRecorder()
+			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
+
+			r = r.WithContext(context.WithValue(r.Context(), auth.AuthDataContextKey, auth.AuthData{
+				ACOID: "8d80925a-027e-43dd-8aed-9a501cc4cd91",
+				CMSID: test.cmsId,
+			}))
+
+			r = r.WithContext(middleware.NewRequestParametersContext(r.Context(), middleware.RequestParameters{
+				Since:         time.Date(2000, 01, 01, 00, 00, 00, 00, time.UTC),
+				ResourceTypes: test.resources,
+				Version:       "v2",
+			}))
+
+			h.bulkRequest(w, r, service.DefaultRequest)
+
+			assert.Equal(s.T(), test.expectedCode, w.Code)
+		})
+	}
 }
 
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
