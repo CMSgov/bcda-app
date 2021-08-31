@@ -27,7 +27,7 @@ func init() {
 }
 
 /*
-	swagger:route GET /api/v1/alr/$export alrRequest
+	swagger:route GET /api/v1/alr/$export alrData alrRequest
 
 	Start FHIR STU3 data export for all supported resource types
 

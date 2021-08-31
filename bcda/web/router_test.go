@@ -121,18 +121,20 @@ func (s *RouterTestSuite) TestGroupEndpointDisabled() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *RouterTestSuite) TestALRExportRoute() {
+	// ALR
+	res := s.getAPIRoute("/api/v1/alr/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/alrs/$export")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestEOBExportRoute() {
 	res := s.getAPIRoute("/api/v1/Patient/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=ExplanationOfBenefit")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
-	// ALR
-	res = s.getAPIRoute("/api/v1/alr/$export?_type=ExplanationOfBenefit")
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-
-	res = s.getAPIRoute("/api/v1/alrs/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 	// Group All
@@ -157,13 +159,6 @@ func (s *RouterTestSuite) TestPatientExportRoute() {
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	// ALR
-	res = s.getAPIRoute("/api/v1/alr/$export?_type=Patient")
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-
-	res = s.getAPIRoute("/api/v1/alrs/$export?_type=Patient")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
 	// Group All
 	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -184,13 +179,6 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=Coverage")
-	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
-
-	// ALR Patient
-	res = s.getAPIRoute("/api/v1/alr/$export?_type=Coverage")
-	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
-
-	res = s.getAPIRoute("/api/v1/alrs/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
 	// group all
