@@ -570,12 +570,10 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string, partition int
 	sb := sqlFlavor.NewSelectBuilder().
 		Select("id", "aco", "timestamp").From("alr_meta")
 	sb.Where(
-		sb.And(
-			sb.LessEqualThan("timestamp", time.Now().String),
-			sb.Equal("aco", cmsID),
-		),
+		sb.Equal("aco", cmsID),
 	).
-		OrderBy("timestamp").Desc()
+		OrderBy("timestamp").Desc().
+		Limit(1)
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)

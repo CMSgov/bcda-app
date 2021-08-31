@@ -964,6 +964,12 @@ func (r *RepositoryTestSuite) TestAlr() {
 	assert.Len(r.T(), extra, 2) // There should only be two entries in DB, so ok
 }
 
+func (r *RepositoryTestSuite) TestGetAlrMBIs() {
+	alrMBI, err := r.repository.GetAlrMBIs(context.Background(), "A9994", 10);
+	r.NoError(err)
+	r.Equal(5, len(alrMBI))
+}
+
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
 	// Account for time precision in postgres
 	createTime := time.Now().Round(time.Millisecond)
