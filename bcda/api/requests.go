@@ -114,14 +114,33 @@ func newHandler(dataTypes map[string]DataType, basePath string, apiVersion strin
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	if isALRRequest(r) {
-		h.alrRequest(w, r, reqType)
+	h.bulkRequest(w, r, reqType)
+}
+
+func (h *Handler) BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) {
+	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
+	h.alrRequest(w, r, reqType)
+}
+
+func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+	reqType, err := h.buildBulkGroupRequest(r)
+	if err != nil {
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
 	h.bulkRequest(w, r, reqType)
 }
 
-func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) BulkALRGroupRequest(w http.ResponseWriter, r *http.Request) {
+	reqType, err := h.buildBulkGroupRequest(r)
+	if err != nil {
+		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+		return
+	}
+	h.alrRequest(w, r, reqType)
+}
+
+func (h *Handler) buildBulkGroupRequest(r *http.Request) (service.RequestType, error) {
 	const (
 		groupAll    = "all"
 		groupRunout = "runout"
@@ -144,15 +163,9 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		fallthrough
 	default:
-		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
-		return
+		return 0, fmt.Errorf("Invalid group ID")
 	}
-
-	if isALRRequest(r) {
-		h.alrRequest(w, r, reqType)
-		return
-	}
-	h.bulkRequest(w, r, reqType)
+	return reqType, nil
 }
 
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
@@ -275,14 +288,12 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 }
 
 type AttributionFileStatus struct {
-	Name      string    `json:"name"`
 	Timestamp time.Time `json:"timestamp"`
-	CCLFNum   int       `json:"cclf_number"`
-	Type      string    `json:"cclf_file_type"`
+	Type      string    `json:"type"`
 }
 
 type AttributionFileStatusResponse struct {
-	CCLFFiles []AttributionFileStatus `json:"cclf_files"`
+	Data []AttributionFileStatus `json:"ingestion_dates"`
 }
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
@@ -305,6 +316,9 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if asd != nil {
+		resp.Data = append(resp.Data, *asd)
+	}
 
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
@@ -312,18 +326,13 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if asr != nil {
+		resp.Data = append(resp.Data, *asr)
+	}
 
-	if asd == nil && asr == nil {
+	if resp.Data == nil {
 		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
-	}
-
-	if asd != nil {
-		resp.CCLFFiles = append(resp.CCLFFiles, *asd)
-	}
-
-	if asr != nil {
-		resp.CCLFFiles = append(resp.CCLFFiles, *asr)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -349,16 +358,14 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 	}
 
 	status := &AttributionFileStatus{
-		Name:      cclfFile.Name,
 		Timestamp: cclfFile.Timestamp,
-		CCLFNum:   cclfFile.CCLFNum,
 	}
 
 	switch fileType {
 	case models.FileTypeDefault:
-		status.Type = "default"
+		status.Type = "last_attribution_update"
 	case models.FileTypeRunout:
-		status.Type = "runout"
+		status.Type = "last_runout_update"
 	}
 
 	return status, nil

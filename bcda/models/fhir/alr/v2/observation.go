@@ -11,9 +11,7 @@ import (
 
 func observations(version, mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *r4Models.Observation {
 	obs := &r4Models.Observation{}
-	obs.Id = &r4Datatypes.Id{Id: &r4Datatypes.String{
-		Value: "example-id-hcc-risk-flags",
-	}}
+	obs.Id = &r4Datatypes.Id{Value: "example-id-hcc-risk-flags"}
 	obs.Meta = &r4Datatypes.Meta{
 		Profile: []*r4Datatypes.Canonical{{
 			Value: "http://alr.cms.gov/ig/StructureDefinition/alr-HccRiskFlag",
@@ -64,9 +62,9 @@ func observations(version, mbi string, keyValue []utils.KvPair, lastUpdated time
 			}},
 		}
 		comp.Value = &r4Models.Observation_Component_ValueX{
-            Choice: &r4Models.Observation_Component_ValueX_StringValue{
-                StringValue: &r4Datatypes.String{ Value: kv.Value },
-            },
+			Choice: &r4Models.Observation_Component_ValueX_StringValue{
+				StringValue: &r4Datatypes.String{Value: kv.Value},
+			},
 		}
 
 		components = append(components, comp)

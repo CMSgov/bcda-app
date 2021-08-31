@@ -22,11 +22,16 @@ func patient(alr *models.Alr) *r4Models.Patient {
 	p.Deceased = getDeceasedV2(alr.BeneDOD)
 	p.Address = getAddressV2(alr.KeyValue)
 	p.Identifier = getIdentifiersV2(alr)
+	p.Id = &r4Datatypes.Id{Id: &r4Datatypes.String{
+		Value: "example-id-patient",
+	}}
 	p.Meta = &r4Datatypes.Meta{
 		LastUpdated: &r4Datatypes.Instant{
 			Precision: r4Datatypes.Instant_SECOND,
 			ValueUs:   alr.Timestamp.UnixNano() / int64(time.Microsecond),
 		},
+		Profile: []*r4Datatypes.Canonical{
+			{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Patient"}},
 	}
 
 	// Extensions...
@@ -187,6 +192,7 @@ func makeMainExtV2(system, code, display, value string) *r4Datatypes.Extension {
 				},
 			},
 		},
+		Url: &r4Datatypes.Uri{Value: "participant"},
 	}
 
 	return ext
