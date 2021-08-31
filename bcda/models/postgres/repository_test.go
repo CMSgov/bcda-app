@@ -965,9 +965,12 @@ func (r *RepositoryTestSuite) TestAlr() {
 }
 
 func (r *RepositoryTestSuite) TestGetAlrMBIs() {
-	alrMBI, err := r.repository.GetAlrMBIs(context.Background(), "A9994", 10);
+	alrMBI, err := r.repository.GetAlrMBIs(context.Background(), "A9994");
 	r.NoError(err)
-	r.Equal(6, len(alrMBI))
+	// There are 54 MBIs for this synthetic  ACO
+	r.Equal(54, len(alrMBI.MBIS))
+	r.NotEmpty(alrMBI.CMSID)
+	r.NotEmpty(alrMBI.Metakey)
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {

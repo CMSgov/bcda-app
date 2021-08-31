@@ -38,11 +38,6 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 		return
 	}
 
-	req := service.DefaultAlrRequest
-	if reqType == service.Runout {
-		req = service.RunoutAlrRequest
-	}
-
 	// Depending on how the request is sent to the handler,
 	// the r.URL.Scheme may be unset.
 	scheme := "http"
@@ -97,10 +92,13 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 	// Use a transaction to guarantee that the job only gets created if we queue all of the alrJobs
 	rtx := postgres.NewRepositoryTx(tx)
 
-	alrJobs, err := h.Svc.GetAlrJobs(ctx, ad.CMSID, req, service.AlrRequestWindow{LowerBound: rp.Since})
+	alrMBIs, err := h.r.GetAlrMBIs(ctx, ad.CMSID)
 	if err != nil {
 		return // Rollback handled in defer
 	}
+
+	// Take slices of MBIs into Jobs
+	alrJobs := h.Svc.GetAlrJobs(ctx, alrMBIs)
 
 	newJob.JobCount = len(alrJobs)
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)

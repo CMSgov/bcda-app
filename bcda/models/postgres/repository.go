@@ -566,7 +566,7 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 }
 
 // GetAlrMBIs takes cms_id and returns all the MBIs associated with the ACO's quarterly ALR
-func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string, partition int) ([]models.AlrMBIGroup, error) {
+func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) (*models.AlrMBIs, error) {
 	sb := sqlFlavor.NewSelectBuilder().
 		Select("id", "aco", "timestp").From("alr_meta")
 	sb.Where(
@@ -609,7 +609,6 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string, partition int
 	var metakey uint
 	var mbi sql.NullString
 	var mbiGrouping []string
-	var alrMBIGrouping []models.AlrMBIGroup
 
 	for rows.Next() {
 		if err := rows.Scan(&metakey, &mbi); err != nil {
@@ -622,18 +621,5 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string, partition int
 		mbiGrouping = append(mbiGrouping, mbi.String)
 	}
 
-	loop := len(mbiGrouping) / partition
-
-	for i := 0; i < loop; i++ {
-		alrMBIGrouping = append(alrMBIGrouping, models.AlrMBIGroup{MetaKey: metakey, MBIs: mbiGrouping[:partition]})
-		// push the slice
-		mbiGrouping = mbiGrouping[partition:]
-	}
-
-	if len(mbiGrouping)%partition != 0 {
-		// There is more MBIs, unless than the partition
-		alrMBIGrouping = append(alrMBIGrouping, models.AlrMBIGroup{MetaKey: metakey, MBIs: mbiGrouping})
-	}
-
-	return alrMBIGrouping, nil
+	return &models.AlrMBIs{MBIS: mbiGrouping, Metakey: id, CMSID: cmsID}, nil
 }

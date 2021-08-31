@@ -25,9 +25,12 @@ type AlrMetaData struct {
 	Timestamp time.Time
 }
 
-type AlrMBIGroup struct {
-	MetaKey uint
-	MBIs    []string
+// Wrap AlrMBIs as []string to ensure not any []string is accepted
+// See repository.go for more info... particularly GetAlrMBIs func
+type AlrMBIs struct {
+	MBIS    []string
+	Metakey int64
+	CMSID   string
 }
 
 // There is no AlrJobs struct because ALR uses Job struct from BFD
@@ -36,7 +39,7 @@ type JobAlrEnqueueArgs struct {
 	CMSID        string
 	MBIs         []string
 	ResourceType []string
-	metaKey      int64
+	MetaKey      int64
 	BBBasePath   string
 	LowerBound   time.Time
 	UpperBound   time.Time

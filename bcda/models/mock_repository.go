@@ -176,22 +176,22 @@ func (_m *MockRepository) GetACOByUUID(ctx context.Context, _a1 uuid.UUID) (*ACO
 	return r0, r1
 }
 
-// GetAlrMBIs provides a mock function with given fields: ctx, cmsID, partition
-func (_m *MockRepository) GetAlrMBIs(ctx context.Context, cmsID string, partition int) ([]AlrMBIGroup, error) {
-	ret := _m.Called(ctx, cmsID, partition)
+// GetAlrMBIs provides a mock function with given fields: ctx, cmsID
+func (_m *MockRepository) GetAlrMBIs(ctx context.Context, cmsID string) (*AlrMBIs, error) {
+	ret := _m.Called(ctx, cmsID)
 
-	var r0 []AlrMBIGroup
-	if rf, ok := ret.Get(0).(func(context.Context, string, int) []AlrMBIGroup); ok {
-		r0 = rf(ctx, cmsID, partition)
+	var r0 *AlrMBIs
+	if rf, ok := ret.Get(0).(func(context.Context, string) *AlrMBIs); ok {
+		r0 = rf(ctx, cmsID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]AlrMBIGroup)
+			r0 = ret.Get(0).(*AlrMBIs)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
-		r1 = rf(ctx, cmsID, partition)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, cmsID)
 	} else {
 		r1 = ret.Error(1)
 	}

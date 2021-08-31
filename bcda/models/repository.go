@@ -85,5 +85,5 @@ type jobKeyRepository interface {
 }
 
 type alr interface {
-	GetAlrMBIs(ctx context.Context, cmsID string, partition int) ([]AlrMBIGroup, error)
+	GetAlrMBIs(ctx context.Context, cmsID string) (*AlrMBIs, error)
 }

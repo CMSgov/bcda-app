@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
@@ -21,57 +20,35 @@ type AlrRequestWindow struct {
 }
 
 // Get the MBIs and put them into jobs
-func (s *service) GetAlrJobs(ctx context.Context, cmsID string,
-	reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error) {
-	constraint, err := s.timeConstraints(ctx, cmsID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set time constraints: %w", err)
+func (s *service) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs {
+
+	partition := int(s.alrMBIsPerJob)
+
+	loop := len(alrMBI.MBIS) / partition
+
+	bigJob := []*models.JobAlrEnqueueArgs{}
+
+	for i := 0; i < loop; i++ {
+		bigJob = append(bigJob, &models.JobAlrEnqueueArgs{
+			CMSID:        alrMBI.CMSID,
+			MBIs:         alrMBI.MBIS,
+			BBBasePath:   s.bbBasePath,
+			MetaKey: alrMBI.Metakey,
+		})
+		// push the slice
+		alrMBI.MBIS = alrMBI.MBIS[partition:]
+	}
+	if len(alrMBI.MBIS)%partition != 0 {
+		// There is more MBIs, unless than the partition
+		bigJob = append(bigJob, &models.JobAlrEnqueueArgs{
+			CMSID:        alrMBI.CMSID,
+			MBIs:         alrMBI.MBIS,
+			MetaKey:      alrMBI.Metakey,
+			BBBasePath:   s.bbBasePath,
+		})
 	}
 
-	// Update the window based on any conditions set on the ACO
-	window = s.getWindow(cmsID, window, constraint.claimsDate, reqType)
-
-	fileType := models.FileTypeDefault
-	if reqType == RunoutAlrRequest {
-		fileType = models.FileTypeRunout
-	}
-
-	req := RequestConditions{
-		CMSID:          cmsID,
-		fileType:       fileType,
-		timeConstraint: constraint,
-	}
-
-    // ALR at the current state still depends on CCLF file to get the attribution data
-    // This may be removed in the future, where we relay on table 1-1
-	benes, err := s.getBeneficiaries(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retreive beneficiaries: %w", err)
-	}
-
-	jobs := make([]*models.JobAlrEnqueueArgs, 0, len(benes)/int(s.alrMBIsPerJob))
-	for {
-		var part []*models.CCLFBeneficiary
-		part, benes = partitionBenes(benes, s.alrMBIsPerJob) // default @ 1000 jobs
-		if len(part) == 0 {
-			break
-		}
-
-		job := &models.JobAlrEnqueueArgs{
-			CMSID:      cmsID,
-			LowerBound: window.LowerBound,
-			UpperBound: window.UpperBound,
-            BBBasePath: s.bbBasePath,
-			MBIs:       make([]string, 0, s.alrMBIsPerJob),
-		}
-
-		for _, bene := range part {
-			job.MBIs = append(job.MBIs, bene.MBI)
-		}
-		jobs = append(jobs, job)
-	}
-
-	return jobs, nil
+	return bigJob
 }
 
 // getWindow returns an update request window based on any time constraints that are associated with the caller
