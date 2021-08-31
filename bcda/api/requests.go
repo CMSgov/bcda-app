@@ -352,14 +352,12 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 }
 
 type AttributionFileStatus struct {
-	Name      string    `json:"name"`
 	Timestamp time.Time `json:"timestamp"`
-	CCLFNum   int       `json:"cclf_number"`
-	Type      string    `json:"cclf_file_type"`
+	Type      string    `json:"type"`
 }
 
 type AttributionFileStatusResponse struct {
-	CCLFFiles []AttributionFileStatus `json:"cclf_files"`
+	Data []AttributionFileStatus `json:"ingestion_dates"`
 }
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
@@ -382,6 +380,9 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if asd != nil {
+		resp.Data = append(resp.Data, *asd)
+	}
 
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
@@ -389,18 +390,13 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if asr != nil {
+		resp.Data = append(resp.Data, *asr)
+	}
 
-	if asd == nil && asr == nil {
+	if resp.Data == nil {
 		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
-	}
-
-	if asd != nil {
-		resp.CCLFFiles = append(resp.CCLFFiles, *asd)
-	}
-
-	if asr != nil {
-		resp.CCLFFiles = append(resp.CCLFFiles, *asr)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -426,16 +422,14 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 	}
 
 	status := &AttributionFileStatus{
-		Name:      cclfFile.Name,
 		Timestamp: cclfFile.Timestamp,
-		CCLFNum:   cclfFile.CCLFNum,
 	}
 
 	switch fileType {
 	case models.FileTypeDefault:
-		status.Type = "default"
+		status.Type = "last_attribution_update"
 	case models.FileTypeRunout:
-		status.Type = "runout"
+		status.Type = "last_runout_update"
 	}
 
 	return status, nil
