@@ -54,6 +54,10 @@ echo "Running Group Runout v2 (EOB resource)" && \
 go run bcda_client.go -host=api:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=Group/runout -resourceType=ExplanationOfBenefit -apiVersion=v2 &
 PIDS+=($!)
 
+echo "Running ALR" && \
+go run bcda_client.go -host=api:3000 -clientID=$CLIENT_ID -clientSecret=$CLIENT_SECRET -endpoint=alr &
+PIDS+=($!)
+
 for PID in "${PIDS[@]}"; do
    wait "$PID"
 done
