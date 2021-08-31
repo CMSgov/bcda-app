@@ -59,7 +59,12 @@ unit-test-db:
 	docker-compose -f docker-compose.test.yml up -d db-unit-test
 	
 	# Wait for the database to be ready
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait wait-for-it -h db-unit-test -p 5432 -t 120
+	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h db-unit-test -p 5432 -t 120"
+
+	# Load ALR data into the unit-test-DB for local and github actions unit-test
+	# TODO: once we finalize on synthetic ALR data, we should take a snapshot of the unit-test-db
+	$(eval ACO_CMS_ID = A9994)
+	docker-compose run -e DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable api sh -c 'bcda generate-synthetic-alr-data --cms-id=$(ACO_CMS_ID) --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
 	
 	# Perform migrations to ensure matching schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up

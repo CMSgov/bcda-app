@@ -967,7 +967,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 func (r *RepositoryTestSuite) TestGetAlrMBIs() {
 	alrMBI, err := r.repository.GetAlrMBIs(context.Background(), "A9994", 10);
 	r.NoError(err)
-	r.Equal(5, len(alrMBI))
+	r.Equal(6, len(alrMBI))
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {

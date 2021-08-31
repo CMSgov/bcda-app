@@ -568,18 +568,18 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 // GetAlrMBIs takes cms_id and returns all the MBIs associated with the ACO's quarterly ALR
 func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string, partition int) ([]models.AlrMBIGroup, error) {
 	sb := sqlFlavor.NewSelectBuilder().
-		Select("id", "aco", "timestamp").From("alr_meta")
+		Select("id", "aco", "timestp").From("alr_meta")
 	sb.Where(
 		sb.Equal("aco", cmsID),
 	).
-		OrderBy("timestamp").Desc().
+		OrderBy("timestp").Desc().
 		Limit(1)
 
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 
 	var (
-		id        uint
+		id        int64
 		aco       sql.NullString
 		timestamp sql.NullTime
 	)
@@ -593,8 +593,8 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string, partition int
 	}
 
 	sb = sqlFlavor.NewSelectBuilder().
-		Select("metakey", "mbi").From("alr").
-		Where(sb.Equal("metakey", id))
+		Select("metakey", "mbi").From("alr")
+	sb.Where(sb.Equal("metakey", id))
 
 	query, args = sb.Build()
 	rows, err := r.QueryContext(ctx, query, args...)
