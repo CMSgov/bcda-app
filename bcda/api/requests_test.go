@@ -133,7 +133,6 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 }
 
 func (s *RequestsTestSuite) TestJobsStatusV1() {
-	// Test
 	apiVersion := "v1"
 
 	tests := []struct {
