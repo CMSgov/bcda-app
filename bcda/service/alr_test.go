@@ -33,9 +33,10 @@ func (s *AlrTestSuite) SetupSuite() {
 		assert.FailNowf(s.T(), "Failed ot load service config", err.Error())
 	}
 
-	cfg.AlrJobSize = 10 // Test case here is 54, so settting it to 10
+	// Test case here is 54, so settting it to 10
+	cfg.AlrJobSize = 10
 
-	s.svc = NewService(r, cfg, "v1")
+	s.svc = NewService(r, cfg, "/v1/fhir")
 	s.r = r
 }
 

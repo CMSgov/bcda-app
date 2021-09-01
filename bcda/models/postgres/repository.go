@@ -621,5 +621,5 @@ func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) (*models.AlrM
 		mbiGrouping = append(mbiGrouping, mbi.String)
 	}
 
-	return &models.AlrMBIs{MBIS: mbiGrouping, Metakey: id, CMSID: cmsID}, nil
+	return &models.AlrMBIs{MBIS: mbiGrouping, Metakey: id, CMSID: aco.String, TransactionTime: timestamp.Time}, nil
 }

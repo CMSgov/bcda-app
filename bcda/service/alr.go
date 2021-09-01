@@ -31,20 +31,22 @@ func (s *service) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*mod
 	for i := 0; i < loop; i++ {
 		bigJob = append(bigJob, &models.JobAlrEnqueueArgs{
 			CMSID:        alrMBI.CMSID,
-			MBIs:         alrMBI.MBIS,
+			MBIs:         alrMBI.MBIS[:partition],
 			BBBasePath:   s.bbBasePath,
 			MetaKey: alrMBI.Metakey,
+			TransactionTime: alrMBI.TransactionTime,
 		})
 		// push the slice
 		alrMBI.MBIS = alrMBI.MBIS[partition:]
 	}
 	if len(alrMBI.MBIS)%partition != 0 {
-		// There is more MBIs, unless than the partition
+		// There are more MBIs, unless than the partition
 		bigJob = append(bigJob, &models.JobAlrEnqueueArgs{
 			CMSID:        alrMBI.CMSID,
 			MBIs:         alrMBI.MBIS,
 			MetaKey:      alrMBI.Metakey,
 			BBBasePath:   s.bbBasePath,
+			TransactionTime: alrMBI.TransactionTime,
 		})
 	}
 

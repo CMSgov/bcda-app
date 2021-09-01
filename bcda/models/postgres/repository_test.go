@@ -862,11 +862,11 @@ func (r *RepositoryTestSuite) TestCCLFFileType() {
 }
 
 /*******************************************************************************
-	TestAlr tests the following
+	TestAddAlrGetAlr tests the following
 		1. AddAlr
 		2. GetAlr
 *******************************************************************************/
-func (r *RepositoryTestSuite) TestAlr() {
+func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 
 	// Generate some data
 	exMap := make(map[string]string)
@@ -888,8 +888,7 @@ func (r *RepositoryTestSuite) TestAlr() {
 	dob2, _ := time.Parse("01/02/2006", "04/15/1950")
 	alrs := []models.Alr{
 		{
-			ID:            1, // These are set manually for testing
-			MetaKey:       1, // PostgreSQL should automatically make these
+			MetaKey:       2, // PostgreSQL should automatically make these
 			BeneMBI:       MBIs[0],
 			BeneHIC:       "1q2w3e4r5t6y",
 			BeneFirstName: "John",
@@ -900,7 +899,6 @@ func (r *RepositoryTestSuite) TestAlr() {
 			KeyValue:      exMap,
 		},
 		{
-			ID:            2,
 			MetaKey:       2,
 			BeneMBI:       MBIs[1],
 			BeneHIC:       "0p9o8i7u6y5t",
@@ -921,45 +919,24 @@ func (r *RepositoryTestSuite) TestAlr() {
 	_ = alrRepo.AddAlr(ctx, aco, timestamp2, alrs[1:2])
 	assert.NoError(r.T(), err)
 
-	// Test GetAlr
-	// No bounds
-	nobounds, err := alrRepo.GetAlr(ctx, aco, MBIs, time.Time{}, time.Time{})
+	// Test GetAlr for John and Melissa
+	johnMel, err := alrRepo.GetAlr(ctx, 2, MBIs)
 	assert.NoError(r.T(), err)
-	assert.Greater(r.T(), len(nobounds), 1)
+	assert.Equal(r.T(), len(johnMel), 1)
 
 	// Compare the values
-	assert.EqualValues(r.T(), alrs[0].BeneMBI, nobounds[0].BeneMBI)
+	assert.EqualValues(r.T(), alrs[0].BeneMBI, johnMel[0].BeneMBI)
 	// Go time added a monotonic clock... this is to remove it.
 	assert.EqualValues(r.T(), timestamp.Truncate(time.Microsecond),
-		nobounds[0].Timestamp.Truncate(time.Microsecond))
-
-	// Get exact date
-	exact, err := alrRepo.GetAlr(ctx, aco, MBIs, timestamp2, timestamp2)
-	assert.NoError(r.T(), err)
-	assert.Len(r.T(), exact, 1)
-
-	// Compare the values
-	assert.EqualValues(r.T(), alrs[1].BeneMBI, exact[0].BeneMBI)
-	assert.EqualValues(r.T(), timestamp2.Truncate(time.Microsecond),
-		exact[0].Timestamp.Truncate(time.Microsecond))
-
-	// Get a range and make sure we got the right person
-	rn, err := alrRepo.GetAlr(ctx, aco, MBIs, timestamp, timestamp.Add(time.Hour*10))
-	assert.NoError(r.T(), err)
-	assert.EqualValues(r.T(), alrs[0].BeneFirstName, rn[0].BeneFirstName)
+		johnMel[0].Timestamp.Truncate(time.Microsecond))
 
 	// Double check if you can get value from map
-	assert.EqualValues(r.T(), nobounds[0].KeyValue["BENE_RSK_R_SCRE_01"], "1.2345")
-	assert.EqualValues(r.T(), nobounds[0].KeyValue["ESRD_SCORE"], "1.2345")
-
-	// Check if the MBI filter worker
-	mbi, err := alrRepo.GetAlr(ctx, aco, MBIs[:1], time.Time{}, time.Time{})
-	assert.NoError(r.T(), err)
-	assert.EqualValues(r.T(), alrs[0].BeneMBI, mbi[0].BeneMBI)
+	assert.EqualValues(r.T(), johnMel[0].KeyValue["BENE_RSK_R_SCRE_01"], "1.2345")
+	assert.EqualValues(r.T(), johnMel[0].KeyValue["ESRD_SCORE"], "1.2345")
 
 	// Check if providing mbi not in DB is ok
-	MBIs = append(MBIs, "A9999")
-	extra, err := alrRepo.GetAlr(ctx, aco, MBIs, time.Time{}, time.Time{})
+	MBIs = append(MBIs, "DOESNOTEXIST")
+	extra, err := alrRepo.GetAlr(ctx, 2, MBIs)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), extra, 2) // There should only be two entries in DB, so ok
 }

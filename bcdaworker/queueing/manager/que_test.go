@@ -189,15 +189,10 @@ func TestStartAlrJob(t *testing.T) {
 	aco, err := r.GetACOByCMSID(ctx, cmsID)
 	assert.NoError(t, err)
 
-	mbis, err := r.GetCCLFBeneficiaries(ctx, 1, []string{})
+	mbis, err := r.GetAlrMBIs(ctx, *aco.CMSID)
 	assert.NoError(t, err)
 
-	// just use one mbi for this test
-	twoMbis := []string{}
-	twoMbis = append(twoMbis, mbis[0].MBI)
-	twoMbis = append(twoMbis, mbis[1].MBI)
-
-	alr, err := alrWorker.GetAlr(ctx, *aco.CMSID, twoMbis, time.Time{}, time.Time{})
+	alr, err := alrWorker.GetAlr(ctx, mbis.Metakey, mbis.MBIS)
 	assert.NoError(t, err)
 
 	// Add the ACO into aco table
