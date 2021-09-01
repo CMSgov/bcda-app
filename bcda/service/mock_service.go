@@ -149,3 +149,23 @@ func (_m *MockService) GetQueJobs(ctx context.Context, conditions RequestConditi
 
 	return r0, r1
 }
+
+func (_m *MockService) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
+	ret := _m.Called(cmsID)
+
+	var r0 *ACOConfig
+	if rf, ok := ret.Get(0).(func(string) *ACOConfig); ok {
+		r0 = rf(cmsID)
+	} else {
+		r0 = ret.Get(0).(*ACOConfig)
+	}
+
+	var r1 bool
+	if rf, ok := ret.Get(1).(func(string) bool); ok {
+		r1 = rf(cmsID)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
+}

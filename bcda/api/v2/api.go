@@ -27,7 +27,14 @@ var (
 func init() {
 	var err error
 
-	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit"}, "/v2/fhir", "v2")
+	resources := map[string]api.DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Claim":                {Adjudicated: false, PreAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+	}
+	h = api.NewHandler(resources, "/v2/fhir", "v2")
 
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
@@ -62,6 +69,30 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+	swagger:route GET /api/v2/alr/Patient/$export bulkDataV2 bulkPatientRequestV2
+
+	Start FHIR R4 data export for all supported resource types.
+
+	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) {
+	h.BulkALRPatientRequest(w, r)
+}
+
+/*
 	swagger:route GET /api/v2/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
 
     Start FHIR R4 data export (for the specified group identifier) for all supported resource types
@@ -87,6 +118,34 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkGroupRequest(w, r)
+}
+
+/*
+	swagger:route GET /api/v2/alr/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
+
+    Start FHIR R4 data export (for the specified group identifier) for all supported resource types
+
+	Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system are `all` and `runout`.
+
+	The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
+
+	The `runout` identifier returns claims runouts data.
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func BulkALRGroupRequest(w http.ResponseWriter, r *http.Request) {
+	h.BulkALRGroupRequest(w, r)
 }
 
 /*
@@ -149,7 +208,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	Get attribution status
 
-	Returns the attribution status of the latest cclf 8 and cclf 8 runout files. This will contain the name of the file, the timestamp it was ingested, the cclf number type, and the type (default or runout)
+	Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the Type to identify which ingestion and a Timestamp for the last time it was updated.
 
 	Produces:
 	- application/json

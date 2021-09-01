@@ -31,7 +31,7 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	if err := h.validateRequest(rp.ResourceTypes); err != nil {
+	if err := h.validateRequest(rp.ResourceTypes, ad.CMSID); err != nil {
 		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
 			err.Error())
 		responseutils.WriteError(oo, w, http.StatusBadRequest)
@@ -117,18 +117,4 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 	}
 
 	// Commit handled in defer
-}
-
-// Since we are overloading the Patient resource, we require the caller to provide a typeFilter
-// to specify an ALR resource.
-func isALRRequest(r *http.Request) bool {
-	typeParam := r.URL.Query().Get("_type")
-	typeFilterParam := r.URL.Query().Get("_typeFilter")
-
-	hasType := typeParam == "Patient,Observation" ||
-		typeParam == "Observation,Patient"
-	hasTypeFilter := typeFilterParam == "Patient?profile=ALR,Observation?profile=ALR" ||
-		typeFilterParam == "Observation?profile=ALR,Patient?profile=ALR"
-
-	return hasType && hasTypeFilter
 }

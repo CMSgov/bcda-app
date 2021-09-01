@@ -11,9 +11,7 @@ import (
 
 func observations(version, mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Observation {
 	obs := &fhirmodels.Observation{}
-	obs.Id = &fhirdatatypes.Id{Id: &fhirdatatypes.String{
-		Value: "example-id-hcc-risk-flags",
-	}}
+	obs.Id = &fhirdatatypes.Id{Value: "example-id-hcc-risk-flags"}
 	obs.Meta = &fhirdatatypes.Meta{
 		Profile: []*fhirdatatypes.Uri{{
 			Value: "http://alr.cms.gov/ig/StructureDefinition/alr-HccRiskFlag",
