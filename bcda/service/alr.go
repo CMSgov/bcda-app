@@ -30,10 +30,10 @@ func (s *service) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*mod
 
 	for i := 0; i < loop; i++ {
 		bigJob = append(bigJob, &models.JobAlrEnqueueArgs{
-			CMSID:        alrMBI.CMSID,
-			MBIs:         alrMBI.MBIS[:partition],
-			BBBasePath:   s.bbBasePath,
-			MetaKey: alrMBI.Metakey,
+			CMSID:           alrMBI.CMSID,
+			MBIs:            alrMBI.MBIS[:partition],
+			BBBasePath:      s.bbBasePath,
+			MetaKey:         alrMBI.Metakey,
 			TransactionTime: alrMBI.TransactionTime,
 		})
 		// push the slice
@@ -42,34 +42,15 @@ func (s *service) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*mod
 	if len(alrMBI.MBIS)%partition != 0 {
 		// There are more MBIs, unless than the partition
 		bigJob = append(bigJob, &models.JobAlrEnqueueArgs{
-			CMSID:        alrMBI.CMSID,
-			MBIs:         alrMBI.MBIS,
-			MetaKey:      alrMBI.Metakey,
-			BBBasePath:   s.bbBasePath,
+			CMSID:           alrMBI.CMSID,
+			MBIs:            alrMBI.MBIS,
+			MetaKey:         alrMBI.Metakey,
+			BBBasePath:      s.bbBasePath,
 			TransactionTime: alrMBI.TransactionTime,
 		})
 	}
 
 	return bigJob
-}
-
-// getWindow returns an update request window based on any time constraints that are associated with the caller
-func (s *service) getWindow(cmsID string, current AlrRequestWindow, claimsDate time.Time, req AlrRequestType) AlrRequestWindow {
-	new := current
-	if req == RunoutAlrRequest {
-		new.UpperBound = s.rp.claimThruDate
-	} else if !claimsDate.IsZero() {
-		new.UpperBound = claimsDate
-	}
-
-	for pattern, cfg := range s.acoConfig {
-		if pattern.MatchString(cmsID) && !cfg.LookbackTime().IsZero() {
-			new.LowerBound = cfg.LookbackTime()
-			break
-		}
-	}
-
-	return new
 }
 
 func partitionBenes(input []*models.CCLFBeneficiary, size uint) (part, remaining []*models.CCLFBeneficiary) {
