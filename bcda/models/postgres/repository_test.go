@@ -883,12 +883,10 @@ func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 	aco := "A1234"
 	MBIs := []string{"abd123abd01", "abd123abd02"}
 	timestamp := time.Now()
-	timestamp2 := timestamp.Add(time.Hour * 24)
 	dob1, _ := time.Parse("01/02/2006", "01/20/1950")
 	dob2, _ := time.Parse("01/02/2006", "04/15/1950")
 	alrs := []models.Alr{
 		{
-			MetaKey:       2, // PostgreSQL should automatically make these
 			BeneMBI:       MBIs[0],
 			BeneHIC:       "1q2w3e4r5t6y",
 			BeneFirstName: "John",
@@ -899,7 +897,6 @@ func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 			KeyValue:      exMap,
 		},
 		{
-			MetaKey:       2,
 			BeneMBI:       MBIs[1],
 			BeneHIC:       "0p9o8i7u6y5t",
 			BeneFirstName: "Melissa",
@@ -914,35 +911,36 @@ func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 	ctx := context.Background()
 
 	// Test AddAlr
-	err := alrRepo.AddAlr(ctx, aco, timestamp, alrs[:1])
-	// Add the second person with a different timestamp
-	_ = alrRepo.AddAlr(ctx, aco, timestamp2, alrs[1:2])
+	err := alrRepo.AddAlr(ctx, aco, timestamp, alrs)
 	assert.NoError(r.T(), err)
 
+	// Retrieve the just add A1234
+	mbis, err := r.repository.GetAlrMBIs(ctx, "A1234")
+	r.NoError(err)
+
 	// Test GetAlr for John and Melissa
-	johnMel, err := alrRepo.GetAlr(ctx, 2, MBIs)
+	johnMel, err := alrRepo.GetAlr(ctx, mbis.Metakey, mbis.MBIS)
 	assert.NoError(r.T(), err)
-	assert.Equal(r.T(), len(johnMel), 1)
+	assert.Equal(r.T(), 2, len(johnMel)) // We should get back John and Mel
 
 	// Compare the values
 	assert.EqualValues(r.T(), alrs[0].BeneMBI, johnMel[0].BeneMBI)
 	// Go time added a monotonic clock... this is to remove it.
-	assert.EqualValues(r.T(), timestamp.Truncate(time.Microsecond),
-		johnMel[0].Timestamp.Truncate(time.Microsecond))
+	assert.EqualValues(r.T(), mbis.TransactionTime, timestamp.Truncate(time.Microsecond))
 
 	// Double check if you can get value from map
-	assert.EqualValues(r.T(), johnMel[0].KeyValue["BENE_RSK_R_SCRE_01"], "1.2345")
-	assert.EqualValues(r.T(), johnMel[0].KeyValue["ESRD_SCORE"], "1.2345")
+	assert.EqualValues(r.T(), "1.2345", johnMel[0].KeyValue["BENE_RSK_R_SCRE_01"])
+	assert.EqualValues(r.T(), "1.2345", johnMel[0].KeyValue["ESRD_SCORE"])
 
 	// Check if providing mbi not in DB is ok
 	MBIs = append(MBIs, "DOESNOTEXIST")
-	extra, err := alrRepo.GetAlr(ctx, 2, MBIs)
+	extra, err := alrRepo.GetAlr(ctx, mbis.Metakey, MBIs)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), extra, 2) // There should only be two entries in DB, so ok
 }
 
 func (r *RepositoryTestSuite) TestGetAlrMBIs() {
-	alrMBI, err := r.repository.GetAlrMBIs(context.Background(), "A9994");
+	alrMBI, err := r.repository.GetAlrMBIs(context.Background(), "A9994")
 	r.NoError(err)
 	// There are 54 MBIs for this synthetic  ACO
 	r.Equal(54, len(alrMBI.MBIS))

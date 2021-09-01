@@ -213,7 +213,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 		var alr models.Alr
 		var keyValueBytes []byte
 		if err := rows.Scan(&alr.BeneMBI, &alr.BeneHIC, &alr.BeneFirstName, &alr.BeneLastName,
-		&alr.BeneSex, &alr.BeneDOB, &alr.BeneDOD, &alr.KeyValue); err != nil {
+		&alr.BeneSex, &alr.BeneDOB, &alr.BeneDOD, &keyValueBytes); err != nil {
 			return nil, err
 		}
 		keyValue, err := decoder(keyValueBytes)
