@@ -7,4 +7,4 @@ RUN apk add git entr bash
 WORKDIR /go/src/github.com/CMSgov/bcda-app/bcdaworker
 COPY --from=bcda-app_worker_builder:latest /go/src/github.com/CMSgov/bcda-app/ /go/src/github.com/CMSgov/bcda-app/
 COPY --from=bcda-app_worker_builder:latest /go/bin/ /go/bin/
-CMD ["../watch.sh", "worker", "bcdaworker"]
+CMD ["../scripts/watch.sh", "worker", "bcdaworker"]
