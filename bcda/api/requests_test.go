@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -143,9 +144,9 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 		fileNames   []string
 		fileTypes   []string
 	}{
-		{"Successful with both files", nil, http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"default", "runout"}},
-		{"Successful with default file", nil, http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"default", ""}},
-		{"Successful with runout file", nil, http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "runout"}},
+		{"Successful with both files", nil, http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"last_attribution_update", "last_runout_update"}},
+		{"Successful with default file", nil, http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"last_attribution_update", ""}},
+		{"Successful with runout file", nil, http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "last_runout_update"}},
 		{"No CCLF files found", nil, http.StatusNotFound, []string{"", ""}, []string{"", ""}},
 	}
 
@@ -202,10 +203,9 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				assert.NoError(s.T(), err)
 
 				count := 0
-				for _, fileStatus := range resp.CCLFFiles {
+				for _, fileStatus := range resp.Data {
 					if tt.fileNames[count] != "" {
 						assert.Equal(s.T(), tt.fileTypes[count], fileStatus.Type)
-						assert.Equal(s.T(), tt.fileNames[count], fileStatus.Name)
 						count += 1
 					}
 				}
@@ -347,11 +347,11 @@ func (s *RequestsTestSuite) TestRequests() {
 	h.Enq = enqueuer
 	mockSvc := service.MockService{}
 
-	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
 	mockAco := service.ACOConfig{
 		Data: []string{"adjudicated"},
 	}
-	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
 
 	h.Svc = &mockSvc
 

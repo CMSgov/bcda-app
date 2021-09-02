@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/service"
 	"io"
 	"net/http"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
@@ -63,6 +63,30 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+	swagger:route GET /api/v1/alr/Patient/$export bulkData bulkPatientRequest
+
+	Start FHIR STU3 data export for all supported resource types
+
+	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) {
+	h.BulkALRPatientRequest(w, r)
+}
+
+/*
 	swagger:route GET /api/v1/Group/{groupId}/$export bulkData bulkGroupRequest
 
     Start FHIR STU3 data export (for the specified group identifier) for all supported resource types
@@ -88,6 +112,34 @@ func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkGroupRequest(w, r)
+}
+
+/*
+	swagger:route GET /api/v1/alr/Group/{groupId}/$export bulkData bulkGroupRequest
+
+    Start FHIR STU3 data export (for the specified group identifier) for all supported resource types
+
+	Initiates a job to collect data from the Blue Button API for your ACO. The supported Group identifiers are `all` and `runout`.
+
+	The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
+
+	The `runout` identifier returns claims runouts data.
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func BulkALRGroupRequest(w http.ResponseWriter, r *http.Request) {
+	h.BulkALRGroupRequest(w, r)
 }
 
 /*
@@ -159,7 +211,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	Get attribution status
 
-	Returns the attribution status of the latest cclf 8 and cclf 8 runout files. This will contain the name of the file, the timestamp it was ingested, the cclf number type, and the type (default or runout)
+	Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the Type to identify which ingestion and a Timestamp for the last time it was updated.
 
 	Produces:
 	- application/json

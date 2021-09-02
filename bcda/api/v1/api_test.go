@@ -465,10 +465,8 @@ func (s *APITestSuite) TestGetAttributionStatus() {
 	aco := postgrestest.GetACOByUUID(s.T(), s.db, acoUnderTest)
 	cclfFile := postgrestest.GetLatestCCLFFileByCMSIDAndType(s.T(), s.db, *aco.CMSID, models.FileTypeDefault)
 
-	assert.Equal(s.T(), "default", resp.CCLFFiles[0].Type)
-	assert.Equal(s.T(), cclfFile.CCLFNum, resp.CCLFFiles[0].CCLFNum)
-	assert.Equal(s.T(), cclfFile.Name, resp.CCLFFiles[0].Name)
-	assert.Equal(s.T(), cclfFile.Timestamp.Format("2006-01-02 15:04:05"), resp.CCLFFiles[0].Timestamp.Format("2006-01-02 15:04:05"))
+	assert.Equal(s.T(), "last_attribution_update", resp.Data[0].Type)
+	assert.Equal(s.T(), cclfFile.Timestamp.Format("2006-01-02 15:04:05"), resp.Data[0].Timestamp.Format("2006-01-02 15:04:05"))
 }
 
 func (s *APITestSuite) makeContextValues(acoID uuid.UUID) (data auth.AuthData) {
