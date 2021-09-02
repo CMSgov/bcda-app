@@ -2,22 +2,9 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 )
-
-type AlrRequestType uint8
-
-const (
-	DefaultAlrRequest AlrRequestType = iota
-	RunoutAlrRequest  AlrRequestType = 2
-)
-
-type AlrRequestWindow struct {
-	LowerBound time.Time
-	UpperBound time.Time
-}
 
 // Get the MBIs and put them into jobs
 func (s *service) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs {
