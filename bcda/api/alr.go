@@ -31,12 +31,13 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	if err := h.validateRequest(rp.ResourceTypes, ad.CMSID); err != nil {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-			err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
+	// Currently, we don't do anything with resource types, thus commented out
+	//if err := h.validateRequest(rp.ResourceTypes, ad.CMSID); err != nil {
+		//oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
+			//err.Error())
+		//responseutils.WriteError(oo, w, http.StatusBadRequest)
+		//return
+	//}
 
 	// Depending on how the request is sent to the handler,
 	// the r.URL.Scheme may be unset.

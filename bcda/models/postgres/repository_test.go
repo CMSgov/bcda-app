@@ -861,6 +861,15 @@ func (r *RepositoryTestSuite) TestCCLFFileType() {
 	assert.Equal(r.T(), withType.Type, result[0].Type)
 }
 
+func (r *RepositoryTestSuite) TestCCLFFileExistsByName() {
+	ctx := context.Background()
+	// Difficult to provide a name, since it is created during the ingestion
+	// using a timestamp. For now testing negative.
+	exists, err := r.repository.GetCCLFFileExistsByName(ctx, "DOESNOTEXIST")
+	r.NoError(err)
+	r.False(exists)
+}
+
 /*******************************************************************************
 	TestAddAlrGetAlr tests the following
 		1. AddAlr
@@ -946,6 +955,10 @@ func (r *RepositoryTestSuite) TestGetAlrMBIs() {
 	r.Equal(54, len(alrMBI.MBIS))
 	r.NotEmpty(alrMBI.CMSID)
 	r.NotEmpty(alrMBI.Metakey)
+
+	alrMBI, err = r.repository.GetAlrMBIs(context.Background(), "A9996")
+	r.Contains(err.Error(), "No ALR meta data found for A9996")
+	r.Nil(alrMBI)
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {
