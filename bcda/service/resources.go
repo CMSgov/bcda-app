@@ -29,8 +29,8 @@ func init() {
 		"Coverage":             {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
 		"Observation":          {Adjudicated: true},
-		"Claim":                {Adjudicated: false, PreAdjudicated: true},
-		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+		"Claim":                {PreAdjudicated: true},
+		"ClaimResponse":        {PreAdjudicated: true},
 	}
 }
 
