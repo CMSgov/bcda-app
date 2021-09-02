@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
 	"time"
 
@@ -305,7 +304,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 			mockSvc := service.MockService{}
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
-			mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(test.acoConfig, true)
+			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
 
 			h.Svc = &mockSvc
 
