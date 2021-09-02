@@ -29,6 +29,7 @@ type RequestConditions struct {
 	JobID           uint
 	Since           time.Time
 	TransactionTime time.Time
+	CreationTime    time.Time
 
 	// Fields set in the service
 	fileType models.CCLFFileType
@@ -254,6 +255,18 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 				if acoConfig, ok := s.GetACOConfigForID(conditions.CMSID); ok {
 					// Create separate jobs for each data type if needed
 					for _, dataType := range acoConfig.Data {
+						// conditions.TransactionTime references the last time adjudicated data
+						// was updated in the BB client. If we are queuing up a pre-adjudicated
+						// data job, we need to assume that the adjudicated and pre-adjudicated
+						// data ingestion timelines don't line up, therefore for all
+						// pre-adjudicated jobs we will just use conditions.CreationTime as an
+						// upper bound
+						var transactionTime time.Time
+						if dataType == constants.PreAdjudicated {
+							transactionTime = conditions.CreationTime
+						} else {
+							transactionTime = conditions.TransactionTime
+						}
 						if resource, ok := GetDataType(rt); ok {
 							if resource.SupportsDataType(dataType) {
 								enqueueArgs := models.JobEnqueueArgs{
@@ -262,7 +275,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 									BeneficiaryIDs:  jobIDs,
 									ResourceType:    rt,
 									Since:           sinceArg,
-									TransactionTime: conditions.TransactionTime,
+									TransactionTime: transactionTime,
 									BBBasePath:      s.bbBasePath,
 									DataType:        dataType,
 								}

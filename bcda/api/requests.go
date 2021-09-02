@@ -482,6 +482,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		JobID:           newJob.ID,
 		Since:           rp.Since,
 		TransactionTime: newJob.TransactionTime,
+		CreationTime:    time.Now(),
 	}
 	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
 	if err != nil {
