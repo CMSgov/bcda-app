@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/CMSgov/bcda-app/bcda/cclf/metrics"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	fhirmodels "github.com/CMSgov/bcda-app/bcda/models/fhir"
@@ -61,6 +62,13 @@ func (w *worker) ValidateJob(ctx context.Context, jobArgs models.JobEnqueueArgs)
 }
 
 func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.JobEnqueueArgs) error {
+
+	t := metrics.GetTimer()
+	defer t.Close()
+	ctx = metrics.NewContext(ctx, t)
+	ctx, c := metrics.NewParent(ctx, "ProcessJob")
+	defer c()
+
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve ACO from database")
@@ -140,8 +148,9 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
-	segment := getSegment(ctx, "writeBBDataToFile")
-	defer segment.End()
+
+	close := metrics.NewChild(ctx, "writeBBDataToFile")
+	defer close()
 
 	var bundleFunc func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error)
 	switch jobArgs.ResourceType {
@@ -258,7 +267,6 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 // getBeneficiary returns the beneficiary. The bb ID value is retrieved and set in the model.
 func getBeneficiary(ctx context.Context, r repository.Repository, beneID uint, bb client.APIClient) (models.CCLFBeneficiary, error) {
-
 	bene, err := r.GetCCLFBeneficiaryByID(ctx, beneID)
 	if err != nil {
 		return models.CCLFBeneficiary{}, err
@@ -292,8 +300,8 @@ func getFailureThreshold() float64 {
 func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, jobID int) {
-	segment := getSegment(ctx, "appendErrorToFile")
-	defer segment.End()
+	close := metrics.NewChild(ctx, "appendErrorToFile")
+	defer close()
 
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
 
@@ -318,8 +326,8 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 }
 
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
-	segment := getSegment(ctx, "fhirBundleToResourceNDJSON")
-	defer segment.End()
+	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
+	defer close()
 
 	for _, entry := range b.Entries {
 		if entry["resource"] == nil {
@@ -395,14 +403,6 @@ func checkJobCompleteAndCleanup(ctx context.Context, r repository.Repository, jo
 	}
 	// We still have parts of the job that are not complete
 	return false, nil
-}
-
-func getSegment(ctx context.Context, name string) newrelic.Segment {
-	segment := newrelic.Segment{Name: name}
-	if txn := newrelic.FromContext(ctx); txn != nil {
-		segment.StartTime = txn.StartSegmentNow()
-	}
-	return segment
 }
 
 func createDir(path string) error {
