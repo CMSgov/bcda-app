@@ -148,7 +148,7 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.APIClient,
 	cmsID string, jobArgs models.JobEnqueueArgs) (fileUUID string, size int64, err error) {
 
-	close := metrics.NewChild(ctx, "writeBBDataToFile")
+	close := metrics.NewChild(ctx, "ProcessJob#writeBBDataToFile")
 	defer close()
 
 	var bundleFunc func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error)
@@ -299,7 +299,7 @@ func getFailureThreshold() float64 {
 func appendErrorToFile(ctx context.Context, fileUUID string,
 	code fhircodes.IssueTypeCode_Value,
 	detailsCode, detailsDisplay string, jobID int) {
-	close := metrics.NewChild(ctx, "appendErrorToFile")
+	close := metrics.NewChild(ctx, "ProcessJob#appendErrorToFile")
 	defer close()
 
 	oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, code, detailsCode, detailsDisplay)
@@ -325,7 +325,7 @@ func appendErrorToFile(ctx context.Context, fileUUID string,
 }
 
 func fhirBundleToResourceNDJSON(ctx context.Context, w *bufio.Writer, b *fhirmodels.Bundle, jsonType, beneficiaryID, acoID, fileUUID string, jobID int) {
-	close := metrics.NewChild(ctx, "fhirBundleToResourceNDJSON")
+	close := metrics.NewChild(ctx, "ProcessJob#fhirBundleToResourceNDJSON")
 	defer close()
 
 	for _, entry := range b.Entries {
