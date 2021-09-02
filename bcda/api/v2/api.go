@@ -45,6 +45,28 @@ func init() {
 }
 
 /*
+	swagger:route GET /api/v1/alr/$export alrData alrRequest
+
+	Start FHIR R4 data export for all supported resource types
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func ALRRequest(w http.ResponseWriter, r *http.Request) {
+	h.ALRRequest(w, r)
+}
+
+/*
 	swagger:route GET /api/v2/Patient/$export bulkDataV2 bulkPatientRequestV2
 
 	Start FHIR R4 data export for all supported resource types.
@@ -66,30 +88,6 @@ func init() {
 */
 func BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkPatientRequest(w, r)
-}
-
-/*
-	swagger:route GET /api/v2/alr/Patient/$export bulkDataV2 bulkPatientRequestV2
-
-	Start FHIR R4 data export for all supported resource types.
-
-	Initiates a job to collect data from the Blue Button API for your ACO. Supported resource types are Patient, Coverage, and ExplanationOfBenefit.
-
-	Produces:
-	- application/fhir+json
-
-	Security:
-		bearer_token:
-
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
-*/
-func BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkALRPatientRequest(w, r)
 }
 
 /*
@@ -118,34 +116,6 @@ func BulkALRPatientRequest(w http.ResponseWriter, r *http.Request) {
 */
 func BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 	h.BulkGroupRequest(w, r)
-}
-
-/*
-	swagger:route GET /api/v2/alr/Group/{groupId}/$export bulkDataV2 bulkGroupRequestV2
-
-    Start FHIR R4 data export (for the specified group identifier) for all supported resource types
-
-	Initiates a job to collect data from the Blue Button API for your ACO. The only Group identifier supported by the system are `all` and `runout`.
-
-	The `all` identifier returns data for the group of all patients attributed to the requesting ACO.  If used when specifying `_since`: all claims data which has been updated since the specified date will be returned for beneficiaries which have been attributed to the ACO since before the specified date; and all historical claims data will be returned for beneficiaries which have been newly attributed to the ACO since the specified date.
-
-	The `runout` identifier returns claims runouts data.
-
-	Produces:
-	- application/fhir+json
-
-	Security:
-		bearer_token:
-
-	Responses:
-		202: BulkRequestResponse
-		400: badRequestResponse
-		401: invalidCredentials
-		429: tooManyRequestsResponse
-		500: errorResponse
-*/
-func BulkALRGroupRequest(w http.ResponseWriter, r *http.Request) {
-	h.BulkALRGroupRequest(w, r)
 }
 
 /*
