@@ -437,7 +437,7 @@ func (m MockService) GetQueJobs(ctx context.Context, conditions service.RequestC
 	return queJobs, nil
 }
 
-func (m MockService) GetAlrJobs(ctx context.Context, cmsID string, reqType service.AlrRequestType, window service.AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error) {
+func (m MockService) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs {
 	panic("not implement")
 }
 
