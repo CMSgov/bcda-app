@@ -24,7 +24,7 @@ services:
       args:
         ENVIRONMENT: development
     entrypoint: ""
-    command: ["../watch.sh", "api", "bcda", "start-api"]
+    command: ["../scripts/watch.sh", "api", "bcda", "start-api"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
@@ -47,7 +47,7 @@ services:
       args:
         ENVIRONMENT: development
     entrypoint: ""
-    command: ["../watch.sh", "worker", "bcdaworker"]
+    command: ["../scripts/watch.sh", "worker", "bcdaworker"]
     env_file:
       - ./shared_files/decrypted/local.env
     environment:
