@@ -24,7 +24,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
-	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 )
