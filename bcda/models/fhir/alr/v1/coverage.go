@@ -15,20 +15,26 @@ func coverage(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirm
 
 	coverage := &fhirmodels.Coverage{}
 	coverage.Id = &fhirdatatypes.Id{Value: mbi}
-	coverage.Meta = &fhirdatatypes.Meta{
-		Profile: []*fhirdatatypes.
-			Uri{{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Coverage"}},
-	}
 	coverage.Extension = []*fhirdatatypes.Extension{}
 	coverage.Beneficiary = &fhirdatatypes.Reference{
-		Reference: &fhirdatatypes.Reference_OrganizationId{
-			OrganizationId: &fhirdatatypes.ReferenceId{Value: mbi},
+		Reference: &fhirdatatypes.Reference_PatientId{
+			PatientId: &fhirdatatypes.ReferenceId{Value: mbi},
 		},
 	}
+	// coverage.Payor = []*fhirdatatypes.Reference{}
+	// payorRef := &fhirdatatypes.Reference{
+	// 	Reference: &fhirdatatypes.Reference_OrganizationId{
+	// 		OrganizationId: &fhirdatatypes.ReferenceId{Value: "example-org-id"},
+	// 	}}
+	// coverage.Payor = append(coverage.Payor, payorRef)
+
 	coverage.Meta = &fhirdatatypes.Meta{
 		LastUpdated: &fhirdatatypes.Instant{
 			Precision: fhirdatatypes.Instant_SECOND,
 			ValueUs:   lastUpdated.UnixNano() / int64(time.Microsecond),
+		},
+		Profile: []*fhirdatatypes.Uri{
+			{Value: "http://alr.cms.gov/ig/StructureDefinition/alr-Coverage"},
 		},
 	}
 
@@ -37,6 +43,7 @@ func coverage(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirm
 		if kv.Value == "" {
 			continue
 		}
+		subExt := &fhirdatatypes.Extension{}
 
 		ext := &fhirdatatypes.Extension{}
 		ext.Url = &fhirdatatypes.Uri{Value: kv.Key}
@@ -46,7 +53,10 @@ func coverage(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirm
 			},
 		}
 
-		coverage.Extension = append(coverage.Extension, ext)
+		subExt.Extension = append(subExt.Extension, ext)
+		subExt.Url = &fhirdatatypes.Uri{Value: "http://alr.cms.gov/ig/StructureDefinition/ext-enrollmentFlag"}
+
+		coverage.Extension = append(coverage.Extension, subExt)
 	}
 
 	return coverage

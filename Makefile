@@ -49,7 +49,7 @@ unit-test:
 	$(MAKE) unit-test-db
 	
 	docker-compose -f docker-compose.test.yml build tests
-	@docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
+	@docker-compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
@@ -112,18 +112,11 @@ load-fixtures:
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
-	for acoSize in $(ACO_SIZES) ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
-	done
+	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test ' ' $(ACO_SIZES)"
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
-	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
-	done
-
-	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test --fileType=runout' ; \
-	done
+	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test-new-beneficiaries ' ' $(ACO_SIZES)"
+	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test runout $(ACO_SIZES)"
 
 load-synthetic-suppression-data:
 	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'

@@ -66,6 +66,8 @@ type Service interface {
 	GetJobPriority(acoID string, resourceType string, sinceParam bool) int16
 
 	GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error)
+
+	GetACOConfigForID(cmsID string) (*ACOConfig, bool)
 }
 
 const (
@@ -456,6 +458,17 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 		priority = int16(100) // default priority level for jobs
 	}
 	return priority
+}
+
+// Gets any currently loaded ACOConfig for the matching cmsID
+func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
+	for pattern, cfg := range s.acoConfig {
+		if pattern.MatchString(cmsID) {
+			return cfg, true
+		}
+	}
+
+	return nil, false
 }
 
 // Checks to see if an ACO is priority ACO based on a regex pattern provided by an
