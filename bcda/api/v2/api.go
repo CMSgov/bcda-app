@@ -27,7 +27,14 @@ var (
 func init() {
 	var err error
 
-	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit"}, "/v2/fhir", "v2")
+	resources := map[string]api.DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Claim":                {Adjudicated: false, PreAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+	}
+	h = api.NewHandler(resources, "/v2/fhir", "v2")
 
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
