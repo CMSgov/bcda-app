@@ -141,6 +141,7 @@ func (t *timer) newChild(parentCtx context.Context, name string) (close func()) 
 		return noop
 	}
 	segment := txn.StartSegment(name)
+	segment.AddAttribute("segmentAttr", "hello")
 	txn.AddAttribute("attr5", "testtest3")
 
 	return func() {
