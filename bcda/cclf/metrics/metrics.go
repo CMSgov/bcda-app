@@ -62,15 +62,6 @@ func NewChild(ctx context.Context, name string) func() {
 	return t.newChild(ctx, name)
 }
 
-// AddAttribute embeds key/value pairs to distinguish transactions
-func AddAttribute(ctx context.Context, key string, value string) {
-	txn := newrelic.FromContext(ctx)
-	if txn == nil {
-		log.API.Warn("No transaction found. Cannot add attributes.")
-	}
-	txn.AddAttribute(key, value)
-}
-
 var defaultTimer = &noopTimer{}
 
 // fromContext returns the Timer associated with the context.
@@ -122,10 +113,7 @@ type timer struct {
 
 func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context, close func()) {
 	txn := t.nr.StartTransaction(name)
-	txn.AddAttribute("attr1", "test")
-	txn.AddAttribute("attr2", "1234")
 	ctx = newrelic.NewContext(parentCtx, txn)
-	txn.AddAttribute("attr3", "testtest")
 
 	f := func() {
 		txn.End()
@@ -135,14 +123,11 @@ func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context
 
 func (t *timer) newChild(parentCtx context.Context, name string) (close func()) {
 	txn := newrelic.FromContext(parentCtx)
-	txn.AddAttribute("attr4", "testtest2")
 	if txn == nil {
 		log.API.Warn("No transaction found. Cannot create child.")
 		return noop
 	}
 	segment := txn.StartSegment(name)
-	segment.AddAttribute("segmentAttr", "hello")
-	txn.AddAttribute("attr5", "testtest3")
 
 	return func() {
 		segment.End()

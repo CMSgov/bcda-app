@@ -66,11 +66,6 @@ func (w *worker) ProcessJob(ctx context.Context, job models.Job, jobArgs models.
 	defer t.Close()
 	ctx = metrics.NewContext(ctx, t)
 	ctx, c := metrics.NewParent(ctx, fmt.Sprintf("ProcessJob-%s", jobArgs.ResourceType))
-	metrics.AddAttribute(ctx, "jobId", strconv.FormatUint(uint64(job.ID), 10))
-	metrics.AddAttribute(ctx, "acoId", jobArgs.ACOID)
-	metrics.AddAttribute(ctx, "resourceType", jobArgs.ResourceType)
-	metrics.AddAttribute(ctx, "requestUrl", job.RequestURL)
-	metrics.AddAttribute(ctx, "taskCount", strconv.Itoa(job.JobCount))
 	defer c()
 
 	aco, err := w.r.GetACOByUUID(ctx, job.ACOID)
