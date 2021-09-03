@@ -63,7 +63,7 @@ func NewChild(ctx context.Context, name string) func() {
 }
 
 // AddAttribute embeds key/value pairs to distinguish transactions 
-func AddAttribute(ctx context.Context, key string, value string) func() {
+func AddAttribute(ctx context.Context, key string, value string) {
         txn := newrelic.FromContext(ctx)
         if txn == nil {
                 log.API.Warn("No transaction found. Cannot add attributes.")
