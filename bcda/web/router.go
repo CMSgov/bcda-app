@@ -50,9 +50,8 @@ func NewAPIRouter() http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v1.BulkPatientRequest))
-		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/Patient/$export", v1.BulkALRPatientRequest))
+		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v1.ALRRequest))
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v1.BulkGroupRequest))
-		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/Group/{groupId}/$export", v1.BulkALRGroupRequest))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v1.JobStatus))
 		r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/jobs", v1.JobsStatus))
 		r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler("/jobs/{jobID}", v1.DeleteJob))
@@ -64,9 +63,8 @@ func NewAPIRouter() http.Handler {
 		FileServer(r, "/api/v2/swagger", http.Dir("./swaggerui/v2"))
 		r.Route("/api/v2", func(r chi.Router) {
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Patient/$export", v2.BulkPatientRequest))
-			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/Patient/$export", v2.BulkALRPatientRequest))
+			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/$export", v2.ALRRequest))
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/Group/{groupId}/$export", v2.BulkGroupRequest))
-			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/alr/Group/{groupId}/$export", v2.BulkALRGroupRequest))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Get(m.WrapHandler("/jobs/{jobID}", v2.JobStatus))
 			r.With(append(commonAuth, requestValidators...)...).Get(m.WrapHandler("/jobs", v2.JobsStatus))
 			r.With(append(commonAuth, auth.RequireTokenJobMatch)...).Delete(m.WrapHandler("/jobs/{jobID}", v2.DeleteJob))
