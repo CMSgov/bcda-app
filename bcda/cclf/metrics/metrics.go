@@ -62,6 +62,16 @@ func NewChild(ctx context.Context, name string) func() {
 	return t.newChild(ctx, name)
 }
 
+// AddAttribute embeds key/value pairs to distinguish transactions 
+func AddAttribute(ctx context.Context, key string, value string) func() {
+        txn := newrelic.FromContext(ctx)
+        if txn == nil {
+                log.API.Warn("No transaction found. Cannot add attributes.")
+                return noop
+        }
+	txn.AddAttribute(key, value)
+}
+
 var defaultTimer = &noopTimer{}
 
 // fromContext returns the Timer associated with the context.
@@ -90,7 +100,7 @@ func GetTimer() Timer {
 	)
 
 	if err != nil {
-		log.API.Warnf("Failed to instantiate NeRelic application. Default to no-op timer. %s", err.Error())
+		log.API.Warnf("Failed to instantiate New Relic application. Default to no-op timer. %s", err.Error())
 		return &noopTimer{}
 	}
 
