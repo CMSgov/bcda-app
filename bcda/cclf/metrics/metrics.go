@@ -122,6 +122,8 @@ type timer struct {
 
 func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context, close func()) {
 	txn := t.nr.StartTransaction(name)
+	txn.AddAttribute("attr1", "test")
+	txn.AddAttribute("attr2", "1234")
 	ctx = newrelic.NewContext(parentCtx, txn)
 
 	f := func() {
