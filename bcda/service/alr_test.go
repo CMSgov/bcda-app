@@ -45,6 +45,8 @@ func (s *AlrTestSuite) TestGetAlrJob() {
 	alrMBIs, err := s.r.GetAlrMBIs(ctx, s.cmsID)
 	s.NoError(err)
 	alrJobs := s.svc.GetAlrJobs(ctx, alrMBIs)
+	// There should be 54 benes split into groups of max 10
+	// Therefore should be a length of 6
 	s.Equal(6, len(alrJobs))
 }
 

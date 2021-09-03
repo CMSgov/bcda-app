@@ -81,9 +81,6 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			job.Args, err)
 	}
 
-	// Check if the job was cancelled
-	go checkIfCancelled(ctx, q, cancel, jobArgs)
-
 	// Validate the job like bcdaworker/worker/worker.go#L43
 	// TODO: Abstract this into either a function or interface like the bfd worker
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
@@ -117,6 +114,9 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return nil
 	}
 	// End of validation
+
+	// Check if the job was cancelled
+	go checkIfCancelled(ctx, q, cancel, jobArgs)
 
 	// Before moving forward, check if this job has failed before
 	// If it has reached the maxRetry, stop the parent job

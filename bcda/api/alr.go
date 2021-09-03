@@ -8,7 +8,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/log"
@@ -16,7 +15,7 @@ import (
 	"github.com/pborman/uuid"
 )
 
-func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
+func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// retrieve ACO & cms_id data from the context through value

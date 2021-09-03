@@ -953,7 +953,7 @@ func (r *RepositoryTestSuite) TestGetAlrMBIs() {
 	r.NoError(err)
 	// There are 54 MBIs for this synthetic  ACO
 	r.Equal(54, len(alrMBI.MBIS))
-	r.NotEmpty(alrMBI.CMSID)
+	r.Equal("A9994", alrMBI.CMSID)
 	r.NotEmpty(alrMBI.Metakey)
 
 	alrMBI, err = r.repository.GetAlrMBIs(context.Background(), "A9996")
