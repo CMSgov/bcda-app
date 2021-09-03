@@ -125,6 +125,7 @@ func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context
 	txn.AddAttribute("attr1", "test")
 	txn.AddAttribute("attr2", "1234")
 	ctx = newrelic.NewContext(parentCtx, txn)
+	txn.AddAttribute("attr3", "testtest")
 
 	f := func() {
 		txn.End()
@@ -134,11 +135,13 @@ func (t *timer) new(parentCtx context.Context, name string) (ctx context.Context
 
 func (t *timer) newChild(parentCtx context.Context, name string) (close func()) {
 	txn := newrelic.FromContext(parentCtx)
+	txn.AddAttribute("attr4", "testtest2")
 	if txn == nil {
 		log.API.Warn("No transaction found. Cannot create child.")
 		return noop
 	}
 	segment := txn.StartSegment(name)
+	txn.AddAttribute("attr5", "testtest3")
 
 	return func() {
 		segment.End()
