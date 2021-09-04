@@ -61,14 +61,14 @@ unit-test-db:
 	# Wait for the database to be ready
 	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h db-unit-test -p 5432 -t 120"
 
-	# Load ALR data into the unit-test-DB for local and github actions unit-test
-	# TODO: once we finalize on synthetic ALR data, we should take a snapshot of the unit-test-db
-	docker-compose run -e DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable api sh -c 'bcda generate-synthetic-alr-data --cms-id=A9994 --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
-	
 	# Perform migrations to ensure matching schemas
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
 	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
 
+	# Load ALR data into the unit-test-DB for local and github actions unit-test
+	# TODO: once we finalize on synthetic ALR data, we should take a snapshot of the unit-test-db
+	docker-compose run -e DATABASE_URL=postgresql://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable api sh -c 'bcda generate-synthetic-alr-data --cms-id=A9994 --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
+	
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
 	docker-compose -f docker-compose.test.yml exec db-unit-test sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -U postgres --format custom --file=/docker-entrypoint-initdb.d/dump.pgdata --create $$POSTGRES_DB'
