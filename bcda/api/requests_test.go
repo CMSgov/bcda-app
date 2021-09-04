@@ -44,6 +44,8 @@ type RequestsTestSuite struct {
 	db *sql.DB
 
 	acoID uuid.UUID
+
+	resourceType map[string]DataType
 }
 
 func TestRequestsTestSuite(t *testing.T) {
@@ -59,6 +61,12 @@ func (s *RequestsTestSuite) SetupSuite() {
 		testfixtures.Dialect("postgres"),
 		testfixtures.Directory("testdata/"),
 	)
+
+	s.resourceType = map[string]DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+	}
 
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
@@ -105,11 +113,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				jobs = qj
 			}
 
-			resourceMap := map[string]DataType{
-				"Patient":              {Adjudicated: true},
-				"Coverage":             {Adjudicated: true},
-				"ExplanationOfBenefit": {Adjudicated: true},
-			}
+			resourceMap := s.resourceType
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
@@ -182,11 +186,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 			}
 
-			resourceMap := map[string]DataType{
-				"Patient":              {Adjudicated: true},
-				"Coverage":             {Adjudicated: true},
-				"ExplanationOfBenefit": {Adjudicated: true},
-			}
+			resourceMap := s.resourceType
 			h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 			h.Svc = mockSvc
 
@@ -334,11 +334,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 
-	resourceMap := map[string]DataType{
-		"Patient":              {Adjudicated: true},
-		"Coverage":             {Adjudicated: true},
-		"ExplanationOfBenefit": {Adjudicated: true},
-	}
+	resourceMap := s.resourceType
 
 	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 
@@ -387,12 +383,7 @@ func (s *RequestsTestSuite) TestRequests() {
 }
 
 func (s *RequestsTestSuite) TestJobStatus() {
-	resourceMap := map[string]DataType{
-		"Patient":              {Adjudicated: true},
-		"Coverage":             {Adjudicated: true},
-		"ExplanationOfBenefit": {Adjudicated: true},
-	}
-
+	resourceMap := s.resourceType
 	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 	mockSrv := service.MockService{}
 	timestp := time.Now()

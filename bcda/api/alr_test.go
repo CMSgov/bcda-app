@@ -62,10 +62,5 @@ func (s *AlrTestSuite) TestAlrRequest() {
 	h.alrRequest(w, req)
 	assert.Equal(s.T(), http.StatusAccepted, w.Result().StatusCode)
 
-	// Reset the recorder to allow us to verify the runout response
-	w = httptest.NewRecorder()
-	h.alrRequest(w, req)
-	assert.Equal(s.T(), http.StatusAccepted, w.Result().StatusCode)
-
-	assert.True(s.T(), enqueuer.AssertNumberOfCalls(s.T(), "AddAlrJob", 2), "We should've enqueued two ALR jobs")
+	assert.True(s.T(), enqueuer.AssertNumberOfCalls(s.T(), "AddAlrJob", 1), "We should've enqueued one ALR jobs")
 }

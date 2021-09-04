@@ -923,7 +923,7 @@ func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 	err := alrRepo.AddAlr(ctx, aco, timestamp, alrs)
 	assert.NoError(r.T(), err)
 
-	// Retrieve the just add A1234
+	// Retrieve the just added A1234
 	mbis, err := r.repository.GetAlrMBIs(ctx, "A1234")
 	r.NoError(err)
 
