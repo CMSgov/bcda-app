@@ -36,10 +36,10 @@ type alrQueue struct {
 // checkIFCanncelled was originally a closure to check if the job was cancelled,
 // but it has been turned into a func for ALR for clarity
 func checkIfCancelled(ctx context.Context, q *masterQueue,
-	cancel context.CancelFunc, jobArgs models.JobAlrEnqueueArgs) {
+	cancel context.CancelFunc, jobArgs models.JobAlrEnqueueArgs, wait uint8) {
 	for {
 		select {
-		case <-time.After(15 * time.Second):
+		case <-time.After(time.Duration(wait) * time.Second):
 			jobStatus, err := q.repository.GetJobByID(ctx, jobArgs.ID)
 
 			if err != nil {
@@ -116,7 +116,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// End of validation
 
 	// Check if the job was cancelled
-	go checkIfCancelled(ctx, q, cancel, jobArgs)
+	go checkIfCancelled(ctx, q, cancel, jobArgs, 10)
 
 	// Before moving forward, check if this job has failed before
 	// If it has reached the maxRetry, stop the parent job
