@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
@@ -141,26 +140,7 @@ func (q *queue) processJob(job *que.Job) error {
 	}
 
 	// start a goroutine that will periodically check the status of the parent job
-	go func() {
-		for {
-			select {
-			case <-time.After(15 * time.Second):
-				parentCancelled, err := q.isParentJobCancelled(jobArgs.ID)
-
-				if err != nil {
-					q.log.Warnf("Could not determine parent job %d status: %s", jobArgs.ID, err)
-				}
-
-				if parentCancelled {
-					// cancelled context will get picked up by worker.go#writeBBDataToFile
-					cancel()
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	go checkIfCancelled(ctx, q.repository, cancel, uint(jobArgs.ID), 10)
 
 	if err := q.worker.ProcessJob(ctx, *exportJob, jobArgs); err != nil {
 		return errors.Wrap(err, "failed to process job")

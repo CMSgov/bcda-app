@@ -294,7 +294,7 @@ func TestAlrJobCancel(t *testing.T) {
 	jobs := models.JobAlrEnqueueArgs{}
 
 	// In produation we wait 15 second intervals, for test we do 1
-	go checkIfCancelled(ctx, &q, cancel, jobs, 1)
+	go checkIfCancelled(ctx, q.repository, cancel, jobs.ID, 1)
 
 	// Check if the context has been cancelled
 	var cnt uint8
