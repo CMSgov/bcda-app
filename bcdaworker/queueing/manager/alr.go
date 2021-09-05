@@ -117,7 +117,7 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 	// End of validation
 
 	// Check if the job was cancelled
-	go checkIfCancelled(ctx, q.repository, cancel, jobArgs.ID, 10)
+	go checkIfCancelled(ctx, q.repository, cancel, jobArgs.ID, 15)
 
 	// Before moving forward, check if this job has failed before
 	// If it has reached the maxRetry, stop the parent job
