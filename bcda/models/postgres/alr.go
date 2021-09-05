@@ -55,7 +55,7 @@ func NewAlrRepo(db *sql.DB) *AlrRepository {
 func getPgxConn(db *sql.DB) *pgx.Conn {
 	conn, err := stdlib.AcquireConn(db)
 	if err != nil {
-        log.API.Warn(err, "failed to acquire connection")
+		log.API.Warn(err, "failed to acquire connection")
 	}
 	return conn
 }
@@ -190,7 +190,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 		mbis[i] = v
 	}
 
-	// Build the query<F9>
+	// Build the query
 	meta := sqlFlavor.NewSelectBuilder()
 	// Filtering the alr table
 	meta.Select("mbi", "hic", "firstname", "lastname", "sex", "dob", "dod", "keyvalue").
@@ -213,7 +213,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 		var alr models.Alr
 		var keyValueBytes []byte
 		if err := rows.Scan(&alr.BeneMBI, &alr.BeneHIC, &alr.BeneFirstName, &alr.BeneLastName,
-		&alr.BeneSex, &alr.BeneDOB, &alr.BeneDOD, &keyValueBytes); err != nil {
+			&alr.BeneSex, &alr.BeneDOB, &alr.BeneDOD, &keyValueBytes); err != nil {
 			return nil, err
 		}
 		keyValue, err := decoder(keyValueBytes)
