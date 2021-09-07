@@ -90,7 +90,7 @@ func GetTimer() Timer {
 	)
 
 	if err != nil {
-		log.API.Warnf("Failed to instantiate NeRelic application. Default to no-op timer. %s", err.Error())
+		log.API.Warnf("Failed to instantiate New Relic application. Default to no-op timer. %s", err.Error())
 		return &noopTimer{}
 	}
 
