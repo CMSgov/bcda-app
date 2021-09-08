@@ -656,6 +656,147 @@ func (s *ServiceTestSuite) TestGetQueJobs() {
 	}
 }
 
+func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
+	defaultACOID := "SOME_ACO_ID"
+
+	defaultACO := ACOConfig{
+		patternExp: regexp.MustCompile(defaultACOID),
+		Data:       []string{constants.Adjudicated, constants.PreAdjudicated},
+	}
+
+	acoCfgs := map[*regexp.Regexp]*ACOConfig{
+		defaultACO.patternExp:  &defaultACO,
+	}
+
+	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
+	allBenes := [][]*models.CCLFBeneficiary{benes1, benes2}
+	for idx, b := range allBenes {
+		for i := 0; i < len(b); i++ {
+			id := uint(idx*10000 + i + 1)
+			b[i] = getCCLFBeneficiary(id, fmt.Sprintf("MBI%d", id))
+		}
+	}
+	benes1MBI := make([]string, 0, len(benes1))
+	benes1ID := make(map[string]struct{})
+	for _, bene := range benes1 {
+		benes1MBI = append(benes1MBI, bene.MBI)
+		benes1ID[strconv.FormatUint(uint64(bene.ID), 10)] = struct{}{}
+	}
+
+	type claimsWindow struct {
+		LowerBound time.Time
+		UpperBound time.Time
+	}
+
+	timeA := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+	timeB := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	basePath := "/v2/fhir"
+
+	tests := []struct {
+	name               string
+	acoID              string
+	reqType            RequestType
+	expSince           time.Time
+	expClaimsWindow    claimsWindow
+	expBenes           []*models.CCLFBeneficiary
+	expTxTime          time.Time
+	resourceTypes      []string
+	terminationDetails *models.Termination
+	} {
+		{"Adjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil},
+		{"PreAdjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			conditions := RequestConditions{
+				CMSID:     			tt.acoID,
+				ACOID:     			uuid.NewUUID(),
+				Resources: 			tt.resourceTypes,
+				Since:     			tt.expSince,
+				ReqType:   			tt.reqType,
+				CreationTime: 		timeA,
+				TransactionTime:	timeB,
+			}
+
+			repository := &models.MockRepository{}
+			repository.On("GetACOByCMSID", testUtils.CtxMatcher, conditions.CMSID).
+				Return(&models.ACO{UUID: conditions.ACOID, TerminationDetails: tt.terminationDetails}, nil)
+			repository.On("GetLatestCCLFFile", testUtils.CtxMatcher, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(getCCLFFile(1), nil)
+			repository.On("GetSuppressedMBIs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(nil, nil)
+			repository.On("GetCCLFBeneficiaries", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(tt.expBenes, nil)
+			// use benes1 as the "old" benes. Allows us to verify the since parameter is populated as expected
+			repository.On("GetCCLFBeneficiaryMBIs", testUtils.CtxMatcher, mock.Anything).Return(benes1MBI, nil)
+
+			cfg := &Config{
+				cutoffDuration:          time.Hour,
+				SuppressionLookbackDays: 0,
+				RunoutConfig: RunoutConfig{
+					cutoffDuration: defaultRunoutCutoff,
+					claimThru:      defaultRunoutClaimThru,
+				},
+			}
+			serviceInstance := NewService(repository, cfg, basePath)
+			serviceInstance.(*service).acoConfig = acoCfgs
+
+			queJobs, err := serviceInstance.GetQueJobs(context.Background(), conditions)
+			assert.NoError(t, err)
+			// map tuple of resourceType:beneID
+			benesInJob := make(map[string]map[string]struct{})
+			for _, qj := range queJobs {
+				assert.True(t, tt.expClaimsWindow.LowerBound.Equal(qj.ClaimsWindow.LowerBound),
+					"Lower bounds should equal. Have %s. Want %s", qj.ClaimsWindow.LowerBound, tt.expClaimsWindow.LowerBound)
+				assert.True(t, tt.expClaimsWindow.UpperBound.Equal(qj.ClaimsWindow.UpperBound),
+					"Upper bounds should equal. Have %s. Want %s", qj.ClaimsWindow.UpperBound, tt.expClaimsWindow.UpperBound)
+
+				assert.Equal(t, tt.expTxTime, qj.TransactionTime)
+
+				subMap := benesInJob[qj.ResourceType]
+				if subMap == nil {
+					subMap = make(map[string]struct{})
+					benesInJob[qj.ResourceType] = subMap
+				}
+
+				// Need to see if the bene is considered "new" or not. If the bene
+				// is new, we should not provide a since parameter (need full history)
+				var expectedTime time.Time
+				if !tt.expSince.IsZero() {
+					var hasNewBene bool
+					for _, beneID := range qj.BeneficiaryIDs {
+						if _, ok := benes1ID[beneID]; !ok {
+							hasNewBene = true
+							break
+						}
+					}
+					if !hasNewBene {
+						expectedTime = tt.expSince
+					}
+				}
+				if expectedTime.IsZero() {
+					assert.Empty(t, qj.Since)
+				} else {
+					assert.Equal(t, fmt.Sprintf("gt%s", expectedTime.Format(time.RFC3339Nano)), qj.Since)
+				}
+
+				for _, beneID := range qj.BeneficiaryIDs {
+					subMap[beneID] = struct{}{}
+				}
+
+				assert.Equal(t, basePath, qj.BBBasePath)
+			}
+
+			for _, resourceType := range tt.resourceTypes {
+				subMap := benesInJob[resourceType]
+				assert.NotNil(t, subMap)
+				for _, bene := range tt.expBenes {
+					assert.Contains(t, subMap, strconv.FormatUint(uint64(bene.ID), 10))
+				}
+			}
+		})
+	}
+}
+
 func (s *ServiceTestSuite) TestGetQueJobsFailedACOLookup() {
 	conditions := RequestConditions{ACOID: uuid.NewRandom(), CMSID: uuid.New()}
 	repository := &models.MockRepository{}
