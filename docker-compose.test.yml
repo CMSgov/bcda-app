@@ -31,3 +31,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfiles/Dockerfile.postman_test
+
+networks:
+  default:
+    name: bcda-app-net
