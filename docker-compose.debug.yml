@@ -7,3 +7,7 @@ services:
   worker:
     security_opt:
       - seccomp:unconfined
+
+networks:
+  default:
+    name: bcda-app-net
