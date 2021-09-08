@@ -153,6 +153,10 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 	defer close()
 
 	var bundleFunc func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error)
+	// NOTE: Currently all Coverage/EOB/Patient requests are for adjudicated data and
+	// Claim/ClaimResponse are pre-adjudicated, future work may require checking what
+	// kind of backing data to pull from if there is overlap (one or more FHIR resource
+	// used for representing both adjudicated and pre-adjudicated data)
 	switch jobArgs.ResourceType {
 	case "Coverage":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
@@ -170,8 +174,6 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
 			return bb.GetPatient(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
-		//TODO: The assumption is Claim/ClaimResponse is always pre-adjudicated, future work may require checking what
-		//kind of backing data to pull from
 	case "Claim":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
 			cw := client.ClaimsWindow{
@@ -219,6 +221,10 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 				return fmt.Sprintf("Error failed to convert %s to uint", beneID), fhircodes.IssueTypeCode_EXCEPTION, err
 			}
 
+			// NOTE: with adjudicated data sets, we first need to lookup the Patient ID
+			// before gathering EOB/Coverage results; however with pre-adjudicated data
+			// that is not yet possible because their are no Patient FHIR resources. This
+			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := jobArgs.DataType != constants.PreAdjudicated
 			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId)
 			if err != nil {
