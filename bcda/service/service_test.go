@@ -665,7 +665,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 	}
 
 	acoCfgs := map[*regexp.Regexp]*ACOConfig{
-		defaultACO.patternExp:  &defaultACO,
+		defaultACO.patternExp: &defaultACO,
 	}
 
 	benes1, benes2 := make([]*models.CCLFBeneficiary, 10), make([]*models.CCLFBeneficiary, 20)
@@ -694,16 +694,16 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 	basePath := "/v2/fhir"
 
 	tests := []struct {
-	name               string
-	acoID              string
-	reqType            RequestType
-	expSince           time.Time
-	expClaimsWindow    claimsWindow
-	expBenes           []*models.CCLFBeneficiary
-	expTxTime          time.Time
-	resourceTypes      []string
-	terminationDetails *models.Termination
-	} {
+		name               string
+		acoID              string
+		reqType            RequestType
+		expSince           time.Time
+		expClaimsWindow    claimsWindow
+		expBenes           []*models.CCLFBeneficiary
+		expTxTime          time.Time
+		resourceTypes      []string
+		terminationDetails *models.Termination
+	}{
 		{"Adjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil},
 		{"PreAdjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil},
 	}
@@ -711,13 +711,13 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			conditions := RequestConditions{
-				CMSID:     			tt.acoID,
-				ACOID:     			uuid.NewUUID(),
-				Resources: 			tt.resourceTypes,
-				Since:     			tt.expSince,
-				ReqType:   			tt.reqType,
-				CreationTime: 		timeA,
-				TransactionTime:	timeB,
+				CMSID:           tt.acoID,
+				ACOID:           uuid.NewUUID(),
+				Resources:       tt.resourceTypes,
+				Since:           tt.expSince,
+				ReqType:         tt.reqType,
+				CreationTime:    timeA,
+				TransactionTime: timeB,
 			}
 
 			repository := &models.MockRepository{}
