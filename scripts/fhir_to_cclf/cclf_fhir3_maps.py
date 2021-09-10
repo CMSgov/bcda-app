@@ -4,18 +4,26 @@ Dictionaries that map FHIR 3 to CCLF
 ... and the helper functions that get the information!
 """
 
-def _get_from_list(obj, keys: list, str_match: str):
-    if len(keys) > 1:
-        return get_from_list(obj[keys[0]], keys[1:], str_match)
-    elif obj[keys[0]] == str_match:
-        return obj
-
 def get_from_list(obj, keys: list, str_match: str) -> dict:
+    if not keys and obj == str_match:
+        return obj
     if isinstance(obj, list):
         for item in obj:
-            return _get_from_list(item[keys[0]], keys[1:], str_match)
-    else:  # obj is dict
-        return _get_from_list(obj[keys[0]], keys[1:], str_match)
+            if len(keys) == 1 and item[keys[0]] == str_match:
+                return item
+            else:
+                key = keys.pop(0)
+                return get_from_list(item[key], keys, str_match)
+    elif isinstance(obj, dict):
+        key = keys.pop(0)
+        return get_from_list(obj[key], keys, str_match)
+
+def try_return_first(l):
+    """This is a helper function to handle errors outside the lambda"""
+    try:
+        return l[0]
+    except:
+        return ''
 
 cclf1 = {
     'CUR_CLM_UNIQ_ID'                 : 'Not mapped',
@@ -195,23 +203,26 @@ cclf6 = {
 
 cclf7 = {
     'CUR_CLM_UNIQ_ID'               : 'Not mapped',
-
-# Discriminator = Patient.identifier[N].system = "http://hl7.org/fhir/sid/us-mbi"
-# AND
-# Patient.identifier.type.coding.extension[N].valueCoding.code = "current"
-# AND
-# Patient.identifier.type.coding.system = "http://terminology.hl7.org/CodeSystem/v2-0203"
-# AND
-# Patient.identifier.type.coding.code = "MC"
-    'BENE_MBI_ID'                   : ('patient', lambda obj: get_from_list( obj['identifier'], ['system'], 'http://hl7.org/fhir/sid/us-mbi')['value']   # Patient.identifier[N].value
-                                            if get_from_list(obj['identifier']['type']['coding']['extension'], ['valueCoding', 'code'], 'current')
-                                            and get_from_list(obj['identifier']['type']['coding'], ['system'], 'http://terminology.hl7.org/CodeSystem/v2-0203')
-                                            and get_from_list(obj['identifier']['type']['coding'], ['code'], 'MC') else ''),
+    'BENE_MBI_ID'                   : ('patient', lambda obj: try_return_first(
+                                        [item['value'] for item in obj['identifier']
+                                            if (item['system'] == 'http://hl7.org/fhir/sid/us-mbi')
+                                            and get_from_list(item['type']['coding']['extension'], ['valueCoding', 'code'], 'current')
+                                            and (item['type']['coding']['system'] == 'http://terminology.hl7.org/CodeSystem/v2-0203')
+                                            and (item['type']['coding']['code'] == 'MC')
+                                        ])),
     'BENE_HIC_NUM'                  : 'Not mapped',
-    'CLM_LINE_NDC_CD'               : ('eob', lambda obj: get_from_list(obj['item'] ['productOrService', 'coding', 'system'], 'http://hl7.org/fhir/sid/ndc')),  # Eob.item.service.coding.code
-    'CLM_TYPE_CD'                   : ('eob', lambda obj: obj['code']
-                                            if get_from_list(obj, [], '') else ''),  # Eob.type.coding[N].code
-    'CLM_LINE_FROM_DT'              : (),  # Eob.item[N].servicedPeriod.start
+    'CLM_LINE_NDC_CD'               : ('eob', lambda obj: try_return_first([item['productOrService']['coding']['code'] for item in obj['item']
+                                        if (item ['productOrService']['coding']['system'] == 'http://hl7.org/fhir/sid/ndc')])),  # Eob.item.service.coding.code
+    'CLM_TYPE_CD'                   : ('eob', lambda obj: try_return_first([item['code'] for item in obj['type']['coding']
+                                        if (item['system'] in [
+                                            'https://bluebutton.cms.gov/resources/variables/nch_clm_type_cd',
+                                            'https://bluebutton.cms.gov/resources/codesystem/eob-type',
+                                            'http://hl7.org/fhir/ex-claimtype',
+                                            ])
+                                        ])),
+
+    # TODO: Should all of these EOBs be the same record?
+    'CLM_LINE_FROM_DT'              : ('eob', lambda obj: obj['item']),  # Eob.item[N].servicedPeriod.start
     'PRVDR_SRVC_ID_QLFYR_CD'        : (),  # Not mapped - see Additional info
     'CLM_SRVC_PRVDR_GNRC_ID_NUM'    : (),  # Explanation of Benefit.careTeam[N].provider
     'CLM_DSPNSNG_STUS_CD'           : 'Not mapped',  # Not mapped - see Additional Info
@@ -245,8 +256,8 @@ cclf8 = {
                                         'https://bluebutton.cms.gov/resources/variables/ms_cd',
                                         )['valueCoding']['code']),
     'BENE_DUAL_STUS_CD'         : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
-                                        obj,
-                                        ['extension'],
+                                        obj['extension'],
+                                        ['url'],
                                         'https://bluebutton.cms.gov/resources/variables/dual_01',
                                         )['valueCoding']['code']),  
     'BENE_DEATH_DT'             : ('patient', lambda obj: obj['deceased']),  # Patient.deceased[x]
@@ -256,13 +267,13 @@ cclf8 = {
     'BENE_MIDL_NAME'            : ('patient', lambda obj: obj['name'][0]['given'][1]),  # Patient.name.given[N]
     'BENE_LAST_NAME'            : ('patient', lambda obj: obj['name'][0]['family']),  # Patient.name.family
     'BENE_ORGNL_ENTLMT_RSN_CD'  : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
-                                        obj,
-                                        ['extension'],
+                                        obj['extension'],
+                                        ['url'],
                                         'https://bluebutton.cms.gov/resources/variables/orec',
                                         )['valueCoding']['code']),
     'BENE_ENTLMT_BUYIN_IND'     : ('coverage', lambda obj: get_from_list(  # Coverage.extension[N].valueCoding.code
-                                        obj,
-                                        ['extension'],
+                                        obj['extension'],
+                                        ['url'],
                                         'https://bluebutton.cms.gov/resources/variables/buyin01',
                                         )['valueCoding']['code']),
     'BENE_PART_A_ENRLMT_BGN_DT' : ('coverage', lambda obj: obj['period']['start']),  # Coverage[N].period.start

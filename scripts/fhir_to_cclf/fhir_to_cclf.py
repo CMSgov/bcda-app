@@ -22,9 +22,8 @@ def get_matching_rows(filename: str, key: str, reference: str) -> list:
         for line in source:
             obj = json.loads(line)
             if obj[key]['reference'] == reference:
-                return obj
-    #             matches.append(obj)
-    # return matches
+                matches.append(obj)
+    return matches
 
 def build_cclf(
         cclf_name: str,
@@ -41,10 +40,12 @@ def build_cclf(
     print(f'Building {cclf_name.upper()}...')
     headers = [k for k in cclf_map]
     counter = get_file_length(patient_filename)
+    
+    # Use Patient Resource as the primary reference
     with open(patient_filename, 'r') as patient, open(f'{cclf_name}_{output_filename}.csv', 'w') as cclf:
-        csvwriter = csv.writer(cclf)
+        csvwriter = csv.writer(cclf)  # TODO: Check if CSVWriter is keeping things in memory
         csvwriter.writerow(headers)
-        for x in tqdm(range(counter)):
+        for x in tqdm(range(counter)):  # Progress indicator
             line = patient.readline()
             row = []
             bene = json.loads(line)
@@ -52,7 +53,7 @@ def build_cclf(
 
             for column in headers:
                 try:
-                    if (nm := cclf_map[column]) == 'Not mapped': row.append(nm)
+                    if cclf_map[column] == 'Not mapped': row.append('Not mapped')
 
                     elif cclf_map[column][0] == 'patient':
                         row.append(cclf_map[column][1](bene))
@@ -61,19 +62,20 @@ def build_cclf(
                         # TODO: Regex is not actually needed. '-' is a symptom of seed data.
                         pattern = re.compile('[\W_]+')
                         patient_ref = f"Patient/{pattern.sub('', bene_id)}"
-                        obj = get_matching_rows(eob_filename, 'patient', patient_ref)
-                        row.append(cclf_map[column][1](obj))
+
+                        matches = get_matching_rows(eob_filename, 'patient', patient_ref)
+                        for obj in matches:
+                            if (value := cclf_map[column][1](obj)):
+                                row.append(value)
+                                break  # Assumes there will only be 1 match
 
                     elif cclf_map[column][0] == 'coverage':
                         patient_ref = f"Patient/{bene_id}"
-                        # TODO: Need to confirm how to match Patient to other resources in all cases
-                        # EX: BENE_MDCR_STUS_CD in CCLF8 has multiple matches
-
-                        # matches = get_matching_rows(coverage_filename, 'beneficiary', patient_ref)
-                        # for obj in matches:
-
-                        obj = get_matching_rows(coverage_filename, 'beneficiary', patient_ref)
-                        row.append(cclf_map[column][1](obj))
+                        matches = get_matching_rows(coverage_filename, 'beneficiary', patient_ref)
+                        for obj in matches:
+                            if (value := cclf_map[column][1](obj)):
+                                row.append(value)
+                                break  # Assumes there will only be 1 match
 
                 except:  # Not every field will be present
                     row.append('')
@@ -116,7 +118,6 @@ if __name__=='__main__':
     error_handling(patient, coverage, eob, output)
 
     # TODO: FHIR Version indication should impact conversion
-
 
     build_cclf('cclf8', cclf_fhir3_maps.cclf8, patient, coverage, eob, output)
     build_cclf('cclf9', cclf_fhir3_maps.cclf9, patient, coverage, eob, output)
