@@ -170,7 +170,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
 			return bb.GetPatient(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
-		//TODO: The assumption is Claim/ClaimResponse is always pre-adjudicated, future work may require checking what
+		//NOTE: The assumption is Claim/ClaimResponse is always pre-adjudicated, future work may require checking what
 		//kind of backing data to pull from
 	case "Claim":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {

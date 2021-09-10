@@ -25,19 +25,19 @@ func (s *ResourcesTestSuite) TestSupportsDataType() {
 	}{
 		{
 			"Valid Adjudicated Type",
-			DataType{Adjudicated: true, PreAdjudicated: true},
+			DataType{Adjudicated: true, PreAdjudicated: false},
 			constants.Adjudicated,
 			true,
 		},
 		{
 			"Valid Pre-Adjudicated Type",
-			DataType{Adjudicated: true, PreAdjudicated: true},
+			DataType{Adjudicated: false, PreAdjudicated: true},
 			constants.PreAdjudicated,
 			true,
 		},
 		{
 			"Invalid Type",
-			DataType{Adjudicated: false, PreAdjudicated: true},
+			DataType{Adjudicated: true, PreAdjudicated: true},
 			"invalid-type",
 			false,
 		},
