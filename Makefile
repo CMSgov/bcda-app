@@ -97,7 +97,7 @@ load-fixtures:
 	$(MAKE) load-fixtures-ssas
 	
 	# Add ALR data for ACOs under test. Must have attribution already set.
-	$(eval ACO_CMS_IDS := A9994 A9996 E9996 V996) 
+	$(eval ACO_CMS_IDS := A9994 A9996) 
 	for acoId in $(ACO_CMS_IDS) ; do \
 		docker-compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id='$$acoId' --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv' ; \
 	done
