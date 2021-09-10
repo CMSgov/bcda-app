@@ -151,10 +151,18 @@ func riskMaker(mbi, id, system, code, display string, lastUpdated time.Time) *fh
 	risk := &fhirmodels.RiskAssessment{}
 	risk.Id = &fhirdatatypes.Id{Value: id}
 	risk.Subject = &fhirdatatypes.Reference{
-		Reference: &fhirdatatypes.Reference_BasicId{
-			BasicId: &fhirdatatypes.ReferenceId{Value: mbi},
+		Reference: &fhirdatatypes.Reference_PatientId{
+			PatientId: &fhirdatatypes.ReferenceId{Value: mbi},
 		},
 	}
+	risk.Basis = []*fhirdatatypes.Reference{}
+	obsRef := &fhirdatatypes.Reference{
+		Reference: &fhirdatatypes.Reference_ObservationId{
+			ObservationId: &fhirdatatypes.ReferenceId{Value: "Observation/example-id-hcc-risk-flags"},
+		},
+	}
+	risk.Basis = append(risk.Basis, obsRef)
+
 	risk.Meta = &fhirdatatypes.Meta{
 		Profile: []*fhirdatatypes.Uri{{
 			Value: "http://alr.cms.gov/ig/StructureDefinition/alr-RiskAssessment",

@@ -23,7 +23,35 @@ import (
 var h *api.Handler
 
 func init() {
-	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit", "Observation"}, "/v1/fhir", "v1")
+	resources := map[string]api.DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Observation":          {Adjudicated: true},
+	}
+	h = api.NewHandler(resources, "/v1/fhir", "v1")
+}
+
+/*
+	swagger:route GET /api/v1/alr/$export alrData alrRequest
+
+	Start FHIR STU3 data export for all supported resource types
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func ALRRequest(w http.ResponseWriter, r *http.Request) {
+	h.ALRRequest(w, r)
 }
 
 /*
@@ -147,7 +175,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	Get attribution status
 
-	Returns the attribution status of the latest cclf 8 and cclf 8 runout files. This will contain the name of the file, the timestamp it was ingested, the cclf number type, and the type (default or runout)
+	Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the Type to identify which ingestion and a Timestamp for the last time it was updated.
 
 	Produces:
 	- application/json

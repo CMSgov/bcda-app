@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/CMSgov/bcda-app/bcda/constants"
+
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 
@@ -34,6 +36,12 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
+//DataType is used to identify the type of data returned by each resource
+type DataType struct {
+	Adjudicated    bool
+	PreAdjudicated bool
+}
+
 type Handler struct {
 	JobTimeout time.Duration
 
@@ -47,7 +55,9 @@ type Handler struct {
 	r  models.Repository
 	db *sql.DB
 
-	supportedResources map[string]struct{}
+	supportedDataTypes map[string]DataType
+
+	supportedResourceTypes []string
 
 	bbBasePath string
 
@@ -61,11 +71,11 @@ type fhirResponseWriter interface {
 	NotFound(http.ResponseWriter, int, string, string)
 }
 
-func NewHandler(resources []string, basePath string, apiVersion string) *Handler {
-	return newHandler(resources, basePath, apiVersion, database.Connection)
+func NewHandler(dataTypes map[string]DataType, basePath string, apiVersion string) *Handler {
+	return newHandler(dataTypes, basePath, apiVersion, database.Connection)
 }
 
-func newHandler(resources []string, basePath string, apiVersion string, db *sql.DB) *Handler {
+func newHandler(dataTypes map[string]DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -79,9 +89,12 @@ func newHandler(resources []string, basePath string, apiVersion string, db *sql.
 	h.db, h.r = db, repository
 	h.Svc = service.NewService(repository, cfg, basePath)
 
-	h.supportedResources = make(map[string]struct{}, len(resources))
-	for _, r := range resources {
-		h.supportedResources[r] = struct{}{}
+	h.supportedDataTypes = dataTypes
+
+	// Build string array of supported Resource types
+	h.supportedResourceTypes = make([]string, 0, len(h.supportedDataTypes))
+	for k := range h.supportedDataTypes {
+		h.supportedResourceTypes = append(h.supportedResourceTypes, k)
 	}
 
 	h.bbBasePath = basePath
@@ -101,11 +114,12 @@ func newHandler(resources []string, basePath string, apiVersion string, db *sql.
 
 func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 	reqType := service.DefaultRequest // historical data for new beneficiaries will not be retrieved (this capability is only available with /Group)
-	if isALRRequest(r) {
-		h.alrRequest(w, r, reqType)
-		return
-	}
 	h.bulkRequest(w, r, reqType)
+}
+
+func (h *Handler) ALRRequest(w http.ResponseWriter, r *http.Request) {
+	reqType := service.DefaultRequest
+	h.alrRequest(w, r, reqType)
 }
 
 func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
@@ -132,11 +146,6 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	default:
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, "Invalid group ID")
-		return
-	}
-
-	if isALRRequest(r) {
-		h.alrRequest(w, r, reqType)
 		return
 	}
 	h.bulkRequest(w, r, reqType)
@@ -262,14 +271,12 @@ func (h *Handler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 }
 
 type AttributionFileStatus struct {
-	Name      string    `json:"name"`
 	Timestamp time.Time `json:"timestamp"`
-	CCLFNum   int       `json:"cclf_number"`
-	Type      string    `json:"cclf_file_type"`
+	Type      string    `json:"type"`
 }
 
 type AttributionFileStatusResponse struct {
-	CCLFFiles []AttributionFileStatus `json:"cclf_files"`
+	Data []AttributionFileStatus `json:"ingestion_dates"`
 }
 
 func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
@@ -292,6 +299,9 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if asd != nil {
+		resp.Data = append(resp.Data, *asd)
+	}
 
 	// Retrieve the most recent cclf 8 runout file we have successfully ingested
 	asr, err := h.getAttributionFileStatus(ctx, ad.CMSID, models.FileTypeRunout)
@@ -299,18 +309,13 @@ func (h *Handler) AttributionStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	if asr != nil {
+		resp.Data = append(resp.Data, *asr)
+	}
 
-	if asd == nil && asr == nil {
+	if resp.Data == nil {
 		h.RespWriter.Exception(w, http.StatusNotFound, responseutils.NotFoundErr, "")
 		return
-	}
-
-	if asd != nil {
-		resp.CCLFFiles = append(resp.CCLFFiles, *asd)
-	}
-
-	if asr != nil {
-		resp.CCLFFiles = append(resp.CCLFFiles, *asr)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -336,16 +341,14 @@ func (h *Handler) getAttributionFileStatus(ctx context.Context, CMSID string, fi
 	}
 
 	status := &AttributionFileStatus{
-		Name:      cclfFile.Name,
 		Timestamp: cclfFile.Timestamp,
-		CCLFNum:   cclfFile.CCLFNum,
 	}
 
 	switch fileType {
 	case models.FileTypeDefault:
-		status.Type = "default"
+		status.Type = "last_attribution_update"
 	case models.FileTypeRunout:
-		status.Type = "runout"
+		status.Type = "last_runout_update"
 	}
 
 	return status, nil
@@ -370,13 +373,9 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	resourceTypes := rp.ResourceTypes
-	// If caller does not supply resource types, we default to all supported resource types
-	if len(resourceTypes) == 0 {
-		resourceTypes = []string{"Patient", "ExplanationOfBenefit", "Coverage"}
-	}
+	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 
-	if err = h.validateRequest(resourceTypes); err != nil {
+	if err = h.validateRequest(resourceTypes, ad.CMSID); err != nil {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -514,15 +513,49 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 	}
 }
 
-func (h *Handler) validateRequest(resourceTypes []string) error {
+func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsID string) []string {
+	resourceTypes := parameters.ResourceTypes
+
+	// If caller does not supply resource types, we default to all supported resource types for the specific ACO
+	if len(resourceTypes) == 0 {
+		if acoConfig, found := h.Svc.GetACOConfigForID(cmsID); found {
+			if utils.ContainsString(acoConfig.Data, constants.Adjudicated) {
+				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
+			}
+
+			if utils.ContainsString(acoConfig.Data, constants.PreAdjudicated) {
+				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
+			}
+		}
+	}
+
+	return resourceTypes
+}
+
+func (h *Handler) validateRequest(resourceTypes []string, cmsID string) error {
 
 	for _, resourceType := range resourceTypes {
-		if _, ok := h.supportedResources[resourceType]; !ok {
-			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResources)
+		dataType, ok := h.supportedDataTypes[resourceType]
+
+		if !ok {
+			return fmt.Errorf("invalid resource type %s. Supported types %s", resourceType, h.supportedResourceTypes)
+		}
+
+		if !h.authorizedResourceAccess(dataType, cmsID) {
+			return fmt.Errorf("unauthorized resource type %s", resourceType)
 		}
 	}
 
 	return nil
+}
+
+func (h *Handler) authorizedResourceAccess(dataType DataType, cmsID string) bool {
+	if cfg, ok := h.Svc.GetACOConfigForID(cmsID); ok {
+		return (dataType.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
+			(dataType.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))
+	}
+
+	return false
 }
 
 func readAuthData(r *http.Request) (data auth.AuthData, err error) {

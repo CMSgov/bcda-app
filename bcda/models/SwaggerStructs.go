@@ -116,18 +116,16 @@ type MetadataResponse struct {
 // swagger:response AttributionFileStatusResponse
 type AttributionFileStatusResponse struct {
 	// in: body
-	Body CCLFFilesParam `json:"body,omitempty"`
+	Body AttributionFilesParam `json:"body,omitempty"`
 }
 
-type CCLFFilesParam struct {
-	CCLFFiles []CCLFFilesStatusParam `json:"cclfFiles"`
+type AttributionFilesParam struct {
+	IngestionDates []IngestionDatesStatusParam `json:"ingestion_dates"`
 }
 
-type CCLFFilesStatusParam struct {
-	Name      string    `json:"name"`
+type IngestionDatesStatusParam struct {
 	Timestamp time.Time `json:"timestamp"`
-	CCLFNum   int       `json:"cclfNumber"`
-	Type      string    `json:"cclfFileType"`
+	Type      string    `json:"type"`
 }
 
 // File of newline-delimited JSON FHIR objects

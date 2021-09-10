@@ -49,7 +49,7 @@ unit-test:
 	$(MAKE) unit-test-db
 	
 	docker-compose -f docker-compose.test.yml build tests
-	@docker-compose -f docker-compose.test.yml run --rm tests bash unit_test.sh
+	@docker-compose -f docker-compose.test.yml run --rm tests bash scripts/unit_test.sh
 
 unit-test-db:
 	# Target stands up the postgres instance needed for unit testing.
@@ -59,11 +59,11 @@ unit-test-db:
 	docker-compose -f docker-compose.test.yml up -d db-unit-test
 	
 	# Wait for the database to be ready
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait wait-for-it -h db-unit-test -p 5432 -t 120
+	docker run --rm --network bcda-app-net willwill/wait-for-it db-unit-test:5432 -t 120
 	
 	# Perform migrations to ensure matching schemas
-	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
-	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
+	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
+	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda_queue/ -database 'postgres://postgres:toor@db-unit-test:5432/bcda_test?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue' up
 
 unit-test-db-snapshot:
 	# Target takes a snapshot of the currently running postgres instance used for unit testing and updates the db/testing/docker-entrypoint-initdb.d/dump.pgdata file
@@ -85,24 +85,28 @@ load-fixtures:
 
 	docker-compose up -d db queue
 	echo "Wait for databases to be ready..."
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h db -p 5432 -t 75 && wait-for-it -h queue -p 5432 -t 75"
+	docker run --rm --network bcda-app-net willwill/wait-for-it db:5432 -t 75
+	docker run --rm --network bcda-app-net willwill/wait-for-it queue:5432 -t 75
 
 	# Initialize schemas
-	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda up
-	docker-compose -f docker-compose.migrate.yml run --rm migrate  -database "postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue" -path /go/src/github.com/CMSgov/bcda-app/db/migrations/bcda_queue up
+	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda/ -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable&x-migrations-table=schema_migrations_bcda' up
+	docker run --rm -v ${PWD}/db/migrations:/migrations --network bcda-app-net migrate/migrate -path=/migrations/bcda_queue/ -database 'postgres://postgres:toor@queue:5432/bcda_queue?sslmode=disable&x-migrations-table=schema_migrations_bcda_queue' up
 
 	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/fixtures.sql
 	$(MAKE) load-synthetic-cclf-data
 	$(MAKE) load-synthetic-suppression-data
 	$(MAKE) load-fixtures-ssas
 	
-	# Add ALR data for ACO under test. Must have attribution already set.
-	$(eval ACO_CMS_ID = A9994)
-	docker-compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id=$(ACO_CMS_ID) --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv'
+	# Add ALR data for ACOs under test. Must have attribution already set.
+	$(eval ACO_CMS_IDS := A9994 A9996) 
+	for acoId in $(ACO_CMS_IDS) ; do \
+		docker-compose run api sh -c 'bcda generate-synthetic-alr-data --cms-id='$$acoId' --alr-template-file ./alr/gen/testdata/PY21ALRTemplatePrelimProspTable1.csv' ; \
+	done
 
 	# Ensure components are started as expected
 	docker-compose up -d api worker ssas
-	docker-compose -f docker-compose.wait-for-it.yml run --rm wait sh -c "wait-for-it -h api -p 3000 -t 75 && wait-for-it -h ssas -p 3003 -t 75"
+	docker run --rm --network bcda-app-net willwill/wait-for-it api:3000 -t 75
+	docker run --rm --network bcda-app-net willwill/wait-for-it ssas:3003 -t 75
 
 	# Additional fixtures for postman+ssas
 	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -f /var/db/postman_fixtures.sql
@@ -110,18 +114,11 @@ load-fixtures:
 load-synthetic-cclf-data:
 	$(eval ACO_SIZES := dev dev-auth dev-cec dev-cec-auth dev-ng dev-ng-auth dev-ckcc dev-ckcc-auth dev-kcf dev-kcf-auth dev-dc dev-dc-auth small medium large extra-large)
 	# The "test" environment provides baseline CCLF ingestion for ACO
-	for acoSize in $(ACO_SIZES) ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test' ; \
-	done
+	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test ' ' $(ACO_SIZES)"
 	echo "Updating timestamp data on historical CCLF data for simulating ability to test /Group with _since"
 	docker-compose run db psql -v ON_ERROR_STOP=1 "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -c "update cclf_files set timestamp='2020-02-01';"
-	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test-new-beneficiaries' ; \
-	done
-
-	for acoSize in $(ACO_SIZES)  ; do \
-		docker-compose run --rm api sh -c 'bcda import-synthetic-cclf-package --acoSize='$$acoSize' --environment=test --fileType=runout' ; \
-	done
+	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test-new-beneficiaries ' ' $(ACO_SIZES)"
+	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test runout $(ACO_SIZES)"
 
 load-synthetic-suppression-data:
 	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
@@ -130,7 +127,8 @@ load-synthetic-suppression-data:
 	docker-compose exec -T db sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 $$POSTGRES_DB postgres -c "UPDATE suppressions SET effective_date = now(), preference_indicator = '"'"'N'"'"'  WHERE effective_date = (SELECT max(effective_date) FROM suppressions);"'
 
 load-fixtures-ssas:
-	docker-compose -f docker-compose.ssas-migrate.yml run --rm ssas-migrate -database "postgres://postgres:toor@db:5432/bcda?sslmode=disable" -path /go/src/github.com/CMSgov/bcda-ssas-app/db/migrations up
+	docker-compose up -d db
+	docker run --rm --network bcda-app-net migrate/migrate:v4.15.0-beta.3 -source='github://CMSgov/bcda-ssas-app/db/migrations#master' -database 'postgres://postgres:toor@db:5432/bcda?sslmode=disable' up
 	docker-compose run ssas --add-fixture-data
 
 docker-build:

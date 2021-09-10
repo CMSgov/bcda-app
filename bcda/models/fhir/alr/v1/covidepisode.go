@@ -22,6 +22,7 @@ var (
 
 func covidEpisode(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.EpisodeOfCare {
 	covidEpisode := &fhirmodels.EpisodeOfCare{}
+	covidEpisode.Id = &fhirdatatypes.Id{Value: "example-id-episode"}
 	covidEpisode.Meta = &fhirdatatypes.Meta{
 		LastUpdated: &fhirdatatypes.Instant{
 			Precision: fhirdatatypes.Instant_SECOND,

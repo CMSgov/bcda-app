@@ -121,6 +121,15 @@ func (s *RouterTestSuite) TestGroupEndpointDisabled() {
 	assert.Nil(s.T(), err)
 }
 
+func (s *RouterTestSuite) TestALRExportRoute() {
+	// ALR
+	res := s.getAPIRoute("/api/v1/alr/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	res = s.getAPIRoute("/api/v1/alrs/$export")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestEOBExportRoute() {
 	res := s.getAPIRoute("/api/v1/Patient/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -128,14 +137,14 @@ func (s *RouterTestSuite) TestEOBExportRoute() {
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	// group all
+	// Group All
 	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	// group new
+	// Group New
 	res = s.getAPIRoute("/api/v1/Group/new/$export?_type=ExplanationOfBenefit")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
@@ -150,14 +159,14 @@ func (s *RouterTestSuite) TestPatientExportRoute() {
 	res = s.getAPIRoute("/api/v1/Patients/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	// group all
+	// Group All
 	res = s.getAPIRoute("/api/v1/Group/all/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	// group new
+	// Group New
 	res = s.getAPIRoute("/api/v1/Group/new/$export?_type=Patient")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
@@ -179,7 +188,7 @@ func (s *RouterTestSuite) TestCoverageExportRoute() {
 	res = s.getAPIRoute("/api/v1/Groups/all/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 
-	// group all
+	// Group New
 	res = s.getAPIRoute("/api/v1/Group/new/$export?_type=Coverage")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 
@@ -198,6 +207,8 @@ func (s *RouterTestSuite) TestV2EndpointsDisabled() {
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/alr/$export")
+	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusNotFound, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/metadata")
@@ -214,6 +225,8 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	res := s.getAPIRoute("/api/v2/Patient/$export")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/Group/all/$export")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/alr/$export")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
@@ -302,8 +315,8 @@ func (s *RouterTestSuite) TestBlacklistedACO() {
 		handler http.Handler
 		paths   []string
 	}{
-		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export",
-			"/api/v2/Patient/$export", "/api/v2/Group/all/$export",
+		{apiRouter, []string{"/api/v1/Patient/$export", "/api/v1/Group/all/$export", "/api/v1/alr/$export",
+			"/api/v2/Patient/$export", "/api/v2/Group/all/$export", "/api/v2/alr/$export",
 			"/api/v1/jobs/1"}},
 		{s.dataRouter, []string{"/data/test/test.ndjson"}},
 		{NewAuthRouter(), []string{"/auth/welcome"}},

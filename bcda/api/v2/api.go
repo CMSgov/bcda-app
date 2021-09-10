@@ -27,7 +27,14 @@ var (
 func init() {
 	var err error
 
-	h = api.NewHandler([]string{"Patient", "Coverage", "ExplanationOfBenefit"}, "/v2/fhir", "v2")
+	resources := map[string]api.DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Claim":                {Adjudicated: false, PreAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+	}
+	h = api.NewHandler(resources, "/v2/fhir", "v2")
 
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
@@ -35,6 +42,28 @@ func init() {
 	if err != nil {
 		log.API.Fatalf("Failed to create marshaller %s", err)
 	}
+}
+
+/*
+	swagger:route GET /api/v1/alr/$export alrData alrRequest
+
+	Start FHIR R4 data export for all supported resource types
+
+	Produces:
+	- application/fhir+json
+
+	Security:
+		bearer_token:
+
+	Responses:
+		202: BulkRequestResponse
+		400: badRequestResponse
+		401: invalidCredentials
+		429: tooManyRequestsResponse
+		500: errorResponse
+*/
+func ALRRequest(w http.ResponseWriter, r *http.Request) {
+	h.ALRRequest(w, r)
 }
 
 /*
@@ -149,7 +178,7 @@ func DeleteJob(w http.ResponseWriter, r *http.Request) {
 
 	Get attribution status
 
-	Returns the attribution status of the latest cclf 8 and cclf 8 runout files. This will contain the name of the file, the timestamp it was ingested, the cclf number type, and the type (default or runout)
+	Returns the status of the latest ingestion for attribution and claims runout files. The response will contain the Type to identify which ingestion and a Timestamp for the last time it was updated.
 
 	Produces:
 	- application/json
