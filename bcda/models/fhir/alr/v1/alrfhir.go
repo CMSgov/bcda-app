@@ -100,7 +100,7 @@ func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 		risk := string(riskb)
 		riskAssessment = append(riskAssessment, risk)
 	}
-	risk := strings.Join(riskAssessment, "\n")
+	risk := strings.Join(riskAssessment, "\n") + "\n"
 
 	// OBSERVATION
 	observationb, err := marshaller.MarshalResource(bulk.Observation)
