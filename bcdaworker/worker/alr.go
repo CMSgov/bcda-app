@@ -194,6 +194,15 @@ func (a *AlrWorker) ProcessAlrJob(
 		return err
 	}
 
+	// If we did not have an ALR data to write, we'll write a specific file name that indicates that the
+	// there is no data associated with this job.
+	if len(alrModels) == 0 {
+		jk := models.JobKey{JobID: id, FileName: models.BlankFileName, ResourceType: "ALR"}
+		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
+			return fmt.Errorf("failed to create job key: %w", err)
+		}
+	}
+
 	// Set up IO operation to dump ndjson
 	// Created necessary directory
 	err = os.MkdirAll(fmt.Sprintf("%s/%d", a.StagingDir, id), 0744)
@@ -252,15 +261,6 @@ func (a *AlrWorker) ProcessAlrJob(
 	// Wait on the go routine to finish
 	if err := <-result; err != nil {
 		return fmt.Errorf("failed to write data: %w", err)
-	}
-
-	// If we did not have an ALR data to write, we'll write a specific file name that indicates that the
-	// there is no data associated with this job.
-	if len(alrModels) == 0 {
-		jk := models.JobKey{JobID: id, FileName: models.BlankFileName, ResourceType: "ALR"}
-		if err := a.Repository.CreateJobKey(ctx, jk); err != nil {
-			return fmt.Errorf("failed to create job key: %w", err)
-		}
 	}
 
 	return nil
