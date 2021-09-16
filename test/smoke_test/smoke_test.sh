@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CMS_IDs=("A9996" "E9996" "V996")
+CMS_IDs=("A9989" "E9996" "V996")
 set -e
 function cleanup() {
         for CMS_ID in "${CMS_IDs[@]}"
@@ -24,7 +24,7 @@ do
         CLIENT_SECRET=${CREDS[1]}
 
         testFile=bulk_data_requests_lite.sh
-        if [ ${CMS_ID} = "A9996" ]; then
+        if [ ${CMS_ID} = "A9989" ]; then
                 testFile=bulk_data_requests.sh
         fi
         docker-compose -f docker-compose.test.yml run --rm -e CLIENT_ID=${CLIENT_ID} -e CLIENT_SECRET=${CLIENT_SECRET} -w /go/src/github.com/CMSgov/bcda-app/test/smoke_test tests bash ${testFile}

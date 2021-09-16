@@ -54,6 +54,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 		"medium":         {"medium", "A9991"},
 		"large":          {"large", "A9992"},
 		"extra-large":    {"extra-large", "A9993"},
+		"improved-dev":   {"dev", "A9989"},
 		"improved-small": {"small", "A9998"},
 		"improved-large": {"large", "A9999"},
 	}[acoSize]

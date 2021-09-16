@@ -121,7 +121,7 @@ load-synthetic-cclf-data:
 	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test runout $(ACO_SIZES)"
 
 	# Improved Synthea BFD Data Ingestion
-	$(eval IMPROVED_SIZE := improved-small improved-large)
+	$(eval IMPROVED_SIZE := improved-dev improved-small improved-large)
 	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh improved ' ' $(IMPROVED_SIZE)"
 	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test runout $(IMPROVED_SIZE)"
 
