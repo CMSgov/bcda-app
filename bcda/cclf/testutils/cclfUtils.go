@@ -59,7 +59,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 	}[acoSize]
 
 	if !ok {
-		return errors.New("invalid argument for ACO size: " + acoSize)
+		return errors.New("invalid argument for ACO size")
 	}
 
 	switch environment {
