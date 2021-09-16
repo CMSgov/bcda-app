@@ -15,4 +15,4 @@ insert into acos(uuid, cms_id, name, client_id, termination_details)
             ('b8abdf3c-5965-4ae5-a661-f19a8129fda5', 'A9997', 'ACO Blacklisted', 'b8abdf3c-5965-4ae5-a661-f19a8129fda5', 
                '{"TerminationDate": "2020-12-31T23:59:59Z", "CutoffDate": "2020-12-31T23:59:59Z", "BlacklistType": 0}'),
             ('8ff7130e-7bfc-4a70-9c4b-5eafd3766502', 'A9998', 'ACO Improved Small', '8ff7130e-7bfc-4a70-9c4b-5eafd3766502', null),
-            ('8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', 'A9998', 'ACO Improved Large', '8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', null);
+            ('8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', 'A9999', 'ACO Improved Large', '8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', null);

@@ -54,18 +54,19 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 		"medium":         {"medium", "A9991"},
 		"large":          {"large", "A9992"},
 		"extra-large":    {"extra-large", "A9993"},
-		"improved-small": {"improved-small", "A9998"},
-		"improved-large": {"improved-large", "A9999"},
+		"improved-small": {"small", "A9998"},
+		"improved-large": {"large", "A9999"},
 	}[acoSize]
 
 	if !ok {
-		return errors.New("invalid argument for ACO size")
+		return errors.New("invalid argument for ACO size: " + acoSize)
 	}
 
 	switch environment {
 	case
 		"test",
-		"test-new-beneficiaries":
+		"test-new-beneficiaries",
+		"improved":
 	default:
 		return errors.New("invalid argument for environment")
 	}
