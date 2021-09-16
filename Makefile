@@ -123,6 +123,7 @@ load-synthetic-cclf-data:
 	# Improved Synthea BFD Data Ingestion
 	$(eval IMPROVED_SIZE := improved-small improved-large)
 	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh improved ' ' $(IMPROVED_SIZE)"
+	docker-compose run --rm api sh -c "../scripts/bulk_import_synthetic_cclf_package.sh test runout $(IMPROVED_SIZE)"
 
 load-synthetic-suppression-data:
 	docker-compose run api sh -c 'bcda import-suppression-directory --directory=../shared_files/synthetic1800MedicareFiles'
