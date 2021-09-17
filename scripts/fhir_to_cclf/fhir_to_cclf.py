@@ -6,6 +6,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 import cclf_fhir3_maps
+import cclf_fhir4_map
 
 
 def get_file_length(filename: str) -> int:
@@ -50,7 +51,6 @@ def build_cclf(
             row = []
             bene = json.loads(line)
             bene_id = bene['id']
-
             for column in headers:
                 try:
                     if cclf_map[column] == 'Not mapped': row.append('Not mapped')
@@ -66,16 +66,16 @@ def build_cclf(
                         matches = get_matching_rows(eob_filename, 'patient', patient_ref)
                         for obj in matches:
                             if (value := cclf_map[column][1](obj)):
-                                row.append(value)
                                 break  # Assumes there will only be 1 match
+                        row.append(value)
 
                     elif cclf_map[column][0] == 'coverage':
                         patient_ref = f"Patient/{bene_id}"
                         matches = get_matching_rows(coverage_filename, 'beneficiary', patient_ref)
                         for obj in matches:
                             if (value := cclf_map[column][1](obj)):
-                                row.append(value)
                                 break  # Assumes there will only be 1 match
+                        row.append(value)
 
                 except:  # Not every field will be present
                     row.append('')
@@ -117,11 +117,12 @@ if __name__=='__main__':
     patient, coverage, eob, output = args.patient[0], args.coverage[0], args.eob[0], args.output
     error_handling(patient, coverage, eob, output)
 
-    # TODO: FHIR Version indication should impact conversion
+    build_cclf('cclf8', cclf_fhir4_map.cclf8, patient, coverage, eob, output)
 
-    build_cclf('cclf8', cclf_fhir3_maps.cclf8, patient, coverage, eob, output)
-    build_cclf('cclf9', cclf_fhir3_maps.cclf9, patient, coverage, eob, output)
-    build_cclf('cclf7', cclf_fhir3_maps.cclf7, patient, coverage, eob, output)
+
+    # build_cclf('cclf8', cclf_fhir3_maps.cclf8, patient, coverage, eob, output)
+    # build_cclf('cclf9', cclf_fhir3_maps.cclf9, patient, coverage, eob, output)
+    # build_cclf('cclf7', cclf_fhir3_maps.cclf7, patient, coverage, eob, output)
     # build_cclf('cclf1', cclf_fhir3_maps.cclf1, patient, coverage, eob, output)
     # build_cclf('cclf2', cclf_fhir3_maps.cclf2, patient, coverage, eob, output)
     # build_cclf('cclf3', cclf_fhir3_maps.cclf3, patient, coverage, eob, output)
