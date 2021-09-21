@@ -81,6 +81,8 @@ func (s *CCLFUtilTestSuite) TestHasAnyPrefix() {
 		{"A0001", []string{"B"}, false},
 		{"Z0001", []string{"X", "Y", "Z"}, true},
 		{"Z0001", []string{"A", "B", "C"}, false},
+		{"TEST001", []string{"A", "B", "TESS"}, false},
+		{"TEST001", []string{"TEST"}, true},
 	}
 	for _, tt := range tests {
 		s.T().Run(fmt.Sprintf("Test String %s - Prefix(es) %s - Expect to be found %t", tt.s, tt.prefixes, tt.found),
