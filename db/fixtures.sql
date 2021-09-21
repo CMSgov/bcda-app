@@ -1,6 +1,7 @@
 insert into acos(uuid, cms_id, name, client_id)
      values ('DBBD1CE1-AE24-435C-807D-ED45953077D3','A9995', 'ACO Lorem Ipsum', 'DBBD1CE1-AE24-435C-807D-ED45953077D3'),
-            ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', '0c527d2e-2e8a-4808-b11d-0fa06baf8254');
+            ('0c527d2e-2e8a-4808-b11d-0fa06baf8254', 'A9994', 'ACO Dev', '0c527d2e-2e8a-4808-b11d-0fa06baf8254'),
+            ('dfcb6432-0678-4590-a28b-6573e8a681ce', 'TEST001', 'ACO PreAdj Dev', 'dfcb6432-0678-4590-a28b-6573e8a681ce');
 
 insert into acos(uuid, cms_id, name, client_id, termination_details)
      values ('A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', 'A8880', 'ACO Sit Amet', 'A40404F7-1EF2-485A-9B71-40FE7ACDCBC2', null),
