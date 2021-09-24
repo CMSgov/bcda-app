@@ -65,7 +65,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 	case
 		"test",
 		"test-new-beneficiaries",
-		"preadj":
+		"test-preadj":
 	default:
 		return errors.New("invalid argument for environment")
 	}

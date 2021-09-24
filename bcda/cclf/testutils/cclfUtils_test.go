@@ -59,7 +59,7 @@ func (s *CCLFUtilTestSuite) TestImport() {
 		{"test", "dev-ckcc"},
 		{"test-new-beneficiaries", "dev-kcf"},
 		{"test", "dev-dc"},
-		{"preadj", "preadj-dev"},
+		{"test-preadj", "preadj-dev"},
 	}
 	for _, tt := range tests {
 		for _, fileType := range []models.CCLFFileType{models.FileTypeDefault, models.FileTypeRunout} {
