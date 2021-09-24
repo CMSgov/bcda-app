@@ -29,6 +29,7 @@ type RequestConditions struct {
 	JobID           uint
 	Since           time.Time
 	TransactionTime time.Time
+	CreationTime    time.Time
 
 	// Fields set in the service
 	fileType models.CCLFFileType
@@ -251,20 +252,49 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 			rowCount++
 			jobIDs = append(jobIDs, fmt.Sprint(b.ID))
 			if len(jobIDs) >= maxBeneficiaries || rowCount >= len(beneficiaries) {
-				enqueueArgs := models.JobEnqueueArgs{
-					ID:              int(conditions.JobID),
-					ACOID:           conditions.ACOID.String(),
-					BeneficiaryIDs:  jobIDs,
-					ResourceType:    rt,
-					Since:           sinceArg,
-					TransactionTime: conditions.TransactionTime,
-					BBBasePath:      s.bbBasePath,
+				if acoConfig, ok := s.GetACOConfigForID(conditions.CMSID); ok {
+					// Create separate jobs for each data type if needed
+					for _, dataType := range acoConfig.Data {
+						// conditions.TransactionTime references the last time adjudicated data
+						// was updated in the BB client. If we are queuing up a pre-adjudicated
+						// data job, we need to assume that the adjudicated and pre-adjudicated
+						// data ingestion timelines don't line up, therefore for all
+						// pre-adjudicated jobs we will just use conditions.CreationTime as an
+						// upper bound
+						var transactionTime time.Time
+						if dataType == constants.PreAdjudicated {
+							transactionTime = conditions.CreationTime
+						} else {
+							transactionTime = conditions.TransactionTime
+						}
+						if resource, ok := GetDataType(rt); ok {
+							if resource.SupportsDataType(dataType) {
+								enqueueArgs := models.JobEnqueueArgs{
+									ID:              int(conditions.JobID),
+									ACOID:           conditions.ACOID.String(),
+									BeneficiaryIDs:  jobIDs,
+									ResourceType:    rt,
+									Since:           sinceArg,
+									TransactionTime: transactionTime,
+									BBBasePath:      s.bbBasePath,
+									DataType:        dataType,
+								}
+
+								s.setClaimsDate(&enqueueArgs, conditions)
+
+								jobs = append(jobs, &enqueueArgs)
+							}
+						} else {
+							// This should never be possible, would have returned earlier
+							return nil, errors.New("Invalid resource type: " + rt)
+						}
+					}
+
+					jobIDs = make([]string, 0, maxBeneficiaries)
+				} else {
+					// This should never be possible, would have returned earlier
+					return nil, errors.New("Invalid ACO")
 				}
-
-				s.setClaimsDate(&enqueueArgs, conditions)
-
-				jobs = append(jobs, &enqueueArgs)
-				jobIDs = make([]string, 0, maxBeneficiaries)
 			}
 		}
 	}
@@ -460,7 +490,7 @@ func (s *service) GetJobPriority(acoID string, resourceType string, sinceParam b
 	return priority
 }
 
-// Gets any currently loaded ACOConfig for the matching cmsID
+// GetACOConfigForID gets any currently loaded ACOConfig for the matching cmsID
 func (s *service) GetACOConfigForID(cmsID string) (*ACOConfig, bool) {
 	for pattern, cfg := range s.acoConfig {
 		if pattern.MatchString(cmsID) {
@@ -486,9 +516,11 @@ func isPriorityACO(acoID string) bool {
 
 func getMaxBeneCount(requestType string) (int, error) {
 	const (
-		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT      = 200
-		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT  = 5000
-		BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT = 4000
+		BCDA_FHIR_MAX_RECORDS_EOB_DEFAULT           = 200
+		BCDA_FHIR_MAX_RECORDS_PATIENT_DEFAULT       = 5000
+		BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT      = 4000
+		BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT         = 4000
+		BCDA_FHIR_MAX_RECORDS_CLAIMRESPONSE_DEFAULT = 4000
 	)
 	var envVar string
 	var defaultVal int
@@ -503,6 +535,12 @@ func getMaxBeneCount(requestType string) (int, error) {
 	case "Coverage":
 		envVar = "BCDA_FHIR_MAX_RECORDS_COVERAGE"
 		defaultVal = BCDA_FHIR_MAX_RECORDS_COVERAGE_DEFAULT
+	case "Claim":
+		envVar = "BCDA_FHIR_MAX_RECORDS_CLAIM"
+		defaultVal = BCDA_FHIR_MAX_RECORDS_CLAIM_DEFAULT
+	case "ClaimResponse":
+		envVar = "BCDA_FHIR_MAX_RECORDS_CLAIM_RESPONSE"
+		defaultVal = BCDA_FHIR_MAX_RECORDS_CLAIMRESPONSE_DEFAULT
 	default:
 		err := errors.New("invalid request type")
 		return -1, err
