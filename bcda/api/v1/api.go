@@ -43,6 +43,8 @@ func init() {
 
 	Start FHIR STU3 data export for all supported resource types
 
+	Initiates a job to collect Assignment List Report data for your ACO. Supported resource types are Patient, Coverage, Group, Risk Assessment, Observation, and Covid Episode.
+
 	Produces:
 	- application/fhir+json
 
