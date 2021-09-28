@@ -22,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
@@ -433,7 +434,26 @@ func (s *APITestSuite) TestResourceTypes() {
 		{"Supported type - default", nil, http.StatusAccepted},
 	}
 
-	for idx, handler := range []http.HandlerFunc{BulkGroupRequest, BulkPatientRequest} {
+	resources, _ := service.GetDataTypes([]string{
+		"Patient",
+		"Coverage",
+		"ExplanationOfBenefit",
+		"Claim",
+		"ClaimResponse",
+	}...)
+
+	h := api.NewHandler(resources, "/v2/fhir", "v2")
+	mockSvc := &service.MockService{}
+
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockAco := service.ACOConfig{
+		Data: []string{"adjudicated"},
+	}
+	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+
+	h.Svc = mockSvc
+
+	for idx, handler := range []http.HandlerFunc{h.BulkGroupRequest, h.BulkPatientRequest} {
 		for _, tt := range tests {
 			s.T().Run(fmt.Sprintf("%s-%d", tt.name, idx), func(t *testing.T) {
 				rr := httptest.NewRecorder()
@@ -462,6 +482,7 @@ func (s *APITestSuite) TestResourceTypes() {
 
 				handler(rr, req)
 				assert.Equal(t, tt.statusCode, rr.Code)
+				assert.Empty(t, rr.Body.String())
 				if rr.Code == http.StatusAccepted {
 					assert.NotEmpty(t, rr.Header().Get("Content-Location"))
 				}

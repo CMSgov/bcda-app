@@ -172,13 +172,14 @@ func TestGetCMSID(t *testing.T) {
 
 func TestGetCCLFMetadata(t *testing.T) {
 	const (
-		sspID, cecID, ngacoID, ckccID, kcfID, dcID = "A9999", "E9999", "V999", "C9999", "K9999", "D9999"
-		sspProd, sspTest                           = "P.BCD." + sspID, "T.BCD." + sspID
-		cecProd, cecTest                           = "P.CEC", "T.CEC"
-		ngacoProd, ngacoTest                       = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
-		ckccProd, ckccTest                         = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
-		kcfProd, kcfTest                           = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
-		dcProd, dcTest                             = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
+		sspID, cecID, ngacoID, ckccID, kcfID, dcID, testID = "A9999", "E9999", "V999", "C9999", "K9999", "D9999", "TEST999"
+		sspProd, sspTest                                   = "P.BCD." + sspID, "T.BCD." + sspID
+		cecProd, cecTest                                   = "P.CEC", "T.CEC"
+		ngacoProd, ngacoTest                               = "P." + ngacoID + ".ACO", "T." + ngacoID + ".ACO"
+		ckccProd, ckccTest                                 = "P." + ckccID + ".ACO", "T." + ckccID + ".ACO"
+		kcfProd, kcfTest                                   = "P." + kcfID + ".ACO", "T." + kcfID + ".ACO"
+		dcProd, dcTest                                     = "P." + dcID + ".ACO", "T." + dcID + ".ACO"
+		testProd, testTest                                 = "P." + testID + ".ACO", "T." + testID + ".ACO"
 	)
 
 	start := time.Now()
@@ -206,6 +207,7 @@ func TestGetCCLFMetadata(t *testing.T) {
 	ckccProdFile, ckccTestFile := gen(ckccProd, validTime), gen(ckccTest, validTime)
 	kcfProdFile, kcfTestFile := gen(kcfProd, validTime), gen(kcfTest, validTime)
 	dcProdFile, dcTestFile := gen(dcProd, validTime), gen(dcTest, validTime)
+	testProdFile, testTestFile := gen(testProd, validTime), gen(testTest, validTime)
 
 	tests := []struct {
 		name     string
@@ -358,6 +360,28 @@ func TestGetCCLFMetadata(t *testing.T) {
 				name:      dcTestFile,
 				cclfNum:   8,
 				acoID:     dcID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Production TEST file", testID, testProdFile, "",
+			cclfFileMetadata{
+				env:       "production",
+				name:      testProdFile,
+				cclfNum:   8,
+				acoID:     testID,
+				timestamp: validTime,
+				perfYear:  perfYear,
+				fileType:  models.FileTypeDefault,
+			},
+		},
+		{"Test TEST file", testID, testTestFile, "",
+			cclfFileMetadata{
+				env:       "test",
+				name:      testTestFile,
+				cclfNum:   8,
+				acoID:     testID,
 				timestamp: validTime,
 				perfYear:  perfYear,
 				fileType:  models.FileTypeDefault,

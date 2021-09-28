@@ -98,7 +98,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 			filename = fmt.Sprintf("T.BCD.%s.%s%s", info.cmsID, file.Name(), suffix)
 		} else if strings.HasPrefix(info.cmsID, "E") {
 			filename = fmt.Sprintf("T.CEC.%s%s", file.Name(), suffix)
-		} else if hasAnyPrefix(info.cmsID, "V", "C", "K", "D") {
+		} else if hasAnyPrefix(info.cmsID, "V", "C", "K", "D", "TEST") {
 			filename = fmt.Sprintf("T.%s.ACO.%s%s", info.cmsID, file.Name(), suffix)
 		}
 		sourceFilename := fmt.Sprintf("%s/%s__%s", sourcedir, file.Name(), filename)
