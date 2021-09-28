@@ -1,17 +1,19 @@
-BEGIN;
 DO $$
+
+BEGIN
+
 DECLARE Dev cclf_files.id%TYPE;
 DECLARE Small cclf_files.id%TYPE;
 DECLARE Large cclf_files.id%TYPE;
 
 -- Adding three rows into cclf_files for three new CCLF files associated to synthea (improved data)
-BEGIN
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9989.ZC8Y44.D210928.T1834180', 'A9989', '2021-09-01', 21, 'Completed') RETURNING id INTO Dev;
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9998.ZC8Y20.D210929.T1834180', 'A9989', '2021-09-02', 21, 'Completed') RETURNING id INTO Small;
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9999.ZC8Y89.D210927.T1834180', 'A9999', '2021-09-03', 21, 'Completed') RETURNING id INTO Large;
+
+INSERT INTO public.cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9989.ZC8Y44.D210928.T1834180', 'A9989', '2021-09-01', 21, 'Completed') RETURNING id INTO Dev;
+INSERT INTO public.cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9998.ZC8Y20.D210929.T1834180', 'A9989', '2021-09-02', 21, 'Completed') RETURNING id INTO Small;
+INSERT INTO public.cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9999.ZC8Y89.D210927.T1834180', 'A9999', '2021-09-03', 21, 'Completed') RETURNING id INTO Large;
 
 -- Adding rows into cclf_beneficiaries for A9989
-INSERT INTO cclf_beneficiaries (file_id, mbi) 
+INSERT INTO public.cclf_beneficiaries (file_id, mbi) 
 VALUES
 (Dev, '1S00E00FZ00'),
 (Dev, '1S00E00AA02'),
@@ -55,7 +57,7 @@ VALUES
 (Dev, '1S00E00AA39');
 
 -- Adding 'rows 'into cclf_beneficiaries for A9998
-INSERT INTO cclf_beneficiaries (file_id, mbi) 
+INSERT INTO public.cclf_beneficiaries (file_id, mbi) 
 VALUES
 (Small, '1S00E00FZ00'),
 (Small, '1S00E00AA02'),
@@ -159,7 +161,7 @@ VALUES
 (Small, '1S00E00AA99');
 
 -- 'Adding 'rows into cclf_beneficiaries for A9999
-INSERT INTO cclf_beneficiaries (file_id, mbi) 
+INSERT INTO public.cclf_beneficiaries (file_id, mbi) 
 VALUES
 
 (Large, '1S00E00FZ00'),
@@ -10163,6 +10165,5 @@ VALUES
 (Large, '1S00E00FY98'),
 (Large, '1S00E00FY99');
 
-END $$;
-
 ROLLBACK;
+END $$;
