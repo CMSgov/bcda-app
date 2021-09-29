@@ -14,8 +14,8 @@ import (
 
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/constants"
-	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/service"
+	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -54,6 +54,8 @@ func init() {
 	swagger:route GET /api/v1/alr/$export alrData alrRequest
 
 	Start FHIR R4 data export for all supported resource types
+
+	Initiates a job to collect Assignment List Report data for your ACO. Supported resource types are Patient, Coverage, Group, Risk Assessment, Observation, and Covid Episode.
 
 	Produces:
 	- application/fhir+json
