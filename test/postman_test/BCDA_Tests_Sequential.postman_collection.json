@@ -2999,6 +2999,274 @@
 			"response": []
 		},
 		{
+			"name": "Get jobs status Completed data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Body contains data\", function() {",
+							"    pm.expect(pm.response.length > 0)",
+							"});",
+							"",
+							"const schema = {",
+							"    \"properties\": {",
+							"        \"entry\": {",
+							"            \"type\": \"array\",",
+							"            \"items\": {",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"resource\": {",
+							"                        \"type\": \"object\",",
+							"                        \"properties\": {",
+							"                            \"executionPeriod\": {",
+							"                                \"type\": \"object\",",
+							"                                \"properties\": {",
+							"                                    \"end\": {},",
+							"                                    \"start\": {}",
+							"                                }",
+							"                            },",
+							"                            \"identifier\": {",
+							"                                \"type\": \"array\",",
+							"                                \"items\": {",
+							"                                    \"type\": \"object\",",
+							"                                    \"properties\": {",
+							"                                        \"system\": {},",
+							"                                        \"use\": {},",
+							"                                        \"valyue\": {}",
+							"                                    }",
+							"                                }",
+							"                            },",
+							"                            \"input\": {",
+							"                                \"type\": \"array\",",
+							"                                \"items\": {",
+							"                                    \"type\": \"object\",",
+							"                                    \"properties\": {",
+							"                                        \"type\": {},",
+							"                                        \"valueString\": {}",
+							"                                    }",
+							"                                }",
+							"                            },",
+							"                            \"intent\": {",
+							"                                \"type\": \"string\"",
+							"                            },",
+							"                            \"resourceType\": {",
+							"                                \"type\": \"string\"",
+							"                            },",
+							"                            \"status\": {",
+							"                                \"type\": \"string\"",
+							"                            }",
+							"                        }",
+							"                    }",
+							"                }",
+							"            }",
+							"        },",
+							"        \"resourceType\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"total\": {",
+							"            \"type\": \"integer\"",
+							"        },",
+							"        \"type\": {",
+							"            \"type\": \"string\"",
+							"        }",
+							"    }",
+							"};",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Schema is valid\", function() {",
+							"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+                    {
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v1/jobs?_status=Completed",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"jobs"
+					],
+					"query": [
+						{
+							"key": "_status",
+							"value": "Completed"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get jobs status v2 Completed data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function() {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Body contains data\", function() {",
+							"    pm.expect(pm.response.length > 0)",
+							"});",
+							"",
+							"const schema = {",
+							"    \"properties\": {",
+							"        \"entry\": {",
+							"            \"type\": \"array\",",
+							"            \"items\": {",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"resource\": {",
+							"                        \"type\": \"object\",",
+							"                        \"properties\": {",
+							"                            \"executionPeriod\": {",
+							"                                \"type\": \"object\",",
+							"                                \"properties\": {",
+							"                                    \"end\": {},",
+							"                                    \"start\": {}",
+							"                                }",
+							"                            },",
+							"                            \"identifier\": {",
+							"                                \"type\": \"array\",",
+							"                                \"items\": {",
+							"                                    \"type\": \"object\",",
+							"                                    \"properties\": {",
+							"                                        \"system\": {},",
+							"                                        \"use\": {},",
+							"                                        \"valyue\": {}",
+							"                                    }",
+							"                                }",
+							"                            },",
+							"                            \"input\": {",
+							"                                \"type\": \"array\",",
+							"                                \"items\": {",
+							"                                    \"type\": \"object\",",
+							"                                    \"properties\": {",
+							"                                        \"type\": {},",
+							"                                        \"valueString\": {}",
+							"                                    }",
+							"                                }",
+							"                            },",
+							"                            \"intent\": {",
+							"                                \"type\": \"string\"",
+							"                            },",
+							"                            \"resourceType\": {",
+							"                                \"type\": \"string\"",
+							"                            },",
+							"                            \"status\": {",
+							"                                \"type\": \"string\"",
+							"                            }",
+							"                        }",
+							"                    }",
+							"                }",
+							"            }",
+							"        },",
+							"        \"resourceType\": {",
+							"            \"type\": \"string\"",
+							"        },",
+							"        \"total\": {",
+							"            \"type\": \"integer\"",
+							"        },",
+							"        \"type\": {",
+							"            \"type\": \"string\"",
+							"        }",
+							"    }",
+							"};",
+							"",
+							"var respJson = pm.response.json();",
+							"",
+							"pm.test(\"Schema is valid\", function() {",
+							"    pm.expect(tv4.validate(respJson, schema)).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/fhir+json"
+					},
+                    {
+						"key": "Prefer",
+						"type": "text",
+						"value": "respond-async"
+					}
+				],
+				"url": {
+					"raw": "{{scheme}}://{{host}}/api/v2/jobs?_status=Completed",
+					"protocol": "{{scheme}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v2",
+						"jobs"
+					],
+					"query": [
+						{
+							"key": "_status",
+							"value": "Completed"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Get ALR export job status",
 			"event": [
 				{

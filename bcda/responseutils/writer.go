@@ -1,12 +1,15 @@
 package responseutils
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/conf"
+	logAPI "github.com/CMSgov/bcda-app/log"
 
 	"github.com/google/fhir/go/jsonformat"
 	fhircodes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
@@ -41,6 +44,87 @@ func (r ResponseWriter) Exception(w http.ResponseWriter, statusCode int, errType
 func (r ResponseWriter) NotFound(w http.ResponseWriter, statusCode int, errType, errMsg string) {
 	oo := CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_NOT_FOUND, errType, errMsg)
 	WriteError(oo, w, statusCode)
+}
+
+func (r ResponseWriter) JobsBundle(w http.ResponseWriter, jobs []*models.Job, host string) {
+	jb := CreateJobsBundle(jobs, host)
+	WriteBundleResponse(jb, w)
+}
+
+func CreateJobsBundle(jobs []*models.Job, host string) *fhirmodels.Bundle {
+	var entries []*fhirmodels.Bundle_Entry
+
+	// generate bundle task entries
+	for _, job := range jobs {
+		entry := CreateJobsBundleEntry(job, host)
+		entries = append(entries, entry)
+	}
+
+	return &fhirmodels.Bundle{
+		Type:  &fhircodes.BundleTypeCode{Value: fhircodes.BundleTypeCode_SEARCHSET},
+		Total: &fhirdatatypes.UnsignedInt{Value: uint32(len(jobs))},
+		Entry: entries,
+	}
+}
+
+func CreateJobsBundleEntry(job *models.Job, host string) *fhirmodels.Bundle_Entry {
+	fhirStatusCode := GetFhirStatusCode(job.Status)
+
+	return &fhirmodels.Bundle_Entry{
+		Resource: &fhirmodels.ContainedResource{
+			OneofResource: &fhirmodels.ContainedResource_Task{
+				Task: &fhirmodels.Task{
+					Identifier: []*fhirdatatypes.Identifier{
+						{
+							Use:    &fhirdatatypes.IdentifierUseCode{Value: fhirdatatypes.IdentifierUseCode_OFFICIAL},
+							System: &fhirdatatypes.Uri{Value: host + "/api/v1/jobs"},
+							Value:  &fhirdatatypes.String{Value: fmt.Sprint(job.ID)},
+						},
+					},
+					Status: &fhircodes.TaskStatusCode{Value: fhirStatusCode},
+					Intent: &fhircodes.RequestIntentCode{Value: fhircodes.RequestIntentCode_ORDER},
+					Input: []*fhirmodels.Task_Parameter{
+						{
+							Type:  &fhirdatatypes.CodeableConcept{Text: &fhirdatatypes.String{Value: "BULK FHIR Export"}},
+							Value: &fhirmodels.Task_Parameter_Value{Value: &fhirmodels.Task_Parameter_Value_StringValue{StringValue: &fhirdatatypes.String{Value: "GET " + job.RequestURL}}},
+						},
+					},
+					ExecutionPeriod: &fhirdatatypes.Period{
+						Start: &fhirdatatypes.DateTime{
+							ValueUs:   job.CreatedAt.UTC().UnixNano() / int64(time.Microsecond),
+							Timezone:  time.UTC.String(),
+							Precision: fhirdatatypes.DateTime_SECOND,
+						},
+						End: &fhirdatatypes.DateTime{
+							ValueUs:   job.UpdatedAt.UTC().UnixNano() / int64(time.Microsecond),
+							Timezone:  time.UTC.String(),
+							Precision: fhirdatatypes.DateTime_SECOND,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func GetFhirStatusCode(status models.JobStatus) fhircodes.TaskStatusCode_Value {
+	var fhirStatus fhircodes.TaskStatusCode_Value
+
+	switch status {
+
+	case models.JobStatusFailed, models.JobStatusFailedExpired:
+		fhirStatus = fhircodes.TaskStatusCode_FAILED
+	case models.JobStatusPending, models.JobStatusInProgress:
+		fhirStatus = fhircodes.TaskStatusCode_IN_PROGRESS
+	case models.JobStatusCompleted:
+		fhirStatus = fhircodes.TaskStatusCode_COMPLETED
+	case models.JobStatusArchived, models.JobStatusExpired:
+		fhirStatus = fhircodes.TaskStatusCode_COMPLETED // fhir task status does not have an equivalent to `expired` or `archived`
+	case models.JobStatusCancelled, models.JobStatusCancelledExpired:
+		fhirStatus = fhircodes.TaskStatusCode_CANCELLED
+	}
+
+	return fhirStatus
 }
 
 func CreateOpOutcome(severity fhircodes.IssueSeverityCode_Value, code fhircodes.IssueTypeCode_Value,
@@ -200,6 +284,26 @@ func WriteCapabilityStatement(statement *fhirmodels.CapabilityStatement, w http.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(statementJSON)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func WriteBundleResponse(bundle *fhirmodels.Bundle, w http.ResponseWriter) {
+	resource := &fhirmodels.ContainedResource{
+		OneofResource: &fhirmodels.ContainedResource_Bundle{Bundle: bundle},
+	}
+	resourceJSON, err := marshaller.Marshal(resource)
+	if err != nil {
+		logAPI.API.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(resourceJSON)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
