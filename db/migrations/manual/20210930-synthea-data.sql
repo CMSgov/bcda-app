@@ -10,7 +10,7 @@ DECLARE Large cclf_files.id%TYPE;
 -- Adding three rows into cclf_files for three new CCLF files associated to synthea (improved data)
 BEGIN
 INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9989.ZC8Y44.D210928.T1834180', 'A9989', '2021-09-01', 21, 'Completed') RETURNING id INTO Dev;
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9998.ZC8Y20.D210929.T1834180', 'A9989', '2021-09-02', 21, 'Completed') RETURNING id INTO Small;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9998.ZC8Y20.D210929.T1834180', 'A9998', '2021-09-02', 21, 'Completed') RETURNING id INTO Small;
 INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status) VALUES (now(), now(), 8, 'T.BCD.A9999.ZC8Y89.D210927.T1834180', 'A9999', '2021-09-03', 21, 'Completed') RETURNING id INTO Large;
 
 -- Adding rows into cclf_beneficiaries for A9989
