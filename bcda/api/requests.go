@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/CMSgov/bcda-app/bcda/constants"
-
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 
@@ -22,6 +20,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
 	"github.com/CMSgov/bcda-app/bcda/client"
+	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
@@ -36,12 +35,6 @@ import (
 	"github.com/CMSgov/bcda-app/log"
 )
 
-//DataType is used to identify the type of data returned by each resource
-type DataType struct {
-	Adjudicated    bool
-	PreAdjudicated bool
-}
-
 type Handler struct {
 	JobTimeout time.Duration
 
@@ -55,7 +48,7 @@ type Handler struct {
 	r  models.Repository
 	db *sql.DB
 
-	supportedDataTypes map[string]DataType
+	supportedDataTypes map[string]service.DataType
 
 	supportedResourceTypes []string
 
@@ -74,11 +67,11 @@ type fhirResponseWriter interface {
 	JobsBundle(http.ResponseWriter, []*models.Job, string)
 }
 
-func NewHandler(dataTypes map[string]DataType, basePath string, apiVersion string) *Handler {
+func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string) *Handler {
 	return newHandler(dataTypes, basePath, apiVersion, database.Connection)
 }
 
-func newHandler(dataTypes map[string]DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
+func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string, db *sql.DB) *Handler {
 	h := &Handler{JobTimeout: time.Hour * time.Duration(utils.GetEnvInt("ARCHIVE_THRESHOLD_HR", 24))}
 
 	h.Enq = queueing.NewEnqueuer()
@@ -96,6 +89,7 @@ func newHandler(dataTypes map[string]DataType, basePath string, apiVersion strin
 
 	// Build string array of supported Resource types
 	h.supportedResourceTypes = make([]string, 0, len(h.supportedDataTypes))
+
 	for k := range h.supportedDataTypes {
 		h.supportedResourceTypes = append(h.supportedResourceTypes, k)
 	}
@@ -548,6 +542,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 		JobID:           newJob.ID,
 		Since:           rp.Since,
 		TransactionTime: newJob.TransactionTime,
+		CreationTime:    time.Now(),
 	}
 	queJobs, err = h.Svc.GetQueJobs(ctx, conditions)
 	if err != nil {
@@ -625,7 +620,7 @@ func (h *Handler) validateResources(resourceTypes []string, cmsID string) error 
 	return nil
 }
 
-func (h *Handler) authorizedResourceAccess(dataType DataType, cmsID string) bool {
+func (h *Handler) authorizedResourceAccess(dataType service.DataType, cmsID string) bool {
 	if cfg, ok := h.Svc.GetACOConfigForID(cmsID); ok {
 		return (dataType.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
 			(dataType.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))

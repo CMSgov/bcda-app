@@ -15,6 +15,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/constants"
 	"github.com/CMSgov/bcda-app/bcda/health"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
@@ -23,19 +24,26 @@ import (
 var h *api.Handler
 
 func init() {
-	resources := map[string]api.DataType{
-		"Patient":              {Adjudicated: true},
-		"Coverage":             {Adjudicated: true},
-		"ExplanationOfBenefit": {Adjudicated: true},
-		"Observation":          {Adjudicated: true},
+	resources, ok := service.GetDataTypes([]string{
+		"Patient",
+		"Coverage",
+		"ExplanationOfBenefit",
+		"Observation",
+	}...)
+
+	if ok {
+		h = api.NewHandler(resources, "/v1/fhir", "v1")
+	} else {
+		panic("Failed to configure resource DataTypes")
 	}
-	h = api.NewHandler(resources, "/v1/fhir", "v1")
 }
 
 /*
 	swagger:route GET /api/v1/alr/$export alrData alrRequest
 
 	Start FHIR STU3 data export for all supported resource types
+
+	Initiates a job to collect Assignment List Report data for your ACO. Supported resource types are Patient, Coverage, Group, Risk Assessment, Observation, and Covid Episode.
 
 	Produces:
 	- application/fhir+json

@@ -111,7 +111,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				jobs = qj
 			}
 
-			resourceMap := map[string]DataType{
+			resourceMap := map[string]service.DataType{
 				"Patient":              {Adjudicated: true},
 				"Coverage":             {Adjudicated: true},
 				"ExplanationOfBenefit": {Adjudicated: true},
@@ -382,7 +382,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 			}
 
-			resourceMap := map[string]DataType{
+			resourceMap := map[string]service.DataType{
 				"Patient":              {Adjudicated: true},
 				"Coverage":             {Adjudicated: true},
 				"ExplanationOfBenefit": {Adjudicated: true},
@@ -431,14 +431,6 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 }
 
 func (s *RequestsTestSuite) TestDataTypeAuthorization() {
-	dataTypeMap := map[string]DataType{
-		"Coverage":             {Adjudicated: true},
-		"Patient":              {Adjudicated: true},
-		"ExplanationOfBenefit": {Adjudicated: true},
-		"Claim":                {Adjudicated: false, PreAdjudicated: true},
-		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
-	}
-
 	acoA := &service.ACOConfig{
 		Model:              "Model A",
 		Pattern:            "A\\d{4}",
@@ -472,6 +464,22 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		Data:               []string{},
 	}
 
+	dataTypeMap := map[string]service.DataType{
+		"Coverage":             {Adjudicated: true},
+		"Patient":              {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+		"Claim":                {Adjudicated: false, PreAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+	}
+
+	h := NewHandler(dataTypeMap, "/v2/fhir/", "v2")
+
+	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
+	mockEnq := &queueing.MockEnqueuer{}
+	mockEnq.On("AddJob", mock.Anything, mock.Anything).Return(nil)
+	h.Enq = mockEnq
+	h.supportedDataTypes = dataTypeMap
+
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
 	jsonBytes, _ := json.Marshal("{}")
@@ -495,25 +503,12 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
-			h := NewHandler(dataTypeMap, "/v2/fhir/", "v2")
+			mockSvc := service.MockService{}
 
-			// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-			mockEnq := &queueing.MockEnqueuer{}
-			mockEnq.On("AddJob", mock.Anything, mock.Anything).Return(nil)
-			h.Enq = mockEnq
-			h.supportedDataTypes = dataTypeMap
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
 
-			mockSvc := &service.MockService{}
-
-			mockSvc.On("GetQueJobs", testUtils.CtxMatcher, mock.Anything).Return([]*models.JobEnqueueArgs{
-				{
-					ResourceType: "Claim",
-				},
-			}, nil)
-			mockSvc.On("GetJobPriority", mock.Anything, mock.Anything, mock.Anything).Return(int16(0))
-			mockSvc.On("GetACOConfigForID", test.cmsId).Return(test.acoConfig, true)
-
-			h.Svc = mockSvc
+			h.Svc = &mockSvc
 
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
@@ -539,7 +534,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 
-	resourceMap := map[string]DataType{
+	resourceMap := map[string]service.DataType{
 		"Patient":              {Adjudicated: true},
 		"Coverage":             {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
@@ -551,6 +546,15 @@ func (s *RequestsTestSuite) TestRequests() {
 	enqueuer := &queueing.MockEnqueuer{}
 	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
 	h.Enq = enqueuer
+	mockSvc := service.MockService{}
+
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockAco := service.ACOConfig{
+		Data: []string{"adjudicated"},
+	}
+	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
+
+	h.Svc = &mockSvc
 
 	// Test Group and Patient
 	// Patient, Coverage, and ExplanationOfBenefit

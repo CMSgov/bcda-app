@@ -14,6 +14,7 @@ import (
 
 	api "github.com/CMSgov/bcda-app/bcda/api"
 	"github.com/CMSgov/bcda-app/bcda/constants"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
@@ -27,14 +28,19 @@ var (
 func init() {
 	var err error
 
-	resources := map[string]api.DataType{
-		"Patient":              {Adjudicated: true},
-		"Coverage":             {Adjudicated: true},
-		"ExplanationOfBenefit": {Adjudicated: true},
-		"Claim":                {Adjudicated: false, PreAdjudicated: true},
-		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+	resources, ok := service.GetDataTypes([]string{
+		"Patient",
+		"Coverage",
+		"ExplanationOfBenefit",
+		"Claim",
+		"ClaimResponse",
+	}...)
+
+	if ok {
+		h = api.NewHandler(resources, "/v2/fhir", "v2")
+	} else {
+		panic("Failed to configure resource DataTypes")
 	}
-	h = api.NewHandler(resources, "/v2/fhir", "v2")
 
 	// Ensure that we write the serialized FHIR resources as a single line.
 	// Needed to comply with the NDJSON format that we are using.
@@ -48,6 +54,8 @@ func init() {
 	swagger:route GET /api/v1/alr/$export alrData alrRequest
 
 	Start FHIR R4 data export for all supported resource types
+
+	Initiates a job to collect Assignment List Report data for your ACO. Supported resource types are Patient, Coverage, Group, Risk Assessment, Observation, and Covid Episode.
 
 	Produces:
 	- application/fhir+json
