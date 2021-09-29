@@ -6,7 +6,7 @@ CCLF4  |Part A Diagnosis Code File                 |          6|   92
 CCLF5  |Part B Physicians File                     |          6|  363
 CCLF6  |Part B DME File                            |          6|  227
 CCLF7  |Part D File                                |          6|  195
-CCLF8  |Beneficiary Demographics File              |        100|  549
+CCLF8  |Beneficiary Demographics File              |         90|  549
 CCLF9  |BENE XREF File                             |          2|   55
 CCLFA  |Part A BE and Demo Codes File              |          6|  101
 CCLFB  |Part B BE and Demo Codes File              |          6|   93
