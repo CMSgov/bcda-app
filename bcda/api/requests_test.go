@@ -195,7 +195,7 @@ func (s *RequestsTestSuite) TestJobsStatusV1() {
 				)
 			}
 
-			h := newHandler(map[string]DataType{
+			h := newHandler(map[string]service.DataType{
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
@@ -287,7 +287,7 @@ func (s *RequestsTestSuite) TestJobsStatusV2() {
 				)
 			}
 
-			h := newHandler(map[string]DataType{
+			h := newHandler(map[string]service.DataType{
 				"Patient":              {},
 				"Coverage":             {},
 				"ExplanationOfBenefit": {},
