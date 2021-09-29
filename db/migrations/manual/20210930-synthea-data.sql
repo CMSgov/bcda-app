@@ -1,3 +1,6 @@
+-- This SQL script is for bookkeeping and auditing purposes
+-- This script can be used to add the improved synthea data to opensbx
+
 BEGIN;
 DO $$
 DECLARE Dev cclf_files.id%TYPE;
