@@ -22,6 +22,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres/postgrestest"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
+	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/bcdaworker/queueing"
 	"github.com/CMSgov/bcda-app/conf"
@@ -293,6 +294,88 @@ func (s *APITestSuite) TestJobStatusNotExpired() {
 	assertExpiryEquals(s.T(), j.UpdatedAt.Add(h.JobTimeout), rr.Header().Get("Expires"))
 }
 
+func (s *APITestSuite) TestJobsStatus() {
+	req := httptest.NewRequest("GET", "/api/v2/jobs", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v2/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusCompleted,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusNotFound() {
+	req := httptest.NewRequest("GET", "/api/v2/jobs", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusNotFoundWithStatus() {
+	req := httptest.NewRequest("GET", "/api/v2/jobs?_status=Failed", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v2/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusCompleted,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusWithStatus() {
+	req := httptest.NewRequest("GET", "/api/v2/jobs?_status=Failed", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v2/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusFailed,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+}
+
+func (s *APITestSuite) TestJobsStatusWithStatuses() {
+	req := httptest.NewRequest("GET", "/api/v2/jobs?_status=Completed,Failed", nil)
+	ad := s.makeContextValues(acoUnderTest)
+	req = req.WithContext(context.WithValue(req.Context(), auth.AuthDataContextKey, ad))
+	rr := httptest.NewRecorder()
+
+	j := models.Job{
+		ACOID:      acoUnderTest,
+		RequestURL: "/api/v2/Patient/$export?_type=ExplanationOfBenefit",
+		Status:     models.JobStatusFailed,
+	}
+	postgrestest.CreateJobs(s.T(), s.db, &j)
+	defer postgrestest.DeleteJobByID(s.T(), s.db, j.ID)
+
+	JobsStatus(rr, req)
+	assert.Equal(s.T(), http.StatusOK, rr.Code)
+}
+
 func (s *APITestSuite) TestDeleteJobBadInputs() {
 	tests := []struct {
 		name          string
@@ -433,7 +516,26 @@ func (s *APITestSuite) TestResourceTypes() {
 		{"Supported type - default", nil, http.StatusAccepted},
 	}
 
-	for idx, handler := range []http.HandlerFunc{BulkGroupRequest, BulkPatientRequest} {
+	resources, _ := service.GetDataTypes([]string{
+		"Patient",
+		"Coverage",
+		"ExplanationOfBenefit",
+		"Claim",
+		"ClaimResponse",
+	}...)
+
+	h := api.NewHandler(resources, "/v2/fhir", "v2")
+	mockSvc := &service.MockService{}
+
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockAco := service.ACOConfig{
+		Data: []string{"adjudicated"},
+	}
+	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockAco, true)
+
+	h.Svc = mockSvc
+
+	for idx, handler := range []http.HandlerFunc{h.BulkGroupRequest, h.BulkPatientRequest} {
 		for _, tt := range tests {
 			s.T().Run(fmt.Sprintf("%s-%d", tt.name, idx), func(t *testing.T) {
 				rr := httptest.NewRecorder()
@@ -462,6 +564,7 @@ func (s *APITestSuite) TestResourceTypes() {
 
 				handler(rr, req)
 				assert.Equal(t, tt.statusCode, rr.Code)
+				assert.Empty(t, rr.Body.String())
 				if rr.Code == http.StatusAccepted {
 					assert.NotEmpty(t, rr.Header().Get("Content-Location"))
 				}

@@ -40,6 +40,51 @@ type OperationOutcomeResponse struct {
 	}
 }
 
+type BundleResponse struct {
+	// Bundle
+	ResourceType string `json:"resourceType"`
+	// Total number of entries
+	Total int `json:"total"`
+	// Searchset
+	Type string `json:"type"`
+
+	Entry []EntryResponse `json:"entry"`
+}
+
+type EntryResponse struct {
+	Resource struct {
+		// Task
+		ResourceType string `json:"resourceType"`
+		// Order
+		Intent string `json:"intent"`
+		// Job Status
+		Status string `json:"status"`
+
+		ExecutionPeriod struct {
+			// Time job started
+			Start time.Time `json:"start"`
+			// Time job completed
+			End time.Time `json:"end"`
+		}
+		Identifier struct {
+			// Url for jobs statuses
+			System string `json:"system"`
+			// Official
+			Use string `json:"use"`
+			// Job Id
+			Value string `json:"value"`
+		} `json:"identifier"`
+		Input []struct {
+			Type struct {
+				// BULK FHIR Export
+				Text string `json:"text"`
+			} `json:"type"`
+			// Original job request url
+			ValueString string `json:"valueString"`
+		} `json:"input"`
+	} `json:"resource"`
+}
+
 // The requested path was not found. The body will contain a FHIR OperationOutcome resource in JSON format. https://www.hl7.org/fhir/operationoutcome.html
 // swagger:response notFoundResponse
 type NotFoundResponse struct {
@@ -78,6 +123,12 @@ type TooManyRequestsResponse struct {
 type JobStatusResponse struct {
 	// The status of the job progress
 	XProgress string `json:"X-Progress"`
+}
+
+// JSON object containing status of requested jobs. The body will contain a FHIR Bundle resource in JSON format https://www.hl7.org/fhir/bundle.html and FHIR Task resources for the Bundle entries in JSON format https://www.hl7.org/fhir/task.html
+// swagger:response jobsStatusResponse
+type JobsStatusResponse struct {
+	Body BundleResponse
 }
 
 // The job has been deleted.
@@ -195,6 +246,17 @@ type SinceParam struct {
 	// in: query
 	// required: false
 	DateTime string `json:"_since"`
+}
+
+// swagger:parameters jobsStatus jobsStatusV2
+type StatusParam struct {
+	// Job statuses requested
+	// in: query
+	// style: form
+	// explode: false
+	// required: false
+	// items.enum: Completed,Archived,Expired,Failed,FailedExpired,Pending,In Progress,Cancelled,CancelledExpired
+	Status []JobStatus `json:"_status"`
 }
 
 // swagger:parameters bulkPatientRequest bulkGroupRequest bulkPatientRequestV2 bulkGroupRequestV2

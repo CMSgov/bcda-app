@@ -185,7 +185,6 @@ func (bbc *BlueButtonClient) GetClaim(mbi, jobID, cmsID, since string, transacti
 	mbiHash := HashIdentifier(mbi)
 	params := GetDefaultParams()
 	params.Set("mbi", mbiHash)
-	params.Set("excludeSAMHSA", "true")
 
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, since, transactionTime)
@@ -205,7 +204,6 @@ func (bbc *BlueButtonClient) GetClaimResponse(mbi, jobID, cmsID, since string, t
 	mbiHash := HashIdentifier(mbi)
 	params := GetDefaultParams()
 	params.Set("mbi", mbiHash)
-	params.Set("excludeSAMHSA", "true")
 
 	updateParamWithServiceDate(&params, claimsWindow)
 	updateParamWithLastUpdated(&params, since, transactionTime)
