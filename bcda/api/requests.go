@@ -52,6 +52,8 @@ type Handler struct {
 
 	supportedResourceTypes []string
 
+	supportedStatuses map[models.JobStatus]struct{}
+
 	bbBasePath string
 
 	apiVersion string
@@ -62,6 +64,7 @@ type Handler struct {
 type fhirResponseWriter interface {
 	Exception(http.ResponseWriter, int, string, string)
 	NotFound(http.ResponseWriter, int, string, string)
+	JobsBundle(http.ResponseWriter, []*models.Job, string)
 }
 
 func NewHandler(dataTypes map[string]service.DataType, basePath string, apiVersion string) *Handler {
@@ -89,6 +92,11 @@ func newHandler(dataTypes map[string]service.DataType, basePath string, apiVersi
 
 	for k := range h.supportedDataTypes {
 		h.supportedResourceTypes = append(h.supportedResourceTypes, k)
+	}
+
+	h.supportedStatuses = make(map[models.JobStatus]struct{}, len(models.AllJobStatuses))
+	for _, r := range models.AllJobStatuses {
+		h.supportedStatuses[r] = struct{}{}
 	}
 
 	h.bbBasePath = basePath
@@ -143,6 +151,75 @@ func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.bulkRequest(w, r, reqType)
+}
+
+func (h *Handler) JobsStatus(w http.ResponseWriter, r *http.Request) {
+	var (
+		ad          auth.AuthData
+		statusTypes []models.JobStatus
+		err         error
+	)
+
+	statusTypes = models.AllJobStatuses // default request to retrieve jobs with all statuses
+	params, ok := r.URL.Query()["_status"]
+	if ok {
+		statusMap := make(map[string]struct{})
+		rawStatusTypes := strings.Split(params[0], ",")
+		statusTypes = nil
+
+		// validate no duplicate status types
+		for _, status := range rawStatusTypes {
+			if _, ok := statusMap[status]; !ok {
+				statusMap[status] = struct{}{}
+				statusTypes = append(statusTypes, models.JobStatus(status))
+			} else {
+				errMsg := fmt.Sprintf("Repeated status type %s", status)
+				h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, errMsg)
+				return
+			}
+		}
+
+		// validate status types provided match our valid list of statuses
+		if err = h.validateStatuses(statusTypes); err != nil {
+			h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
+			return
+		}
+	}
+
+	if ad, err = readAuthData(r); err != nil {
+		h.RespWriter.Exception(w, http.StatusUnauthorized, responseutils.TokenErr, "")
+		return
+	}
+
+	jobs, err := h.Svc.GetJobs(context.Background(), uuid.Parse(ad.ACOID), statusTypes...)
+	if err != nil {
+		log.API.Error(err)
+
+		if ok := goerrors.As(err, &service.JobsNotFoundError{}); ok {
+			h.RespWriter.Exception(w, http.StatusNotFound, responseutils.DbErr, err.Error())
+		} else {
+			h.RespWriter.Exception(w, http.StatusInternalServerError, responseutils.InternalErr, "")
+		}
+	}
+
+	scheme := "http"
+	if servicemux.IsHTTPS(r) {
+		scheme = "https"
+	}
+	host := fmt.Sprintf("%s://%s", scheme, r.Host)
+
+	h.RespWriter.JobsBundle(w, jobs, host)
+}
+
+func (h *Handler) validateStatuses(statusTypes []models.JobStatus) error {
+
+	for _, statusType := range statusTypes {
+		if _, ok := h.supportedStatuses[statusType]; !ok {
+			return fmt.Errorf("invalid status type %s. Supported types %s", statusType, h.supportedStatuses)
+		}
+	}
+
+	return nil
 }
 
 func (h *Handler) JobStatus(w http.ResponseWriter, r *http.Request) {
@@ -369,7 +446,7 @@ func (h *Handler) bulkRequest(w http.ResponseWriter, r *http.Request, reqType se
 
 	resourceTypes := h.getResourceTypes(rp, ad.CMSID)
 
-	if err = h.validateRequest(resourceTypes, ad.CMSID); err != nil {
+	if err = h.validateResources(resourceTypes, ad.CMSID); err != nil {
 		h.RespWriter.Exception(w, http.StatusBadRequest, responseutils.RequestErr, err.Error())
 		return
 	}
@@ -527,8 +604,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 	return resourceTypes
 }
 
-func (h *Handler) validateRequest(resourceTypes []string, cmsID string) error {
-
+func (h *Handler) validateResources(resourceTypes []string, cmsID string) error {
 	for _, resourceType := range resourceTypes {
 		dataType, ok := h.supportedDataTypes[resourceType]
 
