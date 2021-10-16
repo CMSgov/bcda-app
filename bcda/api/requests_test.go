@@ -10,7 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +34,12 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/google/fhir/go/jsonformat"
+	fhircodesv2 "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/codes_go_proto"
+	fhirmodelv2CR "github.com/google/fhir/go/proto/google/fhir/proto/r4/core/resources/bundle_and_contained_resource_go_proto"
+	fhircodesv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/codes_go_proto"
+	fhirmodelsv1 "github.com/google/fhir/go/proto/google/fhir/proto/stu3/resources_go_proto"
 )
 
 type RequestsTestSuite struct {
@@ -45,7 +51,7 @@ type RequestsTestSuite struct {
 
 	acoID uuid.UUID
 
-	resourceType map[string]DataType
+	resourceType map[string]service.DataType
 }
 
 func TestRequestsTestSuite(t *testing.T) {
@@ -62,7 +68,7 @@ func (s *RequestsTestSuite) SetupSuite() {
 		testfixtures.Directory("testdata/"),
 	)
 
-	s.resourceType = map[string]DataType{
+	s.resourceType = map[string]service.DataType{
 		"Patient":              {Adjudicated: true},
 		"Coverage":             {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
@@ -139,19 +145,213 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 	}
 }
 
+func (s *RequestsTestSuite) TestJobsStatusV1() {
+	apiVersion := "v1"
+
+	tests := []struct {
+		name string
+
+		respCode int
+		statuses []models.JobStatus
+		codes    []fhircodesv1.TaskStatusCode_Value
+	}{
+		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
+		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED}},
+		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv1.TaskStatusCode_Value{fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_FAILED}},
+		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
+			[]fhircodesv1.TaskStatusCode_Value{
+				fhircodesv1.TaskStatusCode_IN_PROGRESS, fhircodesv1.TaskStatusCode_IN_PROGRESS, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_COMPLETED, fhircodesv1.TaskStatusCode_FAILED, fhircodesv1.TaskStatusCode_CANCELLED, fhircodesv1.TaskStatusCode_FAILED, fhircodesv1.TaskStatusCode_CANCELLED,
+			},
+		},
+		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			mockSvc := &service.MockService{}
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+					nil, service.JobsNotFoundError{},
+				)
+			case http.StatusOK:
+				var (
+					jobs     []*models.Job
+					mockArgs []interface{}
+				)
+
+				mockArgs = append(mockArgs, testUtils.CtxMatcher, mock.Anything)
+				if tt.statuses == nil {
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					for range models.AllJobStatuses {
+						mockArgs = append(mockArgs, mock.Anything)
+					}
+				} else {
+					for k := range tt.statuses {
+						mockArgs = append(mockArgs, mock.Anything)
+						jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
+					}
+				}
+
+				mockSvc.On("GetJobs", mockArgs...).Return(
+					jobs, nil,
+				)
+			}
+
+			h := newHandler(map[string]service.DataType{
+				"Patient":              {},
+				"Coverage":             {},
+				"ExplanationOfBenefit": {},
+			}, "/v1/fhir", "v1", s.db)
+			h.Svc = mockSvc
+
+			rr := httptest.NewRecorder()
+			req := s.genGetJobsRequest("v1", tt.statuses)
+			h.JobsStatus(rr, req)
+
+			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.STU3)
+			assert.NoError(s.T(), err)
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+			case http.StatusOK:
+				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
+
+				resp, err := unmarshaller.Unmarshal(rr.Body.Bytes())
+				assert.NoError(s.T(), err)
+
+				bundle := resp.(*fhirmodelsv1.ContainedResource)
+				respB := bundle.GetBundle()
+				assert.Equal(s.T(), http.StatusOK, rr.Code)
+				assert.Equal(s.T(), uint32(len(respB.Entry)), respB.Total.Value)
+
+				for k, entry := range respB.Entry {
+					respT := entry.GetResource().GetTask()
+					assert.Equal(s.T(), respT.Status.Value, tt.codes[k])
+					assert.Equal(s.T(), respT.Input[0].Value.GetStringValue().Value, "GET https://bcda.test.gov/v1/this-is-a-test")
+				}
+			}
+		})
+	}
+}
+
+func (s *RequestsTestSuite) TestJobsStatusV2() {
+	apiVersion := "v2"
+
+	tests := []struct {
+		name string
+
+		respCode int
+		statuses []models.JobStatus
+		codes    []fhircodesv2.TaskStatusCode_Value
+	}{
+		{"Successful with no status(es)", http.StatusOK, nil, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
+		{"Successful with one status", http.StatusOK, []models.JobStatus{models.JobStatusCompleted}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED}},
+		{"Successful with two statuses", http.StatusOK, []models.JobStatus{models.JobStatusCompleted, models.JobStatusFailed}, []fhircodesv2.TaskStatusCode_Value{fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED}},
+		{"Successful with all statuses", http.StatusOK, models.AllJobStatuses,
+			[]fhircodesv2.TaskStatusCode_Value{
+				fhircodesv2.TaskStatusCode_IN_PROGRESS, fhircodesv2.TaskStatusCode_IN_PROGRESS, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_COMPLETED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED, fhircodesv2.TaskStatusCode_FAILED, fhircodesv2.TaskStatusCode_CANCELLED,
+			},
+		},
+		{"Jobs not found", http.StatusNotFound, []models.JobStatus{models.JobStatusCompleted}, nil},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			mockSvc := &service.MockService{}
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				mockSvc.On("GetJobs", testUtils.CtxMatcher, mock.Anything, mock.Anything).Return(
+					nil, service.JobsNotFoundError{},
+				)
+			case http.StatusOK:
+				var (
+					jobs     []*models.Job
+					mockArgs []interface{}
+				)
+
+				mockArgs = append(mockArgs, testUtils.CtxMatcher, mock.Anything)
+				if tt.statuses == nil {
+					jobs = s.addNewJob(jobs, uint(1), models.JobStatusCompleted, apiVersion)
+					for range models.AllJobStatuses {
+						mockArgs = append(mockArgs, mock.Anything)
+					}
+				} else {
+					for k := range tt.statuses {
+						mockArgs = append(mockArgs, mock.Anything)
+						jobs = s.addNewJob(jobs, uint(k), tt.statuses[k], apiVersion)
+					}
+				}
+
+				mockSvc.On("GetJobs", mockArgs...).Return(
+					jobs, nil,
+				)
+			}
+
+			h := newHandler(map[string]service.DataType{
+				"Patient":              {},
+				"Coverage":             {},
+				"ExplanationOfBenefit": {},
+			}, "/v2/fhir", "v2", s.db)
+			h.Svc = mockSvc
+
+			rr := httptest.NewRecorder()
+			req := s.genGetJobsRequest("v2", tt.statuses)
+			h.JobsStatus(rr, req)
+
+			unmarshaller, err := jsonformat.NewUnmarshaller("UTC", jsonformat.R4)
+			assert.NoError(s.T(), err)
+
+			switch tt.respCode {
+			case http.StatusNotFound:
+				assert.Equal(s.T(), http.StatusNotFound, rr.Code)
+			case http.StatusOK:
+				assert.Equal(s.T(), tt.respCode, rr.Result().StatusCode)
+
+				resp, err := unmarshaller.Unmarshal(rr.Body.Bytes())
+				assert.NoError(s.T(), err)
+
+				bundle := resp.(*fhirmodelv2CR.ContainedResource)
+				respB := bundle.GetBundle()
+				assert.Equal(s.T(), http.StatusOK, rr.Code)
+				assert.Equal(s.T(), uint32(len(respB.Entry)), respB.Total.Value)
+
+				for k, entry := range respB.Entry {
+					respT := entry.GetResource().GetTask()
+					assert.Equal(s.T(), respT.Status.Value, tt.codes[k])
+					assert.Equal(s.T(), respT.Input[0].Value.GetStringValue().Value, "GET https://bcda.test.gov/v2/this-is-a-test")
+				}
+			}
+		})
+	}
+}
+
+func (s *RequestsTestSuite) addNewJob(jobs []*models.Job, id uint, status models.JobStatus, apiVersion string) []*models.Job {
+	return append(jobs, &models.Job{
+		ID:         id,
+		ACOID:      uuid.NewUUID(),
+		Status:     status,
+		RequestURL: "https://bcda.test.gov/" + apiVersion + "/this-is-a-test",
+		CreatedAt:  time.Now().Add(-24 * time.Hour),
+		UpdatedAt:  time.Now(),
+	})
+}
+
 func (s *RequestsTestSuite) TestAttributionStatus() {
 	tests := []struct {
 		name string
 
-		errToReturn error
-		respCode    int
-		fileNames   []string
-		fileTypes   []string
+		respCode  int
+		fileNames []string
+		fileTypes []string
 	}{
-		{"Successful with both files", nil, http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"last_attribution_update", "last_runout_update"}},
-		{"Successful with default file", nil, http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"last_attribution_update", ""}},
-		{"Successful with runout file", nil, http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "last_runout_update"}},
-		{"No CCLF files found", nil, http.StatusNotFound, []string{"", ""}, []string{"", ""}},
+		{"Successful with both files", http.StatusOK, []string{"cclf_test_file_1", "cclf_test_file_2"}, []string{"last_attribution_update", "last_runout_update"}},
+		{"Successful with default file", http.StatusOK, []string{"cclf_test_file_1", ""}, []string{"last_attribution_update", ""}},
+		{"Successful with runout file", http.StatusOK, []string{"", "cclf_test_file_2"}, []string{"", "last_runout_update"}},
+		{"No CCLF files found", http.StatusNotFound, []string{"", ""}, []string{"", ""}},
 	}
 
 	for _, tt := range tests {
@@ -231,12 +431,40 @@ func (s *RequestsTestSuite) TestRunoutDisabled() {
 }
 
 func (s *RequestsTestSuite) TestDataTypeAuthorization() {
-	acoA, _ := regexp.Compile(`A\d{4}`)
-	acoB, _ := regexp.Compile(`B\d{4}`)
-	acoC, _ := regexp.Compile(`C\d{4}`)
-	acoD, _ := regexp.Compile(`D\d{4}`)
+	acoA := &service.ACOConfig{
+		Model:              "Model A",
+		Pattern:            "A\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated", "pre-adjudicated"},
+	}
+	acoB := &service.ACOConfig{
+		Model:              "Model B",
+		Pattern:            "B\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"adjudicated"},
+	}
+	acoC := &service.ACOConfig{
+		Model:              "Model C",
+		Pattern:            "C\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{"pre-adjudicated"},
+	}
+	acoD := &service.ACOConfig{
+		Model:              "Model D",
+		Pattern:            "D\\d{4}",
+		PerfYearTransition: "01/01",
+		LookbackYears:      10,
+		Disabled:           false,
+		Data:               []string{},
+	}
 
-	dataTypeMap := map[string]DataType{
+	dataTypeMap := map[string]service.DataType{
 		"Coverage":             {Adjudicated: true},
 		"Patient":              {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
@@ -247,69 +475,41 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 	h := NewHandler(dataTypeMap, "/v2/fhir/", "v2")
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
-	enqueuer := &queueing.MockEnqueuer{}
-	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
-	h.Enq = enqueuer
+	mockEnq := &queueing.MockEnqueuer{}
+	mockEnq.On("AddJob", mock.Anything, mock.Anything).Return(nil)
+	h.Enq = mockEnq
 	h.supportedDataTypes = dataTypeMap
-
-	h.Svc = MockService{
-		acoConfig: map[*regexp.Regexp]*service.ACOConfig{
-			acoA: {
-				Model:              "Model A",
-				Pattern:            "A\\d{4}",
-				PerfYearTransition: "01/01",
-				LookbackYears:      10,
-				Disabled:           false,
-				Data:               []string{"adjudicated", "pre-adjudicated"},
-			},
-			acoB: {
-				Model:              "Model B",
-				Pattern:            "B\\d{4}",
-				PerfYearTransition: "01/01",
-				LookbackYears:      10,
-				Disabled:           false,
-				Data:               []string{"adjudicated"},
-			},
-			acoC: {
-				Model:              "Model C",
-				Pattern:            "C\\d{4}",
-				PerfYearTransition: "01/01",
-				LookbackYears:      10,
-				Disabled:           false,
-				Data:               []string{"pre-adjudicated"},
-			},
-			acoD: {
-				Model:              "Model D",
-				Pattern:            "D\\d{4}",
-				PerfYearTransition: "01/01",
-				LookbackYears:      10,
-				Disabled:           false,
-				Data:               []string{},
-			},
-		},
-	}
 
 	client.SetLogger(log.API) // Set logger so we don't get errors later
 
 	jsonBytes, _ := json.Marshal("{}")
 
 	tests := []struct {
-		name         string
+		name string
+
 		cmsId        string
 		resources    []string
 		expectedCode int
+		acoConfig    *service.ACOConfig
 	}{
-		{"Auth Adj/Pre-Adj, Request Adj/Pre-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted},
-		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted},
-		{"Auth Adj, Request Pre-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest},
-		{"Auth Pre-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest},
-		{"Auth Pre-Adj, Request Pre-Adj", "C0000", []string{"Claim"}, http.StatusAccepted},
-		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest},
-		{"Auth None, Request Pre-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest},
+		{"Auth Adj/Pre-Adj, Request Adj/Pre-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA},
+		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB},
+		{"Auth Adj, Request Pre-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB},
+		{"Auth Pre-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC},
+		{"Auth Pre-Adj, Request Pre-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC},
+		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD},
+		{"Auth None, Request Pre-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD},
 	}
 
 	for _, test := range tests {
 		s.T().Run(test.name, func(t *testing.T) {
+			mockSvc := service.MockService{}
+
+			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+			mockSvc.On("GetACOConfigForID", mock.Anything).Return(test.acoConfig, true)
+
+			h.Svc = &mockSvc
+
 			w := httptest.NewRecorder()
 			r, _ := http.NewRequest("GET", "http://bcda.ms.gov/api/v2/Group/$export", bytes.NewReader(jsonBytes))
 
@@ -342,6 +542,15 @@ func (s *RequestsTestSuite) TestRequests() {
 	enqueuer := &queueing.MockEnqueuer{}
 	enqueuer.On("AddJob", mock.Anything, mock.Anything).Return(nil)
 	h.Enq = enqueuer
+	mockSvc := service.MockService{}
+
+	mockSvc.On("GetQueJobs", mock.Anything, mock.Anything).Return([]*models.JobEnqueueArgs{}, nil)
+	mockAco := service.ACOConfig{
+		Data: []string{"adjudicated"},
+	}
+	mockSvc.On("GetACOConfigForID", mock.Anything, mock.Anything).Return(&mockAco, true)
+
+	h.Svc = &mockSvc
 
 	// Test Group and Patient
 	// Patient, Coverage, and ExplanationOfBenefit
@@ -461,46 +670,23 @@ func (s *RequestsTestSuite) genASRequest() *http.Request {
 	return req.WithContext(ctx)
 }
 
-type MockService struct {
-	acoConfig map[*regexp.Regexp]*service.ACOConfig
-}
-
-func (m MockService) GetQueJobs(ctx context.Context, conditions service.RequestConditions) (queJobs []*models.JobEnqueueArgs, err error) {
-	queJobs = append(queJobs, &models.JobEnqueueArgs{
-		ResourceType: "Claim",
-	})
-
-	return queJobs, nil
-}
-
-func (m MockService) GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs {
-	panic("not implement")
-}
-
-func (m MockService) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error) {
-	panic("not implement")
-}
-
-func (m MockService) CancelJob(ctx context.Context, jobID uint) (uint, error) {
-	panic("not implement")
-}
-
-func (m MockService) GetJobPriority(acoID string, resourceType string, sinceParam bool) int16 {
-	return 0
-}
-
-func (m MockService) GetLatestCCLFFile(ctx context.Context, cmsID string, fileType models.CCLFFileType) (*models.CCLFFile, error) {
-	panic("not implement")
-}
-
-func (m MockService) GetACOConfigForID(cmsID string) (*service.ACOConfig, bool) {
-	for pattern, cfg := range m.acoConfig {
-		if pattern.MatchString(cmsID) {
-			return cfg, true
+func (s *RequestsTestSuite) genGetJobsRequest(version string, statuses []models.JobStatus) *http.Request {
+	target := fmt.Sprintf("http://bcda.cms.gov/api/%s/jobs", version)
+	if statuses != nil {
+		target = target + "?_status="
+		for _, status := range statuses {
+			target = target + string(status) + ","
 		}
+		target = strings.TrimRight(target, ",")
 	}
+	target = strings.ReplaceAll(target, " ", "%20") // Remove possible spaces in query parameter
 
-	return nil, false
+	req := httptest.NewRequest("GET", target, nil)
+
+	aco := postgrestest.GetACOByUUID(s.T(), s.db, s.acoID)
+	ad := auth.AuthData{ACOID: s.acoID.String(), CMSID: *aco.CMSID, TokenID: uuid.NewRandom().String()}
+
+	ctx := context.WithValue(req.Context(), auth.AuthDataContextKey, ad)
+
+	return req.WithContext(ctx)
 }
-
-var _ service.Service = &MockService{}

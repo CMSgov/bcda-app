@@ -230,6 +230,10 @@ func (s *RouterTestSuite) TestV2EndpointsEnabled() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/jobs/{jobID}")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/jobs")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+	res = s.getAPIRoute("/api/v2/attribution_status")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 	res = s.getAPIRoute("/api/v2/metadata")
 	assert.Equal(s.T(), http.StatusOK, res.StatusCode)
 }
@@ -239,8 +243,18 @@ func (s *RouterTestSuite) TestJobStatusRoute() {
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 
+func (s *RouterTestSuite) TestJobsStatusRoute() {
+	res := s.getAPIRoute("/api/v1/jobs")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+}
+
 func (s *RouterTestSuite) TestDeleteJobRoute() {
 	res := s.deleteAPIRoute("/api/v1/jobs/1")
+	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+}
+
+func (s *RouterTestSuite) TestAttributionStatus() {
+	res := s.getAPIRoute("/api/v1/attribution_status")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
 }
 

@@ -144,4 +144,5 @@ type JobEnqueueArgs struct {
 		LowerBound time.Time
 		UpperBound time.Time
 	}
+	DataType string
 }
