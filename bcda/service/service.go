@@ -584,7 +584,8 @@ func IsSupportedACO(cmsID string) bool {
 		ckcc    = `^C\d{4}$`
 		kcf     = `^K\d{4}$`
 		dc      = `^D\d{4}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)`
+		test    = `^TEST\d{3}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + test + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)
