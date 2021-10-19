@@ -861,12 +861,21 @@ func (r *RepositoryTestSuite) TestCCLFFileType() {
 	assert.Equal(r.T(), withType.Type, result[0].Type)
 }
 
+func (r *RepositoryTestSuite) TestCCLFFileExistsByName() {
+	ctx := context.Background()
+	// Difficult to provide a name, since it is created during the ingestion
+	// using a timestamp. For now testing negative.
+	exists, err := r.repository.GetCCLFFileExistsByName(ctx, "DOESNOTEXIST")
+	r.NoError(err)
+	r.False(exists)
+}
+
 /*******************************************************************************
-	TestAlr tests the following
+	TestAddAlrGetAlr tests the following
 		1. AddAlr
 		2. GetAlr
 *******************************************************************************/
-func (r *RepositoryTestSuite) TestAlr() {
+func (r *RepositoryTestSuite) TestAddAlrGetAlr() {
 
 	// Generate some data
 	exMap := make(map[string]string)
@@ -883,13 +892,10 @@ func (r *RepositoryTestSuite) TestAlr() {
 	aco := "A1234"
 	MBIs := []string{"abd123abd01", "abd123abd02"}
 	timestamp := time.Now()
-	timestamp2 := timestamp.Add(time.Hour * 24)
 	dob1, _ := time.Parse("01/02/2006", "01/20/1950")
 	dob2, _ := time.Parse("01/02/2006", "04/15/1950")
 	alrs := []models.Alr{
 		{
-			ID:            1, // These are set manually for testing
-			MetaKey:       1, // PostgreSQL should automatically make these
 			BeneMBI:       MBIs[0],
 			BeneHIC:       "1q2w3e4r5t6y",
 			BeneFirstName: "John",
@@ -900,8 +906,6 @@ func (r *RepositoryTestSuite) TestAlr() {
 			KeyValue:      exMap,
 		},
 		{
-			ID:            2,
-			MetaKey:       2,
 			BeneMBI:       MBIs[1],
 			BeneHIC:       "0p9o8i7u6y5t",
 			BeneFirstName: "Melissa",
@@ -916,52 +920,45 @@ func (r *RepositoryTestSuite) TestAlr() {
 	ctx := context.Background()
 
 	// Test AddAlr
-	err := alrRepo.AddAlr(ctx, aco, timestamp, alrs[:1])
-	// Add the second person with a different timestamp
-	_ = alrRepo.AddAlr(ctx, aco, timestamp2, alrs[1:2])
+	err := alrRepo.AddAlr(ctx, aco, timestamp, alrs)
 	assert.NoError(r.T(), err)
 
-	// Test GetAlr
-	// No bounds
-	nobounds, err := alrRepo.GetAlr(ctx, aco, MBIs, time.Time{}, time.Time{})
+	// Retrieve the just added A1234
+	mbis, err := r.repository.GetAlrMBIs(ctx, "A1234")
+	r.NoError(err)
+
+	// Test GetAlr for John and Melissa
+	johnMel, err := alrRepo.GetAlr(ctx, mbis.Metakey, mbis.MBIS)
 	assert.NoError(r.T(), err)
-	assert.Greater(r.T(), len(nobounds), 1)
+	assert.Equal(r.T(), 2, len(johnMel)) // We should get back John and Mel
 
 	// Compare the values
-	assert.EqualValues(r.T(), alrs[0].BeneMBI, nobounds[0].BeneMBI)
+	assert.EqualValues(r.T(), alrs[0].BeneMBI, johnMel[0].BeneMBI)
 	// Go time added a monotonic clock... this is to remove it.
-	assert.EqualValues(r.T(), timestamp.Truncate(time.Microsecond),
-		nobounds[0].Timestamp.Truncate(time.Microsecond))
-
-	// Get exact date
-	exact, err := alrRepo.GetAlr(ctx, aco, MBIs, timestamp2, timestamp2)
-	assert.NoError(r.T(), err)
-	assert.Len(r.T(), exact, 1)
-
-	// Compare the values
-	assert.EqualValues(r.T(), alrs[1].BeneMBI, exact[0].BeneMBI)
-	assert.EqualValues(r.T(), timestamp2.Truncate(time.Microsecond),
-		exact[0].Timestamp.Truncate(time.Microsecond))
-
-	// Get a range and make sure we got the right person
-	rn, err := alrRepo.GetAlr(ctx, aco, MBIs, timestamp, timestamp.Add(time.Hour*10))
-	assert.NoError(r.T(), err)
-	assert.EqualValues(r.T(), alrs[0].BeneFirstName, rn[0].BeneFirstName)
+	assert.EqualValues(r.T(), mbis.TransactionTime, timestamp.Truncate(time.Microsecond))
 
 	// Double check if you can get value from map
-	assert.EqualValues(r.T(), nobounds[0].KeyValue["BENE_RSK_R_SCRE_01"], "1.2345")
-	assert.EqualValues(r.T(), nobounds[0].KeyValue["ESRD_SCORE"], "1.2345")
-
-	// Check if the MBI filter worker
-	mbi, err := alrRepo.GetAlr(ctx, aco, MBIs[:1], time.Time{}, time.Time{})
-	assert.NoError(r.T(), err)
-	assert.EqualValues(r.T(), alrs[0].BeneMBI, mbi[0].BeneMBI)
+	assert.EqualValues(r.T(), "1.2345", johnMel[0].KeyValue["BENE_RSK_R_SCRE_01"])
+	assert.EqualValues(r.T(), "1.2345", johnMel[0].KeyValue["ESRD_SCORE"])
 
 	// Check if providing mbi not in DB is ok
-	MBIs = append(MBIs, "A9999")
-	extra, err := alrRepo.GetAlr(ctx, aco, MBIs, time.Time{}, time.Time{})
+	MBIs = append(MBIs, "DOESNOTEXIST")
+	extra, err := alrRepo.GetAlr(ctx, mbis.Metakey, MBIs)
 	assert.NoError(r.T(), err)
 	assert.Len(r.T(), extra, 2) // There should only be two entries in DB, so ok
+}
+
+func (r *RepositoryTestSuite) TestGetAlrMBIs() {
+	alrMBI, err := r.repository.GetAlrMBIs(context.Background(), "A9994")
+	r.NoError(err)
+	// There are 54 MBIs for this synthetic  ACO
+	r.Equal(54, len(alrMBI.MBIS))
+	r.Equal("A9994", alrMBI.CMSID)
+	r.NotEmpty(alrMBI.Metakey)
+
+	alrMBI, err = r.repository.GetAlrMBIs(context.Background(), "A9996")
+	r.Contains(err.Error(), "No ALR meta data found for A9996")
+	r.Nil(alrMBI)
 }
 
 func getCCLFFile(cclfNum int, cmsID, importStatus string, fileType models.CCLFFileType) *models.CCLFFile {

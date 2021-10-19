@@ -55,7 +55,7 @@ func NewAlrRepo(db *sql.DB) *AlrRepository {
 func getPgxConn(db *sql.DB) *pgx.Conn {
 	conn, err := stdlib.AcquireConn(db)
 	if err != nil {
-        log.API.Warn(err, "failed to acquire connection")
+		log.API.Warn(err, "failed to acquire connection")
 	}
 	return conn
 }
@@ -182,7 +182,7 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 	return nil
 }
 
-func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, MBIs []string, lowerBound time.Time, upperBound time.Time) ([]models.Alr, error) {
+func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string) ([]models.Alr, error) {
 
 	// Convert []string{} to []interface{}
 	mbis := make([]interface{}, len(MBIs))
@@ -192,34 +192,13 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, MBIs []string, l
 
 	// Build the query
 	meta := sqlFlavor.NewSelectBuilder()
-	// Filtering the alr table with data from alr_meta through a join
-	meta.Select("alr_meta.timestp", "alr.id", "alr.metakey", "alr.mbi", "alr.hic",
-		"alr.firstname", "alr.lastname", "alr.sex",
-		"alr. dob", "alr.dod", "alr.keyvalue").
-		From("alr_meta")
-
-	// where condition for different time range scenarios
-	var whereCond string
-	if upperBound.IsZero() && lowerBound.IsZero() {
-		whereCond = meta.And(meta.Equal("aco", ACO),
-			meta.In("alr.mbi", mbis...))
-	} else if upperBound.IsZero() && !lowerBound.IsZero() {
-		whereCond = meta.And(meta.Equal("aco", ACO),
-			meta.In("alr.mbi", mbis...),
-			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
-	} else if !upperBound.IsZero() && lowerBound.IsZero() {
-		whereCond = meta.And(meta.Equal("aco", ACO),
-			meta.In("alr.mbi", mbis...),
-			meta.LessEqualThan("alr_meta.timestp", upperBound))
-	} else {
-		whereCond = meta.And(meta.Equal("aco", ACO),
-			meta.In("alr.mbi", mbis...),
-			meta.LessEqualThan("alr_meta.timestp", upperBound),
-			meta.GreaterEqualThan("alr_meta.timestp", lowerBound))
-	}
-
-	meta.Where(whereCond)
-	meta.JoinWithOption("LEFT", "alr", "alr_meta.id = alr.metakey")
+	// Filtering the alr table
+	meta.Select("mbi", "hic", "firstname", "lastname", "sex", "dob", "dod", "keyvalue").
+		From("alr")
+	meta.Where(meta.And(
+		meta.Equal("metakey", metakey),
+		meta.In("mbi", mbis...),
+	))
 	query, args := meta.Build()
 
 	// Run the query
@@ -233,9 +212,8 @@ func (r *AlrRepository) GetAlr(ctx context.Context, ACO string, MBIs []string, l
 	for rows.Next() {
 		var alr models.Alr
 		var keyValueBytes []byte
-		if err := rows.Scan(&alr.Timestamp, &alr.ID, &alr.MetaKey, &alr.BeneMBI, &alr.BeneHIC,
-			&alr.BeneFirstName, &alr.BeneLastName, &alr.BeneSex,
-			&alr.BeneDOB, &alr.BeneDOD, &keyValueBytes); err != nil {
+		if err := rows.Scan(&alr.BeneMBI, &alr.BeneHIC, &alr.BeneFirstName, &alr.BeneLastName,
+			&alr.BeneSex, &alr.BeneDOB, &alr.BeneDOD, &keyValueBytes); err != nil {
 			return nil, err
 		}
 		keyValue, err := decoder(keyValueBytes)

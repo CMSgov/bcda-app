@@ -58,9 +58,11 @@ var _ Service = &service{}
 type Service interface {
 	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error)
 
-	GetAlrJobs(ctx context.Context, cmsID string, reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error)
+	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
+
+	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
 
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
 
@@ -209,6 +211,28 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 	}
 
 	return j, nonEmptyKeys, nil
+}
+
+func (s *service) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {
+	jobs, err := s.repository.GetJobs(ctx, acoID, statuses...)
+	if err != nil {
+		return nil, err
+	}
+
+	if jobs == nil {
+		return nil, JobsNotFoundError{acoID, statuses}
+	}
+	return jobs, nil
+}
+
+type JobsNotFoundError struct {
+	ACOID       uuid.UUID
+	StatusTypes []models.JobStatus
+}
+
+func (e JobsNotFoundError) Error() string {
+	return fmt.Sprintf("no Jobs found for acoID %s with job statuses %s",
+		e.ACOID, e.StatusTypes)
 }
 
 func (s *service) CancelJob(ctx context.Context, jobID uint) (uint, error) {
@@ -560,7 +584,8 @@ func IsSupportedACO(cmsID string) bool {
 		ckcc    = `^C\d{4}$`
 		kcf     = `^K\d{4}$`
 		dc      = `^D\d{4}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)`
+		test    = `^TEST\d{3}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + test + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)

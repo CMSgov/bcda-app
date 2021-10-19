@@ -2,15 +2,12 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
-	"github.com/CMSgov/bcda-app/bcda/database/databasetest"
+	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
-	"github.com/go-testfixtures/testfixtures/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -19,6 +16,7 @@ type AlrTestSuite struct {
 	suite.Suite
 	cmsID string
 	svc   Service
+	r     models.Repository
 }
 
 func TestAlrTestSuite(t *testing.T) {
@@ -26,73 +24,33 @@ func TestAlrTestSuite(t *testing.T) {
 }
 
 func (s *AlrTestSuite) SetupSuite() {
-	s.cmsID = "A0001" // See testdata/acos.yml
-	db, _ := databasetest.CreateDatabase(s.T(), "../../db/migrations/bcda/", true)
-	tf, err := testfixtures.New(
-		testfixtures.Database(db),
-		testfixtures.Dialect("postgres"),
-		testfixtures.Directory("testdata/"),
-	)
+	s.cmsID = "A9994"
+	db := database.Connection // db-unit-test
 
-	if err != nil {
-		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
-	}
-	if err := tf.Load(); err != nil {
-		assert.FailNowf(s.T(), "Failed to load test fixtures", err.Error())
-	}
 	r := postgres.NewRepository(db)
 	cfg, err := LoadConfig()
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed ot load service config", err.Error())
 	}
 
-	s.svc = NewService(r, cfg, "v1")
+	// Test case here is 54, so settting it to 10
+	cfg.AlrJobSize = 10
+
+	s.svc = NewService(r, cfg, "/v1/fhir")
+	s.r = r
 }
 
-func (s *AlrTestSuite) TestRunoutRequest() {
-	assert := assert.New(s.T())
-	s.svc.(*service).alrMBIsPerJob = 2
-	timeWindow := AlrRequestWindow{LowerBound: time.Now().Add(-24 * time.Hour), UpperBound: time.Now()}
-	jobs, err := s.svc.GetAlrJobs(context.Background(), s.cmsID, RunoutAlrRequest, timeWindow)
-	assert.NoError(err)
-	// See testdata/cclf_beneficiaries.yml for information about the number of benes/MBIs
-	// Should have 5 total benes for the runout job
-	assert.Len(jobs, 3)
-	var mbis []string
-	for _, job := range jobs {
-		assert.Equal(s.cmsID, job.CMSID)
-		assert.True(timeWindow.LowerBound.Equal(job.LowerBound))
-		assert.True(s.svc.(*service).rp.claimThruDate.Equal(job.UpperBound), "Runout requests should always use the claim through date")
-		mbis = append(mbis, job.MBIs...)
-	}
-	assert.Len(mbis, 5)
-	for i := 0; i < 5; i++ {
-		assert.Contains(mbis, fmt.Sprintf("ALR_RUN_%03d", i))
-	}
+func (s *AlrTestSuite) TestGetAlrJob() {
+	ctx := context.Background()
+	alrMBIs, err := s.r.GetAlrMBIs(ctx, s.cmsID)
+	s.NoError(err)
+	alrJobs := s.svc.GetAlrJobs(ctx, alrMBIs)
+	// There should be 54 benes split into groups of max 10
+	// Therefore should be a length of 6
+	s.Equal(6, len(alrJobs))
 }
 
-func (s *AlrTestSuite) TestDefaultRequest() {
-	assert := assert.New(s.T())
-	s.svc.(*service).alrMBIsPerJob = 3
-	timeWindow := AlrRequestWindow{LowerBound: time.Now().Add(-24 * time.Hour), UpperBound: time.Now()}
-	jobs, err := s.svc.GetAlrJobs(context.Background(), s.cmsID, DefaultAlrRequest, timeWindow)
-	assert.NoError(err)
-	// See testdata/cclf_beneficiaries.yml for information about the number of benes/MBIs
-	// Should have 4 total benes for the default job
-	assert.Len(jobs, 2)
-	var mbis []string
-	for _, job := range jobs {
-		assert.Equal(s.cmsID, job.CMSID)
-		assert.True(timeWindow.LowerBound.Equal(job.LowerBound))
-		assert.True(timeWindow.UpperBound.Equal(job.UpperBound))
-		mbis = append(mbis, job.MBIs...)
-	}
-	assert.Len(mbis, 4)
-	for i := 0; i < 4; i++ {
-		assert.Contains(mbis, fmt.Sprintf("ALR_REG_%03d", i))
-	}
-}
-
+// Not being used after refactor. TODO: delete
 func TestPartitionBenes(t *testing.T) {
 	var benes []*models.CCLFBeneficiary
 	for i := 0; i < 15; i++ {

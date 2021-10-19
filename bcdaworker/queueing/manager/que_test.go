@@ -26,6 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // logHook allows us to retrieve the messages emitted by the logging instance
@@ -189,15 +190,10 @@ func TestStartAlrJob(t *testing.T) {
 	aco, err := r.GetACOByCMSID(ctx, cmsID)
 	assert.NoError(t, err)
 
-	mbis, err := r.GetCCLFBeneficiaries(ctx, 1, []string{})
+	mbis, err := r.GetAlrMBIs(ctx, *aco.CMSID)
 	assert.NoError(t, err)
 
-	// just use one mbi for this test
-	twoMbis := []string{}
-	twoMbis = append(twoMbis, mbis[0].MBI)
-	twoMbis = append(twoMbis, mbis[1].MBI)
-
-	alr, err := alrWorker.GetAlr(ctx, *aco.CMSID, twoMbis, time.Time{}, time.Time{})
+	alr, err := alrWorker.GetAlr(ctx, mbis.Metakey, mbis.MBIS)
 	assert.NoError(t, err)
 
 	// Add the ACO into aco table
@@ -218,14 +214,14 @@ func TestStartAlrJob(t *testing.T) {
 		ID:         id,
 		CMSID:      cmsID,
 		MBIs:       []string{alr[0].BeneMBI},
-        BBBasePath: "/v1/fhir",
+		BBBasePath: "/v1/fhir",
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},
 	}
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
-        BBBasePath: "/v1/fhir",
+		BBBasePath: "/v1/fhir",
 		MBIs:       []string{alr[1].BeneMBI},
 		LowerBound: time.Time{},
 		UpperBound: time.Time{},
@@ -266,4 +262,58 @@ func TestStartAlrJob(t *testing.T) {
 	alrJob, err := r.GetJobByID(ctx, id)
 	assert.NoError(t, err)
 	assert.Equal(t, models.JobStatusCompleted, alrJob.Status)
+}
+
+// Test alr cancel logic
+func TestAlrJobCancel(t *testing.T) {
+	q := masterQueue{
+		queue:      &queue{
+			repository:    nil,
+		},
+		StagingDir: "",
+		PayloadDir: "",
+		MaxRetry:   0,
+	}
+
+	mockRepo := repository.MockRepository{}
+	mockRepo.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(
+		&models.Job{
+			Status: models.JobStatusInProgress,
+		},
+		nil,
+	).Once()
+	mockRepo.On("GetJobByID", testUtils.CtxMatcher, mock.Anything).Return(
+		&models.Job{
+			Status: models.JobStatusCancelled,
+		},
+		nil,
+	)
+	q.repository = &mockRepo
+
+	ctx, cancel := context.WithCancel(context.Background())
+	jobs := models.JobAlrEnqueueArgs{}
+
+	// In produation we wait 15 second intervals, for test we do 1
+	go checkIfCancelled(ctx, q.repository, cancel, jobs.ID, 1)
+
+	// Check if the context has been cancelled
+	var cnt uint8
+	var success bool
+
+	Outer:
+	for {
+		select {
+		case <-time.After(time.Second):
+			if cnt > 10 {
+				break Outer
+			}
+			cnt++
+		case <-ctx.Done():
+			success = true
+			break Outer
+		}
+	}
+
+	assert.True(t, success)
+
 }

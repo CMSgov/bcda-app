@@ -8,7 +8,6 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/responseutils"
-	"github.com/CMSgov/bcda-app/bcda/service"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/bcda/web/middleware"
 	"github.com/CMSgov/bcda-app/log"
@@ -16,7 +15,7 @@ import (
 	"github.com/pborman/uuid"
 )
 
-func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType service.RequestType) {
+func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// retrieve ACO & cms_id data from the context through value
@@ -31,17 +30,13 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 		panic("Request parameters must be set prior to calling this handler.")
 	}
 
-	if err := h.validateRequest(rp.ResourceTypes, ad.CMSID); err != nil {
-		oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
-			err.Error())
-		responseutils.WriteError(oo, w, http.StatusBadRequest)
-		return
-	}
-
-	req := service.DefaultAlrRequest
-	if reqType == service.Runout {
-		req = service.RunoutAlrRequest
-	}
+	// Currently, we don't do anything with resource types, thus commented out
+	//if err := h.validateRequest(rp.ResourceTypes, ad.CMSID); err != nil {
+		//oo := responseutils.CreateOpOutcome(fhircodes.IssueSeverityCode_ERROR, fhircodes.IssueTypeCode_EXCEPTION, responseutils.RequestErr,
+			//err.Error())
+		//responseutils.WriteError(oo, w, http.StatusBadRequest)
+		//return
+	//}
 
 	// Depending on how the request is sent to the handler,
 	// the r.URL.Scheme may be unset.
@@ -97,10 +92,13 @@ func (h *Handler) alrRequest(w http.ResponseWriter, r *http.Request, reqType ser
 	// Use a transaction to guarantee that the job only gets created if we queue all of the alrJobs
 	rtx := postgres.NewRepositoryTx(tx)
 
-	alrJobs, err := h.Svc.GetAlrJobs(ctx, ad.CMSID, req, service.AlrRequestWindow{LowerBound: rp.Since})
+	alrMBIs, err := h.r.GetAlrMBIs(ctx, ad.CMSID)
 	if err != nil {
 		return // Rollback handled in defer
 	}
+
+	// Take slices of MBIs into Jobs
+	alrJobs := h.Svc.GetAlrJobs(ctx, alrMBIs)
 
 	newJob.JobCount = len(alrJobs)
 	newJob.ID, err = rtx.CreateJob(ctx, newJob)
