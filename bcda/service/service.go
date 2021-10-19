@@ -58,7 +58,7 @@ var _ Service = &service{}
 type Service interface {
 	GetQueJobs(ctx context.Context, conditions RequestConditions) (queJobs []*models.JobEnqueueArgs, err error)
 
-	GetAlrJobs(ctx context.Context, cmsID string, reqType AlrRequestType, window AlrRequestWindow) ([]*models.JobAlrEnqueueArgs, error)
+	GetAlrJobs(ctx context.Context, alrMBI *models.AlrMBIs) []*models.JobAlrEnqueueArgs
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 
@@ -584,7 +584,8 @@ func IsSupportedACO(cmsID string) bool {
 		ckcc    = `^C\d{4}$`
 		kcf     = `^K\d{4}$`
 		dc      = `^D\d{4}$`
-		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)`
+		test    = `^TEST\d{3}$`
+		pattern = `(` + ssp + `)|(` + ngaco + `)|(` + cec + `)|(` + ckcc + `)|(` + kcf + `)|(` + dc + `)|(` + test + `)`
 	)
 
 	return regexp.MustCompile(pattern).MatchString(cmsID)

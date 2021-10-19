@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
-	"time"
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/metrics"
@@ -114,28 +113,6 @@ func (q *queue) processJob(job *que.Job) error {
 		return nil
 	}
 
-	// start a goroutine that will periodically check the status of the parent job
-	go func() {
-		for {
-			select {
-			case <-time.After(15 * time.Second):
-				parentCancelled, err := q.isParentJobCancelled(jobArgs.ID)
-
-				if err != nil {
-					q.log.Warnf("Could not determine parent job %d status: %s", jobArgs.ID, err)
-				}
-
-				if parentCancelled {
-					// cancelled context will get picked up by worker.go#writeBBDataToFile
-					cancel()
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
 	exportJob, err := q.worker.ValidateJob(ctx, jobArgs)
 	if goerrors.Is(err, worker.ErrParentJobCancelled) {
 		// ACK the job because we do not need to work on queue jobs associated with a cancelled parent job
@@ -162,22 +139,14 @@ func (q *queue) processJob(job *que.Job) error {
 		return errors.Wrap(err, "failed to validate job")
 	}
 
+	// start a goroutine that will periodically check the status of the parent job
+	go checkIfCancelled(ctx, q.repository, cancel, uint(jobArgs.ID), 15)
+
 	if err := q.worker.ProcessJob(ctx, *exportJob, jobArgs); err != nil {
 		return errors.Wrap(err, "failed to process job")
 	}
 
 	return nil
-}
-
-func (q *queue) isParentJobCancelled(jobID int) (bool, error) {
-	ctx := context.Background()
-
-	job, err := q.repository.GetJobByID(ctx, uint(jobID))
-	if err != nil {
-		return false, err
-	}
-
-	return (job.Status == models.JobStatusCancelled), nil
 }
 
 func (q *queue) updateJobQueueCountCloudwatchMetric() {

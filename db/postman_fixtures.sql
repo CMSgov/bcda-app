@@ -1,10 +1,14 @@
 insert into groups(deleted_at, group_id, x_data, data)
     values (null, 'A9997', '{"cms_ids":["A9997"]}', '{"name": "", "xdata": "", "group_id": "A9997"}'),
-           (null, 'A9990', '{"cms_ids":["A9990"]}', '{"name": "", "xdata": "", "group_id": "A9990"}');
+           (null, 'A9990', '{"cms_ids":["A9990"]}', '{"name": "", "xdata": "", "group_id": "A9990"}'),
+           (null, 'TEST001', '{"cms_ids":["TEST001"]}', '{"name": "", "xdata": "", "group_id": "TEST001"}');
+
+
 
 insert into systems(deleted_at, group_id, client_id, client_name, api_scope, g_id)
     values (null, 'A9997', 'b8abdf3c-5965-4ae5-a661-f19a8129fda5', 'ACO Blacklisted', 'bcda-api', 3),
-           (null, 'A9990', '3461c774-b48f-11e8-96f8-529269fb1459', 'ACO Test', 'bcda-api', 4);
+           (null, 'A9990', '3461c774-b48f-11e8-96f8-529269fb1459', 'ACO Test', 'bcda-api', 4),
+           (null, 'TEST001', 'dfcb6432-0678-4590-a28b-6573e8a681ce', 'ACO PreAdj Test', 'bcda-api', 5);
 
 insert into secrets(created_at, Updated_at, deleted_at, hash, system_id)
     values (NOW(), NOW(), null, 'tySpsJT3iVFoNqRjuMIO2AWt/2OJt76DnHmFq9weDcw=:Azj+aDD7vKQhrflhXPOdFk1yu+zECSdUbxc7zZCwhG6i0j/eRE8dAjNgr1s99MAG0LtIYTK7pHsBDo3UYea39A==:130000', 3);
@@ -20,3 +24,7 @@ where cms_id = 'A9994';
 update acos
 set system_id = 4, group_id = 'A9990'
 where cms_id = 'A9990';
+
+update acos
+set system_id = 5, group_id = 'TEST001'
+where cms_id = 'TEST001';

@@ -13,6 +13,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/log"
 )
 
 const (
@@ -562,4 +563,63 @@ func (r *Repository) getACO(ctx context.Context, field string, value interface{}
 	aco.CMSID = &cmsID.String
 	aco.TerminationDetails = termination.Termination
 	return &aco, nil
+}
+
+// GetAlrMBIs takes cms_id and returns all the MBIs associated with the ACO's quarterly ALR
+func (r *Repository) GetAlrMBIs(ctx context.Context, cmsID string) (*models.AlrMBIs, error) {
+	sb := sqlFlavor.NewSelectBuilder().
+		Select("id", "aco", "timestp").From("alr_meta")
+	sb.Where(
+		sb.Equal("aco", cmsID),
+	).
+		OrderBy("timestp").Desc().
+		Limit(1)
+
+	query, args := sb.Build()
+	row := r.QueryRowContext(ctx, query, args...)
+
+	var (
+		id        int64
+		aco       sql.NullString
+		timestamp sql.NullTime
+	)
+
+	err := row.Scan(&id, &aco, &timestamp)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("No ALR meta data found for %s", cmsID)
+		}
+		return nil, err
+	}
+
+	sb = sqlFlavor.NewSelectBuilder().
+		Select("metakey", "mbi").From("alr")
+	sb.Where(sb.Equal("metakey", id))
+
+	query, args = sb.Build()
+	rows, err := r.QueryContext(ctx, query, args...)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("No ALR MBIs found for %s with id %d", cmsID, id)
+		}
+		return nil, err
+	}
+
+	var metakey uint
+	var mbi sql.NullString
+	var mbiGrouping []string
+
+	for rows.Next() {
+		if err := rows.Scan(&metakey, &mbi); err != nil {
+			return nil, err
+		}
+		if !mbi.Valid {
+			log.API.Warnf("An MBI for %s has a value of Null, skipping this row.", cmsID)
+			continue
+		}
+		mbiGrouping = append(mbiGrouping, mbi.String)
+	}
+
+	return &models.AlrMBIs{MBIS: mbiGrouping, Metakey: id, CMSID: aco.String, TransactionTime: timestamp.Time}, nil
 }
