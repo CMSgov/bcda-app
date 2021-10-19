@@ -50,6 +50,8 @@ type RequestsTestSuite struct {
 	db *sql.DB
 
 	acoID uuid.UUID
+
+	resourceType map[string]service.DataType
 }
 
 func TestRequestsTestSuite(t *testing.T) {
@@ -65,6 +67,12 @@ func (s *RequestsTestSuite) SetupSuite() {
 		testfixtures.Dialect("postgres"),
 		testfixtures.Directory("testdata/"),
 	)
+
+	s.resourceType = map[string]service.DataType{
+		"Patient":              {Adjudicated: true},
+		"Coverage":             {Adjudicated: true},
+		"ExplanationOfBenefit": {Adjudicated: true},
+	}
 
 	if err != nil {
 		assert.FailNowf(s.T(), "Failed to setup test fixtures", err.Error())
@@ -111,11 +119,7 @@ func (s *RequestsTestSuite) TestRunoutEnabled() {
 				jobs = qj
 			}
 
-			resourceMap := map[string]service.DataType{
-				"Patient":              {Adjudicated: true},
-				"Coverage":             {Adjudicated: true},
-				"ExplanationOfBenefit": {Adjudicated: true},
-			}
+			resourceMap := s.resourceType
 
 			mockSvc.On("GetQueJobs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(jobs, tt.errToReturn)
 			mockAco := service.ACOConfig{Data: []string{"adjudicated"}}
@@ -382,11 +386,7 @@ func (s *RequestsTestSuite) TestAttributionStatus() {
 				}
 			}
 
-			resourceMap := map[string]service.DataType{
-				"Patient":              {Adjudicated: true},
-				"Coverage":             {Adjudicated: true},
-				"ExplanationOfBenefit": {Adjudicated: true},
-			}
+			resourceMap := s.resourceType
 			h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 			h.Svc = mockSvc
 
@@ -534,11 +534,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 // TestRequests verifies that we can initiate an export job for all resource types using all the different handlers
 func (s *RequestsTestSuite) TestRequests() {
 
-	resourceMap := map[string]service.DataType{
-		"Patient":              {Adjudicated: true},
-		"Coverage":             {Adjudicated: true},
-		"ExplanationOfBenefit": {Adjudicated: true},
-	}
+	resourceMap := s.resourceType
 
 	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
 
@@ -593,6 +589,46 @@ func (s *RequestsTestSuite) TestRequests() {
 			assert.Equal(s.T(), http.StatusAccepted, rr.Code)
 		}
 	}
+}
+
+func (s *RequestsTestSuite) TestJobStatus() {
+	resourceMap := s.resourceType
+	h := newHandler(resourceMap, "/v1/fhir", "v1", s.db)
+	mockSrv := service.MockService{}
+	timestp := time.Now()
+	mockSrv.On("GetJobAndKeys", testUtils.CtxMatcher, uint(1)).Return(
+		&models.Job{
+			ID:                1,
+			ACOID:             uuid.NewRandom(),
+			RequestURL:        "http://bcda.cms.gov/api/v1/Jobs/1",
+			Status:            models.JobStatusCompleted,
+			TransactionTime:   timestp,
+			JobCount:          100,
+			CompletedJobCount: 100,
+			CreatedAt:         timestp,
+			UpdatedAt:         timestp,
+		},
+		[]*models.JobKey{{
+			ID:           1,
+			JobID:        1,
+			FileName:     "testingtesting",
+			ResourceType: "Patient",
+		}},
+		nil,
+	)
+	h.Svc = &mockSrv
+
+	req := httptest.NewRequest("GET", "http://bcda.cms.gov/api/v1/jobs/1", nil)
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("jobID", "1")
+
+	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	h.JobStatus(w, req)
+	s.Equal(http.StatusOK, w.Code)
 }
 
 func (s *RequestsTestSuite) genGroupRequest(groupID string, rp middleware.RequestParameters) *http.Request {

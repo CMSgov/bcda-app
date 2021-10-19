@@ -10,6 +10,7 @@ import (
 
 	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcdaworker/worker"
+	"github.com/CMSgov/bcda-app/log"
 
 	// The follow two packages imported to use repository.ErrJobNotFound etc.
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
@@ -35,15 +36,15 @@ type alrQueue struct {
 
 // checkIFCanncelled was originally a closure to check if the job was cancelled,
 // but it has been turned into a func for ALR for clarity
-func checkIfCancelled(ctx context.Context, q *masterQueue,
-	cancel context.CancelFunc, jobArgs models.JobAlrEnqueueArgs) {
+func checkIfCancelled(ctx context.Context, r repository.Repository,
+	cancel context.CancelFunc, jobID uint, wait uint8) {
 	for {
 		select {
-		case <-time.After(15 * time.Second):
-			jobStatus, err := q.repository.GetJobByID(ctx, jobArgs.ID)
+		case <-time.After(time.Duration(wait) * time.Second):
+			jobStatus, err := r.GetJobByID(ctx, jobID)
 
 			if err != nil {
-				q.alrLog.Warnf("Could not find job %d status: %s", jobArgs.ID, err)
+				log.Worker.Warnf("Could not find job %d status: %s", jobID, err)
 			}
 
 			if jobStatus.Status == models.JobStatusCancelled {
@@ -81,9 +82,6 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 			job.Args, err)
 	}
 
-	// Check if the job was cancelled
-	go checkIfCancelled(ctx, q, cancel, jobArgs)
-
 	// Validate the job like bcdaworker/worker/worker.go#L43
 	// TODO: Abstract this into either a function or interface like the bfd worker
 	alrJobs, err := q.repository.GetJobByID(ctx, jobArgs.ID)
@@ -117,6 +115,9 @@ func (q *masterQueue) startAlrJob(job *que.Job) error {
 		return nil
 	}
 	// End of validation
+
+	// Check if the job was cancelled
+	go checkIfCancelled(ctx, q.repository, cancel, jobArgs.ID, 15)
 
 	// Before moving forward, check if this job has failed before
 	// If it has reached the maxRetry, stop the parent job

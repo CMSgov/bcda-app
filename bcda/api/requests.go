@@ -120,8 +120,7 @@ func (h *Handler) BulkPatientRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ALRRequest(w http.ResponseWriter, r *http.Request) {
-	reqType := service.DefaultRequest
-	h.alrRequest(w, r, reqType)
+	h.alrRequest(w, r)
 }
 
 func (h *Handler) BulkGroupRequest(w http.ResponseWriter, r *http.Request) {

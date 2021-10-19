@@ -180,15 +180,13 @@ func (a *AlrWorker) ProcessAlrJob(
 ) error {
 
 	// Parse the jobAlrEnqueueArgs
-	aco := jobArgs.CMSID
 	id := jobArgs.ID
 	MBIs := jobArgs.MBIs
 	BBBasePath := jobArgs.BBBasePath
-	lowerBound := jobArgs.LowerBound
-	upperBound := jobArgs.UpperBound
+	MetaKey:= jobArgs.MetaKey
 
 	// Pull the data from ALR tables (alr & alr_meta)
-	alrModels, err := a.GetAlr(ctx, aco, MBIs, lowerBound, upperBound)
+	alrModels, err := a.GetAlr(ctx, MetaKey, MBIs)
 	if err != nil {
 		log.Worker.Error(err)
 		return err
