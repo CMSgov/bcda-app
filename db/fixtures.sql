@@ -14,4 +14,7 @@ insert into acos(uuid, cms_id, name, client_id, termination_details)
             ('94b050bb-5a58-4f16-bd41-73a903977dfc', 'E9994', 'CEC ACO Dev', '94b050bb-5a58-4f16-bd41-73a903977dfc', null),
             ('749e6e2f-c45b-41d1-9226-8b7c54f96526', 'V994', 'NG ACO Dev', '749e6e2f-c45b-41d1-9226-8b7c54f96526', null),
             ('b8abdf3c-5965-4ae5-a661-f19a8129fda5', 'A9997', 'ACO Blacklisted', 'b8abdf3c-5965-4ae5-a661-f19a8129fda5', 
-               '{"TerminationDate": "2020-12-31T23:59:59Z", "CutoffDate": "2020-12-31T23:59:59Z", "BlacklistType": 0}');
+               '{"TerminationDate": "2020-12-31T23:59:59Z", "CutoffDate": "2020-12-31T23:59:59Z", "BlacklistType": 0}'),
+            ('eb69af67-8878-4e4f-9d73-f2782e29286e', 'A9989', 'ACO Improved Dev', 'eb69af67-8878-4e4f-9d73-f2782e29286e', null),
+            ('8ff7130e-7bfc-4a70-9c4b-5eafd3766502', 'A9998', 'ACO Improved Small', '8ff7130e-7bfc-4a70-9c4b-5eafd3766502', null),
+            ('8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', 'A9999', 'ACO Improved Large', '8fea1ef0-3b63-42fe-80e6-b1c06c50ee80', null);
