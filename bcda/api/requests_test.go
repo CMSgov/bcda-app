@@ -472,7 +472,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
 	}
 
-	h := NewHandler(dataTypeMap, "/v2/fhir/", "v2")
+	h := NewHandler(dataTypeMap, "/v2/fhir", "v2")
 
 	// Use a mock to ensure that this test does not generate artifacts in the queue for other tests
 	mockEnq := &queueing.MockEnqueuer{}
