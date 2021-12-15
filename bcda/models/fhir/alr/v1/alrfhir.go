@@ -31,31 +31,44 @@ type AlrBulkV1 struct {
 }
 
 // ToFHIR encodes the models.Alr into a FHIR Patient and N FHIR Observation resources
-func ToFHIRV1(alr *models.Alr) *AlrBulkV1 {
+func ToFHIRV1(alr []models.Alr) []*AlrBulkV1 {
 
-	kvArenaInstance := utils.KeyValueMapper(alr)
-	hccVersion := kvArenaInstance.HccVersion
-	// there should only be one entry in the slice, but here we just check for at least one
-	if len(hccVersion) < 1 {
-		log.API.Warnf("Could not get HCC version.")
-		return nil
+	bulk := []*AlrBulkV1{}
+
+	for i := range alr {
+		alr_piece := &alr[i]
+		kvArenaInstance := utils.KeyValueMapper(alr_piece)
+		hccVersion := kvArenaInstance.HccVersion
+		// there should only be one entry in the slice, but here we just check for at least one
+		if len(hccVersion) < 1 {
+			log.API.Warnf("Could not get HCC version.")
+			return nil
+		}
+
+		sub := patient(alr_piece)
+		cov := coverage(alr_piece.BeneMBI, kvArenaInstance.Enrollment, alr_piece.Timestamp)
+		risk := riskAssessment(alr_piece.BeneMBI, kvArenaInstance.RiskScore, alr_piece.Timestamp)
+		obs := observations(hccVersion[0].Value, alr_piece.BeneMBI, kvArenaInstance.RiskFlag, alr_piece.Timestamp)
+		covid := covidEpisode(alr_piece.BeneMBI, kvArenaInstance.CovidEpsisode, alr_piece.Timestamp)
+
+		bulk = append(bulk, &AlrBulkV1{
+			Patient:      sub,
+			Coverage:     cov,
+			Group:        nil,
+			Risk:         risk,
+			Observation:  obs,
+			CovidEpisode: covid,
+		})
 	}
 
-	sub := patient(alr)
-	cov := coverage(alr.BeneMBI, kvArenaInstance.Enrollment, alr.Timestamp)
-	group := group(alr.BeneMBI, kvArenaInstance.Group, alr.Timestamp)
-	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.RiskScore, alr.Timestamp)
-	obs := observations(hccVersion[0].Value, alr.BeneMBI, kvArenaInstance.RiskFlag, alr.Timestamp)
-	covid := covidEpisode(alr.BeneMBI, kvArenaInstance.CovidEpsisode, alr.Timestamp)
+	kvArenaInstance := utils.KeyValueMapper(&alr[0])
+	// All group in this pull should have the same timestamp
+	group := group(alr, kvArenaInstance.Group, alr[0].Timestamp)
+	bulk = append(bulk, &AlrBulkV1{
+		Group: group,
+	})
 
-	return &AlrBulkV1{
-		Patient:      sub,
-		Coverage:     cov,
-		Group:        group,
-		Risk:         risk,
-		Observation:  obs,
-		CovidEpisode: covid,
-	}
+	return bulk
 }
 
 func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
