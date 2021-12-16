@@ -31,7 +31,7 @@ var (
 )
 
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
-func group(mbi []models.Alr, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Group {
+func group(mbi []*models.Alr, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Group {
 	group := &fhirmodels.Group{}
 	group.Id = &fhirdatatypes.Id{Value: "example-id-group"}
 	member := []*fhirmodels.Group_Member{}

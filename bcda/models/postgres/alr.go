@@ -182,7 +182,7 @@ func (r *AlrRepository) AddAlr(ctx context.Context, aco string, timestamp time.T
 	return nil
 }
 
-func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string) ([]models.Alr, error) {
+func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string) ([]*models.Alr, error) {
 
 	// Convert []string{} to []interface{}
 	mbis := make([]interface{}, len(MBIs))
@@ -208,7 +208,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 	}
 
 	// Get ALR data by row by calling Next()
-	var alrs []models.Alr
+	var alrs []*models.Alr
 	for rows.Next() {
 		var alr models.Alr
 		var keyValueBytes []byte
@@ -221,7 +221,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 			return nil, err
 		}
 		alr.KeyValue = keyValue
-		alrs = append(alrs, alr)
+		alrs = append(alrs, &alr)
 	}
 
 	return alrs, nil

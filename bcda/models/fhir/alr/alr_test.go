@@ -53,39 +53,39 @@ func TestGenerateAlr(t *testing.T) {
 	// FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
 	// Timestamp comes from alrRequest fro api package, but manually set here
 	alrs[0].Timestamp = time.Now()
-	fhirBulk1 := alr.ToFHIR(alrs[0], "/v1/fhir")
-	assert.NotNil(t, fhirBulk1.AlrBulkV1)
+	fhirBulk1 := alr.ToFHIR(alrs, "/v1/fhir")
+	assert.NotNil(t, fhirBulk1.V1)
 
-	fhirBulk2 := alr.ToFHIR(alrs[0], "/v2/fhir")
-	assert.NotNil(t, fhirBulk2.AlrBulkV2)
+	fhirBulk2 := alr.ToFHIR(alrs, "/v2/fhir")
+	assert.NotNil(t, fhirBulk2.V2)
 
-	missing := alr.ToFHIR(alrs[0], "fhir/Not Supported")
+	missing := alr.ToFHIR(alrs, "fhir/Not Supported")
 	assert.Nil(t, missing)
 
 	// Do not write the FHIR resources to a file
 	if !*output {
 		//Test models.Alr where hccVersion is empty
 		delete(alrs[0].KeyValue, "HCC_version")
-		fhirBulk1 = alr.ToFHIR(alrs[0], "/v1/fhir")
-		fhirBulk2 = alr.ToFHIR(alrs[0], "/v2/fhir")
-		assert.Nil(t, fhirBulk1.AlrBulkV1)
-		assert.Nil(t, fhirBulk2.AlrBulkV2)
+		fhirBulk1 = alr.ToFHIR(alrs, "/v1/fhir")
+		fhirBulk2 = alr.ToFHIR(alrs, "/v2/fhir")
+		assert.Nil(t, fhirBulk1.V1)
+		assert.Nil(t, fhirBulk2.V2)
 		return
 	}
 
 	if *version == 1 {
-		dir := writeToFileV1(t, fhirBulk1.AlrBulkV1)
+		dir := writeToFileV1(t, fhirBulk1.V1)
 		t.Logf("FHIR STU3 resources written to: %s", dir)
 		return
 	}
 
-	dir := writeToFileV2(t, fhirBulk2.AlrBulkV2)
+	dir := writeToFileV2(t, fhirBulk2.V2)
 	t.Logf("FHIR R4 resources written to: %s", dir)
 
 }
 
 // writeToFile writes the FHIR resources to a file returning the directory
-func writeToFileV1(t *testing.T, fhirBulk *v1.AlrBulkV1) string {
+func writeToFileV1(t *testing.T, fhirBulk []*v1.AlrBulkV1) string {
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
@@ -103,26 +103,30 @@ func writeToFileV1(t *testing.T, fhirBulk *v1.AlrBulkV1) string {
 		defer utils.CloseFileAndLogError(file)
 	}
 
-	// marshalling structs into JSON
-	alrResources, err := fhirBulk.FhirToString()
-	assert.NoError(t, err)
+	for j := range fhirBulk {
 
-	// IO operations
-	for n, resource := range alrResources {
-
-		w := writerPool[n]
-
-		_, err = w.WriteString(resource)
+		// marshalling structs into JSON
+		alrResources, err := fhirBulk[j].FhirToString()
 		assert.NoError(t, err)
-		err = w.Flush()
-		assert.NoError(t, err)
+
+		// IO operations
+		for n, resource := range alrResources {
+
+			w := writerPool[n]
+
+			_, err = w.WriteString(resource)
+			assert.NoError(t, err)
+			err = w.Flush()
+			assert.NoError(t, err)
+
+		}
 
 	}
 
 	return tempDir
 }
 
-func writeToFileV2(t *testing.T, fhirBulk *v2.AlrBulkV2) string {
+func writeToFileV2(t *testing.T, fhirBulk []*v2.AlrBulkV2) string {
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
@@ -142,19 +146,21 @@ func writeToFileV2(t *testing.T, fhirBulk *v2.AlrBulkV2) string {
 
 	// marshalling structs into JSON
 
-	alrResources, err := fhirBulk.FhirToString()
-	assert.NoError(t, err)
-
-	// IO operations
-	for n, resource := range alrResources {
-
-		w := writerPool[n]
-
-		_, err = w.WriteString(resource)
-		assert.NoError(t, err)
-		err = w.Flush()
+	for j := range fhirBulk {
+		alrResources, err := fhirBulk[j].FhirToString()
 		assert.NoError(t, err)
 
+		// IO operations
+		for n, resource := range alrResources {
+
+			w := writerPool[n]
+
+			_, err = w.WriteString(resource)
+			assert.NoError(t, err)
+			err = w.Flush()
+			assert.NoError(t, err)
+
+		}
 	}
 
 	return tempDir

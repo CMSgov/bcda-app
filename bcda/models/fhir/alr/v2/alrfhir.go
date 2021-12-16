@@ -35,12 +35,12 @@ type AlrBulkV2 struct {
 	CovidEpisode *r4Eoc.EpisodeOfCare
 }
 
-func ToFHIRV2(alr []models.Alr) []*AlrBulkV2 {
+func ToFHIRV2(alr []*models.Alr) []*AlrBulkV2 {
 
 	bulk := []*AlrBulkV2{}
 
 	for i := range alr {
-		alr_piece := &alr[i]
+		alr_piece := alr[i]
 		kvArenaInstance := utils.KeyValueMapper(alr_piece)
 		hccVersion := kvArenaInstance.HccVersion
 		// there should only be one entry in the slice, but here we just check for at least one
@@ -65,7 +65,7 @@ func ToFHIRV2(alr []models.Alr) []*AlrBulkV2 {
 		})
 	}
 
-	kvArenaInstance := utils.KeyValueMapper(&alr[0])
+	kvArenaInstance := utils.KeyValueMapper(alr[0])
 	group := group(alr, kvArenaInstance.Group, alr[0].Timestamp)
 	bulk = append(bulk, &AlrBulkV2{
 		Group: group,

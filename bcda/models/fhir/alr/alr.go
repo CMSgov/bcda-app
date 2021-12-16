@@ -13,7 +13,7 @@ type AlrFhirBulk struct {
 	V2 []*v2.AlrBulkV2
 }
 
-func ToFHIR(alr []models.Alr, version string) *AlrFhirBulk {
+func ToFHIR(alr []*models.Alr, version string) *AlrFhirBulk {
 
 	bulk := &AlrFhirBulk{}
 

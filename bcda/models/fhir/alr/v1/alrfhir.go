@@ -31,12 +31,12 @@ type AlrBulkV1 struct {
 }
 
 // ToFHIR encodes the models.Alr into a FHIR Patient and N FHIR Observation resources
-func ToFHIRV1(alr []models.Alr) []*AlrBulkV1 {
+func ToFHIRV1(alr []*models.Alr) []*AlrBulkV1 {
 
 	bulk := []*AlrBulkV1{}
 
 	for i := range alr {
-		alr_piece := &alr[i]
+		alr_piece := alr[i]
 		kvArenaInstance := utils.KeyValueMapper(alr_piece)
 		hccVersion := kvArenaInstance.HccVersion
 		// there should only be one entry in the slice, but here we just check for at least one
@@ -61,7 +61,7 @@ func ToFHIRV1(alr []models.Alr) []*AlrBulkV1 {
 		})
 	}
 
-	kvArenaInstance := utils.KeyValueMapper(&alr[0])
+	kvArenaInstance := utils.KeyValueMapper(alr[0])
 	// All group in this pull should have the same timestamp
 	group := group(alr, kvArenaInstance.Group, alr[0].Timestamp)
 	bulk = append(bulk, &AlrBulkV1{
