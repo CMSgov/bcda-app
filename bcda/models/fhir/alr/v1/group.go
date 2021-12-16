@@ -186,6 +186,8 @@ func group(mbi []*models.Alr, keyValue []utils.KvPair, lastUpdated time.Time) *f
 		member = append(member, m)
 	}
 
+	group.Member = member
+
 	return group
 }
 
