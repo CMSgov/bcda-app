@@ -221,6 +221,7 @@ func (r *AlrRepository) GetAlr(ctx context.Context, metakey int64, MBIs []string
 			return nil, err
 		}
 		alr.KeyValue = keyValue
+		alr.MetaKey = uint(metakey)
 		alrs = append(alrs, &alr)
 	}
 

@@ -213,6 +213,7 @@ func TestStartAlrJob(t *testing.T) {
 	jobArgs := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
+		MetaKey:    int64(alr[0].MetaKey),
 		MBIs:       []string{alr[0].BeneMBI},
 		BBBasePath: "/v1/fhir",
 		LowerBound: time.Time{},
@@ -221,6 +222,7 @@ func TestStartAlrJob(t *testing.T) {
 	jobArgs2 := models.JobAlrEnqueueArgs{
 		ID:         id,
 		CMSID:      cmsID,
+		MetaKey:    int64(alr[1].MetaKey),
 		BBBasePath: "/v1/fhir",
 		MBIs:       []string{alr[1].BeneMBI},
 		LowerBound: time.Time{},
@@ -267,8 +269,8 @@ func TestStartAlrJob(t *testing.T) {
 // Test alr cancel logic
 func TestAlrJobCancel(t *testing.T) {
 	q := masterQueue{
-		queue:      &queue{
-			repository:    nil,
+		queue: &queue{
+			repository: nil,
 		},
 		StagingDir: "",
 		PayloadDir: "",
@@ -300,7 +302,7 @@ func TestAlrJobCancel(t *testing.T) {
 	var cnt uint8
 	var success bool
 
-	Outer:
+Outer:
 	for {
 		select {
 		case <-time.After(time.Second):

@@ -35,8 +35,7 @@ func ToFHIRV1(alr []*models.Alr) []*AlrBulkV1 {
 
 	bulk := []*AlrBulkV1{}
 
-	for i := range alr {
-		alr_piece := alr[i]
+	for _, alr_piece := range alr {
 		kvArenaInstance := utils.KeyValueMapper(alr_piece)
 		hccVersion := kvArenaInstance.HccVersion
 		// there should only be one entry in the slice, but here we just check for at least one
