@@ -25,6 +25,8 @@ var output *bool = flag.Bool("output", false, "write FHIR resources to a file")
 var version *int = flag.Int("version", 1, "version of FHIR resources")
 var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 
+const SIZE = 2
+
 // TestGenerateAlr uses our synthetic data generation tool to produce the associated FHIR resources
 // To write to the FHIR resources to a file:
 // go test -v github.com/CMSgov/bcda-app/bcda/models/fhir/alr -run TestGenerateAlr -output -version 1
@@ -43,12 +45,12 @@ func TestGenerateAlr(t *testing.T) {
 	p, c := testUtils.CopyToTemporaryDirectory(t, "../../../alr/gen/testdata/")
 	t.Cleanup(c)
 	csvPath := filepath.Join(p, "PY21ALRTemplatePrelimProspTable1.csv")
-	err := alrgen.UpdateCSV(csvPath, mbiSupplier{func() string { return testUtils.RandomMBI(t) }}.GetMBIs)
+	err := alrgen.UpdateCSV(csvPath, mbiGenerator)
 	assert.NoError(t, err)
 
 	alrs, err := alrcsv.ToALR(csvPath)
 	assert.NoError(t, err)
-	assert.Len(t, alrs, 1)
+	assert.Len(t, alrs, SIZE)
 
 	// FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
 	// Timestamp comes from alrRequest fro api package, but manually set here
@@ -166,10 +168,10 @@ func writeToFileV2(t *testing.T, fhirBulk []*v2.AlrBulkV2) string {
 	return tempDir
 }
 
-type mbiSupplier struct {
-	mbiGen func() string
-}
-
-func (m mbiSupplier) GetMBIs() ([]string, error) {
-	return []string{m.mbiGen()}, nil
+func mbiGenerator() ([]string, error) {
+	var s []string
+	for i := 0; i < SIZE; i++ {
+		s = append(s, testUtils.RandomMBI(&testing.T{}))
+	}
+	return s, nil
 }
