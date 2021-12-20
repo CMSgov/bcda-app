@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
+	workerutils "github.com/CMSgov/bcda-app/bcdaworker/worker/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
@@ -250,27 +251,8 @@ func (a *AlrWorker) ProcessAlrJob(
 
 	// Marshall into JSON and send it over the channel
 	const Limit = 100
-	for ;len(alrModels) > Limit; {
-		alrModelsSub := alrModels[:Limit]
-		fhirBulk := alr.ToFHIR(alrModelsSub, BBBasePath) // Removed timestamp, but can be added back here
-		alrModels = alrModels[Limit:]
 
-		if fhirBulk == nil {
-			continue
-		}
-
-		c <- fhirBulk
-	}
-
-	// There is one more iteration before we have traverse the whole slice
-	fhirBulk := alr.ToFHIR(alrModels, BBBasePath)
-
-	if fhirBulk != nil {
-		c <- fhirBulk
-	}
-
-	// close channel c since we are no longer writing to it
-	close(c)
+	workerutils.AlrSlicer(alrModels, c, Limit, BBBasePath)
 
 	// Wait on the go routine to finish
 	if err := <-result; err != nil {

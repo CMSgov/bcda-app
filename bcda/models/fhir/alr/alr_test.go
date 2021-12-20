@@ -13,10 +13,9 @@ import (
 	alrcsv "github.com/CMSgov/bcda-app/bcda/alr/csv"
 	alrgen "github.com/CMSgov/bcda-app/bcda/alr/gen"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr"
-	v1 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v1"
-	v2 "github.com/CMSgov/bcda-app/bcda/models/fhir/alr/v2"
 	"github.com/CMSgov/bcda-app/bcda/testUtils"
 	"github.com/CMSgov/bcda-app/bcda/utils"
+	workerutils "github.com/CMSgov/bcda-app/bcdaworker/worker/utils"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +24,7 @@ var output *bool = flag.Bool("output", false, "write FHIR resources to a file")
 var version *int = flag.Int("version", 1, "version of FHIR resources")
 var resources = [...]string{"patient", "coverage", "group", "risk", "observations", "covidEpisode"}
 
-const SIZE = 2
+const SIZE = 200
 
 // TestGenerateAlr uses our synthetic data generation tool to produce the associated FHIR resources
 // To write to the FHIR resources to a file:
@@ -55,11 +54,6 @@ func TestGenerateAlr(t *testing.T) {
 	// FN parameter version comes from Jobalrenqueue, here we are setting it manually for testing
 	// Timestamp comes from alrRequest fro api package, but manually set here
 	alrs[0].Timestamp = time.Now()
-	fhirBulk1 := alr.ToFHIR(alrs, "/v1/fhir")
-	assert.NotNil(t, fhirBulk1.V1)
-
-	fhirBulk2 := alr.ToFHIR(alrs, "/v2/fhir")
-	assert.NotNil(t, fhirBulk2.V2)
 
 	missing := alr.ToFHIR(alrs, "fhir/Not Supported")
 	assert.Nil(t, missing)
@@ -68,26 +62,34 @@ func TestGenerateAlr(t *testing.T) {
 	if !*output {
 		//Test models.Alr where hccVersion is empty
 		delete(alrs[0].KeyValue, "HCC_version")
-		fhirBulk1 = alr.ToFHIR(alrs, "/v1/fhir")
-		fhirBulk2 = alr.ToFHIR(alrs, "/v2/fhir")
+		fhirBulk1 := alr.ToFHIR(alrs, "/v1/fhir")
+		fhirBulk2 := alr.ToFHIR(alrs, "/v2/fhir")
 		assert.Nil(t, fhirBulk1.V1)
 		assert.Nil(t, fhirBulk2.V2)
 		return
 	}
 
 	if *version == 1 {
-		dir := writeToFileV1(t, fhirBulk1.V1)
+		ch := make(chan *alr.AlrFhirBulk, 1000) // 1000 rows before blocking
+		workerutils.AlrSlicer(alrs, ch, 100, "/v1/fhir")
+		dir := writeToFileV1(t, ch)
 		t.Logf("FHIR STU3 resources written to: %s", dir)
 		return
 	}
 
-	dir := writeToFileV2(t, fhirBulk2.V2)
+
+	ch := make(chan *alr.AlrFhirBulk, 1000) // 1000 rows before blocking
+	workerutils.AlrSlicer(alrs, ch, 100, "/v2/fhir")
+	dir := writeToFileV2(t, ch)
 	t.Logf("FHIR R4 resources written to: %s", dir)
 
 }
 
 // writeToFile writes the FHIR resources to a file returning the directory
-func writeToFileV1(t *testing.T, fhirBulk []*v1.AlrBulkV1) string {
+func writeToFileV1(t *testing.T, fhirBulk chan *alr.AlrFhirBulk) string {
+
+	assert.NotNil(t, fhirBulk)
+
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
@@ -107,20 +109,23 @@ func writeToFileV1(t *testing.T, fhirBulk []*v1.AlrBulkV1) string {
 
 	for j := range fhirBulk {
 
-		// marshalling structs into JSON
-		alrResources, err := fhirBulk[j].FhirToString()
-		assert.NoError(t, err)
+		for _, i := range j.V1 {
 
-		// IO operations
-		for n, resource := range alrResources {
-
-			w := writerPool[n]
-
-			_, err = w.WriteString(resource)
-			assert.NoError(t, err)
-			err = w.Flush()
+			// marshalling structs into JSON
+			alrResources, err := i.FhirToString()
 			assert.NoError(t, err)
 
+			// IO operations
+			for n, resource := range alrResources {
+
+				w := writerPool[n]
+
+				_, err = w.WriteString(resource)
+				assert.NoError(t, err)
+				err = w.Flush()
+				assert.NoError(t, err)
+
+			}
 		}
 
 	}
@@ -128,7 +133,10 @@ func writeToFileV1(t *testing.T, fhirBulk []*v1.AlrBulkV1) string {
 	return tempDir
 }
 
-func writeToFileV2(t *testing.T, fhirBulk []*v2.AlrBulkV2) string {
+func writeToFileV2(t *testing.T, fhirBulk chan *alr.AlrFhirBulk) string {
+
+	assert.NotNil(t, fhirBulk)
+
 	tempDir, err := ioutil.TempDir("", "alr_fhir")
 	assert.NoError(t, err)
 
@@ -149,19 +157,21 @@ func writeToFileV2(t *testing.T, fhirBulk []*v2.AlrBulkV2) string {
 	// marshalling structs into JSON
 
 	for j := range fhirBulk {
-		alrResources, err := fhirBulk[j].FhirToString()
-		assert.NoError(t, err)
-
-		// IO operations
-		for n, resource := range alrResources {
-
-			w := writerPool[n]
-
-			_, err = w.WriteString(resource)
-			assert.NoError(t, err)
-			err = w.Flush()
+		for _, i := range j.V2 {
+			alrResources, err := i.FhirToString()
 			assert.NoError(t, err)
 
+			// IO operations
+			for n, resource := range alrResources {
+
+				w := writerPool[n]
+
+				_, err = w.WriteString(resource)
+				assert.NoError(t, err)
+				err = w.Flush()
+				assert.NoError(t, err)
+
+			}
 		}
 	}
 
