@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"github.com/CMSgov/bcda-app/bcda/models/fhir/alr/utils"
 	"github.com/CMSgov/bcda-app/log"
 	fhirdatatypes "github.com/google/fhir/go/proto/google/fhir/proto/stu3/datatypes_go_proto"
@@ -30,10 +31,10 @@ var (
 )
 
 // group takes a beneficiary and their respective K:V enrollment and returns FHIR
-func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Group {
+func group(mbi []*models.Alr, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmodels.Group {
 	group := &fhirmodels.Group{}
 	group.Id = &fhirdatatypes.Id{Value: "example-id-group"}
-	group.Member = []*fhirmodels.Group_Member{{}}
+	member := []*fhirmodels.Group_Member{}
 	extension := []*fhirdatatypes.Extension{}
 	reasonCodes := &fhirdatatypes.Extension{
 		Url: &fhirdatatypes.Uri{
@@ -172,11 +173,20 @@ func group(mbi string, keyValue []utils.KvPair, lastUpdated time.Time) *fhirmode
 	}
 	extension = append(extension, reasonCodes)
 
-	// NOTE: there is only one element in Member slice
-	group.Member[0].Extension = extension
-	group.Member[0].Entity = &fhirdatatypes.Reference{Reference: &fhirdatatypes.Reference_PatientId{
-		PatientId: &fhirdatatypes.ReferenceId{Value: mbi},
-	}}
+	// NOTE: the number of member is dependent on what the cutoff is... 100 for now
+	for i := range mbi {
+
+		m := &fhirmodels.Group_Member{}
+
+		m.Extension = extension
+		m.Entity = &fhirdatatypes.Reference{Reference: &fhirdatatypes.Reference_PatientId{
+			PatientId: &fhirdatatypes.ReferenceId{Value: mbi[i].BeneMBI},
+		}}
+
+		member = append(member, m)
+	}
+
+	group.Member = member
 
 	return group
 }

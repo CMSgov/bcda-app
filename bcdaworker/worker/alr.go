@@ -14,6 +14,7 @@ import (
 	"github.com/CMSgov/bcda-app/bcda/utils"
 	"github.com/CMSgov/bcda-app/bcdaworker/repository"
 	workerpg "github.com/CMSgov/bcda-app/bcdaworker/repository/postgres"
+	workerutils "github.com/CMSgov/bcda-app/bcdaworker/worker/utils"
 	"github.com/CMSgov/bcda-app/conf"
 	"github.com/CMSgov/bcda-app/log"
 	"github.com/pborman/uuid"
@@ -70,32 +71,35 @@ func goWriterV1(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 
 	for i := range c {
 		// marshalling structs into JSON
-		alrResources, err := i.AlrBulkV1.FhirToString()
-		if err != nil {
-			result <- err
-			return
-		}
+		for j := range i.V1 {
 
-		if len(alrResources) != len(writerPool) {
-			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
-		}
-
-		// IO operations
-		for n, resource := range alrResources {
-
-			w := writerPool[n]
-
-			_, err = w.WriteString(resource)
-			if err != nil {
-				result <- err
-				return
-			}
-			err = w.Flush()
+			alrResources, err := i.V1[j].FhirToString()
 			if err != nil {
 				result <- err
 				return
 			}
 
+			if len(alrResources) != len(writerPool) {
+				panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
+			}
+
+			// IO operations
+			for n, resource := range alrResources {
+
+				w := writerPool[n]
+
+				_, err = w.WriteString(resource)
+				if err != nil {
+					result <- err
+					return
+				}
+				err = w.Flush()
+				if err != nil {
+					result <- err
+					return
+				}
+
+			}
 		}
 	}
 
@@ -126,32 +130,35 @@ func goWriterV2(ctx context.Context, a *AlrWorker, c chan *alr.AlrFhirBulk, file
 
 	for i := range c {
 		// marshalling structs into JSON
-		alrResources, err := i.AlrBulkV2.FhirToString()
-		if err != nil {
-			result <- err
-			return
-		}
+		for j := range i.V2 {
 
-		if len(alrResources) != len(writerPool) {
-			panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
-		}
-
-		// IO operations
-		for n, resource := range alrResources {
-
-			w := writerPool[n]
-
-			_, err = w.WriteString(resource)
-			if err != nil {
-				result <- err
-				return
-			}
-			err = w.Flush()
+			alrResources, err := i.V2[j].FhirToString()
 			if err != nil {
 				result <- err
 				return
 			}
 
+			if len(alrResources) != len(writerPool) {
+				panic(fmt.Sprintf("Writer %d, fileMap %d, alrR %d", len(writerPool), len(fileMap), len(alrResources)))
+			}
+
+			// IO operations
+			for n, resource := range alrResources {
+
+				w := writerPool[n]
+
+				_, err = w.WriteString(resource)
+				if err != nil {
+					result <- err
+					return
+				}
+				err = w.Flush()
+				if err != nil {
+					result <- err
+					return
+				}
+
+			}
 		}
 	}
 
@@ -243,18 +250,9 @@ func (a *AlrWorker) ProcessAlrJob(
 	}
 
 	// Marshall into JSON and send it over the channel
-	for i := range alrModels {
-		fhirBulk := alr.ToFHIR(&alrModels[i], BBBasePath) // Removed timestamp, but can be added back here
+	const Limit = 100
 
-		if fhirBulk == nil {
-			continue
-		}
-
-		c <- fhirBulk
-	}
-
-	// close channel c since we are no longer writing to it
-	close(c)
+	workerutils.AlrSlicer(alrModels, c, Limit, BBBasePath)
 
 	// Wait on the go routine to finish
 	if err := <-result; err != nil {

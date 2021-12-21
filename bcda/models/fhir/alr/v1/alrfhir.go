@@ -31,92 +31,121 @@ type AlrBulkV1 struct {
 }
 
 // ToFHIR encodes the models.Alr into a FHIR Patient and N FHIR Observation resources
-func ToFHIRV1(alr *models.Alr) *AlrBulkV1 {
+func ToFHIRV1(alr []*models.Alr) []*AlrBulkV1 {
 
-	kvArenaInstance := utils.KeyValueMapper(alr)
-	hccVersion := kvArenaInstance.HccVersion
-	// there should only be one entry in the slice, but here we just check for at least one
-	if len(hccVersion) < 1 {
-		log.API.Warnf("Could not get HCC version.")
-		return nil
+	bulk := []*AlrBulkV1{}
+
+	for _, alr_piece := range alr {
+		kvArenaInstance := utils.KeyValueMapper(alr_piece)
+		hccVersion := kvArenaInstance.HccVersion
+		// there should only be one entry in the slice, but here we just check for at least one
+		if len(hccVersion) < 1 {
+			log.API.Warnf("Could not get HCC version.")
+			return nil
+		}
+
+		sub := patient(alr_piece)
+		cov := coverage(alr_piece.BeneMBI, kvArenaInstance.Enrollment, alr_piece.Timestamp)
+		risk := riskAssessment(alr_piece.BeneMBI, kvArenaInstance.RiskScore, alr_piece.Timestamp)
+		obs := observations(hccVersion[0].Value, alr_piece.BeneMBI, kvArenaInstance.RiskFlag, alr_piece.Timestamp)
+		covid := covidEpisode(alr_piece.BeneMBI, kvArenaInstance.CovidEpsisode, alr_piece.Timestamp)
+
+		bulk = append(bulk, &AlrBulkV1{
+			Patient:      sub,
+			Coverage:     cov,
+			Group:        nil,
+			Risk:         risk,
+			Observation:  obs,
+			CovidEpisode: covid,
+		})
 	}
 
-	sub := patient(alr)
-	cov := coverage(alr.BeneMBI, kvArenaInstance.Enrollment, alr.Timestamp)
-	group := group(alr.BeneMBI, kvArenaInstance.Group, alr.Timestamp)
-	risk := riskAssessment(alr.BeneMBI, kvArenaInstance.RiskScore, alr.Timestamp)
-	obs := observations(hccVersion[0].Value, alr.BeneMBI, kvArenaInstance.RiskFlag, alr.Timestamp)
-	covid := covidEpisode(alr.BeneMBI, kvArenaInstance.CovidEpsisode, alr.Timestamp)
+	kvArenaInstance := utils.KeyValueMapper(alr[0])
+	// All group in this pull should have the same timestamp
+	group := group(alr, kvArenaInstance.Group, alr[0].Timestamp)
+	bulk = append(bulk, &AlrBulkV1{
+		Group: group,
+	})
 
-	return &AlrBulkV1{
-		Patient:      sub,
-		Coverage:     cov,
-		Group:        group,
-		Risk:         risk,
-		Observation:  obs,
-		CovidEpisode: covid,
-	}
+	return bulk
 }
 
 func (bulk *AlrBulkV1) FhirToString() ([]string, error) {
 
-	patientb, err := marshaller.MarshalResource(bulk.Patient)
-	if err != nil {
-		// Make sure to send err back to the other thread
-		log.API.Errorf("Could not convert patient fhir to json.")
-		return nil, err
-	}
-	patients := string(patientb) + "\n"
+	var (
+		patients, coverage, group, risk, observation, covidEpisode string
+	)
 
-	// COVERAGE
-	coverageb, err := marshaller.MarshalResource(bulk.Coverage)
-	if err != nil {
-		// Make sure to send err back to the other thread
-		log.API.Errorf("Could not convert patient fhir to json.")
-		return nil, err
-	}
-	coverage := string(coverageb) + "\n"
-
-	// GROUP
-	groupb, err := marshaller.MarshalResource(bulk.Group)
-	if err != nil {
-		// Make sure to send err back to the other thread
-		log.API.Errorf("Could not convert patient fhir to json.")
-		return nil, err
-	}
-	group := string(groupb) + "\n"
-
-	// RISK
-	var riskAssessment = []string{}
-
-	for _, r := range bulk.Risk {
-
-		riskb, err := marshaller.MarshalResource(r)
+	// Patient
+	if bulk.Patient != nil {
+		patientb, err := marshaller.MarshalResource(bulk.Patient)
 		if err != nil {
 			// Make sure to send err back to the other thread
 			log.API.Errorf("Could not convert patient fhir to json.")
 			return nil, err
 		}
-		risk := string(riskb)
-		riskAssessment = append(riskAssessment, risk)
+		patients = string(patientb) + "\n"
 	}
-	risk := strings.Join(riskAssessment, "\n") + "\n"
+
+	// COVERAGE
+	if bulk.Coverage != nil {
+		coverageb, err := marshaller.MarshalResource(bulk.Coverage)
+		if err != nil {
+			// Make sure to send err back to the other thread
+			log.API.Errorf("Could not convert patient fhir to json.")
+			return nil, err
+		}
+		coverage = string(coverageb) + "\n"
+	}
+
+	// GROUP
+	if bulk.Group != nil {
+		groupb, err := marshaller.MarshalResource(bulk.Group)
+		if err != nil {
+			// Make sure to send err back to the other thread
+			log.API.Errorf("Could not convert patient fhir to json.")
+			return nil, err
+		}
+		group = string(groupb) + "\n"
+	}
+
+	// RISK
+	if bulk.Risk != nil {
+		var riskAssessment = []string{}
+
+		for _, r := range bulk.Risk {
+
+			riskb, err := marshaller.MarshalResource(r)
+			if err != nil {
+				// Make sure to send err back to the other thread
+				log.API.Errorf("Could not convert patient fhir to json.")
+				return nil, err
+			}
+			risk := string(riskb)
+			riskAssessment = append(riskAssessment, risk)
+		}
+		risk = strings.Join(riskAssessment, "\n") + "\n"
+	}
 
 	// OBSERVATION
-	observationb, err := marshaller.MarshalResource(bulk.Observation)
-	if err != nil {
-		log.API.Errorf("Could not convert patient fhir to json.")
-		return nil, err
+	if bulk.Observation != nil {
+		observationb, err := marshaller.MarshalResource(bulk.Observation)
+		if err != nil {
+			log.API.Errorf("Could not convert patient fhir to json.")
+			return nil, err
+		}
+		observation = string(observationb) + "\n"
 	}
-	observation := string(observationb) + "\n"
 
 	// COVID
-	covidb, err := marshaller.MarshalResource(bulk.CovidEpisode)
-	if err != nil {
-		log.API.Errorf("Could not convert covid fhir to json.")
-		return nil, err
+	if bulk.CovidEpisode != nil {
+		covidb, err := marshaller.MarshalResource(bulk.CovidEpisode)
+		if err != nil {
+			log.API.Errorf("Could not convert covid fhir to json.")
+			return nil, err
+		}
+		covidEpisode = string(covidb) + "\n"
 	}
-	covidEpisode := string(covidb) + "\n"
 
 	return []string{patients, observation, coverage, group, risk, covidEpisode}, nil
 
