@@ -6,7 +6,7 @@ import (
 )
 
 func AlrSlicer(alrModels []*models.Alr, c chan *alr.AlrFhirBulk, limit int, bbbasepath string) {
-	for ;len(alrModels) > limit; {
+	for len(alrModels) > limit {
 		alrModelsSub := alrModels[:limit]
 		fhirBulk := alr.ToFHIR(alrModelsSub, bbbasepath) // Removed timestamp, but can be added back here
 		alrModels = alrModels[limit:]
