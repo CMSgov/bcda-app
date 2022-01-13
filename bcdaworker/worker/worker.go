@@ -227,7 +227,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			// before gathering EOB/Coverage results; however with pre-adjudicated data
 			// that is not yet possible because their are no Patient FHIR resources. This
 			// boolean indicates whether or not we need to skip that lookup step
-			fetchBBId := jobArgs.DataType != constants.PreAdjudicated
+			fetchBBId := jobArgs.DataType != constants.PreAdjudicated && jobArgs.DataType != constants.PartAdjudicated
 			bene, err := getBeneficiary(ctx, r, uint(id), bb, fetchBBId)
 			if err != nil {
 				return fmt.Sprintf("Error retrieving BlueButton ID for cclfBeneficiary MBI %s", bene.MBI), fhircodes.IssueTypeCode_NOT_FOUND, err

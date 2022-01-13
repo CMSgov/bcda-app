@@ -14,3 +14,4 @@ var Version = "latest"
 
 const Adjudicated = "adjudicated"
 const PreAdjudicated = "pre-adjudicated"
+const PartAdjudicated = "part-adjudicated"

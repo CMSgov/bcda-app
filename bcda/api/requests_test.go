@@ -468,8 +468,8 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		"Coverage":             {Adjudicated: true},
 		"Patient":              {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
-		"Claim":                {Adjudicated: false, PreAdjudicated: true},
-		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true},
+		"Claim":                {Adjudicated: false, PreAdjudicated: true, PartAdjudicated: true},
+		"ClaimResponse":        {Adjudicated: false, PreAdjudicated: true, PartAdjudicated: true},
 	}
 
 	h := NewHandler(dataTypeMap, "/v2/fhir", "v2")
