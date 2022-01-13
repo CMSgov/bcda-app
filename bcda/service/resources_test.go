@@ -72,8 +72,8 @@ func (s *ResourcesTestSuite) TestGetDataType() {
 		{"Coverage", DataType{Adjudicated: true}, true},
 		{"ExplanationOfBenefit", DataType{Adjudicated: true}, true},
 		{"Observation", DataType{Adjudicated: true}, true},
-		{"Claim", DataType{Adjudicated: false, PreAdjudicated: true}, true},
-		{"ClaimResponse", DataType{Adjudicated: false, PreAdjudicated: true}, true},
+		{"Claim", DataType{Adjudicated: false, PreAdjudicated: true, PartAdjudicated: true}, true},
+		{"ClaimResponse", DataType{Adjudicated: false, PreAdjudicated: true, PartAdjudicated: true}, true},
 		{"InvalidResource", DataType{}, false},
 	}
 
