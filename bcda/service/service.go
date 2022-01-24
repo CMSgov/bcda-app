@@ -286,7 +286,7 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 						// pre-adjudicated jobs we will just use conditions.CreationTime as an
 						// upper bound
 						var transactionTime time.Time
-						if dataType == constants.PreAdjudicated || dataType == constants.PartAdjudicated {
+						if dataType == constants.PartiallyAdjudicated {
 							transactionTime = conditions.CreationTime
 						} else {
 							transactionTime = conditions.TransactionTime

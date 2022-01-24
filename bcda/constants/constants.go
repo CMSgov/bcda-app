@@ -13,5 +13,4 @@ const ImportFail = "Failed"
 var Version = "latest"
 
 const Adjudicated = "adjudicated"
-const PreAdjudicated = "pre-adjudicated"
-const PartAdjudicated = "part-adjudicated"
+const PartiallyAdjudicated = "partially-adjudicated"
