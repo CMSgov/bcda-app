@@ -6,7 +6,7 @@ ENV swaggerVersion ${swaggerVersion}
 RUN apk update upgrade
 RUN apk add git build-base gcc
 RUN dir=$(mktemp -d) && \
-    git clone https://github.com/go-swagger/go-swagger "$dir" && \
+    git clone -b v0.28.0 https://github.com/go-swagger/go-swagger "$dir" && \
     cd "$dir" && \
     go install ./cmd/swagger
 WORKDIR /go/src/github.com/CMSgov/bcda-app
