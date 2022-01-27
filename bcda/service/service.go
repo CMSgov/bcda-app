@@ -280,10 +280,10 @@ func (s *service) createQueueJobs(conditions RequestConditions, since time.Time,
 					// Create separate jobs for each data type if needed
 					for _, dataType := range acoConfig.Data {
 						// conditions.TransactionTime references the last time adjudicated data
-						// was updated in the BB client. If we are queuing up a pre-adjudicated
-						// data job, we need to assume that the adjudicated and pre-adjudicated
+						// was updated in the BB client. If we are queuing up a partially-adjudicated
+						// data job, we need to assume that the adjudicated and partially-adjudicated
 						// data ingestion timelines don't line up, therefore for all
-						// pre-adjudicated jobs we will just use conditions.CreationTime as an
+						// partially-adjudicated jobs we will just use conditions.CreationTime as an
 						// upper bound
 						var transactionTime time.Time
 						if dataType == constants.PartiallyAdjudicated {

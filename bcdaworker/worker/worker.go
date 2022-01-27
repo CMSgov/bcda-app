@@ -154,9 +154,9 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 
 	var bundleFunc func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error)
 	// NOTE: Currently all Coverage/EOB/Patient requests are for adjudicated data and
-	// Claim/ClaimResponse are pre-adjudicated, future work may require checking what
+	// Claim/ClaimResponse are partially-adjudicated, future work may require checking what
 	// kind of backing data to pull from if there is overlap (one or more FHIR resource
-	// used for representing both adjudicated and pre-adjudicated data)
+	// used for representing both adjudicated and partially-adjudicated data)
 	switch jobArgs.ResourceType {
 	case "Coverage":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
@@ -174,7 +174,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
 			return bb.GetPatient(bene.BlueButtonID, strconv.Itoa(jobArgs.ID), cmsID, jobArgs.Since, jobArgs.TransactionTime)
 		}
-		//NOTE: The assumption is Claim/ClaimResponse is always pre-adjudicated, future work may require checking what
+		//NOTE: The assumption is Claim/ClaimResponse is always partially-adjudicated, future work may require checking what
 		//kind of backing data to pull from
 	case "Claim":
 		bundleFunc = func(bene models.CCLFBeneficiary) (*fhirmodels.Bundle, error) {
@@ -224,7 +224,7 @@ func writeBBDataToFile(ctx context.Context, r repository.Repository, bb client.A
 			}
 
 			// NOTE: with adjudicated data sets, we first need to lookup the Patient ID
-			// before gathering EOB/Coverage results; however with pre-adjudicated data
+			// before gathering EOB/Coverage results; however with partially-adjudicated data
 			// that is not yet possible because their are no Patient FHIR resources. This
 			// boolean indicates whether or not we need to skip that lookup step
 			fetchBBId := jobArgs.DataType != constants.PartiallyAdjudicated
