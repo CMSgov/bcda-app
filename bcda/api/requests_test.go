@@ -437,7 +437,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		PerfYearTransition: "01/01",
 		LookbackYears:      10,
 		Disabled:           false,
-		Data:               []string{"adjudicated", "pre-adjudicated"},
+		Data:               []string{"adjudicated", "partially-adjudicated"},
 	}
 	acoB := &service.ACOConfig{
 		Model:              "Model B",
@@ -453,7 +453,7 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		PerfYearTransition: "01/01",
 		LookbackYears:      10,
 		Disabled:           false,
-		Data:               []string{"pre-adjudicated"},
+		Data:               []string{"partially-adjudicated"},
 	}
 	acoD := &service.ACOConfig{
 		Model:              "Model D",
@@ -492,13 +492,13 @@ func (s *RequestsTestSuite) TestDataTypeAuthorization() {
 		expectedCode int
 		acoConfig    *service.ACOConfig
 	}{
-		{"Auth Adj/Pre-Adj, Request Adj/Pre-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA},
+		{"Auth Adj/Partially-Adj, Request Adj/Partially-Adj", "A0000", []string{"Claim", "Patient"}, http.StatusAccepted, acoA},
 		{"Auth Adj, Request Adj", "B0000", []string{"Patient"}, http.StatusAccepted, acoB},
-		{"Auth Adj, Request Pre-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB},
-		{"Auth Pre-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC},
-		{"Auth Pre-Adj, Request Pre-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC},
+		{"Auth Adj, Request Partially-Adj", "B0000", []string{"Claim"}, http.StatusBadRequest, acoB},
+		{"Auth Partially-Adj, Request Adj", "C0000", []string{"Patient"}, http.StatusBadRequest, acoC},
+		{"Auth Partially-Adj, Request Partially-Adj", "C0000", []string{"Claim"}, http.StatusAccepted, acoC},
 		{"Auth None, Request Adj", "D0000", []string{"Patient"}, http.StatusBadRequest, acoD},
-		{"Auth None, Request Pre-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD},
+		{"Auth None, Request Partially-Adj", "D0000", []string{"Claim"}, http.StatusBadRequest, acoD},
 	}
 
 	for _, test := range tests {
