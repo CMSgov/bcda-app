@@ -89,7 +89,7 @@ INSERT INTO acos (cms_id, name, uuid) VALUES
 ('K0153','Kidney Care and Transplant Services of New England, PC',uuid_generate_v4()),
 ('K0183','Venu Kondle, M.D. and Robert Polhemus, M.D. a Medical Corporation, A PC',uuid_generate_v4()),
 ('K0184','Venu Kondle, M.D. and Robert Polhemus, M.D. a Medical Corporation, A PC',uuid_generate_v4()),
-('K0185','Venu Kondle, M.D. and Robert Polhemus, M.D. a Medical Corporation, A PC',uuid_generate_v4());
+('K0185','Venu Kondle, M.D. and Robert Polhemus, M.D. a Medical Corporation, A PC',uuid_generate_v4()),
 ('D0012','Temple Center For Population Health, Inc.',uuid_generate_v4()),
 ('D0015','Rancho Health Management, LLC',uuid_generate_v4()),
 ('D0019','CareMount Value Partners IPA',uuid_generate_v4()),
@@ -135,7 +135,7 @@ INSERT INTO acos (cms_id, name, uuid) VALUES
 ('D0214','Arizona Care Network - Next, LLC',uuid_generate_v4()),
 ('D0215','APA ACO Inc.',uuid_generate_v4()),
 ('D0217','UW Health ACO, Inc.',uuid_generate_v4()),
-('D0218','Reliant Medical Group, Inc.',uuid_generate_v4()),
+('D0218','Reliant Medical Group, Inc.',uuid_generate_v4());
 -- Drop the extension since we no longer need to generate UUIDs
 DROP EXTENSION "uuid-ossp";
 COMMIT;
