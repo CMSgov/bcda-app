@@ -9,11 +9,11 @@ DECLARE Large cclf_files.id%TYPE;
 
 -- Adding three rows into cclf_files for three new CCLF files associated to synthea (improved data)
 BEGIN
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.A9989.ZC8Y44.D210201.T1834180', 'A9989', '2021-02-01', 21, 'Completed', 0) RETURNING id INTO Dev;
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.A9998.ZC8Y20.D210201.T1834180', 'A9998', '2021-02-01', 21, 'Completed', 0) RETURNING id INTO Small;
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.A9999.ZC8Y89.D210201.T1834180', 'A9999', '2021-02-01', 21, 'Completed', 0) RETURNING id INTO Large;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST990.ZC8Y22.D220201.T1834180', 'TEST990', '2022-02-01', 21, 'Completed', 0) RETURNING id INTO Dev;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST991.ZC8Y22.D220201.T1834180', 'TEST991', '2022-02-01', 21, 'Completed', 0) RETURNING id INTO Small;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST992.ZC8Y22.D220201.T1834180', 'TEST992', '2022-02-01', 21, 'Completed', 0) RETURNING id INTO Large;
 
--- Adding rows into cclf_beneficiaries for ####
+-- Adding rows into cclf_beneficiaries for TEST990
 INSERT INTO cclf_beneficiaries (file_id, mbi)
 VALUES
 (Dev, '1S00E00AM56'),
@@ -58,7 +58,7 @@ VALUES
 (Dev, '1S00E00AM40');
 
 
--- Adding rows into cclf_beneficiaries for ####
+-- Adding rows into cclf_beneficiaries for TEST991
 INSERT INTO cclf_beneficiaries (file_id, mbi)
 VALUES
 (Small, '1S00E00AM56'),
@@ -163,7 +163,7 @@ VALUES
 (Small, '1S00E00DF68');
 
 
--- Adding rows into cclf_beneficiaries for ###
+-- Adding rows into cclf_beneficiaries for TEST992
 INSERT INTO cclf_beneficiaries (file_id, mbi)
 VALUES
 (Large, '1S00E00AM56'),
@@ -10166,4 +10166,3 @@ VALUES
 (Large, '1S00E00AD62'),
 (Large, '1S00E00AD63'),
 (Large, '1S00E00FX24');
-
