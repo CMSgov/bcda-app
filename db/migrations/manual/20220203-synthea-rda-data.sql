@@ -10166,3 +10166,7 @@ VALUES
 (Large, '1S00E00AD62'),
 (Large, '1S00E00AD63'),
 (Large, '1S00E00FX24');
+
+END $$;
+
+COMMIT;
