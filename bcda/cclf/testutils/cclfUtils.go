@@ -38,26 +38,26 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 		fileName string
 		cmsID    string
 	}{
-		"dev":            {"dev", "A9994"},
-		"dev-auth":       {"dev", "A9996"},
-		"dev-cec":        {"dev", "E9994"},
-		"dev-cec-auth":   {"dev", "E9996"},
-		"dev-ng":         {"dev", "V994"},
-		"dev-ng-auth":    {"dev", "V996"},
-		"dev-ckcc":       {"dev", "C9994"},
-		"dev-ckcc-auth":  {"dev", "C9996"},
-		"dev-kcf":        {"dev", "K9994"},
-		"dev-kcf-auth":   {"dev", "K9996"},
-		"dev-dc":         {"dev", "D9994"},
-		"dev-dc-auth":    {"dev", "D9996"},
-		"small":          {"small", "A9990"},
-		"medium":         {"medium", "A9991"},
-		"large":          {"large", "A9992"},
-		"extra-large":    {"extra-large", "A9993"},
-		"improved-dev":   {"dev", "A9989"},
-		"improved-small": {"small", "A9998"},
-		"improved-large": {"large", "A9999"},
-		"preadj-dev":    {"dev", "TEST001"},
+		"dev":                       {"dev", "A9994"},
+		"dev-auth":                  {"dev", "A9996"},
+		"dev-cec":                   {"dev", "E9994"},
+		"dev-cec-auth":              {"dev", "E9996"},
+		"dev-ng":                    {"dev", "V994"},
+		"dev-ng-auth":               {"dev", "V996"},
+		"dev-ckcc":                  {"dev", "C9994"},
+		"dev-ckcc-auth":             {"dev", "C9996"},
+		"dev-kcf":                   {"dev", "K9994"},
+		"dev-kcf-auth":              {"dev", "K9996"},
+		"dev-dc":                    {"dev", "D9994"},
+		"dev-dc-auth":               {"dev", "D9996"},
+		"small":                     {"small", "A9990"},
+		"medium":                    {"medium", "A9991"},
+		"large":                     {"large", "A9992"},
+		"extra-large":               {"extra-large", "A9993"},
+		"improved-dev":              {"dev", "A9989"},
+		"improved-small":            {"small", "A9998"},
+		"improved-large":            {"large", "A9999"},
+		"partially-adjudicated-dev": {"dev", "TEST001"},
 	}[acoSize]
 
 	if !ok {
@@ -70,7 +70,7 @@ func ImportCCLFPackage(acoSize, environment string, fileType models.CCLFFileType
 		"test-new-beneficiaries",
 		"improved",
 		"improved-new",
-		"test-preadj":
+		"test-partially-adjudicated":
 	default:
 		return errors.New("invalid argument for environment")
 	}

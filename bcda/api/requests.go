@@ -594,7 +594,7 @@ func (h *Handler) getResourceTypes(parameters middleware.RequestParameters, cmsI
 				resourceTypes = append(resourceTypes, "Patient", "ExplanationOfBenefit", "Coverage")
 			}
 
-			if utils.ContainsString(acoConfig.Data, constants.PreAdjudicated) {
+			if utils.ContainsString(acoConfig.Data, constants.PartiallyAdjudicated) {
 				resourceTypes = append(resourceTypes, "Claim", "ClaimResponse")
 			}
 		}
@@ -622,7 +622,7 @@ func (h *Handler) validateResources(resourceTypes []string, cmsID string) error 
 func (h *Handler) authorizedResourceAccess(dataType service.DataType, cmsID string) bool {
 	if cfg, ok := h.Svc.GetACOConfigForID(cmsID); ok {
 		return (dataType.Adjudicated && utils.ContainsString(cfg.Data, constants.Adjudicated)) ||
-			(dataType.PreAdjudicated && utils.ContainsString(cfg.Data, constants.PreAdjudicated))
+			(dataType.PartiallyAdjudicated && utils.ContainsString(cfg.Data, constants.PartiallyAdjudicated))
 	}
 
 	return false

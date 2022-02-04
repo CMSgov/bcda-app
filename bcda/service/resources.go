@@ -4,8 +4,8 @@ import "github.com/CMSgov/bcda-app/bcda/constants"
 
 //DataType is used to identify the type of data returned by each resource
 type DataType struct {
-	Adjudicated    bool
-	PreAdjudicated bool
+	Adjudicated          bool
+	PartiallyAdjudicated bool
 }
 
 var dataTypeMap map[string]DataType
@@ -13,8 +13,8 @@ var dataTypeMap map[string]DataType
 // SupportsDataType checks if the dataType is supported by the instanced DataType object
 func (r DataType) SupportsDataType(dataType string) bool {
 	switch dataType {
-	case constants.PreAdjudicated:
-		return r.PreAdjudicated
+	case constants.PartiallyAdjudicated:
+		return r.PartiallyAdjudicated
 	case constants.Adjudicated:
 		return r.Adjudicated
 	default:
@@ -29,8 +29,8 @@ func init() {
 		"Coverage":             {Adjudicated: true},
 		"ExplanationOfBenefit": {Adjudicated: true},
 		"Observation":          {Adjudicated: true},
-		"Claim":                {PreAdjudicated: true},
-		"ClaimResponse":        {PreAdjudicated: true},
+		"Claim":                {PartiallyAdjudicated: true},
+		"ClaimResponse":        {PartiallyAdjudicated: true},
 	}
 }
 
