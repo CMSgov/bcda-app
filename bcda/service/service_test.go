@@ -661,7 +661,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 
 	defaultACO := ACOConfig{
 		patternExp: regexp.MustCompile(defaultACOID),
-		Data:       []string{constants.Adjudicated, constants.PreAdjudicated},
+		Data:       []string{constants.Adjudicated, constants.PartiallyAdjudicated},
 	}
 
 	acoCfgs := map[*regexp.Regexp]*ACOConfig{
@@ -705,7 +705,7 @@ func (s *ServiceTestSuite) TestGetQueJobsByDataType() {
 		terminationDetails *models.Termination
 	}{
 		{"Adjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeB, []string{"Patient"}, nil},
-		{"PreAdjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil},
+		{"PartiallyAdjudicated", defaultACOID, DefaultRequest, time.Time{}, claimsWindow{}, benes1, timeA, []string{"Claim"}, nil},
 	}
 
 	for _, tt := range tests {
