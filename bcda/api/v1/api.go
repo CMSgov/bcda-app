@@ -2,10 +2,15 @@ package v1
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -22,8 +27,11 @@ import (
 )
 
 var h *api.Handler
+var repository *postgres.Repository
 
 func init() {
+	repository = postgres.NewRepository(database.Connection)
+
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -285,6 +293,36 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 	}
+
+	// Logging request for auditing
+	var jobIdInt, err = strconv.ParseUint(jobID, 10, 64)
+
+	if err == nil {
+		var jobKeys, err = repository.GetJobKeys(context.Background(), uint(jobIdInt))
+
+		if err == nil {
+			var resourceType string
+
+			for _, j := range jobKeys {
+				if strings.TrimSpace(j.FileName) == strings.TrimSpace(fileName) {
+					resourceType = j.ResourceType
+				}
+			}
+
+			var authData, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+
+			if ok {
+				log.API.Infof("ACO_ID: '%s', CMS_ID: '%s', Resource: '%s'", authData.ACOID, authData.CMSID, resourceType)
+			} else {
+				log.API.Infof("Request without authorization for resource: '%s'", resourceType)
+			}
+		} else {
+			log.API.Infof("Unable to pull job keys for job %s in ServData request", jobID)
+		}
+	} else {
+		log.API.Infof("Invalid job id requested: %s", jobID)
+	}
+
 }
 
 /*
