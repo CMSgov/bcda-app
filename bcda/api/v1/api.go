@@ -303,8 +303,10 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			var resourceType string
 
+			fileName = strings.TrimSpace(fileName)
+
 			for _, j := range jobKeys {
-				if strings.TrimSpace(j.FileName) == strings.TrimSpace(fileName) {
+				if strings.TrimSpace(j.FileName) == fileName {
 					resourceType = j.ResourceType
 				}
 			}
