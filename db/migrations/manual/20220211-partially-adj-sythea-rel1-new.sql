@@ -9,9 +9,9 @@ DECLARE Large cclf_files.id%TYPE;
 
 -- Adding three rows into cclf_files for three new CCLF files associated to synthea (improved data)
 BEGIN
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST990.ZC8Y21.D220201.T1834180', 'TEST990', '2021-07-01', 21, 'Completed', 0) RETURNING id INTO Dev;
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST991.ZC8Y21.D220201.T1834180', 'TEST991', '2021-07-01', 21, 'Completed', 0) RETURNING id INTO Small;
-INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST992.ZC8Y21.D220201.T1834180', 'TEST992', '2021-07-01', 21, 'Completed', 0) RETURNING id INTO Large;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST990.ZC8Y21.D210701.T1834180', 'TEST990', '2021-07-01', 21, 'Completed', 0) RETURNING id INTO Dev;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST991.ZC8Y21.D210701.T1834180', 'TEST991', '2021-07-01', 21, 'Completed', 0) RETURNING id INTO Small;
+INSERT INTO cclf_files (created_at, updated_at, cclf_num, name, aco_cms_id, timestamp, performance_year, import_status, type) VALUES (now(), now(), 8, 'T.BCD.TEST992.ZC8Y21.D210701.T1834180', 'TEST992', '2021-07-01', 21, 'Completed', 0) RETURNING id INTO Large;
 
 -- Adding rows into cclf_beneficiaries for TEST990
 INSERT INTO cclf_beneficiaries (file_id, mbi)
