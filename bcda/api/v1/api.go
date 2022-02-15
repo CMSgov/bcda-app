@@ -298,25 +298,15 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 	var jobIdInt, err = strconv.ParseUint(jobID, 10, 64)
 
 	if err == nil {
-		var jobKeys, err = repository.GetJobKeys(context.Background(), uint(jobIdInt))
+		var jobKey, err = repository.GetJobKey(context.Background(), uint(jobIdInt), strings.TrimSpace(fileName))
 
 		if err == nil {
-			var resourceType string
-
-			fileName = strings.TrimSpace(fileName)
-
-			for _, j := range jobKeys {
-				if strings.TrimSpace(j.FileName) == fileName {
-					resourceType = j.ResourceType
-				}
-			}
-
 			var authData, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
 
 			if ok {
-				log.API.Infof("ACO_ID: '%s', CMS_ID: '%s', Resource: '%s'", authData.ACOID, authData.CMSID, resourceType)
+				log.API.Infof("ACO_ID: '%s', CMS_ID: '%s', Resource: '%s'", authData.ACOID, authData.CMSID, jobKey.ResourceType)
 			} else {
-				log.API.Infof("Request without authorization for resource: '%s'", resourceType)
+				log.API.Infof("Request without authorization for resource: '%s'", jobKey.ResourceType)
 			}
 		} else {
 			log.API.Infof("Unable to pull job keys for job %s in ServData request", jobID)

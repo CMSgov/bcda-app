@@ -509,6 +509,22 @@ func (r *Repository) GetJobKeys(ctx context.Context, jobID uint) ([]*models.JobK
 	return keys, nil
 }
 
+func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string) (*models.JobKey, error) {
+	sb := sqlFlavor.NewSelectBuilder().Select("id", "file_name", "resource_type").From("job_keys")
+	sb.Where(sb.And(sb.Equal("job_id", jobID), sb.Equal("file_name", fileName)))
+
+	query, args := sb.Build()
+	row := r.QueryRowContext(ctx, query, args...)
+
+	jk := models.JobKey{JobID: jobID}
+
+	if err := row.Scan(&jk.ID, &jk.FileName, &jk.ResourceType); err != nil {
+		return nil, err
+	}
+
+	return &jk, nil
+}
+
 func (r *Repository) getJobs(ctx context.Context, query string, args ...interface{}) ([]*models.Job, error) {
 	rows, err := r.QueryContext(ctx, query, args...)
 	if err != nil {
