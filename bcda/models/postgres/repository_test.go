@@ -818,7 +818,7 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	key, err := r.repository.GetJobKey(ctx, jobID, fileName)
 	assert.Nil(r.T(), err)
 	assert.Equal(r.T(), jobID, key.JobID)
-	assert.Equal(r.T(), fileName, key.FileName)
+	assert.Equal(r.T(), fileName, strings.TrimSpace(key.FileName))
 }
 
 // TestCMSID verifies that we can store and retrieve the CMS_ID as expected
