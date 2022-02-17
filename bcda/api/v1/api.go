@@ -305,14 +305,8 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 
 			if ok {
 				log.API.Infof("ACO_ID: '%s', CMS_ID: '%s', Resource: '%s'", authData.ACOID, authData.CMSID, jobKey.ResourceType)
-			} else {
-				log.API.Infof("Request without authorization for resource: '%s'", jobKey.ResourceType)
 			}
-		} else {
-			log.API.Infof("Unable to pull job keys for job %s in ServData request", jobID)
 		}
-	} else {
-		log.API.Infof("Invalid job id requested: %s", jobID)
 	}
 
 }
