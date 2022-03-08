@@ -516,13 +516,13 @@ func (r *Repository) GetJobKey(ctx context.Context, jobID uint, fileName string)
 	query, args := sb.Build()
 	row := r.QueryRowContext(ctx, query, args...)
 
-	jk := models.JobKey{JobID: jobID}
+	jk := &models.JobKey{JobID: jobID}
 
 	if err := row.Scan(&jk.ID, &jk.FileName, &jk.ResourceType); err != nil {
 		return nil, err
 	}
 
-	return &jk, nil
+	return jk, nil
 }
 
 func (r *Repository) getJobs(ctx context.Context, query string, args ...interface{}) ([]*models.Job, error) {

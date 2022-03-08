@@ -2,11 +2,9 @@ package v1
 
 import (
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/CMSgov/bcda-app/bcda/database"
-	"github.com/CMSgov/bcda-app/bcda/models/postgres"
+	"github.com/CMSgov/bcda-app/bcda/models"
 	"io"
 	"net/http"
 	"strconv"
@@ -27,11 +25,8 @@ import (
 )
 
 var h *api.Handler
-var repository *postgres.Repository
 
 func init() {
-	repository = postgres.NewRepository(database.Connection)
-
 	resources, ok := service.GetDataTypes([]string{
 		"Patient",
 		"Coverage",
@@ -294,21 +289,36 @@ func ServeData(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, fmt.Sprintf("%s/%s/%s", dataDir, jobID, fileName))
 	}
 
+	_ = logServeDataRequest(jobID, fileName, r)
+}
+
+/*
+	Helper method to log requests made to the ServeData endpoint
+ */
+func logServeDataRequest(jobID string, fileName string, r *http.Request) (err error) {
 	// Logging request for auditing
-	var jobIdInt, err = strconv.ParseUint(jobID, 10, 64)
+	var jobIdInt uint64
+	var jobKey *models.JobKey
 
-	if err == nil {
-		var jobKey, err = repository.GetJobKey(context.Background(), uint(jobIdInt), strings.TrimSpace(fileName))
+	jobIdInt, err = strconv.ParseUint(jobID, 10, 64)
 
-		if err == nil {
-			var authData, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
-
-			if ok {
-				log.API.Infof("ACO_ID: '%s', CMS_ID: '%s', Resource: '%s'", authData.ACOID, authData.CMSID, jobKey.ResourceType)
-			}
-		}
+	if err != nil {
+		return err
 	}
 
+	jobKey, err = h.Svc.GetJobKey(r.Context(), uint(jobIdInt), strings.TrimSpace(fileName))
+
+	if err != nil {
+		return err
+	}
+
+	var authData, ok = r.Context().Value(auth.AuthDataContextKey).(auth.AuthData)
+
+	if ok {
+		log.API.Infof("ACO_ID: '%s', CMS_ID: '%s', Resource: '%s'", authData.ACOID, authData.CMSID, jobKey.ResourceType)
+	}
+
+	return err
 }
 
 /*

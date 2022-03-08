@@ -62,6 +62,8 @@ type Service interface {
 
 	GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, []*models.JobKey, error)
 
+	GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error)
+
 	GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error)
 
 	CancelJob(ctx context.Context, jobID uint) (uint, error)
@@ -211,6 +213,10 @@ func (s *service) GetJobAndKeys(ctx context.Context, jobID uint) (*models.Job, [
 	}
 
 	return j, nonEmptyKeys, nil
+}
+
+func (s *service) GetJobKey(ctx context.Context, jobID uint, filename string) (*models.JobKey, error) {
+	return s.repository.GetJobKey(ctx, jobID, filename)
 }
 
 func (s *service) GetJobs(ctx context.Context, acoID uuid.UUID, statuses ...models.JobStatus) ([]*models.Job, error) {
