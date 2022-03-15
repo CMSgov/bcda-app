@@ -82,6 +82,8 @@ type jobRepository interface {
 
 type jobKeyRepository interface {
 	GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error)
+
+	GetJobKey(ctx context.Context, jobID uint, filename string) (*JobKey, error)
 }
 
 type alr interface {

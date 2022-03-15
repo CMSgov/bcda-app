@@ -777,8 +777,8 @@ func (r *RepositoryTestSuite) TestJobsMethods() {
 	assert.EqualError(r.repository.UpdateJob(ctx, notExists), "expected to affect 1 row, affected 0")
 }
 
-// TestJobKeysMethods validates the CRUD operations associated with the job_keys table
-func (r *RepositoryTestSuite) TestJobKeyMethods() {
+// TestJobKeysMethods validates the CRUD operations associated with the job_keys table for multiple results
+func (r *RepositoryTestSuite) TestJobKeysMethods() {
 	ctx := context.Background()
 	assert := r.Assert()
 
@@ -801,6 +801,24 @@ func (r *RepositoryTestSuite) TestJobKeyMethods() {
 	assertContainsFile(assert, otherKeys, jk3.FileName)
 	assertDoesNotContainsFile(assert, otherKeys, jk1.FileName)
 	assertDoesNotContainsFile(assert, otherKeys, jk2.FileName)
+}
+
+// TestJobKeyMethods validates the CRUD operations associated with the job_keys table for single result
+func (r *RepositoryTestSuite) TestJobKeyMethods() {
+	ctx := context.Background()
+
+	jobID := uint(rand.Int31())
+	fileName := uuid.New()
+	jk1 := models.JobKey{JobID: jobID, FileName: fileName}
+	jk2 := models.JobKey{JobID: jobID, FileName: uuid.New()}
+	jk3 := models.JobKey{JobID: uint(rand.Int31()), FileName: uuid.New()}
+
+	postgrestest.CreateJobKeys(r.T(), r.db, jk1, jk2, jk3)
+
+	key, err := r.repository.GetJobKey(ctx, jobID, fileName)
+	assert.Nil(r.T(), err)
+	assert.Equal(r.T(), jobID, key.JobID)
+	assert.Equal(r.T(), fileName, strings.TrimSpace(key.FileName))
 }
 
 // TestCMSID verifies that we can store and retrieve the CMS_ID as expected
