@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
+	"github.com/CMSgov/bcda-app/bcda/database"
+	"github.com/CMSgov/bcda-app/bcda/models"
+	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -81,6 +86,47 @@ func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
 		"stack": string(stack),
 		"panic": fmt.Sprintf("%+v", v),
 	})
+}
+
+func LogJobResourceType(next http.Handler) http.Handler {
+	repository := postgres.NewRepository(database.Connection)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+
+		jobKey, err := extractJobKey(r, repository)
+		if err != nil {
+			log.API.Error(err)
+			return
+		}
+		// Note: could split this out into a function for adding to the context log
+		entry, ok := middleware.GetLogEntry(r).(*StructuredLoggerEntry)
+		if !ok {
+			log.API.Error("Incorrect type of logger used in request context")
+		}
+
+		entry.Logger = entry.Logger.WithFields(logrus.Fields{
+			"resource": jobKey.ResourceType,
+		})
+	})
+}
+
+/*
+	Helper method to log requests made to the ServeData endpoint
+*/
+func extractJobKey(r *http.Request, repository models.Repository) (*models.JobKey, error) {
+	fileName := chi.URLParam(r, "fileName")
+	jobID := chi.URLParam(r, "jobID")
+	// Logging request for auditing
+
+	jobIdInt, err := strconv.ParseUint(jobID, 10, 64)
+
+	if err != nil {
+		return nil, err
+	}
+
+	jobKey, err := repository.GetJobKey(r.Context(), uint(jobIdInt), strings.TrimSpace(fileName))
+
+	return jobKey, err
 }
 
 func Redact(uri string) string {

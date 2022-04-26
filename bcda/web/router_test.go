@@ -88,6 +88,8 @@ func (s *RouterTestSuite) TestDefaultProdRoute() {
 func (s *RouterTestSuite) TestDataRoute() {
 	res := s.getDataRoute("/data/test/test.ndjson")
 	assert.Equal(s.T(), http.StatusUnauthorized, res.StatusCode)
+
+	// TODO Test success path
 }
 
 func (s *RouterTestSuite) TestMetadataRoute() {

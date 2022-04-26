@@ -87,7 +87,7 @@ func NewDataRouter() http.Handler {
 	r := chi.NewRouter()
 	m := monitoring.GetMonitor()
 	r.Use(auth.ParseToken, logging.NewStructuredLogger(), middleware.SecurityHeader, middleware.ConnectionClose)
-	r.With(append(commonAuth, auth.RequireTokenJobMatch)...).
+	r.With(append(commonAuth, auth.RequireTokenJobMatch, logging.LogJobResourceType)...).
 		Get(m.WrapHandler("/data/{jobID}/{fileName}", v1.ServeData))
 	return r
 }
