@@ -117,7 +117,7 @@ func (rl *ResourceTypeLogger) extractJobKey(r *http.Request) (*models.JobKey, er
 	jobID := chi.URLParam(r, "jobID")
 	// Logging request for auditing
 
-	jobIdInt, err := strconv.ParseUint(jobID, 10, 64)
+	jobIdInt, err := strconv.ParseUint(jobID, 10, 32)
 
 	if err != nil {
 		return nil, err
