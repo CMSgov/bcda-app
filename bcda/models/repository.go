@@ -15,7 +15,7 @@ type Repository interface {
 	suppressionRepository
 	suppressionFileRepository
 	jobRepository
-	jobKeyRepository
+	JobKeyRepository
 	alr
 }
 
@@ -80,7 +80,7 @@ type jobRepository interface {
 	UpdateJob(ctx context.Context, j Job) error
 }
 
-type jobKeyRepository interface {
+type JobKeyRepository interface {
 	GetJobKeys(ctx context.Context, jobID uint) ([]*JobKey, error)
 
 	GetJobKey(ctx context.Context, jobID uint, filename string) (*JobKey, error)

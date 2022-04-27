@@ -13,9 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/CMSgov/bcda-app/bcda/auth"
-	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/bcda/models"
-	"github.com/CMSgov/bcda-app/bcda/models/postgres"
 	"github.com/CMSgov/bcda-app/bcda/servicemux"
 	"github.com/CMSgov/bcda-app/log"
 )
@@ -88,12 +86,15 @@ func (l *StructuredLoggerEntry) Panic(v interface{}, stack []byte) {
 	})
 }
 
-func LogJobResourceType(next http.Handler) http.Handler {
-	repository := postgres.NewRepository(database.Connection)
+type ResourceTypeLogger struct {
+	Repository models.JobKeyRepository
+}
+
+func (rl *ResourceTypeLogger) LogJobResourceType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r)
 
-		jobKey, err := extractJobKey(r, repository)
+		jobKey, err := rl.extractJobKey(r)
 		if err != nil {
 			log.API.Error(err)
 			return
@@ -102,18 +103,16 @@ func LogJobResourceType(next http.Handler) http.Handler {
 		entry, ok := middleware.GetLogEntry(r).(*StructuredLoggerEntry)
 		if !ok {
 			log.API.Error("Incorrect type of logger used in request context")
+			return
 		}
 
 		entry.Logger = entry.Logger.WithFields(logrus.Fields{
-			"resource": jobKey.ResourceType,
+			"resource_type": jobKey.ResourceType,
 		})
 	})
 }
 
-/*
-	Helper method to log requests made to the ServeData endpoint
-*/
-func extractJobKey(r *http.Request, repository models.Repository) (*models.JobKey, error) {
+func (rl *ResourceTypeLogger) extractJobKey(r *http.Request) (*models.JobKey, error) {
 	fileName := chi.URLParam(r, "fileName")
 	jobID := chi.URLParam(r, "jobID")
 	// Logging request for auditing
@@ -124,7 +123,7 @@ func extractJobKey(r *http.Request, repository models.Repository) (*models.JobKe
 		return nil, err
 	}
 
-	jobKey, err := repository.GetJobKey(r.Context(), uint(jobIdInt), strings.TrimSpace(fileName))
+	jobKey, err := rl.Repository.GetJobKey(r.Context(), uint(jobIdInt), strings.TrimSpace(fileName))
 
 	return jobKey, err
 }
