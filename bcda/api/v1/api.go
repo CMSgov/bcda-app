@@ -359,6 +359,14 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 	}
 
+	if health.IsSsasOK() {
+		m["ssas"] = "ok"
+		w.WriteHeader(http.StatusAccepted)
+	} else {
+		m["ssas"] = "error"
+		w.WriteHeader(http.StatusUnauthorized)
+	}
+
 	respJSON, err := json.Marshal(m)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

@@ -317,6 +317,10 @@ func (c *SSASClient) GetToken(credentials Credentials) ([]byte, error) {
 	return []byte(t.AccessToken), nil
 }
 
+func (s *SSASClient) Ping() error {
+	return errors.New("Cannot contact SSAS")
+}
+
 // VerifyPublicToken verifies that the tokenString presented was issued by the public server. It does so using
 // the introspect endpoint as defined by https://tools.ietf.org/html/rfc7662
 func (c *SSASClient) VerifyPublicToken(tokenString string) ([]byte, error) {

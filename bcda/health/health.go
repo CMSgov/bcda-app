@@ -1,6 +1,7 @@
 package health
 
 import (
+	ssasClient "github.com/CMSgov/bcda-app/bcda/auth/client"
 	"github.com/CMSgov/bcda-app/bcda/client"
 	"github.com/CMSgov/bcda-app/bcda/database"
 	"github.com/CMSgov/bcda-app/log"
@@ -30,5 +31,18 @@ func IsBlueButtonOK() bool {
 		return false
 	}
 
+	return true
+}
+
+func IsSsasOK() bool {
+	c, err := ssasClient.NewSSASClient()
+	if err != nil {
+		log.Auth.Errorf("no client for SSAS. no provider set; %s", err.Error())
+		return false
+	}
+	if err := c.Ping(); err != nil {
+		log.API.Error("Health check: ssas ping error: ", err.Error())
+		return false
+	}
 	return true
 }
